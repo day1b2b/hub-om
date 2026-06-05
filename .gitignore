@@ -1,0 +1,17 @@
+.omx/
+.local/
+.DS_Store
+node_modules/
+.next/
+out/
+dist/
+tsconfig.tsbuildinfo
+.env
+.env.local
+.env.*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+data/excel/*
+!data/excel/.gitkeep

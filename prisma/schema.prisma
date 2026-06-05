@@ -1,0 +1,243 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum OperationStatus {
+  ASSIGNMENT_NEEDED  @map("assignment_needed")
+  ASSIGNMENT_PLANNED @map("assignment_planned")
+  ACTIVE             @map("active")
+  DONE               @map("done")
+  RETROSPECTIVE_DONE @map("retrospective_done")
+  ARCHIVE_NEEDED     @map("archive_needed")
+
+  @@map("operation_status")
+}
+
+enum ArchiveStatus {
+  NOT_READY @map("not_ready")
+  NEEDED    @map("needed")
+  DONE      @map("done")
+
+  @@map("archive_status")
+}
+
+enum EducationFormat {
+  OFFLINE      @map("offline")
+  REMOTE       @map("remote")
+  BLENDED      @map("blended")
+  FLIPPED      @map("flipped")
+  NEEDS_REVIEW @map("needs_review")
+
+  @@map("education_format")
+}
+
+enum OperationChannel {
+  ONSITE          @map("onsite")
+  LIVE_ONLINE     @map("live_online")
+  ONLINE_PLATFORM @map("online_platform")
+  BLENDED         @map("blended")
+  NEEDS_REVIEW    @map("needs_review")
+
+  @@map("operation_channel")
+}
+
+enum OperationType {
+  LECTURE       @map("lecture")
+  SHORT         @map("short")
+  MEDIUM        @map("medium")
+  MID_TERM_LONG @map("mid_term_long")
+  MID_LONG      @map("mid_long")
+  LONG          @map("long")
+  ANNUAL        @map("annual")
+  ALWAYS_ON     @map("always_on")
+  NEEDS_REVIEW  @map("needs_review")
+
+  @@map("operation_type")
+}
+
+enum OnsiteRequired {
+  Y
+  N
+  PARTIAL
+  UNKNOWN
+
+  @@map("onsite_required")
+}
+
+enum ResultReportStatus {
+  YES           @map("yes")
+  NO            @map("no")
+  NOT_REQUIRED  @map("not_required")
+  NEEDS_REVIEW  @map("needs_review")
+
+  @@map("result_report_status")
+}
+
+enum ImportStatus {
+  PENDING               @map("pending")
+  COMPLETED             @map("completed")
+  COMPLETED_WITH_ERRORS @map("completed_with_errors")
+  FAILED                @map("failed")
+
+  @@map("import_status")
+}
+
+enum SourceTeam {
+  TEAM_1  @map("team_1")
+  TEAM_2  @map("team_2")
+  UNKNOWN @map("unknown")
+
+  @@map("source_team")
+}
+
+model Company {
+  id             String   @id @default(uuid()) @db.Uuid
+  name           String
+  normalizedName String   @unique @map("normalized_name")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  courses Course[]
+
+  @@map("companies")
+}
+
+model Course {
+  id            String        @id @default(uuid()) @db.Uuid
+  companyId     String        @map("company_id") @db.Uuid
+  courseId      String        @map("course_id")
+  name          String        @map("course_name")
+  operationType OperationType @default(NEEDS_REVIEW) @map("operation_type")
+  revenue       Decimal?      @db.Decimal(14, 2)
+  revenueRaw    String?       @map("revenue_raw")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  company  Company           @relation(fields: [companyId], references: [id])
+  sessions OperationSession[]
+
+  @@unique([companyId, courseId, name])
+  @@index([courseId])
+  @@map("courses")
+}
+
+model OperationSession {
+  id                    String             @id @default(uuid()) @db.Uuid
+  operationId           String             @unique @map("operation_id")
+  courseRecordId        String             @map("course_record_id") @db.Uuid
+  sourceFingerprint     String?            @unique @map("source_fingerprint")
+  validationErrors      Json?              @map("validation_errors")
+  operationStatus       OperationStatus    @default(ASSIGNMENT_NEEDED) @map("operation_status")
+  archiveStatus         ArchiveStatus      @default(NOT_READY) @map("archive_status")
+  educationFormat       EducationFormat    @default(NEEDS_REVIEW) @map("education_format")
+  educationFormatRaw    String?            @map("education_format_raw")
+  operationChannel      OperationChannel   @default(NEEDS_REVIEW) @map("operation_channel")
+  roundNo               String?            @map("round_no")
+  educationDays         String?            @map("education_days")
+  startDate             DateTime           @map("start_date") @db.Date
+  endDate               DateTime           @map("end_date") @db.Date
+  operationMonth        String?            @map("operation_month")
+  sessionDurationDays   Int?               @map("session_duration_days")
+  sessionDurationType   OperationType?     @map("session_duration_type")
+  timeText              String?            @map("time_text")
+  omName                String?            @map("om_name")
+  ldName                String?            @map("ld_name")
+  instructorsText       String?            @map("instructors_text")
+  coachText             String?            @map("coach_text")
+  region                String?
+  onsiteRequired        OnsiteRequired     @default(UNKNOWN) @map("onsite_required")
+  onsiteText            String?            @map("onsite_text")
+  specialNotes          String?            @map("special_notes")
+  operationIssue        String?            @map("operation_issue")
+  omUpdate              String?            @map("om_update")
+  driveLink             String?            @map("drive_link")
+  operationDetail       String?            @map("operation_detail")
+  companyWikiLink       String?            @map("company_wiki_link")
+  instructorWikiLink    String?            @map("instructor_wiki_link")
+  costRaw               String?            @map("cost_raw")
+  profitRaw             String?            @map("profit_raw")
+  totalCost             Decimal?           @map("total_cost") @db.Decimal(14, 2)
+  instructorCost        Decimal?           @map("instructor_cost") @db.Decimal(14, 2)
+  operationCost         Decimal?           @map("operation_cost") @db.Decimal(14, 2)
+  avgSatisfaction       String?            @map("avg_satisfaction")
+  instructorSatisfaction String?           @map("instructor_satisfaction")
+  hasResultReport       ResultReportStatus @default(NEEDS_REVIEW) @map("has_result_report")
+  resultReportLink      String?            @map("result_report_link")
+  lectureManagementLink String?            @map("lecture_management_link")
+  padletLink            String?            @map("padlet_link")
+  createdBy             String?            @map("created_by")
+  updatedBy             String?            @map("updated_by")
+  omUserId              String?            @map("om_user_id")
+  ldUserId              String?            @map("ld_user_id")
+  deletedAt             DateTime?          @map("deleted_at")
+  deletedBy             String?            @map("deleted_by")
+  createdAt             DateTime           @default(now()) @map("created_at")
+  updatedAt             DateTime           @updatedAt @map("updated_at")
+
+  course        Course                  @relation(fields: [courseRecordId], references: [id])
+  sourceRecords OperationSourceRecord[]
+
+  @@index([courseRecordId])
+  @@index([operationStatus])
+  @@index([archiveStatus])
+  @@index([startDate])
+  @@index([omUserId])
+  @@index([ldUserId])
+  @@map("operation_sessions")
+}
+
+model DataImportRun {
+  id             String       @id @default(uuid()) @db.Uuid
+  sourceTeam     SourceTeam   @default(UNKNOWN) @map("source_team")
+  sourceType     String       @map("source_type")
+  sourceName     String       @map("source_name")
+  workbookName   String?      @map("workbook_name")
+  fileName       String?      @map("file_name")
+  status         ImportStatus @default(PENDING)
+  rowCount       Int          @default(0) @map("row_count")
+  successCount   Int          @default(0) @map("success_count")
+  errorCount     Int          @default(0) @map("error_count")
+  importedBy     String?      @map("imported_by")
+  startedAt      DateTime     @default(now()) @map("started_at")
+  finishedAt     DateTime?    @map("finished_at")
+  notes          String?
+  validationLogs Json?        @map("validation_logs")
+
+  sourceRecords OperationSourceRecord[]
+
+  @@index([sourceTeam])
+  @@index([sourceType])
+  @@index([startedAt])
+  @@map("data_import_runs")
+}
+
+model OperationSourceRecord {
+  id                 String            @id @default(uuid()) @db.Uuid
+  importRunId        String            @map("import_run_id") @db.Uuid
+  operationSessionId String?           @map("operation_session_id") @db.Uuid
+  sourceTeam         SourceTeam        @default(UNKNOWN) @map("source_team")
+  sourceWorkbook     String            @map("source_workbook")
+  sourceSheet        String            @map("source_sheet")
+  sourceRowNumber    Int               @map("source_row_number")
+  headerRowNumber    Int?              @map("header_row_number")
+  sourceFingerprint  String?           @map("source_fingerprint")
+  rowSnapshot        Json              @map("row_snapshot")
+  mappedFields       Json?             @map("mapped_fields")
+  unmappedFields     Json?             @map("unmapped_fields")
+  validationErrors   Json?             @map("validation_errors")
+  createdAt          DateTime          @default(now()) @map("created_at")
+
+  importRun        DataImportRun      @relation(fields: [importRunId], references: [id])
+  operationSession OperationSession?  @relation(fields: [operationSessionId], references: [id])
+
+  @@unique([importRunId, sourceSheet, sourceRowNumber])
+  @@index([operationSessionId])
+  @@index([sourceTeam])
+  @@index([sourceSheet])
+  @@index([sourceFingerprint])
+  @@map("operation_source_records")
+}
