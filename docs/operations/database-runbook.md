@@ -60,6 +60,8 @@ Claude Code는 사용자가 백업 확인 여부와 실행 범위를 명시하�
 
 - `DATABASE_URL`은 Coolify secret/env로만 관리하고 Git에 커밋하지 않습니다.
 - `DATABASE_URL`, `OPERATION_DATA_SOURCE`, `NODE_ENV`는 런타임에만 적용합니다.
+- Coolify에서 SSH 없이 migration을 적용해야 하면 `RUN_DB_MIGRATIONS=true`를 런타임 환경변수로 켜고 재배포합니다.
+- `RUN_DB_MIGRATIONS=true`는 컨테이너 시작 전에 `prisma migrate deploy`를 실행합니다.
 - Coolify에서 `NODE_ENV=production`의 `Available at Buildtime`은 끕니다.
 - buildtime에 `NODE_ENV=production`이 들어가면 `npm ci`가 devDependencies를 생략해 TypeScript/빌드 도구가 빠질 수 있습니다.
 
