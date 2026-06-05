@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import type {
   OperationChannel,
@@ -74,6 +75,7 @@ export function OperationDashboard({ operations, summary }: OperationDashboardPr
         </div>
         <nav className="nav-list">
           <a className="active" href="#operations">운영 목록</a>
+          <Link href="/admin/imports">데이터 검수</Link>
           <a href="#validation">검토 필요</a>
           <a href="#archive">아카이빙</a>
         </nav>
