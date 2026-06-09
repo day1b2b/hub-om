@@ -1,15 +1,19 @@
 import { auth, signOut } from "@/auth";
+import { isAllowedWorkspaceEmail } from "@/lib/auth/workspaceAccess";
 
 export async function AuthStatus() {
   const session = await auth();
+  const email = session?.user?.email;
 
-  if (!session?.user?.email) return null;
+  if (!email || !isAllowedWorkspaceEmail(email)) return null;
+
+  const displayName = session?.user?.name || email;
 
   return (
     <aside className="auth-status-panel" aria-label="로그인 상태">
       <div>
         <span>로그인</span>
-        <strong>{session.user.name || session.user.email}</strong>
+        <strong>{displayName}</strong>
       </div>
       <form
         action={async () => {
