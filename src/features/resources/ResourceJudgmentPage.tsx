@@ -133,7 +133,6 @@ export function ResourceJudgmentPage({ operations }: ResourceJudgmentPageProps) 
                 <section className="resource-status-group" key={boardGroup.label}>
                   <div className="resource-status-heading">
                     <span className="group-label">
-                      <span className="group-toggle" aria-hidden="true">▾</span>
                       <span className={`status-dot ${statusGroupTone(boardGroup.label)}`} aria-hidden="true" />
                       {boardGroup.label}
                     </span>
@@ -161,7 +160,7 @@ export function ResourceJudgmentPage({ operations }: ResourceJudgmentPageProps) 
                             <span className="resource-meta">{resourceLoadLabel(operation)} · {nearbyLabel(operation, operations)}</span>
                           </Link>
                         ))}
-                        {groupOperations.length === 0 ? <span className="resource-empty-card">+ 새 페이지</span> : null}
+                        {groupOperations.length === 0 ? <span className="resource-empty-card">비어 있음</span> : null}
                       </div>
                       </div>
                     );

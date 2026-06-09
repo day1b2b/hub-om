@@ -1111,12 +1111,6 @@ td span {
   gap: 6px;
 }
 
-.group-toggle {
-  color: #6f6b66;
-  font-size: 12px;
-  line-height: 1;
-}
-
 .status-dot {
   border-radius: 999px;
   display: inline-block;
