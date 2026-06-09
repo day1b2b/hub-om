@@ -1,11 +1,11 @@
-import { MainDashboard } from "@/features/dashboard/MainDashboard";
+import { OperationDashboard } from "@/features/operations/OperationDashboard";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 
 export const dynamic = "force-dynamic";
 
-export default async function Home() {
+export default async function OperationsPage() {
   const repository = getOperationRepository();
   const [operations, summary] = await Promise.all([repository.listOperations(), repository.getSummary()]);
 
-  return <MainDashboard operations={operations} summary={summary} />;
+  return <OperationDashboard operations={operations} summary={summary} />;
 }
