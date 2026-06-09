@@ -11,6 +11,17 @@ const BOARD_GROUPS: Array<{ label: string; statuses: OperationStatus[] }> = [
   { label: "완료", statuses: ["완료", "회고완료", "아카이빙필요"] }
 ];
 
+const STATUS_TONE: Record<OperationStatus, string> = {
+  "배정필요": "amber",
+  "배정예정": "amber",
+  "진행중": "blue",
+  "완료": "gray",
+  "회고완료": "gray",
+  "아카이빙필요": "pink"
+};
+
+const OWNER_TONES = ["green", "amber", "pink", "purple", "blue", "gray"] as const;
+
 interface ResourceJudgmentPageProps {
   operations: OperationSession[];
 }
@@ -48,8 +59,8 @@ export function ResourceJudgmentPage({ operations }: ResourceJudgmentPageProps) 
         </nav>
       </aside>
 
-      <section className="content">
-        <header className="page-header">
+      <section className="content resource-content">
+        <header className="resource-page-header">
           <div>
             <h1>리소스 판단</h1>
             <p className="lede">
@@ -58,8 +69,8 @@ export function ResourceJudgmentPage({ operations }: ResourceJudgmentPageProps) 
           </div>
         </header>
 
-        <section className="resource-section">
-          <div className="section-title">
+        <section className="resource-section compact-resource-section">
+          <div className="section-title resource-section-title">
             <h2>{monthLabel} 달력</h2>
             <div className="month-controls">
               <button type="button" onClick={() => setViewDate(shiftMonth(viewDate, -1))}>이전</button>
@@ -73,12 +84,18 @@ export function ResourceJudgmentPage({ operations }: ResourceJudgmentPageProps) 
             ))}
             {calendarDays.map((day) => (
               <div className={`calendar-day ${day.inMonth ? "" : "muted-day"}`} key={day.date.toISOString()}>
-                <span className="calendar-date">{day.date.getDate()}</span>
+                <span className="calendar-date">
+                  {day.date.getDate()}
+                  {isToday(day.date) ? <strong>오늘</strong> : null}
+                </span>
                 <div className="calendar-events">
                   {day.operations.slice(0, 4).map((operation) => (
                     <Link className="calendar-event" href={`/operations/${operation.operationId}`} key={operation.operationId}>
                       <strong>{operation.courseName}</strong>
-                      <span>{operation.om || "배정필요"} · {operation.onsiteText || "현장 확인"}</span>
+                      <span>
+                        <Tag tone={ownerTone(operation.om || "배정필요")}>{operation.om || "배정필요"}</Tag>
+                        {operation.onsiteText ? <Tag tone="gray">{operation.onsiteText}</Tag> : null}
+                      </span>
                     </Link>
                   ))}
                   {day.operations.length > 4 ? <span className="event-overflow">+{day.operations.length - 4}</span> : null}
@@ -88,14 +105,13 @@ export function ResourceJudgmentPage({ operations }: ResourceJudgmentPageProps) 
           </div>
         </section>
 
-        <section className="resource-section">
-          <div className="section-title">
+        <section className="resource-section compact-resource-section">
+          <div className="section-title resource-section-title">
             <h2>운영 현황 보드</h2>
             <span>OM별 시작 전 / 진행 중 / 완료 그룹</span>
           </div>
           <div className="resource-swimlane-board" style={boardStyle}>
             <div className="resource-board-header">
-              <div className="resource-status-spacer" aria-hidden="true" />
               {omGroups.map((group) => (
                 <div className="resource-owner-header" key={group.owner}>
                   <h3>{group.owner}</h3>
@@ -114,11 +130,16 @@ export function ResourceJudgmentPage({ operations }: ResourceJudgmentPageProps) 
               );
 
               return (
-                <section className="resource-status-lane" key={boardGroup.label}>
-                  <div className="resource-lane-label">
-                    <span>{boardGroup.label}</span>
+                <section className="resource-status-group" key={boardGroup.label}>
+                  <div className="resource-status-heading">
+                    <span className="group-label">
+                      <span className="group-toggle" aria-hidden="true">▾</span>
+                      <span className={`status-dot ${statusGroupTone(boardGroup.label)}`} aria-hidden="true" />
+                      {boardGroup.label}
+                    </span>
                     <strong>{laneTotal}건</strong>
                   </div>
+                  <div className="resource-status-grid">
                   {omGroups.map((group) => {
                     const groupOperations = group.operations.filter((operation) =>
                       boardGroup.statuses.includes(operation.operationStatus)
@@ -129,18 +150,23 @@ export function ResourceJudgmentPage({ operations }: ResourceJudgmentPageProps) 
                       <div className="resource-card-list">
                         {groupOperations.map((operation) => (
                           <Link className="resource-card" href={`/operations/${operation.operationId}`} key={operation.operationId}>
-                            <span className="resource-status">{operation.operationStatus}</span>
+                            <span className="resource-card-tags">
+                              <Tag tone={STATUS_TONE[operation.operationStatus]}>{operation.operationStatus}</Tag>
+                            </span>
                             <strong>{operation.courseName}</strong>
-                            <span>{operation.startDate} ~ {operation.endDate}</span>
-                            <span>{operation.operationType} · {operation.educationFormat}</span>
-                            <span>{resourceLoadLabel(operation)} · {nearbyLabel(operation, operations)}</span>
-                            <span>부재 일정: Google Calendar 연동 전</span>
+                            <span className="resource-card-tags">
+                              <Tag tone="gray">{formatDateRange(operation)}</Tag>
+                              <Tag tone={ownerTone(operation.om || "배정필요")}>{operation.om || "배정필요"}</Tag>
+                            </span>
+                            <span className="resource-meta">{resourceLoadLabel(operation)} · {nearbyLabel(operation, operations)}</span>
                           </Link>
                         ))}
+                        {groupOperations.length === 0 ? <span className="resource-empty-card">+ 새 페이지</span> : null}
                       </div>
                       </div>
                     );
                   })}
+                  </div>
                 </section>
               );
             })}
@@ -149,6 +175,10 @@ export function ResourceJudgmentPage({ operations }: ResourceJudgmentPageProps) 
       </section>
     </main>
   );
+}
+
+function Tag({ children, tone }: { children: string; tone: string }) {
+  return <span className={`resource-tag ${tone}`}>{children}</span>;
 }
 
 function buildCalendarDays(anchorDate: Date, operations: OperationSession[]): CalendarDay[] {
@@ -193,6 +223,16 @@ function shiftMonth(value: Date, offset: number) {
   return new Date(value.getFullYear(), value.getMonth() + offset, 1);
 }
 
+function isToday(date: Date) {
+  const today = new Date();
+
+  return (
+    date.getFullYear() === today.getFullYear() &&
+    date.getMonth() === today.getMonth() &&
+    date.getDate() === today.getDate()
+  );
+}
+
 function groupByOwner(operations: OperationSession[]) {
   const sorted = [...operations].sort((a, b) => compareStableText(a.startDate, b.startDate));
   const groups = new Map<string, OperationSession[]>();
@@ -221,6 +261,33 @@ function resourceLoadLabel(operation: OperationSession) {
   if (isLargeCourse(operation)) return "리소스 크게 비워야 함";
   if (operation.operationType === "특강") return "단기 투입 가능";
   return "일반 투입";
+}
+
+function ownerTone(owner: string) {
+  const index = Math.abs(
+    owner.split("").reduce((total, character) => total + character.charCodeAt(0), 0)
+  );
+
+  return OWNER_TONES[index % OWNER_TONES.length];
+}
+
+function statusGroupTone(label: string) {
+  if (label === "시작 전") return "amber";
+  if (label === "진행 중") return "blue";
+  return "gray";
+}
+
+function formatDateRange(operation: OperationSession) {
+  const start = formatShortDate(operation.startDate);
+  const end = formatShortDate(operation.endDate);
+
+  return start === end ? start : `${start}~${end}`;
+}
+
+function formatShortDate(value: string) {
+  const [, month, day] = value.split("-");
+
+  return `${Number(month)}/${Number(day)}`;
 }
 
 function nearbyLabel(operation: OperationSession, operations: OperationSession[]) {
