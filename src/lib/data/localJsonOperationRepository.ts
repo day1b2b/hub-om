@@ -12,8 +12,13 @@ export class LocalJsonOperationRepository implements OperationRepository {
   constructor(private readonly fileName = process.env.OPERATION_DATA_FILE ?? "operations.json") {}
 
   async listOperations(): Promise<OperationSession[]> {
-    const localFileName = this.fileName.replace(/^\.local[\/\\]/, "");
-    const absolutePath = path.join(process.cwd(), ".local", localFileName);
+    const localDir = path.join(process.cwd(), ".local");
+    const localFileName = path.normalize(this.fileName.replace(/^\.local[\/\\]/, ""));
+    const absolutePath = path.resolve(localDir, localFileName);
+
+    if (!absolutePath.startsWith(`${localDir}${path.sep}`)) {
+      throw new Error(`OPERATION_DATA_FILE must resolve inside ${localDir}.`);
+    }
 
     try {
       const raw = await readFile(absolutePath, "utf8");
@@ -24,7 +29,7 @@ export class LocalJsonOperationRepository implements OperationRepository {
         throw new Error("Local operation data must be an array or an object with an operations array.");
       }
 
-      return operations;
+      return [...operations].sort(compareOperationSessions);
     } catch (error) {
       if (isFileMissingError(error)) {
         return [];
@@ -46,4 +51,12 @@ export class LocalJsonOperationRepository implements OperationRepository {
 
 function isFileMissingError(error: unknown): error is NodeJS.ErrnoException {
   return error instanceof Error && "code" in error && error.code === "ENOENT";
+}
+
+function compareOperationSessions(a: OperationSession, b: OperationSession): number {
+  if (a.startDate === b.startDate) {
+    return a.operationId.localeCompare(b.operationId);
+  }
+
+  return a.startDate.localeCompare(b.startDate);
 }
