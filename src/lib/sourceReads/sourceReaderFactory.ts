@@ -1,4 +1,5 @@
 import { DisabledOperationSourceReader } from "./disabledSourceReader";
+import { GoogleCalendarSourceReader, hasGoogleCalendarConfig } from "./googleCalendarSourceReader";
 import type { OperationSourceReader } from "./sourceReadTypes";
 
 interface SourceReaderModule {
@@ -9,6 +10,10 @@ export async function getOperationSourceReader(): Promise<OperationSourceReader>
   const moduleName = process.env.OPERATION_SOURCE_READER_MODULE?.trim();
 
   if (!moduleName) {
+    if (hasGoogleCalendarConfig()) {
+      return new GoogleCalendarSourceReader();
+    }
+
     return new DisabledOperationSourceReader();
   }
 

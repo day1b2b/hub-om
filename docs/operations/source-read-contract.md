@@ -59,6 +59,19 @@ export function createOperationSourceReader() {
 
 배포 환경에서는 `OPERATION_SOURCE_READER_MODULE`에 해당 모듈명을 설정합니다. 설정하지 않으면 기본 disabled reader가 빈 결과를 반환합니다.
 
+## Google Calendar 읽기 설정
+
+Google Calendar는 서비스 계정 기반 읽기 전용 연결을 지원합니다. 실제 서비스 계정 이메일, private key, calendar ID는 저장소에 커밋하지 않고 배포/로컬 환경변수로만 관리합니다.
+
+- `GOOGLE_CALENDAR_SERVICE_ACCOUNT_EMAIL`: Google Cloud 서비스 계정 이메일.
+- `GOOGLE_CALENDAR_PRIVATE_KEY`: 서비스 계정 private key. 줄바꿈은 `\n`으로 넣을 수 있습니다.
+- `GOOGLE_CALENDAR_IDS`: `calendarId|ownerName` 형식의 콤마 구분 목록.
+- `GOOGLE_CALENDAR_LOOKBACK_DAYS`: 오늘 기준 과거 며칠까지 읽을지.
+- `GOOGLE_CALENDAR_LOOKAHEAD_DAYS`: 오늘 기준 미래 며칠까지 읽을지.
+- `GOOGLE_CALENDAR_ABSENCE_KEYWORDS`: 부재 일정으로 분류할 제목 키워드.
+
+서비스 계정은 대상 캘린더를 읽을 수 있어야 합니다. 캘린더 공유 또는 도메인 위임 설정은 저장소 밖에서 관리합니다.
+
 ## 매핑 규칙
 
 - 화면 컴포넌트는 외부 원천 타입을 직접 사용하지 않습니다.
