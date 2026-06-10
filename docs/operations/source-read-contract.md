@@ -16,6 +16,7 @@ MVP에서는 외부 원천에 쓰지 않고 읽기만 합니다.
 
 - `src/lib/sourceReads/sourceReadTypes.ts`의 읽기 결과 타입.
 - 연동이 설정되지 않았을 때 빈 결과를 반환하는 기본 reader.
+- `OPERATION_SOURCE_READER_MODULE`로 비공개 reader 모듈을 연결하는 hook.
 - 외부 원천 결과를 표준 운영 데이터로 매핑할 때 지켜야 할 규칙.
 
 ## 공개 저장소에 두지 않는 것
@@ -40,6 +41,23 @@ MVP에서는 외부 원천에 쓰지 않고 읽기만 합니다.
 - `readAt`: 읽기 시각.
 - `items`: 정규화된 읽기 결과.
 - `issues`: 누락, 권한, 매핑 실패처럼 사람이 확인해야 할 문제.
+
+## 비공개 reader 연결 방식
+
+비공개 런타임 패키지나 보안 작업 공간의 모듈은 `createOperationSourceReader()`를 export합니다.
+
+```ts
+export function createOperationSourceReader() {
+  return {
+    readCourseBoard,
+    readCalendarEvents,
+    readDiscussionReferences,
+    readSalesRecords
+  };
+}
+```
+
+배포 환경에서는 `OPERATION_SOURCE_READER_MODULE`에 해당 모듈명을 설정합니다. 설정하지 않으면 기본 disabled reader가 빈 결과를 반환합니다.
 
 ## 매핑 규칙
 

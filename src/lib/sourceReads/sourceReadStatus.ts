@@ -16,13 +16,14 @@ export interface SourceReadStatusSummary {
 }
 
 export async function readSourceStatuses(
-  reader: OperationSourceReader = getOperationSourceReader()
+  reader?: OperationSourceReader
 ): Promise<SourceReadStatusSummary[]> {
+  const sourceReader = reader ?? await getOperationSourceReader();
   const reads = [
-    summarizeSourceRead("course_board", () => reader.readCourseBoard()),
-    summarizeSourceRead("calendar", () => reader.readCalendarEvents()),
-    summarizeSourceRead("discussion", () => reader.readDiscussionReferences()),
-    summarizeSourceRead("sales", () => reader.readSalesRecords())
+    summarizeSourceRead("course_board", () => sourceReader.readCourseBoard()),
+    summarizeSourceRead("calendar", () => sourceReader.readCalendarEvents()),
+    summarizeSourceRead("discussion", () => sourceReader.readDiscussionReferences()),
+    summarizeSourceRead("sales", () => sourceReader.readSalesRecords())
   ];
 
   return Promise.all(reads);
@@ -51,10 +52,18 @@ async function summarizeSourceRead<TItem>(
       issues: [
         {
           code: "source_read_failed",
-          message: error instanceof Error ? error.message : "Unknown source read failure.",
+          message: formatSourceReadError(error),
           recoverable: true
         }
       ]
     };
   }
+}
+
+function formatSourceReadError(error: unknown): string {
+  if (process.env.NODE_ENV === "production") {
+    return "Source read failed.";
+  }
+
+  return error instanceof Error ? error.message : "Unknown source read failure.";
 }
