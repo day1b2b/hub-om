@@ -82,6 +82,8 @@ Claude Code는 사용자가 백업 확인 여부와 실행 범위를 명시하�
 
 원천 적재 adapter가 필요하면 비공개 저장소 또는 보안이 설정된 작업 공간에서 관리합니다. 공개 저장소에는 adapter 실행 규칙과 DB 쓰기 안전 규칙만 남깁니다.
 
+읽기 전용 연동 계약은 [source-read-contract.md](source-read-contract.md)를 따릅니다. MVP에서는 외부 원천에 쓰지 않고 읽기 결과를 표준 운영 데이터로 매핑하는 것부터 검증합니다.
+
 ## PR에 반드시 적을 것
 
 - migration 포함 여부.

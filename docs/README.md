@@ -26,3 +26,7 @@
 
 - `collaboration/`: 브랜치, PR, 역할 분담, 팀 작업 방식.
 - `operations/`: DB 연결과 운영 데이터 쓰기 작업의 안전 규칙.
+
+## 운영 데이터 연동 문서
+
+- [operations/source-read-contract.md](operations/source-read-contract.md): 외부 원천을 읽어 표준 운영 데이터로 연결하기 위한 공개 가능 계약.
