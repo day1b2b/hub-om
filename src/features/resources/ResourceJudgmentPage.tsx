@@ -55,14 +55,14 @@ export function ResourceJudgmentPage({ operations }: ResourceJudgmentPageProps) 
         <nav className="nav-list">
           <Link href="/">대시보드</Link>
           <Link href="/operations">운영 현황</Link>
-          <Link className="active" href="/resources">리소스 판단</Link>
+          <Link className="active" href="/resources">리소스</Link>
         </nav>
       </aside>
 
       <section className="content resource-content">
         <header className="resource-page-header">
           <div>
-            <h1>리소스 판단</h1>
+            <h1>리소스</h1>
             <p className="lede">
               달력과 OM별 운영 보드를 함께 보며 실제 추가 배정 가능 여부를 확인합니다.
             </p>

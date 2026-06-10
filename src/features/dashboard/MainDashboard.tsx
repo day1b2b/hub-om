@@ -40,7 +40,7 @@ export function MainDashboard({ operations, summary }: MainDashboardProps) {
         <nav className="nav-list">
           <Link className="active" href="/">대시보드</Link>
           <Link href="/operations">운영 현황</Link>
-          <Link href="/resources">리소스 판단</Link>
+          <Link href="/resources">리소스</Link>
         </nav>
       </aside>
 

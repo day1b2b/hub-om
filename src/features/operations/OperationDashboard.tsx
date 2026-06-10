@@ -128,8 +128,7 @@ export function OperationDashboard({ operations, summary }: OperationDashboardPr
         <nav className="nav-list">
           <Link href="/">대시보드</Link>
           <Link className="active" href="/operations">운영 현황</Link>
-          <Link href="/resources">리소스 판단</Link>
-          <a href="#archive">아카이빙</a>
+          <Link href="/resources">리소스</Link>
         </nav>
       </aside>
 

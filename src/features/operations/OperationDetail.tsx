@@ -55,9 +55,7 @@ export function OperationDetail({ operation }: OperationDetailProps) {
         <nav className="nav-list">
           <Link href="/">대시보드</Link>
           <Link href="/operations">운영 현황</Link>
-          <Link href="/resources">리소스 판단</Link>
-          <a href="#links">자료 링크</a>
-          <a href="#archive">아카이빙</a>
+          <Link href="/resources">리소스</Link>
         </nav>
       </aside>
 
@@ -89,7 +87,7 @@ export function OperationDetail({ operation }: OperationDetailProps) {
         </section>
 
         <section className="detail-layout">
-          <section className="detail-section">
+          <section className="detail-section compact-info-section">
             <div className="section-title">
               <h2>일정 / 회차</h2>
               <span>리소스 판단 핵심</span>
@@ -118,7 +116,7 @@ export function OperationDetail({ operation }: OperationDetailProps) {
             </div>
           </section>
 
-          <section className="detail-section">
+          <section className="detail-section compact-info-section">
             <div className="section-title">
               <h2>담당 / 투입</h2>
               <span>누가 맡고 있는가</span>
@@ -133,7 +131,7 @@ export function OperationDetail({ operation }: OperationDetailProps) {
             </div>
           </section>
 
-          <section className="detail-section" id="links">
+          <section className="detail-section link-summary-section" id="links">
             <div className="section-title">
               <h2>자료 링크</h2>
               <span>흩어진 자료로 이동</span>
@@ -149,18 +147,24 @@ export function OperationDetail({ operation }: OperationDetailProps) {
             </div>
           </section>
 
-          <section className="detail-section" id="archive">
+          <section className="detail-section archive-summary-section" id="archive">
             <div className="section-title">
               <h2>아카이빙</h2>
               <span>종료 후 누락 확인</span>
             </div>
-            <div className="archive-checklist">
-              <ArchiveCheck label="드라이브" done={Boolean(operation.driveLink)} />
-              <ArchiveCheck label="강의관리" done={Boolean(operation.lectureManagementLink)} />
-              <ArchiveCheck label="결과보고서" done={operation.hasResultReport === "유" && Boolean(operation.resultReportLink)} />
-              <ArchiveCheck label="만족도" done={Boolean(operation.avgSatisfaction)} />
-              <ArchiveCheck label="이슈/회고" done={Boolean(operation.operationIssue || operation.omUpdate || operation.specialNotes)} />
-              <ArchiveCheck label="아카이빙 완료" done={operation.archiveStatus === "완료"} />
+            <div className="archive-compact-body">
+              <div className="archive-status-summary">
+                <span>현재 상태</span>
+                <ArchiveBadge status={operation.archiveStatus} />
+              </div>
+              <div className="archive-checklist">
+                <ArchiveCheck label="드라이브" done={Boolean(operation.driveLink)} />
+                <ArchiveCheck label="강의관리" done={Boolean(operation.lectureManagementLink)} />
+                <ArchiveCheck label="결과보고서" done={operation.hasResultReport === "유" && Boolean(operation.resultReportLink)} />
+                <ArchiveCheck label="만족도" done={Boolean(operation.avgSatisfaction)} />
+                <ArchiveCheck label="이슈/회고" done={Boolean(operation.operationIssue || operation.omUpdate || operation.specialNotes)} />
+                <ArchiveCheck label="아카이빙 완료" done={operation.archiveStatus === "완료"} />
+              </div>
             </div>
             <div className="archive-toggle-row">
               <label className="toggle-filter">
@@ -261,16 +265,16 @@ function ExternalLink({ href, label }: { href: string; label: string }) {
   if (!href) {
     return (
       <div className="external-link missing">
-        <span>{label}</span>
-        <strong>미등록</strong>
+        <strong>{label}</strong>
+        <span>미등록</span>
       </div>
     );
   }
 
   return (
     <a className="external-link" href={href} rel="noreferrer" target="_blank">
-      <span>{label}</span>
-      <strong>열기</strong>
+      <strong>{label}</strong>
+      <span>열기</span>
     </a>
   );
 }
