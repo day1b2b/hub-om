@@ -11,6 +11,7 @@ const parsed = JSON.parse(raw);
 const operations = Array.isArray(parsed) ? parsed : parsed.operations ?? [];
 const roster = await readRoster();
 const now = new Date();
+const detailOperation = getDetailOperation(operations);
 
 await mkdir(outputDir, { recursive: true });
 
@@ -18,7 +19,7 @@ await Promise.all([
   writeFeedbackFile("dashboard.html", renderDashboardPage(operations)),
   writeFeedbackFile("operations.html", renderOperationsPage(operations)),
   writeFeedbackFile("resources.html", renderResourcesPage(operations, roster)),
-  writeFeedbackFile("course-detail.html", renderDetailPage(operations[0]))
+  writeFeedbackFile("course-detail.html", renderDetailPage(detailOperation, operations))
 ]);
 
 console.log(`Exported feedback pages to ${outputDir}`);
@@ -220,13 +221,37 @@ function renderResourcesPage(allOperations, members) {
   return renderShell("resources", "리소스", body);
 }
 
-function renderDetailPage(operation) {
+function renderDetailPage(operation, allOperations) {
   if (!operation) return renderShell("operations", "과정 상세", "<section class=\"panel empty\">표시할 과정이 없습니다.</section>");
+  const courseOperations = getCourseOperations(operation, allOperations);
 
   const body = `<section class="detail-hero">
       ${badge(operation.operationStatus)}
       <h2>${escapeHtml(operation.courseName)}</h2>
       <p>${escapeHtml(operation.companyName)} · ${escapeHtml(operation.startDate)} ~ ${escapeHtml(operation.endDate)}</p>
+    </section>
+    <section class="panel">
+      <div class="section-title"><h2>동일 코스ID 운영 차수</h2><span>${escapeHtml(operation.courseId || "코스ID 없음")} 기준 · ${courseOperations.length}건</span></div>
+      <div class="wide-table">
+        <table class="detail-session-table">
+          <thead>
+            <tr>${["회차", "상태", "일정", "시간", "과정명", "OM", "LD", "강사", "아카이빙"].map((header) => `<th>${header}</th>`).join("")}</tr>
+          </thead>
+          <tbody>
+            ${courseOperations.map((courseOperation, index) => `<tr class="${courseOperation.operationId === operation.operationId ? "current-session" : ""}">
+              <td><strong>${escapeHtml(roundLabel(courseOperation, index))}</strong></td>
+              <td>${badge(courseOperation.operationStatus)}</td>
+              <td>${escapeHtml(courseOperation.startDate)} ~ ${escapeHtml(courseOperation.endDate)}</td>
+              <td>${escapeHtml(courseOperation.timeText || "시간 미정")}</td>
+              <td class="truncate">${escapeHtml(courseOperation.courseName)}</td>
+              <td>${escapeHtml(courseOperation.om || "배정필요")}</td>
+              <td>${escapeHtml(courseOperation.ld || "미정")}</td>
+              <td>${escapeHtml(courseOperation.instructors || "미정")}</td>
+              <td>${badge(courseOperation.archiveStatus)}</td>
+            </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
     </section>
     <section class="detail-grid">
       ${renderInfoPanel("기본 정보", [
@@ -252,6 +277,21 @@ function renderDetailPage(operation) {
     </section>`;
 
   return renderShell("operations", "과정 상세", body);
+}
+
+function getDetailOperation(allOperations) {
+  const operationId = process.env.FEEDBACK_OPERATION_ID;
+  const courseId = process.env.FEEDBACK_COURSE_ID;
+
+  if (operationId) {
+    return allOperations.find((operation) => operation.operationId === operationId) ?? allOperations[0];
+  }
+
+  if (courseId) {
+    return allOperations.find((operation) => operation.courseId === courseId) ?? allOperations[0];
+  }
+
+  return allOperations[0];
 }
 
 function renderMetrics(metrics) {
@@ -308,6 +348,33 @@ function statusGroup(label) {
   if (label === "시작 전") return ["배정필요", "배정예정"];
   if (label === "진행 중") return ["진행중"];
   return ["완료", "회고완료", "아카이빙필요"];
+}
+
+function getCourseOperations(operation, allOperations) {
+  if (!operation.courseId) return [operation];
+  return allOperations
+    .filter((candidate) => candidate.courseId === operation.courseId)
+    .sort(compareCourseOperation);
+}
+
+function compareCourseOperation(a, b) {
+  const aRound = Number(a.roundNo);
+  const bRound = Number(b.roundNo);
+
+  if (Number.isFinite(aRound) && Number.isFinite(bRound) && aRound !== bRound) {
+    return aRound - bRound;
+  }
+
+  if (a.startDate !== b.startDate) {
+    return a.startDate.localeCompare(b.startDate);
+  }
+
+  return a.operationId.localeCompare(b.operationId);
+}
+
+function roundLabel(operation, index) {
+  if (operation.roundNo) return `${operation.roundNo}회차`;
+  return `${index + 1}번째`;
 }
 
 function calendarDays(anchor) {
@@ -502,6 +569,8 @@ function styles() {
     .resource-card strong { line-height: 1.35; }
     .detail-hero { padding: 18px; }
     .detail-hero h2 { font-size: 22px; margin: 10px 0 6px; }
+    .detail-session-table { min-width: 1120px; }
+    .detail-session-table tr.current-session { background: #eef5ff; }
     .detail-grid { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .info-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .info-list div { border-bottom: 1px solid #e5ebf2; padding: 10px 12px; }

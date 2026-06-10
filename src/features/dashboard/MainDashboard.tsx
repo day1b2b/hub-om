@@ -51,7 +51,7 @@ export function MainDashboard({ operations }: MainDashboardProps) {
         </nav>
       </aside>
 
-      <section className="content">
+      <section className="content dashboard-page">
         <header className="page-header">
           <div>
             <p className="eyebrow">2026.06.09 기준</p>
