@@ -250,7 +250,7 @@ async function readCalendarEvents(
       issues: [
         {
           code: "google_calendar_events_read_failed",
-          message: "A configured Google Calendar could not be read.",
+          message: formatCalendarReadError(response.status, payload.error?.message, calendar.ownerName),
           recoverable: true
         }
       ]
@@ -287,6 +287,16 @@ function inferEventKind(title: string, configuredKeywords: string[]): CalendarRe
   const isAbsence = keywords.some((keyword) => normalizedTitle.includes(keyword.toLowerCase()));
 
   return isAbsence ? "absence" : "class";
+}
+
+function formatCalendarReadError(status: number, message: string | undefined, ownerName: string): string {
+  if (process.env.NODE_ENV === "production") {
+    return "A configured Google Calendar could not be read.";
+  }
+
+  return `Google Calendar read failed for ${ownerName || "configured calendar"}: HTTP ${status}${
+    message ? ` - ${message}` : ""
+  }`;
 }
 
 function buildReadWindow(config: GoogleCalendarConfig): [string, string] {
