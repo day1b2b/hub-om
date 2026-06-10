@@ -1,5 +1,7 @@
 export { DisabledOperationSourceReader } from "./disabledSourceReader";
 export { getOperationSourceReader } from "./sourceReaderFactory";
+export { readSourceStatuses } from "./sourceReadStatus";
+export type { SourceReadStatusSummary } from "./sourceReadStatus";
 export type {
   CalendarResourceEvent,
   CourseBoardRecord,
