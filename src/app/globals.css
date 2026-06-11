@@ -848,7 +848,6 @@ select {
 
 .operations-filter-panel .toggle-filter,
 .operations-filter-panel .secondary-action,
-.operations-filter-panel .primary-action,
 .filter-result-count {
   flex: 0 0 auto;
   white-space: nowrap;
@@ -1029,6 +1028,27 @@ select {
 .name-remove-button:hover {
   border-color: var(--blue);
   color: var(--blue);
+}
+
+.create-operation-link {
+  align-items: center;
+  background: #17202a !important;
+  border: 1px solid #17202a;
+  border-radius: 7px;
+  color: #ffffff !important;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 700 !important;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 12px !important;
+  white-space: nowrap;
+}
+
+.create-operation-link:hover {
+  background: var(--blue) !important;
+  border-color: var(--blue);
+  color: #ffffff !important;
 }
 
 .archive-pill {

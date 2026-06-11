@@ -1,16 +1,18 @@
 import Link from "next/link";
 import { OperationCreateForm } from "@/app/operations/new/OperationCreateForm";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
-import { getTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFactory";
+import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
+import type { OperationSession } from "@/lib/data/operationTypes";
+import { splitPersonNames } from "@/lib/data/personNames";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewOperationPage() {
   await requireWorkspaceSession();
-  const teamMemberRepository = getTeamMemberRepository();
-  const ownerRoster = await teamMemberRepository.listResourceOwners();
+  const repository = getOperationRepository();
+  const operations = await repository.listOperations();
   const today = formatDate(new Date());
-  const nameOptions = unique(Object.values(ownerRoster).flatMap((owners) => owners ?? []));
+  const personOptions = buildPersonOptions(operations);
 
   return (
     <main className="dashboard-shell">
@@ -41,7 +43,7 @@ export default async function NewOperationPage() {
           </div>
         </header>
 
-        <OperationCreateForm nameOptions={nameOptions} today={today} />
+        <OperationCreateForm personOptions={personOptions} today={today} />
       </section>
     </main>
   );
@@ -52,6 +54,15 @@ function formatDate(value: Date) {
   const month = String(value.getMonth() + 1).padStart(2, "0");
   const day = String(value.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function buildPersonOptions(operations: OperationSession[]) {
+  return {
+    coach: unique(operations.flatMap((operation) => splitPersonNames(operation.coach, ""))),
+    instructors: unique(operations.flatMap((operation) => splitPersonNames(operation.instructors, ""))),
+    ld: unique(operations.flatMap((operation) => splitPersonNames(operation.ld, ""))),
+    om: unique(operations.flatMap((operation) => splitPersonNames(operation.om, "")))
+  };
 }
 
 function unique(values: string[]) {

@@ -239,7 +239,6 @@ export function OperationDashboard({ operations }: OperationDashboardProps) {
             아카이빙 미완료
           </label>
           <button className="secondary-action" type="button">엑셀 다운로드</button>
-          <Link className="primary-action" href="/operations/new">과정 작성</Link>
           <span className="filter-result-count">총 {filteredOperations.length}건</span>
         </section>
 
@@ -249,6 +248,7 @@ export function OperationDashboard({ operations }: OperationDashboardProps) {
             <div className="dashboard-table-meta">
               <span>{filteredOperations.length}건</span>
               <span>운영 차수 기준</span>
+              <Link className="create-operation-link" href="/operations/new">과정 작성</Link>
             </div>
           </div>
           <div className="table-wrap">

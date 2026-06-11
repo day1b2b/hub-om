@@ -5,12 +5,20 @@ import { useMemo, useState } from "react";
 import { createOperationAction } from "@/app/operations/new/actions";
 
 interface OperationCreateFormProps {
-  nameOptions: string[];
+  personOptions: {
+    coach: string[];
+    instructors: string[];
+    ld: string[];
+    om: string[];
+  };
   today: string;
 }
 
-export function OperationCreateForm({ nameOptions, today }: OperationCreateFormProps) {
-  const names = useMemo(() => unique(nameOptions), [nameOptions]);
+export function OperationCreateForm({ personOptions, today }: OperationCreateFormProps) {
+  const coachOptions = useMemo(() => unique(personOptions.coach), [personOptions.coach]);
+  const instructorOptions = useMemo(() => unique(personOptions.instructors), [personOptions.instructors]);
+  const ldOptions = useMemo(() => unique(personOptions.ld), [personOptions.ld]);
+  const omOptions = useMemo(() => unique(personOptions.om), [personOptions.om]);
 
   return (
     <form action={createOperationAction} className="operation-form">
@@ -112,13 +120,10 @@ export function OperationCreateForm({ nameOptions, today }: OperationCreateFormP
           <h2>담당자 / 강사</h2>
         </div>
         <div className="operation-form-grid compact">
-          <NameSelectList fieldName="om" label="OM" nameOptions={names} />
-          <NameSelectList fieldName="ld" label="LD" nameOptions={names} />
-          <label>
-            <span>강사</span>
-            <input name="instructors" />
-          </label>
-          <NameSelectList fieldName="coach" label="실습코치" nameOptions={names} />
+          <NameSelectList fieldName="om" label="OM" nameOptions={omOptions} />
+          <NameSelectList fieldName="ld" label="LD" nameOptions={ldOptions} />
+          <NameSelectList fieldName="instructors" label="강사" nameOptions={instructorOptions} />
+          <NameSelectList fieldName="coach" label="실습코치" nameOptions={coachOptions} />
         </div>
       </section>
 
