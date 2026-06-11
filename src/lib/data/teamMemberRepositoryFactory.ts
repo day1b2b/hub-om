@@ -1,4 +1,3 @@
-import { EmptyTeamMemberRepository } from "./teamMemberRepository";
 import type { TeamMemberRepository } from "./teamMemberRepository";
 import { LocalJsonTeamMemberRepository } from "./localJsonTeamMemberRepository";
 import { getNotionTeamMemberRepository } from "./notionTeamMemberRepository";
@@ -7,20 +6,20 @@ import { PrismaTeamMemberRepository } from "./prismaTeamMemberRepository";
 export function getTeamMemberRepository(): TeamMemberRepository {
   const fallback = getFallbackTeamMemberRepository();
 
-  if (process.env.OPERATION_DATA_SOURCE === "local") {
+  if (process.env.OPERATION_DATA_SOURCE !== "notion") {
     return fallback;
   }
 
   return getNotionTeamMemberRepository(fallback);
 }
 
-function getFallbackTeamMemberRepository(): TeamMemberRepository {
-  if (process.env.OPERATION_DATA_SOURCE === "local") {
-    return new LocalJsonTeamMemberRepository();
-  }
+export function getStoredTeamMemberRepository(): TeamMemberRepository {
+  return getFallbackTeamMemberRepository();
+}
 
-  if (!process.env.DATABASE_URL) {
-    return new EmptyTeamMemberRepository();
+function getFallbackTeamMemberRepository(): TeamMemberRepository {
+  if (process.env.OPERATION_DATA_SOURCE === "local" || !process.env.DATABASE_URL) {
+    return new LocalJsonTeamMemberRepository();
   }
 
   return new PrismaTeamMemberRepository();

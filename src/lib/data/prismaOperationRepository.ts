@@ -1,12 +1,25 @@
+import { randomUUID } from "node:crypto";
+import {
+  ArchiveStatus as PrismaArchiveStatus,
+  EducationFormat as PrismaEducationFormat,
+  OnsiteRequired as PrismaOnsiteRequired,
+  OperationChannel as PrismaOperationChannel,
+  OperationStatus as PrismaOperationStatus,
+  OperationType as PrismaOperationType,
+  ResultReportStatus as PrismaResultReportStatus,
+  SourceTeam as PrismaSourceTeam
+} from "@prisma/client";
 import type {
   ArchiveStatus,
+  CreateOperationInput,
   EducationFormat,
   OnsiteRequired,
   OperationChannel,
   OperationSession,
   OperationStatus,
   OperationType,
-  ResultReportStatus
+  ResultReportStatus,
+  SourceTeam
 } from "./operationTypes";
 import { deriveProfit, summarizeOperations } from "./operationCalculations";
 import type { OperationRepository } from "./operationRepository";
@@ -62,6 +75,47 @@ const RESULT_REPORT_STATUS: Record<string, ResultReportStatus> = {
   NEEDS_REVIEW: "확인필요"
 };
 
+const SOURCE_TEAM: Record<PrismaSourceTeam, SourceTeam> = {
+  TEAM_1: "1팀",
+  TEAM_2: "2팀",
+  UNKNOWN: "미분류"
+};
+
+const PRISMA_OPERATION_STATUS: Record<OperationStatus, PrismaOperationStatus> = {
+  "배정필요": PrismaOperationStatus.ASSIGNMENT_NEEDED,
+  "배정예정": PrismaOperationStatus.ASSIGNMENT_PLANNED,
+  "진행중": PrismaOperationStatus.ACTIVE,
+  "완료": PrismaOperationStatus.DONE,
+  "회고완료": PrismaOperationStatus.RETROSPECTIVE_DONE,
+  "아카이빙필요": PrismaOperationStatus.ARCHIVE_NEEDED
+};
+
+const PRISMA_ARCHIVE_STATUS: Record<ArchiveStatus, PrismaArchiveStatus> = {
+  "아카이빙전": PrismaArchiveStatus.NOT_READY,
+  "아카이빙필요": PrismaArchiveStatus.NEEDED,
+  "완료": PrismaArchiveStatus.DONE
+};
+
+const PRISMA_EDUCATION_FORMAT: Record<EducationFormat, PrismaEducationFormat> = {
+  "오프라인": PrismaEducationFormat.OFFLINE,
+  "비대면": PrismaEducationFormat.REMOTE,
+  "블랜디드": PrismaEducationFormat.BLENDED,
+  "플립러닝": PrismaEducationFormat.FLIPPED,
+  "검토필요": PrismaEducationFormat.NEEDS_REVIEW
+};
+
+const PRISMA_OPERATION_TYPE: Record<OperationType, PrismaOperationType> = {
+  "특강": PrismaOperationType.LECTURE,
+  "단기": PrismaOperationType.SHORT,
+  "중기": PrismaOperationType.MEDIUM,
+  "중장기": PrismaOperationType.MID_TERM_LONG,
+  "준장기": PrismaOperationType.MID_LONG,
+  "장기": PrismaOperationType.LONG,
+  "연간": PrismaOperationType.ANNUAL,
+  "상시형": PrismaOperationType.ALWAYS_ON,
+  "검토필요": PrismaOperationType.NEEDS_REVIEW
+};
+
 export class PrismaOperationRepository implements OperationRepository {
   async listOperations(): Promise<OperationSession[]> {
     const prisma = getPrismaClient();
@@ -72,6 +126,10 @@ export class PrismaOperationRepository implements OperationRepository {
           include: {
             company: true
           }
+        },
+        sourceRecords: {
+          orderBy: { createdAt: "desc" },
+          take: 1
         }
       },
       orderBy: [{ startDate: "asc" }, { operationId: "asc" }]
@@ -84,7 +142,7 @@ export class PrismaOperationRepository implements OperationRepository {
       return {
         id: session.id,
         operationId: session.operationId,
-        sourceTeam: "미분류",
+        sourceTeam: session.sourceRecords[0]?.sourceTeam ? SOURCE_TEAM[session.sourceRecords[0].sourceTeam] : "미분류",
         courseId: session.course.courseId,
         companyName: session.course.company.name,
         courseName: session.course.name,
@@ -141,6 +199,117 @@ export class PrismaOperationRepository implements OperationRepository {
     return operations.find((operation) => operation.operationId === operationId) ?? null;
   }
 
+  async createOperation(input: CreateOperationInput): Promise<OperationSession> {
+    const prisma = getPrismaClient();
+    const companyName = normalizeVisibleText(input.companyName);
+    const courseName = normalizeVisibleText(input.courseName);
+    const courseId = normalizeVisibleText(input.courseId);
+    const startDate = parseDateInput(input.startDate, "startDate");
+    const endDate = parseDateInput(input.endDate, "endDate");
+
+    if (!companyName) {
+      throw new Error("Company name is required.");
+    }
+
+    if (!courseName) {
+      throw new Error("Course name is required.");
+    }
+
+    if (startDate.getTime() > endDate.getTime()) {
+      throw new Error("End date must be on or after start date.");
+    }
+
+    const operationId = `manual-${randomUUID()}`;
+    const durationDays = dateDiffDays(startDate, endDate) + 1;
+    const operationType = PRISMA_OPERATION_TYPE[input.operationType];
+    const educationFormat = PRISMA_EDUCATION_FORMAT[input.educationFormat];
+
+    const session = await prisma.$transaction(async (tx) => {
+      const company = await tx.company.upsert({
+        where: { normalizedName: normalizeName(companyName) },
+        update: { name: companyName },
+        create: {
+          name: companyName,
+          normalizedName: normalizeName(companyName)
+        }
+      });
+
+      const course = await tx.course.upsert({
+        where: {
+          companyId_courseId_name: {
+            companyId: company.id,
+            courseId,
+            name: courseName
+          }
+        },
+        update: {
+          operationType,
+          revenue: input.revenue,
+          revenueRaw: input.revenue === null ? null : String(input.revenue)
+        },
+        create: {
+          companyId: company.id,
+          courseId,
+          name: courseName,
+          operationType,
+          revenue: input.revenue,
+          revenueRaw: input.revenue === null ? null : String(input.revenue)
+        }
+      });
+
+      return tx.operationSession.create({
+        data: {
+          archiveStatus: PRISMA_ARCHIVE_STATUS[input.archiveStatus],
+          coachText: normalizeVisibleText(input.coach) || null,
+          companyWikiLink: normalizeVisibleText(input.companyWikiLink) || null,
+          costRaw: normalizeVisibleText(input.costRaw) || null,
+          courseRecordId: course.id,
+          createdBy: input.createdBy ?? null,
+          driveLink: normalizeVisibleText(input.driveLink) || null,
+          educationDays: normalizeVisibleText(input.educationDays) || null,
+          educationFormat,
+          educationFormatRaw: input.educationFormat,
+          endDate,
+          hasResultReport: PrismaResultReportStatus.NEEDS_REVIEW,
+          instructorCost: input.instructorCost,
+          instructorWikiLink: normalizeVisibleText(input.instructorWikiLink) || null,
+          instructorsText: normalizeVisibleText(input.instructors) || null,
+          ldName: normalizeVisibleText(input.ld) || null,
+          lectureManagementLink: normalizeVisibleText(input.lectureManagementLink) || null,
+          omName: normalizeVisibleText(input.om) || null,
+          onsiteRequired: input.onsiteRequired as PrismaOnsiteRequired,
+          onsiteText: onsiteRequiredLabel(input.onsiteRequired),
+          operationChannel: PrismaOperationChannel.NEEDS_REVIEW,
+          operationCost: input.operationCost,
+          operationDetail: normalizeVisibleText(input.operationDetail) || null,
+          operationId,
+          operationIssue: normalizeVisibleText(input.operationIssue) || null,
+          operationMonth: formatOperationMonth(startDate),
+          operationStatus: PRISMA_OPERATION_STATUS[input.operationStatus],
+          padletLink: normalizeVisibleText(input.padletLink) || null,
+          region: normalizeVisibleText(input.region) || null,
+          resultReportLink: normalizeVisibleText(input.resultReportLink) || null,
+          roundNo: normalizeVisibleText(input.roundNo) || null,
+          sessionDurationDays: durationDays,
+          sessionDurationType: operationType,
+          specialNotes: normalizeVisibleText(input.specialNotes) || null,
+          startDate,
+          timeText: normalizeVisibleText(input.timeText) || null,
+          totalCost: input.totalCost,
+          updatedBy: input.createdBy ?? null
+        }
+      });
+    });
+
+    const operation = await this.getOperationById(session.operationId);
+
+    if (!operation) {
+      throw new Error("Created operation could not be loaded.");
+    }
+
+    return operation;
+  }
+
   async getSummary() {
     return summarizeOperations(await this.listOperations());
   }
@@ -158,4 +327,37 @@ function toDateString(value: Date): string {
 
 function getValidationErrors(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+function normalizeVisibleText(value: string): string {
+  return value.trim().replace(/\s+/g, " ");
+}
+
+function normalizeName(value: string): string {
+  return normalizeVisibleText(value).toLowerCase();
+}
+
+function parseDateInput(value: string, fieldName: string): Date {
+  const [year, month, day] = value.split("-").map(Number);
+
+  if (!year || !month || !day) {
+    throw new Error(`${fieldName} must be a valid date.`);
+  }
+
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function dateDiffDays(start: Date, end: Date): number {
+  return Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function formatOperationMonth(value: Date): string {
+  return `${value.getUTCFullYear()}-${String(value.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+function onsiteRequiredLabel(value: OnsiteRequired): string | null {
+  if (value === "Y") return "오프라인";
+  if (value === "N") return "온라인";
+  if (value === "PARTIAL") return "일부 오프라인";
+  return null;
 }

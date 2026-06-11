@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AppSidebar } from "@/components/AppSidebar";
 import type {
   ArchiveStatus,
   OperationChannel,
@@ -6,6 +7,7 @@ import type {
   OperationStatus,
   OnsiteRequired
 } from "@/lib/data/operationTypes";
+import { teamScopeSearchParam, type TeamScope } from "@/lib/teamScope";
 
 const STATUS_CLASS: Record<OperationStatus, string> = {
   "배정필요": "needs-assignment",
@@ -40,32 +42,21 @@ const ONSITE_LABEL: Record<OnsiteRequired, string> = {
 interface OperationDetailProps {
   operation: OperationSession;
   relatedOperations?: OperationSession[];
+  teamScope: TeamScope;
 }
 
-export function OperationDetail({ operation, relatedOperations = [operation] }: OperationDetailProps) {
+export function OperationDetail({ operation, relatedOperations = [operation], teamScope }: OperationDetailProps) {
   const courseOperations = getCourseOperations(operation, relatedOperations);
+  const teamQuery = teamScopeSearchParam(teamScope);
 
   return (
     <main className="dashboard-shell">
-      <aside className="sidebar" aria-label="hub-om 메뉴">
-        <div className="brand">
-          <span className="brand-mark">OD</span>
-          <div>
-            <strong>hub-om</strong>
-            <span>Course detail</span>
-          </div>
-        </div>
-        <nav className="nav-list">
-          <Link href="/">대시보드</Link>
-          <Link href="/operations">운영 현황</Link>
-          <Link href="/resources">리소스</Link>
-        </nav>
-      </aside>
+      <AppSidebar label="Course detail" teamScope={teamScope} />
 
       <section className="content">
         <header className="page-header detail-header">
           <div>
-            <Link className="back-link" href="/operations">
+            <Link className="back-link" href={`/operations${teamQuery}`}>
               운영 현황으로
             </Link>
             <div className="title-row">
@@ -118,7 +109,7 @@ export function OperationDetail({ operation, relatedOperations = [operation] }: 
                       key={courseOperation.operationId}
                     >
                       <td>
-                        <Link className="session-link" href={`/operations/${courseOperation.operationId}`}>
+                        <Link className="session-link" href={`/operations/${courseOperation.operationId}${teamQuery}`}>
                           {roundLabel(courseOperation, index)}
                         </Link>
                       </td>

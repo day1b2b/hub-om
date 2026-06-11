@@ -94,6 +94,42 @@ export interface OperationSession {
   validationErrors: string[];
 }
 
+export interface CreateOperationInput {
+  archiveStatus: ArchiveStatus;
+  coach: string;
+  companyName: string;
+  companyWikiLink: string;
+  costRaw: string;
+  courseId: string;
+  courseName: string;
+  createdBy?: string;
+  driveLink: string;
+  educationDays: string;
+  educationFormat: EducationFormat;
+  endDate: string;
+  instructorCost: number | null;
+  instructorWikiLink: string;
+  instructors: string;
+  ld: string;
+  lectureManagementLink: string;
+  om: string;
+  onsiteRequired: OnsiteRequired;
+  operationCost: number | null;
+  operationDetail: string;
+  operationIssue: string;
+  operationStatus: OperationStatus;
+  operationType: OperationType;
+  padletLink: string;
+  region: string;
+  resultReportLink: string;
+  revenue: number | null;
+  roundNo: string;
+  specialNotes: string;
+  startDate: string;
+  timeText: string;
+  totalCost: number | null;
+}
+
 export interface OperationSummary {
   total: number;
   active: number;

@@ -94,6 +94,13 @@ enum SourceTeam {
   @@map("source_team")
 }
 
+enum TeamMemberRole {
+  OM @map("om")
+  LD @map("ld")
+
+  @@map("team_member_role")
+}
+
 model Company {
   id             String   @id @default(uuid()) @db.Uuid
   name           String
@@ -192,6 +199,7 @@ model OperationSession {
 
 model TeamMember {
   id             String     @id @default(uuid()) @db.Uuid
+  role           TeamMemberRole?
   sourceTeam     SourceTeam @default(UNKNOWN) @map("source_team")
   name           String
   normalizedName String     @map("normalized_name")
@@ -202,8 +210,9 @@ model TeamMember {
   createdAt      DateTime   @default(now()) @map("created_at")
   updatedAt      DateTime   @updatedAt @map("updated_at")
 
-  @@unique([sourceTeam, normalizedName])
+  @@unique([role, sourceTeam, normalizedName])
   @@index([sourceTeam, isActive])
+  @@index([role, sourceTeam, isActive])
   @@map("team_members")
 }
 

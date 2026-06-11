@@ -1,14 +1,27 @@
 import { OperationDashboard } from "@/features/operations/OperationDashboard";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
+import { getStoredTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFactory";
+import { filterOperationsByTeamScope, resolveTeamScope } from "@/lib/teamScope";
 
 export const dynamic = "force-dynamic";
 
-export default async function OperationsPage() {
-  await requireWorkspaceSession();
+interface OperationsPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function OperationsPage({ searchParams }: OperationsPageProps) {
+  const session = await requireWorkspaceSession();
 
   const repository = getOperationRepository();
-  const operations = await repository.listOperations();
+  const teamMemberRepository = getStoredTeamMemberRepository();
+  const [operations, ownerRoster, params] = await Promise.all([
+    repository.listOperations(),
+    teamMemberRepository.listResourceOwners(),
+    searchParams
+  ]);
+  const teamScope = resolveTeamScope(params, session, ownerRoster);
+  const scopedOperations = filterOperationsByTeamScope(operations, teamScope, ownerRoster);
 
-  return <OperationDashboard operations={operations} />;
+  return <OperationDashboard operations={scopedOperations} teamScope={teamScope} />;
 }
