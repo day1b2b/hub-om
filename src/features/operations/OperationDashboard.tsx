@@ -6,7 +6,6 @@ import type {
   EducationFormat,
   OperationSession,
   OperationStatus,
-  OperationSummary,
   SourceTeam
 } from "@/lib/data/operationTypes";
 import { splitPersonNames } from "@/lib/data/personNames";
@@ -24,7 +23,6 @@ const STATUS_CLASS: Record<OperationStatus, string> = {
 
 interface OperationDashboardProps {
   operations: OperationSession[];
-  summary: OperationSummary;
 }
 
 export function OperationDashboard({ operations }: OperationDashboardProps) {
@@ -274,7 +272,7 @@ export function OperationDashboard({ operations }: OperationDashboardProps) {
                   <th>만족도(강사)</th>
                   <th>매출</th>
                   <th>강사비</th>
-                  <th>실습코치비</th>
+                  <th>운영비</th>
                 </tr>
               </thead>
               <tbody>
@@ -338,13 +336,22 @@ function StatusBadge({ status }: { status: OperationStatus }) {
 }
 
 function ExternalTableLink({ href }: { href: string }) {
-  if (!href) return <span className="muted-inline">-</span>;
+  if (!isSafeHttpUrl(href)) return <span className="muted-inline">-</span>;
 
   return (
     <a aria-label="싱크업 열기" className="table-link-icon" href={href} rel="noreferrer" target="_blank">
       ↗
     </a>
   );
+}
+
+function isSafeHttpUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 function getSourceTeam(operation: OperationSession): SourceTeam {

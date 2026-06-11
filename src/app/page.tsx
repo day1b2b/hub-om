@@ -8,7 +8,7 @@ export default async function Home() {
   await requireWorkspaceSession();
 
   const repository = getOperationRepository();
-  const [operations, summary] = await Promise.all([repository.listOperations(), repository.getSummary()]);
+  const operations = await repository.listOperations();
 
-  return <MainDashboard operations={operations} summary={summary} />;
+  return <MainDashboard operations={operations} />;
 }

@@ -1,9 +1,10 @@
 import { ResourceJudgmentPage } from "@/features/resources/ResourceJudgmentPage";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
+import { mergeExternalResourceOperations } from "@/lib/data/externalResourceMerge";
 import { listNotionResourceOperations } from "@/lib/data/notionResourceOperationRepository";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { getTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFactory";
-import type { OperationSession, SourceTeam } from "@/lib/data/operationTypes";
+import type { OperationSession } from "@/lib/data/operationTypes";
 import { splitPersonNames } from "@/lib/data/personNames";
 import type { ResourceOwnerRoster } from "@/lib/data/teamMemberRepository";
 
@@ -24,15 +25,6 @@ export default async function ResourcesPage() {
   const resourceOwnerRoster = buildResourceOwnerRoster(ownerRoster, externalResourceOperations);
 
   return <ResourceJudgmentPage operations={resourceOperations} ownerRoster={resourceOwnerRoster} />;
-}
-
-function mergeExternalResourceOperations(operations: OperationSession[], externalOperations: OperationSession[]) {
-  if (externalOperations.length === 0) {
-    return operations;
-  }
-
-  const externalTeams = new Set(externalOperations.map((operation) => operation.sourceTeam).filter((team): team is SourceTeam => Boolean(team)));
-  return [...operations.filter((operation) => !operation.sourceTeam || !externalTeams.has(operation.sourceTeam)), ...externalOperations];
 }
 
 function buildResourceOwnerRoster(ownerRoster: ResourceOwnerRoster, externalOperations: OperationSession[]) {

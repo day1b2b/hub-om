@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import type { OperationSession, OperationSummary, SourceTeam } from "@/lib/data/operationTypes";
+import type { OperationSession, SourceTeam } from "@/lib/data/operationTypes";
 import { splitPersonNames } from "@/lib/data/personNames";
 
 type DashboardScope = "이번달" | "연간";
@@ -10,7 +10,6 @@ const TEAM_FILTERS = ["전체", "1팀", "2팀", "미분류"] as const;
 
 interface MainDashboardProps {
   operations: OperationSession[];
-  summary: OperationSummary;
 }
 
 export function MainDashboard({ operations }: MainDashboardProps) {

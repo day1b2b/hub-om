@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
 import { OperationDetail } from "@/features/operations/OperationDetail";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
+import { mergeExternalResourceOperations } from "@/lib/data/externalResourceMerge";
 import { listNotionResourceOperations } from "@/lib/data/notionResourceOperationRepository";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
-import type { OperationSession, SourceTeam } from "@/lib/data/operationTypes";
 
 export const dynamic = "force-dynamic";
 
@@ -35,13 +35,4 @@ export default async function OperationDetailPage({ params }: OperationDetailPag
     : [operation];
 
   return <OperationDetail operation={operation} relatedOperations={relatedOperations} />;
-}
-
-function mergeExternalResourceOperations(operations: OperationSession[], externalOperations: OperationSession[]) {
-  if (externalOperations.length === 0) {
-    return operations;
-  }
-
-  const externalTeams = new Set(externalOperations.map((operation) => operation.sourceTeam).filter((team): team is SourceTeam => Boolean(team)));
-  return [...operations.filter((operation) => !operation.sourceTeam || !externalTeams.has(operation.sourceTeam)), ...externalOperations];
 }
