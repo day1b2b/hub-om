@@ -1,7 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { config } from "dotenv";
 import pg from "pg";
+
+config({ path: ".env.local" });
+config({ path: ".env" });
 
 const SOURCE_TEAM_VALUE = {
   "1팀": "team_1",
@@ -21,6 +25,8 @@ const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
   throw new Error("DATABASE_URL is required to import team members.");
 }
+
+assertSafeDatabase(databaseUrl);
 
 const localFile = path.resolve(process.cwd(), ".local", "team-members.json");
 const raw = await readFile(localFile, "utf8");
@@ -107,6 +113,16 @@ function normalizeMembers(members) {
 
 function normalizeName(name) {
   return name.replace(/\s+/g, "").toLowerCase();
+}
+
+function assertSafeDatabase(databaseUrl) {
+  const parsed = new URL(databaseUrl);
+  const host = parsed.hostname;
+  const isLocalHost = host === "localhost" || host === "127.0.0.1" || host === "::1";
+
+  if (!isLocalHost && process.env.ALLOW_NON_LOCAL_TEAM_MEMBER_IMPORT !== "true") {
+    throw new Error(`Refusing to import team members to non-local database host: ${host}`);
+  }
 }
 
 function membersBySourceTeam(members) {
