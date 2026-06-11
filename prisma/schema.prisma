@@ -190,6 +190,23 @@ model OperationSession {
   @@map("operation_sessions")
 }
 
+model TeamMember {
+  id             String     @id @default(uuid()) @db.Uuid
+  sourceTeam     SourceTeam @default(UNKNOWN) @map("source_team")
+  name           String
+  normalizedName String     @map("normalized_name")
+  roleTitle      String?    @map("role_title")
+  calendarId     String?    @map("calendar_id")
+  isActive       Boolean    @default(true) @map("is_active")
+  displayOrder   Int?       @map("display_order")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+
+  @@unique([sourceTeam, normalizedName])
+  @@index([sourceTeam, isActive])
+  @@map("team_members")
+}
+
 model DataImportRun {
   id             String       @id @default(uuid()) @db.Uuid
   sourceTeam     SourceTeam   @default(UNKNOWN) @map("source_team")

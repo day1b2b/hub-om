@@ -2,29 +2,35 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import type { OperationSession, OperationSummary } from "@/lib/data/operationTypes";
+import type { OperationSession, SourceTeam } from "@/lib/data/operationTypes";
+import { splitPersonNames } from "@/lib/data/personNames";
 
 type DashboardScope = "이번달" | "연간";
+const TEAM_FILTERS = ["전체", "1팀", "2팀", "미분류"] as const;
 
 interface MainDashboardProps {
   operations: OperationSession[];
-  summary: OperationSummary;
 }
 
-export function MainDashboard({ operations, summary }: MainDashboardProps) {
+export function MainDashboard({ operations }: MainDashboardProps) {
   const today = useMemo(() => new Date(), []);
   const [scope, setScope] = useState<DashboardScope>("이번달");
+  const [teamFilter, setTeamFilter] = useState<(typeof TEAM_FILTERS)[number]>("전체");
+  const teamOperations = useMemo(
+    () => operations.filter((operation) => teamFilter === "전체" || getSourceTeam(operation) === teamFilter),
+    [operations, teamFilter]
+  );
   const scopedOperations = useMemo(() => {
-    return operations.filter((operation) => (scope === "이번달" ? isSameMonth(operation, today) : isSameYear(operation, today)));
-  }, [operations, scope, today]);
+    return teamOperations.filter((operation) => (scope === "이번달" ? isSameMonth(operation, today) : isSameYear(operation, today)));
+  }, [scope, teamOperations, today]);
   const activeOrUpcoming = scopedOperations
     .filter((operation) => !isEnded(operation, today))
     .sort((a, b) => compareStableText(a.startDate, b.startDate));
   const companyCounts = topCounts(scopedOperations.map((operation) => operation.companyName), 5);
-  const omCounts = topCounts(scopedOperations.map((operation) => operation.om || "배정필요"), 5);
+  const omCounts = topCounts(scopedOperations.flatMap((operation) => splitPersonNames(operation.om)), 5);
   const typeCounts = topCounts(scopedOperations.map((operation) => operation.operationType), 5);
   const formatCounts = topCounts(scopedOperations.map((operation) => operation.educationFormat), 5);
-  const monthlyCounts = monthlySeries(operations, today.getFullYear());
+  const monthlyCounts = monthlySeries(teamOperations, today.getFullYear());
   const maxCompanyCount = Math.max(1, ...companyCounts.map((item) => item.count));
 
   return (
@@ -44,7 +50,7 @@ export function MainDashboard({ operations, summary }: MainDashboardProps) {
         </nav>
       </aside>
 
-      <section className="content">
+      <section className="content dashboard-page">
         <header className="page-header">
           <div>
             <p className="eyebrow">2026.06.09 기준</p>
@@ -57,18 +63,34 @@ export function MainDashboard({ operations, summary }: MainDashboardProps) {
           </div>
         </header>
 
-        <div className="dashboard-tabs" role="group" aria-label="대시보드 범위">
-          {(["이번달", "연간"] as DashboardScope[]).map((item) => (
-            <button
-              aria-pressed={scope === item}
-              className={scope === item ? "selected" : ""}
-              key={item}
-              onClick={() => setScope(item)}
-              type="button"
-            >
-              {item} 현황
-            </button>
-          ))}
+        <div className="dashboard-controls" aria-label="대시보드 필터">
+          <div className="dashboard-tabs" role="group" aria-label="대시보드 범위">
+            {(["이번달", "연간"] as DashboardScope[]).map((item) => (
+              <button
+                aria-pressed={scope === item}
+                className={scope === item ? "selected" : ""}
+                key={item}
+                onClick={() => setScope(item)}
+                type="button"
+              >
+                {item} 현황
+              </button>
+            ))}
+          </div>
+
+          <div className="team-tabs" role="group" aria-label="팀 선택">
+            {TEAM_FILTERS.map((team) => (
+              <button
+                aria-pressed={teamFilter === team}
+                className={teamFilter === team ? "selected" : ""}
+                key={team}
+                onClick={() => setTeamFilter(team)}
+                type="button"
+              >
+                {team}
+              </button>
+            ))}
+          </div>
         </div>
 
         <section className="metrics" aria-label="운영 요약">
@@ -77,7 +99,7 @@ export function MainDashboard({ operations, summary }: MainDashboardProps) {
           <Metric label="완료" value={scopedOperations.filter(isDone).length} />
           <Metric label="총 매출" value={formatShortMoney(scopedOperations.reduce((sum, operation) => sum + (operation.revenue ?? 0), 0))} />
           <Metric label="참여 기업" value={new Set(scopedOperations.map((operation) => operation.companyName)).size} />
-          <Metric label="전체 과정" value={scope === "이번달" ? scopedOperations.length : summary.total} />
+          <Metric label="전체 과정" value={scopedOperations.length} />
         </section>
 
         <section className="dashboard-grid">
@@ -126,23 +148,11 @@ export function MainDashboard({ operations, summary }: MainDashboardProps) {
 
         <section className="dashboard-panel">
           <div className="section-title">
-            <h2>월별 과정 현황</h2>
-            <span>연간 추이</span>
-          </div>
-          <div className="monthly-bars">
-            {monthlyCounts.map((item) => (
-              <div className="monthly-bar" key={item.label}>
-                <div style={{ height: `${Math.max(8, item.count * 28)}px` }} />
-                <span>{item.label}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="table-section">
-          <div className="table-header">
             <h2>예정 / 진행 운영</h2>
-            <Link href="/operations">전체 보기</Link>
+            <div className="dashboard-table-meta">
+              <span>{activeOrUpcoming.length}건</span>
+              <Link href="/operations">전체 보기</Link>
+            </div>
           </div>
           <div className="table-wrap">
             <table>
@@ -179,6 +189,14 @@ export function MainDashboard({ operations, summary }: MainDashboardProps) {
               </tbody>
             </table>
           </div>
+        </section>
+
+        <section className="dashboard-panel">
+          <div className="section-title">
+            <h2>월별 과정 현황</h2>
+            <span>연간 추이</span>
+          </div>
+          <MonthlyTrendChart items={monthlyCounts} />
         </section>
       </section>
     </main>
@@ -235,6 +253,37 @@ function DonutChart({ items }: { items: Array<{ count: number; label: string }> 
   );
 }
 
+function MonthlyTrendChart({ items }: { items: Array<{ count: number; label: string }> }) {
+  const width = 720;
+  const height = 150;
+  const padding = { bottom: 28, left: 30, right: 18, top: 18 };
+  const maxCount = Math.max(1, ...items.map((item) => item.count));
+  const xStep = (width - padding.left - padding.right) / Math.max(1, items.length - 1);
+  const points = items.map((item, index) => {
+    const x = padding.left + index * xStep;
+    const y = padding.top + (1 - item.count / maxCount) * (height - padding.top - padding.bottom);
+    return { ...item, x, y };
+  });
+  const path = points.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ");
+  const areaPath = `${path} L ${points.at(-1)?.x ?? padding.left} ${height - padding.bottom} L ${padding.left} ${height - padding.bottom} Z`;
+
+  return (
+    <div className="monthly-trend">
+      <svg aria-label="월별 과정 수 추이" role="img" viewBox={`0 0 ${width} ${height}`}>
+        <path className="monthly-trend-area" d={areaPath} />
+        <path className="monthly-trend-line" d={path} />
+        {points.map((point) => (
+          <g key={point.label}>
+            <circle cx={point.x} cy={point.y} r="4" />
+            <text className="monthly-trend-count" x={point.x} y={point.y - 8}>{point.count}</text>
+            <text className="monthly-trend-label" x={point.x} y={height - 8}>{point.label}</text>
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
 function isUpcoming(operation: OperationSession, today: Date) {
   const start = parseDate(operation.startDate);
   return start ? start.getTime() > stripTime(today).getTime() : false;
@@ -247,6 +296,10 @@ function isEnded(operation: OperationSession, today: Date) {
 
 function isDone(operation: OperationSession) {
   return operation.operationStatus === "완료" || operation.operationStatus === "회고완료";
+}
+
+function getSourceTeam(operation: OperationSession): SourceTeam {
+  return operation.sourceTeam ?? "미분류";
 }
 
 function isSameMonth(operation: OperationSession, today: Date) {

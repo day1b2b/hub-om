@@ -4,13 +4,14 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import type {
   EducationFormat,
-  OperationChannel,
   OperationSession,
   OperationStatus,
-  OperationSummary
+  SourceTeam
 } from "@/lib/data/operationTypes";
+import { splitPersonNames } from "@/lib/data/personNames";
 
 const STATUS_FILTERS = ["전체", "진행중", "예정", "완료", "아카이빙필요", "검토필요"] as const;
+const TEAM_FILTERS = ["전체", "1팀", "2팀", "미분류"] as const;
 const STATUS_CLASS: Record<OperationStatus, string> = {
   "배정필요": "needs-assignment",
   "배정예정": "planned-assignment",
@@ -20,52 +21,48 @@ const STATUS_CLASS: Record<OperationStatus, string> = {
   "아카이빙필요": "archive-needed"
 };
 
-const OPERATION_CHANNEL_LABEL: Record<OperationChannel, string> = {
-  onsite: "현장",
-  live_online: "실시간 온라인",
-  online_platform: "온라인 플랫폼",
-  blended: "혼합",
-  needs_review: "확인 필요"
-};
-
 interface OperationDashboardProps {
   operations: OperationSession[];
-  summary: OperationSummary;
 }
 
-export function OperationDashboard({ operations, summary }: OperationDashboardProps) {
+export function OperationDashboard({ operations }: OperationDashboardProps) {
   const today = useMemo(() => new Date(), []);
   const [statusFilter, setStatusFilter] = useState<(typeof STATUS_FILTERS)[number]>("전체");
   const [companyFilter, setCompanyFilter] = useState("전체 기업");
   const [formatFilter, setFormatFilter] = useState<"전체 교육형태" | EducationFormat>("전체 교육형태");
   const [omFilter, setOmFilter] = useState("전체 OM");
+  const [teamFilter, setTeamFilter] = useState<(typeof TEAM_FILTERS)[number]>("전체");
   const [archiveOnly, setArchiveOnly] = useState(false);
   const [query, setQuery] = useState("");
   const [range, setRange] = useState(() => getMonthRange(today, 0));
+  const teamOperations = useMemo(
+    () => operations.filter((operation) => teamFilter === "전체" || getSourceTeam(operation) === teamFilter),
+    [operations, teamFilter]
+  );
 
   const filterOptions = useMemo(() => {
     return {
-      companies: ["전체 기업", ...unique(operations.map((operation) => operation.companyName))],
-      formats: ["전체 교육형태", ...unique(operations.map((operation) => operation.educationFormat))] as Array<
+      companies: ["전체 기업", ...unique(teamOperations.map((operation) => operation.companyName))],
+      formats: ["전체 교육형태", ...unique(teamOperations.map((operation) => operation.educationFormat))] as Array<
         "전체 교육형태" | EducationFormat
       >,
-      oms: ["전체 OM", ...unique(operations.map((operation) => operation.om || "배정필요"))]
+      oms: ["전체 OM", ...unique(teamOperations.flatMap((operation) => splitPersonNames(operation.om)))]
     };
-  }, [operations]);
+  }, [teamOperations]);
 
   const statusCounts = useMemo(() => {
     return {
-      전체: operations.length,
-      진행중: operations.filter((operation) => operation.operationStatus === "진행중").length,
-      예정: operations.filter((operation) => isUpcoming(operation, today)).length,
-      완료: operations.filter((operation) => isDone(operation)).length,
-      아카이빙필요: operations.filter((operation) => operation.archiveStatus === "아카이빙필요").length,
-      검토필요: operations.filter((operation) => operation.validationStatus === "검토필요").length
+      전체: teamOperations.length,
+      진행중: teamOperations.filter((operation) => operation.operationStatus === "진행중").length,
+      예정: teamOperations.filter((operation) => isUpcoming(operation, today)).length,
+      완료: teamOperations.filter((operation) => isDone(operation)).length,
+      아카이빙필요: teamOperations.filter((operation) => operation.archiveStatus === "아카이빙필요").length,
+      검토필요: teamOperations.filter((operation) => operation.validationStatus === "검토필요").length
     };
-  }, [operations, today]);
+  }, [teamOperations, today]);
 
   const filteredOperations = useMemo(() => {
-    return operations.filter((operation) => {
+    return teamOperations.filter((operation) => {
       const normalizedQuery = query.trim().toLowerCase();
       const statusMatches =
         statusFilter === "전체" ||
@@ -91,7 +88,7 @@ export function OperationDashboard({ operations, summary }: OperationDashboardPr
       const rangeMatches = overlapsRange(operation, range.start, range.end);
       const companyMatches = companyFilter === "전체 기업" || operation.companyName === companyFilter;
       const formatMatches = formatFilter === "전체 교육형태" || operation.educationFormat === formatFilter;
-      const omMatches = omFilter === "전체 OM" || (operation.om || "배정필요") === omFilter;
+      const omMatches = omFilter === "전체 OM" || splitPersonNames(operation.om).includes(omFilter);
       const archiveMatches = !archiveOnly || operation.archiveStatus === "아카이빙필요";
 
       return (
@@ -104,16 +101,16 @@ export function OperationDashboard({ operations, summary }: OperationDashboardPr
         archiveMatches
       );
     });
-  }, [archiveOnly, companyFilter, formatFilter, omFilter, operations, query, range, statusFilter, today]);
+  }, [archiveOnly, companyFilter, formatFilter, omFilter, query, range, statusFilter, teamOperations, today]);
 
   const satisfaction = average(
-    operations
+    teamOperations
       .map((operation) => operation.avgSatisfaction)
       .filter(Boolean)
       .map((value) => Number(value))
       .filter((value) => Number.isFinite(value))
   );
-  const totalRevenue = operations.reduce((sum, operation) => sum + (operation.revenue ?? 0), 0);
+  const totalRevenue = teamOperations.reduce((sum, operation) => sum + (operation.revenue ?? 0), 0);
 
   return (
     <main className="dashboard-shell">
@@ -147,7 +144,7 @@ export function OperationDashboard({ operations, summary }: OperationDashboardPr
           </div>
         </header>
 
-        <section className="range-panel" aria-label="기간 선택">
+        <section className="range-panel operations-range-panel" aria-label="기간 선택">
           <div className="date-range">
             <span>기간</span>
             <input
@@ -170,6 +167,19 @@ export function OperationDashboard({ operations, summary }: OperationDashboardPr
             <button type="button" onClick={() => setRange(getQuarterRange(today))}>이번 분기</button>
             <button type="button" onClick={() => setRange(getYearRange(today))}>올해</button>
           </div>
+          <div className="team-tabs operations-team-tabs" role="group" aria-label="팀 선택">
+            {TEAM_FILTERS.map((team) => (
+              <button
+                aria-pressed={teamFilter === team}
+                className={teamFilter === team ? "selected" : ""}
+                key={team}
+                onClick={() => setTeamFilter(team)}
+                type="button"
+              >
+                {team}
+              </button>
+            ))}
+          </div>
         </section>
 
         <section className="status-tabs" aria-label="상태 필터">
@@ -188,15 +198,15 @@ export function OperationDashboard({ operations, summary }: OperationDashboardPr
         </section>
 
         <section className="metrics operations-metrics" aria-label="운영 요약">
-          <Metric label="진행중" value={summary.active} caption="현재 운영" />
+          <Metric label="진행중" value={statusCounts.진행중} caption="현재 운영" />
           <Metric label="예정" value={statusCounts.예정} caption="선택 기간" />
           <Metric label="완료" value={statusCounts.완료} caption="회고 포함" />
-          <Metric label="전체 과정" value={summary.total} caption={`${operations.length}개 차수`} />
+          <Metric label="전체 과정" value={teamOperations.length} caption={`${filteredOperations.length}개 표시`} />
           <Metric label="평균 만족도" value={satisfaction ?? "-"} caption="입력된 값 기준" />
           <Metric label="총 매출" value={formatShortMoney(totalRevenue)} caption="데모 기준" />
         </section>
 
-        <section className="filter-panel" aria-label="상세 필터">
+        <section className="filter-panel operations-filter-panel" aria-label="상세 필터">
           <select value={companyFilter} onChange={(event) => setCompanyFilter(event.target.value)}>
             {filterOptions.companies.map((company) => (
               <option key={company}>{company}</option>
@@ -229,35 +239,40 @@ export function OperationDashboard({ operations, summary }: OperationDashboardPr
             아카이빙 미완료
           </label>
           <button className="secondary-action" type="button">엑셀 다운로드</button>
+          <span className="filter-result-count">총 {filteredOperations.length}건</span>
         </section>
 
-        <section className="table-section">
-          <div className="table-header">
+        <section className="dashboard-panel operations-list-panel">
+          <div className="section-title">
             <h2>운영 목록</h2>
-            <span>{filteredOperations.length}건</span>
+            <div className="dashboard-table-meta">
+              <span>{filteredOperations.length}건</span>
+              <span>운영 차수 기준</span>
+            </div>
           </div>
           <div className="table-wrap">
-            <table>
+            <table className="operations-table">
               <thead>
                 <tr>
                   <th>#</th>
                   <th>상태</th>
-                  <th>아카이빙</th>
                   <th>교육형태</th>
                   <th>운영유형</th>
                   <th>코스ID</th>
                   <th>기업</th>
                   <th>과정명</th>
+                  <th>싱크업</th>
                   <th>OM</th>
                   <th>LD</th>
                   <th>시작일</th>
                   <th>종료일</th>
                   <th>강사</th>
                   <th>실습코치</th>
-                  <th>만족도</th>
+                  <th>만족도(전체)</th>
+                  <th>만족도(강사)</th>
                   <th>매출</th>
                   <th>강사비</th>
-                  <th>검토</th>
+                  <th>운영비</th>
                 </tr>
               </thead>
               <tbody>
@@ -266,11 +281,6 @@ export function OperationDashboard({ operations, summary }: OperationDashboardPr
                     <tr key={operation.operationId}>
                       <td>{index + 1}</td>
                       <td><StatusBadge status={operation.operationStatus} /></td>
-                      <td>
-                        <span className={`archive-pill ${operation.archiveStatus === "완료" ? "done" : "needed"}`}>
-                          {operation.archiveStatus}
-                        </span>
-                      </td>
                       <td>{operation.educationFormat}</td>
                       <td>{operation.operationType}</td>
                       <td>{operation.courseId || "검토필요"}</td>
@@ -278,9 +288,9 @@ export function OperationDashboard({ operations, summary }: OperationDashboardPr
                       <td>
                         <Link className="course-link" href={`/operations/${operation.operationId}`}>
                           <strong>{operation.courseName}</strong>
-                          <span>{OPERATION_CHANNEL_LABEL[operation.operationChannel]} · {operation.roundNo || "-"}회차</span>
                         </Link>
                       </td>
+                      <td><ExternalTableLink href={operation.operationDetail} /></td>
                       <td>{operation.om || "배정필요"}</td>
                       <td>{operation.ld || "미정"}</td>
                       <td>{operation.startDate}</td>
@@ -288,22 +298,15 @@ export function OperationDashboard({ operations, summary }: OperationDashboardPr
                       <td>{operation.instructors || "-"}</td>
                       <td>{operation.coach || "-"}</td>
                       <td>{operation.avgSatisfaction || "-"}</td>
+                      <td>{operation.instructorSatisfaction || "-"}</td>
                       <td>{formatMoney(operation.revenue)}</td>
                       <td>{formatMoney(operation.instructorCost)}</td>
-                      <td>
-                        {operation.validationErrors.length > 0 ? (
-                          <ul className="validation-list">
-                            {operation.validationErrors.map((error) => <li key={error}>{error}</li>)}
-                          </ul>
-                        ) : (
-                          <span className="ok">정상</span>
-                        )}
-                      </td>
+                      <td>{formatMoney(operation.operationCost)}</td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td className="empty-state" colSpan={18}>
+                    <td className="empty-state" colSpan={19}>
                       <strong>표시할 운영 건이 없습니다.</strong>
                       <span>필터를 초기화하거나 연결된 운영 데이터 상태를 확인하세요.</span>
                     </td>
@@ -330,6 +333,29 @@ function Metric({ caption, label, value }: { caption?: string; label: string; va
 
 function StatusBadge({ status }: { status: OperationStatus }) {
   return <span className={`status ${STATUS_CLASS[status]}`}>{status}</span>;
+}
+
+function ExternalTableLink({ href }: { href: string }) {
+  if (!isSafeHttpUrl(href)) return <span className="muted-inline">-</span>;
+
+  return (
+    <a aria-label="싱크업 열기" className="table-link-icon" href={href} rel="noreferrer" target="_blank">
+      ↗
+    </a>
+  );
+}
+
+function isSafeHttpUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function getSourceTeam(operation: OperationSession): SourceTeam {
+  return operation.sourceTeam ?? "미분류";
 }
 
 function isUpcoming(operation: OperationSession, today: Date) {

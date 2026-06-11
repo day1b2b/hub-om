@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { OperationDetail } from "@/features/operations/OperationDetail";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
+import { mergeExternalResourceOperations } from "@/lib/data/externalResourceMerge";
+import { listNotionResourceOperations } from "@/lib/data/notionResourceOperationRepository";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 
 export const dynamic = "force-dynamic";
@@ -16,11 +18,21 @@ export default async function OperationDetailPage({ params }: OperationDetailPag
 
   const { operationId } = await params;
   const repository = getOperationRepository();
-  const operation = await repository.getOperationById(operationId);
+  const shouldReadExternalResources = process.env.OPERATION_DATA_SOURCE !== "local";
+  const [operations, externalResourceOperations] = await Promise.all([
+    repository.listOperations(),
+    shouldReadExternalResources ? listNotionResourceOperations() : Promise.resolve([])
+  ]);
+  const allOperations = mergeExternalResourceOperations(operations, externalResourceOperations);
+  const operation = allOperations.find((candidate) => candidate.operationId === operationId);
 
   if (!operation) {
     notFound();
   }
 
-  return <OperationDetail operation={operation} />;
+  const relatedOperations = operation.courseId
+    ? allOperations.filter((candidate) => candidate.courseId === operation.courseId)
+    : [operation];
+
+  return <OperationDetail operation={operation} relatedOperations={relatedOperations} />;
 }

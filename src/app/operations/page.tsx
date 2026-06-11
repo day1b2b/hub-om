@@ -8,7 +8,7 @@ export default async function OperationsPage() {
   await requireWorkspaceSession();
 
   const repository = getOperationRepository();
-  const [operations, summary] = await Promise.all([repository.listOperations(), repository.getSummary()]);
+  const operations = await repository.listOperations();
 
-  return <OperationDashboard operations={operations} summary={summary} />;
+  return <OperationDashboard operations={operations} />;
 }
