@@ -27,6 +27,7 @@ export default async function NewOperationPage({ searchParams }: NewOperationPag
   const teamScope = resolveTeamScope(params, session, memberRoster);
   const effectiveRoleRoster = mergeRoleRosters(roleRoster, buildRoleRosterFromOperations(operations));
   const scopedRoleRoster = filterRoleRosterByTeamScope(effectiveRoleRoster, teamScope);
+  const storageTarget = process.env.OPERATION_DATA_SOURCE === "local" || !process.env.DATABASE_URL ? "로컬 JSON" : "운영 DB";
   const today = formatDate(new Date());
   const personOptions = buildPersonOptions(scopedRoleRoster);
 
@@ -41,7 +42,7 @@ export default async function NewOperationPage({ searchParams }: NewOperationPag
           </div>
           <div className="header-panel">
             <span>저장 위치</span>
-            <strong>운영 DB</strong>
+            <strong>{storageTarget}</strong>
           </div>
         </header>
 
