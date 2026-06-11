@@ -148,10 +148,20 @@ function sessionDurationDays(startValue: string, endValue: string): number | nul
 }
 
 function parseDateInput(value: string) {
-  const [year, month, day] = value.split("-").map(Number);
-  if (!year || !month || !day) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return null;
 
-  return new Date(year, month - 1, day);
+  const [, yearText, monthText, dayText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() + 1 !== month || date.getUTCDate() !== day) {
+    return null;
+  }
+
+  return date;
 }
 
 function onsiteRequiredLabel(value: OperationSession["onsiteRequired"]) {
