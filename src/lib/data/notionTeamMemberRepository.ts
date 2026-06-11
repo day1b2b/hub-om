@@ -1,5 +1,5 @@
 import type { SourceTeam } from "./operationTypes";
-import type { ResourceOwnerRoster, TeamMemberRepository } from "./teamMemberRepository";
+import type { ResourceOwnerRoster, TeamMemberRepository, TeamMemberRoleRoster } from "./teamMemberRepository";
 
 const NOTION_VERSION = "2022-06-28";
 const DEFAULT_NAME_PROPERTIES = ["이름", "Name", "name", "담당자", "OM"];
@@ -74,6 +74,10 @@ export class NotionTeamMemberRepository implements TeamMemberRepository {
       },
       { ...fallbackRoster }
     );
+  }
+
+  async listRoleRosters(): Promise<TeamMemberRoleRoster> {
+    return this.options.fallback.listRoleRosters();
   }
 
   private async listOwnersFromNotion(source: NotionTeamMemberSource): Promise<string[]> {

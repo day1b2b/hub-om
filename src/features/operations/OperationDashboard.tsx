@@ -2,16 +2,16 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { AppSidebar } from "@/components/AppSidebar";
 import type {
   EducationFormat,
   OperationSession,
-  OperationStatus,
-  SourceTeam
+  OperationStatus
 } from "@/lib/data/operationTypes";
 import { splitPersonNames } from "@/lib/data/personNames";
+import { teamScopeSearchParam, type TeamScope } from "@/lib/teamScope";
 
 const STATUS_FILTERS = ["전체", "진행중", "예정", "완료", "아카이빙필요", "검토필요"] as const;
-const TEAM_FILTERS = ["전체", "1팀", "2팀", "미분류"] as const;
 const STATUS_CLASS: Record<OperationStatus, string> = {
   "배정필요": "needs-assignment",
   "배정예정": "planned-assignment",
@@ -23,22 +23,20 @@ const STATUS_CLASS: Record<OperationStatus, string> = {
 
 interface OperationDashboardProps {
   operations: OperationSession[];
+  teamScope: TeamScope;
 }
 
-export function OperationDashboard({ operations }: OperationDashboardProps) {
+export function OperationDashboard({ operations, teamScope }: OperationDashboardProps) {
   const today = useMemo(() => new Date(), []);
+  const teamQuery = teamScopeSearchParam(teamScope);
   const [statusFilter, setStatusFilter] = useState<(typeof STATUS_FILTERS)[number]>("전체");
   const [companyFilter, setCompanyFilter] = useState("전체 기업");
   const [formatFilter, setFormatFilter] = useState<"전체 교육형태" | EducationFormat>("전체 교육형태");
   const [omFilter, setOmFilter] = useState("전체 OM");
-  const [teamFilter, setTeamFilter] = useState<(typeof TEAM_FILTERS)[number]>("전체");
   const [archiveOnly, setArchiveOnly] = useState(false);
   const [query, setQuery] = useState("");
   const [range, setRange] = useState(() => getMonthRange(today, 0));
-  const teamOperations = useMemo(
-    () => operations.filter((operation) => teamFilter === "전체" || getSourceTeam(operation) === teamFilter),
-    [operations, teamFilter]
-  );
+  const teamOperations = operations;
 
   const filterOptions = useMemo(() => {
     return {
@@ -114,20 +112,7 @@ export function OperationDashboard({ operations }: OperationDashboardProps) {
 
   return (
     <main className="dashboard-shell">
-      <aside className="sidebar" aria-label="hub-om 메뉴">
-        <div className="brand">
-          <span className="brand-mark">OD</span>
-          <div>
-            <strong>hub-om</strong>
-            <span>Operations</span>
-          </div>
-        </div>
-        <nav className="nav-list">
-          <Link href="/">대시보드</Link>
-          <Link className="active" href="/operations">운영 현황</Link>
-          <Link href="/resources">리소스</Link>
-        </nav>
-      </aside>
+      <AppSidebar label="Operations" teamScope={teamScope} />
 
       <section className="content operations-page" id="operations">
         <header className="page-header">
@@ -166,19 +151,6 @@ export function OperationDashboard({ operations }: OperationDashboardProps) {
             <button type="button" onClick={() => setRange(getMonthRange(today, 1))}>다음달</button>
             <button type="button" onClick={() => setRange(getQuarterRange(today))}>이번 분기</button>
             <button type="button" onClick={() => setRange(getYearRange(today))}>올해</button>
-          </div>
-          <div className="team-tabs operations-team-tabs" role="group" aria-label="팀 선택">
-            {TEAM_FILTERS.map((team) => (
-              <button
-                aria-pressed={teamFilter === team}
-                className={teamFilter === team ? "selected" : ""}
-                key={team}
-                onClick={() => setTeamFilter(team)}
-                type="button"
-              >
-                {team}
-              </button>
-            ))}
           </div>
         </section>
 
@@ -286,7 +258,7 @@ export function OperationDashboard({ operations }: OperationDashboardProps) {
                       <td>{operation.courseId || "검토필요"}</td>
                       <td><strong>{operation.companyName}</strong></td>
                       <td>
-                        <Link className="course-link" href={`/operations/${operation.operationId}`}>
+                        <Link className="course-link" href={`/operations/${operation.operationId}${teamQuery}`}>
                           <strong>{operation.courseName}</strong>
                         </Link>
                       </td>
@@ -352,10 +324,6 @@ function isSafeHttpUrl(value: string) {
   } catch {
     return false;
   }
-}
-
-function getSourceTeam(operation: OperationSession): SourceTeam {
-  return operation.sourceTeam ?? "미분류";
 }
 
 function isUpcoming(operation: OperationSession, today: Date) {

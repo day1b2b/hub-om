@@ -9,6 +9,13 @@ const SOURCE_TEAM_VALUE = {
   "미분류": "unknown"
 };
 
+const TEAM_MEMBER_ROLE_VALUE = {
+  ld: "ld",
+  LD: "ld",
+  om: "om",
+  OM: "om"
+};
+
 const databaseUrl = process.env.DATABASE_URL;
 
 if (!databaseUrl) {
@@ -31,6 +38,7 @@ try {
       `
         INSERT INTO team_members (
           id,
+          role,
           source_team,
           name,
           normalized_name,
@@ -40,8 +48,8 @@ try {
           display_order,
           updated_at
         )
-        VALUES ($1, $2::source_team, $3, $4, $5, $6, true, $7, CURRENT_TIMESTAMP)
-        ON CONFLICT (source_team, normalized_name)
+        VALUES ($1, $2::team_member_role, $3::source_team, $4, $5, $6, $7, true, $8, CURRENT_TIMESTAMP)
+        ON CONFLICT (role, source_team, normalized_name)
         DO UPDATE SET
           name = EXCLUDED.name,
           role_title = EXCLUDED.role_title,
@@ -52,6 +60,7 @@ try {
       `,
       [
         randomUUID(),
+        TEAM_MEMBER_ROLE_VALUE[member.role],
         SOURCE_TEAM_VALUE[member.sourceTeam],
         member.name,
         normalizeName(member.name),
@@ -62,16 +71,17 @@ try {
     );
   }
 
-  for (const [sourceTeam, normalizedNames] of membersBySourceTeam(members)) {
+  for (const [role, sourceTeam, normalizedNames] of membersBySourceTeam(members)) {
     await client.query(
       `
         UPDATE team_members
         SET is_active = false,
             updated_at = CURRENT_TIMESTAMP
-        WHERE source_team = $1::source_team
-          AND NOT (normalized_name = ANY($2::text[]))
+        WHERE role = $1::team_member_role
+          AND source_team = $2::source_team
+          AND NOT (normalized_name = ANY($3::text[]))
       `,
-      [SOURCE_TEAM_VALUE[sourceTeam], normalizedNames]
+      [TEAM_MEMBER_ROLE_VALUE[role], SOURCE_TEAM_VALUE[sourceTeam], normalizedNames]
     );
   }
 
@@ -89,9 +99,10 @@ function normalizeMembers(members) {
     .map((member) => ({
       ...member,
       name: typeof member.name === "string" ? member.name.trim() : "",
+      role: member.role,
       sourceTeam: member.sourceTeam
     }))
-    .filter((member) => member.name && SOURCE_TEAM_VALUE[member.sourceTeam]);
+    .filter((member) => member.name && SOURCE_TEAM_VALUE[member.sourceTeam] && TEAM_MEMBER_ROLE_VALUE[member.role]);
 }
 
 function normalizeName(name) {
@@ -102,10 +113,14 @@ function membersBySourceTeam(members) {
   const groups = new Map();
 
   for (const member of members) {
-    const normalizedNames = groups.get(member.sourceTeam) ?? [];
+    const key = `${member.role}:${member.sourceTeam}`;
+    const normalizedNames = groups.get(key) ?? [];
     normalizedNames.push(normalizeName(member.name));
-    groups.set(member.sourceTeam, normalizedNames);
+    groups.set(key, normalizedNames);
   }
 
-  return groups.entries();
+  return Array.from(groups.entries()).map(([key, normalizedNames]) => {
+    const [role, sourceTeam] = key.split(":");
+    return [role, sourceTeam, normalizedNames];
+  });
 }
