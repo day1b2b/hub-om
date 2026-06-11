@@ -25,7 +25,7 @@ export class LocalJsonTeamMemberRepository implements TeamMemberRepository {
     }
 
     return members.reduce<ResourceOwnerRoster>((roster, member) => {
-      if (!member.name || !member.sourceTeam) return roster;
+      if (!member.name || !member.sourceTeam || normalizeRole(member.role)) return roster;
 
       roster[member.sourceTeam] = [...(roster[member.sourceTeam] ?? []), member.name.trim()];
       return roster;

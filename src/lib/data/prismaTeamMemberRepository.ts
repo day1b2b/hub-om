@@ -19,7 +19,10 @@ export class PrismaTeamMemberRepository implements TeamMemberRepository {
   async listResourceOwners(): Promise<ResourceOwnerRoster> {
     const prisma = getPrismaClient();
     const members = await prisma.teamMember.findMany({
-      where: { isActive: true },
+      where: {
+        isActive: true,
+        role: null
+      },
       orderBy: [{ sourceTeam: "asc" }, { displayOrder: "asc" }, { name: "asc" }]
     });
 
