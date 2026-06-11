@@ -39,9 +39,12 @@ export type ResultReportStatus = "유" | "무" | "불필요" | "확인필요";
 
 export type ValidationStatus = "정상" | "검토필요";
 
+export type SourceTeam = "1팀" | "2팀" | "미분류";
+
 export interface OperationSession {
   id: string;
   operationId: string;
+  sourceTeam?: SourceTeam;
   courseId: string;
   companyName: string;
   courseName: string;

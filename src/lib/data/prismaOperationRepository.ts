@@ -84,6 +84,7 @@ export class PrismaOperationRepository implements OperationRepository {
       return {
         id: session.id,
         operationId: session.operationId,
+        sourceTeam: "미분류",
         courseId: session.course.courseId,
         companyName: session.course.company.name,
         courseName: session.course.name,
