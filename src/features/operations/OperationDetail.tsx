@@ -39,9 +39,12 @@ const ONSITE_LABEL: Record<OnsiteRequired, string> = {
 
 interface OperationDetailProps {
   operation: OperationSession;
+  relatedOperations?: OperationSession[];
 }
 
-export function OperationDetail({ operation }: OperationDetailProps) {
+export function OperationDetail({ operation, relatedOperations = [operation] }: OperationDetailProps) {
+  const courseOperations = getCourseOperations(operation, relatedOperations);
+
   return (
     <main className="dashboard-shell">
       <aside className="sidebar" aria-label="hub-om 메뉴">
@@ -74,19 +77,66 @@ export function OperationDetail({ operation }: OperationDetailProps) {
             </p>
           </div>
           <div className="header-panel">
-            <span>아카이빙 상태</span>
-            <ArchiveBadge status={operation.archiveStatus} />
+            <span>동일 코스 차수</span>
+            <strong>{courseOperations.length}건</strong>
           </div>
         </header>
 
         <section className="detail-summary" aria-label="과정 기본 정보">
           <SummaryItem label="기업" value={operation.companyName} />
           <SummaryItem label="코스ID" value={operation.courseId || "검토필요"} />
-          <SummaryItem label="OM / LD" value={`${operation.om || "배정필요"} / ${operation.ld || "미정"}`} />
+          <SummaryItem label="OM" value={operation.om || "배정필요"} />
+          <SummaryItem label="LD" value={operation.ld || "미정"} />
           <SummaryItem label="기간" value={`${operation.startDate} ~ ${operation.endDate}`} />
         </section>
 
         <section className="detail-layout">
+          <section className="detail-section course-sessions-section">
+            <div className="section-title">
+              <h2>동일 코스ID 운영 차수</h2>
+              <span>{operation.courseId || "코스ID 없음"} 기준</span>
+            </div>
+            <div className="session-table-wrap">
+              <table className="session-table">
+                <thead>
+                  <tr>
+                    <th>회차</th>
+                    <th>상태</th>
+                    <th>일정</th>
+                    <th>시간</th>
+                    <th>과정명</th>
+                    <th>OM</th>
+                    <th>LD</th>
+                    <th>강사</th>
+                    <th>아카이빙</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {courseOperations.map((courseOperation, index) => (
+                    <tr
+                      className={courseOperation.operationId === operation.operationId ? "current-session" : undefined}
+                      key={courseOperation.operationId}
+                    >
+                      <td>
+                        <Link className="session-link" href={`/operations/${courseOperation.operationId}`}>
+                          {roundLabel(courseOperation, index)}
+                        </Link>
+                      </td>
+                      <td><StatusBadge status={courseOperation.operationStatus} /></td>
+                      <td>{courseOperation.startDate} ~ {courseOperation.endDate}</td>
+                      <td>{courseOperation.timeText || "시간 미정"}</td>
+                      <td className="session-course-name">{courseOperation.courseName}</td>
+                      <td>{courseOperation.om || "배정필요"}</td>
+                      <td>{courseOperation.ld || "미정"}</td>
+                      <td>{courseOperation.instructors || "미정"}</td>
+                      <td><ArchiveBadge status={courseOperation.archiveStatus} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
           <section className="detail-section compact-info-section">
             <div className="section-title">
               <h2>일정 / 회차</h2>
@@ -175,7 +225,7 @@ export function OperationDetail({ operation }: OperationDetailProps) {
             </div>
           </section>
 
-          <section className="detail-section">
+          <section className="detail-section wide-detail-section">
             <div className="section-title">
               <h2>이슈 / 회고</h2>
               <span>다음 운영자가 볼 맥락</span>
@@ -290,6 +340,44 @@ function ArchiveBadge({ status }: { status: ArchiveStatus }) {
 function formatMoney(value: number | null): string {
   if (value === null) return "-";
   return `${new Intl.NumberFormat("ko-KR").format(value)}원`;
+}
+
+function getCourseOperations(operation: OperationSession, relatedOperations: OperationSession[]): OperationSession[] {
+  const baseOperations = operation.courseId
+    ? relatedOperations.filter((candidate) => candidate.courseId === operation.courseId)
+    : [operation];
+
+  const uniqueOperations = new Map<string, OperationSession>();
+
+  for (const candidate of baseOperations) {
+    uniqueOperations.set(candidate.operationId, candidate);
+  }
+
+  if (!uniqueOperations.has(operation.operationId)) {
+    uniqueOperations.set(operation.operationId, operation);
+  }
+
+  return [...uniqueOperations.values()].sort(compareCourseOperation);
+}
+
+function compareCourseOperation(a: OperationSession, b: OperationSession): number {
+  const aRound = Number(a.roundNo);
+  const bRound = Number(b.roundNo);
+
+  if (Number.isFinite(aRound) && Number.isFinite(bRound) && aRound !== bRound) {
+    return aRound - bRound;
+  }
+
+  if (a.startDate !== b.startDate) {
+    return a.startDate.localeCompare(b.startDate);
+  }
+
+  return a.operationId.localeCompare(b.operationId);
+}
+
+function roundLabel(operation: OperationSession, index: number): string {
+  if (operation.roundNo) return `${operation.roundNo}회차`;
+  return `${index + 1}번째`;
 }
 
 function remainingRoundText(operation: OperationSession) {
