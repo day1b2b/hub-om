@@ -746,7 +746,8 @@ function getResourceOwners(value: string, allowedOwners: Map<string, string>) {
     .map((owner) => resolveOwnerDisplayName(owner, allowedOwners))
     .filter((owner): owner is string => Boolean(owner));
 
-  return unique(owners);
+  const uniqueOwners = unique(owners);
+  return uniqueOwners.includes(UNMATCHED_OWNER) ? [UNMATCHED_OWNER] : uniqueOwners;
 }
 
 function getAssignmentNeededOption(operations: OperationSession[], rosterOwners: string[]) {
