@@ -11,7 +11,9 @@
     "db:validate": "prisma validate",
     "db:generate": "prisma generate",
     "db:migrate:dev": "prisma migrate dev",
-    "db:migrate:deploy": "prisma migrate deploy"
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:import:team-members": "node scripts/import-team-members.mjs",
+    "export:feedback": "node scripts/export-feedback-pages.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.6.0",
