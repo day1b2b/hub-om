@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
 import { OperationDetail } from "@/features/operations/OperationDetail";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
-import { listNotionTeam1ResourceOperations } from "@/lib/data/notionResourceOperationRepository";
+import { listNotionResourceOperations } from "@/lib/data/notionResourceOperationRepository";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
-import type { OperationSession } from "@/lib/data/operationTypes";
+import type { OperationSession, SourceTeam } from "@/lib/data/operationTypes";
 
 export const dynamic = "force-dynamic";
 
@@ -18,11 +18,12 @@ export default async function OperationDetailPage({ params }: OperationDetailPag
 
   const { operationId } = await params;
   const repository = getOperationRepository();
-  const [operations, notionTeam1Operations] = await Promise.all([
+  const shouldReadExternalResources = process.env.OPERATION_DATA_SOURCE !== "local";
+  const [operations, externalResourceOperations] = await Promise.all([
     repository.listOperations(),
-    listNotionTeam1ResourceOperations()
+    shouldReadExternalResources ? listNotionResourceOperations() : Promise.resolve([])
   ]);
-  const allOperations = mergeNotionTeam1Operations(operations, notionTeam1Operations);
+  const allOperations = mergeExternalResourceOperations(operations, externalResourceOperations);
   const operation = allOperations.find((candidate) => candidate.operationId === operationId);
 
   if (!operation) {
@@ -36,10 +37,11 @@ export default async function OperationDetailPage({ params }: OperationDetailPag
   return <OperationDetail operation={operation} relatedOperations={relatedOperations} />;
 }
 
-function mergeNotionTeam1Operations(operations: OperationSession[], notionTeam1Operations: OperationSession[]) {
-  if (notionTeam1Operations.length === 0) {
+function mergeExternalResourceOperations(operations: OperationSession[], externalOperations: OperationSession[]) {
+  if (externalOperations.length === 0) {
     return operations;
   }
 
-  return [...operations.filter((operation) => operation.sourceTeam !== "1팀"), ...notionTeam1Operations];
+  const externalTeams = new Set(externalOperations.map((operation) => operation.sourceTeam).filter((team): team is SourceTeam => Boolean(team)));
+  return [...operations.filter((operation) => !operation.sourceTeam || !externalTeams.has(operation.sourceTeam)), ...externalOperations];
 }

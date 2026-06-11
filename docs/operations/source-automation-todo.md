@@ -16,7 +16,7 @@
 | 원천 | 가져올 후보 데이터 | 상태 | 비고 |
 | --- | --- | --- | --- |
 | Salesmap | 기업, 과정명, 코스ID, 매출, 딜/계약 상태, 시작/종료일 후보 | TODO | 엑셀 수기 입력을 가장 먼저 대체할 후보 |
-| Notion | 1팀 리소스 일정, 운영 담당자, 기업명, 과정명, 강의장소 | 진행중 | 1팀 리소스 원천은 `https://app.notion.com/p/3c7b65b4b6b34bdf886efb40b1982a9d?v=4635e9963bed4e149acdbf66dd8ad4a5&source=copy_link`; `NOTION_TOKEN`과 DB ID가 있으면 리소스 화면의 1팀 일정/담당자를 Notion API에서 읽음 |
+| Notion | 팀별 리소스 일정, 운영 담당자, 기업명, 과정명, 강의장소 | 진행중 | `NOTION_TOKEN`과 팀별 `NOTION_TEAM*_RESOURCE_*` 설정이 있으면 리소스 화면의 해당 팀 일정/담당자를 Notion API에서 읽음 |
 | Google Calendar | OM별 강의 일정, 부재 일정, 주변 일정 | 진행중 | 서비스 계정 읽기 검증 완료, 화면 반영은 별도 작업 |
 | hub-om 입력 | OM, 운영 이슈, 현장 투입 여부, 링크, 회고, 아카이빙 완료 | TODO | 사람이 판단하거나 보강해야 하는 값 |
 | 만족도 원천 | 전체 만족도, 강사 만족도 | TODO | 종료 후 자동 보강 후보 |

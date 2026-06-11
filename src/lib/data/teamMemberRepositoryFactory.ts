@@ -7,6 +7,10 @@ import { PrismaTeamMemberRepository } from "./prismaTeamMemberRepository";
 export function getTeamMemberRepository(): TeamMemberRepository {
   const fallback = getFallbackTeamMemberRepository();
 
+  if (process.env.OPERATION_DATA_SOURCE === "local") {
+    return fallback;
+  }
+
   return getNotionTeamMemberRepository(fallback);
 }
 

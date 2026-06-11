@@ -2,11 +2,19 @@ import type {
   OperationChannel,
   OperationSession,
   OperationStatus,
+  SourceTeam,
   OperationType
 } from "./operationTypes";
 
 const NOTION_VERSION = "2022-06-28";
 const EXCLUDED_TEAM_1_RESOURCE_OWNER_NAMES = new Set(["김별", "김별팀장"]);
+
+interface NotionResourceSourceConfig {
+  databaseId?: string;
+  excludedOwnerNames?: Set<string>;
+  sourceTeam: SourceTeam;
+  url?: string;
+}
 
 const PROPERTY_NAMES = {
   coach: ["조교명", "조교", "Coach"],
@@ -45,9 +53,24 @@ interface NotionText {
   plain_text?: string;
 }
 
-export async function listNotionTeam1ResourceOperations(): Promise<OperationSession[]> {
+export async function listNotionResourceOperations(): Promise<OperationSession[]> {
   const token = process.env.NOTION_TOKEN ?? process.env.NOTION_API_KEY;
-  const databaseId = process.env.NOTION_TEAM1_RESOURCE_DATABASE_ID ?? notionIdFromUrl(process.env.NOTION_TEAM1_RESOURCE_URL);
+
+  if (!token) {
+    return [];
+  }
+
+  const operations = await Promise.all(
+    getNotionResourceSourceConfigs()
+      .filter((config) => config.databaseId || config.url)
+      .map((config) => listNotionResourceOperationsForSource(token, config))
+  );
+
+  return operations.flat();
+}
+
+async function listNotionResourceOperationsForSource(token: string | undefined, config: NotionResourceSourceConfig): Promise<OperationSession[]> {
+  const databaseId = config.databaseId ?? notionIdFromUrl(config.url);
 
   if (!token || !databaseId) {
     return [];
@@ -55,19 +78,21 @@ export async function listNotionTeam1ResourceOperations(): Promise<OperationSess
 
   try {
     const pages = await queryAllPages(token, databaseId);
-    return pages.map(mapPageToOperation).filter((operation): operation is OperationSession => operation !== null);
+    return pages
+      .map((page) => mapPageToOperation(page, config))
+      .filter((operation): operation is OperationSession => operation !== null);
   } catch (error) {
     console.error(error);
     return [];
   }
 }
 
-function mapPageToOperation(page: NotionPage): OperationSession | null {
+function mapPageToOperation(page: NotionPage, config: NotionResourceSourceConfig): OperationSession | null {
   const properties = page.properties ?? {};
   const dateRange = getDateRange(properties);
   if (!dateRange) return null;
 
-  const owner = removeExcludedResourceOwners(getFirstTextProperty(properties, PROPERTY_NAMES.owner));
+  const owner = removeExcludedResourceOwners(getFirstTextProperty(properties, PROPERTY_NAMES.owner), config.excludedOwnerNames);
   const location = getFirstTextProperty(properties, PROPERTY_NAMES.location);
   const channel = getOperationChannel(location);
   const operationType = getOperationType(dateRange.start, dateRange.end);
@@ -80,7 +105,7 @@ function mapPageToOperation(page: NotionPage): OperationSession | null {
   return {
     id: `notion-${pageId}`,
     operationId: `NOTION-${pageId}`,
-    sourceTeam: "1팀",
+    sourceTeam: config.sourceTeam,
     courseId: "",
     companyName,
     courseName,
@@ -128,6 +153,26 @@ function mapPageToOperation(page: NotionPage): OperationSession | null {
     padletLink: "",
     validationStatus: "정상",
     validationErrors: []
+  };
+}
+
+function getNotionResourceSourceConfigs(): NotionResourceSourceConfig[] {
+  return [
+    getTeam1ResourceSourceConfig(),
+    {
+      databaseId: process.env.NOTION_TEAM2_RESOURCE_DATABASE_ID,
+      sourceTeam: "2팀",
+      url: process.env.NOTION_TEAM2_RESOURCE_URL
+    }
+  ];
+}
+
+function getTeam1ResourceSourceConfig(): NotionResourceSourceConfig {
+  return {
+    databaseId: process.env.NOTION_TEAM1_RESOURCE_DATABASE_ID,
+    excludedOwnerNames: EXCLUDED_TEAM_1_RESOURCE_OWNER_NAMES,
+    sourceTeam: "1팀",
+    url: process.env.NOTION_TEAM1_RESOURCE_URL
   };
 }
 
@@ -288,12 +333,12 @@ function notionIdFromUrl(value: string | undefined): string | undefined {
   return match?.[0].replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, "$1-$2-$3-$4-$5");
 }
 
-function removeExcludedResourceOwners(value: string): string {
+function removeExcludedResourceOwners(value: string, excludedOwnerNames = new Set<string>()): string {
   return value
     .split(/[,，、/]+/)
     .map((name) => name.trim())
     .filter(Boolean)
-    .filter((name) => !EXCLUDED_TEAM_1_RESOURCE_OWNER_NAMES.has(normalizeOwnerName(name)))
+    .filter((name) => !excludedOwnerNames.has(normalizeOwnerName(name)))
     .join(", ");
 }
 

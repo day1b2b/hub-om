@@ -2,15 +2,20 @@ import type { SourceTeam } from "./operationTypes";
 import type { ResourceOwnerRoster, TeamMemberRepository } from "./teamMemberRepository";
 
 const NOTION_VERSION = "2022-06-28";
-const TEAM_1_SOURCE: SourceTeam = "1팀";
 const DEFAULT_NAME_PROPERTIES = ["이름", "Name", "name", "담당자", "OM"];
 const DEFAULT_ACTIVE_PROPERTIES = ["활성", "Active", "active", "사용", "사용여부"];
 
 interface NotionTeamMemberRepositoryOptions {
-  databaseId?: string;
   fallback: TeamMemberRepository;
-  nameProperties?: string[];
+  sources: NotionTeamMemberSource[];
   token?: string;
+}
+
+interface NotionTeamMemberSource {
+  databaseId?: string;
+  nameProperties?: string[];
+  sourceTeam: SourceTeam;
+  url?: string;
 }
 
 interface NotionQueryResponse {
@@ -43,27 +48,40 @@ export class NotionTeamMemberRepository implements TeamMemberRepository {
   async listResourceOwners(): Promise<ResourceOwnerRoster> {
     const fallbackRoster = await this.options.fallback.listResourceOwners();
 
-    if (!this.options.token || !this.options.databaseId) {
+    if (!this.options.token) {
       return fallbackRoster;
     }
 
-    const notionOwners = await this.listTeam1OwnersFromNotion().catch((error: unknown) => {
-      console.error(error);
-      return [];
-    });
-    if (notionOwners.length === 0) {
-      return fallbackRoster;
-    }
+    const sourceRosters = await Promise.all(
+      this.options.sources
+        .filter((source) => source.databaseId || source.url)
+        .map(async (source) => ({
+          owners: await this.listOwnersFromNotion(source).catch((error: unknown) => {
+            console.error(error);
+            return [];
+          }),
+          sourceTeam: source.sourceTeam
+        }))
+    );
 
-    return {
-      ...fallbackRoster,
-      [TEAM_1_SOURCE]: notionOwners
-    };
+    return sourceRosters.reduce(
+      (roster, sourceRoster) => {
+        if (sourceRoster.owners.length > 0) {
+          roster[sourceRoster.sourceTeam] = sourceRoster.owners;
+        }
+
+        return roster;
+      },
+      { ...fallbackRoster }
+    );
   }
 
-  private async listTeam1OwnersFromNotion(): Promise<string[]> {
-    const pages = await this.queryAllPages();
-    const nameProperties = this.options.nameProperties ?? DEFAULT_NAME_PROPERTIES;
+  private async listOwnersFromNotion(source: NotionTeamMemberSource): Promise<string[]> {
+    const databaseId = source.databaseId ?? notionIdFromUrl(source.url);
+    if (!databaseId || !this.options.token) return [];
+
+    const pages = await this.queryAllPages(databaseId);
+    const nameProperties = source.nameProperties ?? DEFAULT_NAME_PROPERTIES;
 
     return unique(
       pages
@@ -73,12 +91,12 @@ export class NotionTeamMemberRepository implements TeamMemberRepository {
     );
   }
 
-  private async queryAllPages(): Promise<NotionPage[]> {
+  private async queryAllPages(databaseId: string): Promise<NotionPage[]> {
     const pages: NotionPage[] = [];
     let startCursor: string | null = null;
 
     do {
-      const response = await fetch(`https://api.notion.com/v1/databases/${this.options.databaseId}/query`, {
+      const response = await fetch(`https://api.notion.com/v1/databases/${databaseId}/query`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${this.options.token}`,
@@ -107,9 +125,21 @@ export class NotionTeamMemberRepository implements TeamMemberRepository {
 
 export function getNotionTeamMemberRepository(fallback: TeamMemberRepository): TeamMemberRepository {
   return new NotionTeamMemberRepository({
-    databaseId: process.env.NOTION_TEAM1_RESOURCE_DATABASE_ID ?? notionIdFromUrl(process.env.NOTION_TEAM1_RESOURCE_URL),
     fallback,
-    nameProperties: parsePropertyNames(process.env.NOTION_TEAM1_RESOURCE_NAME_PROPERTIES),
+    sources: [
+      {
+        databaseId: process.env.NOTION_TEAM1_RESOURCE_DATABASE_ID,
+        nameProperties: parsePropertyNames(process.env.NOTION_TEAM1_RESOURCE_NAME_PROPERTIES),
+        sourceTeam: "1팀",
+        url: process.env.NOTION_TEAM1_RESOURCE_URL
+      },
+      {
+        databaseId: process.env.NOTION_TEAM2_RESOURCE_DATABASE_ID,
+        nameProperties: parsePropertyNames(process.env.NOTION_TEAM2_RESOURCE_NAME_PROPERTIES),
+        sourceTeam: "2팀",
+        url: process.env.NOTION_TEAM2_RESOURCE_URL
+      }
+    ],
     token: process.env.NOTION_TOKEN ?? process.env.NOTION_API_KEY
   });
 }
