@@ -4,15 +4,21 @@ import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import type { OperationSession } from "@/lib/data/operationTypes";
 import { splitPersonNames } from "@/lib/data/personNames";
+import type { ResourceOwnerRoster } from "@/lib/data/teamMemberRepository";
+import { getStoredTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFactory";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewOperationPage() {
   await requireWorkspaceSession();
   const repository = getOperationRepository();
-  const operations = await repository.listOperations();
+  const teamMemberRepository = getStoredTeamMemberRepository();
+  const [operations, managerRoster] = await Promise.all([
+    repository.listOperations(),
+    teamMemberRepository.listResourceOwners()
+  ]);
   const today = formatDate(new Date());
-  const personOptions = buildPersonOptions(operations);
+  const personOptions = buildPersonOptions(operations, managerRoster);
 
   return (
     <main className="dashboard-shell">
@@ -56,12 +62,14 @@ function formatDate(value: Date) {
   return `${year}-${month}-${day}`;
 }
 
-function buildPersonOptions(operations: OperationSession[]) {
+function buildPersonOptions(operations: OperationSession[], managerRoster: ResourceOwnerRoster) {
+  const managers = unique(Object.values(managerRoster).flatMap((owners) => owners ?? []));
+
   return {
-    coach: unique(operations.flatMap((operation) => splitPersonNames(operation.coach, ""))),
+    coach: managers,
     instructors: unique(operations.flatMap((operation) => splitPersonNames(operation.instructors, ""))),
-    ld: unique(operations.flatMap((operation) => splitPersonNames(operation.ld, ""))),
-    om: unique(operations.flatMap((operation) => splitPersonNames(operation.om, "")))
+    ld: managers,
+    om: managers
   };
 }
 
