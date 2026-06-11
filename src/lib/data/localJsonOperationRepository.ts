@@ -44,6 +44,10 @@ export class LocalJsonOperationRepository implements OperationRepository {
     return operations.find((operation) => operation.operationId === operationId) ?? null;
   }
 
+  async createOperation(): Promise<OperationSession> {
+    throw new Error("OPERATION_DATA_SOURCE=local does not support creating operation sessions. Use the database source.");
+  }
+
   async getSummary() {
     return summarizeOperations(await this.listOperations());
   }
