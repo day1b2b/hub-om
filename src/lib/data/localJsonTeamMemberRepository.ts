@@ -60,7 +60,7 @@ export class LocalJsonTeamMemberRepository implements TeamMemberRepository {
       const absolutePath = path.resolve(localDir, localFileName);
 
       if (!absolutePath.startsWith(`${localDir}${path.sep}`)) {
-        return [];
+        return null;
       }
 
       const raw = await readFile(absolutePath, "utf8");
