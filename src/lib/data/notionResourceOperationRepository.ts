@@ -5,6 +5,7 @@ import type {
   SourceTeam,
   OperationType
 } from "./operationTypes";
+import { getResourceReadCacheTtlMs, readTimedCache, type TimedCacheEntry } from "@/lib/timedCache";
 
 const NOTION_VERSION = "2022-06-28";
 const EXCLUDED_TEAM_1_RESOURCE_OWNER_NAMES = new Set(["김별", "김별팀장"]);
@@ -27,6 +28,8 @@ const PROPERTY_NAMES = {
   planner: ["기획", "LD", "Planner"],
   tags: ["Tags", "태그"]
 };
+
+let cachedNotionResourceOperations: TimedCacheEntry<OperationSession[]> | null = null;
 
 interface NotionQueryResponse {
   has_more?: boolean;
@@ -54,6 +57,16 @@ interface NotionText {
 }
 
 export async function listNotionResourceOperations(): Promise<OperationSession[]> {
+  const { entry, value } = await readTimedCache(
+    cachedNotionResourceOperations,
+    getResourceReadCacheTtlMs(),
+    readNotionResourceOperations
+  );
+  cachedNotionResourceOperations = entry;
+  return value;
+}
+
+async function readNotionResourceOperations(): Promise<OperationSession[]> {
   const token = process.env.NOTION_TOKEN ?? process.env.NOTION_API_KEY;
 
   if (!token) {
@@ -67,6 +80,16 @@ export async function listNotionResourceOperations(): Promise<OperationSession[]
   );
 
   return operations.flat();
+}
+
+export function hasNotionResourceConfig() {
+  return Boolean(
+    (process.env.NOTION_TOKEN || process.env.NOTION_API_KEY) &&
+      (process.env.NOTION_TEAM1_RESOURCE_DATABASE_ID ||
+        process.env.NOTION_TEAM1_RESOURCE_URL ||
+        process.env.NOTION_TEAM2_RESOURCE_DATABASE_ID ||
+        process.env.NOTION_TEAM2_RESOURCE_URL)
+  );
 }
 
 async function listNotionResourceOperationsForSource(token: string | undefined, config: NotionResourceSourceConfig): Promise<OperationSession[]> {

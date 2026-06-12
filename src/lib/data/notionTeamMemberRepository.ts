@@ -1,9 +1,12 @@
 import type { SourceTeam } from "./operationTypes";
 import type { ResourceOwnerRoster, TeamMemberRepository, TeamMemberRoleRoster } from "./teamMemberRepository";
+import { getResourceReadCacheTtlMs, readTimedCache, type TimedCacheEntry } from "@/lib/timedCache";
 
 const NOTION_VERSION = "2022-06-28";
 const DEFAULT_NAME_PROPERTIES = ["이름", "Name", "name", "담당자", "OM"];
 const DEFAULT_ACTIVE_PROPERTIES = ["활성", "Active", "active", "사용", "사용여부"];
+
+const cachedNotionOwnersByDatabaseId = new Map<string, TimedCacheEntry<string[]>>();
 
 interface NotionTeamMemberRepositoryOptions {
   fallback: TeamMemberRepository;
@@ -84,6 +87,18 @@ export class NotionTeamMemberRepository implements TeamMemberRepository {
     const databaseId = source.databaseId ?? notionIdFromUrl(source.url);
     if (!databaseId || !this.options.token) return [];
 
+    const cacheKey = `${databaseId}:${source.nameProperties?.join(",") ?? ""}`;
+    const { entry, value } = await readTimedCache(
+      cachedNotionOwnersByDatabaseId.get(cacheKey) ?? null,
+      getResourceReadCacheTtlMs(),
+      async () => this.readOwnersFromNotion(databaseId, source)
+    );
+
+    cachedNotionOwnersByDatabaseId.set(cacheKey, entry);
+    return value;
+  }
+
+  private async readOwnersFromNotion(databaseId: string, source: NotionTeamMemberSource): Promise<string[]> {
     const pages = await this.queryAllPages(databaseId);
     const nameProperties = source.nameProperties ?? DEFAULT_NAME_PROPERTIES;
 
