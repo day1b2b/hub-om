@@ -1985,14 +1985,13 @@ td span {
 }
 
 .drive-folder-candidate.company-mismatch {
-  background: #eef1f5;
-  border-color: #cbd3df;
-  opacity: 0.72;
+  background: #f4f6f8;
+  border-color: #c4ccd7;
+  box-shadow: inset 3px 0 0 #8b96a5;
 }
 
 .drive-folder-candidate.company-mismatch:hover {
-  border-color: #93a4b8;
-  opacity: 0.88;
+  border-color: #8b96a5;
 }
 
 .drive-folder-candidate > div:first-child {
@@ -2013,6 +2012,39 @@ td span {
   color: var(--muted);
   font-size: 11px;
   line-height: 1.4;
+}
+
+.drive-folder-candidate.company-mismatch span,
+.drive-folder-candidate.company-mismatch small {
+  color: #667282;
+}
+
+.drive-folder-candidate-meta-line {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.folder-candidate-badge {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 4px 7px;
+  white-space: nowrap;
+}
+
+.folder-candidate-badge.mismatch {
+  background: #ffffff;
+  border: 1px solid #a8b2c0;
+  color: #5e6877;
+}
+
+.folder-candidate-badge.recommended {
+  background: #e7f6ee;
+  color: #137a4b;
 }
 
 .drive-folder-candidate-actions {

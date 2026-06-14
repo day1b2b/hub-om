@@ -24,6 +24,16 @@ const GOOGLE_DOC_MIME_TYPE = "application/vnd.google-apps.document";
 const GOOGLE_PRESENTATION_MIME_TYPE = "application/vnd.google-apps.presentation";
 const GOOGLE_SHEET_MIME_TYPE = "application/vnd.google-apps.spreadsheet";
 const XLSX_MIME_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+const DRIVE_OWNER_KOREAN_NAMES: Record<string, string> = {
+  hayoungjung: "정하영",
+  minsunkim: "김민선",
+  saebomkong: "공새봄",
+  seongminyun: "윤성민",
+  seungminha: "하승민",
+  yeokyeongjo: "조여경",
+  yeokyoungjo: "조여경",
+  yookyungjo: "조여경"
+};
 
 interface GoogleDriveConfig {
   serviceAccountEmail: string;
@@ -1618,12 +1628,27 @@ function normalizeCompanyText(value: string): string {
 
 function formatDriveOwnerName(owner: NonNullable<GoogleDriveFile["owners"]>[number]): string {
   const displayName = owner.displayName?.trim();
-  if (displayName) return displayName;
-
   const email = owner.emailAddress?.trim();
-  if (!email) return "";
+  const emailId = email?.split("@")[0] ?? "";
+  const koreanName = driveOwnerKoreanName(displayName) ?? driveOwnerKoreanName(emailId) ?? driveOwnerKoreanName(email);
 
-  return email.split("@")[0] || email;
+  if (koreanName) return koreanName;
+  if (displayName) return displayName;
+  if (!emailId) return "";
+
+  return emailId;
+}
+
+function driveOwnerKoreanName(value: string | undefined): string | null {
+  const key = normalizeDriveOwnerKey(value);
+  return key ? DRIVE_OWNER_KOREAN_NAMES[key] ?? null : null;
+}
+
+function normalizeDriveOwnerKey(value: string | undefined): string {
+  return (value ?? "")
+    .split("@")[0]
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
 }
 
 function buildOperationMonthTokens(operation: OperationSession): string[] {
