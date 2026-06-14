@@ -29,6 +29,23 @@ export interface DriveImportFileSummary {
   modifiedTime?: string;
 }
 
+export interface DriveFolderSearchCandidate {
+  confidence: DriveImportConfidence;
+  folderId: string;
+  modifiedTime?: string;
+  ownerNames: string[];
+  reasons: string[];
+  score: number;
+  title: string;
+  url?: string;
+}
+
+export interface DriveFolderSearchResult {
+  candidates: DriveFolderSearchCandidate[];
+  issues: string[];
+  searchedAt: string;
+}
+
 export interface DriveImportScanResult {
   folderId: string;
   folderTitle: string;

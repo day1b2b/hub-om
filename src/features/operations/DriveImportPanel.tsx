@@ -6,6 +6,8 @@ import type { OperationSession } from "@/lib/data/operationTypes";
 import { summarizeSatisfactionValue } from "@/lib/data/satisfaction";
 import type {
   DriveImportCandidate,
+  DriveFolderSearchCandidate,
+  DriveFolderSearchResult,
   DriveImportScanResult
 } from "@/lib/driveImports/driveImportTypes";
 
@@ -14,6 +16,7 @@ interface DriveImportPanelProps {
 }
 
 type ScanState = "idle" | "loading" | "ready" | "failed";
+type FolderSearchState = "idle" | "loading" | "ready" | "failed";
 type ApplyState = "idle" | "saving" | "saved" | "failed";
 
 const FIELD_LABELS: Record<string, string> = {
@@ -48,8 +51,10 @@ const CONFIDENCE_LABELS: Record<DriveImportCandidate["confidence"], string> = {
 export function DriveImportPanel({ operation }: DriveImportPanelProps) {
   const router = useRouter();
   const [folderUrl, setFolderUrl] = useState(operation.driveLink);
+  const [folderSearchState, setFolderSearchState] = useState<FolderSearchState>("idle");
   const [scanState, setScanState] = useState<ScanState>("idle");
   const [applyState, setApplyState] = useState<ApplyState>("idle");
+  const [folderSearchResult, setFolderSearchResult] = useState<DriveFolderSearchResult | null>(null);
   const [result, setResult] = useState<DriveImportScanResult | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [editedValues, setEditedValues] = useState<Record<string, string>>({});
@@ -79,6 +84,14 @@ export function DriveImportPanel({ operation }: DriveImportPanelProps) {
           </a>
           <button
             className="drive-import-action secondary"
+            disabled={folderSearchState === "loading" || scanState === "loading"}
+            onClick={searchDriveFolders}
+            type="button"
+          >
+            {folderSearchState === "loading" ? "검색 중" : "폴더 찾기"}
+          </button>
+          <button
+            className="drive-import-action secondary"
             disabled={applyState === "saving" || !folderUrl.trim()}
             onClick={registerDriveLink}
             type="button"
@@ -88,7 +101,7 @@ export function DriveImportPanel({ operation }: DriveImportPanelProps) {
           <button
             className="drive-import-action primary"
             disabled={scanState === "loading" || !folderUrl.trim()}
-            onClick={scanDrive}
+            onClick={() => scanDrive()}
             type="button"
           >
             {scanState === "loading" ? "확인 중" : "자료 등록"}
@@ -98,6 +111,38 @@ export function DriveImportPanel({ operation }: DriveImportPanelProps) {
 
       {error ? <p className="drive-import-error">{error}</p> : null}
       {applyMessage ? <p className={`drive-import-message ${applyState}`}>{applyMessage}</p> : null}
+
+      {folderSearchResult ? (
+        <div className="drive-folder-search-results">
+          <div className="drive-folder-search-head">
+            <span>Drive 폴더 후보 {folderSearchResult.candidates.length}개</span>
+            <small>{formatDateTime(folderSearchResult.searchedAt)}</small>
+          </div>
+          {folderSearchResult.candidates.length > 0 ? (
+            <div className="drive-folder-candidate-list">
+              {folderSearchResult.candidates.map((candidate) => (
+                <button
+                  className="drive-folder-candidate"
+                  key={candidate.folderId}
+                  onClick={() => selectFolderCandidate(candidate)}
+                  type="button"
+                >
+                  <strong>{candidate.title}</strong>
+                  <span>{candidate.score}점 · {candidate.reasons.join(", ") || "검토 필요"}</span>
+                  {candidate.ownerNames.length > 0 ? <small>소유자 {candidate.ownerNames.join(", ")}</small> : null}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          {folderSearchResult.issues.length > 0 ? (
+            <div className="drive-import-issues">
+              {folderSearchResult.issues.map((issue) => (
+                <span key={issue}>{issue}</span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {result ? (
         <div className="drive-import-summary">
@@ -209,8 +254,8 @@ export function DriveImportPanel({ operation }: DriveImportPanelProps) {
     </div>
   );
 
-  async function scanDrive() {
-    const nextFolderUrl = folderUrl.trim();
+  async function scanDrive(nextUrl?: string) {
+    const nextFolderUrl = (nextUrl ?? folderUrl).trim();
 
     if (!nextFolderUrl) {
       setScanState("failed");
@@ -245,6 +290,32 @@ export function DriveImportPanel({ operation }: DriveImportPanelProps) {
     setFolderUrl(payload.result.folderUrl);
     setScanState("ready");
     setIsReviewOpen(payload.result.candidates.length > 0);
+  }
+
+  async function searchDriveFolders() {
+    setFolderSearchState("loading");
+    setError("");
+    setApplyMessage("");
+
+    const response = await fetch(`/api/operations/${encodeURIComponent(operation.operationId)}/drive-import/folders`, {
+      method: "POST"
+    });
+    const payload = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string; result?: DriveFolderSearchResult };
+
+    if (!response.ok || !payload.ok || !payload.result) {
+      setFolderSearchState("failed");
+      setError(payload.error ?? "Drive 폴더 후보를 찾지 못했습니다.");
+      return;
+    }
+
+    setFolderSearchResult(payload.result);
+    setFolderSearchState("ready");
+  }
+
+  async function selectFolderCandidate(candidate: DriveFolderSearchCandidate) {
+    const nextFolderUrl = candidate.url ?? `https://drive.google.com/drive/folders/${candidate.folderId}`;
+    setFolderUrl(nextFolderUrl);
+    await scanDrive(nextFolderUrl);
   }
 
   async function applySelectedCandidates() {

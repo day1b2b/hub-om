@@ -1900,7 +1900,7 @@ td span {
   align-items: center;
   display: grid;
   gap: 8px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .drive-import-action {
@@ -1954,6 +1954,58 @@ td span {
 .drive-import-issues {
   display: grid;
   gap: 5px;
+}
+
+.drive-folder-search-results {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 8px;
+  padding-top: 8px;
+}
+
+.drive-folder-search-head {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  font-size: 12px;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.drive-folder-candidate-list {
+  display: grid;
+  gap: 6px;
+}
+
+.drive-folder-candidate {
+  background: #fbfcfe;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--text);
+  cursor: pointer;
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 9px 10px;
+  text-align: left;
+}
+
+.drive-folder-candidate:hover {
+  border-color: var(--blue);
+}
+
+.drive-folder-candidate strong {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.drive-folder-candidate span,
+.drive-folder-candidate small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
 }
 
 .drive-import-error {
@@ -3339,7 +3391,7 @@ td span {
   }
 
   .drive-import-actions {
-    flex-wrap: wrap;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .operation-form-grid,

@@ -4,8 +4,11 @@ import type {
   DriveImportCandidate,
   DriveImportCandidateField,
   DriveImportFileSummary,
+  DriveFolderSearchCandidate,
+  DriveFolderSearchResult,
   DriveImportScanResult
 } from "./driveImportTypes";
+import type { OperationSession } from "@/lib/data/operationTypes";
 import { summarizeSatisfactionValue } from "@/lib/data/satisfaction";
 
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -14,6 +17,7 @@ const GOOGLE_DRIVE_FILES_URL = "https://www.googleapis.com/drive/v3/files";
 const GOOGLE_SHEETS_URL = "https://sheets.googleapis.com/v4/spreadsheets";
 const MAX_RECURSION_DEPTH = 2;
 const MAX_TEXT_FILES = 10;
+const MAX_FOLDER_SEARCH_RESULTS = 25;
 const MAX_EXTRACTED_TEXT_LENGTH = 80_000;
 const FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
 const GOOGLE_DOC_MIME_TYPE = "application/vnd.google-apps.document";
@@ -38,6 +42,10 @@ interface GoogleDriveFile {
   mimeType: string;
   webViewLink?: string;
   modifiedTime?: string;
+  owners?: Array<{
+    displayName?: string;
+    emailAddress?: string;
+  }>;
 }
 
 interface GoogleDriveListResponse {
@@ -77,6 +85,38 @@ interface SatisfactionSummary {
 }
 
 let cachedAccessToken: { token: string; expiresAt: number } | null = null;
+
+export async function searchOperationDriveFolders(operation: OperationSession): Promise<DriveFolderSearchResult> {
+  const searchedAt = new Date().toISOString();
+  const config = readGoogleDriveConfig();
+  const issues = validateGoogleDriveConfig(config);
+
+  if (issues.length > 0) {
+    return {
+      candidates: [],
+      issues,
+      searchedAt
+    };
+  }
+
+  try {
+    const accessToken = await getGoogleAccessToken(config);
+    const folders = await searchDriveFolders(operation, accessToken);
+    const candidates = scoreDriveFolderCandidates(folders, operation);
+
+    return {
+      candidates,
+      issues: candidates.length > 0 ? [] : ["과정명/기업명 기준으로 Drive 폴더 후보를 찾지 못했습니다."],
+      searchedAt
+    };
+  } catch {
+    return {
+      candidates: [],
+      issues: ["Google Drive 폴더 검색에 실패했습니다. 서비스 계정 권한과 공유 범위를 확인해야 합니다."],
+      searchedAt
+    };
+  }
+}
 
 export async function scanOperationDriveFolder(folderUrl: string): Promise<DriveImportScanResult> {
   const folderId = extractDriveFolderId(folderUrl);
@@ -291,6 +331,148 @@ async function listDriveFolder(folderId: string, accessToken: string): Promise<G
   }
 
   return payload.files ?? [];
+}
+
+async function searchDriveFolders(operation: OperationSession, accessToken: string): Promise<GoogleDriveFile[]> {
+  const queries = buildFolderSearchQueries(operation);
+  const results = await Promise.all(queries.map((query) => searchDriveFoldersByQuery(query, accessToken)));
+  const foldersById = new Map<string, GoogleDriveFile>();
+
+  for (const folder of results.flat()) {
+    foldersById.set(folder.id, folder);
+  }
+
+  return [...foldersById.values()];
+}
+
+async function searchDriveFoldersByQuery(query: string, accessToken: string): Promise<GoogleDriveFile[]> {
+  const url = new URL(GOOGLE_DRIVE_FILES_URL);
+  url.searchParams.set("q", query);
+  url.searchParams.set("fields", "files(id,name,mimeType,webViewLink,modifiedTime,owners(displayName,emailAddress))");
+  url.searchParams.set("pageSize", "50");
+  url.searchParams.set("supportsAllDrives", "true");
+  url.searchParams.set("includeItemsFromAllDrives", "true");
+  url.searchParams.set("corpora", "allDrives");
+
+  const response = await fetch(url, {
+    headers: {
+      authorization: `Bearer ${accessToken}`
+    }
+  });
+  const payload = (await response.json()) as GoogleDriveListResponse;
+
+  if (!response.ok) {
+    return [];
+  }
+
+  return payload.files ?? [];
+}
+
+function buildFolderSearchQueries(operation: OperationSession): string[] {
+  const companyName = cleanupDriveSearchTerm(operation.companyName);
+  const courseTokens = tokenizeDriveSearchText(operation.courseName).slice(0, 4);
+  const monthTokens = buildOperationMonthTokens(operation);
+  const terms = [
+    companyName,
+    ...courseTokens,
+    ...monthTokens
+  ].filter(Boolean);
+  const uniqueTerms = [...new Set(terms)].slice(0, 8);
+  const base = [`mimeType = '${FOLDER_MIME_TYPE}'`, "trashed = false"];
+  const queries: string[] = [];
+
+  if (companyName) {
+    queries.push([...base, `name contains '${escapeDriveQueryValue(companyName)}'`].join(" and "));
+  }
+
+  for (const token of courseTokens.slice(0, 3)) {
+    queries.push([...base, `name contains '${escapeDriveQueryValue(token)}'`].join(" and "));
+  }
+
+  for (const token of monthTokens) {
+    queries.push([...base, `name contains '${escapeDriveQueryValue(token)}'`].join(" and "));
+  }
+
+  if (uniqueTerms.length > 0) {
+    const anyTermQuery = uniqueTerms
+      .map((term) => `name contains '${escapeDriveQueryValue(term)}'`)
+      .join(" or ");
+    queries.push([...base, `(${anyTermQuery})`].join(" and "));
+  }
+
+  return [...new Set(queries)];
+}
+
+function scoreDriveFolderCandidates(folders: GoogleDriveFile[], operation: OperationSession): DriveFolderSearchCandidate[] {
+  return folders
+    .map((folder) => scoreDriveFolderCandidate(folder, operation))
+    .filter((candidate) => candidate.score >= 20)
+    .sort((a, b) => b.score - a.score || a.title.localeCompare(b.title, "ko-KR"))
+    .slice(0, MAX_FOLDER_SEARCH_RESULTS);
+}
+
+function scoreDriveFolderCandidate(folder: GoogleDriveFile, operation: OperationSession): DriveFolderSearchCandidate {
+  const normalizedTitle = normalize(folder.name);
+  const companyName = cleanupDriveSearchTerm(operation.companyName);
+  const courseTokens = tokenizeDriveSearchText(operation.courseName);
+  const monthTokens = buildOperationMonthTokens(operation);
+  const ownerNames = (folder.owners ?? [])
+    .flatMap((owner) => [owner.displayName, owner.emailAddress])
+    .filter((owner): owner is string => Boolean(owner?.trim()));
+  const assigneeNames = [operation.om, operation.ld]
+    .flatMap((value) => value.split(/[,/]/).map((name) => name.trim()))
+    .filter(Boolean);
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (companyName && normalizedTitle.includes(normalize(companyName))) {
+    score += 35;
+    reasons.push("기업명 일치");
+  }
+
+  const matchedCourseTokens = courseTokens.filter((token) => normalizedTitle.includes(normalize(token)));
+  if (matchedCourseTokens.length > 0) {
+    score += Math.min(35, matchedCourseTokens.length * 10);
+    reasons.push(`과정명 토큰 ${matchedCourseTokens.length}개 일치`);
+  }
+
+  const matchedMonthTokens = monthTokens.filter((token) => normalizedTitle.includes(normalize(token)));
+  if (matchedMonthTokens.length > 0) {
+    score += Math.min(20, matchedMonthTokens.length * 10);
+    reasons.push("기간 월 정보 일치");
+  }
+
+  const folderParts = parseOperationFolderName(folder.name);
+  if (folderParts.companyName && companyName && normalize(folderParts.companyName) === normalize(companyName)) {
+    score += 10;
+    reasons.push("폴더명 기업 구간 일치");
+  }
+
+  const matchedOwner = assigneeNames.find((name) =>
+    ownerNames.some((ownerName) => normalizePersonLikeText(ownerName).includes(normalizePersonLikeText(name)))
+  );
+  if (matchedOwner) {
+    score += 12;
+    reasons.push(`소유자 담당자 일치: ${matchedOwner}`);
+  }
+
+  if (isTemplateFile(folder.name)) {
+    score -= 80;
+    reasons.push("템플릿 폴더 제외 대상");
+  }
+
+  const confidence: DriveFolderSearchCandidate["confidence"] = score >= 75 ? "high" : score >= 45 ? "medium" : "needs_review";
+
+  return {
+    confidence,
+    folderId: folder.id,
+    modifiedTime: folder.modifiedTime,
+    ownerNames: uniqueStrings(ownerNames.map((owner) => owner.trim()).filter(Boolean)).slice(0, 3),
+    reasons,
+    score,
+    title: folder.name,
+    url: folder.webViewLink
+  };
 }
 
 async function readPriorityTextFiles(files: ScannedDriveFile[], accessToken: string): Promise<ScannedDriveFile[]> {
@@ -1389,6 +1571,86 @@ function isTemplateFile(value: string): boolean {
 
 function isSyncupLikeTitle(normalizedTitle: string): boolean {
   return normalizedTitle.includes("싱크업") || normalizedTitle.includes("강의준비") || normalizedTitle.includes("기획문서");
+}
+
+function tokenizeDriveSearchText(value: string): string[] {
+  return uniqueStrings(
+    value
+      .replace(/[()[\]{}]/g, " ")
+      .split(/[^0-9a-zA-Z가-힣]+/)
+      .map((token) => token.trim())
+      .filter((token) => token.length >= 2)
+      .filter((token) => !isWeakDriveSearchToken(token))
+  ).slice(0, 8);
+}
+
+function cleanupDriveSearchTerm(value: string): string {
+  return value.trim().replace(/\s+/g, " ");
+}
+
+function buildOperationMonthTokens(operation: OperationSession): string[] {
+  const start = parseDateOnly(operation.startDate);
+  const end = parseDateOnly(operation.endDate);
+  const tokens: string[] = [];
+
+  if (start) {
+    tokens.push(formatYearMonthToken(start));
+  }
+
+  if (end) {
+    tokens.push(formatYearMonthToken(end));
+  }
+
+  if (start && end && start.getFullYear() === end.getFullYear()) {
+    tokens.push(`${String(start.getFullYear()).slice(2)}${String(start.getMonth() + 1).padStart(2, "0")}~${String(end.getFullYear()).slice(2)}${String(end.getMonth() + 1).padStart(2, "0")}`);
+  }
+
+  return uniqueStrings(tokens);
+}
+
+function parseDateOnly(value: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatYearMonthToken(value: Date): string {
+  return `${String(value.getUTCFullYear()).slice(2)}${String(value.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+function escapeDriveQueryValue(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+}
+
+function isWeakDriveSearchToken(value: string): boolean {
+  return new Set([
+    "ai",
+    "ax",
+    "dx",
+    "교육",
+    "과정",
+    "강의",
+    "실습",
+    "활용",
+    "기초",
+    "심화",
+    "특강",
+    "온라인",
+    "오프라인"
+  ]).has(value.toLowerCase());
+}
+
+function normalizePersonLikeText(value: string): string {
+  return value
+    .replace(/\([^)]*\)/g, "")
+    .replace(/\[[^\]]*\]/g, "")
+    .replace(/\s+/g, "")
+    .toLowerCase();
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values.filter(Boolean))];
 }
 
 function normalize(value: string): string {
