@@ -30,6 +30,7 @@ export interface DriveImportFileSummary {
 }
 
 export interface DriveFolderSearchCandidate {
+  companyMatched: boolean;
   confidence: DriveImportConfidence;
   folderId: string;
   modifiedTime?: string;

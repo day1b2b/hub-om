@@ -417,17 +417,21 @@ function scoreDriveFolderCandidate(folder: GoogleDriveFile, operation: Operation
   const courseTokens = tokenizeDriveSearchText(operation.courseName);
   const monthTokens = buildOperationMonthTokens(operation);
   const ownerNames = (folder.owners ?? [])
-    .flatMap((owner) => [owner.displayName, owner.emailAddress])
-    .filter((owner): owner is string => Boolean(owner?.trim()));
+    .map(formatDriveOwnerName)
+    .filter(Boolean);
   const assigneeNames = [operation.om, operation.ld]
     .flatMap((value) => value.split(/[,/]/).map((name) => name.trim()))
     .filter(Boolean);
+  const companyMatched = companyName ? driveFolderMatchesCompany(folder.name, companyName) : true;
   const reasons: string[] = [];
   let score = 0;
 
-  if (companyName && normalizedTitle.includes(normalize(companyName))) {
+  if (companyName && companyMatched) {
     score += 35;
     reasons.push("기업명 일치");
+  } else if (companyName) {
+    score -= 10;
+    reasons.push("기업명 불일치");
   }
 
   const matchedCourseTokens = courseTokens.filter((token) => normalizedTitle.includes(normalize(token)));
@@ -464,6 +468,7 @@ function scoreDriveFolderCandidate(folder: GoogleDriveFile, operation: Operation
   const confidence: DriveFolderSearchCandidate["confidence"] = score >= 75 ? "high" : score >= 45 ? "medium" : "needs_review";
 
   return {
+    companyMatched,
     confidence,
     folderId: folder.id,
     modifiedTime: folder.modifiedTime,
@@ -1586,6 +1591,39 @@ function tokenizeDriveSearchText(value: string): string[] {
 
 function cleanupDriveSearchTerm(value: string): string {
   return value.trim().replace(/\s+/g, " ");
+}
+
+function driveFolderMatchesCompany(folderName: string, companyName: string): boolean {
+  const normalizedCompany = normalizeCompanyText(companyName);
+  if (!normalizedCompany) return true;
+
+  const normalizedFolderName = normalizeCompanyText(folderName);
+  if (normalizedFolderName.includes(normalizedCompany)) return true;
+
+  const folderParts = parseOperationFolderName(folderName);
+  const normalizedFolderCompany = normalizeCompanyText(folderParts.companyName ?? "");
+
+  return Boolean(
+    normalizedFolderCompany &&
+      (normalizedFolderCompany.includes(normalizedCompany) || normalizedCompany.includes(normalizedFolderCompany))
+  );
+}
+
+function normalizeCompanyText(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/\(주\)|㈜|주식회사/g, "")
+    .replace(/[^0-9a-z가-힣]/g, "");
+}
+
+function formatDriveOwnerName(owner: NonNullable<GoogleDriveFile["owners"]>[number]): string {
+  const displayName = owner.displayName?.trim();
+  if (displayName) return displayName;
+
+  const email = owner.emailAddress?.trim();
+  if (!email) return "";
+
+  return email.split("@")[0] || email;
 }
 
 function buildOperationMonthTokens(operation: OperationSession): string[] {

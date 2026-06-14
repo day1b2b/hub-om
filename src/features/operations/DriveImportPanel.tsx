@@ -152,16 +152,24 @@ export function DriveImportPanel({ operation }: DriveImportPanelProps) {
 
             <div className="drive-folder-candidate-list modal-list">
               {folderSearchResult.candidates.map((candidate) => (
-                <button
-                  className="drive-folder-candidate"
+                <article
+                  className={`drive-folder-candidate${candidate.companyMatched ? "" : " company-mismatch"}`}
                   key={candidate.folderId}
-                  onClick={() => selectFolderCandidate(candidate)}
-                  type="button"
                 >
-                  <strong>{candidate.title}</strong>
-                  <span>{candidate.score}점 · {candidate.reasons.join(", ") || "검토 필요"}</span>
-                  {candidate.ownerNames.length > 0 ? <small>소유자 {candidate.ownerNames.join(", ")}</small> : null}
-                </button>
+                  <div>
+                    <strong>{candidate.title}</strong>
+                    <span>{candidate.score}점 · {candidate.reasons.join(", ") || "검토 필요"}</span>
+                    {candidate.ownerNames.length > 0 ? <small>소유자 {candidate.ownerNames.join(", ")}</small> : null}
+                  </div>
+                  <div className="drive-folder-candidate-actions">
+                    <a href={candidate.url ?? `https://drive.google.com/drive/folders/${candidate.folderId}`} rel="noreferrer" target="_blank">
+                      폴더 열기
+                    </a>
+                    <button onClick={() => selectFolderCandidate(candidate)} type="button">
+                      선택
+                    </button>
+                  </div>
+                </article>
               ))}
               {folderSearchResult.candidates.length === 0 ? (
                 <p className="drive-import-empty">Drive 폴더 후보를 찾지 못했습니다.</p>
