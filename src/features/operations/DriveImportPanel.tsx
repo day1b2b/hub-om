@@ -60,6 +60,7 @@ export function DriveImportPanel({ operation }: DriveImportPanelProps) {
   const [editedValues, setEditedValues] = useState<Record<string, string>>({});
   const [isFolderSearchOpen, setIsFolderSearchOpen] = useState(false);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [scanProgressTitle, setScanProgressTitle] = useState("");
   const [error, setError] = useState("");
   const [applyMessage, setApplyMessage] = useState("");
   const candidates = useMemo(() => result?.candidates ?? [], [result]);
@@ -280,10 +281,23 @@ export function DriveImportPanel({ operation }: DriveImportPanelProps) {
           </section>
         </div>
       ) : null}
+
+      {scanState === "loading" && scanProgressTitle ? (
+        <div aria-live="polite" aria-modal="true" className="drive-review-modal" role="dialog">
+          <div className="drive-review-backdrop" />
+          <section className="drive-scan-progress-dialog" aria-label="Drive 자료 확인 중">
+            <span className="drive-scan-spinner" />
+            <div>
+              <strong>Drive 자료 확인 중</strong>
+              <p>{scanProgressTitle}</p>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 
-  async function scanDrive(nextUrl?: string) {
+  async function scanDrive(nextUrl?: string, progressTitle?: string) {
     const nextFolderUrl = (nextUrl ?? folderUrl).trim();
 
     if (!nextFolderUrl) {
@@ -293,6 +307,7 @@ export function DriveImportPanel({ operation }: DriveImportPanelProps) {
     }
 
     setScanState("loading");
+    setScanProgressTitle(progressTitle ?? "");
     setApplyState("idle");
     setError("");
     setApplyMessage("");
@@ -311,6 +326,7 @@ export function DriveImportPanel({ operation }: DriveImportPanelProps) {
 
     if (!response.ok || !payload.ok || !payload.result) {
       setScanState("failed");
+      setScanProgressTitle("");
       setError(payload.error ?? "Drive 정보를 가져오지 못했습니다.");
       return;
     }
@@ -318,6 +334,7 @@ export function DriveImportPanel({ operation }: DriveImportPanelProps) {
     setResult(payload.result);
     setFolderUrl(payload.result.folderUrl);
     setScanState("ready");
+    setScanProgressTitle("");
     setIsReviewOpen(payload.result.candidates.length > 0);
   }
 
@@ -346,7 +363,7 @@ export function DriveImportPanel({ operation }: DriveImportPanelProps) {
     const nextFolderUrl = candidate.url ?? `https://drive.google.com/drive/folders/${candidate.folderId}`;
     setFolderUrl(nextFolderUrl);
     setIsFolderSearchOpen(false);
-    await scanDrive(nextFolderUrl);
+    await scanDrive(nextFolderUrl, candidate.title);
   }
 
   async function applySelectedCandidates() {

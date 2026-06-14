@@ -2146,6 +2146,54 @@ td span {
   max-width: 760px;
 }
 
+.drive-scan-progress-dialog {
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.18);
+  display: flex;
+  gap: 14px;
+  left: 50%;
+  max-width: 460px;
+  padding: 22px 24px;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: calc(100vw - 48px);
+}
+
+.drive-scan-spinner {
+  animation: drive-spin 0.8s linear infinite;
+  border: 3px solid #d8e0ea;
+  border-radius: 999px;
+  border-top-color: var(--blue);
+  display: inline-block;
+  flex: 0 0 auto;
+  height: 28px;
+  width: 28px;
+}
+
+.drive-scan-progress-dialog strong {
+  display: block;
+  font-size: 15px;
+}
+
+.drive-scan-progress-dialog p {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 5px 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes drive-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .drive-review-header {
   align-items: center;
   border-bottom: 1px solid var(--line);
