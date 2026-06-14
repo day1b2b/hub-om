@@ -216,6 +216,9 @@ export function DriveImportPanel({ operation }: DriveImportPanelProps) {
               <button disabled={applyableCandidates.length === 0} onClick={selectEmptyFields} type="button">
                 빈 칸만 선택
               </button>
+              <button disabled={applyableCandidates.length === 0} onClick={selectAllApplyableFields} type="button">
+                전체 선택
+              </button>
               <button disabled={selectedIds.length === 0} onClick={() => setSelectedIds([])} type="button">
                 선택 해제
               </button>
@@ -269,7 +272,7 @@ export function DriveImportPanel({ operation }: DriveImportPanelProps) {
                       </div>
                       <div className="drive-candidate-meta">
                         <span>{FIELD_LABELS[candidate.field] ?? candidate.field}</span>
-                        <span>{candidate.action === "append" ? "기존 값 뒤에 추가" : "값 교체"}</span>
+                        <span>{candidateActionLabel(candidate, currentValue)}</span>
                         <span>{candidate.sourceTitle}</span>
                       </div>
                       {candidate.evidence ? <p className="drive-candidate-evidence">{candidate.evidence}</p> : null}
@@ -428,6 +431,10 @@ export function DriveImportPanel({ operation }: DriveImportPanelProps) {
     setSelectedIds(emptyCandidateIds);
   }
 
+  function selectAllApplyableFields() {
+    setSelectedIds(applyableCandidates.map((candidate) => candidate.id));
+  }
+
   function toggleCandidate(candidateId: string, checked: boolean) {
     setSelectedIds((current) =>
       checked ? [...current, candidateId] : current.filter((selectedId) => selectedId !== candidateId)
@@ -440,6 +447,12 @@ export function DriveImportPanel({ operation }: DriveImportPanelProps) {
       [candidateId]: value
     }));
   }
+}
+
+function candidateActionLabel(candidate: DriveImportCandidate, currentValue: string): string {
+  if (candidate.action === "append") return currentValue ? "기존 값 뒤에 추가" : "값 입력";
+
+  return currentValue ? "기존 값 덮어쓰기" : "값 입력";
 }
 
 function currentFieldValue(operation: OperationSession, field: DriveImportCandidate["field"]): string {
