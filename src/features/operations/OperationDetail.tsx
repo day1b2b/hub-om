@@ -55,13 +55,17 @@ interface OperationDetailProps {
   teamScope: TeamScope;
 }
 
-export function OperationDetail({ collaboration, operation, relatedOperations = [operation], teamScope }: OperationDetailProps) {
+export function OperationDetail({
+  collaboration,
+  operation,
+  relatedOperations = [operation],
+  teamScope
+}: OperationDetailProps) {
   const courseOperations = getCourseOperations(operation, relatedOperations);
-  const resourceLinks = getResourceLinks(operation, collaboration);
-  const registeredLinks = resourceLinks.filter((resourceLink) => isNavigableHref(resourceLink.href));
-  const missingLinks = resourceLinks.filter((resourceLink) => !isNavigableHref(resourceLink.href));
-  const archiveChecks = getArchiveChecks(operation);
-  const completedArchiveChecks = archiveChecks.filter((archiveCheck) => archiveCheck.done);
+  const requiredArchiveItems = getRequiredArchiveItems(operation);
+  const completedArchiveItems = requiredArchiveItems.filter((archiveItem) => archiveItem.done);
+  const referenceResourceLinks = getReferenceResourceLinks(operation, collaboration);
+  const registeredReferenceLinks = referenceResourceLinks.filter((resourceLink) => isNavigableHref(resourceLink.href));
   const satisfactionSummary = getSatisfactionSummary(courseOperations);
   const teamQuery = teamScopeSearchParam(teamScope);
 
@@ -167,36 +171,35 @@ export function OperationDetail({ collaboration, operation, relatedOperations = 
 
           <section className="detail-section resource-status-section" id="links">
             <div className="section-title">
-              <h2>자료 / 아카이브</h2>
-              <span>
-                {registeredLinks.length}/{resourceLinks.length} 자료 · 결과보고서 {operation.hasResultReport} · {completedArchiveChecks.length}/{archiveChecks.length} 확인
-              </span>
+              <h2>자료 준비도</h2>
+              <span>{completedArchiveItems.length}/{requiredArchiveItems.length} 충족</span>
             </div>
             <div className="resource-archive-body">
-              <div className="resource-link-panel">
-                <div className="resource-row-head">
-                  <strong>자료 링크</strong>
-                  <span>{missingLinks.length > 0 ? `${missingLinks.length}개 필요` : "모두 등록"}</span>
-                </div>
-                <div className="link-list">
-                  {resourceLinks.map((resourceLink) => (
-                    <ResourceLinkPill href={resourceLink.href} key={resourceLink.label} label={resourceLink.label} />
-                  ))}
-                </div>
-              </div>
-
               <div className="archive-status-body" id="archive">
-                <div className="resource-row-head">
-                  <strong>완료 기준</strong>
-                  <span>{completedArchiveChecks.length}/{archiveChecks.length} 기준 충족</span>
-                </div>
-                <div className="archive-readiness-list" aria-label="자료 완료 기준">
-                  {archiveChecks.map((archiveCheck) => (
-                    <span className={archiveCheck.done ? "done" : "missing"} key={archiveCheck.label}>
-                      <b>{archiveCheck.done ? "완료" : "필요"}</b>
-                      {archiveCheck.label}
-                    </span>
-                  ))}
+                <div className="archive-readiness-columns">
+                  <div className="archive-readiness-column">
+                    <div className="resource-row-head">
+                      <strong>필수 항목</strong>
+                      <span>{completedArchiveItems.length}/{requiredArchiveItems.length}</span>
+                    </div>
+                    <div className="archive-item-list" aria-label="아카이브 필수 항목">
+                      {requiredArchiveItems.map((archiveItem) => (
+                        <ArchiveReadinessRow item={archiveItem} key={archiveItem.label} />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="archive-readiness-column">
+                    <div className="resource-row-head">
+                      <strong>참고 자료</strong>
+                      <span>{registeredReferenceLinks.length}/{referenceResourceLinks.length}</span>
+                    </div>
+                    <div className="archive-item-list" aria-label="아카이브 참고 자료">
+                      {referenceResourceLinks.map((resourceLink) => (
+                        <ResourceReferenceRow href={resourceLink.href} key={resourceLink.label} label={resourceLink.label} />
+                      ))}
+                    </div>
+                  </div>
                 </div>
                 <div className="archive-completion-row">
                   <ArchiveBadge status={operation.archiveStatus} />
@@ -209,6 +212,45 @@ export function OperationDetail({ collaboration, operation, relatedOperations = 
                   <span>Drive 폴더</span>
                 </div>
                 <DriveImportPanel operation={operation} />
+                <div className="resource-side-metrics" aria-label="만족도 및 비용 요약">
+                  <div className="resource-side-metric">
+                    <div className="resource-row-head">
+                      <strong>만족도</strong>
+                      <span>{satisfactionSummary.totalCount}개 회차</span>
+                    </div>
+                    <div className="satisfaction-compact-row resource-metric-row">
+                      <CompactValue label="전체 평균" value={satisfactionSummary.totalAverage ?? "미입력"} />
+                      <CompactValue label="강사 평균" value={satisfactionSummary.instructorAverage ?? "미입력"} />
+                    </div>
+                    {courseOperations.length > 1 ? (
+                      <div className="round-satisfaction-strip resource-round-strip">
+                        {courseOperations.map((courseOperation, index) => (
+                          <span
+                            className={courseOperation.operationId === operation.operationId ? "current-round" : undefined}
+                            key={courseOperation.operationId}
+                          >
+                            <b>{roundLabel(courseOperation, index)}</b>
+                            <strong>{formatSatisfactionValue(courseOperation.avgSatisfaction)}</strong>
+                            <small>강사 {formatSatisfactionValue(courseOperation.instructorSatisfaction)}</small>
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className="resource-side-metric">
+                    <div className="resource-row-head">
+                      <strong>비용</strong>
+                      <span>선택 입력</span>
+                    </div>
+                    <div className="info-grid cost-current-grid cost-compact-grid resource-cost-grid">
+                      <InfoItem label="매출" value={formatMoney(operation.revenue)} />
+                      <InfoItem label="비용 합계" value={formatMoney(operation.totalCost)} />
+                      <InfoItem label="수익" value={formatMoney(operation.profit)} />
+                      <InfoItem label="강사비" value={formatMoney(operation.instructorCost)} />
+                      <InfoItem label="운영비" value={formatMoney(operation.operationCost)} />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </section>
@@ -219,47 +261,6 @@ export function OperationDetail({ collaboration, operation, relatedOperations = 
               <span>기록하고 저장</span>
             </div>
             <IssueReviewEditor operation={operation} />
-          </section>
-
-          <section className="detail-section satisfaction-detail-section">
-            <div className="section-title">
-              <h2>만족도</h2>
-              <span>
-                {satisfactionSummary.totalCount}개 회차 반영
-              </span>
-            </div>
-            <div className="satisfaction-compact-row">
-              <CompactValue label="전체 평균" value={satisfactionSummary.totalAverage ?? "미입력"} />
-              <CompactValue label="강사 평균" value={satisfactionSummary.instructorAverage ?? "미입력"} />
-              {courseOperations.length > 1 ? (
-                <div className="round-satisfaction-strip">
-                  {courseOperations.map((courseOperation, index) => (
-                    <span
-                      className={courseOperation.operationId === operation.operationId ? "current-round" : undefined}
-                      key={courseOperation.operationId}
-                    >
-                      <b>{roundLabel(courseOperation, index)}</b>
-                      <strong>{formatSatisfactionValue(courseOperation.avgSatisfaction)}</strong>
-                      <small>강사 {formatSatisfactionValue(courseOperation.instructorSatisfaction)}</small>
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          </section>
-
-          <section className="detail-section cost-detail-section">
-            <div className="section-title">
-              <h2>비용</h2>
-              <span>선택 입력</span>
-            </div>
-            <div className="info-grid cost-current-grid cost-compact-grid">
-              <InfoItem label="매출" value={formatMoney(operation.revenue)} />
-              <InfoItem label="비용 합계" value={formatMoney(operation.totalCost)} />
-              <InfoItem label="수익" value={formatMoney(operation.profit)} />
-              <InfoItem label="강사비" value={formatMoney(operation.instructorCost)} />
-              <InfoItem label="운영비" value={formatMoney(operation.operationCost)} />
-            </div>
           </section>
 
           <section className="detail-section wide-detail-section slack-discussion-section">
@@ -338,22 +339,46 @@ function DiscussionList({
   );
 }
 
-function ResourceLinkPill({ href, label }: { href: string; label: string }) {
-  if (!isNavigableHref(href)) {
-    return (
-      <span className="resource-link-pill missing">
-        <b>필요</b>
-        {label}
-      </span>
-    );
-  }
+interface ArchiveReadinessItem {
+  done: boolean;
+  doneText: string;
+  href?: string;
+  label: string;
+  missingText: string;
+}
+
+function ArchiveReadinessRow({ item }: { item: ArchiveReadinessItem }) {
+  const href = item.href;
+  const hasHref = href ? isNavigableHref(href) : false;
 
   return (
-    <a className="resource-link-pill done" href={href} rel="noreferrer" target="_blank">
-      <b>등록</b>
+    <div className={`archive-item-row ${item.done ? "done" : "missing"}`}>
+      <span className="archive-item-state">{item.done ? "완료" : "필요"}</span>
+      <strong>{item.label}</strong>
+      <span>{item.done ? item.doneText : item.missingText}</span>
+      {hasHref ? (
+        <a href={href} rel="noreferrer" target="_blank">
+          열기
+        </a>
+      ) : null}
+    </div>
+  );
+}
+
+function ResourceReferenceRow({ href, label }: { href: string; label: string }) {
+  const hasHref = isNavigableHref(href);
+
+  return (
+    <div className={`archive-item-row ${hasHref ? "done" : "missing"}`}>
+      <span className="archive-item-state">{hasHref ? "등록" : "필요"}</span>
       <strong>{label}</strong>
-      <span>열기</span>
-    </a>
+      <span>{hasHref ? "등록됨" : "링크 없음"}</span>
+      {hasHref ? (
+        <a href={href} rel="noreferrer" target="_blank">
+          열기
+        </a>
+      ) : null}
+    </div>
   );
 }
 
@@ -361,26 +386,51 @@ function isNavigableHref(value: string) {
   return /^(https?:\/\/|slack:\/\/)/.test(value.trim());
 }
 
-function getResourceLinks(operation: OperationSession, collaboration: OperationCollaboration) {
+function getReferenceResourceLinks(operation: OperationSession, collaboration: OperationCollaboration) {
   return [
-    { label: "드라이브", href: operation.driveLink },
-    { label: "강의관리", href: operation.lectureManagementLink },
     { label: "강의보고", href: collaboration.lectureReports[0]?.sourceUrl ?? "" },
     { label: "패들렛", href: operation.padletLink },
     { label: "운영상세", href: operation.operationDetail },
-    { label: "결과보고서", href: operation.resultReportLink },
     { label: "기업위키", href: operation.companyWikiLink },
     { label: "강사위키", href: operation.instructorWikiLink }
   ];
 }
 
-function getArchiveChecks(operation: OperationSession) {
+function getRequiredArchiveItems(operation: OperationSession): ArchiveReadinessItem[] {
   return [
-    { label: "드라이브", done: Boolean(operation.driveLink) },
-    { label: "강의관리", done: Boolean(operation.lectureManagementLink) },
-    { label: "결과보고서", done: operation.hasResultReport === "유" && Boolean(operation.resultReportLink) },
-    { label: "만족도", done: satisfactionNumber(operation.avgSatisfaction) !== null },
-    { label: "이슈/회고", done: Boolean(operation.operationIssue || operation.omUpdate || operation.specialNotes) }
+    {
+      done: Boolean(operation.driveLink),
+      doneText: "등록됨",
+      href: operation.driveLink,
+      label: "드라이브",
+      missingText: "링크 없음"
+    },
+    {
+      done: Boolean(operation.lectureManagementLink),
+      doneText: "등록됨",
+      href: operation.lectureManagementLink,
+      label: "강의관리",
+      missingText: "링크 없음"
+    },
+    {
+      done: operation.hasResultReport === "유" && Boolean(operation.resultReportLink),
+      doneText: "등록됨",
+      href: operation.resultReportLink,
+      label: "결과보고서",
+      missingText: "링크 없음"
+    },
+    {
+      done: satisfactionNumber(operation.avgSatisfaction) !== null,
+      doneText: "입력됨",
+      label: "만족도",
+      missingText: "미입력"
+    },
+    {
+      done: Boolean(operation.operationIssue || operation.omUpdate || operation.specialNotes),
+      doneText: "기록됨",
+      label: "이슈/회고",
+      missingText: "기록 없음"
+    }
   ];
 }
 
