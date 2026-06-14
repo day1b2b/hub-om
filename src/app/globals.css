@@ -1956,25 +1956,15 @@ td span {
   gap: 5px;
 }
 
-.drive-folder-search-results {
-  border-top: 1px solid var(--line);
-  display: grid;
-  gap: 8px;
-  padding-top: 8px;
-}
-
-.drive-folder-search-head {
-  align-items: center;
-  color: var(--muted);
-  display: flex;
-  font-size: 12px;
-  gap: 8px;
-  justify-content: space-between;
-}
-
 .drive-folder-candidate-list {
   display: grid;
   gap: 6px;
+}
+
+.drive-folder-candidate-list.modal-list {
+  align-content: start;
+  overflow-y: auto;
+  padding: 14px 18px;
 }
 
 .drive-folder-candidate {
@@ -2059,6 +2049,11 @@ td span {
   top: 50%;
   transform: translate(-50%, -50%);
   width: calc(100vw - 48px);
+}
+
+.folder-search-dialog {
+  grid-template-rows: auto minmax(0, 1fr);
+  max-width: 760px;
 }
 
 .drive-review-header {
