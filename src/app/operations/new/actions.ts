@@ -11,6 +11,8 @@ import type {
   OperationStatus,
   OperationType
 } from "@/lib/data/operationTypes";
+import { normalizeRoleAssigneeText } from "@/lib/data/roleAssignees";
+import { getStoredTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFactory";
 import { parseTeamScope, teamScopeSearchParam } from "@/lib/teamScope";
 
 const OPERATION_STATUSES: OperationStatus[] = ["배정필요", "배정예정", "진행중", "완료", "회고완료", "아카이빙필요"];
@@ -22,6 +24,7 @@ const ONSITE_REQUIRED: OnsiteRequired[] = ["UNKNOWN", "Y", "N", "PARTIAL"];
 export async function createOperationAction(formData: FormData) {
   const session = await requireWorkspaceSession();
   const repository = getOperationRepository();
+  const roleRoster = await getStoredTeamMemberRepository().listRoleRosters();
   const teamScope = parseTeamScope(textValue(formData, "teamScope")) ?? "both";
   const operation = await repository.createOperation({
     archiveStatus: enumValue(formData, "archiveStatus", ARCHIVE_STATUSES, "아카이빙전"),
@@ -39,9 +42,9 @@ export async function createOperationAction(formData: FormData) {
     instructorCost: moneyValue(formData, "instructorCost"),
     instructorWikiLink: textValue(formData, "instructorWikiLink"),
     instructors: textValue(formData, "instructors"),
-    ld: textValue(formData, "ld"),
+    ld: normalizeRoleAssigneeText(textValue(formData, "ld"), "ld", roleRoster),
     lectureManagementLink: textValue(formData, "lectureManagementLink"),
-    om: textValue(formData, "om"),
+    om: normalizeRoleAssigneeText(textValue(formData, "om"), "om", roleRoster),
     onsiteRequired: enumValue(formData, "onsiteRequired", ONSITE_REQUIRED, "UNKNOWN"),
     operationCost: moneyValue(formData, "operationCost"),
     operationDetail: textValue(formData, "operationDetail"),

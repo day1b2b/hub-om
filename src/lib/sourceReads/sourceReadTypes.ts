@@ -50,7 +50,10 @@ export interface DiscussionReference {
   title: string;
   occurredAt: string;
   sourceUrl: string;
+  summary?: string;
 }
+
+export type LectureReportReference = DiscussionReference;
 
 export interface SalesRecord {
   sourceRecordId: string;

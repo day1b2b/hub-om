@@ -130,6 +130,29 @@ export interface CreateOperationInput {
   totalCost: number | null;
 }
 
+export interface UpdateOperationInput {
+  archiveStatus?: ArchiveStatus;
+  avgSatisfaction?: string;
+  coach?: string;
+  costRaw?: string;
+  driveLink?: string;
+  educationDays?: string;
+  instructorCost?: number | null;
+  instructorSatisfaction?: string;
+  instructors?: string;
+  lectureManagementLink?: string;
+  operationCost?: number | null;
+  operationDetail?: string;
+  operationIssue?: string;
+  omUpdate?: string;
+  padletLink?: string;
+  region?: string;
+  resultReportLink?: string;
+  specialNotes?: string;
+  timeText?: string;
+  totalCost?: number | null;
+}
+
 export interface OperationSummary {
   total: number;
   active: number;
