@@ -3119,6 +3119,13 @@ td span {
   font-weight: 700;
 }
 
+.issue-editor-field-head {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
 .issue-editor-field textarea {
   background: #ffffff;
   border: 1px solid var(--line);
@@ -3153,6 +3160,7 @@ td span {
   display: flex;
   gap: 8px;
   min-width: 0;
+  flex-wrap: wrap;
 }
 
 .issue-review-summary strong {
@@ -3162,10 +3170,26 @@ td span {
   white-space: nowrap;
 }
 
+.issue-review-summary small {
+  background: #eef5ff;
+  border: 1px solid #c7dcff;
+  border-radius: 999px;
+  color: var(--blue);
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  min-height: 22px;
+  padding: 0 8px;
+  place-items: center;
+}
+
 .issue-editor-actions {
   align-items: center;
   display: inline-flex;
   gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .issue-editor-actions button {

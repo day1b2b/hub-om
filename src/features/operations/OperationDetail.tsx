@@ -260,7 +260,7 @@ export function OperationDetail({
               <h2>이슈 / 회고</h2>
               <span>기록하고 저장</span>
             </div>
-            <IssueReviewEditor operation={operation} />
+            <IssueReviewEditor key={operation.operationId} operation={operation} />
           </section>
 
           <section className="detail-section wide-detail-section slack-discussion-section">
