@@ -25,7 +25,9 @@ OM이 기업교육 운영 현황을 한 곳에서 확인하고 관리하기 위�
 
 ## 처음 작업할 때
 
-먼저 [docs/collaboration/getting-started.md](docs/collaboration/getting-started.md)를 읽습니다.
+AI 작업자에게 맡기는 작업이면 먼저 [docs/operations/manager-ai-workflow.md](docs/operations/manager-ai-workflow.md)를 읽고 그 절차를 따릅니다.
+
+사람이 직접 작업할 때는 먼저 [docs/collaboration/getting-started.md](docs/collaboration/getting-started.md)를 읽습니다.
 
 그 다음 아래 문서를 순서대로 확인합니다.
 
@@ -33,6 +35,8 @@ OM이 기업교육 운영 현황을 한 곳에서 확인하고 관리하기 위�
 - [docs/collaboration/working-rules.md](docs/collaboration/working-rules.md)
 - [docs/collaboration/team-workflow.md](docs/collaboration/team-workflow.md)
 - [CLAUDE.md](CLAUDE.md)
+
+Codex에서 반복 작업을 맡길 때는 repo에 보관된 [codex-skills/hub-om-manager-workflow/SKILL.md](codex-skills/hub-om-manager-workflow/SKILL.md)를 개인 Codex skills 경로에 설치해 `$hub-om-manager-workflow`로 시작합니다. Claude Code에서는 [`.claude/commands/hub-om-work.md`](.claude/commands/hub-om-work.md)를 진입점으로 사용합니다.
 
 ## 공개 저장소 원칙
 
