@@ -1,10 +1,8 @@
 import Link from "next/link";
 import { AppSidebar } from "@/components/AppSidebar";
-import { ArchiveCompleteButton } from "./ArchiveCompleteButton";
-import { DriveImportPanel } from "./DriveImportPanel";
 import { IssueReviewEditor } from "./IssueReviewEditor";
+import { OperationDiscussionPanel } from "./OperationDiscussionPanel";
 import type {
-  ArchiveStatus,
   OperationChannel,
   OperationSession,
   OperationStatus,
@@ -15,7 +13,7 @@ import type {
   OperationDiscussionItem
 } from "@/lib/data/operationCollaboration";
 import { displayRoleAssigneeText } from "@/lib/data/roleAssignees";
-import { satisfactionNumber, summarizeSatisfactionValue } from "@/lib/data/satisfaction";
+import { satisfactionNumber } from "@/lib/data/satisfaction";
 import { teamScopeSearchParam, type TeamScope } from "@/lib/teamScope";
 
 const STATUS_CLASS: Record<OperationStatus, string> = {
@@ -25,12 +23,6 @@ const STATUS_CLASS: Record<OperationStatus, string> = {
   "완료": "done",
   "회고완료": "retrospective-done",
   "아카이빙필요": "archive-needed"
-};
-
-const ARCHIVE_CLASS: Record<ArchiveStatus, string> = {
-  "아카이빙전": "planned-assignment",
-  "아카이빙필요": "archive-needed",
-  "완료": "done"
 };
 
 const OPERATION_CHANNEL_LABEL: Record<OperationChannel, string> = {
@@ -73,34 +65,44 @@ export function OperationDetail({
     <main className="dashboard-shell">
       <AppSidebar label="Course detail" teamScope={teamScope} />
 
-      <section className="content">
+      <section className="content operation-detail-content">
         <header className="page-header detail-header">
-          <div>
-            <div className="title-row">
-              <span className="title-company">{operation.companyName}</span>
-              <h1>{operation.courseName}</h1>
-              <span className="title-course-id">
-                {operation.courseId ? `코스ID ${operation.courseId}` : "코스ID 검토 필요"}
-              </span>
-              <StatusBadge status={operation.operationStatus} />
-            </div>
+          <div className="title-row">
+            <span className="title-company">{operation.companyName}</span>
+            <h1>{operation.courseName}</h1>
+            <StatusBadge status={operation.operationStatus} />
+            <span className="title-course-id">
+              {operation.courseId ? "코스ID 검토 필요" : "코스ID 없음"}
+            </span>
+          </div>
+          <div className="detail-header-actions">
+            <span>준비도 {completedArchiveItems.length}/{requiredArchiveItems.length}</span>
+            <button aria-label="상세 메뉴" type="button">•••</button>
           </div>
         </header>
+
+        {collaboration.lectureReports.length > 0 ? (
+          <LectureReportsByRound
+            courseOperations={courseOperations}
+            currentOperation={operation}
+            reports={collaboration.lectureReports}
+            teamQuery={teamQuery}
+          />
+        ) : null}
 
         <section className="detail-layout">
           <section className="detail-section compact-info-section">
             <div className="section-title">
               <h2>일정 / 운영 조건</h2>
-              <span>리소스 판단 기준</span>
             </div>
             <div className="info-grid">
               <InfoItem label="기간" value={`${operation.startDate} ~ ${operation.endDate}`} />
               <InfoItem label="시간" value={operation.timeText || "시간 미정"} />
+              <InfoItem label="운영 유형" value={operation.operationType} />
+              <InfoItem label="교육 형태" value={operation.educationFormat} />
+              <InfoItem label="운영 채널" value={OPERATION_CHANNEL_LABEL[operation.operationChannel]} />
               <InfoItem label="회차" value={operation.roundNo ? `${operation.roundNo}회차` : "확인 필요"} />
               <InfoItem label="교육일수" value={operation.educationDays || "확인 필요"} />
-              <InfoItem label="운영 유형" value={operation.operationType} />
-              <InfoItem label="운영 채널" value={OPERATION_CHANNEL_LABEL[operation.operationChannel]} />
-              <InfoItem label="교육 형태" value={operation.educationFormat} />
               <InfoItem label="현장 투입" value={ONSITE_LABEL[operation.onsiteRequired]} />
             </div>
           </section>
@@ -108,7 +110,6 @@ export function OperationDetail({
           <section className="detail-section compact-info-section">
             <div className="section-title">
               <h2>담당 / 투입</h2>
-              <span>누가 맡고 있는가</span>
             </div>
             <div className="info-grid">
               <InfoItem label="OM" value={operation.om || "배정필요"} />
@@ -170,86 +171,52 @@ export function OperationDetail({
           ) : null}
 
           <section className="detail-section resource-status-section" id="links">
-            <div className="section-title">
-              <h2>자료 준비도</h2>
-              <span>{completedArchiveItems.length}/{requiredArchiveItems.length} 충족</span>
-            </div>
-            <div className="resource-archive-body">
-              <div className="archive-status-body" id="archive">
-                <div className="archive-readiness-columns">
-                  <div className="archive-readiness-column">
-                    <div className="resource-row-head">
-                      <strong>필수 항목</strong>
-                      <span>{completedArchiveItems.length}/{requiredArchiveItems.length}</span>
-                    </div>
-                    <div className="archive-item-list" aria-label="아카이브 필수 항목">
-                      {requiredArchiveItems.map((archiveItem) => (
-                        <ArchiveReadinessRow item={archiveItem} key={archiveItem.label} />
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="archive-readiness-column">
-                    <div className="resource-row-head">
-                      <strong>참고 자료</strong>
-                      <span>{registeredReferenceLinks.length}/{referenceResourceLinks.length}</span>
-                    </div>
-                    <div className="archive-item-list" aria-label="아카이브 참고 자료">
-                      {referenceResourceLinks.map((resourceLink) => (
-                        <ResourceReferenceRow href={resourceLink.href} key={resourceLink.label} label={resourceLink.label} />
-                      ))}
-                    </div>
-                  </div>
+            <div className="resource-card-grid">
+              <div className="resource-summary-card">
+                <div className="resource-row-head">
+                  <strong>필수 항목</strong>
+                  <span>{completedArchiveItems.length}/{requiredArchiveItems.length}</span>
                 </div>
-                <div className="archive-completion-row">
-                  <ArchiveBadge status={operation.archiveStatus} />
-                  <ArchiveCompleteButton archiveStatus={operation.archiveStatus} operationId={operation.operationId} />
+                <div className="archive-item-list" aria-label="아카이브 필수 항목">
+                  {requiredArchiveItems.map((archiveItem) => (
+                    <ArchiveReadinessRow item={archiveItem} key={archiveItem.label} />
+                  ))}
                 </div>
               </div>
-              <div className="resource-drive-panel">
+
+              <div className="resource-summary-card">
                 <div className="resource-row-head">
-                  <strong>자료 등록</strong>
-                  <span>Drive 폴더</span>
+                  <strong>참고 자료</strong>
+                  <span>{registeredReferenceLinks.length}/{referenceResourceLinks.length}</span>
                 </div>
-                <DriveImportPanel operation={operation} />
-                <div className="resource-side-metrics" aria-label="만족도 및 비용 요약">
-                  <div className="resource-side-metric">
-                    <div className="resource-row-head">
-                      <strong>만족도</strong>
-                      <span>{satisfactionSummary.totalCount}개 회차</span>
-                    </div>
-                    <div className="satisfaction-compact-row resource-metric-row">
-                      <CompactValue label="전체 평균" value={satisfactionSummary.totalAverage ?? "미입력"} />
-                      <CompactValue label="강사 평균" value={satisfactionSummary.instructorAverage ?? "미입력"} />
-                    </div>
-                    {courseOperations.length > 1 ? (
-                      <div className="round-satisfaction-strip resource-round-strip">
-                        {courseOperations.map((courseOperation, index) => (
-                          <span
-                            className={courseOperation.operationId === operation.operationId ? "current-round" : undefined}
-                            key={courseOperation.operationId}
-                          >
-                            <b>{roundLabel(courseOperation, index)}</b>
-                            <strong>{formatSatisfactionValue(courseOperation.avgSatisfaction)}</strong>
-                            <small>강사 {formatSatisfactionValue(courseOperation.instructorSatisfaction)}</small>
-                          </span>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-                  <div className="resource-side-metric">
-                    <div className="resource-row-head">
-                      <strong>비용</strong>
-                      <span>선택 입력</span>
-                    </div>
-                    <div className="info-grid cost-current-grid cost-compact-grid resource-cost-grid">
-                      <InfoItem label="매출" value={formatMoney(operation.revenue)} />
-                      <InfoItem label="비용 합계" value={formatMoney(operation.totalCost)} />
-                      <InfoItem label="수익" value={formatMoney(operation.profit)} />
-                      <InfoItem label="강사비" value={formatMoney(operation.instructorCost)} />
-                      <InfoItem label="운영비" value={formatMoney(operation.operationCost)} />
-                    </div>
-                  </div>
+                <div className="archive-item-list" aria-label="아카이브 참고 자료">
+                  {referenceResourceLinks.map((resourceLink) => (
+                    <ResourceReferenceRow href={resourceLink.href} key={resourceLink.label} label={resourceLink.label} />
+                  ))}
+                </div>
+              </div>
+
+              <div className="resource-summary-card">
+                <div className="resource-row-head">
+                  <strong>만족도</strong>
+                  <span>{satisfactionSummary.totalCount}개 회차</span>
+                </div>
+                <div className="resource-metric-grid">
+                  <CompactValue label="전체 평균" value={satisfactionSummary.totalAverage ?? "미입력"} />
+                  <CompactValue label="강사 평균" value={satisfactionSummary.instructorAverage ?? "미입력"} />
+                </div>
+              </div>
+
+              <div className="resource-summary-card">
+                <div className="resource-row-head">
+                  <strong>비용</strong>
+                  <span>선택 입력</span>
+                </div>
+                <div className="resource-metric-grid">
+                  <CompactValue label="매출" value={formatMoney(operation.revenue)} />
+                  <CompactValue label="비용 합계" value={formatMoney(operation.totalCost)} />
+                  <CompactValue label="수익" value={formatMoney(operation.profit)} />
+                  <CompactValue label="강사비" value={formatMoney(operation.instructorCost)} />
                 </div>
               </div>
             </div>
@@ -260,21 +227,21 @@ export function OperationDetail({
               <h2>이슈 / 회고</h2>
               <span>기록하고 저장</span>
             </div>
-            <IssueReviewEditor operation={operation} />
+            <IssueReviewEditor key={operation.operationId} operation={operation} />
           </section>
 
-          <section className="detail-section wide-detail-section slack-discussion-section">
-            <div className="section-title">
-              <h2>운영 논의</h2>
-              <span>Slack / 메일 스레드</span>
-            </div>
-            <div className="note-stack">
-              <DiscussionList
-                companyName={operation.companyName}
-                items={collaboration.discussionReferences}
-                status={collaboration.discussionStatus}
-              />
-            </div>
+          <section className="detail-section wide-detail-section slack-discussion-section" id="discussions">
+            <OperationDiscussionPanel
+              availability={collaboration.discussionSourceAvailability}
+              companyName={operation.companyName}
+              diagnostics={collaboration.discussionDiagnostics}
+              emailCandidates={collaboration.discussionEmailCandidates}
+              initialItems={collaboration.discussionReferences}
+              issues={collaboration.discussionIssues}
+              key={operation.operationId}
+              operationId={operation.operationId}
+              status={collaboration.discussionStatus}
+            />
           </section>
         </section>
       </section>
@@ -300,48 +267,6 @@ function CompactValue({ label, value }: { label: string; value: string }) {
   );
 }
 
-function DiscussionList({
-  companyName,
-  items,
-  status
-}: {
-  companyName: string;
-  items: OperationDiscussionItem[];
-  status: string;
-}) {
-  if (items.length === 0) {
-    return (
-      <div className="note-item">
-        <span>운영 스레드</span>
-        <p>{status === "disabled" ? "운영 논의 연동이 꺼져 있습니다." : "조건에 맞는 운영 스레드가 아직 없습니다."}</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="note-item">
-      <span>운영 스레드</span>
-      <div className="activity-list">
-        {[...items].reverse().map((item, index) => (
-          <div className="activity-item" key={item.id}>
-            <div className="activity-heading">
-              <div className="activity-heading-line">
-                <span className={`activity-source-badge ${item.sourceKind}`}>{item.sourceLabel}</span>
-                <strong>{index + 1}. {formatDateTime(item.occurredAt)}</strong>
-              </div>
-              <small>{discussionTitleWithoutCompany(item.title, companyName)}</small>
-            </div>
-            {item.summary ? <p>{item.summary}</p> : null}
-            <a aria-label="원문 열기" className="activity-link" href={item.sourceUrl} rel="noreferrer" target="_blank">
-              원문
-            </a>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 interface ArchiveReadinessItem {
   done: boolean;
   doneText: string;
@@ -356,14 +281,14 @@ function ArchiveReadinessRow({ item }: { item: ArchiveReadinessItem }) {
 
   return (
     <div className={`archive-item-row ${item.done ? "done" : "missing"}`}>
-      <span className="archive-item-state">{item.done ? "완료" : "필요"}</span>
       <strong>{item.label}</strong>
-      <span>{item.done ? item.doneText : item.missingText}</span>
       {hasHref ? (
-        <a href={href} rel="noreferrer" target="_blank">
+        <a className="archive-item-state" href={href} rel="noreferrer" target="_blank">
           열기
         </a>
-      ) : null}
+      ) : (
+        <span className="archive-item-state">{item.done ? item.doneText : item.missingText}</span>
+      )}
     </div>
   );
 }
@@ -373,15 +298,72 @@ function ResourceReferenceRow({ href, label }: { href: string; label: string }) 
 
   return (
     <div className={`archive-item-row ${hasHref ? "done" : "missing"}`}>
-      <span className="archive-item-state">{hasHref ? "등록" : "필요"}</span>
       <strong>{label}</strong>
-      <span>{hasHref ? "등록됨" : "링크 없음"}</span>
       {hasHref ? (
-        <a href={href} rel="noreferrer" target="_blank">
+        <a className="archive-item-state" href={href} rel="noreferrer" target="_blank">
           열기
         </a>
-      ) : null}
+      ) : (
+        <span className="archive-item-state">링크 없음</span>
+      )}
     </div>
+  );
+}
+
+function LectureReportsByRound({
+  courseOperations,
+  currentOperation,
+  reports,
+  teamQuery
+}: {
+  courseOperations: OperationSession[];
+  currentOperation: OperationSession;
+  reports: OperationDiscussionItem[];
+  teamQuery: string;
+}) {
+  if (reports.length === 0) {
+    return null;
+  }
+
+  const groupedReports = groupLectureReportsByRound(reports, currentOperation);
+
+  return (
+    <section className="detail-section course-report-section">
+      <div className="course-report-list">
+        {groupedReports.map((group) => {
+          const courseOperation = findCourseOperationByRound(courseOperations, group.roundNo);
+          const courseOperationIndex = courseOperation
+            ? courseOperations.findIndex((candidate) => candidate.operationId === courseOperation.operationId)
+            : -1;
+
+          return (
+            <div className="course-report-row" key={group.roundNo}>
+              <div className="course-report-title">
+                <strong>회차별 운영보고</strong>
+              </div>
+              <div className="course-report-items">
+                {group.items.map((report) => (
+                  <a className="course-report-link" href={report.sourceUrl} key={report.id} rel="noreferrer" target="_blank">
+                    <span>{formatShortDateTime(report.occurredAt)}</span>
+                    <strong>{discussionTitleWithoutCompany(report.title, currentOperation.companyName)}</strong>
+                  </a>
+                ))}
+              </div>
+              <div className="course-report-round">
+                {courseOperation ? (
+                  <Link href={`/operations/${courseOperation.operationId}${teamQuery}`}>
+                    {roundLabel(courseOperation, courseOperationIndex >= 0 ? courseOperationIndex : 0)}
+                  </Link>
+                ) : (
+                  <strong>{group.label}</strong>
+                )}
+                <span>{group.items.length}건</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -441,23 +423,73 @@ function StatusBadge({ status }: { status: OperationStatus }) {
   return <span className={`status ${STATUS_CLASS[status]}`}>{status}</span>;
 }
 
-function ArchiveBadge({ status }: { status: ArchiveStatus }) {
-  return <span className={`status ${ARCHIVE_CLASS[status]}`}>{status}</span>;
-}
-
 function formatMoney(value: number | null): string {
   if (value === null) return "-";
   return `${new Intl.NumberFormat("ko-KR").format(value)}원`;
 }
 
-function formatDateTime(value: string): string {
+function groupLectureReportsByRound(reports: OperationDiscussionItem[], currentOperation: OperationSession) {
+  const fallbackRoundNo = normalizeRoundNo(currentOperation.roundNo) || "current";
+  const groups = new Map<string, { items: OperationDiscussionItem[]; label: string; roundNo: string }>();
+
+  for (const report of reports) {
+    const roundNo = extractReportRoundNo(report) || fallbackRoundNo;
+    const label = roundNo === "current"
+      ? (currentOperation.roundNo ? `${currentOperation.roundNo}회차` : "현재 회차")
+      : `${roundNo}회차`;
+    const group = groups.get(roundNo) ?? { items: [], label, roundNo };
+
+    group.items.push(report);
+    groups.set(roundNo, group);
+  }
+
+  return [...groups.values()]
+    .map((group) => ({
+      ...group,
+      items: [...group.items].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
+    }))
+    .sort((a, b) => compareRoundGroup(a.roundNo, b.roundNo));
+}
+
+function extractReportRoundNo(report: OperationDiscussionItem) {
+  return normalizeRoundNo(`${report.title} ${report.summary ?? ""}`);
+}
+
+function normalizeRoundNo(value: string) {
+  return value.match(/(\d{1,2})\s*(회차|차수|주차|차)/)?.[1] ?? "";
+}
+
+function compareRoundGroup(a: string, b: string) {
+  const aNumber = Number(a);
+  const bNumber = Number(b);
+
+  if (Number.isFinite(aNumber) && Number.isFinite(bNumber) && aNumber !== bNumber) {
+    return aNumber - bNumber;
+  }
+
+  return a.localeCompare(b);
+}
+
+function findCourseOperationByRound(operations: OperationSession[], roundNo: string) {
+  const normalizedRoundNo = Number(roundNo);
+
+  if (!Number.isFinite(normalizedRoundNo)) {
+    return null;
+  }
+
+  return operations.find((operation) => Number(operation.roundNo) === normalizedRoundNo) ?? null;
+}
+
+function formatShortDateTime(value: string) {
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) return value;
 
   return new Intl.DateTimeFormat("ko-KR", {
-    dateStyle: "medium",
-    timeStyle: "short"
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
   }).format(date);
 }
 
@@ -530,10 +562,6 @@ function averageSatisfaction(values: number[]) {
 
   const average = values.reduce((sum, value) => sum + value, 0) / values.length;
   return average.toFixed(2);
-}
-
-function formatSatisfactionValue(value: string) {
-  return summarizeSatisfactionValue(value) || "미입력";
 }
 
 function isNumber(value: number | null): value is number {

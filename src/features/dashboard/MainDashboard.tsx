@@ -199,7 +199,7 @@ function CompactList({ items }: { items: Array<{ count: number; label: string }>
 
 function DonutChart({ items }: { items: Array<{ count: number; label: string }> }) {
   const total = items.reduce((sum, item) => sum + item.count, 0) || 1;
-  const colors = ["#245a9f", "#176b4d", "#8a5a00", "#624c9d", "#a33a35"];
+  const colors = ["#9fb58d", "#d9caa7", "#aab7bd", "#c8b6a5", "#d7b5aa"];
   const gradient = items
     .map((item, index) => {
       const previous = items.slice(0, index).reduce((sum, current) => sum + current.count, 0);
