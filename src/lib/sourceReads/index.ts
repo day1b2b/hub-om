@@ -7,6 +7,7 @@ export type {
   CalendarResourceEvent,
   CourseBoardRecord,
   DiscussionReference,
+  DiscussionReferenceSourceKind,
   OperationSourceKind,
   OperationSourceReader,
   SalesRecord,
