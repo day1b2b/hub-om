@@ -4,6 +4,7 @@ declare module "next-auth" {
   interface Session extends DefaultSession {
     gmailReadGranted?: boolean;
     googleAccessToken?: string;
+    googleSheetsReadGranted?: boolean;
     googleTokenError?: string;
   }
 }
@@ -14,6 +15,7 @@ declare module "next-auth/jwt" {
     googleAccessToken?: string;
     googleAccessTokenExpiresAt?: number;
     googleRefreshToken?: string;
+    googleSheetsReadGranted?: boolean;
     googleTokenError?: string;
   }
 }

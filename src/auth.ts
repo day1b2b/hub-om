@@ -3,7 +3,9 @@ import type { JWT } from "next-auth/jwt";
 import Google from "next-auth/providers/google";
 import { ALLOWED_WORKSPACE_DOMAIN, isAllowedWorkspaceEmail } from "@/lib/auth/workspaceAccess";
 
+const DEV_AUTH_SECRET = "hub-om-local-development-auth-secret";
 const GMAIL_READONLY_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
+const GOOGLE_SHEETS_READONLY_SCOPE = "https://www.googleapis.com/auth/spreadsheets.readonly";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 
 function getHostedDomain(profile: unknown) {
@@ -13,11 +15,19 @@ function getHostedDomain(profile: unknown) {
   return typeof hostedDomain === "string" ? hostedDomain : null;
 }
 
+function getAuthSecret() {
+  if (process.env.AUTH_SECRET) return process.env.AUTH_SECRET;
+  if (process.env.NEXTAUTH_SECRET) return process.env.NEXTAUTH_SECRET;
+  if (process.env.NODE_ENV !== "production") return DEV_AUTH_SECRET;
+  return undefined;
+}
+
 export const { auth, handlers, signIn, signOut } = NextAuth({
   pages: {
     error: "/sign-in",
     signIn: "/sign-in"
   },
+  secret: getAuthSecret(),
   providers: [
     Google({
       authorization: {
@@ -31,7 +41,8 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
             "openid",
             "email",
             "profile",
-            GMAIL_READONLY_SCOPE
+            GMAIL_READONLY_SCOPE,
+            GOOGLE_SHEETS_READONLY_SCOPE
           ].join(" ")
         }
       }
@@ -61,6 +72,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         token.googleRefreshToken = account.refresh_token ?? token.googleRefreshToken;
         token.googleAccessTokenExpiresAt = account.expires_at ? account.expires_at * 1000 : Date.now() + 3600 * 1000;
         token.gmailReadGranted = hasGrantedScope(account.scope, GMAIL_READONLY_SCOPE);
+        token.googleSheetsReadGranted = hasGrantedScope(account.scope, GOOGLE_SHEETS_READONLY_SCOPE);
         token.googleTokenError = undefined;
         return token;
       }
@@ -75,6 +87,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       if (typeof token.googleRefreshToken !== "string") {
         token.googleAccessToken = undefined;
         token.gmailReadGranted = false;
+        token.googleSheetsReadGranted = false;
         token.googleTokenError = "missing_refresh_token";
         return token;
       }
@@ -84,6 +97,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     session({ session, token }) {
       session.googleAccessToken = typeof token.googleAccessToken === "string" ? token.googleAccessToken : undefined;
       session.gmailReadGranted = token.gmailReadGranted === true;
+      session.googleSheetsReadGranted = token.googleSheetsReadGranted === true;
       session.googleTokenError = typeof token.googleTokenError === "string" ? token.googleTokenError : undefined;
       return session;
     }
@@ -118,6 +132,7 @@ async function refreshGoogleAccessToken(token: JWT): Promise<JWT> {
       ...token,
       googleAccessToken: undefined,
       gmailReadGranted: false,
+      googleSheetsReadGranted: false,
       googleTokenError: "refresh_failed"
     };
   }
@@ -127,6 +142,9 @@ async function refreshGoogleAccessToken(token: JWT): Promise<JWT> {
     googleAccessToken: payload.access_token,
     googleAccessTokenExpiresAt: Date.now() + (payload.expires_in ?? 3600) * 1000,
     gmailReadGranted: payload.scope ? hasGrantedScope(payload.scope, GMAIL_READONLY_SCOPE) : token.gmailReadGranted === true,
+    googleSheetsReadGranted: payload.scope
+      ? hasGrantedScope(payload.scope, GOOGLE_SHEETS_READONLY_SCOPE)
+      : token.googleSheetsReadGranted === true,
     googleTokenError: undefined
   };
 }
