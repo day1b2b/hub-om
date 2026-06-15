@@ -2,7 +2,10 @@ import type { Prisma } from "@prisma/client";
 import type {
   ImportRunDetail,
   ImportRunStatus,
+  LinkedOperationPreview,
+  SourceRecordFieldPreview,
   SourceRecordPreview,
+  SourceRecordReviewStatus,
   SourceTeamLabel
 } from "./importTypes";
 import type { ImportRepository } from "./importRepository";
@@ -59,6 +62,17 @@ export class PrismaImportRepository implements ImportRepository {
       include: {
         sourceRecords: {
           orderBy: [{ sourceSheet: "asc" }, { sourceRowNumber: "asc" }],
+          include: {
+            operationSession: {
+              include: {
+                course: {
+                  include: {
+                    company: true
+                  }
+                }
+              }
+            }
+          },
           take: 200
         },
         _count: {
@@ -97,11 +111,28 @@ function toSourceRecordPreview(record: {
   headerRowNumber: number | null;
   sourceFingerprint: string | null;
   operationSessionId: string | null;
+  operationSession: {
+    operationId: string;
+    startDate: Date;
+    endDate: Date;
+    course: {
+      name: string;
+      company: {
+        name: string;
+      };
+    };
+  } | null;
+  rowSnapshot: Prisma.JsonValue;
   mappedFields: Prisma.JsonValue | null;
   unmappedFields: Prisma.JsonValue | null;
   validationErrors: Prisma.JsonValue | null;
   createdAt: Date;
 }): SourceRecordPreview {
+  const mappedFields = getFieldPreview(record.mappedFields);
+  const unmappedFields = getFieldPreview(record.unmappedFields);
+  const validationErrors = getStringArray(record.validationErrors);
+  const linkedOperation = toLinkedOperationPreview(record.operationSession);
+
   return {
     id: record.id,
     sourceTeam: SOURCE_TEAM[record.sourceTeam],
@@ -109,9 +140,18 @@ function toSourceRecordPreview(record: {
     headerRowNumber: record.headerRowNumber,
     sourceFingerprint: record.sourceFingerprint ?? "",
     linkedOperationId: record.operationSessionId ?? "",
-    mappedFieldCount: countObjectKeys(record.mappedFields),
-    unmappedFieldCount: countObjectKeys(record.unmappedFields),
-    validationErrors: getStringArray(record.validationErrors),
+    linkedOperation,
+    mappedFieldCount: mappedFields.length,
+    mappedFields,
+    unmappedFieldCount: unmappedFields.length,
+    unmappedFields,
+    rowSnapshotPreview: getFieldPreview(record.rowSnapshot).slice(0, 8),
+    reviewStatus: getReviewStatus({
+      linkedOperation,
+      mappedFieldCount: mappedFields.length,
+      validationErrors
+    }),
+    validationErrors,
     createdAt: toDateTimeString(record.createdAt)
   };
 }
@@ -130,11 +170,79 @@ function countJsonItems(value: Prisma.JsonValue | null): number {
   return 0;
 }
 
-function countObjectKeys(value: Prisma.JsonValue | null): number {
-  if (!value || Array.isArray(value) || typeof value !== "object") return 0;
-  return Object.keys(value).length;
-}
-
 function getStringArray(value: Prisma.JsonValue | null): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 }
+
+function getFieldPreview(value: Prisma.JsonValue | null): SourceRecordFieldPreview[] {
+  if (!value || Array.isArray(value) || typeof value !== "object") return [];
+
+  return Object.entries(value)
+    .filter(([, fieldValue]) => fieldValue !== null && fieldValue !== undefined && String(fieldValue).trim())
+    .slice(0, 12)
+    .map(([key, fieldValue]) => ({
+      key,
+      label: FIELD_LABELS[key] ?? key,
+      value: stringifyFieldValue(fieldValue)
+    }));
+}
+
+function stringifyFieldValue(value: Prisma.JsonValue | undefined): string {
+  if (value === undefined) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return JSON.stringify(value);
+}
+
+function toLinkedOperationPreview(
+  operationSession: {
+    operationId: string;
+    startDate: Date;
+    endDate: Date;
+    course: {
+      name: string;
+      company: {
+        name: string;
+      };
+    };
+  } | null
+): LinkedOperationPreview | null {
+  if (!operationSession) return null;
+
+  return {
+    operationId: operationSession.operationId,
+    companyName: operationSession.course.company.name,
+    courseName: operationSession.course.name,
+    dateRange: `${toDateString(operationSession.startDate)} - ${toDateString(operationSession.endDate)}`
+  };
+}
+
+function toDateString(value: Date): string {
+  return new Intl.DateTimeFormat("ko-KR", {
+    dateStyle: "medium",
+    timeZone: "Asia/Seoul"
+  }).format(value);
+}
+
+function getReviewStatus(input: {
+  linkedOperation: LinkedOperationPreview | null;
+  mappedFieldCount: number;
+  validationErrors: string[];
+}): SourceRecordReviewStatus {
+  if (input.validationErrors.length > 0) return "확인 필요";
+  if (!input.linkedOperation) return "매칭 필요";
+  if (input.mappedFieldCount === 0) return "확인 필요";
+  return "적용 준비";
+}
+
+const FIELD_LABELS: Record<string, string> = {
+  companyName: "기업명",
+  courseId: "코스 ID",
+  courseName: "과정명",
+  endDate: "종료일",
+  instructors: "강사",
+  ld: "LD",
+  om: "OM",
+  operationId: "운영 ID",
+  startDate: "시작일"
+};

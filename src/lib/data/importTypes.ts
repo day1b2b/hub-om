@@ -24,12 +24,32 @@ export interface SourceRecordPreview {
   headerRowNumber: number | null;
   sourceFingerprint: string;
   linkedOperationId: string;
+  linkedOperation: LinkedOperationPreview | null;
   mappedFieldCount: number;
+  mappedFields: SourceRecordFieldPreview[];
   unmappedFieldCount: number;
+  unmappedFields: SourceRecordFieldPreview[];
+  rowSnapshotPreview: SourceRecordFieldPreview[];
+  reviewStatus: SourceRecordReviewStatus;
   validationErrors: string[];
   createdAt: string;
 }
 
 export interface ImportRunDetail extends ImportRunSummary {
   records: SourceRecordPreview[];
+}
+
+export type SourceRecordReviewStatus = "적용 준비" | "확인 필요" | "매칭 필요";
+
+export interface SourceRecordFieldPreview {
+  key: string;
+  label: string;
+  value: string;
+}
+
+export interface LinkedOperationPreview {
+  operationId: string;
+  companyName: string;
+  courseName: string;
+  dateRange: string;
 }
