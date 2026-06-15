@@ -512,6 +512,8 @@ async function buildDiscussionReference(
     operationKey: operation.operationId,
     title,
     occurredAt: slackTsToIso(ts),
+    sourceKind: "slack",
+    sourceLabel: "Slack",
     sourceUrl,
     summary
   };
@@ -595,18 +597,20 @@ async function summarizeThreadOutcome(
 
   const fullText = messages.map((message) => message.text).join(" ");
   const summaryLines = buildStructuredSummary(fullText);
+  const structuredSummary = formatSummaryLines(summaryLines);
 
-  if (summaryLines.length > 0) {
-    return summaryLines.map((line) => `- ${line}`).join("\n");
+  if (structuredSummary) {
+    return structuredSummary;
   }
 
   const fallbackLines = buildMessageBackedSummary(messages, operation);
+  const fallbackSummary = formatSummaryLines(fallbackLines);
 
-  if (fallbackLines.length > 0) {
-    return fallbackLines.map((line) => `- ${line}`).join("\n");
+  if (fallbackSummary) {
+    return fallbackSummary;
   }
 
-  return "- 확인: Slack 스레드에서 상세 맥락을 확인하세요.";
+  return "- 원문 확인: 자동 요약에 충분한 구체 결정이나 후속 조치가 없어 Slack 원문 확인이 필요합니다.";
 }
 
 async function readAiThreadSummary(
@@ -633,7 +637,10 @@ async function readAiThreadSummary(
               "원문 인용, 감탄사, Slack 사용자 ID, 불확실한 추측은 쓰지 않습니다.",
               "반드시 한국어 bullet 2~4개만 출력하고 각 줄은 '- '로 시작합니다.",
               "가능하면 라벨은 요지, 결론, 후속, 주의를 사용합니다.",
-              "결론이나 후속 조치가 원문에 없으면 해당 라벨은 생략합니다."
+              "결론이나 후속 조치가 원문에 없으면 해당 라벨은 생략합니다.",
+              "각 bullet에는 변경 대상, 요청 내용, 결정, 담당자 행동 중 하나 이상의 구체 정보가 있어야 합니다.",
+              "'확인한 내용을 공유했습니다', '요청 사항을 확인했습니다'처럼 확인/공유 사실만 반복하는 문장은 쓰지 않습니다.",
+              "라벨 뒤 내용은 짧은 구문으로 쓰고, '-다', '-습니다', '-합니다' 같은 문장 종결형은 피합니다."
             ].join(" ")
           },
           {
@@ -686,7 +693,10 @@ function buildAiSummaryPrompt(messages: Array<{ speaker: string; text: string }>
     "",
     "[작성 기준]",
     "- 이 대화가 어떤 운영 이슈였는지 한눈에 알 수 있게 씁니다.",
-    "- 최종 결정, 고객 확인 내용, 후속 조치가 있으면 분리해서 씁니다.",
+    "- 최종 결정, 고객 확인 내용, 후속 조치가 원문에 구체적으로 있으면 분리해서 씁니다.",
+    "- 확인/공유/전달했다는 사실만 있고 무엇을 확인했는지 불명확하면 쓰지 않습니다.",
+    "- 자료, 일정, 강사, 비용, 피드백, 회차처럼 실제 운영자가 찾을 수 있는 대상을 포함합니다.",
+    "- 라벨 뒤 내용은 20자 안팎의 짧은 구문으로 씁니다. 예: 교안 공유, 4시간 기준 지급, 조한준 강사",
     "- 원문 일부를 그대로 베끼지 말고 의미를 정리합니다.",
     "- 근거가 부족한 내용은 쓰지 않습니다."
   ].join("\n");
@@ -699,18 +709,77 @@ function normalizeAiSummary(value: string) {
     .filter(Boolean)
     .map((line) => line.replace(/^[-*]\s*/, "- "))
     .filter((line) => line.startsWith("- "))
-    .filter((line) => !isLowSignalSummaryLine(line))
-    .slice(0, 4);
+    .map((line) => line.replace(/\s+/g, " "))
+    .filter(isUsefulSummaryLine);
 
-  if (lines.length < 2) {
+  if (lines.length === 0) {
     return null;
   }
 
-  return lines.join("\n");
+  return lines.slice(0, 4).join("\n");
+}
+
+function formatSummaryLines(lines: string[]) {
+  const usefulLines = lines
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => line.replace(/^[-*]\s*/, ""))
+    .map((line) => `- ${line}`)
+    .filter(isUsefulSummaryLine)
+    .slice(0, 4);
+
+  if (usefulLines.length === 0) {
+    return null;
+  }
+
+  return usefulLines.join("\n");
+}
+
+function isUsefulSummaryLine(line: string) {
+  return !isLowSignalSummaryLine(line) && hasConcreteSummarySignal(line);
 }
 
 function isLowSignalSummaryLine(line: string) {
-  return /-\s*(결론|확인|후속)\s*[:：]\s*(확인\s*필요|추가\s*확인\s*필요|확인이\s*필요|원문\s*확인\s*필요)\s*\.?$/i.test(line);
+  const text = stripSummaryLabel(line);
+
+  return [
+    /^(확인\s*필요|추가\s*확인\s*필요|확인이\s*필요|원문\s*확인\s*필요)\.?$/i,
+    /확인한\s*내용을?\s*(?:팀에\s*)?공유했습니다\.?$/i,
+    /^고객\/?담당자와?\s*확인한\s*내용을\s*팀에\s*공유했습니다\.?$/i,
+    /^고객(?:\s*또는\s*담당자)?\s*요청\s*사항을\s*확인하고\s*대응\s*방향을\s*논의했습니다\.?$/i,
+    /^고객\/?담당자의?\s*추가\s*회신\s*또는\s*재확인이\s*필요합니다\.?$/i,
+    /^과정\s*운영에\s*필요한\s*자료나\s*전달\s*내용을\s*확인했습니다\.?$/i,
+    /^공유된\s*.+자료를\s*과정\s*운영\s*자료나\s*보고\s*링크에서\s*확인(?:하면\s*됩니다|합니다)\.?$/i,
+    /^.+관련\s*건은\s*스레드\s*안에서\s*정리된\s*상태입니다\.?$/i,
+    /^해당\s*건은\s*스레드\s*안에서\s*정리된\s*상태입니다\.?$/i,
+    /^고객\s*피드백\s*반영\s*논의입니다\.?$/i
+  ].some((pattern) => pattern.test(text));
+}
+
+function hasConcreteSummarySignal(line: string) {
+  const text = stripSummaryLabel(line);
+
+  if (/\d/.test(text)) {
+    return true;
+  }
+
+  return [
+    /강사비|지급|정산|비용|계산서|입금/i,
+    /일정|시간|장소|연기|취소|확정|조정/i,
+    /자료|교안|콘텐츠|보고|링크|파일|문서/i,
+    /피드백|난이도|실습|과제|핸즈온|진행\s*방식|속도|커리큘럼|강의\s*내용/i,
+    /강사|섭외|시강|만족도/i,
+    /회차|차수|분반|대상자|수강생|교육생/i,
+    /변경|누락|문제|이슈|장애|리스크/i,
+    /전달|반영|회신|요청|결정|확정|정리|마무리/i
+  ].some((pattern) => pattern.test(text));
+}
+
+function stripSummaryLabel(line: string) {
+  return line
+    .replace(/^[-*]\s*/, "")
+    .replace(/^(요지|결론|확인|후속|주의|맥락|원문\s*확인)\s*[:：]\s*/i, "")
+    .trim();
 }
 
 function buildStructuredSummary(value: string) {
@@ -726,38 +795,40 @@ function buildStructuredSummary(value: string) {
 
 function buildIssueSummary(value: string) {
   if (/(4시간|4h|4 h)/i.test(value) && /(2시간|2h|2 h)/i.test(value)) {
-    return "요지: 강의 시간이 4시간에서 2시간으로 바뀐 건의 강사비 지급 기준을 조율했습니다.";
+    return "요지: 4시간→2시간 강사비";
   }
 
   if (/(피드백|반영)/i.test(value)) {
     const focus = getFeedbackFocus(value);
     return focus.length > 0
-      ? `요지: 고객 피드백 반영 논의입니다. 주요 초점은 ${focus.join(", ")}입니다.`
-      : "요지: 고객 피드백을 강사/운영에 어떻게 반영할지 논의했습니다.";
+      ? `요지: 피드백 반영 - ${focus.join(", ")}`
+      : "요지: 피드백 반영";
   }
 
   if (/(강의\s*내용\s*공유|내용\s*공유드립니다|강의보고|운영보고)/i.test(value)) {
-    return "요지: 강의 내용 또는 보고 자료를 공유한 건입니다.";
+    return "요지: 강의 내용/보고 공유";
   }
 
   if (/(자료|교안|콘텐츠|보고|공유|전달)/i.test(value)) {
-    return "요지: 과정 운영에 필요한 자료나 전달 내용을 확인했습니다.";
+    const materialFocus = getMaterialFocus(value);
+    return materialFocus.length > 0 ? `요지: ${materialFocus.join(", ")} 공유` : null;
   }
 
   if (/(일정|시간|변경|연기|취소|확정|조정)/i.test(value)) {
-    return "요지: 강의 일정 또는 운영 시간 변경 사항을 확인했습니다.";
+    return "요지: 일정/시간 조정";
   }
 
   if (/(강사비|지급|비용|정산|입금|계산서)/i.test(value)) {
-    return "요지: 강사비나 비용 처리 기준을 확인했습니다.";
+    return "요지: 비용/정산 기준";
   }
 
   if (/(강사|섭외|시강)/i.test(value)) {
-    return "요지: 강사 섭외, 시강, 운영 피드백과 관련한 논의입니다.";
+    return "요지: 강사 섭외/시강";
   }
 
   if (/(고객|담당자|연락|전화|메일|요청)/i.test(value)) {
-    return "요지: 고객 또는 담당자 요청 사항을 확인하고 대응 방향을 논의했습니다.";
+    const requestFocus = getRequestFocus(value);
+    return requestFocus.length > 0 ? `요지: 고객 요청 - ${requestFocus.join(", ")}` : null;
   }
 
   return null;
@@ -862,32 +933,24 @@ function buildMessageContextSummary(value: string) {
     return "";
   }
 
-  return `맥락: ${[...new Set(contexts)].slice(0, 3).join(", ")} 관련입니다.`;
+  return `맥락: ${[...new Set(contexts)].slice(0, 3).join(", ")}`;
 }
 
 function buildDecisionSummary(value: string) {
   if (/(4시간|4h|4 h)/i.test(value) && /(2시간|2h|2 h)/i.test(value)) {
     if (/(그대로|다 지급|전체 지급|4시간 그대로|4h 그대로)/i.test(value)) {
-      return "결론: 고객 확인 후 강사에게는 기존 4시간 기준으로 지급하기로 정리했습니다.";
+      return "결론: 4시간 기준 지급";
     }
 
     if (/(2시간으로|2h로|2시간 기준)/i.test(value)) {
-      return "결론: 2시간 기준으로 협의하는 방향이 언급되었습니다.";
+      return "결론: 2시간 기준 협의";
     }
 
-    return "결론: 지급 기준 확정을 위해 고객/내부 확인이 필요한 상태였습니다.";
+    return "결론: 지급 기준 확인 필요";
   }
 
   if (/(피드백|반영)/i.test(value) && /(전달|공유|반영|말씀|요청)/i.test(value)) {
-    return "결론: 피드백은 강사에게 전달해 과정 운영에 반영하기로 했습니다.";
-  }
-
-  if (/(완료|마무리|정리|확정)/i.test(value)) {
-    return "결론: 해당 건은 스레드 안에서 정리된 상태입니다.";
-  }
-
-  if (/(확인|연락|전화|회신)/i.test(value)) {
-    return "확인: 고객/담당자와 확인한 내용을 팀에 공유했습니다.";
+    return "결론: 피드백 강사 전달";
   }
 
   return null;
@@ -895,15 +958,11 @@ function buildDecisionSummary(value: string) {
 
 function buildFollowUpSummary(value: string) {
   if (/(피드백|반영)/i.test(value) && /(강사|전달)/i.test(value)) {
-    return "후속: 강사 전달 및 반영 여부를 챙겨야 합니다.";
+    return "후속: 강사 반영 확인";
   }
 
   if (/(다시 연락|재확인|회신|답변|확인해보고|논의 해보고)/i.test(value) && !/(마무리|정리|확정)/i.test(value)) {
-    return "후속: 고객/담당자의 추가 회신 또는 재확인이 필요합니다.";
-  }
-
-  if (/(공유|전달)/i.test(value) && /(자료|교안|콘텐츠|보고|강의 내용)/i.test(value)) {
-    return "후속: 공유된 자료를 과정 운영 자료나 보고 링크에서 확인하면 됩니다.";
+    return "후속: 고객 회신 확인";
   }
 
   return null;
@@ -919,7 +978,7 @@ function buildContextSummary(value: string) {
     return null;
   }
 
-  return `맥락: ${[...new Set(contexts)].slice(0, 3).join(", ")} 관련입니다.`;
+  return `맥락: ${[...new Set(contexts)].slice(0, 3).join(", ")}`;
 }
 
 function getFeedbackFocus(value: string) {
@@ -929,6 +988,35 @@ function getFeedbackFocus(value: string) {
     [/(실습|과제|핸즈온)/i, "실습 구성"],
     [/(진행|속도|시간)/i, "진행 방식"],
     [/(커리큘럼|내용|주제)/i, "강의 내용"]
+  ] as const;
+
+  return focus
+    .filter(([pattern]) => pattern.test(value))
+    .map(([, label]) => label)
+    .slice(0, 3);
+}
+
+function getMaterialFocus(value: string) {
+  const focus = [
+    [/(교안|교재)/i, "교안"],
+    [/(콘텐츠|자료)/i, "자료"],
+    [/(강의\s*내용|강의보고|운영보고|보고)/i, "강의 내용/보고"],
+    [/(링크|파일|문서|드라이브)/i, "링크/파일"]
+  ] as const;
+
+  return focus
+    .filter(([pattern]) => pattern.test(value))
+    .map(([, label]) => label)
+    .slice(0, 3);
+}
+
+function getRequestFocus(value: string) {
+  const focus = [
+    [/(일정|시간|장소|변경|연기|취소)/i, "일정/시간"],
+    [/(자료|교안|콘텐츠|강의\s*내용|보고)/i, "자료"],
+    [/(강사|섭외|시강)/i, "강사"],
+    [/(강사비|지급|비용|정산|계산서)/i, "비용/정산"],
+    [/(피드백|난이도|실습|진행|커리큘럼)/i, "피드백 반영"]
   ] as const;
 
   return focus

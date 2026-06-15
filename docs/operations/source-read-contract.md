@@ -84,6 +84,22 @@ Slack reader는 토큰이 없으면 비활성화됩니다. API rate limit을 피
 
 세부 매칭 기준은 `docs/operations/slack-discussion-matching.md`에서 관리합니다.
 
+## 운영 논의 매칭 기준
+
+상세페이지의 운영 논의 영역은 Slack뿐 아니라 메일처럼 스레드형 원천을 함께 받을 수 있습니다. 공개 저장소에서는 원천별 실제 API, 검색식, 고객사/담당자/강사 예시를 두지 않고, 정규화된 `DiscussionReference`만 사용합니다.
+
+`DiscussionReference`를 과정에 붙일 때는 아래 순서로 판단합니다.
+
+1. `operationKey` 또는 본문에 `operationId`나 `courseId`가 정확히 있으면 확정 매칭합니다.
+2. 정확 키가 없으면 기업명 토큰을 우선 확인합니다.
+3. 같은 기업의 여러 과정이 섞이지 않도록 과정명 토큰, OM, LD, 강사, 실습코치, 회차, 과정 기간 근접도를 함께 점수화합니다.
+4. 기업명이 없더라도 과정명과 사람 신호가 충분하고 기간이 가까운 경우에만 제한적으로 매칭합니다.
+5. 자동 확정 기준을 넘지 못한 후보는 상세페이지에 바로 노출하지 않고 원천 adapter 또는 staging 단계에서 검토 대상으로 남깁니다.
+
+OM과 LD는 매칭 신뢰도에 중요한 신호입니다. 운영 메일이나 Slack 스레드에서는 과정명이 축약되거나 빠지는 경우가 많기 때문에, 기업명만 맞는 후보보다 기업명과 OM/LD가 함께 확인되는 후보를 우선합니다.
+
+각 항목은 화면에서 원천을 구분할 수 있도록 `sourceKind`와 `sourceLabel`을 가질 수 있습니다. Slack reader는 `sourceKind: "slack"`, `sourceLabel: "Slack"`을 넣고, 메일 reader는 `sourceKind: "email"`, `sourceLabel: "메일"`을 넣습니다. 값이 없으면 원문 URL이 `slack.com`인지 `mail.google.com`인지 보고 fallback 분류합니다.
+
 ## Google Calendar 읽기 설정
 
 Google Calendar는 서비스 계정 기반 읽기 전용 연결을 지원합니다. 실제 서비스 계정 이메일, private key, calendar ID는 저장소에 커밋하지 않고 배포/로컬 환경변수로만 관리합니다.
