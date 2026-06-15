@@ -53,7 +53,7 @@ export async function listGoogleSheetTabs(accessToken: string, spreadsheetId: st
 }
 
 export async function readGoogleSheetRows(accessToken: string, spreadsheetId: string, tabTitle: string) {
-  const range = encodeURIComponent(quoteSheetTitle(tabTitle));
+  const range = encodeURIComponent(`${quoteSheetTitle(tabTitle)}!A1:ZZ2000`);
   const url = `${SHEETS_API_BASE_URL}/${spreadsheetId}/values/${range}?majorDimension=ROWS`;
   const payload = await fetchGoogleSheetsApi<{
     values?: string[][];

@@ -68,21 +68,35 @@ function parseCsvImport(content: string): ParsedImportFile {
 
 export function parseImportTable(table: string[][], headerRowNumber = 1): ParsedImportFile {
   const normalizedTable = table.map((row) => row.map((cell) => String(cell ?? "").trim()));
-  const headerIndex = Math.max(0, headerRowNumber - 1);
+  const requestedHeaderIndex = Math.max(0, headerRowNumber - 1);
+  const headerIndex = findHeaderIndex(normalizedTable, requestedHeaderIndex);
   const headers = normalizedTable[headerIndex]?.map((header) => header.trim()) ?? [];
 
   if (headers.length === 0) {
-    throw new Error("헤더 행이 비어 있습니다.");
+    throw new Error("헤더로 사용할 행을 찾지 못했습니다. 시트에 제목 행과 데이터가 있는지 확인해 주세요.");
   }
 
   return {
-    headerRowNumber,
+    headerRowNumber: headerIndex + 1,
     rows: normalizedTable
       .slice(headerIndex + 1)
-      .map((row, index) => rowToObject(headers, row, headerRowNumber + index + 1))
+      .map((row, index) => rowToObject(headers, row, headerIndex + index + 2))
       .filter((row) => Object.keys(row).length > 0)
-      .map((row, index) => buildParsedRow(row, Number(row.__sourceRowNumber) || headerRowNumber + index + 1))
+      .map((row, index) => buildParsedRow(row, Number(row.__sourceRowNumber) || headerIndex + index + 2))
   };
+}
+
+function findHeaderIndex(table: string[][], requestedHeaderIndex: number) {
+  if (hasCells(table[requestedHeaderIndex])) {
+    return requestedHeaderIndex;
+  }
+
+  const nextHeaderIndex = table.findIndex((row, index) => index >= requestedHeaderIndex && hasCells(row));
+  return nextHeaderIndex >= 0 ? nextHeaderIndex : requestedHeaderIndex;
+}
+
+function hasCells(row: string[] | undefined) {
+  return Boolean(row?.some((cell) => cell.trim()));
 }
 
 function normalizeJsonRow(row: unknown): Record<string, string> {
