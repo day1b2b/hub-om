@@ -19,11 +19,57 @@ const MAX_RECURSION_DEPTH = 2;
 const MAX_TEXT_FILES = 10;
 const MAX_FOLDER_SEARCH_RESULTS = 25;
 const MAX_EXTRACTED_TEXT_LENGTH = 80_000;
+const MIN_FOLDER_REFERENCE_MATCH_SCORE = 60;
 const FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
 const GOOGLE_DOC_MIME_TYPE = "application/vnd.google-apps.document";
 const GOOGLE_PRESENTATION_MIME_TYPE = "application/vnd.google-apps.presentation";
 const GOOGLE_SHEET_MIME_TYPE = "application/vnd.google-apps.spreadsheet";
 const XLSX_MIME_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+const BLOCKED_INSTRUCTOR_NAME_VALUES = new Set([
+  "강사",
+  "교육",
+  "내부",
+  "대상",
+  "담당",
+  "리더",
+  "미정",
+  "미확정",
+  "미팅",
+  "생길때",
+  "섭외",
+  "실습",
+  "수업시간",
+  "외부",
+  "운영",
+  "로그",
+  "시계",
+  "시간",
+  "일정",
+  "장소",
+  "조정을",
+  "진행",
+  "참여",
+  "참여인원",
+  "추천",
+  "출강",
+  "필요",
+  "프로필",
+  "없어",
+  "확인",
+  "후보"
+]);
+const BLOCKED_COURSE_NAME_VALUES = new Set([
+  "강의관리",
+  "강의요약",
+  "과정정보",
+  "교육내용",
+  "기본정보",
+  "세부교육내용",
+  "세부내용",
+  "운영조건",
+  "운영상세",
+  "주요내용"
+]);
 const DRIVE_OWNER_KOREAN_NAMES: Record<string, string> = {
   hayoungjung: "정하영",
   minsunkim: "김민선",
@@ -52,6 +98,7 @@ interface GoogleDriveFile {
   mimeType: string;
   webViewLink?: string;
   modifiedTime?: string;
+  parents?: string[];
   owners?: Array<{
     displayName?: string;
     emailAddress?: string;
@@ -132,24 +179,12 @@ export async function scanOperationDriveFolder(folderUrl: string): Promise<Drive
   const folderId = extractDriveFolderId(folderUrl);
   const scannedAt = new Date().toISOString();
 
-  if (!folderId) {
-    return {
-      folderId: "",
-      folderTitle: "",
-      folderUrl,
-      scannedAt,
-      candidates: [],
-      files: [],
-      issues: ["Drive folder URL을 확인할 수 없습니다."]
-    };
-  }
-
   const config = readGoogleDriveConfig();
   const issues = validateGoogleDriveConfig(config);
 
   if (issues.length > 0) {
     return {
-      folderId,
+      folderId: folderId ?? "",
       folderTitle: "",
       folderUrl,
       scannedAt,
@@ -161,13 +196,28 @@ export async function scanOperationDriveFolder(folderUrl: string): Promise<Drive
 
   try {
     const accessToken = await getGoogleAccessToken(config);
-    const folder = await getDriveFile(folderId, accessToken);
-    const files = await listDriveTree(folderId, folder.name, accessToken);
+    const folder = folderId
+      ? await getDriveFile(folderId, accessToken)
+      : await resolveDriveFolderReference(folderUrl, accessToken);
+
+    if (!folder) {
+      return {
+        folderId: "",
+        folderTitle: "",
+        folderUrl,
+        scannedAt,
+        candidates: [],
+        files: [],
+        issues: ["Drive 폴더 URL/ID가 아니고, 같은 이름의 Drive 폴더도 찾지 못했습니다."]
+      };
+    }
+
+    const files = await listDriveTree(folder.id, folder.name, accessToken);
     const textFiles = await readPriorityTextFiles(files, accessToken);
     const candidates = buildCandidates(folder, folderUrl, files, textFiles);
 
     return {
-      folderId,
+      folderId: folder.id,
       folderTitle: folder.name,
       folderUrl: folder.webViewLink ?? folderUrl,
       scannedAt,
@@ -177,7 +227,7 @@ export async function scanOperationDriveFolder(folderUrl: string): Promise<Drive
     };
   } catch {
     return {
-      folderId,
+      folderId: folderId ?? "",
       folderTitle: "",
       folderUrl,
       scannedAt,
@@ -276,7 +326,7 @@ function buildJwtAssertion(config: GoogleDriveConfig, now: number): string {
 
 async function getDriveFile(fileId: string, accessToken: string): Promise<GoogleDriveFile> {
   const url = new URL(`${GOOGLE_DRIVE_FILES_URL}/${encodeURIComponent(fileId)}`);
-  url.searchParams.set("fields", "id,name,mimeType,webViewLink,modifiedTime");
+  url.searchParams.set("fields", "id,name,mimeType,webViewLink,modifiedTime,parents");
   url.searchParams.set("supportsAllDrives", "true");
 
   const response = await fetch(url, {
@@ -358,7 +408,7 @@ async function searchDriveFolders(operation: OperationSession, accessToken: stri
 async function searchDriveFoldersByQuery(query: string, accessToken: string): Promise<GoogleDriveFile[]> {
   const url = new URL(GOOGLE_DRIVE_FILES_URL);
   url.searchParams.set("q", query);
-  url.searchParams.set("fields", "files(id,name,mimeType,webViewLink,modifiedTime,owners(displayName,emailAddress))");
+  url.searchParams.set("fields", "files(id,name,mimeType,webViewLink,modifiedTime,parents,owners(displayName,emailAddress))");
   url.searchParams.set("pageSize", "50");
   url.searchParams.set("supportsAllDrives", "true");
   url.searchParams.set("includeItemsFromAllDrives", "true");
@@ -376,6 +426,127 @@ async function searchDriveFoldersByQuery(query: string, accessToken: string): Pr
   }
 
   return payload.files ?? [];
+}
+
+async function searchDriveFilesByQuery(query: string, accessToken: string): Promise<GoogleDriveFile[]> {
+  const url = new URL(GOOGLE_DRIVE_FILES_URL);
+  url.searchParams.set("q", query);
+  url.searchParams.set("fields", "files(id,name,mimeType,webViewLink,modifiedTime,parents)");
+  url.searchParams.set("pageSize", "50");
+  url.searchParams.set("supportsAllDrives", "true");
+  url.searchParams.set("includeItemsFromAllDrives", "true");
+  url.searchParams.set("corpora", "allDrives");
+
+  const response = await fetch(url, {
+    headers: {
+      authorization: `Bearer ${accessToken}`
+    }
+  });
+  const payload = (await response.json()) as GoogleDriveListResponse;
+
+  if (!response.ok) {
+    return [];
+  }
+
+  return payload.files ?? [];
+}
+
+async function resolveDriveFolderReference(value: string, accessToken: string): Promise<GoogleDriveFile | null> {
+  const reference = cleanupDriveSearchTerm(value);
+  if (!reference) return null;
+
+  const queries = buildFolderReferenceSearchQueries(reference);
+  const results = await Promise.all(queries.map((query) => searchDriveFoldersByQuery(query, accessToken)));
+  const foldersById = new Map<string, GoogleDriveFile>();
+
+  for (const folder of results.flat()) {
+    foldersById.set(folder.id, folder);
+  }
+
+  const folder = [...foldersById.values()]
+    .filter((folder) => !isGenericDriveContainerName(folder.name))
+    .map((folder) => ({
+      folder,
+      score: scoreDriveFolderReferenceMatch(folder.name, reference)
+    }))
+    .filter((result) => result.score >= MIN_FOLDER_REFERENCE_MATCH_SCORE)
+    .sort((a, b) => b.score - a.score || a.folder.name.localeCompare(b.folder.name, "ko-KR"))[0]?.folder ?? null;
+
+  return folder ?? resolveParentFolderFromFileReference(reference, accessToken);
+}
+
+function buildFolderReferenceSearchQueries(reference: string): string[] {
+  const base = [`mimeType = '${FOLDER_MIME_TYPE}'`, "trashed = false"];
+  const tokens = tokenizeDriveSearchText(reference).slice(0, 6);
+  const parts = parseOperationFolderName(reference);
+  const searchTerms = uniqueStrings([
+    reference,
+    parts.companyName ?? "",
+    ...tokenizeDriveSearchText(parts.courseName ?? "").slice(0, 3),
+    ...tokens
+  ].filter(Boolean));
+
+  if (searchTerms.length === 0) return [];
+
+  const queries = searchTerms.map((term) => [...base, `name contains '${escapeDriveQueryValue(term)}'`].join(" and "));
+  const anyTermQuery = searchTerms
+    .slice(0, 8)
+    .map((term) => `name contains '${escapeDriveQueryValue(term)}'`)
+    .join(" or ");
+  queries.push([...base, `(${anyTermQuery})`].join(" and "));
+
+  return [...new Set(queries)];
+}
+
+async function resolveParentFolderFromFileReference(reference: string, accessToken: string): Promise<GoogleDriveFile | null> {
+  const queries = buildFileReferenceSearchQueries(reference);
+  const results = await Promise.all(queries.map((query) => searchDriveFilesByQuery(query, accessToken)));
+  const filesById = new Map<string, GoogleDriveFile>();
+
+  for (const file of results.flat()) {
+    filesById.set(file.id, file);
+  }
+
+  const file = [...filesById.values()]
+    .filter((file) => file.mimeType !== FOLDER_MIME_TYPE && file.parents?.length)
+    .map((file) => ({
+      file,
+      score: scoreDriveFileReferenceMatch(file.name, reference)
+    }))
+    .filter((result) => result.score >= MIN_FOLDER_REFERENCE_MATCH_SCORE)
+    .sort((a, b) => b.score - a.score || a.file.name.localeCompare(b.file.name, "ko-KR"))[0]?.file;
+
+  const parentId = file?.parents?.[0];
+  if (!parentId) return null;
+
+  const parent = await getDriveFile(parentId, accessToken);
+  if (isGenericDriveContainerName(parent.name)) return null;
+
+  return driveFolderReferenceHasDistinctiveCourseMatch(parent.name, reference) ? parent : null;
+}
+
+function buildFileReferenceSearchQueries(reference: string): string[] {
+  const base = [`mimeType != '${FOLDER_MIME_TYPE}'`, "trashed = false"];
+  const tokens = tokenizeDriveSearchText(reference).slice(0, 8);
+  const parts = parseOperationFolderName(stripKnownDriveFileSuffix(reference));
+  const searchTerms = uniqueStrings([
+    reference,
+    stripKnownDriveFileSuffix(reference),
+    parts.companyName ?? "",
+    ...tokenizeDriveSearchText(parts.courseName ?? "").slice(0, 4),
+    ...tokens
+  ].filter(Boolean));
+
+  if (searchTerms.length === 0) return [];
+
+  const queries = searchTerms.map((term) => [...base, `name contains '${escapeDriveQueryValue(term)}'`].join(" and "));
+  const anyTermQuery = searchTerms
+    .slice(0, 8)
+    .map((term) => `name contains '${escapeDriveQueryValue(term)}'`)
+    .join(" or ");
+  queries.push([...base, `(${anyTermQuery})`].join(" and "));
+
+  return [...new Set(queries)];
 }
 
 function buildFolderSearchQueries(operation: OperationSession): string[] {
@@ -468,11 +639,6 @@ function scoreDriveFolderCandidate(folder: GoogleDriveFile, operation: Operation
   if (matchedOwner) {
     score += 12;
     reasons.push(`소유자 담당자 일치: ${matchedOwner}`);
-  }
-
-  if (isTemplateFile(folder.name)) {
-    score -= 80;
-    reasons.push("템플릿 폴더 제외 대상");
   }
 
   const confidence: DriveFolderSearchCandidate["confidence"] = score >= 75 ? "high" : score >= 45 ? "medium" : "needs_review";
@@ -951,12 +1117,12 @@ function addTextCandidates(candidates: DriveImportCandidate[], textFiles: Scanne
     const instructorCost = extractInstructorCost(text);
     const operationCost = extractOperationCost(text);
     const totalCost = extractTotalCost(text);
-    const satisfaction = extractSatisfactionScores(text);
+    const satisfaction = isSatisfactionSourceFile(file) ? extractSatisfactionScores(text) : emptySatisfactionSummary();
     const timeText = extractTimeText(text);
     const actionItems = extractActionItems(rows);
     const operationNotes = extractOperationNotes(rows);
 
-    if (courseName) {
+    if (courseName && isLikelyCourseName(courseName)) {
       candidates.push(
         buildCandidate({
           field: "courseName",
@@ -1231,16 +1397,61 @@ function extractInstructorName(value: string): string {
   const titleMatch = extractInstructorNameFromTitle(value);
   if (titleMatch) return titleMatch;
 
-  const textMatch = /강사(?:님|명|[:\s]){0,3}\s*([가-힣]{2,5})/.exec(value);
-  return textMatch?.[1] ?? "";
+  for (const row of value.split(/\n+/)) {
+    const parts = row.split("|").map((part) => part.trim()).filter(Boolean);
+    const labelIndex = parts.findIndex((part) => {
+      const normalizedPart = normalize(part);
+      return normalizedPart === "강사" || normalizedPart === "강사명" || normalizedPart === "강사님";
+    });
+    const candidate = labelIndex >= 0 ? parts.slice(labelIndex + 1).find(Boolean) ?? "" : "";
+    const name = extractLikelyInstructorNameToken(candidate);
+    if (name) return name;
+  }
+
+  return "";
 }
 
 function extractInstructorNameFromTitle(value: string): string {
+  if (/사내\s*강사/.test(value)) return "사내강사";
+
   const spacedMatch = /([가-힣]{2,5})\s*강사/.exec(value);
-  if (spacedMatch) return spacedMatch[1];
+  if (spacedMatch && isLikelyInstructorName(spacedMatch[1] ?? "")) return spacedMatch[1] ?? "";
 
   const parenthesisMatch = /\(([가-힣]{2,5})강사\)/.exec(value);
-  return parenthesisMatch?.[1] ?? "";
+  const candidate = parenthesisMatch?.[1] ?? "";
+  return isLikelyInstructorName(candidate) ? candidate : "";
+}
+
+function extractLikelyInstructorNameToken(value: string): string {
+  if (normalize(value) === "사내") return "사내강사";
+
+  const match = /^([가-힣]{2,5})(?:\s*강사님?|\s*님)?(?:\s|$|[,/])/.exec(value.trim());
+  const candidate = match?.[1] ?? "";
+  return isLikelyInstructorName(candidate) ? candidate : "";
+}
+
+function isLikelyInstructorName(value: string): boolean {
+  const normalizedValue = normalize(value);
+
+  return (
+    /^[가-힣]{2,5}$/.test(value.trim()) &&
+    !BLOCKED_INSTRUCTOR_NAME_VALUES.has(normalizedValue) &&
+    !normalizedValue.endsWith("필요") &&
+    !normalizedValue.endsWith("후보") &&
+    !normalizedValue.endsWith("섭외")
+  );
+}
+
+function isLikelyCourseName(value: string): boolean {
+  const normalizedValue = normalize(value);
+
+  return (
+    normalizedValue.length >= 4 &&
+    !BLOCKED_COURSE_NAME_VALUES.has(normalizedValue) &&
+    !normalizedValue.endsWith("내용") &&
+    !normalizedValue.endsWith("상세") &&
+    !normalizedValue.endsWith("조건")
+  );
 }
 
 function extractInstructorCost(value: string): number | null {
@@ -1291,8 +1502,8 @@ function extractSatisfactionScores(value: string): SatisfactionSummary {
   }
 
   const lines = value.split(/\n+/).map((line) => line.trim()).filter(Boolean);
-  const averageLine = findScoreLine(lines, ["전체", "평균", "종합", "만족도"], ["강사"]);
-  const instructorLine = findScoreLine(lines, ["강사", "만족도"]);
+  const averageLine = findSatisfactionScoreLine(lines, [["전체", "만족"], ["전반", "만족"], ["평균", "만족"], ["종합", "만족"]], ["강사"]);
+  const instructorLine = findSatisfactionScoreLine(lines, [["강사", "만족"]]);
   const average = summarizeSatisfactionValue(averageLine);
   const instructor = summarizeSatisfactionValue(instructorLine);
 
@@ -1302,6 +1513,24 @@ function extractSatisfactionScores(value: string): SatisfactionSummary {
     instructor,
     note: ""
   };
+}
+
+function emptySatisfactionSummary(): SatisfactionSummary {
+  return {
+    average: "",
+    evidence: "",
+    instructor: "",
+    note: ""
+  };
+}
+
+function isSatisfactionSourceFile(file: ScannedDriveFile): boolean {
+  const title = normalize(file.title);
+  const path = normalize(file.folderPath);
+  const text = `${title} ${path}`;
+  if (title.includes("강의관리")) return false;
+
+  return ["만족도", "설문", "응답", "결과보고"].some((keyword) => text.includes(keyword));
 }
 
 function extractDetailedSatisfactionScores(value: string): SatisfactionSummary {
@@ -1351,10 +1580,6 @@ function extractDetailedSatisfactionScores(value: string): SatisfactionSummary {
         instructor = formatted;
       }
     }
-  }
-
-  if (!average && metricSummaries.length > 0) {
-    average = summarizeSatisfactionValue(metricSummaries[0] ?? "");
   }
 
   const hasInstructorMetric = metricSummaries.some((summary) => summary.includes("강사 만족도"));
@@ -1417,14 +1642,38 @@ function trimFixedScore(value: string): string {
   return value.replace(/\.00$/, "").replace(/(\.\d)0$/, "$1");
 }
 
-function findScoreLine(lines: string[], keywords: string[], excludedKeywords: string[] = []): string {
+function findSatisfactionScoreLine(lines: string[], keywordGroups: string[][], excludedKeywords: string[] = []): string {
   return lines.find((line) => {
     const normalizedLine = normalize(line);
-    const hasKeyword = keywords.some((keyword) => normalizedLine.includes(normalize(keyword)));
+    const hasKeyword = keywordGroups.some((keywords) =>
+      keywords.map(normalize).every((keyword) => normalizedLine.includes(keyword))
+    );
     const hasExcludedKeyword = excludedKeywords.some((keyword) => normalizedLine.includes(normalize(keyword)));
+    const hasBlockedContext = isBlockedSatisfactionFallbackLine(normalizedLine);
+    const score = extractPositiveSatisfactionScore(line);
 
-    return hasKeyword && !hasExcludedKeyword && summarizeSatisfactionValue(line);
+    return hasKeyword && !hasExcludedKeyword && !hasBlockedContext && score !== null;
   }) ?? "";
+}
+
+function extractPositiveSatisfactionScore(value: string): number | null {
+  const summarized = summarizeSatisfactionValue(value);
+  if (!summarized) return null;
+
+  const score = Number(summarized);
+  return Number.isFinite(score) && score > 0 ? score : null;
+}
+
+function isBlockedSatisfactionFallbackLine(normalizedLine: string): boolean {
+  return [
+    "만족도문자",
+    "문자예약",
+    "문자발송",
+    "미팅로그",
+    "설문링크",
+    "만족도링크",
+    "url"
+  ].some((keyword) => normalizedLine.includes(keyword));
 }
 
 function extractTimeText(value: string): string {
@@ -1617,6 +1866,91 @@ function driveFolderMatchesCompany(folderName: string, companyName: string): boo
     normalizedFolderCompany &&
       (normalizedFolderCompany.includes(normalizedCompany) || normalizedCompany.includes(normalizedFolderCompany))
   );
+}
+
+function scoreDriveFolderReferenceMatch(folderName: string, reference: string): number {
+  const normalizedFolderName = normalizeDriveFolderReference(folderName);
+  const normalizedReference = normalizeDriveFolderReference(reference);
+  if (!normalizedFolderName || !normalizedReference) return 0;
+
+  let score = 0;
+  if (normalizedFolderName === normalizedReference) score += 100;
+  if (normalizedFolderName.includes(normalizedReference) || normalizedReference.includes(normalizedFolderName)) score += 60;
+
+  const referenceTokens = tokenizeDriveSearchText(reference).map(normalizeDriveFolderReference).filter(Boolean);
+  const matchedTokens = referenceTokens.filter((token) => normalizedFolderName.includes(token));
+  score += Math.min(40, matchedTokens.length * 8);
+
+  const folderParts = parseOperationFolderName(folderName);
+  const referenceParts = parseOperationFolderName(reference);
+  if (
+    folderParts.companyName &&
+    referenceParts.companyName &&
+    normalizeCompanyText(folderParts.companyName) === normalizeCompanyText(referenceParts.companyName)
+  ) {
+    score += 20;
+  }
+
+  return score;
+}
+
+function scoreDriveFileReferenceMatch(fileName: string, reference: string): number {
+  const score = scoreDriveFolderReferenceMatch(fileName, reference);
+  if (score < MIN_FOLDER_REFERENCE_MATCH_SCORE) return 0;
+
+  return driveFolderReferenceHasDistinctiveCourseMatch(fileName, reference) ? score : 0;
+}
+
+function driveFolderReferenceHasDistinctiveCourseMatch(value: string, reference: string): boolean {
+  const referenceParts = parseOperationFolderName(stripKnownDriveFileSuffix(reference));
+  const referenceCourseTokens = tokenizeDriveSearchText(referenceParts.courseName ?? "")
+    .map(normalizeDriveFolderReference)
+    .filter((token) => token && !isGenericDriveFileReferenceToken(token));
+
+  if (referenceCourseTokens.length === 0) return true;
+
+  const normalizedValue = normalizeDriveFolderReference(value);
+  return referenceCourseTokens.some((token) => normalizedValue.includes(token));
+}
+
+function normalizeDriveFolderReference(value: string): string {
+  return value.toLowerCase().replace(/[^0-9a-z가-힣]/g, "");
+}
+
+function stripKnownDriveFileSuffix(value: string): string {
+  return value
+    .replace(/\.(?:xlsx|xls|csv|pdf|docx|pptx)$/i, "")
+    .replace(/_?강의관리\s*시트$/i, "")
+    .replace(/_?결과보고서?$/i, "")
+    .trim();
+}
+
+function isGenericDriveContainerName(value: string): boolean {
+  const normalizedValue = normalize(value);
+  return new Set([
+    "강의관리시트",
+    "강의관리",
+    "만족도",
+    "설문",
+    "응답",
+    "결과보고서",
+    "결과보고"
+  ]).has(normalizedValue);
+}
+
+function isGenericDriveFileReferenceToken(value: string): boolean {
+  return new Set([
+    "강의관리",
+    "시트",
+    "xlsx",
+    "xls",
+    "csv",
+    "결과보고",
+    "결과보고서",
+    "만족도",
+    "설문",
+    "응답"
+  ]).has(value);
 }
 
 function normalizeCompanyText(value: string): string {
