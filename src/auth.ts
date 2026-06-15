@@ -2,6 +2,8 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import { ALLOWED_WORKSPACE_DOMAIN, isAllowedWorkspaceEmail } from "@/lib/auth/workspaceAccess";
 
+const DEV_AUTH_SECRET = "hub-om-local-development-auth-secret";
+
 function getHostedDomain(profile: unknown) {
   if (!profile || typeof profile !== "object" || !("hd" in profile)) return null;
 
@@ -9,11 +11,19 @@ function getHostedDomain(profile: unknown) {
   return typeof hostedDomain === "string" ? hostedDomain : null;
 }
 
+function getAuthSecret() {
+  if (process.env.AUTH_SECRET) return process.env.AUTH_SECRET;
+  if (process.env.NEXTAUTH_SECRET) return process.env.NEXTAUTH_SECRET;
+  if (process.env.NODE_ENV !== "production") return DEV_AUTH_SECRET;
+  return undefined;
+}
+
 export const { auth, handlers, signIn, signOut } = NextAuth({
   pages: {
     error: "/sign-in",
     signIn: "/sign-in"
   },
+  secret: getAuthSecret(),
   providers: [
     Google({
       authorization: {
