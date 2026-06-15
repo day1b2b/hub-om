@@ -19,11 +19,14 @@ import type {
   OperationStatus,
   OperationType,
   ResultReportStatus,
-  SourceTeam
+  SourceTeam,
+  UpdateOperationInput
 } from "./operationTypes";
 import { deriveProfit, summarizeOperations } from "./operationCalculations";
 import type { OperationRepository } from "./operationRepository";
 import { getPrismaClient } from "./prisma";
+import { normalizeRoleAssigneeText } from "./roleAssignees";
+import { PrismaTeamMemberRepository } from "./prismaTeamMemberRepository";
 
 const OPERATION_STATUS: Record<string, OperationStatus> = {
   ASSIGNMENT_NEEDED: "배정필요",
@@ -201,6 +204,7 @@ export class PrismaOperationRepository implements OperationRepository {
 
   async createOperation(input: CreateOperationInput): Promise<OperationSession> {
     const prisma = getPrismaClient();
+    const roleRoster = await new PrismaTeamMemberRepository().listRoleRosters();
     const companyName = normalizeVisibleText(input.companyName);
     const courseName = normalizeVisibleText(input.courseName);
     const courseId = normalizeVisibleText(input.courseId);
@@ -274,9 +278,9 @@ export class PrismaOperationRepository implements OperationRepository {
           instructorCost: input.instructorCost,
           instructorWikiLink: normalizeVisibleText(input.instructorWikiLink) || null,
           instructorsText: normalizeVisibleText(input.instructors) || null,
-          ldName: normalizeVisibleText(input.ld) || null,
+          ldName: normalizeVisibleText(normalizeRoleAssigneeText(input.ld, "ld", roleRoster)) || null,
           lectureManagementLink: normalizeVisibleText(input.lectureManagementLink) || null,
-          omName: normalizeVisibleText(input.om) || null,
+          omName: normalizeVisibleText(normalizeRoleAssigneeText(input.om, "om", roleRoster)) || null,
           onsiteRequired: input.onsiteRequired as PrismaOnsiteRequired,
           onsiteText: onsiteRequiredLabel(input.onsiteRequired),
           operationChannel: PrismaOperationChannel.NEEDS_REVIEW,
@@ -310,6 +314,55 @@ export class PrismaOperationRepository implements OperationRepository {
     return operation;
   }
 
+  async updateOperation(operationId: string, input: UpdateOperationInput): Promise<OperationSession> {
+    const prisma = getPrismaClient();
+    const data: Parameters<typeof prisma.operationSession.update>[0]["data"] = {};
+
+    if (input.archiveStatus !== undefined) data.archiveStatus = PRISMA_ARCHIVE_STATUS[input.archiveStatus];
+    if (input.avgSatisfaction !== undefined) data.avgSatisfaction = nullableText(input.avgSatisfaction);
+    if (input.coach !== undefined) data.coachText = nullableText(input.coach);
+    if (input.costRaw !== undefined) data.costRaw = nullableText(input.costRaw);
+    if (input.driveLink !== undefined) data.driveLink = nullableText(input.driveLink);
+    if (input.educationDays !== undefined) data.educationDays = nullableText(input.educationDays);
+    if (input.instructorCost !== undefined) data.instructorCost = input.instructorCost;
+    if (input.instructorSatisfaction !== undefined) data.instructorSatisfaction = nullableText(input.instructorSatisfaction);
+    if (input.instructors !== undefined) data.instructorsText = nullableText(input.instructors);
+    if (input.lectureManagementLink !== undefined) data.lectureManagementLink = nullableText(input.lectureManagementLink);
+    if (input.operationCost !== undefined) data.operationCost = input.operationCost;
+    if (input.operationDetail !== undefined) data.operationDetail = nullableText(input.operationDetail);
+    if (input.operationIssue !== undefined) data.operationIssue = nullableText(input.operationIssue);
+    if (input.omUpdate !== undefined) data.omUpdate = nullableText(input.omUpdate);
+    if (input.padletLink !== undefined) data.padletLink = nullableText(input.padletLink);
+    if (input.region !== undefined) data.region = nullableText(input.region);
+    if (input.resultReportLink !== undefined) data.resultReportLink = nullableText(input.resultReportLink);
+    if (input.specialNotes !== undefined) data.specialNotes = nullableText(input.specialNotes);
+    if (input.timeText !== undefined) data.timeText = nullableText(input.timeText);
+    if (input.totalCost !== undefined) data.totalCost = input.totalCost;
+
+    if (Object.keys(data).length === 0) {
+      const operation = await this.getOperationById(operationId);
+
+      if (!operation) {
+        throw new Error("Operation not found.");
+      }
+
+      return operation;
+    }
+
+    await prisma.operationSession.update({
+      where: { operationId },
+      data
+    });
+
+    const operation = await this.getOperationById(operationId);
+
+    if (!operation) {
+      throw new Error("Updated operation could not be loaded.");
+    }
+
+    return operation;
+  }
+
   async getSummary() {
     return summarizeOperations(await this.listOperations());
   }
@@ -331,6 +384,10 @@ function getValidationErrors(value: unknown): string[] {
 
 function normalizeVisibleText(value: string): string {
   return value.trim().replace(/\s+/g, " ");
+}
+
+function nullableText(value: string): string | null {
+  return normalizeVisibleText(value) || null;
 }
 
 function normalizeName(value: string): string {
