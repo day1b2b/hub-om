@@ -3,6 +3,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { ArchiveCompleteButton } from "./ArchiveCompleteButton";
 import { DriveImportPanel } from "./DriveImportPanel";
 import { IssueReviewEditor } from "./IssueReviewEditor";
+import { SourceReadActions } from "./SourceReadActions";
 import type {
   ArchiveStatus,
   OperationChannel,
@@ -68,6 +69,7 @@ export function OperationDetail({
   const registeredReferenceLinks = referenceResourceLinks.filter((resourceLink) => isNavigableHref(resourceLink.href));
   const satisfactionSummary = getSatisfactionSummary(courseOperations);
   const teamQuery = teamScopeSearchParam(teamScope);
+  const discussionSourceCounts = getDiscussionSourceCounts(collaboration.discussionReferences);
 
   return (
     <main className="dashboard-shell">
@@ -263,10 +265,21 @@ export function OperationDetail({
             <IssueReviewEditor key={operation.operationId} operation={operation} />
           </section>
 
-          <section className="detail-section wide-detail-section slack-discussion-section">
-            <div className="section-title">
-              <h2>운영 논의</h2>
-              <span>Slack / 메일 스레드</span>
+          <section className="detail-section wide-detail-section slack-discussion-section" id="discussions">
+            <div className="section-title discussion-section-title">
+              <div>
+                <h2>운영 논의</h2>
+                <span>Slack / 메일 스레드</span>
+              </div>
+              <SourceReadActions
+                emailCount={discussionSourceCounts.email}
+                emailEnabled={collaboration.discussionSourceAvailability.emailEnabled}
+                issues={collaboration.discussionIssues}
+                operationId={operation.operationId}
+                slackCount={discussionSourceCounts.slack}
+                slackEnabled={collaboration.discussionSourceAvailability.slackEnabled}
+                status={collaboration.discussionStatus}
+              />
             </div>
             <div className="note-stack">
               <DiscussionList
@@ -279,6 +292,16 @@ export function OperationDetail({
         </section>
       </section>
     </main>
+  );
+}
+
+function getDiscussionSourceCounts(items: OperationDiscussionItem[]) {
+  return items.reduce(
+    (counts, item) => {
+      counts[item.sourceKind] += 1;
+      return counts;
+    },
+    { email: 0, other: 0, slack: 0 }
   );
 }
 

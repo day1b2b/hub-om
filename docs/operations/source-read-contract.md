@@ -84,6 +84,21 @@ Slack reader는 토큰이 없으면 비활성화됩니다. API rate limit을 피
 
 세부 매칭 기준은 `docs/operations/slack-discussion-matching.md`에서 관리합니다.
 
+## Gmail 논의 읽기 설정
+
+운영 상세페이지의 메일 논의 영역은 Gmail API를 읽기 전용으로 호출해 과정 관련 메일 후보를 `DiscussionReference`로 변환합니다. 저장소에는 서비스 계정 이메일, private key, 위임 대상 사용자, 메일 원문, 실제 고객사/담당자 예시를 남기지 않습니다.
+
+- `GMAIL_SERVICE_ACCOUNT_EMAIL`: Gmail 읽기용 서비스 계정 이메일입니다. 비워두면 `GOOGLE_DRIVE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_CALENDAR_SERVICE_ACCOUNT_EMAIL` 순서로 재사용할 수 있습니다.
+- `GMAIL_PRIVATE_KEY`: Gmail 읽기용 서비스 계정 private key입니다. 비워두면 `GOOGLE_DRIVE_PRIVATE_KEY`, `GOOGLE_CALENDAR_PRIVATE_KEY` 순서로 재사용할 수 있습니다.
+- `GMAIL_IMPERSONATE_USER`: domain-wide delegation으로 읽을 사용자입니다. 서비스 계정에 Gmail 읽기 전용 scope 위임이 되어 있어야 합니다.
+- `GMAIL_DISCUSSION_AFTER_DATE`: Gmail 검색을 이 날짜 이후로 제한합니다. 예: `2026-01-01`.
+- `GMAIL_DISCUSSION_MAX_RESULTS`: 과정 상세 1건에서 가져올 최대 메일 후보 수입니다. 기본값은 8건입니다.
+- `GMAIL_DISCUSSION_TEAM_GROUPS`: 팀별 운영 그룹 주소 또는 Google Groups URL입니다. 예: `1팀:group-one@example.com,2팀:group-two@example.com`. 팀별 그룹이 있으면 해당 과정의 `sourceTeam` 그룹으로 온 메일만 우선 검색합니다.
+
+Gmail reader는 `https://www.googleapis.com/auth/gmail.readonly` scope만 사용합니다. `messages.list` 검색 결과에 대해 `messages.get`을 `metadata` 형식으로 호출하고, 화면에는 제목, 발신자 표시명, 짧은 snippet 기반 요약만 노출합니다. 메일 본문 전체를 요청하거나 저장하지 않습니다.
+
+서비스 계정은 Google Workspace 관리자에서 domain-wide delegation 설정이 필요합니다. Gmail API는 Google Groups 웹 아카이브 URL을 직접 읽는 것이 아니라, 위임 대상 사용자 메일함에서 그룹 주소로 온 메일을 검색합니다. 설정이 없거나 필수 환경변수가 빠져 있으면 상세페이지의 메일 버튼은 `메일 설정 필요`로 표시됩니다.
+
 ## 운영 논의 매칭 기준
 
 상세페이지의 운영 논의 영역은 Slack뿐 아니라 메일처럼 스레드형 원천을 함께 받을 수 있습니다. 공개 저장소에서는 원천별 실제 API, 검색식, 고객사/담당자/강사 예시를 두지 않고, 정규화된 `DiscussionReference`만 사용합니다.

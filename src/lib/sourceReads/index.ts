@@ -1,4 +1,5 @@
 export { DisabledOperationSourceReader } from "./disabledSourceReader";
+export { hasGmailDiscussionConfig, readGmailOperationDiscussionReferences } from "./gmailDiscussionReader";
 export { GoogleCalendarSourceReader, hasGoogleCalendarConfig } from "./googleCalendarSourceReader";
 export { getOperationSourceReader } from "./sourceReaderFactory";
 export { readSourceStatuses } from "./sourceReadStatus";

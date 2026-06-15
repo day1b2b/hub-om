@@ -1,6 +1,10 @@
 import type { OperationSession } from "@/lib/data/operationTypes";
 import { getOperationSourceReader } from "@/lib/sourceReads";
 import {
+  hasGmailDiscussionConfig,
+  readGmailOperationDiscussionReferences
+} from "@/lib/sourceReads/gmailDiscussionReader";
+import {
   hasSlackDiscussionConfig,
   readSlackOperationDiscussionReferences,
   readSlackOperationReportReferences
@@ -37,12 +41,21 @@ export interface OperationCollaboration {
   changeHistoryStatus: SourceReadStatus;
   discussionIssues: SourceReadIssue[];
   discussionReferences: OperationDiscussionItem[];
+  discussionSourceAvailability: OperationDiscussionSourceAvailability;
   discussionStatus: SourceReadStatus;
   lectureReports: OperationDiscussionItem[];
   lectureReportStatus: SourceReadStatus;
 }
 
-const operationDiscussionCache = new Map<string, TimedCacheEntry<SourceReadResult<DiscussionReference>>>();
+export interface OperationDiscussionSourceAvailability {
+  emailEnabled: boolean;
+  slackEnabled: boolean;
+}
+
+export type OperationDiscussionRefreshSource = "all" | "email" | "slack";
+
+const gmailDiscussionCache = new Map<string, TimedCacheEntry<SourceReadResult<DiscussionReference>>>();
+const slackDiscussionCache = new Map<string, TimedCacheEntry<SourceReadResult<DiscussionReference>>>();
 const operationReportCache = new Map<string, TimedCacheEntry<SourceReadResult<DiscussionReference>>>();
 let genericDiscussionCacheEntry: TimedCacheEntry<SourceReadResult<DiscussionReference>> | null = null;
 
@@ -57,30 +70,53 @@ export async function readOperationCollaboration(operation: OperationSession): P
     changeHistoryStatus: "disabled",
     discussionIssues: discussionResult.issues,
     discussionReferences: discussionResult.items,
+    discussionSourceAvailability: discussionResult.availability,
     discussionStatus: discussionResult.status,
     lectureReports: reportResult.items,
     lectureReportStatus: reportResult.status
   };
 }
 
+export function clearOperationDiscussionCache(operationId: string, source: OperationDiscussionRefreshSource) {
+  if (source === "all" || source === "slack") {
+    slackDiscussionCache.delete(operationId);
+    operationReportCache.delete(operationId);
+  }
+
+  if (source === "all" || source === "email") {
+    gmailDiscussionCache.delete(operationId);
+  }
+
+  if (source === "all") {
+    genericDiscussionCacheEntry = null;
+  }
+}
+
 async function readOperationDiscussions(operation: OperationSession) {
+  const availability = {
+    emailEnabled: hasGmailDiscussionConfig(),
+    slackEnabled: hasSlackDiscussionConfig()
+  };
+
   try {
-    const cached = hasSlackDiscussionConfig()
-      ? await readOperationSpecificDiscussionCache(operation)
-      : await readGenericDiscussionCache();
-    const result = cached.value;
+    const sourceResults = availability.slackEnabled || availability.emailEnabled
+      ? await Promise.all(buildDiscussionSourceReads(operation, availability))
+      : [await readGenericDiscussionCache()];
+    const mergedResult = mergeDiscussionSourceResults(sourceResults);
 
     return {
-      issues: result.issues,
-      items: result.items
+      availability,
+      issues: mergedResult.issues,
+      items: mergedResult.items
         .filter((item) => matchesOperationDiscussion(item, operation))
         .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
         .slice(0, 8)
         .map(toOperationDiscussionItem),
-      status: result.status
+      status: mergedResult.status
     };
   } catch (error) {
     return {
+      availability,
       issues: [
         {
           code: "discussion_read_failed",
@@ -94,14 +130,65 @@ async function readOperationDiscussions(operation: OperationSession) {
   }
 }
 
-function readOperationSpecificDiscussionCache(operation: OperationSession) {
+function buildDiscussionSourceReads(
+  operation: OperationSession,
+  availability: OperationDiscussionSourceAvailability
+): Array<Promise<SourceReadResult<DiscussionReference>>> {
+  const reads: Array<Promise<SourceReadResult<DiscussionReference>>> = [];
+
+  if (availability.slackEnabled) {
+    reads.push(readDiscussionSourceResult("slack", () => readSlackOperationSpecificDiscussionCache(operation)));
+  }
+
+  if (availability.emailEnabled) {
+    reads.push(readDiscussionSourceResult("gmail", () => readGmailOperationSpecificDiscussionCache(operation)));
+  }
+
+  return reads;
+}
+
+async function readDiscussionSourceResult(
+  sourceCode: "gmail" | "slack",
+  read: () => Promise<SourceReadResult<DiscussionReference>>
+): Promise<SourceReadResult<DiscussionReference>> {
+  try {
+    return await read();
+  } catch {
+    return {
+      source: "discussion",
+      status: "failed",
+      readAt: new Date().toISOString(),
+      items: [],
+      issues: [
+        {
+          code: `${sourceCode}_discussion_read_failed`,
+          message: `${sourceCode} discussion references could not be read.`,
+          recoverable: true
+        }
+      ]
+    };
+  }
+}
+
+function readSlackOperationSpecificDiscussionCache(operation: OperationSession) {
   const cacheKey = operation.operationId;
 
-  return readTimedCache(operationDiscussionCache.get(cacheKey) ?? null, getResourceReadCacheTtlMs(), () =>
+  return readTimedCache(slackDiscussionCache.get(cacheKey) ?? null, getResourceReadCacheTtlMs(), () =>
     readSlackOperationDiscussionReferences(operation)
   ).then((cached) => {
-    operationDiscussionCache.set(cacheKey, cached.entry);
-    return cached;
+    slackDiscussionCache.set(cacheKey, cached.entry);
+    return cached.value;
+  });
+}
+
+function readGmailOperationSpecificDiscussionCache(operation: OperationSession) {
+  const cacheKey = operation.operationId;
+
+  return readTimedCache(gmailDiscussionCache.get(cacheKey) ?? null, getResourceReadCacheTtlMs(), () =>
+    readGmailOperationDiscussionReferences(operation)
+  ).then((cached) => {
+    gmailDiscussionCache.set(cacheKey, cached.entry);
+    return cached.value;
   });
 }
 
@@ -134,8 +221,46 @@ function readGenericDiscussionCache() {
     return reader.readDiscussionReferences();
   }).then((cached) => {
     genericDiscussionCacheEntry = cached.entry;
-    return cached;
+    return cached.value;
   });
+}
+
+function mergeDiscussionSourceResults(results: Array<SourceReadResult<DiscussionReference>>): SourceReadResult<DiscussionReference> {
+  const readAt = results
+    .map((result) => result.readAt)
+    .sort((a, b) => b.localeCompare(a))[0] ?? new Date(0).toISOString();
+
+  return {
+    source: "discussion",
+    status: mergeDiscussionStatus(results),
+    readAt,
+    items: results.flatMap((result) => result.items),
+    issues: results.flatMap((result) => result.issues)
+  };
+}
+
+function mergeDiscussionStatus(results: Array<SourceReadResult<DiscussionReference>>): SourceReadStatus {
+  if (results.length === 0) {
+    return "disabled";
+  }
+
+  if (results.every((result) => result.status === "failed")) {
+    return "failed";
+  }
+
+  if (results.some((result) => result.status === "failed")) {
+    return "partial";
+  }
+
+  if (results.some((result) => result.status === "partial")) {
+    return "partial";
+  }
+
+  if (results.some((result) => result.status === "ok")) {
+    return "ok";
+  }
+
+  return "disabled";
 }
 
 function toOperationDiscussionItem(item: DiscussionReference): OperationDiscussionItem {

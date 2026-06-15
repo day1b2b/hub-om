@@ -636,11 +636,12 @@ async function readAiThreadSummary(
               "Slack 스레드를 읽고 상세페이지 카드에 들어갈 운영 요약만 작성합니다.",
               "원문 인용, 감탄사, Slack 사용자 ID, 불확실한 추측은 쓰지 않습니다.",
               "반드시 한국어 bullet 2~4개만 출력하고 각 줄은 '- '로 시작합니다.",
-              "가능하면 라벨은 요지, 결론, 후속, 주의를 사용합니다.",
-              "결론이나 후속 조치가 원문에 없으면 해당 라벨은 생략합니다.",
+              "요지, 결론, 후속, 맥락 같은 라벨은 쓰지 않습니다.",
+              "결론이나 후속 조치가 원문에 없으면 쓰지 않습니다.",
               "각 bullet에는 변경 대상, 요청 내용, 결정, 담당자 행동 중 하나 이상의 구체 정보가 있어야 합니다.",
               "'확인한 내용을 공유했습니다', '요청 사항을 확인했습니다'처럼 확인/공유 사실만 반복하는 문장은 쓰지 않습니다.",
-              "라벨 뒤 내용은 짧은 구문으로 쓰고, '-다', '-습니다', '-합니다' 같은 문장 종결형은 피합니다."
+              "각 bullet은 운영자가 읽고 판단할 수 있는 완전한 문장으로 씁니다.",
+              "'교안 공유', '신경식 강사'처럼 명사만 나열한 키워드 요약은 금지합니다."
             ].join(" ")
           },
           {
@@ -696,7 +697,8 @@ function buildAiSummaryPrompt(messages: Array<{ speaker: string; text: string }>
     "- 최종 결정, 고객 확인 내용, 후속 조치가 원문에 구체적으로 있으면 분리해서 씁니다.",
     "- 확인/공유/전달했다는 사실만 있고 무엇을 확인했는지 불명확하면 쓰지 않습니다.",
     "- 자료, 일정, 강사, 비용, 피드백, 회차처럼 실제 운영자가 찾을 수 있는 대상을 포함합니다.",
-    "- 라벨 뒤 내용은 20자 안팎의 짧은 구문으로 씁니다. 예: 교안 공유, 4시간 기준 지급, 조한준 강사",
+    "- 라벨 없이 문장형으로 씁니다. 예: 신경식 강사에게 전달할 교안과 강의 내용을 공유한 스레드입니다.",
+    "- 결정이나 후속 조치가 있으면 누가 무엇을 확인하거나 반영해야 하는지까지 씁니다.",
     "- 원문 일부를 그대로 베끼지 말고 의미를 정리합니다.",
     "- 근거가 부족한 내용은 쓰지 않습니다."
   ].join("\n");
@@ -707,10 +709,12 @@ function normalizeAiSummary(value: string) {
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean)
-    .map((line) => line.replace(/^[-*]\s*/, "- "))
-    .filter((line) => line.startsWith("- "))
+    .map((line) => line.replace(/^[-*]\s*/, ""))
+    .map(stripSummaryLabel)
     .map((line) => line.replace(/\s+/g, " "))
-    .filter(isUsefulSummaryLine);
+    .map(ensureSentenceSummaryLine)
+    .filter(isUsefulSummaryLine)
+    .map((line) => `- ${line}`);
 
   if (lines.length === 0) {
     return null;
@@ -724,6 +728,8 @@ function formatSummaryLines(lines: string[]) {
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => line.replace(/^[-*]\s*/, ""))
+    .map(stripSummaryLabel)
+    .map(ensureSentenceSummaryLine)
     .map((line) => `- ${line}`)
     .filter(isUsefulSummaryLine)
     .slice(0, 4);
@@ -743,6 +749,10 @@ function isLowSignalSummaryLine(line: string) {
   const text = stripSummaryLabel(line);
 
   return [
+    /^$/,
+    /^[가-힣]{2,4}\s*강사(?:님)?(?:입니다|입니다\.)?\.?$/i,
+    /^[가-힣]{2,4}\s*님(?:입니다|입니다\.)?\.?$/i,
+    /^(교안|자료|링크|파일|문서|강사|피드백|일정|비용)\s*(공유|전달|확인|반영)?(?:입니다|입니다\.)?\.?$/i,
     /^(확인\s*필요|추가\s*확인\s*필요|확인이\s*필요|원문\s*확인\s*필요)\.?$/i,
     /확인한\s*내용을?\s*(?:팀에\s*)?공유했습니다\.?$/i,
     /^고객\/?담당자와?\s*확인한\s*내용을\s*팀에\s*공유했습니다\.?$/i,
@@ -754,6 +764,93 @@ function isLowSignalSummaryLine(line: string) {
     /^해당\s*건은\s*스레드\s*안에서\s*정리된\s*상태입니다\.?$/i,
     /^고객\s*피드백\s*반영\s*논의입니다\.?$/i
   ].some((pattern) => pattern.test(text));
+}
+
+function ensureSentenceSummaryLine(line: string) {
+  const text = stripSummaryLabel(line).replace(/\s+/g, " ").trim();
+
+  if (!text || isBareInstructorReference(text)) {
+    return "";
+  }
+
+  const sentence = sentenceFromKnownSummaryPhrase(text) ?? text;
+
+  if (/[.!?。！？]$/.test(sentence) || /(습니다|합니다|됩니다|입니다|합니다|어요|예요|했음|완료|필요)$/.test(sentence)) {
+    return sentence;
+  }
+
+  return `${sentence}입니다.`;
+}
+
+function isBareInstructorReference(value: string) {
+  return /^[가-힣]{2,4}\s*강사(?:님)?$/i.test(value) || /^[가-힣]{2,4}\s*님$/i.test(value);
+}
+
+function sentenceFromKnownSummaryPhrase(value: string) {
+  const materialMatch = value.match(/^(.+)\s*공유$/);
+  if (materialMatch?.[1]) {
+    return `${materialMatch[1]}를 공유해 운영 자료로 확인할 수 있는 스레드입니다.`;
+  }
+
+  const requestMatch = value.match(/^고객\s*요청\s*[:：]\s*(.+)$/);
+  if (requestMatch?.[1]) {
+    return `고객이 ${requestMatch[1]} 관련 확인을 요청해 대응 방향을 논의한 스레드입니다.`;
+  }
+
+  const feedbackMatch = value.match(/^피드백\s*반영\s*[:：]\s*(.+)$/);
+  if (feedbackMatch?.[1]) {
+    return `강의 피드백 중 ${feedbackMatch[1]} 항목을 강사에게 전달해 반영 여부를 확인하는 논의입니다.`;
+  }
+
+  if (/^피드백\s*반영$/.test(value)) {
+    return "강의 피드백을 강사에게 전달하고 반영 여부를 확인하는 논의입니다.";
+  }
+
+  if (/^피드백\s*강사\s*전달$/.test(value)) {
+    return "수강생 또는 고객 피드백을 강사에게 전달해 강의에 반영하도록 정리한 스레드입니다.";
+  }
+
+  if (/^강사\s*반영\s*확인$/.test(value)) {
+    return "강사가 전달받은 피드백을 실제 강의에 반영했는지 확인이 필요한 상태입니다.";
+  }
+
+  if (/^고객\s*회신\s*확인$/.test(value)) {
+    return "고객의 추가 회신을 받은 뒤 운영 방향을 확정해야 하는 스레드입니다.";
+  }
+
+  if (/^4시간[→-]2시간\s*강사비$/.test(value)) {
+    return "강사비 지급 기준을 4시간에서 2시간으로 조정할 수 있는지 논의한 스레드입니다.";
+  }
+
+  if (/^4시간\s*기준\s*지급$/.test(value)) {
+    return "강사비를 4시간 기준으로 지급하는 방향으로 정리된 스레드입니다.";
+  }
+
+  if (/^2시간\s*기준\s*협의$/.test(value)) {
+    return "강사비를 2시간 기준으로 조정할 수 있는지 추가 협의가 필요한 스레드입니다.";
+  }
+
+  if (/^지급\s*기준\s*확인\s*필요$/.test(value)) {
+    return "강사비 지급 기준이 명확하지 않아 추가 확인이 필요한 스레드입니다.";
+  }
+
+  if (/^일정\/시간\s*조정$/.test(value)) {
+    return "교육 일정이나 운영 시간이 변경될 수 있어 확정 상태를 확인해야 하는 스레드입니다.";
+  }
+
+  if (/^비용\/정산\s*기준$/.test(value)) {
+    return "강사비나 운영비 정산 기준을 확인한 스레드입니다.";
+  }
+
+  if (/^강사\s*섭외\/시강$/.test(value)) {
+    return "강사 섭외나 시강 관련 진행 상황을 확인한 스레드입니다.";
+  }
+
+  if (/^강의\s*내용\/보고\s*공유$/.test(value)) {
+    return "강의 내용이나 운영 보고 자료를 공유해 과정 기록으로 확인할 수 있는 스레드입니다.";
+  }
+
+  return null;
 }
 
 function hasConcreteSummarySignal(line: string) {
@@ -795,40 +892,44 @@ function buildStructuredSummary(value: string) {
 
 function buildIssueSummary(value: string) {
   if (/(4시간|4h|4 h)/i.test(value) && /(2시간|2h|2 h)/i.test(value)) {
-    return "요지: 4시간→2시간 강사비";
+    return "강사비 지급 기준을 4시간에서 2시간으로 조정할 수 있는지 논의한 스레드입니다.";
   }
 
   if (/(피드백|반영)/i.test(value)) {
     const focus = getFeedbackFocus(value);
     return focus.length > 0
-      ? `요지: 피드백 반영 - ${focus.join(", ")}`
-      : "요지: 피드백 반영";
+      ? `강의 피드백 중 ${focus.join(", ")} 항목을 강사에게 전달해 반영 여부를 확인하는 논의입니다.`
+      : "강의 피드백을 강사에게 전달하고 반영 여부를 확인하는 논의입니다.";
   }
 
   if (/(강의\s*내용\s*공유|내용\s*공유드립니다|강의보고|운영보고)/i.test(value)) {
-    return "요지: 강의 내용/보고 공유";
+    return "강의 내용이나 운영 보고 자료를 공유해 과정 기록으로 확인할 수 있는 스레드입니다.";
   }
 
   if (/(자료|교안|콘텐츠|보고|공유|전달)/i.test(value)) {
     const materialFocus = getMaterialFocus(value);
-    return materialFocus.length > 0 ? `요지: ${materialFocus.join(", ")} 공유` : null;
+    return materialFocus.length > 0
+      ? `${materialFocus.join(", ")}를 공유해 운영 자료로 확인할 수 있는 스레드입니다.`
+      : null;
   }
 
   if (/(일정|시간|변경|연기|취소|확정|조정)/i.test(value)) {
-    return "요지: 일정/시간 조정";
+    return "교육 일정이나 운영 시간이 변경될 수 있어 확정 상태를 확인해야 하는 스레드입니다.";
   }
 
   if (/(강사비|지급|비용|정산|입금|계산서)/i.test(value)) {
-    return "요지: 비용/정산 기준";
+    return "강사비나 운영비 정산 기준을 확인한 스레드입니다.";
   }
 
   if (/(강사|섭외|시강)/i.test(value)) {
-    return "요지: 강사 섭외/시강";
+    return "강사 섭외나 시강 관련 진행 상황을 확인한 스레드입니다.";
   }
 
   if (/(고객|담당자|연락|전화|메일|요청)/i.test(value)) {
     const requestFocus = getRequestFocus(value);
-    return requestFocus.length > 0 ? `요지: 고객 요청 - ${requestFocus.join(", ")}` : null;
+    return requestFocus.length > 0
+      ? `고객이 ${requestFocus.join(", ")} 관련 확인을 요청해 대응 방향을 논의한 스레드입니다.`
+      : null;
   }
 
   return null;
@@ -841,13 +942,36 @@ function buildMessageBackedSummary(messages: Array<{ speaker: string; text: stri
     return [];
   }
 
-  const summary = truncateText(selectedMessage.text, 120);
+  const summary = summarizeSelectedMessage(selectedMessage.text);
   const context = buildMessageContextSummary(messages.map((message) => message.text).join(" "));
 
   return [
-    `요지: ${summary}`,
+    summary,
     context
   ].filter((line): line is string => Boolean(line));
+}
+
+function summarizeSelectedMessage(value: string) {
+  const normalized = normalizeSummaryText(value);
+  const materialFocus = getMaterialFocus(normalized);
+  const requestFocus = getRequestFocus(normalized);
+
+  if (materialFocus.length > 0) {
+    return `${materialFocus.join(", ")}를 공유해 운영 자료로 확인할 수 있는 스레드입니다.`;
+  }
+
+  if (requestFocus.length > 0) {
+    return `고객이 ${requestFocus.join(", ")} 관련 확인을 요청해 대응 방향을 논의한 스레드입니다.`;
+  }
+
+  if (/(피드백|반영)/i.test(normalized)) {
+    const feedbackFocus = getFeedbackFocus(normalized);
+    return feedbackFocus.length > 0
+      ? `강의 피드백 중 ${feedbackFocus.join(", ")} 항목을 강사에게 전달해 반영 여부를 확인하는 논의입니다.`
+      : "강의 피드백을 강사에게 전달하고 반영 여부를 확인하는 논의입니다.";
+  }
+
+  return `${truncateText(normalized, 72)} 내용을 중심으로 확인이 필요한 스레드입니다.`;
 }
 
 function selectSummaryMessage(messages: Array<{ speaker: string; text: string }>, operation: OperationSession) {
@@ -933,24 +1057,24 @@ function buildMessageContextSummary(value: string) {
     return "";
   }
 
-  return `맥락: ${[...new Set(contexts)].slice(0, 3).join(", ")}`;
+  return `스레드 본문에 ${[...new Set(contexts)].slice(0, 3).join(", ")} 정보가 함께 언급되어 있습니다.`;
 }
 
 function buildDecisionSummary(value: string) {
   if (/(4시간|4h|4 h)/i.test(value) && /(2시간|2h|2 h)/i.test(value)) {
     if (/(그대로|다 지급|전체 지급|4시간 그대로|4h 그대로)/i.test(value)) {
-      return "결론: 4시간 기준 지급";
+      return "강사비를 4시간 기준으로 지급하는 방향으로 정리된 스레드입니다.";
     }
 
     if (/(2시간으로|2h로|2시간 기준)/i.test(value)) {
-      return "결론: 2시간 기준 협의";
+      return "강사비를 2시간 기준으로 조정할 수 있는지 추가 협의가 필요한 스레드입니다.";
     }
 
-    return "결론: 지급 기준 확인 필요";
+    return "강사비 지급 기준이 명확하지 않아 추가 확인이 필요한 스레드입니다.";
   }
 
   if (/(피드백|반영)/i.test(value) && /(전달|공유|반영|말씀|요청)/i.test(value)) {
-    return "결론: 피드백 강사 전달";
+    return "수강생 또는 고객 피드백을 강사에게 전달해 강의에 반영하도록 정리한 스레드입니다.";
   }
 
   return null;
@@ -958,11 +1082,11 @@ function buildDecisionSummary(value: string) {
 
 function buildFollowUpSummary(value: string) {
   if (/(피드백|반영)/i.test(value) && /(강사|전달)/i.test(value)) {
-    return "후속: 강사 반영 확인";
+    return "강사가 전달받은 피드백을 실제 강의에 반영했는지 확인이 필요한 상태입니다.";
   }
 
   if (/(다시 연락|재확인|회신|답변|확인해보고|논의 해보고)/i.test(value) && !/(마무리|정리|확정)/i.test(value)) {
-    return "후속: 고객 회신 확인";
+    return "고객의 추가 회신을 받은 뒤 운영 방향을 확정해야 하는 스레드입니다.";
   }
 
   return null;
@@ -978,7 +1102,7 @@ function buildContextSummary(value: string) {
     return null;
   }
 
-  return `맥락: ${[...new Set(contexts)].slice(0, 3).join(", ")}`;
+  return `스레드 본문에 ${[...new Set(contexts)].slice(0, 3).join(", ")} 정보가 함께 언급되어 있습니다.`;
 }
 
 function getFeedbackFocus(value: string) {
