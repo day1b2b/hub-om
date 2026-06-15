@@ -10,7 +10,7 @@ config({ path: ".env" });
 const SOURCE_TEAM_VALUE = {
   "1팀": "team_1",
   "2팀": "team_2",
-  "미분류": "unknown"
+  "미분류": null
 };
 
 const TEAM_MEMBER_ROLE_VALUE = {
@@ -40,54 +40,77 @@ try {
   await client.query("BEGIN");
 
   for (const [index, member] of members.entries()) {
-    await client.query(
+    const role = TEAM_MEMBER_ROLE_VALUE[member.role];
+    const sourceTeam = sourceTeamValue(member.sourceTeam);
+    const normalizedName = normalizeName(member.name);
+    const displayOrder = member.displayOrder ?? index + 1;
+    const updated = await client.query(
       `
-        INSERT INTO team_members (
-          id,
-          role,
-          source_team,
-          name,
-          normalized_name,
-          role_title,
-          calendar_id,
-          is_active,
-          display_order,
-          updated_at
-        )
-        VALUES ($1, $2::team_member_role, $3::source_team, $4, $5, $6, $7, true, $8, CURRENT_TIMESTAMP)
-        ON CONFLICT (role, source_team, normalized_name)
-        DO UPDATE SET
-          name = EXCLUDED.name,
-          role_title = EXCLUDED.role_title,
-          calendar_id = EXCLUDED.calendar_id,
-          is_active = true,
-          display_order = EXCLUDED.display_order,
-          updated_at = CURRENT_TIMESTAMP
+        UPDATE members
+        SET name = $4,
+            role_title = $5,
+            calendar_id = $6,
+            is_active = true,
+            display_order = $7,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE role = $1::member_role
+          AND source_team IS NOT DISTINCT FROM $2::source_team
+          AND normalized_name = $3
+        RETURNING id
       `,
       [
-        randomUUID(),
-        TEAM_MEMBER_ROLE_VALUE[member.role],
-        SOURCE_TEAM_VALUE[member.sourceTeam],
+        role,
+        sourceTeam,
+        normalizedName,
         member.name,
-        normalizeName(member.name),
         member.roleTitle ?? null,
         member.calendarId ?? null,
-        member.displayOrder ?? index + 1
+        displayOrder
       ]
     );
+
+    if (updated.rowCount === 0) {
+      await client.query(
+        `
+          INSERT INTO members (
+            id,
+            role,
+            source_team,
+            name,
+            normalized_name,
+            role_title,
+            calendar_id,
+            is_active,
+            display_order,
+            updated_at
+          )
+          VALUES ($1, $2::member_role, $3::source_team, $4, $5, $6, $7, true, $8, CURRENT_TIMESTAMP)
+        `,
+        [
+          randomUUID(),
+          role,
+          sourceTeam,
+          member.name,
+          normalizedName,
+          member.roleTitle ?? null,
+          member.calendarId ?? null,
+          displayOrder
+        ]
+      );
+    }
   }
 
   for (const [role, sourceTeam, normalizedNames] of membersBySourceTeam(members)) {
     await client.query(
       `
-        UPDATE team_members
+        UPDATE members
         SET is_active = false,
             updated_at = CURRENT_TIMESTAMP
-        WHERE role = $1::team_member_role
-          AND source_team = $2::source_team
+        WHERE role = $1::member_role
+          AND source_team IS NOT DISTINCT FROM $2::source_team
           AND NOT (normalized_name = ANY($3::text[]))
       `,
-      [TEAM_MEMBER_ROLE_VALUE[role], SOURCE_TEAM_VALUE[sourceTeam], normalizedNames]
+      [TEAM_MEMBER_ROLE_VALUE[role], sourceTeam, normalizedNames]
     );
   }
 
@@ -108,7 +131,7 @@ function normalizeMembers(members) {
       role: member.role,
       sourceTeam: member.sourceTeam
     }))
-    .filter((member) => member.name && SOURCE_TEAM_VALUE[member.sourceTeam] && TEAM_MEMBER_ROLE_VALUE[member.role]);
+    .filter((member) => member.name && isValidSourceTeam(member.sourceTeam) && TEAM_MEMBER_ROLE_VALUE[member.role]);
 }
 
 function normalizeName(name) {
@@ -129,14 +152,23 @@ function membersBySourceTeam(members) {
   const groups = new Map();
 
   for (const member of members) {
-    const key = `${member.role}:${member.sourceTeam}`;
+    const key = JSON.stringify([member.role, sourceTeamValue(member.sourceTeam)]);
     const normalizedNames = groups.get(key) ?? [];
     normalizedNames.push(normalizeName(member.name));
     groups.set(key, normalizedNames);
   }
 
   return Array.from(groups.entries()).map(([key, normalizedNames]) => {
-    const [role, sourceTeam] = key.split(":");
+    const [role, sourceTeam] = JSON.parse(key);
     return [role, sourceTeam, normalizedNames];
   });
+}
+
+function isValidSourceTeam(sourceTeam) {
+  return sourceTeam === undefined || sourceTeam === null || Object.hasOwn(SOURCE_TEAM_VALUE, sourceTeam);
+}
+
+function sourceTeamValue(sourceTeam) {
+  if (sourceTeam === undefined || sourceTeam === null) return null;
+  return SOURCE_TEAM_VALUE[sourceTeam];
 }

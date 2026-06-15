@@ -1,4 +1,4 @@
-import type { SourceTeam as PrismaSourceTeam, TeamMemberRole as PrismaTeamMemberRole } from "@prisma/client";
+import type { MemberRole as PrismaMemberRole, SourceTeam as PrismaSourceTeam } from "@prisma/client";
 import { getPrismaClient } from "./prisma";
 import { DEFAULT_RESOURCE_OWNER_ROSTER, DEFAULT_TEAM_MEMBER_ROLE_ROSTER } from "./defaultTeamMemberRoster";
 import type { ResourceOwnerRoster, TeamMemberRepository, TeamMemberRole, TeamMemberRoleRoster } from "./teamMemberRepository";
@@ -10,7 +10,7 @@ const SOURCE_TEAM_LABEL: Record<PrismaSourceTeam, SourceTeam> = {
   UNKNOWN: "미분류"
 };
 
-const TEAM_MEMBER_ROLE_LABEL: Record<PrismaTeamMemberRole, TeamMemberRole> = {
+const TEAM_MEMBER_ROLE_LABEL: Record<PrismaMemberRole, TeamMemberRole> = {
   LD: "ld",
   OM: "om"
 };
@@ -18,7 +18,7 @@ const TEAM_MEMBER_ROLE_LABEL: Record<PrismaTeamMemberRole, TeamMemberRole> = {
 export class PrismaTeamMemberRepository implements TeamMemberRepository {
   async listResourceOwners(): Promise<ResourceOwnerRoster> {
     const prisma = getPrismaClient();
-    const members = await prisma.teamMember.findMany({
+    const members = await prisma.member.findMany({
       where: {
         isActive: true,
         role: null
@@ -31,6 +31,8 @@ export class PrismaTeamMemberRepository implements TeamMemberRepository {
     }
 
     return members.reduce<ResourceOwnerRoster>((roster, member) => {
+      if (!member.sourceTeam) return roster;
+
       const sourceTeam = SOURCE_TEAM_LABEL[member.sourceTeam];
       roster[sourceTeam] = [...(roster[sourceTeam] ?? []), member.name];
       return roster;
@@ -39,7 +41,7 @@ export class PrismaTeamMemberRepository implements TeamMemberRepository {
 
   async listRoleRosters(): Promise<TeamMemberRoleRoster> {
     const prisma = getPrismaClient();
-    const members = await prisma.teamMember.findMany({
+    const members = await prisma.member.findMany({
       where: {
         isActive: true,
         role: { not: null }
@@ -53,7 +55,7 @@ export class PrismaTeamMemberRepository implements TeamMemberRepository {
 
     const roster = members.reduce<TeamMemberRoleRoster>(
       (roster, member) => {
-        if (!member.role) return roster;
+        if (!member.role || !member.sourceTeam) return roster;
 
         const role = TEAM_MEMBER_ROLE_LABEL[member.role];
         const sourceTeam = SOURCE_TEAM_LABEL[member.sourceTeam];

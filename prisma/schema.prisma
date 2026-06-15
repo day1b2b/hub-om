@@ -94,11 +94,11 @@ enum SourceTeam {
   @@map("source_team")
 }
 
-enum TeamMemberRole {
+enum MemberRole {
   OM @map("om")
   LD @map("ld")
 
-  @@map("team_member_role")
+  @@map("member_role")
 }
 
 model Company {
@@ -258,10 +258,10 @@ model DriveImportResult {
   @@map("drive_import_results")
 }
 
-model TeamMember {
+model Member {
   id             String     @id @default(uuid()) @db.Uuid
-  role           TeamMemberRole?
-  sourceTeam     SourceTeam @default(UNKNOWN) @map("source_team")
+  role           MemberRole?
+  sourceTeam     SourceTeam? @map("source_team")
   name           String
   normalizedName String     @map("normalized_name")
   roleTitle      String?    @map("role_title")
@@ -274,7 +274,7 @@ model TeamMember {
   @@unique([role, sourceTeam, normalizedName])
   @@index([sourceTeam, isActive])
   @@index([role, sourceTeam, isActive])
-  @@map("team_members")
+  @@map("members")
 }
 
 model DataImportRun {
