@@ -265,8 +265,8 @@ export function OperationDetail({
 
           <section className="detail-section wide-detail-section slack-discussion-section">
             <div className="section-title">
-              <h2>Slack 논의</h2>
-              <span>과정 관련 스레드</span>
+              <h2>운영 논의</h2>
+              <span>Slack / 메일 스레드</span>
             </div>
             <div className="note-stack">
               <DiscussionList
@@ -312,24 +312,27 @@ function DiscussionList({
   if (items.length === 0) {
     return (
       <div className="note-item">
-        <span>Slack 스레드</span>
-        <p>{status === "disabled" ? "Slack 연동이 꺼져 있습니다." : "조건에 맞는 Slack 스레드가 아직 없습니다."}</p>
+        <span>운영 스레드</span>
+        <p>{status === "disabled" ? "운영 논의 연동이 꺼져 있습니다." : "조건에 맞는 운영 스레드가 아직 없습니다."}</p>
       </div>
     );
   }
 
   return (
     <div className="note-item">
-      <span>Slack 스레드</span>
+      <span>운영 스레드</span>
       <div className="activity-list">
         {[...items].reverse().map((item, index) => (
           <div className="activity-item" key={item.id}>
             <div className="activity-heading">
-              <strong>{index + 1}. {formatDateTime(item.occurredAt)}</strong>
+              <div className="activity-heading-line">
+                <span className={`activity-source-badge ${item.sourceKind}`}>{item.sourceLabel}</span>
+                <strong>{index + 1}. {formatDateTime(item.occurredAt)}</strong>
+              </div>
               <small>{discussionTitleWithoutCompany(item.title, companyName)}</small>
             </div>
             {item.summary ? <p>{item.summary}</p> : null}
-            <a aria-label="Slack 원문 열기" className="activity-link" href={item.sourceUrl} rel="noreferrer" target="_blank">
+            <a aria-label="원문 열기" className="activity-link" href={item.sourceUrl} rel="noreferrer" target="_blank">
               원문
             </a>
           </div>
