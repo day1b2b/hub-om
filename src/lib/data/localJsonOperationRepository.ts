@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { summarizeOperations } from "./operationCalculations";
 import type { OperationRepository } from "./operationRepository";
-import type { CreateOperationInput, OperationSession } from "./operationTypes";
+import type { CreateOperationInput, OperationSession, UpdateOperationInput } from "./operationTypes";
 
 interface LocalOperationPayload {
   operations?: OperationSession[];
@@ -105,6 +105,50 @@ export class LocalJsonOperationRepository implements OperationRepository {
     return operation;
   }
 
+  async updateOperation(operationId: string, input: UpdateOperationInput): Promise<OperationSession> {
+    const operations = await this.listOperations();
+    const operation = operations.find((candidate) => candidate.operationId === operationId);
+
+    if (!operation) {
+      throw new Error("Operation not found.");
+    }
+
+    const totalCost = input.totalCost === undefined ? operation.totalCost : input.totalCost;
+    const updatedOperation: OperationSession = {
+      ...operation,
+      archiveStatus: input.archiveStatus ?? operation.archiveStatus,
+      avgSatisfaction: normalizeOptionalText(input.avgSatisfaction, operation.avgSatisfaction),
+      coach: normalizeOptionalText(input.coach, operation.coach),
+      costRaw: normalizeOptionalText(input.costRaw, operation.costRaw),
+      driveLink: normalizeOptionalText(input.driveLink, operation.driveLink),
+      educationDays: normalizeOptionalText(input.educationDays, operation.educationDays),
+      instructorCost: input.instructorCost === undefined ? operation.instructorCost : input.instructorCost,
+      instructorSatisfaction: normalizeOptionalText(input.instructorSatisfaction, operation.instructorSatisfaction),
+      instructors: normalizeOptionalText(input.instructors, operation.instructors),
+      lectureManagementLink: normalizeOptionalText(input.lectureManagementLink, operation.lectureManagementLink),
+      operationCost: input.operationCost === undefined ? operation.operationCost : input.operationCost,
+      operationDetail: normalizeOptionalText(input.operationDetail, operation.operationDetail),
+      operationIssue: normalizeOptionalText(input.operationIssue, operation.operationIssue),
+      omUpdate: normalizeOptionalText(input.omUpdate, operation.omUpdate),
+      padletLink: normalizeOptionalText(input.padletLink, operation.padletLink),
+      profit: operation.revenue !== null && totalCost !== null ? operation.revenue - totalCost : null,
+      region: normalizeOptionalText(input.region, operation.region),
+      resultReportLink: normalizeOptionalText(input.resultReportLink, operation.resultReportLink),
+      specialNotes: normalizeOptionalText(input.specialNotes, operation.specialNotes),
+      timeText: normalizeOptionalText(input.timeText, operation.timeText),
+      totalCost
+    };
+    const nextOperations = operations.map((candidate) =>
+      candidate.operationId === operationId ? updatedOperation : candidate
+    );
+    const { absolutePath, localDir } = this.getLocalFilePath();
+
+    await mkdir(localDir, { recursive: true });
+    await writeFile(absolutePath, `${JSON.stringify({ operations: nextOperations }, null, 2)}\n`, "utf8");
+
+    return updatedOperation;
+  }
+
   async getSummary() {
     return summarizeOperations(await this.listOperations());
   }
@@ -136,6 +180,10 @@ function compareOperationSessions(a: OperationSession, b: OperationSession): num
 
 function normalizeVisibleText(value: string) {
   return value.trim().replace(/\s+/g, " ");
+}
+
+function normalizeOptionalText(value: string | undefined, fallback: string) {
+  return value === undefined ? fallback : normalizeVisibleText(value);
 }
 
 function sessionDurationDays(startValue: string, endValue: string): number | null {

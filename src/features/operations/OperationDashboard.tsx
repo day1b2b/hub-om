@@ -9,6 +9,7 @@ import type {
   OperationStatus
 } from "@/lib/data/operationTypes";
 import { splitPersonNames } from "@/lib/data/personNames";
+import { satisfactionNumber, summarizeSatisfactionValue } from "@/lib/data/satisfaction";
 import { teamScopeSearchParam, type TeamScope } from "@/lib/teamScope";
 
 const STATUS_FILTERS = ["전체", "진행중", "예정", "완료", "아카이빙필요", "검토필요"] as const;
@@ -103,10 +104,8 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
 
   const satisfaction = average(
     teamOperations
-      .map((operation) => operation.avgSatisfaction)
-      .filter(Boolean)
-      .map((value) => Number(value))
-      .filter((value) => Number.isFinite(value))
+      .map((operation) => satisfactionNumber(operation.avgSatisfaction))
+      .filter((value): value is number => value !== null)
   );
   const totalRevenue = teamOperations.reduce((sum, operation) => sum + (operation.revenue ?? 0), 0);
 
@@ -269,8 +268,8 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
                       <td>{operation.endDate}</td>
                       <td>{operation.instructors || "-"}</td>
                       <td>{operation.coach || "-"}</td>
-                      <td>{operation.avgSatisfaction || "-"}</td>
-                      <td>{operation.instructorSatisfaction || "-"}</td>
+                      <td>{formatSatisfactionValue(operation.avgSatisfaction)}</td>
+                      <td>{formatSatisfactionValue(operation.instructorSatisfaction)}</td>
                       <td>{formatMoney(operation.revenue)}</td>
                       <td>{formatMoney(operation.instructorCost)}</td>
                       <td>{formatMoney(operation.operationCost)}</td>
@@ -291,6 +290,10 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
       </section>
     </main>
   );
+}
+
+function formatSatisfactionValue(value: string) {
+  return summarizeSatisfactionValue(value) || "-";
 }
 
 function Metric({ caption, label, value }: { caption?: string; label: string; value: number | string }) {

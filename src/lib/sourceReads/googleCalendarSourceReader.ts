@@ -1,4 +1,5 @@
 import { createSign } from "node:crypto";
+import { getResourceReadCacheTtlMs, readTimedCache, type TimedCacheEntry } from "@/lib/timedCache";
 import { DisabledOperationSourceReader } from "./disabledSourceReader";
 import type {
   CalendarResourceEvent,
@@ -61,6 +62,7 @@ interface GoogleCalendarEvent {
 }
 
 let cachedAccessToken: { token: string; expiresAt: number } | null = null;
+let cachedCalendarRead: TimedCacheEntry<SourceReadResult<CalendarResourceEvent>> | null = null;
 
 export class GoogleCalendarSourceReader implements OperationSourceReader {
   private readonly disabledReader = new DisabledOperationSourceReader();
@@ -84,6 +86,19 @@ export class GoogleCalendarSourceReader implements OperationSourceReader {
         issues
       };
     }
+
+    const { entry, value } = await readTimedCache(
+      cachedCalendarRead,
+      getResourceReadCacheTtlMs(),
+      () => this.readFreshCalendarEvents()
+    );
+
+    cachedCalendarRead = entry;
+    return value;
+  }
+
+  private async readFreshCalendarEvents(): Promise<SourceReadResult<CalendarResourceEvent>> {
+    const readAt = new Date().toISOString();
 
     try {
       const accessToken = await getGoogleAccessToken(this.config);

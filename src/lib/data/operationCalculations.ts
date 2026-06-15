@@ -10,6 +10,7 @@ import type {
   ResultReportStatus,
   ValidationStatus
 } from "./operationTypes";
+import { satisfactionNumber } from "./satisfaction";
 
 const ASSIGNMENT_NEEDED_VALUES = new Set(["★배정필요", "배정필요"]);
 const ASSIGNMENT_PLANNED_VALUES = new Set(["★배정 예정", "배정 예정", "배정예정"]);
@@ -160,7 +161,7 @@ export function summarizeOperations(operations: OperationSession[]): OperationSu
     active: operations.filter((operation) => operation.operationStatus === "진행중").length,
     assignmentNeeded: operations.filter((operation) => operation.operationStatus === "배정필요").length,
     archiveNeeded: operations.filter((operation) => operation.archiveStatus === "아카이빙필요").length,
-    missingSatisfaction: operations.filter((operation) => !operation.avgSatisfaction.trim()).length,
+    missingSatisfaction: operations.filter((operation) => satisfactionNumber(operation.avgSatisfaction) === null).length,
     missingResultReport: operations.filter(
       (operation) => operation.hasResultReport === "유" && !operation.resultReportLink.trim()
     ).length
