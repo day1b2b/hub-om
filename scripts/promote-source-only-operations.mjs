@@ -81,6 +81,7 @@ async function main() {
   await client.connect();
 
   try {
+    const roleAssignees = await loadRoleAssignees(client);
     const sourceRows = await client.query(
       `
         SELECT id, source_team, source_fingerprint, mapped_fields, validation_errors
@@ -116,7 +117,7 @@ async function main() {
 
       const companyId = await upsertCompany(client, fields.companyName);
       const courseId = await upsertCourse(client, companyId, fields);
-      const sessionId = await createOperationSession(client, courseId, row, fields, validationErrors);
+      const sessionId = await createOperationSession(client, courseId, row, fields, validationErrors, roleAssignees);
 
       await linkSourceRecord(client, row.id, sessionId);
       summary.promoted += 1;
@@ -201,7 +202,7 @@ async function upsertCourse(client, companyId, fields) {
   return result.rows[0].id;
 }
 
-async function createOperationSession(client, courseRecordId, sourceRow, fields, validationErrors) {
+async function createOperationSession(client, courseRecordId, sourceRow, fields, validationErrors, roleAssignees) {
   const startDate = parseDateValue(fields.startDate);
   const endDate = parseDateValue(fields.endDate);
   const operationId = stableOperationId(sourceRow.source_team, sourceRow.source_fingerprint);
@@ -322,8 +323,8 @@ async function createOperationSession(client, courseRecordId, sourceRow, fields,
       nullableInteger(fields.sessionDurationDays) ?? dateDiffDays(startDate, endDate),
       enumValue(OPERATION_TYPE, fields.sessionDurationType, "needs_review"),
       nullableText(fields.timeText),
-      nullableText(fields.om),
-      nullableText(fields.ld),
+      nullableText(normalizeAssigneeNames(fields.om, roleAssignees.om)),
+      nullableText(normalizeAssigneeNames(fields.ld, roleAssignees.ld)),
       nullableText(fields.instructors),
       nullableText(fields.coach),
       nullableText(fields.region),
@@ -382,6 +383,49 @@ function normalizeVisibleText(value) {
 function nullableText(value) {
   const normalized = normalizeVisibleText(value);
   return normalized || null;
+}
+
+async function loadRoleAssignees(client) {
+  const result = await client.query(
+    `
+      SELECT role, name
+      FROM team_members
+      WHERE is_active = TRUE
+        AND role IN ('om', 'ld')
+      ORDER BY role, source_team, display_order, name
+    `
+  );
+  const roleAssignees = { ld: [], om: [] };
+
+  for (const row of result.rows) {
+    if (row.role === "om" || row.role === "ld") {
+      roleAssignees[row.role].push(row.name);
+    }
+  }
+
+  return roleAssignees;
+}
+
+function normalizeAssigneeNames(value, allowedNames) {
+  const allowedMap = new Map(allowedNames.map((name) => [normalizePersonKey(name), name]));
+  const names = [];
+
+  for (const rawName of String(value ?? "").split(/[,，、/]+/)) {
+    const matchedName = allowedMap.get(normalizePersonKey(rawName));
+    if (matchedName && !names.includes(matchedName)) {
+      names.push(matchedName);
+    }
+  }
+
+  return names.join(", ");
+}
+
+function normalizePersonKey(value) {
+  return String(value ?? "")
+    .replace(/\([^)]*\)/g, "")
+    .replace(/\[[^\]]*\]/g, "")
+    .replace(/\s+/g, "")
+    .toLowerCase();
 }
 
 function normalizeName(value) {

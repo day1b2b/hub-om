@@ -6,6 +6,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import type { OperationSession, OperationStatus } from "@/lib/data/operationTypes";
 import { splitPersonNames } from "@/lib/data/personNames";
 import type { ResourceOwnerRoster } from "@/lib/data/teamMemberRepository";
+import type { CalendarResourceEvent } from "@/lib/sourceReads";
 import { teamScopeSearchParam, type TeamScope } from "@/lib/teamScope";
 
 const BOARD_GROUPS: Array<{ label: string; statuses: OperationStatus[] }> = [
@@ -14,7 +15,6 @@ const BOARD_GROUPS: Array<{ label: string; statuses: OperationStatus[] }> = [
   { label: "완료", statuses: ["완료", "회고완료", "아카이빙필요"] }
 ];
 
-const UNASSIGNED_OWNER = "배정필요";
 const UNMATCHED_OWNER = "매칭 필요";
 const OWNER_ALIASES: Record<string, string> = {
   "이유진": "이유진C"
@@ -25,6 +25,7 @@ const MAX_CALENDAR_EVENT_LANES = 3;
 const MAX_BOARD_CARDS_PER_LANE = 4;
 
 interface ResourceJudgmentPageProps {
+  calendarEvents?: CalendarResourceEvent[];
   operations: OperationSession[];
   ownerRoster?: ResourceOwnerRoster;
   teamScope: TeamScope;
@@ -43,13 +44,24 @@ interface CalendarWeek {
 
 interface CalendarEventSegment {
   endsAfterWeek: boolean;
+  item: CalendarItem;
   key: string;
   lane: number;
   longSummary: boolean;
-  operation: OperationSession;
   span: number;
   startColumn: number;
   startsBeforeWeek: boolean;
+}
+
+interface CalendarItem {
+  endDate: Date;
+  eventKind?: CalendarResourceEvent["eventKind"];
+  href?: string;
+  key: string;
+  ownerName: string;
+  startDate: Date;
+  title: string;
+  type: "operation" | "source";
 }
 
 interface ResourceBoardItem {
@@ -61,7 +73,7 @@ interface ResourceBoardItem {
   totalOperations: OperationSession[];
 }
 
-export function ResourceJudgmentPage({ operations, ownerRoster = {}, teamScope }: ResourceJudgmentPageProps) {
+export function ResourceJudgmentPage({ calendarEvents = [], operations, ownerRoster = {}, teamScope }: ResourceJudgmentPageProps) {
   const [viewDate, setViewDate] = useState(new Date());
   const teamQuery = teamScopeSearchParam(teamScope);
   const [ownerFilter, setOwnerFilter] = useState("전체 담당자");
@@ -71,8 +83,8 @@ export function ResourceJudgmentPage({ operations, ownerRoster = {}, teamScope }
   const teamOperations = operations;
   const rosterOwners = useMemo(() => getRosterOwners(ownerRoster), [ownerRoster]);
   const ownerOptions = useMemo(
-    () => ["전체 담당자", ...unique([...rosterOwners, ...getAssignmentNeededOption(teamOperations, rosterOwners)])],
-    [rosterOwners, teamOperations]
+    () => ["전체 담당자", ...rosterOwners],
+    [rosterOwners]
   );
   const boardOwnerOptions = useMemo(() => ownerOptions.filter((owner) => owner !== UNMATCHED_OWNER), [ownerOptions]);
   const resourceOwnerMap = useMemo(() => buildOwnerDisplayMap([...boardOwnerOptions.slice(1), UNMATCHED_OWNER]), [boardOwnerOptions]);
@@ -90,11 +102,21 @@ export function ResourceJudgmentPage({ operations, ownerRoster = {}, teamScope }
     () => filteredOperations.filter((operation) => isInCalendarWindow(operation, viewDate)),
     [filteredOperations, viewDate]
   );
+  const filteredCalendarEvents = useMemo(
+    () =>
+      calendarEvents.filter((event) => {
+        if (!isCalendarEventInWindow(event, viewDate)) return false;
+        if (effectiveOwnerFilter === "전체 담당자") return true;
+
+        return resolveOwnerDisplayName(event.ownerName, resourceOwnerMap) === effectiveOwnerFilter;
+      }),
+    [calendarEvents, effectiveOwnerFilter, resourceOwnerMap, viewDate]
+  );
   const boardOperations = useMemo(
     () => filteredOperations.filter((operation) => isInBoardWindow(operation, viewDate)),
     [filteredOperations, viewDate]
   );
-  const calendarWeeks = buildCalendarWeeks(viewDate, calendarOperations);
+  const calendarWeeks = buildCalendarWeeks(viewDate, calendarOperations, filteredCalendarEvents, teamQuery, resourceOwnerMap);
   const monthLabel = new Intl.DateTimeFormat("ko-KR", {
     month: "long",
     year: "numeric"
@@ -175,17 +197,7 @@ export function ResourceJudgmentPage({ operations, ownerRoster = {}, teamScope }
                   ))}
                   <div className="calendar-week-events">
                     {visibleSegments.map((segment) => (
-                      <Link
-                        className={`calendar-event ${calendarSegmentPositionClass(segment)}`}
-                        href={`/operations/${segment.operation.operationId}${teamQuery}`}
-                        key={segment.key}
-                        style={{ gridColumn: `${segment.startColumn} / span ${segment.span}`, gridRow: segment.lane + 1 }}
-                      >
-                        <strong>{segment.operation.courseName}</strong>
-                        <span>
-                          <Tag tone={ownerTone(segment.operation.om || "배정필요")}>{segment.operation.om || "배정필요"}</Tag>
-                        </span>
-                      </Link>
+                      <CalendarEventCard key={segment.key} segment={segment} />
                     ))}
                     {hiddenCount > 0 ? (
                       <button
@@ -337,7 +349,7 @@ function OwnerBoard({
                     <Tag tone="gray">{formatBoardItemDateRange(item)}</Tag>
                     {shouldShowStatusCount(item) ? <Tag tone="blue">{statusCountLabel(item, boardGroup.label)}</Tag> : null}
                     {courseRoundLabel(item) ? <Tag tone="gray">{courseRoundLabel(item)}</Tag> : null}
-                    {group.owner === UNMATCHED_OWNER ? <Tag tone="pink">{item.representative.om}</Tag> : null}
+                    {group.owner === UNMATCHED_OWNER ? <Tag tone="pink">OM 매칭 필요</Tag> : null}
                   </span>
                 </Link>
               ))}
@@ -364,8 +376,57 @@ function Tag({ children, tone }: { children: string; tone: string }) {
   return <span className={`resource-tag ${tone}`}>{children}</span>;
 }
 
-function buildCalendarWeeks(anchorDate: Date, operations: OperationSession[]): CalendarWeek[] {
+function CalendarEventCard({ segment }: { segment: CalendarEventSegment }) {
+  const className = [
+    "calendar-event",
+    calendarSegmentPositionClass(segment),
+    segment.item.type === "source" ? "source-calendar-event" : "",
+    segment.item.eventKind === "absence" ? "absence-calendar-event" : ""
+  ].filter(Boolean).join(" ");
+  const style = { gridColumn: `${segment.startColumn} / span ${segment.span}`, gridRow: segment.lane + 1 };
+  const content = (
+    <>
+      <strong>{segment.item.title}</strong>
+      <span>
+        {segment.item.ownerName ? <Tag tone={ownerTone(segment.item.ownerName)}>{segment.item.ownerName}</Tag> : null}
+        {segment.item.type === "source" ? (
+          <Tag tone={segment.item.eventKind === "absence" ? "pink" : "gray"}>{sourceEventLabel(segment.item)}</Tag>
+        ) : null}
+      </span>
+    </>
+  );
+
+  if (segment.item.href) {
+    return (
+      <Link className={className} href={segment.item.href} style={style}>
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <div className={className} style={style}>
+      {content}
+    </div>
+  );
+}
+
+function buildCalendarWeeks(
+  anchorDate: Date,
+  operations: OperationSession[],
+  calendarEvents: CalendarResourceEvent[],
+  teamQuery: string,
+  ownerMap: Map<string, string>
+): CalendarWeek[] {
   const days = buildCalendarDays(anchorDate);
+  const items = [
+    ...operations
+      .map((operation) => operationToCalendarItem(operation, teamQuery, ownerMap))
+      .filter((item): item is CalendarItem => item !== null),
+    ...calendarEvents
+      .map((event) => sourceEventToCalendarItem(event, ownerMap))
+      .filter((item): item is CalendarItem => item !== null)
+  ];
 
   return Array.from({ length: Math.ceil(days.length / 7) }, (_, index) => {
     const weekDays = days.slice(index * 7, index * 7 + 7);
@@ -373,7 +434,7 @@ function buildCalendarWeeks(anchorDate: Date, operations: OperationSession[]): C
     return {
       days: weekDays,
       key: dateKey(weekDays[0].date),
-      segments: buildCalendarWeekSegments(weekDays, operations)
+      segments: buildCalendarWeekSegments(weekDays, items)
     };
   });
 }
@@ -399,37 +460,34 @@ function buildCalendarDays(anchorDate: Date): CalendarDay[] {
   });
 }
 
-function buildCalendarWeekSegments(days: CalendarDay[], operations: OperationSession[]) {
+function buildCalendarWeekSegments(days: CalendarDay[], items: CalendarItem[]) {
   const weekStart = days[0].date;
   const weekEnd = days[days.length - 1].date;
-  const candidates = operations
-    .map((operation) => {
-      const start = parseDate(operation.startDate);
-      const end = parseDate(operation.endDate);
-
-      if (!start || !end || start.getTime() > weekEnd.getTime() || end.getTime() < weekStart.getTime()) {
+  const candidates = items
+    .map((item) => {
+      if (item.startDate.getTime() > weekEnd.getTime() || item.endDate.getTime() < weekStart.getTime()) {
         return null;
       }
 
-      const totalDuration = durationDays(start, end);
+      const totalDuration = durationDays(item.startDate, item.endDate);
       const shouldRenderContinuously = totalDuration <= MAX_CALENDAR_CONTINUOUS_DAYS;
-      const startInWeek = isWithinDateRange(start, weekStart, weekEnd);
-      const endInWeek = isWithinDateRange(end, weekStart, weekEnd);
+      const startInWeek = isWithinDateRange(item.startDate, weekStart, weekEnd);
+      const endInWeek = isWithinDateRange(item.endDate, weekStart, weekEnd);
 
       if (!shouldRenderContinuously && !startInWeek && !endInWeek) {
         return null;
       }
 
-      const segmentStart = shouldRenderContinuously ? maxDate(start, weekStart) : startInWeek ? start : end;
-      const segmentEnd = shouldRenderContinuously ? minDate(end, weekEnd) : segmentStart;
+      const segmentStart = shouldRenderContinuously ? maxDate(item.startDate, weekStart) : startInWeek ? item.startDate : item.endDate;
+      const segmentEnd = shouldRenderContinuously ? minDate(item.endDate, weekEnd) : segmentStart;
 
       return {
-        end,
+        end: item.endDate,
+        item,
         longSummary: !shouldRenderContinuously,
-        operation,
         segmentEnd,
         segmentStart,
-        start
+        start: item.startDate
       };
     })
     .filter((value): value is NonNullable<typeof value> => value !== null)
@@ -438,7 +496,7 @@ function buildCalendarWeekSegments(days: CalendarDay[], operations: OperationSes
       if (startDiff !== 0) return startDiff;
       const durationDiff = durationDays(b.segmentStart, b.segmentEnd) - durationDays(a.segmentStart, a.segmentEnd);
       if (durationDiff !== 0) return durationDiff;
-      return compareStableText(a.operation.courseName, b.operation.courseName);
+      return compareStableText(a.item.title, b.item.title);
     });
   const laneEnds: number[] = [];
 
@@ -451,15 +509,49 @@ function buildCalendarWeekSegments(days: CalendarDay[], operations: OperationSes
 
     return {
       endsAfterWeek: candidate.end.getTime() > weekEnd.getTime(),
-      key: `${candidate.operation.operationId}-${dateKey(weekStart)}`,
+      item: candidate.item,
+      key: `${candidate.item.key}-${dateKey(weekStart)}`,
       lane,
       longSummary: candidate.longSummary,
-      operation: candidate.operation,
       span,
       startColumn,
       startsBeforeWeek: candidate.start.getTime() < weekStart.getTime()
     };
   });
+}
+
+function operationToCalendarItem(operation: OperationSession, teamQuery: string, ownerMap: Map<string, string>): CalendarItem | null {
+  const startDate = parseDate(operation.startDate);
+  const endDate = parseDate(operation.endDate);
+
+  if (!startDate || !endDate) return null;
+
+  return {
+    endDate,
+    href: `/operations/${operation.operationId}${teamQuery}`,
+    key: `operation-${operation.operationId}`,
+    ownerName: getCalendarOperationOwner(operation.om, ownerMap),
+    startDate,
+    title: operation.courseName,
+    type: "operation"
+  };
+}
+
+function sourceEventToCalendarItem(event: CalendarResourceEvent, ownerMap: Map<string, string>): CalendarItem | null {
+  const startDate = parseCalendarEventDate(event.startDateTime);
+  const endDate = parseCalendarEventEndDate(event.endDateTime, startDate);
+
+  if (!startDate || !endDate) return null;
+
+  return {
+    endDate,
+    eventKind: event.eventKind,
+    key: `source-${normalizeOwnerName(event.ownerName)}-${event.sourceEventId}`,
+    ownerName: resolveOwnerDisplayName(event.ownerName, ownerMap) ?? event.ownerName,
+    startDate,
+    title: event.title,
+    type: "source"
+  };
 }
 
 function findCalendarLane(laneEnds: number[], startColumn: number) {
@@ -471,7 +563,32 @@ function parseDate(value: string) {
   if (!value) return null;
 
   const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return null;
+
   return new Date(year, month - 1, day);
+}
+
+function parseCalendarEventDate(value: string) {
+  if (!value) return null;
+  if (!value.includes("T")) return parseDate(value.slice(0, 10));
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function parseCalendarEventEndDate(value: string, startDate: Date | null) {
+  const endDate = parseCalendarEventDate(value);
+  if (!endDate) return startDate;
+
+  if (value && !value.includes("T") && startDate && endDate.getTime() > startDate.getTime()) {
+    const inclusiveEndDate = new Date(endDate);
+    inclusiveEndDate.setDate(endDate.getDate() - 1);
+    return inclusiveEndDate;
+  }
+
+  return endDate;
 }
 
 function shiftMonth(value: Date, offset: number) {
@@ -553,7 +670,6 @@ function buildBoardItem(key: string, operations: OperationSession[], totalOperat
 function boardMergeKey(operation: OperationSession, owner: string) {
   return [
     owner,
-    owner === UNMATCHED_OWNER ? operation.om : "",
     operation.courseId,
     operation.companyName,
     operation.courseName,
@@ -566,7 +682,6 @@ function boardMergeKey(operation: OperationSession, owner: string) {
 function boardTotalKey(operation: OperationSession, owner: string) {
   return [
     owner,
-    owner === UNMATCHED_OWNER ? operation.om : "",
     operation.courseId,
     operation.companyName,
     operation.courseName,
@@ -597,6 +712,17 @@ function getRosterOwners(ownerRoster: ResourceOwnerRoster) {
 function isInCalendarWindow(operation: OperationSession, viewDate: Date) {
   const start = parseDate(operation.startDate);
   const end = parseDate(operation.endDate);
+  if (!start || !end) return false;
+
+  const windowStart = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
+  const windowEnd = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0);
+
+  return start.getTime() <= windowEnd.getTime() && windowStart.getTime() <= end.getTime();
+}
+
+function isCalendarEventInWindow(event: CalendarResourceEvent, viewDate: Date) {
+  const start = parseCalendarEventDate(event.startDateTime);
+  const end = parseCalendarEventEndDate(event.endDateTime, start);
   if (!start || !end) return false;
 
   const windowStart = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
@@ -664,6 +790,12 @@ function statusGroupTone(label: string) {
   if (label === "시작 전") return "amber";
   if (label === "진행 중") return "blue";
   return "gray";
+}
+
+function sourceEventLabel(item: CalendarItem) {
+  if (item.eventKind === "absence") return "부재";
+  if (item.eventKind === "nearby_workload") return "주변 일정";
+  return "캘린더";
 }
 
 function boardLaneKey(owner: string, label: string) {
@@ -750,20 +882,12 @@ function getResourceOwners(value: string, allowedOwners: Map<string, string>) {
   return uniqueOwners.includes(UNMATCHED_OWNER) ? [UNMATCHED_OWNER] : uniqueOwners;
 }
 
-function getAssignmentNeededOption(operations: OperationSession[], rosterOwners: string[]) {
-  const rosterOwnerMap = buildOwnerDisplayMap(rosterOwners);
-  const hasUnassigned = operations.some((operation) => splitPersonNames(operation.om).some(isUnassignedOwner));
-  const hasUnmatched = operations.some((operation) =>
-    splitPersonNames(operation.om).some(
-      (owner) => !isUnassignedOwner(owner) && !resolveOwnerDisplayName(owner, rosterOwnerMap, false)
-    )
+function getCalendarOperationOwner(value: string, allowedOwners: Map<string, string>) {
+  return (
+    splitPersonNames(value, "")
+      .map((owner) => resolveOwnerDisplayName(owner, allowedOwners, false))
+      .find((owner): owner is string => Boolean(owner)) ?? ""
   );
-  const options: string[] = [];
-
-  if (hasUnassigned) options.push(UNASSIGNED_OWNER);
-  if (hasUnmatched) options.push(UNMATCHED_OWNER);
-
-  return options;
 }
 
 function resolveOwnerDisplayName(owner: string, allowedOwners: Map<string, string>, includeFallback = true) {
@@ -774,7 +898,6 @@ function resolveOwnerDisplayName(owner: string, allowedOwners: Map<string, strin
   if (aliasOwner) return allowedOwners.get(normalizeOwnerName(aliasOwner)) ?? null;
 
   if (!includeFallback) return null;
-  if (isUnassignedOwner(owner) && allowedOwners.has(normalizeOwnerName(UNASSIGNED_OWNER))) return UNASSIGNED_OWNER;
   if (allowedOwners.has(normalizeOwnerName(UNMATCHED_OWNER))) return UNMATCHED_OWNER;
 
   return null;
@@ -786,11 +909,6 @@ function normalizeOwnerName(value: string) {
     .replace(/\[[^\]]*\]/g, "")
     .replace(/\s+/g, "")
     .toLowerCase();
-}
-
-function isUnassignedOwner(value: string) {
-  const normalized = value.replace(/\s+/g, "");
-  return normalized.includes("배정필요") || normalized.includes("배정예정");
 }
 
 function statusCountLabel(item: ResourceBoardItem, statusLabel: string) {
