@@ -4,6 +4,10 @@
 
 ## 먼저 읽을 문서
 
+AI 작업자는 먼저 [operations/manager-ai-workflow.md](operations/manager-ai-workflow.md)를 읽고, 그 문서가 지시하는 필수 문서를 순서대로 읽는다.
+
+사람이 직접 작업할 때는 아래 순서로 읽는다.
+
 1. [collaboration/getting-started.md](collaboration/getting-started.md)
 2. [collaboration/working-rules.md](collaboration/working-rules.md)
 3. [collaboration/team-workflow.md](collaboration/team-workflow.md)
@@ -26,6 +30,12 @@
 
 - `collaboration/`: 브랜치, PR, 역할 분담, 팀 작업 방식.
 - `operations/`: DB 연결과 운영 데이터 쓰기 작업의 안전 규칙.
+
+## AI 작업 진입점
+
+- [operations/manager-ai-workflow.md](operations/manager-ai-workflow.md): Codex, Claude Code, 기타 AI 작업자가 작업 시작부터 커밋/푸시/PR 설명까지 따라야 하는 공통 절차.
+- [`../codex-skills/hub-om-manager-workflow/SKILL.md`](../codex-skills/hub-om-manager-workflow/SKILL.md): Codex에서 `$hub-om-manager-workflow`로 사용할 스킬 원본.
+- [`../.claude/commands/hub-om-work.md`](../.claude/commands/hub-om-work.md): Claude Code에서 사용할 명령 진입점.
 
 ## 운영 데이터 연동 문서
 

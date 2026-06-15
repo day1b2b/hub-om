@@ -2,6 +2,8 @@
 
 Claude Code는 막연한 자동완성 도구가 아니라 구현 파트너로 사용합니다. 작업을 맡길 때는 범위, 담당자, 참고 문서, 검증 기준을 작게 쪼개서 명확히 줍니다.
 
+공통 AI 작업 절차의 원본은 [docs/operations/manager-ai-workflow.md](docs/operations/manager-ai-workflow.md)입니다. Claude Code는 `/hub-om-work` 명령 또는 아래 작업 시작 프로토콜을 통해 같은 절차를 따릅니다.
+
 ## 작업 시작 프로토콜
 
 Claude Code는 모든 작업을 시작하기 전에 아래를 반드시 수행합니다. 이 프로토콜을 생략하지 않습니다.
