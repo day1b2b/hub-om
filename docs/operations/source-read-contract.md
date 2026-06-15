@@ -135,6 +135,14 @@ OM과 LD는 매칭 신뢰도에 중요한 신호입니다. 운영 메일이나 S
 
 각 항목은 화면에서 원천을 구분할 수 있도록 `sourceKind`와 `sourceLabel`을 가질 수 있습니다. Slack reader는 `sourceKind: "slack"`, `sourceLabel: "Slack"`을 넣고, 메일 reader는 `sourceKind: "email"`, `sourceLabel: "메일"`을 넣습니다. 값이 없으면 원문 URL이 `slack.com`인지 `mail.google.com`인지 보고 fallback 분류합니다.
 
+## 운영 논의 적용
+
+`Slack 다시 가져오기`, `메일 다시 가져오기`는 외부 원천을 다시 읽고, 화면에 표시한 Slack/메일 참조를 운영 DB의 원천 이력에 누적 저장합니다. 외부 원천에는 쓰지 않습니다.
+
+저장은 표준 운영 필드를 덮어쓰지 않고, `data_import_runs`와 `operation_source_records`에 `discussion_capture` 실행 이력과 원천 참조 snapshot을 저장합니다. 메일은 자동 확정된 항목뿐 아니라 후보 목록도 저장해, 이후 별도 검토/분석 단계에서 활용할 수 있게 합니다.
+
+저장하는 값은 원천 종류, 원천 메시지 ID, 제목, 짧은 요약, 발생 시각, 원문 링크처럼 운영자가 나중에 추적할 수 있는 참조 정보로 제한합니다. 메일 본문 전체나 Slack 원문 전체를 저장하지 않습니다. 같은 운영 건에 같은 원천 메시지 ID가 이미 저장되어 있으면 중복 적용하지 않습니다.
+
 ## Google Calendar 읽기 설정
 
 Google Calendar는 서비스 계정 기반 읽기 전용 연결을 지원합니다. 실제 서비스 계정 이메일, private key, calendar ID는 저장소에 커밋하지 않고 배포/로컬 환경변수로만 관리합니다.

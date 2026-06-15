@@ -58,8 +58,15 @@ export function OperationDiscussionPanel({
         />
       </div>
       <div className="note-stack">
-        <DiscussionList companyName={companyName} items={items} status={status} />
-        <EmailCandidateList companyName={companyName} items={emailCandidates} />
+        <DiscussionList
+          companyName={companyName}
+          items={items}
+          status={status}
+        />
+        <EmailCandidateList
+          companyName={companyName}
+          items={emailCandidates}
+        />
       </div>
     </>
   );
