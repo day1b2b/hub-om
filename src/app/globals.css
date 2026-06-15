@@ -2499,6 +2499,43 @@ td span {
   gap: 3px;
 }
 
+.activity-heading-line {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.activity-source-badge {
+  align-items: center;
+  border: 1px solid #d5dce8;
+  border-radius: 999px;
+  color: #526176;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  min-height: 18px;
+  padding: 0 7px;
+}
+
+.activity-source-badge.slack {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  color: #3730a3;
+}
+
+.activity-source-badge.email {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #047857;
+}
+
+.activity-source-badge.other {
+  background: #f8fafc;
+}
+
 .activity-item strong {
   font-size: 13px;
   line-height: 1.4;

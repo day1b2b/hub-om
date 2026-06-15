@@ -44,11 +44,15 @@ export interface CalendarResourceEvent {
   sourceUrl?: string;
 }
 
+export type DiscussionReferenceSourceKind = "slack" | "email" | "other";
+
 export interface DiscussionReference {
   sourceMessageId: string;
   operationKey: string;
   title: string;
   occurredAt: string;
+  sourceKind?: DiscussionReferenceSourceKind;
+  sourceLabel?: string;
   sourceUrl: string;
   summary?: string;
 }
