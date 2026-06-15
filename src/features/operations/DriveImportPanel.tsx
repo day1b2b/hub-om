@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { OperationSession } from "@/lib/data/operationTypes";
 import { summarizeSatisfactionValue } from "@/lib/data/satisfaction";
@@ -18,6 +18,21 @@ interface DriveImportPanelProps {
 type ScanState = "idle" | "loading" | "ready" | "failed";
 type FolderSearchState = "idle" | "loading" | "ready" | "failed";
 type ApplyState = "idle" | "saving" | "saved" | "failed";
+
+interface DriveImportDraft {
+  version: 1;
+  operationId: string;
+  folderUrl: string;
+  folderSearchResult: DriveFolderSearchResult | null;
+  result: DriveImportScanResult | null;
+  selectedIds: string[];
+  editedValues: Record<string, string>;
+  savedAt: string;
+}
+
+const DRIVE_IMPORT_DRAFT_VERSION = 1;
+const DRIVE_IMPORT_DRAFT_PREFIX = "hub-om:drive-import-draft:";
+const DRIVE_IMPORT_DRAFT_MAX_AGE_MS = 1000 * 60 * 60 * 24;
 
 const FIELD_LABELS: Record<string, string> = {
   avgSatisfaction: "전체 만족도",
@@ -48,6 +63,52 @@ const CONFIDENCE_LABELS: Record<DriveImportCandidate["confidence"], string> = {
   needs_review: "검토"
 };
 
+const BLOCKED_INSTRUCTOR_CANDIDATE_VALUES = new Set([
+  "강사",
+  "교육",
+  "내부",
+  "대상",
+  "담당",
+  "리더",
+  "미정",
+  "미확정",
+  "미팅",
+  "생길때",
+  "섭외",
+  "실습",
+  "수업시간",
+  "외부",
+  "운영",
+  "로그",
+  "시계",
+  "시간",
+  "일정",
+  "장소",
+  "조정을",
+  "진행",
+  "참여",
+  "참여인원",
+  "추천",
+  "출강",
+  "필요",
+  "프로필",
+  "없어",
+  "확인",
+  "후보"
+]);
+const BLOCKED_COURSE_CANDIDATE_VALUES = new Set([
+  "강의관리",
+  "강의요약",
+  "과정정보",
+  "교육내용",
+  "기본정보",
+  "세부교육내용",
+  "세부내용",
+  "운영조건",
+  "운영상세",
+  "주요내용"
+]);
+
 export function DriveImportPanel({ operation }: DriveImportPanelProps) {
   const router = useRouter();
   const [folderUrl, setFolderUrl] = useState(operation.driveLink);
@@ -63,42 +124,100 @@ export function DriveImportPanel({ operation }: DriveImportPanelProps) {
   const [scanProgressTitle, setScanProgressTitle] = useState("");
   const [error, setError] = useState("");
   const [applyMessage, setApplyMessage] = useState("");
-  const candidates = useMemo(() => result?.candidates ?? [], [result]);
+  const [hasLoadedDraft, setHasLoadedDraft] = useState(false);
+  const shouldPersistDraftRef = useRef(true);
+  const candidates = useMemo(() => (result?.candidates ?? []).filter(isVisibleDriveCandidate), [result]);
   const applyableCandidates = useMemo(() => candidates.filter((candidate) => candidate.applyable), [candidates]);
   const selectedApplyableCandidates = useMemo(
     () => applyableCandidates.filter((candidate) => selectedIds.includes(candidate.id)),
     [applyableCandidates, selectedIds]
   );
+  const draftStorageKey = useMemo(() => driveImportDraftKey(operation.operationId), [operation.operationId]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      const draft = readDriveImportDraft(draftStorageKey, operation.operationId);
+
+      if (draft) {
+        setFolderUrl(draft.folderUrl);
+        setFolderSearchResult(draft.folderSearchResult);
+        setResult(draft.result);
+        setSelectedIds(draft.selectedIds);
+        setEditedValues(draft.editedValues);
+        setFolderSearchState(draft.folderSearchResult ? "ready" : "idle");
+        setScanState(draft.result ? "ready" : "idle");
+        setIsReviewOpen(Boolean(draft.result?.candidates.some(isVisibleDriveCandidate)));
+      }
+
+      setHasLoadedDraft(true);
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [draftStorageKey, operation.operationId]);
+
+  useEffect(() => {
+    if (!hasLoadedDraft) return;
+
+    if (!shouldPersistDraftRef.current) {
+      removeDriveImportDraft(draftStorageKey);
+      return;
+    }
+
+    const hasDraftContent =
+      Boolean(result) ||
+      Boolean(folderSearchResult) ||
+      selectedIds.length > 0 ||
+      Object.keys(editedValues).length > 0 ||
+      folderUrl.trim() !== operation.driveLink.trim();
+
+    if (!hasDraftContent) {
+      removeDriveImportDraft(draftStorageKey);
+      return;
+    }
+
+    const savedAt = new Date().toISOString();
+    const draft: DriveImportDraft = {
+      version: DRIVE_IMPORT_DRAFT_VERSION,
+      operationId: operation.operationId,
+      folderUrl,
+      folderSearchResult,
+      result,
+      selectedIds,
+      editedValues,
+      savedAt
+    };
+
+    writeDriveImportDraft(draftStorageKey, draft);
+  }, [
+    draftStorageKey,
+    editedValues,
+    folderSearchResult,
+    folderUrl,
+    hasLoadedDraft,
+    operation.driveLink,
+    operation.operationId,
+    result,
+    selectedIds
+  ]);
 
   return (
     <div className="drive-import-panel">
       <div className="drive-import-toolbar">
         <input
           aria-label="Drive 폴더 URL"
-          onChange={(event) => setFolderUrl(event.target.value)}
+          onChange={(event) => updateFolderUrl(event.target.value)}
           placeholder="Drive 폴더 URL"
           type="url"
           value={folderUrl}
         />
         <div className="drive-import-actions">
-          <a className="drive-import-action secondary" href="https://drive.google.com/drive/my-drive" rel="noreferrer" target="_blank">
-            Drive 열기
-          </a>
           <button
             className="drive-import-action secondary"
             disabled={folderSearchState === "loading" || scanState === "loading"}
             onClick={searchDriveFolders}
             type="button"
           >
-            {folderSearchState === "loading" ? "검색 중" : "폴더 찾기"}
-          </button>
-          <button
-            className="drive-import-action secondary"
-            disabled={applyState === "saving" || !folderUrl.trim()}
-            onClick={registerDriveLink}
-            type="button"
-          >
-            링크 등록
+            {folderSearchState === "loading" ? "검색 중" : "폴더 후보 찾기"}
           </button>
           <button
             className="drive-import-action primary"
@@ -106,7 +225,7 @@ export function DriveImportPanel({ operation }: DriveImportPanelProps) {
             onClick={() => scanDrive()}
             type="button"
           >
-            {scanState === "loading" ? "확인 중" : "자료 등록"}
+            {scanState === "loading" ? "확인 중" : "입력한 폴더 확인"}
           </button>
         </div>
       </div>
@@ -116,11 +235,8 @@ export function DriveImportPanel({ operation }: DriveImportPanelProps) {
 
       {result ? (
         <div className="drive-import-summary">
-          <span>마지막 확인 {formatDateTime(result.scannedAt)}</span>
-          <span>{result.files.length}개 항목 확인</span>
-          <span>{candidates.length}개 후보 · {applyableCandidates.length}개 등록 가능</span>
           <button disabled={candidates.length === 0} onClick={() => setIsReviewOpen(true)} type="button">
-            후보 목록 열기
+            {candidates.length > 0 ? `${applyableCandidates.length}개 후보 확인` : "후보 없음"}
           </button>
         </div>
       ) : null}
@@ -214,10 +330,7 @@ export function DriveImportPanel({ operation }: DriveImportPanelProps) {
             <div className="drive-import-bulk-actions">
               <span>{selectedApplyableCandidates.length}개 선택됨</span>
               <button disabled={applyableCandidates.length === 0} onClick={selectEmptyFields} type="button">
-                빈 칸만 선택
-              </button>
-              <button disabled={applyableCandidates.length === 0} onClick={selectAllApplyableFields} type="button">
-                전체 선택
+                빈 칸 선택
               </button>
               <button disabled={selectedIds.length === 0} onClick={() => setSelectedIds([])} type="button">
                 선택 해제
@@ -301,6 +414,7 @@ export function DriveImportPanel({ operation }: DriveImportPanelProps) {
   );
 
   async function scanDrive(nextUrl?: string, progressTitle?: string) {
+    shouldPersistDraftRef.current = true;
     const nextFolderUrl = (nextUrl ?? folderUrl).trim();
 
     if (!nextFolderUrl) {
@@ -334,14 +448,22 @@ export function DriveImportPanel({ operation }: DriveImportPanelProps) {
       return;
     }
 
-    setResult(payload.result);
-    setFolderUrl(payload.result.folderUrl);
+    const normalizedResult = normalizeDriveImportScanResult(payload.result);
+    const visibleCandidates = normalizedResult.candidates.filter(isVisibleDriveCandidate);
+    const emptyFieldCandidateIds = visibleCandidates
+      .filter((candidate) => candidate.applyable && !currentFieldValue(operation, candidate.field))
+      .map((candidate) => candidate.id);
+
+    setResult(normalizedResult);
+    setFolderUrl(normalizedResult.folderUrl);
+    setSelectedIds(emptyFieldCandidateIds);
     setScanState("ready");
     setScanProgressTitle("");
-    setIsReviewOpen(payload.result.candidates.length > 0);
+    setIsReviewOpen(payload.result.candidates.some(isVisibleDriveCandidate));
   }
 
   async function searchDriveFolders() {
+    shouldPersistDraftRef.current = true;
     setFolderSearchState("loading");
     setError("");
     setApplyMessage("");
@@ -378,23 +500,11 @@ export function DriveImportPanel({ operation }: DriveImportPanelProps) {
 
     if (patches.length === 0) return;
 
-    await applyPatches(patches, `${patches.length}개 항목을 등록했습니다.`);
-  }
-
-  async function registerDriveLink() {
-    const nextFolderUrl = folderUrl.trim();
-
-    if (!nextFolderUrl) return;
-
-    await applyPatches(
-      [{ field: "driveLink", action: "replace", value: nextFolderUrl }],
-      "Drive 링크를 등록했습니다."
-    );
+    await applyPatches(patches);
   }
 
   async function applyPatches(
-    patches: Array<{ field: DriveImportCandidate["field"]; action: DriveImportCandidate["action"]; value: string }>,
-    successMessage: string
+    patches: Array<{ field: DriveImportCandidate["field"]; action: DriveImportCandidate["action"]; value: string }>
   ) {
     setApplyState("saving");
     setApplyMessage("");
@@ -416,14 +526,44 @@ export function DriveImportPanel({ operation }: DriveImportPanelProps) {
     }
 
     setApplyState("saved");
-    setApplyMessage(successMessage);
+    setApplyMessage("");
+    shouldPersistDraftRef.current = false;
     setSelectedIds([]);
+    setEditedValues({});
     setIsReviewOpen(false);
+    removeDriveImportDraft(draftStorageKey);
     router.refresh();
+    await refreshCurrentFolderScan();
     return true;
   }
 
+  async function refreshCurrentFolderScan() {
+    const nextFolderUrl = folderUrl.trim() || result?.folderUrl.trim() || operation.driveLink.trim();
+    if (!nextFolderUrl) return;
+
+    const response = await fetch(`/api/operations/${encodeURIComponent(operation.operationId)}/drive-import/candidates`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({ folderUrl: nextFolderUrl })
+    });
+    const payload = (await response.json().catch(() => ({}))) as { ok?: boolean; result?: DriveImportScanResult };
+
+    if (!response.ok || !payload.ok || !payload.result) return;
+
+    const normalizedResult = normalizeDriveImportScanResult(payload.result);
+    setResult(normalizedResult);
+    setFolderUrl(normalizedResult.folderUrl);
+  }
+
+  function updateFolderUrl(value: string) {
+    shouldPersistDraftRef.current = true;
+    setFolderUrl(value);
+  }
+
   function selectEmptyFields() {
+    shouldPersistDraftRef.current = true;
     const emptyCandidateIds = applyableCandidates
       .filter((candidate) => !currentFieldValue(operation, candidate.field))
       .map((candidate) => candidate.id);
@@ -431,22 +571,133 @@ export function DriveImportPanel({ operation }: DriveImportPanelProps) {
     setSelectedIds(emptyCandidateIds);
   }
 
-  function selectAllApplyableFields() {
-    setSelectedIds(applyableCandidates.map((candidate) => candidate.id));
-  }
-
   function toggleCandidate(candidateId: string, checked: boolean) {
+    shouldPersistDraftRef.current = true;
     setSelectedIds((current) =>
       checked ? [...current, candidateId] : current.filter((selectedId) => selectedId !== candidateId)
     );
   }
 
   function updateEditedValue(candidateId: string, value: string) {
+    shouldPersistDraftRef.current = true;
     setEditedValues((current) => ({
       ...current,
       [candidateId]: value
     }));
   }
+}
+
+function driveImportDraftKey(operationId: string): string {
+  return `${DRIVE_IMPORT_DRAFT_PREFIX}${operationId}`;
+}
+
+function readDriveImportDraft(key: string, operationId: string): DriveImportDraft | null {
+  try {
+    const rawDraft = window.localStorage.getItem(key);
+    if (!rawDraft) return null;
+
+    const draft = JSON.parse(rawDraft) as Partial<DriveImportDraft>;
+    if (
+      draft.version !== DRIVE_IMPORT_DRAFT_VERSION ||
+      draft.operationId !== operationId ||
+      typeof draft.folderUrl !== "string" ||
+      typeof draft.savedAt !== "string" ||
+      !Array.isArray(draft.selectedIds) ||
+      !isStringRecord(draft.editedValues)
+    ) {
+      window.localStorage.removeItem(key);
+      return null;
+    }
+
+    const savedAtMs = new Date(draft.savedAt).getTime();
+    if (!Number.isFinite(savedAtMs) || Date.now() - savedAtMs > DRIVE_IMPORT_DRAFT_MAX_AGE_MS) {
+      window.localStorage.removeItem(key);
+      return null;
+    }
+
+    return {
+      version: DRIVE_IMPORT_DRAFT_VERSION,
+      operationId,
+      folderUrl: draft.folderUrl,
+      folderSearchResult: draft.folderSearchResult ?? null,
+      result: draft.result ?? null,
+      selectedIds: draft.selectedIds.filter((value): value is string => typeof value === "string"),
+      editedValues: draft.editedValues,
+      savedAt: draft.savedAt
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeDriveImportDraft(key: string, draft: DriveImportDraft) {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(draft));
+  } catch {
+    // 임시저장은 보조 기능이라 저장소 제한/차단 시 기존 흐름을 막지 않습니다.
+  }
+}
+
+function removeDriveImportDraft(key: string) {
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    // ignore
+  }
+}
+
+function isStringRecord(value: unknown): value is Record<string, string> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+
+  return Object.values(value).every((entry) => typeof entry === "string");
+}
+
+function normalizeDriveImportScanResult(result: DriveImportScanResult): DriveImportScanResult {
+  return {
+    ...result,
+    candidates: result.candidates.map((candidate) => ({
+      ...candidate,
+      value: normalizeDriveCandidateValue(candidate)
+    }))
+  };
+}
+
+function normalizeDriveCandidateValue(candidate: DriveImportCandidate): string {
+  if (candidate.field === "instructors" && candidate.value === "사내") {
+    return "사내강사";
+  }
+
+  return candidate.value;
+}
+
+function isVisibleDriveCandidate(candidate: DriveImportCandidate): boolean {
+  const normalizedValue = normalizeCandidateText(candidate.value);
+
+  if (candidate.field === "instructors") {
+    return (
+      /^[가-힣]{2,5}$/.test(candidate.value.trim()) &&
+      !BLOCKED_INSTRUCTOR_CANDIDATE_VALUES.has(normalizedValue) &&
+      !normalizedValue.endsWith("필요") &&
+      !normalizedValue.endsWith("후보") &&
+      !normalizedValue.endsWith("섭외")
+    );
+  }
+
+  if (candidate.field === "courseName") {
+    return (
+      normalizedValue.length >= 4 &&
+      !BLOCKED_COURSE_CANDIDATE_VALUES.has(normalizedValue) &&
+      !normalizedValue.endsWith("내용") &&
+      !normalizedValue.endsWith("상세") &&
+      !normalizedValue.endsWith("조건")
+    );
+  }
+
+  return true;
+}
+
+function normalizeCandidateText(value: string): string {
+  return value.toLowerCase().replace(/[\s_\-()[\]{}.,:/|~·]+/g, "").trim();
 }
 
 function candidateActionLabel(candidate: DriveImportCandidate, currentValue: string): string {

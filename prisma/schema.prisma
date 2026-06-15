@@ -187,6 +187,7 @@ model OperationSession {
 
   course        Course                  @relation(fields: [courseRecordId], references: [id])
   sourceRecords OperationSourceRecord[]
+  driveImportResults DriveImportResult[]
 
   @@index([courseRecordId])
   @@index([operationStatus])
@@ -195,6 +196,66 @@ model OperationSession {
   @@index([omUserId])
   @@index([ldUserId])
   @@map("operation_sessions")
+}
+
+model DriveImportRun {
+  id                           String       @id @default(uuid()) @db.Uuid
+  mode                         String       @default("dry_run")
+  status                       ImportStatus @default(PENDING)
+  operationCount               Int          @default(0) @map("operation_count")
+  scannedRefCount              Int          @default(0) @map("scanned_ref_count")
+  scanFoundFolderCount         Int          @default(0) @map("scan_found_folder_count")
+  scanIssueCount               Int          @default(0) @map("scan_issue_count")
+  folderSearchCount            Int          @default(0) @map("folder_search_count")
+  folderSearchWithCandidatesCount Int       @default(0) @map("folder_search_with_candidates_count")
+  avgSatisfactionCandidateCount Int         @default(0) @map("avg_satisfaction_candidate_count")
+  instructorSatisfactionCandidateCount Int  @default(0) @map("instructor_satisfaction_candidate_count")
+  instructorCandidateCount     Int          @default(0) @map("instructor_candidate_count")
+  suspiciousCandidateCount     Int          @default(0) @map("suspicious_candidate_count")
+  errorCount                   Int          @default(0) @map("error_count")
+  summary                      Json?
+  notes                        String?
+  startedAt                    DateTime     @default(now()) @map("started_at")
+  finishedAt                   DateTime?    @map("finished_at")
+
+  results DriveImportResult[]
+
+  @@index([startedAt])
+  @@index([status])
+  @@map("drive_import_runs")
+}
+
+model DriveImportResult {
+  id                 String   @id @default(uuid()) @db.Uuid
+  runId              String   @map("run_id") @db.Uuid
+  operationSessionId String?  @map("operation_session_id") @db.Uuid
+  operationId        String   @map("operation_id")
+  companyName        String   @map("company_name")
+  courseName         String   @map("course_name")
+  startDate          DateTime? @map("start_date") @db.Date
+  endDate            DateTime? @map("end_date") @db.Date
+  inputKind          String   @map("input_kind")
+  inputValue         String?  @map("input_value")
+  resultKind         String   @map("result_kind")
+  folderId           String?  @map("folder_id")
+  folderTitle        String?  @map("folder_title")
+  folderUrl          String?  @map("folder_url")
+  fileCount          Int      @default(0) @map("file_count")
+  candidateCount     Int      @default(0) @map("candidate_count")
+  keyCandidates      Json?    @map("key_candidates")
+  folderCandidates   Json?    @map("folder_candidates")
+  issues             Json?
+  error              String?
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  run DriveImportRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  operationSession OperationSession? @relation(fields: [operationSessionId], references: [id])
+
+  @@index([runId])
+  @@index([operationSessionId])
+  @@index([operationId])
+  @@index([resultKind])
+  @@map("drive_import_results")
 }
 
 model TeamMember {
