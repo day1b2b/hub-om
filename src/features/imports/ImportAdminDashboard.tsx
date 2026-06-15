@@ -35,41 +35,39 @@ export function ImportAdminDashboard({ runs }: ImportAdminDashboardProps) {
 
   return (
     <main className="dashboard-shell">
-      <AppSidebar label="Import review" teamScope="both" />
+      <AppSidebar label="데이터 가져오기" teamScope="both" />
       <section className="content">
         <header className="page-header">
           <div>
-            <p className="eyebrow">Import review</p>
-            <h1>데이터 적재 검수</h1>
-            <p className="lede">
-              외부 원천에서 들어온 데이터 적재 이력과 검증 결과를 확인합니다. 실제 원천 파일과 원문 예시는 Git에 저장하지 않습니다.
-            </p>
+            <p className="eyebrow">데이터 가져오기</p>
+            <h1>운영 데이터를 올리고 확인하기</h1>
+            <p className="lede">파일이나 API로 가져온 데이터를 먼저 확인한 뒤, 필요한 값만 운영 데이터에 반영합니다.</p>
           </div>
           <Link className="primary-link" href="/">
             운영 목록
           </Link>
         </header>
 
-        <section className="metrics" aria-label="적재 요약">
-          <Metric label="import 실행" value={runs.length} />
+        <section className="metrics import-compact-metrics" aria-label="가져오기 요약">
+          <Metric label="가져온 묶음" value={runs.length} />
           <Metric label="완료" value={completedRuns} />
           <Metric label="검토 필요" value={reviewRuns} />
-          <Metric label="원천 row" value={totalRows} />
-          <Metric label="오류 row" value={totalErrors} />
-          <Metric label="최근 실행" value={runs[0]?.startedAt ?? "-"} compact />
+          <Metric label="전체 행" value={totalRows} />
+          <Metric label="확인할 행" value={totalErrors} />
+          <Metric label="최근 가져오기" value={runs[0]?.startedAt ?? "-"} compact />
         </section>
 
         <ImportUploadPanel />
 
         <section className="table-section">
           <div className="table-header">
-            <h2>Import run</h2>
+            <h2>가져오기 내역</h2>
             <span>{runs.length}건</span>
           </div>
           {runs.length === 0 ? (
             <EmptyState
-              title="아직 import 기록이 없습니다"
-              description="다음 단계에서 Excel, Salesmap, Gmail adapter가 데이터를 넣으면 이곳에서 실행 결과를 검수합니다."
+              title="아직 가져온 데이터가 없습니다"
+              description="CSV 또는 JSON 파일을 올리면 이곳에 검토할 묶음이 생깁니다."
             />
           ) : (
             <div className="table-wrap">
@@ -77,11 +75,11 @@ export function ImportAdminDashboard({ runs }: ImportAdminDashboardProps) {
                 <thead>
                   <tr>
                     <th>상태</th>
-                    <th>원천</th>
-                    <th>실행 시각</th>
-                    <th>row</th>
-                    <th>검증</th>
-                    <th>상세</th>
+                    <th>가져온 데이터</th>
+                    <th>가져온 시각</th>
+                    <th>행 수</th>
+                    <th>확인 결과</th>
+                    <th>검토</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -91,11 +89,11 @@ export function ImportAdminDashboard({ runs }: ImportAdminDashboardProps) {
                         <StatusBadge status={run.status} />
                       </td>
                       <td>
-                        <strong>{run.sourceTeam} 데이터 적재</strong>
+                        <strong>{getSourceTypeLabel(run.sourceType)}</strong>
                         <span>
                           {run.sourceTeam} · {run.sourceType}
                         </span>
-                        <span>원천 식별 정보 비공개</span>
+                        <span>{run.notes || "검토 후 운영 데이터에 반영"}</span>
                       </td>
                       <td>
                         <strong>{run.startedAt}</strong>
@@ -103,16 +101,16 @@ export function ImportAdminDashboard({ runs }: ImportAdminDashboardProps) {
                       </td>
                       <td>
                         <strong>{run.rowCount.toLocaleString("ko-KR")}</strong>
-                        <span>저장 snapshot {run.sourceRecordCount.toLocaleString("ko-KR")}건</span>
+                        <span>보관된 행 {run.sourceRecordCount.toLocaleString("ko-KR")}건</span>
                       </td>
                       <td>
-                        <strong>성공 {run.successCount.toLocaleString("ko-KR")}</strong>
-                        <span>오류 {run.errorCount.toLocaleString("ko-KR")}</span>
-                        <span>로그 {run.validationLogCount.toLocaleString("ko-KR")}</span>
+                        <strong>바로 확인 가능 {run.successCount.toLocaleString("ko-KR")}</strong>
+                        <span>확인 필요 {run.errorCount.toLocaleString("ko-KR")}</span>
+                        <span>검토 메모 {run.validationLogCount.toLocaleString("ko-KR")}</span>
                       </td>
                       <td>
                         <Link className="text-link" href={`/admin/imports/${run.id}`}>
-                          검수 보기
+                          열기
                         </Link>
                       </td>
                     </tr>
@@ -132,72 +130,80 @@ interface ImportRunDetailViewProps {
 }
 
 export function ImportRunDetailView({ run }: ImportRunDetailViewProps) {
-  const reviewRecords = run.records.filter((record) => record.validationErrors.length > 0).length;
   const readyRecords = run.records.filter((record) => record.reviewStatus === "적용 준비").length;
+  const needsFixRecords = run.records.filter((record) => record.reviewStatus === "확인 필요").length;
   const matchingRecords = run.records.filter((record) => record.reviewStatus === "매칭 필요").length;
 
   return (
     <main className="dashboard-shell">
-      <AppSidebar label="Import review" teamScope="both" />
+      <AppSidebar label="데이터 가져오기" teamScope="both" />
       <section className="content">
         <header className="page-header">
           <div>
-            <p className="eyebrow">Import detail</p>
-            <h1>{run.sourceTeam} 데이터 적재</h1>
-            <p className="lede">
-              원천 row는 DB snapshot으로 보존하고, 이 화면에서는 검수에 필요한 상태와 오류만 먼저 확인합니다.
-            </p>
+            <p className="eyebrow">검토 화면</p>
+            <h1>{getSourceTypeLabel(run.sourceType)} 확인하기</h1>
+            <p className="lede">읽어낸 값이 어느 과정과 연결될지 확인합니다. 아직 운영 데이터는 바뀌지 않습니다.</p>
           </div>
           <Link className="primary-link" href="/admin/imports">
             목록으로
           </Link>
         </header>
 
-        <section className="metrics" aria-label="import 상세 요약">
-          <Metric label="상태" value={run.status} compact />
-          <Metric label="원천 row" value={run.rowCount} />
-          <Metric label="성공 row" value={run.successCount} />
-          <Metric label="오류 row" value={run.errorCount} />
-          <Metric label="적용 준비" value={readyRecords} />
-          <Metric label="확인 필요" value={reviewRecords} />
-          <Metric label="매칭 필요" value={matchingRecords} />
-          <Metric label="표시 row" value={run.records.length} />
+        <section className="import-review-summary" aria-label="검토 판단 요약">
+          <div>
+            <span>맞음</span>
+            <strong>{readyRecords.toLocaleString("ko-KR")}</strong>
+            <small>읽어낸 값과 과정 연결이 모두 확인된 행</small>
+          </div>
+          <div>
+            <span>수정 필요</span>
+            <strong>{needsFixRecords.toLocaleString("ko-KR")}</strong>
+            <small>날짜/필수값 등 사람이 확인해야 하는 행</small>
+          </div>
+          <div>
+            <span>연결 필요</span>
+            <strong>{matchingRecords.toLocaleString("ko-KR")}</strong>
+            <small>어느 과정에 반영할지 아직 못 찾은 행</small>
+          </div>
+          <button disabled type="button">
+            검토 결과 저장 준비중
+          </button>
         </section>
 
         <section className="detail-grid">
           <div className="detail-panel">
-            <span>원천</span>
-            <strong>{run.sourceType}</strong>
-            <p>원천 파일명과 시트명은 권한 화면이 생기기 전까지 표시하지 않습니다.</p>
+            <span>가져온 방식</span>
+            <strong>{getSourceTypeLabel(run.sourceType)}</strong>
+            <p>파일 업로드 또는 API 가져오기 결과입니다.</p>
           </div>
           <div className="detail-panel">
-            <span>실행</span>
+            <span>가져온 시각</span>
             <strong>{run.startedAt}</strong>
             <p>{run.finishedAt || "종료 전"}</p>
           </div>
           <div className="detail-panel">
-            <span>메모</span>
+            <span>올린 사람</span>
             <strong>{run.importedBy || "기록 없음"}</strong>
             <p>{run.notes || "메모 없음"}</p>
           </div>
         </section>
 
-        <section className="import-review-flow" aria-label="import 검수 단계">
-          <ReviewStep title="1. 수집" description="파일 업로드 또는 API 가져오기로 원천 row를 staging에 저장합니다." state="done" />
-          <ReviewStep title="2. 검수" description="원천 row의 매핑, 오류, 연결된 운영 건을 확인합니다." state="current" />
-          <ReviewStep title="3. 적용/반영" description="선택한 후보만 운영 데이터에 반영합니다. 이번 화면에서는 write-back을 실행하지 않습니다." state="locked" />
+        <section className="import-review-flow" aria-label="데이터 반영 단계">
+          <ReviewStep title="1. 가져오기" description="파일 또는 API에서 데이터를 가져왔습니다." state="done" />
+          <ReviewStep title="2. 확인하기" description="읽어낸 값과 연결할 과정을 확인합니다." state="current" />
+          <ReviewStep title="3. 반영하기" description="선택한 값만 운영 데이터에 반영합니다." state="locked" />
         </section>
 
         <section className="table-section">
           <div className="table-header">
             <div>
-              <h2>원천 row 검수</h2>
-              <p>매핑된 후보값, 미매핑 참고값, 연결된 운영 건을 한 번에 확인합니다.</p>
+              <h2>행별 확인</h2>
+              <p>읽어낸 값, 연결할 과정, 확인할 점을 봅니다.</p>
             </div>
             <span>최대 200건 표시</span>
           </div>
           {run.records.length === 0 ? (
-            <EmptyState title="저장된 원천 row가 없습니다" description="import adapter가 row snapshot을 저장하면 이곳에 표시됩니다." />
+            <EmptyState title="저장된 행이 없습니다" description="파일을 다시 올리거나 가져오기 설정을 확인해 주세요." />
           ) : (
             <div className="import-review-list">
               {run.records.map((record) => (
@@ -218,26 +224,32 @@ function SourceRecordReviewCard({ record }: { record: SourceRecordPreview }) {
         <div>
           <span className={`status ${REVIEW_STATUS_CLASS[record.reviewStatus]}`}>{record.reviewStatus}</span>
           <h3>
-            row {record.sourceRowNumber}
+            {record.sourceRowNumber}행
             {record.headerRowNumber ? ` · header ${record.headerRowNumber}` : ""}
           </h3>
           <p>
-            {record.createdAt} · {record.sourceFingerprint ? "중복 방지 fingerprint 있음" : "fingerprint 없음"}
+            {record.createdAt} · {record.sourceFingerprint ? "중복 확인됨" : "중복 확인 정보 없음"}
           </p>
         </div>
         <button type="button" disabled>
-          적용 준비중
+          반영 준비중
         </button>
       </header>
 
+      <div className="import-decision-strip" aria-label="행 판별 상태">
+        <DecisionPill good={record.mappedFields.length > 0} label={record.mappedFields.length > 0 ? "값 읽음" : "값 없음"} />
+        <DecisionPill good={Boolean(record.linkedOperation)} label={record.linkedOperation ? "과정 연결됨" : "과정 연결 필요"} />
+        <DecisionPill good={record.validationErrors.length === 0} label={record.validationErrors.length === 0 ? "오류 없음" : "수정 필요"} />
+      </div>
+
       <div className="import-review-card-body">
         <section className="import-review-column">
-          <span className="import-review-label">매핑 후보</span>
-          <FieldPreviewList emptyLabel="표준 필드로 매핑된 값이 없습니다." fields={record.mappedFields} />
+          <span className="import-review-label">읽어낸 값</span>
+          <FieldPreviewList emptyLabel="읽어낸 운영 값이 없습니다." fields={record.mappedFields} />
         </section>
 
         <section className="import-review-column">
-          <span className="import-review-label">운영 건 연결</span>
+          <span className="import-review-label">연결할 과정</span>
           {record.linkedOperation ? (
             <div className="linked-operation-preview">
               <strong>{record.linkedOperation.companyName}</strong>
@@ -248,14 +260,14 @@ function SourceRecordReviewCard({ record }: { record: SourceRecordPreview }) {
             </div>
           ) : (
             <div className="review-empty">
-              <strong>아직 연결된 운영 건이 없습니다</strong>
-              <span>operationId 또는 기업/과정/기간 매칭 규칙이 필요합니다.</span>
+              <strong>아직 연결된 과정이 없습니다</strong>
+              <span>기업명, 과정명, 기간을 보고 연결할 과정 후보를 찾는 단계가 필요합니다.</span>
             </div>
           )}
         </section>
 
         <section className="import-review-column">
-          <span className="import-review-label">검수 메모</span>
+          <span className="import-review-label">확인할 점</span>
           {record.validationErrors.length > 0 ? (
             <ul className="validation-list">
               {record.validationErrors.map((error) => (
@@ -269,20 +281,24 @@ function SourceRecordReviewCard({ record }: { record: SourceRecordPreview }) {
       </div>
 
       <details className="import-review-details">
-        <summary>원천 snapshot / 미매핑 필드 보기</summary>
+        <summary>원본 값 / 아직 읽지 못한 값 보기</summary>
         <div className="import-review-details-grid">
           <section>
-            <span className="import-review-label">원천 snapshot</span>
-            <FieldPreviewList emptyLabel="표시할 원천 값이 없습니다." fields={record.rowSnapshotPreview} />
+            <span className="import-review-label">원본 값</span>
+            <FieldPreviewList emptyLabel="표시할 원본 값이 없습니다." fields={record.rowSnapshotPreview} />
           </section>
           <section>
-            <span className="import-review-label">미매핑 참고값</span>
-            <FieldPreviewList emptyLabel="미매핑 필드가 없습니다." fields={record.unmappedFields} />
+            <span className="import-review-label">아직 읽지 못한 값</span>
+            <FieldPreviewList emptyLabel="아직 읽지 못한 값이 없습니다." fields={record.unmappedFields} />
           </section>
         </div>
       </details>
     </article>
   );
+}
+
+function DecisionPill({ good, label }: { good: boolean; label: string }) {
+  return <span className={`decision-pill ${good ? "good" : "needs-review"}`}>{label}</span>;
 }
 
 function FieldPreviewList({ emptyLabel, fields }: { emptyLabel: string; fields: SourceRecordFieldPreview[] }) {
@@ -330,6 +346,28 @@ function Metric({ compact, label, value }: { compact?: boolean; label: string; v
 
 function StatusBadge({ status }: { status: ImportRunStatus }) {
   return <span className={`status ${STATUS_CLASS[status]}`}>{status}</span>;
+}
+
+function getSourceTypeLabel(sourceType: string) {
+  const normalizedType = sourceType.toLowerCase();
+
+  if (normalizedType.includes("sheet") || normalizedType.includes("spreadsheet") || normalizedType.includes("csv")) {
+    return "스프레드시트 파일";
+  }
+
+  if (normalizedType.includes("mail") || normalizedType.includes("gmail") || normalizedType.includes("email")) {
+    return "메일 데이터";
+  }
+
+  if (normalizedType.includes("slack")) {
+    return "Slack 데이터";
+  }
+
+  if (normalizedType.includes("json")) {
+    return "JSON 파일";
+  }
+
+  return "가져온 데이터";
 }
 
 function EmptyState({ description, title }: { description: string; title: string }) {

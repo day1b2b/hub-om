@@ -412,6 +412,25 @@ h2 {
   line-height: 1.35;
 }
 
+.import-compact-metrics {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.import-compact-metrics .metric {
+  min-height: 48px;
+  padding: 8px 10px;
+}
+
+.import-compact-metrics .metric span {
+  font-size: 11px;
+}
+
+.import-compact-metrics .metric strong {
+  font-size: 16px;
+  line-height: 1.25;
+  margin-top: 2px;
+}
+
 .primary-link,
 .text-link {
   color: var(--blue);
@@ -468,16 +487,151 @@ h2 {
   padding: 12px 14px;
 }
 
-.import-upload-panel {
-  align-items: end;
+.import-entry-section {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.sheet-import-panel {
   background: #ffffff;
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.sheet-import-heading {
+  align-items: start;
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+}
+
+.sheet-import-heading > div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.sheet-import-heading span {
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.sheet-import-heading strong {
+  color: var(--text);
+  font-size: 18px;
+}
+
+.sheet-import-heading p,
+.file-import-note span,
+.import-message {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.sheet-import-heading button,
+.sheet-tab-picker button,
+.import-message-row button,
+.import-upload-panel button {
+  background: #1f5eff;
+  border: 1px solid #1f5eff;
+  border-radius: 7px;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  min-height: 38px;
+  padding: 0 16px;
+  white-space: nowrap;
+}
+
+.sheet-import-heading button:disabled,
+.sheet-tab-picker button:disabled,
+.import-upload-panel button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.import-message-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
   gap: 10px;
-  grid-template-columns: minmax(180px, 1.4fr) minmax(110px, 0.7fr) repeat(2, minmax(150px, 1fr)) minmax(190px, 1.1fr) auto;
-  margin-bottom: 14px;
+}
+
+.import-message-row button {
+  min-height: 34px;
+}
+
+.sheet-import-grid,
+.sheet-tab-picker {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+}
+
+.sheet-import-grid {
+  grid-template-columns: minmax(260px, 1.5fr) minmax(100px, 0.4fr) minmax(180px, 0.8fr);
+}
+
+.sheet-tab-picker {
+  grid-template-columns: minmax(220px, 1fr) auto;
+}
+
+.sheet-import-grid label,
+.sheet-tab-picker label {
+  color: var(--muted);
+  display: grid;
+  font-size: 11px;
+  font-weight: 800;
+  gap: 5px;
+  min-width: 0;
+}
+
+.sheet-import-grid input,
+.sheet-tab-picker select {
+  min-width: 0;
+  width: 100%;
+}
+
+.file-import-details {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
   padding: 12px;
+}
+
+.file-import-details summary {
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.file-import-note {
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.file-import-note strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.import-upload-panel {
+  align-items: end;
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(130px, 0.8fr) minmax(140px, 0.8fr) minmax(180px, 1fr) minmax(210px, 1.2fr) auto;
+  margin-top: 10px;
+  padding-top: 12px;
 }
 
 .import-upload-panel > div,
@@ -505,23 +659,6 @@ h2 {
 .import-upload-panel select {
   min-width: 0;
   width: 100%;
-}
-
-.import-upload-panel button {
-  background: #203044;
-  border: 1px solid #203044;
-  border-radius: 7px;
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: 800;
-  min-height: 34px;
-  padding: 0 14px;
-  white-space: nowrap;
-}
-
-.import-upload-panel button:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
 }
 
 .import-upload-panel p {
@@ -1426,6 +1563,63 @@ td span {
   margin: 14px 0;
 }
 
+.import-review-summary {
+  align-items: stretch;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  margin-bottom: 12px;
+  padding: 12px;
+}
+
+.import-review-summary > div {
+  border-right: 1px solid var(--line);
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding-right: 10px;
+}
+
+.import-review-summary > div:nth-child(3) {
+  border-right: 0;
+}
+
+.import-review-summary span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.import-review-summary strong {
+  color: var(--text);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.import-review-summary small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.import-review-summary button {
+  align-self: center;
+  background: #1f5eff;
+  border: 1px solid #1f5eff;
+  border-radius: 7px;
+  color: #ffffff;
+  cursor: not-allowed;
+  font-size: 13px;
+  font-weight: 800;
+  min-height: 38px;
+  opacity: 0.55;
+  padding: 0 16px;
+  white-space: nowrap;
+}
+
 .import-review-step {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -1515,6 +1709,31 @@ td span {
   display: grid;
   gap: 14px;
   grid-template-columns: 1.2fr 1fr 1fr;
+}
+
+.import-decision-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.decision-pill {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 7px 9px;
+}
+
+.decision-pill.good {
+  background: #edf9f0;
+  color: #20743a;
+}
+
+.decision-pill.needs-review {
+  background: #fff3df;
+  color: #9a5a0a;
 }
 
 .import-review-column {
@@ -4815,6 +5034,17 @@ td span {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .import-compact-metrics,
+  .import-review-summary,
+  .sheet-import-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .import-review-summary button,
+  .sheet-import-grid .wide-field {
+    grid-column: 1 / -1;
+  }
+
   .detail-layout {
     grid-template-columns: 1fr;
   }
@@ -4876,6 +5106,30 @@ td span {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .import-compact-metrics,
+  .import-review-summary,
+  .sheet-import-grid,
+  .sheet-tab-picker {
+    grid-template-columns: 1fr;
+  }
+
+  .import-review-summary > div {
+    border-bottom: 1px solid var(--line);
+    border-right: 0;
+    padding-bottom: 8px;
+    padding-right: 0;
+  }
+
+  .sheet-import-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .sheet-import-heading button,
+  .sheet-tab-picker button {
+    width: 100%;
+  }
+
   .segmented {
     overflow-x: auto;
   }
@@ -4900,6 +5154,7 @@ td span {
   .drive-candidate,
   .drive-candidate-values,
   .detail-grid,
+  .import-source-grid,
   .import-review-details-grid,
   .import-review-flow,
   .round-satisfaction-list div,

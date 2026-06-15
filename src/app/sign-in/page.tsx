@@ -6,14 +6,16 @@ interface SignInPageProps {
   searchParams: Promise<{
     callbackUrl?: string;
     error?: string;
+    reauth?: string;
   }>;
 }
 
 export default async function SignInPage({ searchParams }: SignInPageProps) {
   const [session, params] = await Promise.all([auth(), searchParams]);
   const redirectTo = safeRedirectPath(params.callbackUrl);
+  const isReauth = params.reauth === "google";
 
-  if (session?.user?.email && isAllowedWorkspaceEmail(session.user.email)) {
+  if (!isReauth && session?.user?.email && isAllowedWorkspaceEmail(session.user.email)) {
     redirect(redirectTo);
   }
 
@@ -31,9 +33,11 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
         </div>
         <div>
           <p className="eyebrow">Google Workspace SSO</p>
-          <h1 id="sign-in-title">회사 계정으로 로그인</h1>
+          <h1 id="sign-in-title">{isReauth ? "Google 권한 다시 받기" : "회사 계정으로 로그인"}</h1>
           <p className="lede">
-            {ALLOWED_WORKSPACE_DOMAIN} Google Workspace 계정만 hub-om에 접근할 수 있습니다.
+            {isReauth
+              ? "스프레드시트를 읽기 위해 Google 권한을 다시 허용합니다."
+              : `${ALLOWED_WORKSPACE_DOMAIN} Google Workspace 계정만 hub-om에 접근할 수 있습니다.`}
           </p>
         </div>
         {errorMessage ? <p className="auth-error">{errorMessage}</p> : null}
@@ -44,7 +48,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
           }}
         >
           <button className="primary-action" type="submit">
-            Google로 계속하기
+            {isReauth ? "Google 권한 다시 받기" : "Google로 계속하기"}
           </button>
         </form>
       </section>

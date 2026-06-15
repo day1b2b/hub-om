@@ -63,19 +63,25 @@ function parseJsonImport(content: string): ParsedImportFile {
 
 function parseCsvImport(content: string): ParsedImportFile {
   const table = parseCsvTable(content).filter((row) => row.some((cell) => cell.trim()));
-  const headers = table[0]?.map((header) => header.trim()) ?? [];
+  return parseImportTable(table, 1);
+}
+
+export function parseImportTable(table: string[][], headerRowNumber = 1): ParsedImportFile {
+  const normalizedTable = table.map((row) => row.map((cell) => String(cell ?? "").trim()));
+  const headerIndex = Math.max(0, headerRowNumber - 1);
+  const headers = normalizedTable[headerIndex]?.map((header) => header.trim()) ?? [];
 
   if (headers.length === 0) {
-    throw new Error("CSV header row가 비어 있습니다.");
+    throw new Error("헤더 행이 비어 있습니다.");
   }
 
   return {
-    headerRowNumber: 1,
-    rows: table
-      .slice(1)
-      .map((row, index) => rowToObject(headers, row, index + 2))
+    headerRowNumber,
+    rows: normalizedTable
+      .slice(headerIndex + 1)
+      .map((row, index) => rowToObject(headers, row, headerRowNumber + index + 1))
       .filter((row) => Object.keys(row).length > 0)
-      .map((row, index) => buildParsedRow(row, Number(row.__sourceRowNumber) || index + 2))
+      .map((row, index) => buildParsedRow(row, Number(row.__sourceRowNumber) || headerRowNumber + index + 1))
   };
 }
 
