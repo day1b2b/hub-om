@@ -132,6 +132,7 @@ function toSourceRecordPreview(record: {
   const unmappedFields = getFieldPreview(record.unmappedFields);
   const validationErrors = getStringArray(record.validationErrors);
   const linkedOperation = toLinkedOperationPreview(record.operationSession);
+  const mappedFieldObject = getStringRecord(record.mappedFields);
 
   return {
     id: record.id,
@@ -148,6 +149,7 @@ function toSourceRecordPreview(record: {
     rowSnapshotPreview: getFieldPreview(record.rowSnapshot).slice(0, 8),
     reviewStatus: getReviewStatus({
       linkedOperation,
+      mappedFields: mappedFieldObject,
       mappedFieldCount: mappedFields.length,
       validationErrors
     }),
@@ -185,6 +187,16 @@ function getFieldPreview(value: Prisma.JsonValue | null): SourceRecordFieldPrevi
       label: FIELD_LABELS[key] ?? key,
       value: stringifyFieldValue(fieldValue)
     }));
+}
+
+function getStringRecord(value: Prisma.JsonValue | null): Record<string, string> {
+  if (!value || Array.isArray(value) || typeof value !== "object") return {};
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .map(([key, fieldValue]) => [key, stringifyFieldValue(fieldValue).trim()])
+      .filter(([key, fieldValue]) => key && fieldValue)
+  );
 }
 
 function stringifyFieldValue(value: Prisma.JsonValue | undefined): string {
@@ -226,13 +238,43 @@ function toDateString(value: Date): string {
 
 function getReviewStatus(input: {
   linkedOperation: LinkedOperationPreview | null;
+  mappedFields: Record<string, string>;
   mappedFieldCount: number;
   validationErrors: string[];
 }): SourceRecordReviewStatus {
   if (input.validationErrors.length > 0) return "확인 필요";
-  if (!input.linkedOperation) return "매칭 필요";
   if (input.mappedFieldCount === 0) return "확인 필요";
+  if (hasPromotionRequiredFields(input.mappedFields)) return "적용 준비";
+  if (!input.linkedOperation) return "매칭 필요";
   return "적용 준비";
+}
+
+function hasPromotionRequiredFields(fields: Record<string, string>) {
+  return Boolean(
+    fields.companyName?.trim() &&
+      fields.courseName?.trim() &&
+      parseDateValue(fields.startDate) &&
+      parseDateValue(fields.endDate)
+  );
+}
+
+function parseDateValue(value: string | undefined) {
+  const normalized = value?.trim().replace(/[./]/g, "-") ?? "";
+  const match = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(normalized);
+
+  if (!match) return null;
+
+  const [, yearText, monthText, dayText] = match;
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() + 1 !== month || date.getUTCDate() !== day) {
+    return null;
+  }
+
+  return date;
 }
 
 const FIELD_LABELS: Record<string, string> = {
