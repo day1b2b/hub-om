@@ -4,15 +4,17 @@ import { ALLOWED_WORKSPACE_DOMAIN, isAllowedWorkspaceEmail } from "@/lib/auth/wo
 
 interface SignInPageProps {
   searchParams: Promise<{
+    callbackUrl?: string;
     error?: string;
   }>;
 }
 
 export default async function SignInPage({ searchParams }: SignInPageProps) {
   const [session, params] = await Promise.all([auth(), searchParams]);
+  const redirectTo = safeRedirectPath(params.callbackUrl);
 
   if (session?.user?.email && isAllowedWorkspaceEmail(session.user.email)) {
-    redirect("/");
+    redirect(redirectTo);
   }
 
   const errorMessage = getErrorMessage(params.error);
@@ -38,7 +40,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
         <form
           action={async () => {
             "use server";
-            await signIn("google", { redirectTo: "/" });
+            await signIn("google", { redirectTo });
           }}
         >
           <button className="primary-action" type="submit">
@@ -48,6 +50,21 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
       </section>
     </main>
   );
+}
+
+function safeRedirectPath(callbackUrl?: string) {
+  if (!callbackUrl) return "/";
+
+  if (callbackUrl.startsWith("/") && !callbackUrl.startsWith("//")) {
+    return callbackUrl;
+  }
+
+  try {
+    const parsedUrl = new URL(callbackUrl);
+    return `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}` || "/";
+  } catch {
+    return "/";
+  }
 }
 
 function getErrorMessage(error?: string) {
