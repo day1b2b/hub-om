@@ -3,10 +3,8 @@ import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import {
   clearOperationDiscussionCache,
   readOperationCollaboration,
-  type OperationDiscussionItem,
   type OperationDiscussionRefreshSource
 } from "@/lib/data/operationCollaboration";
-import { storeOperationDiscussionReferences } from "@/lib/data/operationDiscussionApplications";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 
 export const dynamic = "force-dynamic";
@@ -35,15 +33,10 @@ export async function POST(request: Request, { params }: RouteContext) {
   const emailCount = collaboration?.discussionReferences.filter((item) => item.sourceKind === "email").length ?? null;
   const emailCandidateCount = collaboration?.discussionDiagnostics.emailCandidateCount ?? null;
   const emailMatchedCount = collaboration?.discussionDiagnostics.emailMatchedCount ?? emailCount;
-  const storeResult = await storeOperationDiscussionReferences({
-    items: discussionReferencesToStore(collaboration, source),
-    operation,
-    storedBy: session.user?.email ?? "unknown"
-  });
 
   if (collaboration) {
     console.info(
-      `[sourceReads:refresh] source=${source} stored=${storeResult.storedCount} skipped=${storeResult.skippedCount} emailCandidates=${emailCandidateCount} emailMatched=${emailMatchedCount} status=${collaboration.discussionStatus} issues=${collaboration.discussionIssues
+      `[sourceReads:refresh] source=${source} emailCandidates=${emailCandidateCount} emailMatched=${emailMatchedCount} status=${collaboration.discussionStatus} issues=${collaboration.discussionIssues
         .map((issue) => issue.code)
         .join(",")}`
     );
@@ -59,9 +52,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     discussionReferences: collaboration?.discussionReferences ?? [],
     lectureReports: collaboration?.lectureReports ?? [],
     lectureReportStatus: collaboration?.lectureReportStatus,
-    skippedCount: storeResult.skippedCount,
     status: collaboration?.discussionStatus,
-    storedCount: storeResult.storedCount,
     issueCodes: collaboration?.discussionIssues.map((issue) => issue.code) ?? []
   });
 }
@@ -72,26 +63,4 @@ function parseRefreshSource(value: unknown): OperationDiscussionRefreshSource {
   }
 
   return "all";
-}
-
-function discussionReferencesToStore(
-  collaboration: Awaited<ReturnType<typeof readOperationCollaboration>>,
-  source: OperationDiscussionRefreshSource
-): OperationDiscussionItem[] {
-  if (source === "email") {
-    return collaboration.discussionEmailCandidates;
-  }
-
-  if (source === "slack") {
-    return [
-      ...collaboration.discussionReferences.filter((item) => item.sourceKind === "slack"),
-      ...collaboration.lectureReports.filter((item) => item.sourceKind === "slack")
-    ];
-  }
-
-  return [
-    ...collaboration.discussionReferences,
-    ...collaboration.discussionEmailCandidates,
-    ...collaboration.lectureReports
-  ];
 }

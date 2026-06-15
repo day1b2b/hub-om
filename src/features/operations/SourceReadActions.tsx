@@ -31,10 +31,8 @@ export type RefreshResult = {
   lectureReports?: OperationDiscussionItem[];
   lectureReportStatus?: SourceReadStatus;
   ok?: boolean;
-  skippedCount?: number;
   source?: RefreshSource | "all";
   status?: SourceReadStatus;
-  storedCount?: number;
 };
 
 export function SourceReadActions({
@@ -126,34 +124,17 @@ function refreshResultLabel(result: RefreshResult) {
   if (result.source === "email") {
     const matchedCount = result.emailMatchedCount ?? 0;
     const candidateCount = result.emailCandidateCount ?? matchedCount;
-    const storeText = sourceStoreText(result);
 
     return candidateCount > matchedCount
-      ? `방금 메일 후보 ${candidateCount}건 확인 · ${storeText}`
-      : `방금 메일 ${matchedCount}건 확인 · ${storeText}`;
+      ? `방금 메일 후보 ${candidateCount}건 중 ${matchedCount}건 확정`
+      : `방금 메일 ${matchedCount}건 확인`;
   }
 
   const reportCount = result.lectureReports?.length ?? 0;
-  const storeText = sourceStoreText(result);
 
   return reportCount > 0
-    ? `방금 Slack 논의/운영보고 ${reportCount}건 확인 · ${storeText}`
-    : `방금 Slack 논의를 새로 확인 · ${storeText}`;
-}
-
-function sourceStoreText(result: RefreshResult) {
-  const storedCount = result.storedCount ?? 0;
-  const skippedCount = result.skippedCount ?? 0;
-
-  if (storedCount > 0) {
-    return `DB ${storedCount}건 저장`;
-  }
-
-  if (skippedCount > 0) {
-    return "이미 저장됨";
-  }
-
-  return "저장할 새 항목 없음";
+    ? `방금 Slack 논의/운영보고 ${reportCount}건 확인`
+    : "방금 Slack 논의를 새로 확인";
 }
 
 function sourceReadStatusLabel(status: SourceReadStatus) {
