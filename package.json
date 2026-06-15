@@ -16,6 +16,7 @@
     "db:import:team-members": "node scripts/import-team-members.mjs",
     "db:promote-source-only": "node scripts/promote-source-only-operations.mjs",
     "drive:import:dry-run": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/run-drive-import-dry-run.mjs",
+    "email:discussion:preview": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/preview-email-discussion-read.mjs",
     "export:feedback": "node scripts/export-feedback-pages.mjs"
   },
   "dependencies": {

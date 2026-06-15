@@ -56,7 +56,9 @@ export default async function OperationDetailPage({ params, searchParams }: Oper
   const relatedOperations = operation.courseId
     ? scopedOperations.filter((candidate) => candidate.courseId === operation.courseId)
     : [operation];
-  const collaboration = await readOperationCollaboration(operation);
+  const collaboration = await readOperationCollaboration(operation, {
+    gmailOAuthAccessToken: session.googleAccessToken
+  });
 
   return (
     <OperationDetail

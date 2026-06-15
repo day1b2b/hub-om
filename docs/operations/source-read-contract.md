@@ -92,12 +92,32 @@ Slack reader는 토큰이 없으면 비활성화됩니다. API rate limit을 피
 - `GMAIL_PRIVATE_KEY`: Gmail 읽기용 서비스 계정 private key입니다. 비워두면 `GOOGLE_DRIVE_PRIVATE_KEY`, `GOOGLE_CALENDAR_PRIVATE_KEY` 순서로 재사용할 수 있습니다.
 - `GMAIL_IMPERSONATE_USER`: domain-wide delegation으로 읽을 사용자입니다. 서비스 계정에 Gmail 읽기 전용 scope 위임이 되어 있어야 합니다.
 - `GMAIL_DISCUSSION_AFTER_DATE`: Gmail 검색을 이 날짜 이후로 제한합니다. 예: `2026-01-01`.
+- `GMAIL_DISCUSSION_MANUAL_ARCHIVE_FILE`: 수동으로 정리한 과거 그룹 메일 아카이브 JSON 파일입니다. `.local/`처럼 gitignore된 경로에 둡니다.
+- `GMAIL_DISCUSSION_MANUAL_ARCHIVE_UNTIL_DATE`: 수동 아카이브가 커버하는 마지막 날짜입니다. `GMAIL_DISCUSSION_AFTER_DATE`가 비어 있으면 live Gmail 검색은 이 날짜 다음 날부터 시작합니다.
 - `GMAIL_DISCUSSION_MAX_RESULTS`: 과정 상세 1건에서 가져올 최대 메일 후보 수입니다. 기본값은 8건입니다.
 - `GMAIL_DISCUSSION_TEAM_GROUPS`: 팀별 운영 그룹 주소 또는 Google Groups URL입니다. 예: `1팀:group-one@example.com,2팀:group-two@example.com`. 팀별 그룹이 있으면 해당 과정의 `sourceTeam` 그룹으로 온 메일만 우선 검색합니다.
 
 Gmail reader는 `https://www.googleapis.com/auth/gmail.readonly` scope만 사용합니다. `messages.list` 검색 결과에 대해 `messages.get`을 `metadata` 형식으로 호출하고, 화면에는 제목, 발신자 표시명, 짧은 snippet 기반 요약만 노출합니다. 메일 본문 전체를 요청하거나 저장하지 않습니다.
 
 서비스 계정은 Google Workspace 관리자에서 domain-wide delegation 설정이 필요합니다. Gmail API는 Google Groups 웹 아카이브 URL을 직접 읽는 것이 아니라, 위임 대상 사용자 메일함에서 그룹 주소로 온 메일을 검색합니다. 설정이 없거나 필수 환경변수가 빠져 있으면 상세페이지의 메일 버튼은 `메일 설정 필요`로 표시됩니다.
+
+과거 그룹 웹 아카이브를 사람이 먼저 정리해야 하는 기간은 DB 적재 전에 아래 공개 가능 형식으로 dry-run합니다. 이 파일은 공개 저장소에 커밋하지 않습니다.
+
+```json
+{
+  "records": [
+    {
+      "operationId": "표준 운영 ID",
+      "courseId": "코스 ID",
+      "messageId": "중복 방지용 식별자",
+      "occurredAt": "2026-01-15T09:00:00.000Z",
+      "title": "메일 제목 기반 짧은 제목",
+      "summary": "운영자가 판단할 수 있는 짧은 요약",
+      "sourceUrl": "원문을 열 수 있는 링크"
+    }
+  ]
+}
+```
 
 ## 운영 논의 매칭 기준
 

@@ -5,6 +5,10 @@ import {
   readGmailOperationDiscussionReferences
 } from "@/lib/sourceReads/gmailDiscussionReader";
 import {
+  hasManualEmailDiscussionArchiveConfig,
+  readManualEmailOperationDiscussionReferences
+} from "@/lib/sourceReads/manualEmailDiscussionArchiveReader";
+import {
   hasSlackDiscussionConfig,
   readSlackOperationDiscussionReferences,
   readSlackOperationReportReferences
@@ -28,6 +32,10 @@ export interface OperationDiscussionItem {
   title: string;
 }
 
+export interface OperationEmailCandidateItem extends OperationDiscussionItem {
+  matched: boolean;
+}
+
 export interface OperationChangeHistoryItem {
   detail: string;
   id: string;
@@ -39,6 +47,8 @@ export interface OperationChangeHistoryItem {
 export interface OperationCollaboration {
   changeHistory: OperationChangeHistoryItem[];
   changeHistoryStatus: SourceReadStatus;
+  discussionDiagnostics: OperationDiscussionDiagnostics;
+  discussionEmailCandidates: OperationEmailCandidateItem[];
   discussionIssues: SourceReadIssue[];
   discussionReferences: OperationDiscussionItem[];
   discussionSourceAvailability: OperationDiscussionSourceAvailability;
@@ -52,22 +62,57 @@ export interface OperationDiscussionSourceAvailability {
   slackEnabled: boolean;
 }
 
+export interface OperationDiscussionDiagnostics {
+  emailCandidateCount: number;
+  emailMatchedCount: number;
+}
+
+export interface OperationCollaborationReadOptions {
+  gmailOAuthAccessToken?: string;
+}
+
 export type OperationDiscussionRefreshSource = "all" | "email" | "slack";
 
-const gmailDiscussionCache = new Map<string, TimedCacheEntry<SourceReadResult<DiscussionReference>>>();
-const slackDiscussionCache = new Map<string, TimedCacheEntry<SourceReadResult<DiscussionReference>>>();
-const operationReportCache = new Map<string, TimedCacheEntry<SourceReadResult<DiscussionReference>>>();
-let genericDiscussionCacheEntry: TimedCacheEntry<SourceReadResult<DiscussionReference>> | null = null;
+const MAX_DISCUSSION_ITEMS = 16;
 
-export async function readOperationCollaboration(operation: OperationSession): Promise<OperationCollaboration> {
+interface OperationCollaborationCacheState {
+  genericDiscussionCacheEntry: TimedCacheEntry<SourceReadResult<DiscussionReference>> | null;
+  gmailDiscussionCache: Map<string, TimedCacheEntry<SourceReadResult<DiscussionReference>>>;
+  manualEmailDiscussionCache: Map<string, TimedCacheEntry<SourceReadResult<DiscussionReference>>>;
+  operationReportCache: Map<string, TimedCacheEntry<SourceReadResult<DiscussionReference>>>;
+  slackDiscussionCache: Map<string, TimedCacheEntry<SourceReadResult<DiscussionReference>>>;
+}
+
+declare global {
+  var __hubOmOperationCollaborationCacheState: OperationCollaborationCacheState | undefined;
+}
+
+const operationCollaborationCacheState = globalThis.__hubOmOperationCollaborationCacheState ??= {
+  genericDiscussionCacheEntry: null,
+  gmailDiscussionCache: new Map<string, TimedCacheEntry<SourceReadResult<DiscussionReference>>>(),
+  manualEmailDiscussionCache: new Map<string, TimedCacheEntry<SourceReadResult<DiscussionReference>>>(),
+  operationReportCache: new Map<string, TimedCacheEntry<SourceReadResult<DiscussionReference>>>(),
+  slackDiscussionCache: new Map<string, TimedCacheEntry<SourceReadResult<DiscussionReference>>>()
+};
+const gmailDiscussionCache = operationCollaborationCacheState.gmailDiscussionCache;
+const manualEmailDiscussionCache = operationCollaborationCacheState.manualEmailDiscussionCache;
+const operationReportCache = operationCollaborationCacheState.operationReportCache;
+const slackDiscussionCache = operationCollaborationCacheState.slackDiscussionCache;
+
+export async function readOperationCollaboration(
+  operation: OperationSession,
+  options: OperationCollaborationReadOptions = {}
+): Promise<OperationCollaboration> {
   const [discussionResult, reportResult] = await Promise.all([
-    readOperationDiscussions(operation),
+    readOperationDiscussions(operation, options),
     readOperationReports(operation)
   ]);
 
   return {
     changeHistory: [],
     changeHistoryStatus: "disabled",
+    discussionDiagnostics: discussionResult.diagnostics,
+    discussionEmailCandidates: discussionResult.emailCandidates,
     discussionIssues: discussionResult.issues,
     discussionReferences: discussionResult.items,
     discussionSourceAvailability: discussionResult.availability,
@@ -85,38 +130,64 @@ export function clearOperationDiscussionCache(operationId: string, source: Opera
 
   if (source === "all" || source === "email") {
     gmailDiscussionCache.delete(operationId);
+    manualEmailDiscussionCache.delete(operationId);
   }
 
   if (source === "all") {
-    genericDiscussionCacheEntry = null;
+    operationCollaborationCacheState.genericDiscussionCacheEntry = null;
   }
 }
 
-async function readOperationDiscussions(operation: OperationSession) {
+async function readOperationDiscussions(operation: OperationSession, options: OperationCollaborationReadOptions) {
   const availability = {
-    emailEnabled: hasGmailDiscussionConfig(),
+    emailEnabled: hasGmailDiscussionConfig({ oauthAccessToken: options.gmailOAuthAccessToken }) || hasManualEmailDiscussionArchiveConfig(),
     slackEnabled: hasSlackDiscussionConfig()
   };
 
   try {
     const sourceResults = availability.slackEnabled || availability.emailEnabled
-      ? await Promise.all(buildDiscussionSourceReads(operation, availability))
+      ? await Promise.all(buildDiscussionSourceReads(operation, availability, options))
       : [await readGenericDiscussionCache()];
     const mergedResult = mergeDiscussionSourceResults(sourceResults);
+    const emailCandidateReferences = mergedResult.items.filter((item) => inferDiscussionSourceKind(item) === "email");
+    const emailCandidateCount = emailCandidateReferences.length;
+    const matchedReferences = mergedResult.items.filter((item) => matchesOperationDiscussion(item, operation));
+    const matchedReferenceIds = new Set(matchedReferences.map((item) => item.sourceMessageId));
+    const emailMatchedCount = matchedReferences.filter((item) => inferDiscussionSourceKind(item) === "email").length;
+    const emailCandidates = emailCandidateReferences
+      .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
+      .map((item) => ({
+        ...toOperationDiscussionItem(item),
+        matched: matchedReferenceIds.has(item.sourceMessageId)
+      }));
+    const matchedItems = matchedReferences
+      .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
+      .slice(0, MAX_DISCUSSION_ITEMS)
+      .map(toOperationDiscussionItem);
+
+    if (availability.emailEnabled) {
+      console.info(`[operationCollaboration] emailCandidates=${emailCandidateCount} emailMatched=${emailMatchedCount}`);
+    }
 
     return {
       availability,
+      diagnostics: {
+        emailCandidateCount,
+        emailMatchedCount
+      },
+      emailCandidates,
       issues: mergedResult.issues,
-      items: mergedResult.items
-        .filter((item) => matchesOperationDiscussion(item, operation))
-        .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
-        .slice(0, 8)
-        .map(toOperationDiscussionItem),
+      items: matchedItems,
       status: mergedResult.status
     };
   } catch (error) {
     return {
       availability,
+      diagnostics: {
+        emailCandidateCount: 0,
+        emailMatchedCount: 0
+      },
+      emailCandidates: [],
       issues: [
         {
           code: "discussion_read_failed",
@@ -132,7 +203,8 @@ async function readOperationDiscussions(operation: OperationSession) {
 
 function buildDiscussionSourceReads(
   operation: OperationSession,
-  availability: OperationDiscussionSourceAvailability
+  availability: OperationDiscussionSourceAvailability,
+  options: OperationCollaborationReadOptions
 ): Array<Promise<SourceReadResult<DiscussionReference>>> {
   const reads: Array<Promise<SourceReadResult<DiscussionReference>>> = [];
 
@@ -141,14 +213,20 @@ function buildDiscussionSourceReads(
   }
 
   if (availability.emailEnabled) {
-    reads.push(readDiscussionSourceResult("gmail", () => readGmailOperationSpecificDiscussionCache(operation)));
+    if (hasManualEmailDiscussionArchiveConfig()) {
+      reads.push(readDiscussionSourceResult("manual_email", () => readManualEmailOperationSpecificDiscussionCache(operation)));
+    }
+
+    if (hasGmailDiscussionConfig({ oauthAccessToken: options.gmailOAuthAccessToken })) {
+      reads.push(readDiscussionSourceResult("gmail", () => readGmailOperationSpecificDiscussionCache(operation, options)));
+    }
   }
 
   return reads;
 }
 
 async function readDiscussionSourceResult(
-  sourceCode: "gmail" | "slack",
+  sourceCode: "gmail" | "manual_email" | "slack",
   read: () => Promise<SourceReadResult<DiscussionReference>>
 ): Promise<SourceReadResult<DiscussionReference>> {
   try {
@@ -181,13 +259,24 @@ function readSlackOperationSpecificDiscussionCache(operation: OperationSession) 
   });
 }
 
-function readGmailOperationSpecificDiscussionCache(operation: OperationSession) {
-  const cacheKey = operation.operationId;
+function readGmailOperationSpecificDiscussionCache(operation: OperationSession, options: OperationCollaborationReadOptions) {
+  const cacheKey = `${operation.operationId}:${options.gmailOAuthAccessToken ? "oauth" : "service-account"}`;
 
   return readTimedCache(gmailDiscussionCache.get(cacheKey) ?? null, getResourceReadCacheTtlMs(), () =>
-    readGmailOperationDiscussionReferences(operation)
+    readGmailOperationDiscussionReferences(operation, { oauthAccessToken: options.gmailOAuthAccessToken })
   ).then((cached) => {
     gmailDiscussionCache.set(cacheKey, cached.entry);
+    return cached.value;
+  });
+}
+
+function readManualEmailOperationSpecificDiscussionCache(operation: OperationSession) {
+  const cacheKey = operation.operationId;
+
+  return readTimedCache(manualEmailDiscussionCache.get(cacheKey) ?? null, getResourceReadCacheTtlMs(), () =>
+    readManualEmailOperationDiscussionReferences()
+  ).then((cached) => {
+    manualEmailDiscussionCache.set(cacheKey, cached.entry);
     return cached.value;
   });
 }
@@ -206,7 +295,7 @@ async function readOperationReports(operation: OperationSession) {
     return {
       items: cached.value.items
         .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
-        .slice(0, 3)
+        .slice(0, MAX_DISCUSSION_ITEMS)
         .map(toOperationDiscussionItem),
       status: cached.value.status
     };
@@ -216,11 +305,11 @@ async function readOperationReports(operation: OperationSession) {
 }
 
 function readGenericDiscussionCache() {
-  return readTimedCache(genericDiscussionCacheEntry, getResourceReadCacheTtlMs(), async () => {
+  return readTimedCache(operationCollaborationCacheState.genericDiscussionCacheEntry, getResourceReadCacheTtlMs(), async () => {
     const reader = await getOperationSourceReader();
     return reader.readDiscussionReferences();
   }).then((cached) => {
-    genericDiscussionCacheEntry = cached.entry;
+    operationCollaborationCacheState.genericDiscussionCacheEntry = cached.entry;
     return cached.value;
   });
 }
@@ -333,8 +422,21 @@ function matchesOperationDiscussion(item: DiscussionReference, operation: Operat
     operation.instructors,
     operation.coach
   ].reduce((score, value) => score + scoreTokenHits(itemText, tokenizePersonText(value)), 0);
-  const roundHit = Boolean(operation.roundNo) && itemText.includes(normalizeMatchText(`${operation.roundNo}회차`));
+  const roundMatch = getDiscussionRoundMatch(itemText, operation.roundNo);
+  const roundHit = roundMatch.hit;
   const dateHit = isDiscussionNearOperation(item.occurredAt, operation);
+  const sourceKind = inferDiscussionSourceKind(item);
+
+  if (sourceKind === "email") {
+    return matchesEmailOperationDiscussion({
+      companyHit,
+      courseScore,
+      dateHit,
+      peopleScore,
+      roundConflict: roundMatch.conflict,
+      roundHit
+    });
+  }
 
   if (!companyHit) {
     return courseScore >= 2 && peopleScore >= 2 && dateHit;
@@ -350,8 +452,95 @@ function matchesOperationDiscussion(item: DiscussionReference, operation: Operat
   return score >= 17 && (courseScore > 0 || peopleScore >= 2 || roundHit);
 }
 
+function matchesEmailOperationDiscussion({
+  companyHit,
+  courseScore,
+  dateHit,
+  peopleScore,
+  roundConflict,
+  roundHit
+}: {
+  companyHit: boolean;
+  courseScore: number;
+  dateHit: boolean;
+  peopleScore: number;
+  roundConflict: boolean;
+  roundHit: boolean;
+}) {
+  if (roundConflict) {
+    return false;
+  }
+
+  if (!dateHit) {
+    return false;
+  }
+
+  if (!companyHit) {
+    return courseScore >= 2 && peopleScore >= 1;
+  }
+
+  if (peopleScore >= 1) {
+    return true;
+  }
+
+  if (courseScore >= 2) {
+    return true;
+  }
+
+  return roundHit && (peopleScore > 0 || courseScore > 0);
+}
+
 function normalizeMatchText(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, "");
+}
+
+function getDiscussionRoundMatch(text: string, operationRoundNo: string) {
+  const operationRound = normalizeRoundNumber(operationRoundNo);
+  const mentionedRounds = extractMentionedRoundNumbers(text);
+
+  if (!operationRound) {
+    return {
+      conflict: false,
+      hit: false
+    };
+  }
+
+  if (mentionedRounds.size === 0) {
+    return {
+      conflict: false,
+      hit: false
+    };
+  }
+
+  return {
+    conflict: !mentionedRounds.has(operationRound),
+    hit: mentionedRounds.has(operationRound)
+  };
+}
+
+function extractMentionedRoundNumbers(text: string) {
+  const rounds = new Set<string>();
+  const pattern = /(\d{1,2})(회차|차수|주차|차)/g;
+  let match = pattern.exec(text);
+
+  while (match) {
+    const roundNumber = normalizeRoundNumber(match[1] ?? "");
+
+    if (roundNumber) {
+      rounds.add(roundNumber);
+    }
+
+    match = pattern.exec(text);
+  }
+
+  return rounds;
+}
+
+function normalizeRoundNumber(value: string) {
+  const numberText = value.match(/\d{1,2}/)?.[0] ?? "";
+  const parsed = Number(numberText);
+
+  return Number.isInteger(parsed) && parsed > 0 ? String(parsed) : "";
 }
 
 function tokenizeMatchText(value: string) {

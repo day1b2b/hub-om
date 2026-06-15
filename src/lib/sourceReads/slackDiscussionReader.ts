@@ -10,6 +10,18 @@ const DEFAULT_HISTORY_PAGE_SIZE = 100;
 const DEFAULT_THREAD_CANDIDATE_LIMIT = 50;
 const DEFAULT_WINDOW_MONTHS_BEFORE = 3;
 const DEFAULT_WINDOW_MONTHS_AFTER = 2;
+const REPORT_MATCH_KEYWORDS = [
+  "강의보고",
+  "운영보고",
+  "강의리포트",
+  "운영리포트",
+  "보고서",
+  "만족도",
+  "수강",
+  "피드백",
+  "드라이브",
+  "drive"
+];
 
 interface SlackDiscussionConfig {
   afterDate?: string;
@@ -181,7 +193,7 @@ export async function readSlackOperationReportReferences(
       config.reportChannels.map((channelId) => readMatchingReportMessages(channelId, operation, window, config))
     );
     const matches = dedupeSlackMatches(channelResults.flatMap((result) => result.matches))
-      .slice(0, 3);
+      .slice(0, config.maxSearchResults);
     const references = await Promise.all(
       matches.map((match) => buildDiscussionReference(operation, match, config))
     );
@@ -641,7 +653,7 @@ async function readAiThreadSummary(
               "각 bullet에는 변경 대상, 요청 내용, 결정, 담당자 행동 중 하나 이상의 구체 정보가 있어야 합니다.",
               "'확인한 내용을 공유했습니다', '요청 사항을 확인했습니다'처럼 확인/공유 사실만 반복하는 문장은 쓰지 않습니다.",
               "각 bullet은 운영자가 읽고 판단할 수 있는 완전한 문장으로 씁니다.",
-              "'교안 공유', '신경식 강사'처럼 명사만 나열한 키워드 요약은 금지합니다."
+              "'교안 공유', '담당 강사'처럼 명사만 나열한 키워드 요약은 금지합니다."
             ].join(" ")
           },
           {
@@ -697,7 +709,7 @@ function buildAiSummaryPrompt(messages: Array<{ speaker: string; text: string }>
     "- 최종 결정, 고객 확인 내용, 후속 조치가 원문에 구체적으로 있으면 분리해서 씁니다.",
     "- 확인/공유/전달했다는 사실만 있고 무엇을 확인했는지 불명확하면 쓰지 않습니다.",
     "- 자료, 일정, 강사, 비용, 피드백, 회차처럼 실제 운영자가 찾을 수 있는 대상을 포함합니다.",
-    "- 라벨 없이 문장형으로 씁니다. 예: 신경식 강사에게 전달할 교안과 강의 내용을 공유한 스레드입니다.",
+    "- 라벨 없이 문장형으로 씁니다. 예: 담당 강사에게 전달할 교안과 강의 내용을 공유한 스레드입니다.",
     "- 결정이나 후속 조치가 있으면 누가 무엇을 확인하거나 반영해야 하는지까지 씁니다.",
     "- 원문 일부를 그대로 베끼지 말고 의미를 정리합니다.",
     "- 근거가 부족한 내용은 쓰지 않습니다."
@@ -1317,9 +1329,11 @@ function isReportCandidateMessage(message: SlackThreadMessage, operation: Operat
   const text = normalizeMatchText(message.text ?? "");
   const courseTokens = tokenizeMatchText(operation.courseName);
   const instructorTokens = tokenizeInstructorText(operation.instructors);
+  const companyTokens = tokenizeMatchText(operation.companyName);
 
   return courseTokens.some((token) => text.includes(token)) ||
-    instructorTokens.some((token) => text.includes(token));
+    instructorTokens.some((token) => text.includes(token)) ||
+    (companyTokens.some((token) => text.includes(token)) && hasReportSignal(text));
 }
 
 function scoreReportCandidateMessage(message: SlackThreadMessage, operation: OperationSession) {
@@ -1332,6 +1346,9 @@ function scoreReportCandidateMessage(message: SlackThreadMessage, operation: Ope
   if (courseTokens.some((token) => text.includes(token))) score += 8;
   if (instructorTokens.some((token) => text.includes(token))) score += 10;
   if (companyTokens.some((token) => text.includes(token))) score += 4;
+  if (hasReportSignal(text)) score += 8;
+  if (hasOperationDateSignal(text, operation)) score += 5;
+  if (hasRoundSignal(text, operation.roundNo)) score += 4;
   if (message.reply_count) score += 2;
 
   return score;
@@ -1341,9 +1358,66 @@ function matchesLectureReportThread(messages: SlackThreadMessage[], operation: O
   const text = normalizeMatchText(messages.map((message) => message.text ?? "").join(" "));
   const courseTokens = tokenizeMatchText(operation.courseName);
   const instructorTokens = tokenizeInstructorText(operation.instructors);
+  const companyTokens = tokenizeMatchText(operation.companyName);
+  const courseHit = courseTokens.some((token) => text.includes(token));
+  const instructorHit = instructorTokens.some((token) => text.includes(token));
+  const companyHit = companyTokens.some((token) => text.includes(token));
+  const reportHit = hasReportSignal(text);
+  const roundHit = hasRoundSignal(text, operation.roundNo);
+  const dateHit = hasOperationDateSignal(text, operation);
 
-  return courseTokens.some((token) => text.includes(token)) &&
-    instructorTokens.some((token) => text.includes(token));
+  if (!companyHit) {
+    return courseHit && (instructorHit || reportHit || dateHit);
+  }
+
+  return reportHit && (courseHit || instructorHit || roundHit || dateHit);
+}
+
+function hasReportSignal(text: string) {
+  return REPORT_MATCH_KEYWORDS.some((keyword) => text.includes(normalizeMatchText(keyword)));
+}
+
+function hasRoundSignal(text: string, roundNo: string) {
+  const roundNumber = roundNo.match(/\d{1,2}/)?.[0] ?? "";
+
+  return Boolean(roundNumber && [
+    `${roundNumber}차`,
+    `${roundNumber}차수`,
+    `${roundNumber}회차`,
+    `${roundNumber}주차`
+  ].some((token) => text.includes(normalizeMatchText(token))));
+}
+
+function hasOperationDateSignal(text: string, operation: OperationSession) {
+  const dateTokens = [operation.startDate, operation.endDate]
+    .flatMap(buildDateSignalTokens)
+    .map(normalizeMatchText)
+    .filter(Boolean);
+
+  return dateTokens.some((token) => text.includes(token));
+}
+
+function buildDateSignalTokens(value: string) {
+  const date = parseDateOnly(value);
+
+  if (!date) {
+    return [];
+  }
+
+  const month = String(date.getUTCMonth() + 1);
+  const day = String(date.getUTCDate());
+  const paddedMonth = month.padStart(2, "0");
+  const paddedDay = day.padStart(2, "0");
+
+  return [
+    `${month}월${day}일`,
+    `${paddedMonth}월${paddedDay}일`,
+    `${month}/${day}`,
+    `${paddedMonth}/${paddedDay}`,
+    `${month}.${day}`,
+    `${paddedMonth}.${paddedDay}`,
+    `${paddedMonth}${paddedDay}`
+  ];
 }
 
 async function findFallbackThreads(

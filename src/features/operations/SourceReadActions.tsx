@@ -3,12 +3,18 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useTransition } from "react";
+import type {
+  OperationDiscussionItem,
+  OperationEmailCandidateItem
+} from "@/lib/data/operationCollaboration";
 import type { SourceReadIssue, SourceReadStatus } from "@/lib/sourceReads";
 
 interface SourceReadActionsProps {
+  emailCandidateCount: number;
   emailCount: number;
   emailEnabled: boolean;
   issues: SourceReadIssue[];
+  onRefreshResult?: (result: RefreshResult) => void;
   operationId: string;
   slackCount: number;
   slackEnabled: boolean;
@@ -16,11 +22,25 @@ interface SourceReadActionsProps {
 }
 
 type RefreshSource = "email" | "slack";
+export type RefreshResult = {
+  discussionReferences?: OperationDiscussionItem[];
+  emailCandidateReferences?: OperationEmailCandidateItem[];
+  emailCandidateCount?: number | null;
+  emailMatchedCount?: number | null;
+  issueCodes?: string[];
+  lectureReports?: OperationDiscussionItem[];
+  lectureReportStatus?: SourceReadStatus;
+  ok?: boolean;
+  source?: RefreshSource | "all";
+  status?: SourceReadStatus;
+};
 
 export function SourceReadActions({
+  emailCandidateCount,
   emailCount,
   emailEnabled,
   issues,
+  onRefreshResult,
   operationId,
   slackCount,
   slackEnabled,
@@ -28,6 +48,7 @@ export function SourceReadActions({
 }: SourceReadActionsProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [lastRefreshResult, setLastRefreshResult] = useState<RefreshResult | null>(null);
   const [refreshingSource, setRefreshingSource] = useState<RefreshSource | null>(null);
   const isRefreshing = isPending || refreshingSource !== null;
   const slackDisabled = isRefreshing || !slackEnabled;
@@ -37,17 +58,37 @@ export function SourceReadActions({
     setRefreshingSource(source);
 
     try {
-      await fetch(`/api/operations/${encodeURIComponent(operationId)}/source-reads/refresh`, {
+      const response = await fetch(`/api/operations/${encodeURIComponent(operationId)}/source-reads/refresh`, {
         body: JSON.stringify({ source }),
         headers: {
           "content-type": "application/json"
         },
         method: "POST"
       });
+      const payload = (await response.json().catch(() => ({}))) as RefreshResult;
+      setLastRefreshResult({
+        ...payload,
+        ok: response.ok && payload.ok !== false,
+        source
+      });
+      onRefreshResult?.({
+        ...payload,
+        ok: response.ok && payload.ok !== false,
+        source
+      });
 
       startTransition(() => {
         router.refresh();
       });
+    } catch {
+      const failedResult: RefreshResult = {
+        ok: false,
+        source,
+        status: "failed",
+        issueCodes: [`${source}_refresh_request_failed`]
+      };
+      setLastRefreshResult(failedResult);
+      onRefreshResult?.(failedResult);
     } finally {
       setRefreshingSource(null);
     }
@@ -59,8 +100,10 @@ export function SourceReadActions({
         <span className={`source-read-status ${status}`}>{sourceReadStatusLabel(status)}</span>
         <strong>Slack {slackCount}건</strong>
         <strong>메일 {emailCount}건</strong>
+        {emailEnabled && emailCandidateCount > emailCount ? <small>메일 후보 {emailCandidateCount}건</small> : null}
         {issues.length > 0 ? <small>확인 필요 {issues.length}건</small> : null}
       </div>
+      {lastRefreshResult ? <p className="source-read-refresh-result">{refreshResultLabel(lastRefreshResult)}</p> : null}
       <div className="source-read-buttons">
         <button disabled={slackDisabled} onClick={() => void refreshSourceReads("slack")} type="button">
           {refreshingSource === "slack" ? "가져오는 중" : slackEnabled ? "Slack 다시 가져오기" : "Slack 설정 필요"}
@@ -71,6 +114,27 @@ export function SourceReadActions({
       </div>
     </div>
   );
+}
+
+function refreshResultLabel(result: RefreshResult) {
+  if (!result.ok) {
+    return result.source === "email" ? "메일 읽기 요청 실패" : "Slack 읽기 요청 실패";
+  }
+
+  if (result.source === "email") {
+    const matchedCount = result.emailMatchedCount ?? 0;
+    const candidateCount = result.emailCandidateCount ?? matchedCount;
+
+    return candidateCount > matchedCount
+      ? `방금 메일 후보 ${candidateCount}건 중 ${matchedCount}건 확정`
+      : `방금 메일 ${matchedCount}건 확인`;
+  }
+
+  const reportCount = result.lectureReports?.length ?? 0;
+
+  return reportCount > 0
+    ? `방금 Slack 논의/운영보고 ${reportCount}건 확인`
+    : "방금 Slack 논의를 새로 확인";
 }
 
 function sourceReadStatusLabel(status: SourceReadStatus) {
