@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppSidebar } from "@/components/AppSidebar";
+import { ImportUploadPanel } from "./ImportUploadPanel";
 import type { ImportRunDetail, ImportRunSummary, ImportRunStatus } from "@/lib/data/importTypes";
 
 const STATUS_CLASS: Record<ImportRunStatus, string> = {
@@ -44,6 +45,8 @@ export function ImportAdminDashboard({ runs }: ImportAdminDashboardProps) {
           <Metric label="오류 row" value={totalErrors} />
           <Metric label="최근 실행" value={runs[0]?.startedAt ?? "-"} compact />
         </section>
+
+        <ImportUploadPanel />
 
         <section className="table-section">
           <div className="table-header">
