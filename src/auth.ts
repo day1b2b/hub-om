@@ -5,6 +5,13 @@ import { ALLOWED_WORKSPACE_DOMAIN, isAllowedWorkspaceEmail } from "@/lib/auth/wo
 
 const GMAIL_READONLY_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
+const PUBLIC_PATHS = new Set([
+  "/sign-in",
+  "/privacy",
+  "/terms",
+  "/hub-om-logo.svg",
+  "/hub-om-logo-120.png"
+]);
 
 function getHostedDomain(profile: unknown) {
   if (!profile || typeof profile !== "object" || !("hd" in profile)) return null;
@@ -42,7 +49,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       const { pathname } = request.nextUrl;
       const isSignedIn = Boolean(session?.user?.email && isAllowedWorkspaceEmail(session.user.email));
 
-      if (pathname.startsWith("/sign-in")) {
+      if (PUBLIC_PATHS.has(pathname)) {
         return true;
       }
 

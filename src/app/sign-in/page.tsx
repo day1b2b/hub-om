@@ -33,7 +33,9 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
           <p className="eyebrow">Google Workspace SSO</p>
           <h1 id="sign-in-title">회사 계정으로 로그인</h1>
           <p className="lede">
-            {ALLOWED_WORKSPACE_DOMAIN} Google Workspace 계정만 hub-om에 접근할 수 있습니다.
+            hub-om은 기업교육 운영 현황, 일정, 논의, 자료 후보를 한 곳에서 확인하고 관리하기
+            위한 내부 업무 도구입니다. {ALLOWED_WORKSPACE_DOMAIN} Google Workspace 계정만 접근할 수
+            있습니다.
           </p>
         </div>
         {errorMessage ? <p className="auth-error">{errorMessage}</p> : null}
@@ -47,6 +49,10 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
             Google로 계속하기
           </button>
         </form>
+        <nav className="legal-links" aria-label="정책 링크">
+          <a href="/privacy">개인정보처리방침</a>
+          <a href="/terms">서비스 약관</a>
+        </nav>
       </section>
     </main>
   );
