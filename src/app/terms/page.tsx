@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "서비스 약관 | hub-om",
@@ -10,9 +11,9 @@ export default function TermsPage() {
     <main className="legal-shell">
       <article className="legal-document">
         <header className="legal-header">
-          <a className="legal-brand" href="/sign-in">
+          <Link className="legal-brand" href="/">
             hub-om
-          </a>
+          </Link>
           <p className="eyebrow">Terms of Service</p>
           <h1>서비스 약관</h1>
           <p className="lede">
@@ -129,7 +130,7 @@ export default function TermsPage() {
 
         <footer className="legal-footer">
           <a href="/privacy">개인정보처리방침</a>
-          <a href="/sign-in">로그인으로 돌아가기</a>
+          <Link href="/">홈으로 돌아가기</Link>
         </footer>
       </article>
     </main>

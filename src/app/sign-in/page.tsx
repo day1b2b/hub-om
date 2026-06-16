@@ -59,7 +59,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
 }
 
 function safeRedirectPath(callbackUrl?: string) {
-  if (!callbackUrl) return "/";
+  if (!callbackUrl) return "/dashboard";
 
   if (callbackUrl.startsWith("/") && !callbackUrl.startsWith("//")) {
     return callbackUrl;

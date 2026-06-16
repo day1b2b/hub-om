@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "개인정보처리방침 | hub-om",
@@ -10,9 +11,9 @@ export default function PrivacyPage() {
     <main className="legal-shell">
       <article className="legal-document">
         <header className="legal-header">
-          <a className="legal-brand" href="/sign-in">
+          <Link className="legal-brand" href="/">
             hub-om
-          </a>
+          </Link>
           <p className="eyebrow">Privacy Policy</p>
           <h1>개인정보처리방침</h1>
           <p className="lede">
@@ -139,7 +140,7 @@ export default function PrivacyPage() {
 
         <footer className="legal-footer">
           <a href="/terms">서비스 약관</a>
-          <a href="/sign-in">로그인으로 돌아가기</a>
+          <Link href="/">홈으로 돌아가기</Link>
         </footer>
       </article>
     </main>

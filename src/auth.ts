@@ -6,6 +6,7 @@ import { ALLOWED_WORKSPACE_DOMAIN, isAllowedWorkspaceEmail } from "@/lib/auth/wo
 const GMAIL_READONLY_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const PUBLIC_PATHS = new Set([
+  "/",
   "/sign-in",
   "/privacy",
   "/terms",

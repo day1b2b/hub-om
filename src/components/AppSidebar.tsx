@@ -37,7 +37,7 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
         </select>
       </div>
       <nav className="nav-list">
-        <Link className={pathname === "/" ? "active" : ""} href={hrefWithTeam("/")}>대시보드</Link>
+        <Link className={pathname === "/dashboard" ? "active" : ""} href={hrefWithTeam("/dashboard")}>대시보드</Link>
         <Link className={isOperationsPage ? "active" : ""} href={hrefWithTeam("/operations")}>운영 현황</Link>
         <Link className={pathname === "/resources" ? "active" : ""} href={hrefWithTeam("/resources")}>리소스</Link>
       </nav>
