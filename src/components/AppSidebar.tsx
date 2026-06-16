@@ -14,7 +14,8 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentTeamScope = parseTeamScope(searchParams.get("team") ?? undefined) ?? teamScope;
-  const isAdminPage = pathname?.startsWith("/admin/");
+  const isDatabaseAdminPage = pathname?.startsWith("/admin/database") ?? false;
+  const isImportAdminPage = pathname?.startsWith("/admin/imports") ?? false;
   const isCreatePage = pathname === "/operations/new";
   const isOperationsPage = pathname === "/operations" || (pathname?.startsWith("/operations/") && !isCreatePage);
 
@@ -41,7 +42,8 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
         <Link className={pathname === "/dashboard" ? "active" : ""} href={hrefWithTeam("/dashboard")}>대시보드</Link>
         <Link className={isOperationsPage ? "active" : ""} href={hrefWithTeam("/operations")}>운영 현황</Link>
         <Link className={pathname === "/resources" ? "active" : ""} href={hrefWithTeam("/resources")}>리소스</Link>
-        <Link className={isAdminPage ? "active" : ""} href={hrefWithTeam("/admin/database")}>DB 조회</Link>
+        <Link className={isDatabaseAdminPage ? "active" : ""} href={hrefWithTeam("/admin/database")}>DB 조회</Link>
+        <Link className={isImportAdminPage ? "active" : ""} href="/admin/imports">데이터 검수</Link>
       </nav>
       <Link className={`sidebar-action${isCreatePage ? " active" : ""}`} href={hrefWithTeam("/operations/new")}>+ 과정 작성</Link>
     </aside>
