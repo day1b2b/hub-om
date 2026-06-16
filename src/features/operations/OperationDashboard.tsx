@@ -49,27 +49,9 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
     };
   }, [teamOperations]);
 
-  const statusCounts = useMemo(() => {
-    return {
-      전체: teamOperations.length,
-      진행중: teamOperations.filter((operation) => operation.operationStatus === "진행중").length,
-      예정: teamOperations.filter((operation) => isUpcoming(operation, today)).length,
-      완료: teamOperations.filter((operation) => isDone(operation)).length,
-      아카이빙필요: teamOperations.filter((operation) => operation.archiveStatus === "아카이빙필요").length,
-      검토필요: teamOperations.filter((operation) => operation.validationStatus === "검토필요").length
-    };
-  }, [teamOperations, today]);
-
-  const filteredOperations = useMemo(() => {
+  const baseFilteredOperations = useMemo(() => {
     return teamOperations.filter((operation) => {
       const normalizedQuery = query.trim().toLowerCase();
-      const statusMatches =
-        statusFilter === "전체" ||
-        operation.operationStatus === statusFilter ||
-        operation.archiveStatus === statusFilter ||
-        (statusFilter === "예정" && isUpcoming(operation, today)) ||
-        (statusFilter === "완료" && isDone(operation)) ||
-        (statusFilter === "검토필요" && operation.validationStatus === "검토필요");
       const queryMatches =
         !normalizedQuery ||
         [
@@ -91,7 +73,6 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
       const archiveMatches = !archiveOnly || operation.archiveStatus === "아카이빙필요";
 
       return (
-        statusMatches &&
         queryMatches &&
         rangeMatches &&
         companyMatches &&
@@ -100,14 +81,37 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
         archiveMatches
       );
     });
-  }, [archiveOnly, companyFilter, formatFilter, omFilter, query, range, statusFilter, teamOperations, today]);
+  }, [archiveOnly, companyFilter, formatFilter, omFilter, query, range, teamOperations]);
+
+  const statusCounts = useMemo(() => {
+    return {
+      전체: baseFilteredOperations.length,
+      진행중: baseFilteredOperations.filter((operation) => operation.operationStatus === "진행중").length,
+      예정: baseFilteredOperations.filter((operation) => isUpcoming(operation, today)).length,
+      완료: baseFilteredOperations.filter((operation) => isDone(operation)).length,
+      아카이빙필요: baseFilteredOperations.filter((operation) => operation.archiveStatus === "아카이빙필요").length,
+      검토필요: baseFilteredOperations.filter((operation) => operation.validationStatus === "검토필요").length
+    };
+  }, [baseFilteredOperations, today]);
+
+  const filteredOperations = useMemo(() => {
+    return baseFilteredOperations.filter((operation) => matchesStatusFilter(operation, statusFilter, today));
+  }, [baseFilteredOperations, statusFilter, today]);
+
+  const metricCounts = useMemo(() => {
+    return {
+      진행중: filteredOperations.filter((operation) => operation.operationStatus === "진행중").length,
+      예정: filteredOperations.filter((operation) => isUpcoming(operation, today)).length,
+      완료: filteredOperations.filter((operation) => isDone(operation)).length
+    };
+  }, [filteredOperations, today]);
 
   const satisfaction = average(
-    teamOperations
+    filteredOperations
       .map((operation) => satisfactionNumber(operation.avgSatisfaction))
       .filter((value): value is number => value !== null)
   );
-  const totalRevenue = teamOperations.reduce((sum, operation) => sum + (operation.revenue ?? 0), 0);
+  const totalRevenue = filteredOperations.reduce((sum, operation) => sum + (operation.revenue ?? 0), 0);
 
   return (
     <main className="dashboard-shell">
@@ -169,12 +173,12 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
         </section>
 
         <section className="metrics operations-metrics" aria-label="운영 요약">
-          <Metric label="진행중" value={statusCounts.진행중} caption="현재 운영" />
-          <Metric label="예정" value={statusCounts.예정} caption="선택 기간" />
-          <Metric label="완료" value={statusCounts.완료} caption="회고 포함" />
-          <Metric label="전체 과정" value={teamOperations.length} caption={`${filteredOperations.length}개 표시`} />
-          <Metric label="평균 만족도" value={satisfaction ?? "-"} caption="입력된 값 기준" />
-          <Metric label="총 매출" value={formatShortMoney(totalRevenue)} caption="데모 기준" />
+          <Metric label="진행중" value={metricCounts.진행중} caption="표시 기준" />
+          <Metric label="예정" value={metricCounts.예정} caption="표시 기준" />
+          <Metric label="완료" value={metricCounts.완료} caption="표시 기준" />
+          <Metric label="표시 과정" value={filteredOperations.length} caption={`${teamOperations.length}개 전체`} />
+          <Metric label="평균 만족도" value={satisfaction ?? "-"} caption="표시 기준" />
+          <Metric label="총 매출" value={formatShortMoney(totalRevenue)} caption="표시 기준" />
         </section>
 
         <section className="filter-panel operations-filter-panel" aria-label="상세 필터">
@@ -336,6 +340,21 @@ function isUpcoming(operation: OperationSession, today: Date) {
 
 function isDone(operation: OperationSession) {
   return operation.operationStatus === "완료" || operation.operationStatus === "회고완료";
+}
+
+function matchesStatusFilter(
+  operation: OperationSession,
+  statusFilter: (typeof STATUS_FILTERS)[number],
+  today: Date
+) {
+  return (
+    statusFilter === "전체" ||
+    operation.operationStatus === statusFilter ||
+    operation.archiveStatus === statusFilter ||
+    (statusFilter === "예정" && isUpcoming(operation, today)) ||
+    (statusFilter === "완료" && isDone(operation)) ||
+    (statusFilter === "검토필요" && operation.validationStatus === "검토필요")
+  );
 }
 
 function overlapsRange(operation: OperationSession, startValue: string, endValue: string) {
