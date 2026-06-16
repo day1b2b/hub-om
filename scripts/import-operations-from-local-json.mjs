@@ -103,10 +103,14 @@ async function main() {
     const importRunId = await createImportRun(client, options.file, operations.length, options.dryRun);
 
     for (const [index, operation] of operations.entries()) {
-      const existingSession = await findOperationSession(client, operation.operationId);
+      const existingSession =
+        (await findOperationSession(client, operation.operationId)) ??
+        (await findOperationSessionByBusinessKey(client, operation));
       const companyId = await upsertCompany(client, operation.companyName);
       const courseId = await upsertCourse(client, companyId, operation);
-      const sessionId = await upsertOperationSession(client, courseId, operation, roleAssignees);
+      const sessionId = existingSession
+        ? await updateOperationSession(client, existingSession.id, courseId, operation, roleAssignees)
+        : await upsertOperationSession(client, courseId, operation, roleAssignees);
 
       if (existingSession) {
         summary.updated += 1;
@@ -245,6 +249,32 @@ async function findOperationSession(client, operationId) {
   return result.rows[0] ?? null;
 }
 
+async function findOperationSessionByBusinessKey(client, operation) {
+  const result = await client.query(
+    `
+      SELECT s.id
+      FROM operation_sessions s
+      JOIN courses c ON c.id = s.course_record_id
+      JOIN companies co ON co.id = c.company_id
+      WHERE s.deleted_at IS NULL
+        AND co.normalized_name = $1
+        AND c.course_name = $2
+        AND s.start_date = $3
+        AND s.end_date = $4
+      ORDER BY s.created_at ASC, s.id ASC
+      LIMIT 1
+    `,
+    [
+      normalizeName(operation.companyName),
+      normalizeVisibleText(operation.courseName),
+      parseDateValue(operation.startDate, "startDate", operation.operationId),
+      parseDateValue(operation.endDate, "endDate", operation.operationId)
+    ]
+  );
+
+  return result.rows[0] ?? null;
+}
+
 async function upsertCompany(client, companyName) {
   const name = normalizeVisibleText(companyName);
   const result = await client.query(
@@ -302,6 +332,7 @@ async function upsertCourse(client, companyId, operation) {
 
 async function upsertOperationSession(client, courseRecordId, operation, roleAssignees) {
   const sourceFingerprint = sourceFingerprintFor(operation);
+  const fieldValues = operationSessionFieldValues(operation, roleAssignees, sourceFingerprint);
   const result = await client.query(
     `
       INSERT INTO operation_sessions (
@@ -408,50 +439,114 @@ async function upsertOperationSession(client, courseRecordId, operation, roleAss
       randomUUID(),
       operation.operationId,
       courseRecordId,
-      sourceFingerprint,
-      JSON.stringify(arrayValue(operation.validationErrors)),
-      enumValue(OPERATION_STATUS, operation.operationStatus, "assignment_needed"),
-      enumValue(ARCHIVE_STATUS, operation.archiveStatus, "not_ready"),
-      enumValue(EDUCATION_FORMAT, operation.educationFormat, "needs_review"),
-      nullableText(operation.educationFormatRaw),
-      enumValue(OPERATION_CHANNEL, operation.operationChannel, "needs_review"),
-      nullableText(operation.roundNo),
-      nullableText(operation.educationDays),
-      parseDateValue(operation.startDate, "startDate", operation.operationId),
-      parseDateValue(operation.endDate, "endDate", operation.operationId),
-      nullableText(operation.operationMonth),
-      nullableInteger(operation.sessionDurationDays),
-      enumValue(OPERATION_TYPE, operation.sessionDurationType, "needs_review"),
-      nullableText(operation.timeText),
-      nullableText(normalizeAssigneeNames(operation.om, roleAssignees.om)),
-      nullableText(normalizeAssigneeNames(operation.ld, roleAssignees.ld)),
-      nullableText(operation.instructors),
-      nullableText(operation.coach),
-      nullableText(operation.region),
-      enumValue(ONSITE_REQUIRED, operation.onsiteRequired, "UNKNOWN"),
-      nullableText(operation.onsiteText),
-      nullableText(operation.specialNotes),
-      nullableText(operation.operationIssue),
-      nullableText(operation.omUpdate),
-      nullableText(operation.driveLink),
-      nullableText(operation.operationDetail),
-      nullableText(operation.companyWikiLink),
-      nullableText(operation.instructorWikiLink),
-      nullableText(operation.costRaw),
-      nullableText(operation.profitRaw),
-      nullableNumber(operation.totalCost),
-      nullableNumber(operation.instructorCost),
-      nullableNumber(operation.operationCost),
-      nullableText(operation.avgSatisfaction),
-      nullableText(operation.instructorSatisfaction),
-      enumValue(RESULT_REPORT_STATUS, operation.hasResultReport, "needs_review"),
-      nullableText(operation.resultReportLink),
-      nullableText(operation.lectureManagementLink),
-      nullableText(operation.padletLink)
+      ...fieldValues
     ]
   );
 
   return result.rows[0].id;
+}
+
+async function updateOperationSession(client, sessionId, courseRecordId, operation, roleAssignees) {
+  const sourceFingerprint = sourceFingerprintFor(operation);
+  const fieldValues = operationSessionFieldValues(operation, roleAssignees, sourceFingerprint);
+  const result = await client.query(
+    `
+      UPDATE operation_sessions
+      SET
+        course_record_id = $1,
+        source_fingerprint = $2,
+        validation_errors = $3::jsonb,
+        operation_status = $4::operation_status,
+        archive_status = $5::archive_status,
+        education_format = $6::education_format,
+        education_format_raw = $7,
+        operation_channel = $8::operation_channel,
+        round_no = $9,
+        education_days = $10,
+        start_date = $11,
+        end_date = $12,
+        operation_month = $13,
+        session_duration_days = $14,
+        session_duration_type = $15::operation_type,
+        time_text = $16,
+        om_name = $17,
+        ld_name = $18,
+        instructors_text = $19,
+        coach_text = $20,
+        region = $21,
+        onsite_required = $22::onsite_required,
+        onsite_text = $23,
+        special_notes = $24,
+        operation_issue = $25,
+        om_update = $26,
+        drive_link = $27,
+        operation_detail = $28,
+        company_wiki_link = $29,
+        instructor_wiki_link = $30,
+        cost_raw = $31,
+        profit_raw = $32,
+        total_cost = $33,
+        instructor_cost = $34,
+        operation_cost = $35,
+        avg_satisfaction = $36,
+        instructor_satisfaction = $37,
+        has_result_report = $38::result_report_status,
+        result_report_link = $39,
+        lecture_management_link = $40,
+        padlet_link = $41,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $42
+      RETURNING id
+    `,
+    [courseRecordId, ...fieldValues, sessionId]
+  );
+
+  return result.rows[0].id;
+}
+
+function operationSessionFieldValues(operation, roleAssignees, sourceFingerprint) {
+  return [
+    sourceFingerprint,
+    JSON.stringify(arrayValue(operation.validationErrors)),
+    enumValue(OPERATION_STATUS, operation.operationStatus, "assignment_needed"),
+    enumValue(ARCHIVE_STATUS, operation.archiveStatus, "not_ready"),
+    enumValue(EDUCATION_FORMAT, operation.educationFormat, "needs_review"),
+    nullableText(operation.educationFormatRaw),
+    enumValue(OPERATION_CHANNEL, operation.operationChannel, "needs_review"),
+    nullableText(operation.roundNo),
+    nullableText(operation.educationDays),
+    parseDateValue(operation.startDate, "startDate", operation.operationId),
+    parseDateValue(operation.endDate, "endDate", operation.operationId),
+    nullableText(operation.operationMonth),
+    nullableInteger(operation.sessionDurationDays),
+    enumValue(OPERATION_TYPE, operation.sessionDurationType, "needs_review"),
+    nullableText(operation.timeText),
+    nullableText(normalizeAssigneeNames(operation.om, roleAssignees.om)),
+    nullableText(normalizeAssigneeNames(operation.ld, roleAssignees.ld)),
+    nullableText(operation.instructors),
+    nullableText(operation.coach),
+    nullableText(operation.region),
+    enumValue(ONSITE_REQUIRED, operation.onsiteRequired, "UNKNOWN"),
+    nullableText(operation.onsiteText),
+    nullableText(operation.specialNotes),
+    nullableText(operation.operationIssue),
+    nullableText(operation.omUpdate),
+    nullableText(operation.driveLink),
+    nullableText(operation.operationDetail),
+    nullableText(operation.companyWikiLink),
+    nullableText(operation.instructorWikiLink),
+    nullableText(operation.costRaw),
+    nullableText(operation.profitRaw),
+    nullableNumber(operation.totalCost),
+    nullableNumber(operation.instructorCost),
+    nullableNumber(operation.operationCost),
+    nullableText(operation.avgSatisfaction),
+    nullableText(operation.instructorSatisfaction),
+    enumValue(RESULT_REPORT_STATUS, operation.hasResultReport, "needs_review"),
+    nullableText(operation.resultReportLink),
+    nullableText(operation.lectureManagementLink),
+    nullableText(operation.padletLink)
+  ];
 }
 
 async function createSourceRecordIfMissing(client, importRunId, operationSessionId, operation, rowNumber) {
@@ -533,7 +628,7 @@ async function loadRoleAssignees(client) {
   const result = await client.query(
     `
       SELECT role, name
-      FROM team_members
+      FROM members
       WHERE is_active = TRUE
         AND role IN ('om', 'ld')
       ORDER BY role, source_team, display_order, name

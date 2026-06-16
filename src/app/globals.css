@@ -827,7 +827,7 @@ h2 {
 }
 
 .sheet-import-grid {
-  grid-template-columns: minmax(260px, 1.5fr) minmax(100px, 0.4fr) minmax(180px, 0.8fr);
+  grid-template-columns: minmax(260px, 1.5fr) minmax(100px, 0.35fr) minmax(100px, 0.35fr) minmax(150px, 0.55fr) minmax(180px, 0.8fr);
 }
 
 .sheet-tab-picker {
@@ -845,9 +845,32 @@ h2 {
 }
 
 .sheet-import-grid input,
+.sheet-import-grid select,
 .sheet-tab-picker select {
   min-width: 0;
   width: 100%;
+}
+
+.sheet-tab-context {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px;
+}
+
+.sheet-tab-context span {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 7px 9px;
 }
 
 .file-import-details {

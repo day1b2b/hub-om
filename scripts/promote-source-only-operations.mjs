@@ -389,7 +389,7 @@ async function loadRoleAssignees(client) {
   const result = await client.query(
     `
       SELECT role, name
-      FROM team_members
+      FROM members
       WHERE is_active = TRUE
         AND role IN ('om', 'ld')
       ORDER BY role, source_team, display_order, name

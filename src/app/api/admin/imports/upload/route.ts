@@ -26,10 +26,11 @@ export async function POST(request: Request) {
   const sourceType = parseText(formData.get("sourceType")) || inferSourceType(file.name);
   const sourceName = parseText(formData.get("sourceName")) || file.name;
   const sourceSheet = parseText(formData.get("sourceSheet")) || "upload";
+  const defaultYear = parseImportYear(parseText(formData.get("importYear")));
 
   try {
     const content = await file.text();
-    const parsed = parseImportFile(file.name, content);
+    const parsed = parseImportFile(file.name, content, { defaultYear });
 
     if (parsed.rows.length === 0) {
       return NextResponse.json({ ok: false, error: "저장할 row가 없습니다." }, { status: 400 });
@@ -52,7 +53,8 @@ export async function POST(request: Request) {
       rowCount: parsed.rows.length,
       storedCount: importRun.storedCount,
       duplicateCount: importRun.duplicateCount,
-      errorCount: importRun.errorCount
+      errorCount: importRun.errorCount,
+      headerRowNumber: parsed.headerRowNumber
     });
   } catch (error) {
     return NextResponse.json(
@@ -75,6 +77,12 @@ function parseSourceTeam(value: FormDataEntryValue | null): SourceTeam {
 
 function parseText(value: FormDataEntryValue | null) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function parseImportYear(value: string) {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 2000 || parsed > 2100) return undefined;
+  return parsed;
 }
 
 function inferSourceType(fileName: string) {
