@@ -21,6 +21,7 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as {
       headerRowNumber?: number;
+      importYear?: number;
       sourceName?: string;
       sourceTeam?: string;
       spreadsheetUrl?: string;
@@ -34,7 +35,9 @@ export async function POST(request: Request) {
 
     const { spreadsheetId } = parseGoogleSpreadsheetUrl(body.spreadsheetUrl ?? "");
     const rows = await readGoogleSheetRows(accessToken, spreadsheetId, tabTitle);
-    const parsed = parseImportTable(rows, body.headerRowNumber || 1);
+    const parsed = parseImportTable(rows, body.headerRowNumber || 1, {
+      defaultYear: parseImportYear(body.importYear)
+    });
 
     if (parsed.rows.length === 0) {
       return NextResponse.json({ ok: false, error: "저장할 행이 없습니다." }, { status: 400 });
@@ -54,6 +57,7 @@ export async function POST(request: Request) {
       ok: true,
       duplicateCount: importRun.duplicateCount,
       errorCount: importRun.errorCount,
+      headerRowNumber: parsed.headerRowNumber,
       importRunId: importRun.id,
       rowCount: importRun.rowCount,
       storedCount: importRun.storedCount
@@ -64,6 +68,12 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
+}
+
+function parseImportYear(value: number | undefined) {
+  if (typeof value !== "number" || !Number.isInteger(value)) return undefined;
+  if (value < 2000 || value > 2100) return undefined;
+  return value;
 }
 
 function parseSourceTeam(value: string | undefined): SourceTeam {

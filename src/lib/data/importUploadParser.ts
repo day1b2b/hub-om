@@ -14,33 +14,70 @@ export interface ParsedImportFile {
   rows: ParsedImportRow[];
 }
 
+export interface ParseImportOptions {
+  defaultYear?: number;
+}
+
 const FIELD_ALIASES: Record<string, string[]> = {
+  archiveStatus: ["archivestatus", "archive", "아카이빙", "아카이빙상태"],
+  avgSatisfaction: ["avgsatisfaction", "averagesatisfaction", "전체만족도", "전반만족도", "평균만족도", "만족도"],
+  coach: ["coach", "coaches", "실습코치", "코치"],
   companyName: ["company", "companyname", "customer", "customername", "고객사", "고객사명", "기업", "기업명"],
+  companyWikiLink: ["companywikilink", "companywiki", "기업위키", "기업위키링크"],
+  costRaw: ["costraw", "비용", "비용원문"],
   courseId: ["courseid", "coursecode", "코스id", "코스아이디", "과정id", "과정코드"],
   courseName: ["course", "coursename", "program", "programname", "과정", "과정명", "교육명", "프로그램명"],
+  driveLink: ["drive", "drivelink", "googledrive", "구글드라이브", "드라이브", "드라이브링크", "폴더", "폴더링크"],
+  educationDays: ["educationdays", "durationdays", "교육일수", "운영일수", "일수"],
+  educationFormat: ["educationformat", "format", "교육형태", "운영형태", "운영방식", "진행방식"],
   endDate: ["enddate", "endedat", "종료일", "종료날짜", "교육종료일"],
+  hasResultReport: ["hasresultreport", "resultreportstatus", "결과보고서", "결과보고서여부", "결과보고"],
+  instructorCost: ["instructorcost", "강사비"],
+  instructorSatisfaction: ["instructorsatisfaction", "강사만족도"],
+  instructorWikiLink: ["instructorwikilink", "instructorwiki", "강사위키", "강사위키링크"],
   instructors: ["instructor", "instructors", "강사", "강사명"],
-  ld: ["ld", "러닝디자이너", "기획자"],
+  ld: ["ld", "러닝디자이너", "기획자", "담당ld"],
+  lectureManagementLink: ["lecturemanagementlink", "lecturemanagement", "강의관리", "강의관리링크", "강의관리시트"],
   om: ["om", "운영매니저", "운영담당자", "담당om"],
+  omUpdate: ["omupdate", "운영업데이트", "업데이트사항", "업데이트사항om기재"],
+  onsiteText: ["onsitetext", "현장투입", "현장운영"],
   operationId: ["operationid", "운영id", "운영아이디"],
-  startDate: ["startdate", "startedat", "시작일", "시작날짜", "교육시작일"]
+  operationDetail: ["operationdetail", "syncup", "싱크업", "운영상세", "상세링크"],
+  operationIssue: ["operationissue", "issue", "issues", "운영이슈", "이슈"],
+  operationStatus: ["operationstatus", "status", "상태", "운영상태", "진행상태", "배정상태"],
+  operationType: ["operationtype", "운영규모", "운영유형", "운영구분", "과정유형"],
+  padletLink: ["padletlink", "padlet", "패들렛", "패들렛링크"],
+  profitRaw: ["profitraw", "수익", "수익원문"],
+  region: ["region", "지역", "장소", "교육장소"],
+  resultReportLink: ["resultreportlink", "결과보고서링크", "결과보고링크"],
+  roundNo: ["roundno", "round", "회차", "차수"],
+  sessionDurationDays: ["sessiondurationdays", "교육기간일수", "기간일수"],
+  sessionDurationType: ["sessiondurationtype", "운영기간유형", "기간유형"],
+  specialNotes: ["specialnotes", "notes", "note", "특이사항", "메모"],
+  startDate: ["startdate", "startedat", "시작일", "시작날짜", "교육시작일"],
+  timeText: ["timetext", "time", "시간", "교육시간", "운영시간"],
+  totalCost: ["totalcost", "총비용", "전체비용"]
 };
 
-export function parseImportFile(fileName: string, content: string): ParsedImportFile {
+const FIELD_ALIAS_LOOKUP = new Map(
+  Object.entries(FIELD_ALIASES).flatMap(([fieldName, aliases]) => aliases.map((alias) => [alias, fieldName]))
+);
+
+export function parseImportFile(fileName: string, content: string, options: ParseImportOptions = {}): ParsedImportFile {
   const extension = fileName.split(".").pop()?.toLowerCase() ?? "";
 
   if (extension === "json") {
-    return parseJsonImport(content);
+    return parseJsonImport(content, options);
   }
 
   if (extension === "csv" || extension === "txt") {
-    return parseCsvImport(content);
+    return parseCsvImport(content, options);
   }
 
   throw new Error("CSV 또는 JSON 파일만 업로드할 수 있습니다.");
 }
 
-function parseJsonImport(content: string): ParsedImportFile {
+function parseJsonImport(content: string, options: ParseImportOptions): ParsedImportFile {
   const parsed = JSON.parse(content) as unknown;
   const rows = Array.isArray(parsed)
     ? parsed
@@ -57,16 +94,20 @@ function parseJsonImport(content: string): ParsedImportFile {
     rows: rows
       .map(normalizeJsonRow)
       .filter((row) => Object.keys(row).length > 0)
-      .map((row, index) => buildParsedRow(row, index + 2))
+      .map((row, index) => buildParsedRow(row, index + 2, options))
   };
 }
 
-function parseCsvImport(content: string): ParsedImportFile {
+function parseCsvImport(content: string, options: ParseImportOptions): ParsedImportFile {
   const table = parseCsvTable(content).filter((row) => row.some((cell) => cell.trim()));
-  return parseImportTable(table, 1);
+  return parseImportTable(table, 1, options);
 }
 
-export function parseImportTable(table: string[][], headerRowNumber = 1): ParsedImportFile {
+export function parseImportTable(
+  table: string[][],
+  headerRowNumber = 1,
+  options: ParseImportOptions = {}
+): ParsedImportFile {
   const normalizedTable = table.map((row) => row.map((cell) => String(cell ?? "").trim()));
   const requestedHeaderIndex = Math.max(0, headerRowNumber - 1);
   const headerIndex = findHeaderIndex(normalizedTable, requestedHeaderIndex);
@@ -82,11 +123,22 @@ export function parseImportTable(table: string[][], headerRowNumber = 1): Parsed
       .slice(headerIndex + 1)
       .map((row, index) => rowToObject(headers, row, headerIndex + index + 2))
       .filter((row) => Object.keys(row).length > 0)
-      .map((row, index) => buildParsedRow(row, Number(row.__sourceRowNumber) || headerIndex + index + 2))
+      .map((row, index) => buildParsedRow(row, Number(row.__sourceRowNumber) || headerIndex + index + 2, options))
   };
 }
 
 function findHeaderIndex(table: string[][], requestedHeaderIndex: number) {
+  const requestedScore = scoreHeaderRow(table[requestedHeaderIndex]);
+  const scoredRows = table
+    .map((row, index) => ({ index, score: scoreHeaderRow(row) }))
+    .filter((row) => indexAtOrAfter(row.index, requestedHeaderIndex) && row.score > 0)
+    .sort((a, b) => b.score - a.score || a.index - b.index);
+  const bestRow = scoredRows[0];
+
+  if (bestRow && bestRow.score >= Math.max(2, requestedScore + 1)) {
+    return bestRow.index;
+  }
+
   if (hasCells(table[requestedHeaderIndex])) {
     return requestedHeaderIndex;
   }
@@ -97,6 +149,36 @@ function findHeaderIndex(table: string[][], requestedHeaderIndex: number) {
 
 function hasCells(row: string[] | undefined) {
   return Boolean(row?.some((cell) => cell.trim()));
+}
+
+function indexAtOrAfter(index: number, requestedHeaderIndex: number) {
+  return index >= requestedHeaderIndex;
+}
+
+function scoreHeaderRow(row: string[] | undefined) {
+  if (!row) return 0;
+
+  const matchedFields = new Set<string>();
+
+  for (const cell of row) {
+    const normalized = normalizeHeader(cell);
+    const fieldName = FIELD_ALIAS_LOOKUP.get(normalized);
+
+    if (fieldName) {
+      matchedFields.add(fieldName);
+    }
+  }
+
+  let score = matchedFields.size;
+
+  if (matchedFields.has("companyName")) score += 2;
+  if (matchedFields.has("courseName")) score += 2;
+  if (matchedFields.has("startDate")) score += 2;
+  if (matchedFields.has("endDate")) score += 2;
+  if (matchedFields.has("om")) score += 1;
+  if (matchedFields.has("ld")) score += 1;
+
+  return score;
 }
 
 function normalizeJsonRow(row: unknown): Record<string, string> {
@@ -131,8 +213,8 @@ function rowToObject(headers: string[], row: string[], rowNumber: number) {
   return object;
 }
 
-function buildParsedRow(rowSnapshot: Record<string, string>, rowNumber: number): ParsedImportRow {
-  const mappedFields = mapKnownFields(rowSnapshot);
+function buildParsedRow(rowSnapshot: Record<string, string>, rowNumber: number, options: ParseImportOptions): ParsedImportRow {
+  const mappedFields = mapKnownFields(rowSnapshot, options);
   const mappedSourceKeys = new Set(
     Object.keys(rowSnapshot).filter((key) => Object.values(FIELD_ALIASES).some((aliases) => aliases.includes(normalizeHeader(key))))
   );
@@ -152,18 +234,26 @@ function buildParsedRow(rowSnapshot: Record<string, string>, rowNumber: number):
   };
 }
 
-function mapKnownFields(row: Record<string, string>) {
+function mapKnownFields(row: Record<string, string>, options: ParseImportOptions) {
   const mappedFields: Record<string, string> = {};
 
   for (const [fieldName, aliases] of Object.entries(FIELD_ALIASES)) {
     const match = Object.entries(row).find(([key]) => aliases.includes(normalizeHeader(key)));
 
     if (match?.[1]) {
-      mappedFields[fieldName] = match[1];
+      mappedFields[fieldName] = normalizeMappedValue(fieldName, match[1], options);
     }
   }
 
   return mappedFields;
+}
+
+function normalizeMappedValue(fieldName: string, value: string, options: ParseImportOptions) {
+  if (fieldName === "startDate" || fieldName === "endDate") {
+    return normalizeDateValue(value, options.defaultYear) ?? value;
+  }
+
+  return value;
 }
 
 function validateMappedFields(mappedFields: Record<string, string>) {
@@ -243,7 +333,46 @@ function valueToCell(value: unknown) {
 }
 
 function isDateLike(value: string) {
-  return /^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}$/.test(value.trim()) || /^\d{1,2}[-/.]\d{1,2}$/.test(value.trim());
+  return Boolean(normalizeDateValue(value, 2026)) || /^\d{1,2}\s*[-/.]\s*\d{1,2}$/.test(value.trim());
+}
+
+function normalizeDateValue(value: string, defaultYear?: number) {
+  const text = value
+    .trim()
+    .replace(/\([^)]*\)/g, "")
+    .replace(/\s+/g, " ");
+
+  const fullYearMatch =
+    /^(\d{4})\s*[-/.]\s*(\d{1,2})\s*[-/.]\s*(\d{1,2})$/.exec(text) ??
+    /^(\d{4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일?$/.exec(text);
+
+  if (fullYearMatch) {
+    return formatDateParts(Number(fullYearMatch[1]), Number(fullYearMatch[2]), Number(fullYearMatch[3]));
+  }
+
+  const shortYearMatch = /^(\d{2})\s*[-/.]\s*(\d{1,2})\s*[-/.]\s*(\d{1,2})$/.exec(text);
+
+  if (shortYearMatch) {
+    return formatDateParts(2000 + Number(shortYearMatch[1]), Number(shortYearMatch[2]), Number(shortYearMatch[3]));
+  }
+
+  const monthDayMatch = /^(\d{1,2})\s*[-/.]\s*(\d{1,2})$/.exec(text);
+
+  if (monthDayMatch && defaultYear) {
+    return formatDateParts(defaultYear, Number(monthDayMatch[1]), Number(monthDayMatch[2]));
+  }
+
+  return null;
+}
+
+function formatDateParts(year: number, month: number, day: number) {
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() + 1 !== month || date.getUTCDate() !== day) {
+    return null;
+  }
+
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
 function hashRow(row: Record<string, string>) {
