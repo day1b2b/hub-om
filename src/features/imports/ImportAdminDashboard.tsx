@@ -123,9 +123,12 @@ interface ImportRunDetailViewProps {
 }
 
 export function ImportRunDetailView({ run }: ImportRunDetailViewProps) {
-  const readyRecords = run.records.filter((record) => record.reviewStatus === "적용 준비").length;
+  const isNotionRun = isNotionImport(run.sourceType);
+  const readyRecords = isNotionRun ? 0 : run.records.filter((record) => record.reviewStatus === "적용 준비").length;
   const needsFixRecords = run.records.filter((record) => record.reviewStatus === "확인 필요").length;
-  const matchingRecords = run.records.filter((record) => record.reviewStatus === "매칭 필요").length;
+  const matchingRecords = isNotionRun
+    ? run.records.filter((record) => record.reviewStatus === "적용 준비" || record.reviewStatus === "매칭 필요").length
+    : run.records.filter((record) => record.reviewStatus === "매칭 필요").length;
 
   return (
     <main className="dashboard-shell">
@@ -161,7 +164,13 @@ export function ImportRunDetailView({ run }: ImportRunDetailViewProps) {
               매칭 필요 <strong>{matchingRecords.toLocaleString("ko-KR")}</strong>
             </span>
           </div>
-          <ImportPromoteButton importRunId={run.id} />
+          {isNotionRun ? (
+            <div className="import-promote-action readonly">
+              <span>Notion 데이터는 가져오기와 검수까지만 저장합니다. 운영 DB 반영은 막혀 있습니다.</span>
+            </div>
+          ) : (
+            <ImportPromoteButton importRunId={run.id} />
+          )}
         </section>
 
         <section className="table-section import-review-workspace">
@@ -175,7 +184,7 @@ export function ImportRunDetailView({ run }: ImportRunDetailViewProps) {
           {run.records.length === 0 ? (
             <EmptyState title="저장된 행이 없습니다" description="파일을 다시 올리거나 가져오기 설정을 확인해 주세요." />
           ) : (
-            <ImportReviewTable records={run.records} />
+            <ImportReviewTable canPromoteRecords={!isNotionRun} records={run.records} />
           )}
         </section>
       </section>
@@ -207,6 +216,10 @@ function getSourceTypeLabel(sourceType: string) {
     return "메일 데이터";
   }
 
+  if (normalizedType.includes("notion")) {
+    return "Notion 데이터";
+  }
+
   if (normalizedType.includes("slack")) {
     return "Slack 데이터";
   }
@@ -216,6 +229,10 @@ function getSourceTypeLabel(sourceType: string) {
   }
 
   return "가져온 데이터";
+}
+
+function isNotionImport(sourceType: string) {
+  return sourceType.toLowerCase().includes("notion");
 }
 
 function EmptyState({ description, title }: { description: string; title: string }) {
