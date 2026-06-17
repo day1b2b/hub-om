@@ -88,6 +88,15 @@ export async function promoteReadyImportRows(importRunId: string): Promise<Impor
   const roleRoster = await new PrismaTeamMemberRepository().listRoleRosters();
 
   return prisma.$transaction(async (tx) => {
+    const importRun = await tx.dataImportRun.findUnique({
+      where: { id: importRunId },
+      select: { sourceType: true }
+    });
+
+    if (importRun?.sourceType.toLowerCase().includes("notion")) {
+      throw new Error("Notion 가져오기는 검수용으로만 저장합니다. 중복 방지를 위해 운영 데이터 반영은 막혀 있습니다.");
+    }
+
     const sourceRecords = await tx.operationSourceRecord.findMany({
       where: {
         importRunId,

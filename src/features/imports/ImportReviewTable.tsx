@@ -13,7 +13,13 @@ const REVIEW_STATUS_CLASS: Record<SourceRecordReviewStatus, string> = {
   "매칭 필요": "needs-assignment"
 };
 
-export function ImportReviewTable({ records }: { records: SourceRecordPreview[] }) {
+export function ImportReviewTable({
+  canPromoteRecords = true,
+  records
+}: {
+  canPromoteRecords?: boolean;
+  records: SourceRecordPreview[];
+}) {
   const [selectedRecord, setSelectedRecord] = useState<SourceRecordPreview | null>(null);
 
   useEffect(() => {
@@ -64,13 +70,13 @@ export function ImportReviewTable({ records }: { records: SourceRecordPreview[] 
                     <span>
                       {record.linkedOperation.companyName} · {record.linkedOperation.courseName}
                     </span>
-                  ) : isPromotionReady(record) ? (
+                  ) : isPromotionReady(record, canPromoteRecords) ? (
                     <span className="ready-create-text">새 운영 생성</span>
                   ) : (
-                    <span className="needs-review-text">연결 필요</span>
+                    <span className="needs-review-text">{canPromoteRecords ? "연결 필요" : "검수 전용"}</span>
                   )}
                 </td>
-                <td className="wide-cell">{getIssueText(record)}</td>
+                <td className="wide-cell">{getIssueText(record, canPromoteRecords)}</td>
                 <td>
                   <button className="import-review-open-button" type="button" onClick={() => setSelectedRecord(record)}>
                     확인
@@ -83,13 +89,21 @@ export function ImportReviewTable({ records }: { records: SourceRecordPreview[] 
       </div>
 
       {selectedRecord ? (
-        <ImportReviewModal record={selectedRecord} onClose={() => setSelectedRecord(null)} />
+        <ImportReviewModal canPromoteRecords={canPromoteRecords} record={selectedRecord} onClose={() => setSelectedRecord(null)} />
       ) : null}
     </>
   );
 }
 
-function ImportReviewModal({ onClose, record }: { onClose: () => void; record: SourceRecordPreview }) {
+function ImportReviewModal({
+  canPromoteRecords,
+  onClose,
+  record
+}: {
+  canPromoteRecords: boolean;
+  onClose: () => void;
+  record: SourceRecordPreview;
+}) {
   return (
     <div className="import-review-modal-backdrop" role="presentation" onClick={onClose}>
       <section
@@ -122,16 +136,18 @@ function ImportReviewModal({ onClose, record }: { onClose: () => void; record: S
                 <span>{record.linkedOperation.courseName}</span>
                 <small>{record.linkedOperation.dateRange}</small>
               </div>
-            ) : isPromotionReady(record) ? (
+            ) : isPromotionReady(record, canPromoteRecords) ? (
               <p className="ready-create-text">이 행은 새 운영 데이터로 생성할 수 있습니다.</p>
             ) : (
-              <p className="needs-review-text">아직 연결된 과정이 없습니다.</p>
+              <p className="needs-review-text">
+                {canPromoteRecords ? "아직 연결된 과정이 없습니다." : "이 행은 운영 DB에 반영하지 않고 원천 검수용으로만 보관합니다."}
+              </p>
             )}
           </section>
 
           <section className="import-review-modal-section">
             <span className="import-review-label">확인할 점</span>
-            <IssueList record={record} />
+            <IssueList canPromoteRecords={canPromoteRecords} record={record} />
           </section>
 
           <section className="import-review-modal-section">
@@ -160,11 +176,11 @@ function ImportReviewModal({ onClose, record }: { onClose: () => void; record: S
   );
 }
 
-function IssueList({ record }: { record: SourceRecordPreview }) {
+function IssueList({ canPromoteRecords, record }: { canPromoteRecords: boolean; record: SourceRecordPreview }) {
   if (record.validationErrors.length === 0) {
     return (
       <span className="review-empty-inline">
-        {isPromotionReady(record) ? "반영 가능한 행입니다." : "기본 검증을 통과했습니다."}
+        {isPromotionReady(record, canPromoteRecords) ? "반영 가능한 행입니다." : "기본 검증을 통과했습니다."}
       </span>
     );
   }
@@ -222,15 +238,17 @@ function getPeopleText(record: SourceRecordPreview) {
   return [om !== "-" ? `OM ${om}` : "", ld !== "-" ? `LD ${ld}` : ""].filter(Boolean).join(" · ") || "-";
 }
 
-function getIssueText(record: SourceRecordPreview) {
+function getIssueText(record: SourceRecordPreview, canPromoteRecords: boolean) {
   if (record.validationErrors.length > 0) return record.validationErrors.join(" / ");
-  if (isPromotionReady(record)) return "반영 가능";
+  if (!canPromoteRecords) return "원천 검수 전용";
+  if (isPromotionReady(record, canPromoteRecords)) return "반영 가능";
   if (!record.linkedOperation) return "과정 연결 필요";
   return "기본 검증 통과";
 }
 
-function isPromotionReady(record: SourceRecordPreview) {
+function isPromotionReady(record: SourceRecordPreview, canPromoteRecords: boolean) {
   return (
+    canPromoteRecords &&
     record.reviewStatus === "적용 준비" &&
     Boolean(
       getFieldValue(record, ["companyName", "기업명", "고객사"]) !== "-" &&
