@@ -1,4 +1,4 @@
-import { assertAdminSession } from "@/lib/auth/requireAdminSession";
+import { assertCoachPiiAccess } from "@/lib/auth/requireAdminSession";
 import type { CoachEngagementFeedbackView, CoachPrivateProfileView } from "./coachTypes";
 import { getCoachPrivateRepository } from "./coachPrivateRepositoryFactory";
 import { getPrismaClient } from "./prisma";
@@ -29,7 +29,7 @@ export async function readCoachPrivateProfile(
   coachId: string,
   context: string
 ): Promise<CoachPrivateProfileView | null> {
-  const session = await assertAdminSession();
+  const session = await assertCoachPiiAccess();
   // 권한 확인 통과 시점에 접근 시도 자체를 감사한다(조회 성공 여부와 무관).
   await recordPrivateAccess(coachId, session.user!.email!, context);
 
@@ -40,7 +40,7 @@ export async function readCoachEngagementFeedback(
   coachId: string,
   context: string
 ): Promise<CoachEngagementFeedbackView[]> {
-  const session = await assertAdminSession();
+  const session = await assertCoachPiiAccess();
   // 권한 확인 통과 시점에 접근 시도 자체를 감사한다(조회 성공 여부와 무관).
   await recordPrivateAccess(coachId, session.user!.email!, context);
 
