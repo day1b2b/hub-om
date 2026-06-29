@@ -44,7 +44,7 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
       <nav className="nav-list">
         <Link className={pathname === "/dashboard" ? "active" : ""} href={hrefWithTeam("/dashboard")}>대시보드</Link>
         <Link className={isOperationsPage ? "active" : ""} href={hrefWithTeam("/operations")}>운영 현황</Link>
-        <Link className={isCoachesPage ? "active" : ""} href={hrefWithTeam("/coaches")}>코치 DB</Link>
+        <Link className={isCoachesPage ? "active" : ""} href={hrefWithTeam("/coaches/schedule")}>코치 일정</Link>
         <Link className={isResourcesPage ? "active" : ""} href={hrefWithTeam("/resources")}>리소스</Link>
         <Link className={isCoachResourcesPage ? "active" : ""} href={hrefWithTeam("/resources/coaches")}>코치 리소스</Link>
         <Link className={isDatabaseAdminPage ? "active" : ""} href={hrefWithTeam("/admin/database")}>DB 조회</Link>

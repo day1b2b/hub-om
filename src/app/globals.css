@@ -5916,6 +5916,279 @@ td span {
   overflow: hidden;
 }
 
+.coach-schedule-layout {
+  align-items: start;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(320px, 390px) minmax(0, 1fr);
+}
+
+.coach-schedule-calendar,
+.coach-schedule-list {
+  min-width: 0;
+}
+
+.coach-schedule-toolbar {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 32px minmax(0, 1fr) 32px;
+  padding: 12px;
+  text-align: center;
+}
+
+.coach-schedule-toolbar button {
+  align-items: center;
+  background: #fbfcfe;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 18px;
+  font-weight: 800;
+  height: 32px;
+  justify-content: center;
+}
+
+.coach-schedule-toolbar button:hover {
+  border-color: #bfd2ee;
+  color: var(--blue);
+}
+
+.coach-schedule-toolbar strong {
+  color: var(--text);
+  font-size: 15px;
+}
+
+.coach-schedule-time-filters {
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 12px;
+}
+
+.coach-schedule-time-filters button {
+  background: #f6f8fb;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  min-height: 28px;
+  padding: 0 10px;
+}
+
+.coach-schedule-time-filters button.selected {
+  background: #eaf3fe;
+  border-color: #c8ddf7;
+  color: var(--blue);
+}
+
+.coach-schedule-weekdays,
+.coach-schedule-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.coach-schedule-weekdays {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  padding: 10px 12px 4px;
+  text-align: center;
+}
+
+.coach-schedule-grid {
+  gap: 5px;
+  padding: 0 12px 12px;
+}
+
+.coach-schedule-empty-day,
+.coach-schedule-day {
+  aspect-ratio: 1 / 1;
+  min-width: 0;
+}
+
+.coach-schedule-day {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  font: inherit;
+  justify-content: center;
+  line-height: 1.2;
+  padding: 4px;
+}
+
+.coach-schedule-day:hover {
+  background: #f7f9fc;
+}
+
+.coach-schedule-day.weekend span {
+  color: #9f5f5f;
+}
+
+.coach-schedule-day.selected {
+  background: #eaf3fe;
+  border-color: #b8d4f2;
+  color: var(--blue);
+}
+
+.coach-schedule-day span {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.coach-schedule-day strong {
+  align-items: center;
+  background: #f0f5fb;
+  border-radius: 999px;
+  color: #8c97a5;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 800;
+  height: 20px;
+  justify-content: center;
+  margin-top: 3px;
+  min-width: 20px;
+  padding: 0 5px;
+}
+
+.coach-schedule-day.has-coaches strong {
+  background: #e2f0ff;
+  color: var(--blue);
+}
+
+.coach-schedule-day.selected strong {
+  background: #ffffff;
+  color: var(--blue);
+}
+
+.coach-schedule-calendar-meta {
+  align-items: center;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  display: flex;
+  font-size: 12px;
+  justify-content: space-between;
+  padding: 10px 12px;
+}
+
+.coach-schedule-calendar-meta a {
+  color: var(--blue);
+  font-weight: 800;
+}
+
+.coach-schedule-list .section-title {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 14px;
+}
+
+.coach-schedule-list .section-title > div:first-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.coach-schedule-list .section-title span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.coach-schedule-coach-list {
+  display: grid;
+}
+
+.coach-schedule-coach-row {
+  align-items: center;
+  border-bottom: 1px solid #eef2f6;
+  color: inherit;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(120px, 170px) minmax(120px, 1fr) minmax(180px, 1.4fr);
+  padding: 12px 14px;
+}
+
+.coach-schedule-coach-row:hover {
+  background: #fafcff;
+}
+
+.coach-schedule-coach-row > div:first-child,
+.coach-schedule-row-meta {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.coach-schedule-coach-row strong {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.coach-schedule-coach-row span,
+.coach-schedule-row-meta small {
+  color: var(--muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.coach-schedule-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.coach-schedule-tags span {
+  background: #f0f4f8;
+  border-radius: 999px;
+  color: #455a64;
+  font-size: 11px;
+  font-weight: 700;
+  max-width: 130px;
+  padding: 3px 8px;
+}
+
+.coach-schedule-row-meta > span {
+  color: var(--blue);
+  font-weight: 800;
+}
+
+.coach-schedule-empty-state {
+  display: grid;
+  gap: 6px;
+  padding: 48px 20px;
+  text-align: center;
+}
+
+@media (max-width: 920px) {
+  .coach-schedule-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .coach-schedule-coach-row {
+    align-items: start;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .coach-schedule-tags span {
+    max-width: 100%;
+  }
+}
+
 .dashboard-tabs {
   justify-content: flex-start;
 }

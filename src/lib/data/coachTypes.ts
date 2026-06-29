@@ -45,6 +45,36 @@ export interface CoachScheduleView {
   endTime: string;
 }
 
+export interface CoachScheduleDashboardEngagement {
+  courseName: string;
+  endDate: string;
+}
+
+export interface CoachScheduleDashboardCoach {
+  id: string;
+  name: string;
+  workType: string | null;
+  fields: string[];
+  schedules: Array<{
+    startTime: string;
+    endTime: string;
+  }>;
+  avgRating: number | null;
+  recentEngagements: CoachScheduleDashboardEngagement[];
+  engagementCount: number;
+}
+
+export interface CoachScheduleDashboardDay {
+  date: string;
+  coaches: CoachScheduleDashboardCoach[];
+}
+
+export interface CoachScheduleDashboard {
+  yearMonth: string;
+  totalActiveCoaches: number;
+  days: Record<string, CoachScheduleDashboardDay>;
+}
+
 // =============================================================================
 // PRIVATE — admin 전용. 아래 타입은 민감(PII) 데이터를 담는다.
 // 공개 repository/타입에서는 절대 노출하지 않는다. (CoachPrivateRepository 전용)
