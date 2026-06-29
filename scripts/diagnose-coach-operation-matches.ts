@@ -57,11 +57,9 @@ async function main(): Promise<void> {
   await client.connect();
 
   try {
-    const [counts, candidates, engagements] = await Promise.all([
-      loadCounts(client),
-      loadOperationCandidates(client),
-      loadUnmatchedCoachEngagements(client)
-    ]);
+    const counts = await loadCounts(client);
+    const candidates = await loadOperationCandidates(client);
+    const engagements = await loadUnmatchedCoachEngagements(client);
 
     console.log(
       `[diagnose-coach-operation-matches] 전체 ${counts.total}건 / 연결 ${counts.matched}건 / 미연결 ${counts.unmatched}건`
@@ -86,7 +84,10 @@ async function main(): Promise<void> {
           },
           candidates
         );
-        const best = ranked[0];
+        const best = ranked.find((candidate) => candidate.score > 0);
+        const nearestDateOnly = ranked.find(
+          (candidate) => candidate.score === 0 && candidate.dateScore > 0 && candidate.courseScore === 0
+        );
         return {
           engagement: engagement.course_name,
           coach: engagement.coach_name ?? "",
@@ -100,7 +101,10 @@ async function main(): Promise<void> {
           courseScore: best?.courseScore ?? 0,
           dateScore: best?.dateScore ?? 0,
           timeScore: best?.timeScore ?? 0,
-          coachScore: best?.coachScore ?? 0
+          coachScore: best?.coachScore ?? 0,
+          dateOnlyCandidate: nearestDateOnly
+            ? `${nearestDateOnly.candidate.companyName ?? ""} / ${nearestDateOnly.candidate.courseName}`
+            : ""
         };
       })
     );
