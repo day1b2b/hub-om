@@ -250,9 +250,11 @@ async function loadOperationCandidates(client: pg.Client): Promise<OperationCand
     start_date: unknown;
     end_date: unknown;
     time_text: string | null;
+    coach_text: string | null;
+    instructors_text: string | null;
   }>(
     `SELECT os.id, companies.name AS company_name, c.course_name AS course_name,
-            os.start_date, os.end_date, os.time_text
+            os.start_date, os.end_date, os.time_text, os.coach_text, os.instructors_text
      FROM operation_sessions os
      JOIN courses c ON os.course_record_id = c.id
      JOIN companies ON c.company_id = companies.id
@@ -265,7 +267,9 @@ async function loadOperationCandidates(client: pg.Client): Promise<OperationCand
     courseName: row.course_name ?? "",
     startDate: dateOnly(row.start_date),
     endDate: dateOnly(row.end_date),
-    timeText: row.time_text
+    timeText: row.time_text,
+    coachText: row.coach_text,
+    instructorsText: row.instructors_text
   }));
 }
 

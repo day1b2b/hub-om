@@ -141,3 +141,57 @@ test("시간 정보가 있으면 상위 후보를 가르는 보조 기준으로 
 
   assert.equal(result, "op-2");
 });
+
+test("engagement 대표 기간이 달라도 개별 투입일이 운영 기간 안에 있으면 매칭한다", () => {
+  const candidates: OperationCandidate[] = [
+    {
+      id: "op-1",
+      courseName: "AI 리더십 과정",
+      startDate: "2026-07-01",
+      endDate: "2026-07-31"
+    }
+  ];
+
+  const result = matchOperation(
+    {
+      courseName: "AI 리더십 과정",
+      startDate: "2026-06-01",
+      endDate: "2026-06-30",
+      scheduleDates: ["2026-07-03", "2026-07-10"]
+    },
+    candidates
+  );
+
+  assert.equal(result, "op-1");
+});
+
+test("coach_text가 있으면 동률 후보를 가르는 보조 기준으로 사용한다", () => {
+  const candidates: OperationCandidate[] = [
+    {
+      id: "op-1",
+      courseName: "AI 리더십 과정",
+      startDate: "2026-07-01",
+      endDate: "2026-07-31",
+      coachText: "김다른"
+    },
+    {
+      id: "op-2",
+      courseName: "AI 리더십 과정",
+      startDate: "2026-07-01",
+      endDate: "2026-07-31",
+      coachText: "홍예진"
+    }
+  ];
+
+  const result = matchOperation(
+    {
+      courseName: "AI 리더십 과정",
+      coachName: "홍예진",
+      startDate: "2026-07-01",
+      endDate: "2026-07-31"
+    },
+    candidates
+  );
+
+  assert.equal(result, "op-2");
+});

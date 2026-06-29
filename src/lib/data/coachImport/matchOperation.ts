@@ -1,18 +1,38 @@
 export interface EngagementKey {
   courseName: string;
+  coachName?: string | null;
   startDate: string;
   endDate: string;
   startTime?: string | null;
   endTime?: string | null;
+  scheduleDates?: string[];
+  scheduleTimes?: ScheduleTimeRange[];
 }
 
 export interface OperationCandidate {
   id: string;
+  operationId?: string | null;
   courseName: string;
   companyName?: string | null;
   startDate: string;
   endDate: string;
   timeText?: string | null;
+  coachText?: string | null;
+  instructorsText?: string | null;
+}
+
+export interface ScheduleTimeRange {
+  startTime: string;
+  endTime: string;
+}
+
+export interface RankedOperationCandidate {
+  candidate: OperationCandidate;
+  score: number;
+  courseScore: number;
+  dateScore: number;
+  timeScore: number;
+  coachScore: number;
 }
 
 /**
@@ -31,18 +51,22 @@ export function matchOperation(
   engagement: EngagementKey,
   candidates: OperationCandidate[]
 ): string | null {
-  const scored = candidates
-    .map((candidate) => ({
-      candidate,
-      score: scoreCandidate(engagement, candidate)
-    }))
-    .filter((entry) => entry.score >= 150)
-    .sort((a, b) => b.score - a.score);
+  const scored = rankOperationCandidates(engagement, candidates).filter((entry) => entry.score >= 150);
 
   if (scored.length === 0) return null;
   if (scored.length > 1 && scored[0].score - scored[1].score < 10) return null;
 
   return scored[0].candidate.id;
+}
+
+export function rankOperationCandidates(
+  engagement: EngagementKey,
+  candidates: OperationCandidate[]
+): RankedOperationCandidate[] {
+  return candidates
+    .map((candidate) => scoreCandidate(engagement, candidate))
+    .filter((entry) => entry.courseScore > 0 || entry.dateScore > 0)
+    .sort((a, b) => b.score - a.score);
 }
 
 function normalizeCourseName(value: string): string {
@@ -58,14 +82,24 @@ function simplifyCourseName(value: string): string {
     .trim();
 }
 
-function scoreCandidate(engagement: EngagementKey, candidate: OperationCandidate): number {
+function scoreCandidate(engagement: EngagementKey, candidate: OperationCandidate): RankedOperationCandidate {
   const courseScore = scoreCourseName(engagement.courseName, candidate);
-  if (courseScore < 70) return 0;
-
   const dateScore = scoreDateRange(engagement, candidate);
-  if (dateScore < 65) return 0;
+  const timeScore = scoreTime(engagement, candidate);
+  const coachScore = scoreCoach(engagement, candidate);
 
-  return courseScore + dateScore + scoreTime(engagement, candidate);
+  if (courseScore < 70 || dateScore < 65) {
+    return { candidate, courseScore, dateScore, timeScore, coachScore, score: 0 };
+  }
+
+  return {
+    candidate,
+    courseScore,
+    dateScore,
+    timeScore,
+    coachScore,
+    score: courseScore + dateScore + timeScore + coachScore
+  };
 }
 
 function scoreCourseName(engagementCourseName: string, candidate: OperationCandidate): number {
@@ -124,7 +158,30 @@ function scoreDateRange(engagement: EngagementKey, candidate: OperationCandidate
   if (overlap >= 0.8) return 80;
   if (overlap >= 0.5) return 65;
 
+  const scheduleOverlap = scheduleDateOverlapRatio(engagement.scheduleDates, candidate);
+  if (scheduleOverlap >= 0.8) return 80;
+  if (scheduleOverlap >= 0.5) return 65;
+
   return 0;
+}
+
+function scheduleDateOverlapRatio(
+  scheduleDates: string[] | null | undefined,
+  candidate: OperationCandidate
+): number {
+  const dates = (scheduleDates ?? []).filter((date) => toDateMs(date) !== null);
+  if (dates.length === 0) return 0;
+
+  const matched = dates.filter((date) => isDateInsideRange(date, candidate.startDate, candidate.endDate)).length;
+  return matched / dates.length;
+}
+
+function isDateInsideRange(date: string, startDate: string, endDate: string): boolean {
+  const dateMs = toDateMs(date);
+  const startMs = toDateMs(startDate);
+  const endMs = toDateMs(endDate);
+  if (dateMs === null || startMs === null || endMs === null) return false;
+  return dateMs >= startMs && dateMs <= endMs;
 }
 
 function dateOverlapRatio(leftStart: string, leftEnd: string, rightStart: string, rightEnd: string): number {
@@ -155,18 +212,42 @@ function toDateMs(value: string): number | null {
 }
 
 function scoreTime(engagement: EngagementKey, candidate: OperationCandidate): number {
-  const engagementStart = normalizeTime(engagement.startTime);
-  const engagementEnd = normalizeTime(engagement.endTime);
-  if (!engagementStart && !engagementEnd) return 0;
+  const engagementTimes = [
+    { startTime: engagement.startTime ?? null, endTime: engagement.endTime ?? null },
+    ...(engagement.scheduleTimes ?? [])
+  ];
 
   const candidateTimes = extractTimes(candidate.timeText);
   if (candidateTimes.length === 0) return 0;
 
-  const hasStart = engagementStart ? candidateTimes.includes(engagementStart) : false;
-  const hasEnd = engagementEnd ? candidateTimes.includes(engagementEnd) : false;
-  if (hasStart && hasEnd) return 20;
-  if (hasStart || hasEnd) return 10;
+  const bestScore = Math.max(
+    ...engagementTimes.map((timeRange) => {
+      const engagementStart = normalizeTime(timeRange.startTime);
+      const engagementEnd = normalizeTime(timeRange.endTime);
+      if (!engagementStart && !engagementEnd) return 0;
+
+      const hasStart = engagementStart ? candidateTimes.includes(engagementStart) : false;
+      const hasEnd = engagementEnd ? candidateTimes.includes(engagementEnd) : false;
+      if (hasStart && hasEnd) return 20;
+      if (hasStart || hasEnd) return 10;
+      return -10;
+    })
+  );
+
+  if (bestScore > 0) return bestScore;
   return -10;
+}
+
+function scoreCoach(engagement: EngagementKey, candidate: OperationCandidate): number {
+  const coachName = simplifyCourseName(engagement.coachName ?? "");
+  if (!coachName) return 0;
+
+  const candidatePeopleText = simplifyCourseName(
+    `${candidate.coachText ?? ""} ${candidate.instructorsText ?? ""}`
+  );
+  if (!candidatePeopleText) return 0;
+
+  return candidatePeopleText.includes(coachName) ? 20 : 0;
 }
 
 function extractTimes(value: string | null | undefined): string[] {
