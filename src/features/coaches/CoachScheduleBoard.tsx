@@ -12,10 +12,10 @@ interface CoachScheduleBoardProps {
 }
 
 const TIME_FILTERS = [
-  { key: "all", label: "전체", startMinutes: 0, endMinutes: 24 * 60 },
-  { key: "08-13", label: "오전", startMinutes: 8 * 60, endMinutes: 13 * 60 },
-  { key: "13-18", label: "오후", startMinutes: 13 * 60, endMinutes: 18 * 60 },
-  { key: "18-22", label: "저녁", startMinutes: 18 * 60, endMinutes: 22 * 60 }
+  { key: "all", label: "전체", title: "전체 가능", startMinutes: 0, endMinutes: 24 * 60 },
+  { key: "08-13", label: "오전", title: "오전 가능", startMinutes: 8 * 60, endMinutes: 13 * 60 },
+  { key: "13-18", label: "오후", title: "오후 가능", startMinutes: 13 * 60, endMinutes: 18 * 60 },
+  { key: "18-22", label: "저녁", title: "저녁 가능", startMinutes: 18 * 60, endMinutes: 22 * 60 }
 ] as const;
 
 type TimeFilterKey = (typeof TIME_FILTERS)[number]["key"];
@@ -24,12 +24,10 @@ export function CoachScheduleBoard({ dashboard, loadFailed }: CoachScheduleBoard
   const router = useRouter();
   const [selectedDate, setSelectedDate] = useState<string | null>(() => defaultSelectedDate(dashboard));
   const [timeFilter, setTimeFilter] = useState<TimeFilterKey>("all");
+  const [query, setQuery] = useState("");
 
   const monthDate = useMemo(() => parseYearMonth(dashboard.yearMonth), [dashboard.yearMonth]);
   const selectedDay = selectedDate ? dashboard.days[selectedDate] : null;
-  const filteredCoaches = useMemo(() => {
-    return (selectedDay?.coaches ?? []).filter((coach) => coachMatchesTimeFilter(coach, timeFilter));
-  }, [selectedDay?.coaches, timeFilter]);
   const monthCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const [date, day] of Object.entries(dashboard.days)) {
@@ -37,6 +35,19 @@ export function CoachScheduleBoard({ dashboard, loadFailed }: CoachScheduleBoard
     }
     return counts;
   }, [dashboard.days, timeFilter]);
+  const filteredCoaches = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return (selectedDay?.coaches ?? []).filter((coach) => {
+      if (!coachMatchesTimeFilter(coach, timeFilter)) return false;
+      if (!normalizedQuery) return true;
+      return [
+        coach.name,
+        coach.workType ?? "",
+        ...coach.fields,
+        ...coach.recentEngagements.map((engagement) => engagement.courseName)
+      ].some((value) => value.toLowerCase().includes(normalizedQuery));
+    });
+  }, [query, selectedDay?.coaches, timeFilter]);
   const totalAvailableDays = Object.values(monthCounts).filter((count) => count > 0).length;
 
   function moveMonth(offset: number) {
@@ -44,65 +55,76 @@ export function CoachScheduleBoard({ dashboard, loadFailed }: CoachScheduleBoard
     router.push(`/coaches/schedule?yearMonth=${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, "0")}`);
   }
 
+  function goToday() {
+    const today = formatDate(new Date());
+    if (today.startsWith(dashboard.yearMonth)) {
+      setSelectedDate(today);
+      return;
+    }
+    router.push(`/coaches/schedule?yearMonth=${today.slice(0, 7)}`);
+  }
+
   return (
-    <main className="dashboard-shell">
+    <main className="dashboard-shell coach-schedule-shell">
       <AppSidebar label="Coach schedule" teamScope="both" />
 
-      <section className="content operations-page coach-schedule-page" id="coach-schedule">
-        <header className="page-header">
-          <div>
-            <p className="eyebrow">코치 일정</p>
-            <h1>코치 일정</h1>
-            <p className="lede">coach-db의 일정 중심 화면을 hub-om 데이터로 재구성했습니다. 연락처 등 개인정보는 표시하지 않습니다.</p>
+      <section className="content coach-schedule-workspace" id="coach-schedule">
+        <div className="coach-schedule-topbar">
+          <label className="coach-schedule-search">
+            <span aria-hidden="true">⌕</span>
+            <input
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="코치, 분야, 과정 검색"
+              type="search"
+              value={query}
+            />
+          </label>
+          <div className="coach-schedule-topnav">
+            <Link href="/coaches">코치 목록</Link>
+            <span aria-hidden="true" />
+            <Link href="/resources/coaches">가용 리소스</Link>
           </div>
-          <div className="header-panel">
-            <span>활동 코치</span>
-            <strong>{dashboard.totalActiveCoaches}명</strong>
+        </div>
+
+        <header className="coach-workspace-header">
+          <div>
+            <h1>코치 일정</h1>
+            <span className="coach-plan-badge">hub-om</span>
+          </div>
+          <div className="coach-workspace-actions">
+            <button onClick={goToday} type="button">오늘</button>
+            <Link href="/resources/coaches">+ 리소스 보기</Link>
           </div>
         </header>
 
-        <section className="coach-schedule-layout">
-          <section className="dashboard-panel coach-schedule-calendar" aria-label="월별 코치 일정">
-            <div className="coach-schedule-toolbar">
+        <section className="coach-schedule-doc-area">
+          <section className="coach-calendar-doc" aria-label="월별 코치 일정">
+            <div className="coach-calendar-header">
               <button aria-label="이전 달" onClick={() => moveMonth(-1)} type="button">‹</button>
               <strong>{monthDate.year}년 {monthDate.monthIndex + 1}월</strong>
               <button aria-label="다음 달" onClick={() => moveMonth(1)} type="button">›</button>
             </div>
-
-            <div className="coach-schedule-time-filters" role="group" aria-label="시간대 필터">
-              {TIME_FILTERS.map((filter) => (
-                <button
-                  aria-pressed={timeFilter === filter.key}
-                  className={timeFilter === filter.key ? "selected" : ""}
-                  key={filter.key}
-                  onClick={() => setTimeFilter(filter.key)}
-                  type="button"
-                >
-                  {filter.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="coach-schedule-weekdays" aria-hidden="true">
+            <div className="coach-calendar-weekdays" aria-hidden="true">
               {["일", "월", "화", "수", "목", "금", "토"].map((day) => <span key={day}>{day}</span>)}
             </div>
-            <div className="coach-schedule-grid">
+            <div className="coach-calendar-grid">
               {buildCalendarCells(monthDate.year, monthDate.monthIndex).map((date, index) => {
-                if (!date) return <span aria-hidden="true" className="coach-schedule-empty-day" key={`empty-${index}`} />;
+                if (!date) return <span aria-hidden="true" className="coach-calendar-empty-day" key={`empty-${index}`} />;
 
                 const count = monthCounts[date] ?? 0;
                 const isSelected = date === selectedDate;
                 const dateObject = new Date(`${date}T00:00:00`);
                 const isWeekend = dateObject.getDay() === 0 || dateObject.getDay() === 6;
+                const intensity = count >= 20 ? "high" : count >= 10 ? "medium" : count > 0 ? "low" : "none";
 
                 return (
                   <button
                     aria-pressed={isSelected}
                     className={[
-                      "coach-schedule-day",
+                      "coach-calendar-day",
                       isSelected ? "selected" : "",
                       isWeekend ? "weekend" : "",
-                      count > 0 ? "has-coaches" : ""
+                      `intensity-${intensity}`
                     ].filter(Boolean).join(" ")}
                     key={date}
                     onClick={() => setSelectedDate(date)}
@@ -114,58 +136,56 @@ export function CoachScheduleBoard({ dashboard, loadFailed }: CoachScheduleBoard
                 );
               })}
             </div>
-
-            <div className="coach-schedule-calendar-meta">
+            <div className="coach-calendar-foot">
               <span>가용일 {totalAvailableDays}일</span>
-              <Link href="/coaches">코치 목록 보기</Link>
+              <span>활동 코치 {dashboard.totalActiveCoaches}명</span>
             </div>
           </section>
 
-          <section className="dashboard-panel coach-schedule-list" aria-label="선택 날짜 가능 코치">
-            <div className="section-title">
-              <div>
-                <h2>{selectedDate ? formatSelectedDate(selectedDate) : "날짜를 선택하세요"}</h2>
-                <span>{timeFilterLabel(timeFilter)} 기준 가능 코치</span>
-              </div>
-              <div className="dashboard-table-meta">
-                <span>{filteredCoaches.length}명</span>
-              </div>
+          <section className="coach-doc-list" aria-label="선택 날짜 가능 코치">
+            <div className="coach-doc-tabs">
+              {TIME_FILTERS.map((filter) => (
+                <button
+                  className={timeFilter === filter.key ? "selected" : ""}
+                  key={filter.key}
+                  onClick={() => setTimeFilter(filter.key)}
+                  type="button"
+                >
+                  {filter.label}
+                </button>
+              ))}
+              <span>이름순 정렬</span>
             </div>
 
             {loadFailed ? (
-              <div className="empty-state coach-schedule-empty-state">
+              <div className="coach-doc-empty">
                 <strong>코치 일정 데이터를 불러오지 못했습니다.</strong>
                 <span>배포 DB 연결과 코치 import 상태를 확인하세요.</span>
               </div>
             ) : !selectedDate ? (
-              <div className="empty-state coach-schedule-empty-state">
+              <div className="coach-doc-empty">
                 <strong>조회할 날짜를 선택하세요.</strong>
-                <span>달력에서 날짜를 누르면 해당 날짜에 가능한 코치가 표시됩니다.</span>
+                <span>달력에서 날짜를 누르면 해당 날짜의 가능 코치가 표시됩니다.</span>
               </div>
             ) : filteredCoaches.length === 0 ? (
-              <div className="empty-state coach-schedule-empty-state">
+              <div className="coach-doc-empty">
                 <strong>조건에 맞는 가능 코치가 없습니다.</strong>
-                <span>다른 날짜나 시간대를 선택하세요.</span>
+                <span>다른 날짜, 시간대, 검색어를 선택하세요.</span>
               </div>
             ) : (
-              <div className="coach-schedule-coach-list">
+              <div className="coach-doc-rows">
                 {filteredCoaches.map((coach) => (
-                  <Link className="coach-schedule-coach-row" href={`/coaches/${coach.id}`} key={coach.id}>
-                    <div>
+                  <Link className="coach-doc-row" href={`/coaches/${coach.id}`} key={coach.id}>
+                    <span className="coach-doc-icon">{coach.name.slice(0, 1)}</span>
+                    <span className="coach-doc-main">
                       <strong>{coach.name}</strong>
-                      <span>{coach.workType || "근무유형 없음"}</span>
-                    </div>
-                    <div className="coach-schedule-tags">
-                      {coach.fields.length > 0 ? (
-                        coach.fields.slice(0, 3).map((field) => <span key={field}>{field}</span>)
-                      ) : (
-                        <span>분야 없음</span>
-                      )}
-                    </div>
-                    <div className="coach-schedule-row-meta">
-                      <span>{formatScheduleLabel(coach.schedules)}</span>
-                      <small>{latestEngagementLabel(coach)}</small>
-                    </div>
+                      <small>
+                        <b>{coach.workType || "근무유형 없음"}</b>
+                        {coach.fields.length > 0 && <> · {coach.fields.slice(0, 3).join(", ")}</>}
+                        <> · {latestEngagementLabel(coach)}</>
+                      </small>
+                    </span>
+                    <span className="coach-doc-time">{formatScheduleLabel(coach.schedules)}</span>
                   </Link>
                 ))}
               </div>
@@ -215,16 +235,6 @@ function coachMatchesTimeFilter(coach: CoachScheduleDashboardCoach, filter: Time
 function toMinutes(time: string): number {
   const [hour = "0", minute = "0"] = time.split(":");
   return Number(hour) * 60 + Number(minute);
-}
-
-function timeFilterLabel(filter: TimeFilterKey): string {
-  return TIME_FILTERS.find((item) => item.key === filter)?.label ?? "전체";
-}
-
-function formatSelectedDate(date: string): string {
-  const value = new Date(`${date}T00:00:00`);
-  const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
-  return `${value.getMonth() + 1}/${value.getDate()} (${weekdays[value.getDay()]})`;
 }
 
 function formatScheduleLabel(schedules: CoachScheduleDashboardCoach["schedules"]): string {

@@ -42,15 +42,14 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
         </select>
       </div>
       <nav className="nav-list">
-        <Link className={pathname === "/dashboard" ? "active" : ""} href={hrefWithTeam("/dashboard")}>대시보드</Link>
-        <Link className={isOperationsPage ? "active" : ""} href={hrefWithTeam("/operations")}>운영 현황</Link>
-        <Link className={isCoachesPage ? "active" : ""} href={hrefWithTeam("/coaches/schedule")}>코치 일정</Link>
-        <Link className={isResourcesPage ? "active" : ""} href={hrefWithTeam("/resources")}>리소스</Link>
-        <Link className={isCoachResourcesPage ? "active" : ""} href={hrefWithTeam("/resources/coaches")}>코치 리소스</Link>
-        <Link className={isDatabaseAdminPage ? "active" : ""} href={hrefWithTeam("/admin/database")}>DB 조회</Link>
-        <Link className={isImportAdminPage ? "active" : ""} href="/admin/imports">데이터 검수</Link>
+        <Link className={pathname === "/dashboard" ? "active" : ""} data-icon="☆" href={hrefWithTeam("/dashboard")}>대시보드</Link>
+        <Link className={isOperationsPage ? "active" : ""} data-icon="▤" href={hrefWithTeam("/operations")}>운영 현황</Link>
+        <Link className={isCoachesPage ? "active" : ""} data-icon="◷" href={hrefWithTeam("/coaches/schedule")}>코치 일정</Link>
+        <Link className={isResourcesPage ? "active" : ""} data-icon="◇" href={hrefWithTeam("/resources")}>리소스</Link>
+        <Link className={isCoachResourcesPage ? "active" : ""} data-icon="◎" href={hrefWithTeam("/resources/coaches")}>코치 리소스</Link>
+        <Link className={isDatabaseAdminPage ? "active" : ""} data-icon="⚙" href={hrefWithTeam("/admin/database")}>DB 조회</Link>
+        <Link className={isImportAdminPage ? "active" : ""} data-icon="▥" href="/admin/imports">데이터 검수</Link>
       </nav>
-      <Link className={`sidebar-action${isCreatePage ? " active" : ""}`} href={hrefWithTeam("/operations/new")}>+ 과정 작성</Link>
     </aside>
   );
 
