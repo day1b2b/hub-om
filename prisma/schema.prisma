@@ -373,10 +373,24 @@ model Coach {
   schedules           CoachSchedule[]
   engagements         CoachEngagement[]
   engagementSchedules CoachEngagementSchedule[]
+  privateAccessLogs   CoachPrivateAccessLog[]
 
   @@index([normalizedName])
   @@index([status, isActive])
   @@map("coaches")
+}
+
+model CoachPrivateAccessLog {
+  id              String   @id @default(uuid()) @db.Uuid
+  coachId         String   @map("coach_id") @db.Uuid
+  accessedByEmail String   @map("accessed_by_email")
+  accessedAt      DateTime @default(now()) @map("accessed_at")
+  context         String?  // 예: "coach_detail", "engagement_feedback"
+  coach           Coach    @relation(fields: [coachId], references: [id], onDelete: Cascade)
+
+  @@index([coachId, accessedAt])
+  @@index([accessedByEmail, accessedAt])
+  @@map("coach_private_access_logs")
 }
 
 model CoachPrivateProfile {
