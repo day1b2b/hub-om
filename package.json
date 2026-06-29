@@ -12,6 +12,7 @@
     "db:generate": "prisma generate",
     "db:migrate:dev": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
+    "db:archive:coach-db": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/archive-coach-db.ts",
     "db:import:operations": "node scripts/import-operations-from-local-json.mjs",
     "db:import:coach": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/import-coach-db.ts",
     "db:backfill:coach-operation-matches": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/backfill-coach-operation-matches.ts",
