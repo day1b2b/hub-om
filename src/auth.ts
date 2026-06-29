@@ -23,6 +23,8 @@ const SYNC_API_PATHS = new Set([
   "/api/sync/samsung-schedule"
 ]);
 
+const BACKUP_API_PATHS = new Set(["/api/admin/backup"]);
+
 function getHostedDomain(profile: unknown) {
   if (!profile || typeof profile !== "object" || !("hd" in profile)) return null;
 
@@ -72,7 +74,11 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         return true;
       }
 
-      if (SYNC_API_PATHS.has(pathname) && isAuthorizedSyncRequest(request.headers)) {
+      if (SYNC_API_PATHS.has(pathname) && isAuthorizedBearerRequest(request.headers, process.env.SYNC_API_SECRET)) {
+        return true;
+      }
+
+      if (BACKUP_API_PATHS.has(pathname) && isAuthorizedBearerRequest(request.headers, process.env.BACKUP_API_SECRET)) {
         return true;
       }
 
@@ -123,8 +129,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
   }
 });
 
-function isAuthorizedSyncRequest(headers: Headers) {
-  const configuredSecret = process.env.SYNC_API_SECRET;
+function isAuthorizedBearerRequest(headers: Headers, configuredSecret: string | undefined) {
   if (!configuredSecret) return false;
   return headers.get("authorization") === `Bearer ${configuredSecret}`;
 }
