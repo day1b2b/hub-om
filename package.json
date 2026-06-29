@@ -13,6 +13,7 @@
     "db:migrate:dev": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:import:operations": "node scripts/import-operations-from-local-json.mjs",
+    "db:import:coach": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/import-coach-db.ts",
     "db:import:team-members": "node scripts/import-team-members.mjs",
     "db:promote-source-only": "node scripts/promote-source-only-operations.mjs",
     "drive:import:dry-run": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/run-drive-import-dry-run.mjs",
