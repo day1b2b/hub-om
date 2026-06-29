@@ -81,8 +81,6 @@ export function CoachScheduleBoard({ dashboard, loadFailed }: CoachScheduleBoard
           </label>
           <div className="coach-schedule-topnav">
             <Link href="/coaches">코치 목록</Link>
-            <span aria-hidden="true" />
-            <Link href="/resources/coaches">가용 리소스</Link>
           </div>
         </div>
 
@@ -93,7 +91,6 @@ export function CoachScheduleBoard({ dashboard, loadFailed }: CoachScheduleBoard
           </div>
           <div className="coach-workspace-actions">
             <button onClick={goToday} type="button">오늘</button>
-            <Link href="/resources/coaches">+ 리소스 보기</Link>
           </div>
         </header>
 
