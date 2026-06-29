@@ -1,5 +1,7 @@
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
 CREATE TABLE "coachdb_archive_snapshots" (
-  "id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   "source_database" text NOT NULL,
   "source_schema" text NOT NULL DEFAULT 'public',
   "table_count" integer NOT NULL DEFAULT 0,
@@ -11,7 +13,7 @@ CREATE TABLE "coachdb_archive_snapshots" (
 );
 
 CREATE TABLE "coachdb_archive_rows" (
-  "id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   "snapshot_id" uuid NOT NULL REFERENCES "coachdb_archive_snapshots"("id") ON DELETE CASCADE,
   "table_schema" text NOT NULL,
   "table_name" text NOT NULL,
