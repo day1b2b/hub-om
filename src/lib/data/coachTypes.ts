@@ -17,11 +17,19 @@ export interface CoachSummary {
   workType: string | null;
   status: CoachStatusValue;
   isActive: boolean;
+  deletedAt: string | null;
+  fields: string[];
+  avgRating: number | null;
+  workDayCount: number;
 }
 
 export interface CoachDetail extends CoachSummary {
-  fields: string[];
   curriculums: string[];
+  coachInputUrl: string | null;
+  statusNote: string | null;
+  returnDate: string | null;
+  availabilityDetail: string | null;
+  dxTag: string | null;
 }
 
 export interface CoachEngagementView {
@@ -40,6 +48,15 @@ export interface CoachEngagementView {
 
 export interface CoachScheduleView {
   id: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+}
+
+export interface CoachEngagementScheduleView {
+  id: string;
+  engagementId: string;
+  courseName: string;
   date: string;
   startTime: string;
   endTime: string;

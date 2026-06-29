@@ -357,15 +357,24 @@ enum CoachEngagementSource {
 model Coach {
   id             String      @id @default(uuid()) @db.Uuid
   sourceCoachId  String      @unique @map("source_coach_id")
+  accessToken    String?     @unique @map("access_token")
   name           String      // 운영상 식별자 (무분별 노출 금지)
   normalizedName String      @map("normalized_name")
   workType       String?     @map("work_type")
   status         CoachStatus @default(ACTIVE) // coach-db 활동 상태
+  statusNote     String?     @map("status_note")
+  returnDate     DateTime?   @map("return_date") @db.Date
+  selfNote       String?     @map("self_note")
+  portfolioUrl   String?     @map("portfolio_url")
+  availabilityDetail String? @map("availability_detail")
+  managerNote    String?     @map("manager_note")
+  dxTag          String?     @map("dx_tag")
   isActive       Boolean     @default(true) @map("is_active") // hub-om 운영 노출 여부 (status와 의미 분리)
   displayOrder   Int?        @map("display_order")
   createdAt      DateTime    @default(now()) @map("created_at")
   updatedAt      DateTime    @updatedAt @map("updated_at")
   deletedAt      DateTime?   @map("deleted_at")
+  deletedBy      String?     @map("deleted_by")
 
   privateProfile      CoachPrivateProfile?
   fields              CoachField[]
@@ -374,6 +383,7 @@ model Coach {
   engagements         CoachEngagement[]
   engagementSchedules CoachEngagementSchedule[]
   privateAccessLogs   CoachPrivateAccessLog[]
+  scheduleAccessLogs  CoachScheduleAccessLog[]
 
   @@index([normalizedName])
   @@index([status, isActive])
@@ -459,6 +469,21 @@ model CoachSchedule {
   @@map("coach_schedules")
 }
 
+model CoachScheduleAccessLog {
+  id                String    @id @default(uuid()) @db.Uuid
+  sourceAccessLogId String?   @unique @map("source_access_log_id")
+  coachId           String    @map("coach_id") @db.Uuid
+  yearMonth         String    @map("year_month")
+  accessedAt        DateTime  @default(now()) @map("accessed_at")
+  lastEditedAt      DateTime? @map("last_edited_at")
+
+  coach Coach @relation(fields: [coachId], references: [id], onDelete: Cascade)
+
+  @@unique([coachId, yearMonth])
+  @@index([yearMonth])
+  @@map("coach_schedule_access_logs")
+}
+
 model CoachEngagement {
   id                 String                @id @default(uuid()) @db.Uuid
   sourceEngagementId String                @unique @map("source_engagement_id")
@@ -521,4 +546,22 @@ model CoachImportRun {
 
   @@index([startedAt])
   @@map("coach_import_runs")
+}
+
+model CoachSyncLog {
+  id          String    @id @default(uuid()) @db.Uuid
+  type        String
+  status      String
+  totalRows   Int       @default(0) @map("total_rows")
+  created     Int       @default(0)
+  updated     Int       @default(0)
+  skipped     Int       @default(0)
+  errors      Int       @default(0)
+  errorDetail String?   @map("error_detail")
+  triggeredBy String    @map("triggered_by")
+  startedAt   DateTime  @default(now()) @map("started_at")
+  finishedAt  DateTime? @map("finished_at")
+
+  @@index([type, startedAt])
+  @@map("coach_sync_logs")
 }

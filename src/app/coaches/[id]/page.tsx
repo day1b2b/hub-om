@@ -1,9 +1,7 @@
 import { notFound } from "next/navigation";
 import { CoachDetailView } from "@/features/coaches/CoachDetail";
-import { isCoachPiiViewer } from "@/lib/auth/requireAdminSession";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getCoachRepository } from "@/lib/data/coachRepositoryFactory";
-import { readCoachPrivateProfile } from "@/lib/data/coachPrivateAccess";
 import type { CoachDetailTab } from "@/features/coaches/CoachDetail";
 
 export const dynamic = "force-dynamic";
@@ -14,11 +12,12 @@ interface CoachDetailPageProps {
 }
 
 export default async function CoachDetailPage({ params, searchParams }: CoachDetailPageProps) {
-  const session = await requireWorkspaceSession();
+  await requireWorkspaceSession();
   const { id } = await params;
   const query = await searchParams;
-  const admin = isCoachPiiViewer(session.user?.email);
   const selectedTab = resolveTab(firstParam(query.tab));
+  const selectedMonth = resolveMonth(firstParam(query.month));
+  const monthRange = rangeFromMonth(selectedMonth);
 
   const repository = getCoachRepository();
   const coach = await repository.getCoachById(id);
@@ -27,19 +26,18 @@ export default async function CoachDetailPage({ params, searchParams }: CoachDet
     notFound();
   }
 
-  const [engagements, schedules] = await Promise.all([
+  const [engagements, schedules, engagementSchedules] = await Promise.all([
     repository.listEngagements(id),
-    repository.listSchedules(id, currentMonthRange())
+    repository.listSchedules(id, monthRange),
+    repository.listEngagementSchedules(id, monthRange)
   ]);
-
-  // PII는 admin일 때만 서버사이드에서 조회한다. (비-admin이 호출하면 throw)
-  const privateProfile = admin ? await readCoachPrivateProfile(id, "coach_detail") : null;
 
   return (
     <CoachDetailView
       coach={coach}
+      engagementSchedules={engagementSchedules}
       engagements={engagements}
-      privateProfile={privateProfile}
+      selectedMonth={selectedMonth}
       schedules={schedules}
       selectedTab={selectedTab}
     />
@@ -55,10 +53,16 @@ function resolveTab(value: string | undefined): CoachDetailTab {
   return "profile";
 }
 
-function currentMonthRange() {
+function resolveMonth(value: string | undefined): string {
+  if (value && /^\d{4}-(0[1-9]|1[0-2])$/.test(value)) return value;
   const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), 1);
-  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function rangeFromMonth(yearMonth: string) {
+  const [year, month] = yearMonth.split("-").map(Number);
+  const start = new Date(year, month - 1, 1);
+  const end = new Date(year, month, 0);
   return { from: formatDate(start), to: formatDate(end) };
 }
 

@@ -5,6 +5,7 @@ import {
 } from "@prisma/client";
 import type {
   CoachDetail,
+  CoachEngagementScheduleView,
   CoachEngagementStatusValue,
   CoachEngagementView,
   CoachScheduleDashboard,
@@ -24,6 +25,7 @@ import {
   toIntervals,
   type TimeInterval
 } from "./scheduleBitmap";
+import { buildSkillfloCoachUrl } from "@/lib/coaches/skillfloCoachUrl";
 
 const COACH_STATUS: Record<PrismaCoachStatus, CoachStatusValue> = {
   PENDING: "pending",
@@ -49,36 +51,76 @@ export class PrismaCoachRepository implements CoachRepository {
         name: true,
         workType: true,
         status: true,
-        isActive: true
+        statusNote: true,
+        returnDate: true,
+        availabilityDetail: true,
+        dxTag: true,
+        isActive: true,
+        deletedAt: true,
+        fields: {
+          select: { tag: { select: { name: true } } }
+        },
+        engagements: {
+          select: { rating: true }
+        },
+        engagementSchedules: {
+          where: { cancelledAt: null },
+          select: { date: true }
+        }
       },
       orderBy: [{ displayOrder: "asc" }, { normalizedName: "asc" }]
     });
 
-    return coaches.map((coach) => ({
-      id: coach.id,
-      name: coach.name,
-      workType: coach.workType,
-      status: COACH_STATUS[coach.status],
-      isActive: coach.isActive
-    }));
+    return coaches.map((coach) => {
+      const ratings = coach.engagements
+        .map((engagement) => engagement.rating)
+        .filter((rating): rating is number => typeof rating === "number");
+      const workDates = new Set(coach.engagementSchedules.map((schedule) => toDateString(schedule.date)));
+
+      return {
+        id: coach.id,
+        name: coach.name,
+        workType: coach.workType,
+        status: COACH_STATUS[coach.status],
+        isActive: coach.isActive,
+        deletedAt: coach.deletedAt ? coach.deletedAt.toISOString() : null,
+        fields: coach.fields.map((field) => field.tag.name),
+        avgRating: ratings.length > 0 ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length : null,
+        workDayCount: workDates.size
+      };
+    });
   }
 
   async getCoachById(id: string): Promise<CoachDetail | null> {
     const prisma = getPrismaClient();
     // 공개 필드 + 분야/커리큘럼 이름만 select. 민감 컬럼은 선택하지 않는다.
     const coach = await prisma.coach.findFirst({
-      where: { id, deletedAt: null },
+      where: { id },
       select: {
         id: true,
+        sourceCoachId: true,
+        accessToken: true,
         name: true,
         workType: true,
         status: true,
+        statusNote: true,
+        returnDate: true,
+        availabilityDetail: true,
+        dxTag: true,
         isActive: true,
+        deletedAt: true,
         fields: {
           select: { tag: { select: { name: true } } }
         },
         curriculums: {
           select: { tag: { select: { name: true } } }
+        },
+        engagements: {
+          select: { rating: true }
+        },
+        engagementSchedules: {
+          where: { cancelledAt: null },
+          select: { date: true }
         }
       }
     });
@@ -87,14 +129,28 @@ export class PrismaCoachRepository implements CoachRepository {
       return null;
     }
 
+    const archivedDetail = await loadArchivedCoachPublicDetail(coach.sourceCoachId);
+    const ratings = coach.engagements
+      .map((engagement) => engagement.rating)
+      .filter((rating): rating is number => typeof rating === "number");
+    const workDates = new Set(coach.engagementSchedules.map((schedule) => toDateString(schedule.date)));
+
     return {
       id: coach.id,
       name: coach.name,
       workType: coach.workType,
       status: COACH_STATUS[coach.status],
       isActive: coach.isActive,
+      deletedAt: coach.deletedAt ? coach.deletedAt.toISOString() : null,
       fields: coach.fields.map((field) => field.tag.name),
-      curriculums: coach.curriculums.map((curriculum) => curriculum.tag.name)
+      avgRating: ratings.length > 0 ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length : null,
+      workDayCount: workDates.size,
+      curriculums: coach.curriculums.map((curriculum) => curriculum.tag.name),
+      coachInputUrl: buildSkillfloCoachUrl(coach.accessToken),
+      statusNote: coach.statusNote ?? archivedDetail?.statusNote ?? null,
+      returnDate: coach.returnDate ? toDateString(coach.returnDate) : archivedDetail?.returnDate ?? null,
+      availabilityDetail: coach.availabilityDetail ?? archivedDetail?.availabilityDetail ?? null,
+      dxTag: coach.dxTag ?? archivedDetail?.dxTag ?? null
     };
   }
 
@@ -155,6 +211,42 @@ export class PrismaCoachRepository implements CoachRepository {
 
     return schedules.map((schedule) => ({
       id: schedule.id,
+      date: toDateString(schedule.date),
+      startTime: schedule.startTime,
+      endTime: schedule.endTime
+    }));
+  }
+
+  async listEngagementSchedules(coachId: string, range: DateRange): Promise<CoachEngagementScheduleView[]> {
+    const prisma = getPrismaClient();
+    const schedules = await prisma.coachEngagementSchedule.findMany({
+      where: {
+        coachId,
+        cancelledAt: null,
+        date: {
+          gte: parseDate(range.from),
+          lte: parseDate(range.to)
+        }
+      },
+      select: {
+        id: true,
+        engagementId: true,
+        date: true,
+        startTime: true,
+        endTime: true,
+        engagement: {
+          select: {
+            courseName: true
+          }
+        }
+      },
+      orderBy: [{ date: "asc" }, { startTime: "asc" }]
+    });
+
+    return schedules.map((schedule) => ({
+      id: schedule.id,
+      engagementId: schedule.engagementId,
+      courseName: schedule.engagement.courseName,
       date: toDateString(schedule.date),
       startTime: schedule.startTime,
       endTime: schedule.endTime
@@ -296,12 +388,53 @@ export class PrismaCoachRepository implements CoachRepository {
   }
 }
 
+interface ArchivedCoachPublicDetail {
+  statusNote: string | null;
+  returnDate: string | null;
+  availabilityDetail: string | null;
+  dxTag: string | null;
+}
+
+async function loadArchivedCoachPublicDetail(sourceCoachId: string): Promise<ArchivedCoachPublicDetail | null> {
+  const prisma = getPrismaClient();
+  const rows = await prisma.$queryRaw<Array<{ row_data: Record<string, unknown> | null }>>`
+    SELECT ar.row_data
+    FROM coachdb_archive_rows ar
+    JOIN coachdb_archive_snapshots s ON s.id = ar.snapshot_id
+    WHERE s.status = 'completed'
+      AND ar.table_schema = 'public'
+      AND ar.table_name = 'coaches'
+      AND ar.row_key = ${sourceCoachId}
+    ORDER BY s.started_at DESC
+    LIMIT 1
+  `;
+
+  const row = rows[0]?.row_data;
+  if (!row) return null;
+
+  return {
+    statusNote: stringOrNull(row.status_note),
+    returnDate: dateStringOrNull(row.return_date),
+    availabilityDetail: stringOrNull(row.availability_detail),
+    dxTag: stringOrNull(row.dx_tag)
+  };
+}
+
 function toDateString(value: Date): string {
   return value.toISOString().slice(0, 10);
 }
 
 function parseDate(value: string): Date {
   return new Date(`${value}T00:00:00.000Z`);
+}
+
+function stringOrNull(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function dateStringOrNull(value: unknown): string | null {
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
+  return null;
 }
 
 function monthRange(yearMonth: string): [Date, Date] {

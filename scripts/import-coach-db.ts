@@ -138,6 +138,7 @@ async function main(): Promise<void> {
 
 interface SourceCoach {
   id: string;
+  access_token: string | null;
   employee_id: string | null;
   name: string;
   birth_date: unknown;
@@ -146,7 +147,15 @@ interface SourceCoach {
   affiliation: string | null;
   work_type: string | null;
   status: string;
+  status_note: string | null;
+  return_date: unknown;
+  self_note: string | null;
+  portfolio_url: string | null;
+  availability_detail: string | null;
+  manager_note: string | null;
+  dx_tag: string | null;
   deleted_at: Date | null;
+  deleted_by: string | null;
 }
 
 interface SourceEngagement {
@@ -184,6 +193,14 @@ interface SourceCoachSchedule {
   updated_at: Date | null;
 }
 
+interface SourceScheduleAccessLog {
+  id: string;
+  coach_id: string;
+  year_month: string;
+  accessed_at: Date;
+  last_edited_at: Date | null;
+}
+
 interface SourceTag {
   id: string;
   name: string;
@@ -199,6 +216,7 @@ interface SourceData {
   engagements: SourceEngagement[];
   engagementSchedules: SourceEngagementSchedule[];
   coachSchedules: SourceCoachSchedule[];
+  scheduleAccessLogs: SourceScheduleAccessLog[];
   fields: SourceTag[];
   coachFields: SourceCoachTag[];
   curriculums: SourceTag[];
@@ -207,7 +225,9 @@ interface SourceData {
 
 async function readSource(client: pg.Client): Promise<SourceData> {
   const coaches = await client.query<SourceCoach>(
-    `SELECT id, employee_id, name, birth_date, phone, email, affiliation, work_type, status, deleted_at
+    `SELECT id, access_token, employee_id, name, birth_date, phone, email, affiliation, work_type,
+            status, status_note, return_date, self_note, portfolio_url, availability_detail,
+            manager_note, dx_tag, deleted_at, deleted_by
      FROM coaches`
   );
   const engagements = await client.query<SourceEngagement>(
@@ -223,6 +243,10 @@ async function readSource(client: pg.Client): Promise<SourceData> {
     `SELECT id, coach_id, date, start_time, end_time, updated_at
      FROM coach_schedules`
   );
+  const scheduleAccessLogs = await client.query<SourceScheduleAccessLog>(
+    `SELECT id, coach_id, year_month, accessed_at, last_edited_at
+     FROM schedule_access_logs`
+  );
   const fields = await client.query<SourceTag>(`SELECT id, name FROM fields`);
   const coachFields = await client.query<SourceCoachTag>(`SELECT coach_id, field_id AS tag_id FROM coach_fields`);
   const curriculums = await client.query<SourceTag>(`SELECT id, name FROM curriculums`);
@@ -235,6 +259,7 @@ async function readSource(client: pg.Client): Promise<SourceData> {
     engagements: engagements.rows,
     engagementSchedules: engagementSchedules.rows,
     coachSchedules: coachSchedules.rows,
+    scheduleAccessLogs: scheduleAccessLogs.rows,
     fields: fields.rows,
     coachFields: coachFields.rows,
     curriculums: curriculums.rows,
@@ -312,26 +337,48 @@ async function applyImport(
   for (const coach of data.coaches) {
     const result = await client.query<{ id: string }>(
       `INSERT INTO coaches (
-         source_coach_id, name, normalized_name, work_type, status, is_active, display_order, deleted_at, updated_at
+         source_coach_id, access_token, name, normalized_name, work_type, status,
+         status_note, return_date, self_note, portfolio_url, availability_detail, manager_note, dx_tag,
+         is_active, display_order, deleted_at, deleted_by, updated_at
        )
-       VALUES ($1, $2, $3, $4, $5::coach_status, $6, NULL, $7, CURRENT_TIMESTAMP)
+       VALUES ($1, $2, $3, $4, $5, $6::coach_status,
+               $7, $8, $9, $10, $11, $12, $13,
+               $14, NULL, $15, $16, CURRENT_TIMESTAMP)
        ON CONFLICT (source_coach_id) DO UPDATE SET
+         access_token = EXCLUDED.access_token,
          name = EXCLUDED.name,
          normalized_name = EXCLUDED.normalized_name,
          work_type = EXCLUDED.work_type,
          status = EXCLUDED.status,
+         status_note = EXCLUDED.status_note,
+         return_date = EXCLUDED.return_date,
+         self_note = EXCLUDED.self_note,
+         portfolio_url = EXCLUDED.portfolio_url,
+         availability_detail = EXCLUDED.availability_detail,
+         manager_note = EXCLUDED.manager_note,
+         dx_tag = EXCLUDED.dx_tag,
          is_active = EXCLUDED.is_active,
          deleted_at = EXCLUDED.deleted_at,
+         deleted_by = EXCLUDED.deleted_by,
          updated_at = CURRENT_TIMESTAMP
        RETURNING id`,
       [
         coach.id,
+        coach.access_token,
         coach.name,
         normalizeName(coach.name),
         coach.work_type,
         coach.status,
+        coach.status_note,
+        coach.return_date ?? null,
+        coach.self_note,
+        coach.portfolio_url,
+        coach.availability_detail,
+        coach.manager_note,
+        coach.dx_tag,
         coach.deleted_at === null,
-        coach.deleted_at
+        coach.deleted_at,
+        coach.deleted_by
       ]
     );
 
@@ -396,6 +443,29 @@ async function applyImport(
       [schedule.id, hubCoachId, schedule.date, schedule.start_time, schedule.end_time, schedule.updated_at]
     );
     summary.scheduleCount += 1;
+  }
+
+  // =========================================================================
+  // 4-1) schedule_access_logs → coach_schedule_access_logs
+  // =========================================================================
+  for (const log of data.scheduleAccessLogs) {
+    const hubCoachId = coachIdMap.get(log.coach_id);
+    if (!hubCoachId) {
+      summary.errorCount += 1;
+      continue;
+    }
+
+    await client.query(
+      `INSERT INTO coach_schedule_access_logs (
+         source_access_log_id, coach_id, year_month, accessed_at, last_edited_at
+       )
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (coach_id, year_month) DO UPDATE SET
+         source_access_log_id = EXCLUDED.source_access_log_id,
+         accessed_at = EXCLUDED.accessed_at,
+         last_edited_at = EXCLUDED.last_edited_at`,
+      [log.id, hubCoachId, log.year_month, log.accessed_at, log.last_edited_at]
+    );
   }
 
   // =========================================================================
