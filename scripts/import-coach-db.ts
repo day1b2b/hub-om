@@ -243,18 +243,29 @@ async function readSource(client: pg.Client): Promise<SourceData> {
 }
 
 async function loadOperationCandidates(client: pg.Client): Promise<OperationCandidate[]> {
-  const result = await client.query<{ id: string; course_name: string; start_date: unknown; end_date: unknown }>(
-    `SELECT os.id, c.course_name AS course_name, os.start_date, os.end_date
+  const result = await client.query<{
+    id: string;
+    company_name: string | null;
+    course_name: string;
+    start_date: unknown;
+    end_date: unknown;
+    time_text: string | null;
+  }>(
+    `SELECT os.id, companies.name AS company_name, c.course_name AS course_name,
+            os.start_date, os.end_date, os.time_text
      FROM operation_sessions os
      JOIN courses c ON os.course_record_id = c.id
+     JOIN companies ON c.company_id = companies.id
      WHERE os.deleted_at IS NULL`
   );
 
   return result.rows.map((row) => ({
     id: row.id,
+    companyName: row.company_name,
     courseName: row.course_name ?? "",
     startDate: dateOnly(row.start_date),
-    endDate: dateOnly(row.end_date)
+    endDate: dateOnly(row.end_date),
+    timeText: row.time_text
   }));
 }
 
@@ -268,7 +279,9 @@ function computeDryRunMatches(data: SourceData, candidates: OperationCandidate[]
       {
         courseName: engagement.course_name ?? "",
         startDate: dateOnly(engagement.start_date),
-        endDate: dateOnly(engagement.end_date)
+        endDate: dateOnly(engagement.end_date),
+        startTime: engagement.start_time,
+        endTime: engagement.end_time
       },
       candidates
     );
@@ -395,7 +408,13 @@ async function applyImport(
     const startDate = dateOnly(engagement.start_date);
     const endDate = dateOnly(engagement.end_date);
     const operationSessionId = matchOperation(
-      { courseName: engagement.course_name ?? "", startDate, endDate },
+      {
+        courseName: engagement.course_name ?? "",
+        startDate,
+        endDate,
+        startTime: engagement.start_time,
+        endTime: engagement.end_time
+      },
       candidates
     );
 
