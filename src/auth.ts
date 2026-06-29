@@ -16,6 +16,15 @@ const PUBLIC_PATHS = new Set([
   "/hub-om-logo-120.png"
 ]);
 
+const SYNC_API_PATHS = new Set([
+  "/api/admin/sync-notion",
+  "/api/sync/all",
+  "/api/sync/engagements",
+  "/api/sync/samsung-schedule"
+]);
+
+const BACKUP_API_PATHS = new Set(["/api/admin/backup"]);
+
 function getHostedDomain(profile: unknown) {
   if (!profile || typeof profile !== "object" || !("hd" in profile)) return null;
 
@@ -65,6 +74,14 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         return true;
       }
 
+      if (SYNC_API_PATHS.has(pathname) && isAuthorizedBearerRequest(request.headers, process.env.SYNC_API_SECRET)) {
+        return true;
+      }
+
+      if (BACKUP_API_PATHS.has(pathname) && isAuthorizedBearerRequest(request.headers, process.env.BACKUP_API_SECRET)) {
+        return true;
+      }
+
       return isSignedIn;
     },
     signIn({ profile, user }) {
@@ -111,6 +128,11 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     }
   }
 });
+
+function isAuthorizedBearerRequest(headers: Headers, configuredSecret: string | undefined) {
+  if (!configuredSecret) return false;
+  return headers.get("authorization") === `Bearer ${configuredSecret}`;
+}
 
 function hasGrantedScope(scope: string | undefined, expectedScope: string) {
   return scope?.split(/\s+/).includes(expectedScope) ?? false;

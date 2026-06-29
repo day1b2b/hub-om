@@ -1,23 +1,27 @@
-import { NextResponse } from "next/server";
 import { requireCoachSyncAccess } from "@/lib/coaches/syncAuth";
 import { syncContractSheetEngagements } from "@/lib/coaches/contractSheetSync";
 import { syncNotionCoaches } from "@/lib/coaches/notionCoachSync";
 import { syncSamsungSchedule } from "@/lib/coaches/samsungScheduleSync";
 import type { SyncResult } from "@/lib/coaches/syncTypes";
 import { runCoachSyncWithLog } from "@/lib/coaches/syncLog";
+import { syncJsonResponse } from "@/lib/coaches/syncRouteResponse";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  await requireCoachSyncAccess(request);
-  const result = await runAll(true);
-  return NextResponse.json({ ok: true, dryRun: true, result });
+  return syncJsonResponse(async () => {
+    await requireCoachSyncAccess(request);
+    const result = await runAll(true);
+    return { ok: true, dryRun: true, result };
+  });
 }
 
 export async function POST(request: Request) {
-  const triggeredBy = await requireCoachSyncAccess(request);
-  const result = await runCoachSyncWithLog("all", triggeredBy, () => runAll(false));
-  return NextResponse.json({ ok: true, result });
+  return syncJsonResponse(async () => {
+    const triggeredBy = await requireCoachSyncAccess(request);
+    const result = await runCoachSyncWithLog("all", triggeredBy, () => runAll(false));
+    return { ok: true, result };
+  });
 }
 
 async function runAll(dryRun: boolean): Promise<SyncResult> {

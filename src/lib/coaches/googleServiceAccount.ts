@@ -97,7 +97,12 @@ function buildJwtAssertion(config: GoogleServiceAccountConfig, now: number): str
 }
 
 function normalizePrivateKey(value: string): string {
-  return value.trim().replace(/\\n/g, "\n");
+  const trimmed = value.trim();
+  const unquoted =
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))
+      ? trimmed.slice(1, -1)
+      : trimmed;
+  return unquoted.replace(/\\n/g, "\n");
 }
 
 function base64UrlEncode(value: string | Buffer): string {
