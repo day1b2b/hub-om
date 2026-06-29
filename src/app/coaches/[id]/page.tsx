@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { CoachDetailView } from "@/features/coaches/CoachDetail";
-import { isAdminEmail } from "@/lib/auth/requireAdminSession";
+import { isCoachPiiViewer } from "@/lib/auth/requireAdminSession";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getCoachRepository } from "@/lib/data/coachRepositoryFactory";
 import { readCoachPrivateProfile } from "@/lib/data/coachPrivateAccess";
@@ -14,7 +14,7 @@ interface CoachDetailPageProps {
 export default async function CoachDetailPage({ params }: CoachDetailPageProps) {
   const session = await requireWorkspaceSession();
   const { id } = await params;
-  const admin = isAdminEmail(session.user?.email);
+  const admin = isCoachPiiViewer(session.user?.email);
 
   const coach = await getCoachRepository().getCoachById(id);
 
