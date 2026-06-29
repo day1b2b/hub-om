@@ -136,6 +136,12 @@ button {
   gap: 4px;
 }
 
+.nav-section-locked {
+  border-top: 1px solid #e6e4df;
+  margin-top: 6px;
+  padding-top: 14px;
+}
+
 .nav-section-title {
   color: #77736d;
   font-size: 11px;
@@ -165,6 +171,16 @@ button {
   font-size: 17px;
   justify-content: center;
   width: 18px;
+}
+
+.nav-section-locked a {
+  color: #77736d;
+  font-weight: 600;
+}
+
+.nav-section-locked a::before {
+  color: #77736d;
+  font-size: 14px;
 }
 
 .nav-list a.active,
