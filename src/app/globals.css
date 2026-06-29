@@ -58,40 +58,53 @@ button {
 
 .dashboard-shell {
   display: grid;
-  grid-template-columns: 144px minmax(0, 1fr);
+  grid-template-columns: 220px minmax(0, 1fr);
   min-height: 100vh;
 }
 
 .sidebar {
   align-self: start;
-  background: #f4f3ef;
-  border-right: 1px solid var(--line);
+  background: #fbfbfa;
+  border-right: 1px solid #dededa;
   color: var(--text);
+  display: flex;
+  flex-direction: column;
   height: 100vh;
   overflow-y: auto;
-  padding: 14px 8px;
+  padding: 20px 14px;
   position: sticky;
   top: 0;
 }
 
 .brand {
   align-items: center;
+  background: transparent;
+  border: 0;
   display: flex;
   gap: 8px;
-  margin-bottom: 18px;
+  margin-bottom: 28px;
+  padding: 0;
 }
 
 .brand-mark {
   align-items: center;
-  background: var(--green-bg);
-  border-radius: 8px;
-  color: var(--green);
+  background: #f05a28;
+  border-radius: 4px;
+  color: transparent;
   display: inline-flex;
-  font-size: 12px;
+  font-size: 0;
   font-weight: 700;
-  height: 32px;
+  height: 24px;
   justify-content: center;
-  width: 32px;
+  width: 24px;
+}
+
+.brand-mark::after {
+  background: #ffffff;
+  border-radius: 2px;
+  content: "";
+  height: 9px;
+  width: 9px;
 }
 
 .brand strong,
@@ -101,12 +114,12 @@ button {
 
 .brand span {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
   margin-top: 3px;
 }
 
 .brand strong {
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .sidebar .brand > div {
@@ -121,71 +134,55 @@ button {
 .nav-list a {
   align-items: center;
   border-radius: 6px;
-  color: #5f5e5a;
+  color: #4f4d49;
   display: inline-flex;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 600;
+  gap: 10px;
   min-height: 34px;
   padding: 0 10px;
   white-space: nowrap;
 }
 
+.nav-list a::before {
+  color: #4f4d49;
+  content: attr(data-icon);
+  display: inline-flex;
+  font-size: 17px;
+  justify-content: center;
+  width: 18px;
+}
+
 .nav-list a.active,
 .nav-list a:hover {
-  background: #e9f1dd;
-  color: #4f7f47;
+  background: #eeeeec;
+  color: #22211f;
 }
 
 .sidebar-scope {
-  border-bottom: 1px solid #deded9;
-  border-top: 1px solid #deded9;
+  background: #eeeeec;
+  border: 0;
+  border-radius: 6px;
   display: grid;
   gap: 6px;
   margin-bottom: 10px;
-  padding: 10px 2px;
+  margin-top: 6px;
+  padding: 10px;
 }
 
 .sidebar-scope label {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 700;
+  display: none;
 }
 
 .sidebar-scope select {
-  background: #ffffff;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  color: var(--text);
-  font-size: 12px;
-  font-weight: 700;
-  min-height: 30px;
-  width: 100%;
-}
-
-.sidebar-action {
-  align-items: center;
-  background: #ffffff;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  color: var(--text);
-  display: inline-flex;
-  font-size: 12px;
+  background: transparent;
+  border: 0;
+  color: #22211f;
+  font-size: 14px;
   font-weight: 800;
-  justify-content: center;
-  margin-top: 10px;
-  min-height: 30px;
-  padding: 0 10px;
-  white-space: nowrap;
-}
-
-.sidebar-action:hover {
-  background: #e9f1dd;
-  color: var(--green);
-}
-
-.sidebar-action.active {
-  background: var(--green-bg);
-  color: var(--green);
+  min-height: 24px;
+  padding: 0;
+  width: 100%;
 }
 
 .auth-status-panel {
@@ -196,11 +193,11 @@ button {
   box-shadow: none;
   display: grid;
   gap: 6px;
-  left: 10px;
+  left: 16px;
   padding: 9px;
   position: fixed;
-  bottom: 14px;
-  width: 124px;
+  bottom: 70px;
+  width: 188px;
   z-index: 20;
 }
 
@@ -5916,276 +5913,403 @@ td span {
   overflow: hidden;
 }
 
-.coach-schedule-layout {
-  align-items: start;
-  display: grid;
-  gap: 12px;
-  grid-template-columns: minmax(320px, 390px) minmax(0, 1fr);
+.coach-schedule-shell {
+  background: #fbfbfa;
 }
 
-.coach-schedule-calendar,
-.coach-schedule-list {
+.coach-schedule-workspace {
+  gap: 24px;
+  max-width: 1480px;
+  padding: 22px 58px 54px;
+  width: min(100%, 1480px);
+}
+
+.coach-schedule-topbar {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.coach-schedule-search {
+  align-items: center;
+  background: #efefee;
+  border-radius: 8px;
+  color: #77736e;
+  display: flex;
+  gap: 10px;
+  min-height: 42px;
+  padding: 0 14px;
+  width: min(100%, 535px);
+}
+
+.coach-schedule-search span {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.coach-schedule-search input {
+  background: transparent;
+  border: 0;
+  color: #262522;
+  flex: 1;
+  font: inherit;
+  font-size: 15px;
+  outline: 0;
+}
+
+.coach-schedule-topnav {
+  align-items: center;
+  color: #797570;
+  display: flex;
+  gap: 18px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.coach-schedule-topnav a {
+  color: #22211f;
+}
+
+.coach-schedule-topnav span {
+  background: #c9c6c0;
+  display: block;
+  height: 24px;
+  width: 1px;
+}
+
+.coach-workspace-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.coach-workspace-header > div:first-child {
+  align-items: center;
+  display: flex;
+  gap: 10px;
   min-width: 0;
 }
 
-.coach-schedule-toolbar {
+.coach-workspace-header h1 {
+  color: #242321;
+  font-size: 28px;
+  line-height: 1.2;
+}
+
+.coach-plan-badge {
+  border: 2px solid #e4b64d;
+  border-radius: 999px;
+  color: #8c7436;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 3px 8px;
+  text-transform: uppercase;
+}
+
+.coach-workspace-actions {
   align-items: center;
-  border-bottom: 1px solid var(--line);
+  display: flex;
+  gap: 10px;
+}
+
+.coach-workspace-actions button,
+.coach-workspace-actions a {
+  align-items: center;
+  background: #ffffff;
+  border: 1.5px solid #9f9d98;
+  border-radius: 8px;
+  color: #4a4743;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  min-height: 48px;
+  padding: 0 18px;
+}
+
+.coach-workspace-actions a {
+  background: #222222;
+  border-color: #222222;
+  color: #ffffff;
+}
+
+.coach-schedule-doc-area {
+  align-items: start;
+  display: grid;
+  gap: 34px;
+  grid-template-columns: 370px minmax(0, 1fr);
+}
+
+.coach-calendar-doc {
+  background: #ffffff;
+  border: 1px solid #dededa;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.coach-calendar-header {
+  align-items: center;
   display: grid;
   gap: 8px;
-  grid-template-columns: 32px minmax(0, 1fr) 32px;
-  padding: 12px;
+  grid-template-columns: 36px minmax(0, 1fr) 36px;
+  padding: 14px;
   text-align: center;
 }
 
-.coach-schedule-toolbar button {
-  align-items: center;
-  background: #fbfcfe;
-  border: 1px solid var(--line);
+.coach-calendar-header button {
+  background: #ffffff;
+  border: 1px solid #dededa;
   border-radius: 6px;
-  color: var(--muted);
+  color: #4f4d49;
   cursor: pointer;
-  display: inline-flex;
-  font-size: 18px;
+  font: inherit;
+  font-size: 20px;
   font-weight: 800;
-  height: 32px;
-  justify-content: center;
+  height: 34px;
 }
 
-.coach-schedule-toolbar button:hover {
-  border-color: #bfd2ee;
-  color: var(--blue);
-}
-
-.coach-schedule-toolbar strong {
-  color: var(--text);
+.coach-calendar-header strong {
+  color: #242321;
   font-size: 15px;
 }
 
-.coach-schedule-time-filters {
-  border-bottom: 1px solid var(--line);
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 10px 12px;
-}
-
-.coach-schedule-time-filters button {
-  background: #f6f8fb;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 700;
-  min-height: 28px;
-  padding: 0 10px;
-}
-
-.coach-schedule-time-filters button.selected {
-  background: #eaf3fe;
-  border-color: #c8ddf7;
-  color: var(--blue);
-}
-
-.coach-schedule-weekdays,
-.coach-schedule-grid {
+.coach-calendar-weekdays,
+.coach-calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
 }
 
-.coach-schedule-weekdays {
-  color: var(--muted);
+.coach-calendar-weekdays {
+  color: #8b8782;
   font-size: 11px;
   font-weight: 800;
-  padding: 10px 12px 4px;
+  padding: 0 14px 6px;
   text-align: center;
 }
 
-.coach-schedule-grid {
+.coach-calendar-grid {
   gap: 5px;
-  padding: 0 12px 12px;
+  padding: 0 14px 14px;
 }
 
-.coach-schedule-empty-day,
-.coach-schedule-day {
+.coach-calendar-empty-day,
+.coach-calendar-day {
   aspect-ratio: 1 / 1;
   min-width: 0;
 }
 
-.coach-schedule-day {
+.coach-calendar-day {
   align-items: center;
   background: #ffffff;
   border: 1px solid transparent;
-  border-radius: 8px;
-  color: var(--text);
+  border-radius: 7px;
+  color: #242321;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   font: inherit;
   justify-content: center;
-  line-height: 1.2;
-  padding: 4px;
+  line-height: 1.15;
+  padding: 3px;
 }
 
-.coach-schedule-day:hover {
-  background: #f7f9fc;
+.coach-calendar-day.weekend span {
+  color: #a2645c;
 }
 
-.coach-schedule-day.weekend span {
-  color: #9f5f5f;
+.coach-calendar-day.intensity-low strong {
+  background: #fff4cf;
 }
 
-.coach-schedule-day.selected {
-  background: #eaf3fe;
-  border-color: #b8d4f2;
-  color: var(--blue);
+.coach-calendar-day.intensity-medium strong {
+  background: #ffd77a;
 }
 
-.coach-schedule-day span {
-  font-size: 13px;
-  font-weight: 700;
+.coach-calendar-day.intensity-high strong {
+  background: #f7ad2b;
 }
 
-.coach-schedule-day strong {
-  align-items: center;
-  background: #f0f5fb;
-  border-radius: 999px;
-  color: #8c97a5;
-  display: inline-flex;
-  font-size: 11px;
+.coach-calendar-day.selected {
+  border-color: #22211f;
+  box-shadow: 0 0 0 1px #22211f;
+}
+
+.coach-calendar-day span {
+  font-size: 12px;
   font-weight: 800;
-  height: 20px;
+}
+
+.coach-calendar-day strong {
+  align-items: center;
+  background: #eeeeec;
+  border-radius: 999px;
+  color: #22211f;
+  display: inline-flex;
+  font-size: 10px;
+  font-weight: 900;
+  height: 19px;
   justify-content: center;
   margin-top: 3px;
-  min-width: 20px;
+  min-width: 19px;
   padding: 0 5px;
 }
 
-.coach-schedule-day.has-coaches strong {
-  background: #e2f0ff;
-  color: var(--blue);
-}
-
-.coach-schedule-day.selected strong {
-  background: #ffffff;
-  color: var(--blue);
-}
-
-.coach-schedule-calendar-meta {
-  align-items: center;
-  border-top: 1px solid var(--line);
-  color: var(--muted);
+.coach-calendar-foot {
+  border-top: 1px solid #dededa;
+  color: #77736e;
   display: flex;
   font-size: 12px;
-  justify-content: space-between;
-  padding: 10px 12px;
-}
-
-.coach-schedule-calendar-meta a {
-  color: var(--blue);
-  font-weight: 800;
-}
-
-.coach-schedule-list .section-title {
-  align-items: center;
-  border-bottom: 1px solid var(--line);
-  display: flex;
+  font-weight: 700;
   justify-content: space-between;
   padding: 12px 14px;
 }
 
-.coach-schedule-list .section-title > div:first-child {
-  display: grid;
-  gap: 3px;
+.coach-doc-list {
   min-width: 0;
 }
 
-.coach-schedule-list .section-title span {
-  color: var(--muted);
-  font-size: 12px;
+.coach-doc-tabs {
+  align-items: center;
+  border-bottom: 1px solid #dededa;
+  display: flex;
+  gap: 22px;
+  margin-bottom: 14px;
 }
 
-.coach-schedule-coach-list {
+.coach-doc-tabs button {
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: #77736e;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  min-height: 40px;
+  padding: 0 2px;
+}
+
+.coach-doc-tabs button.selected {
+  border-bottom-color: #242321;
+  color: #242321;
+}
+
+.coach-doc-tabs span {
+  color: #4f4d49;
+  font-size: 14px;
+  font-weight: 700;
+  margin-left: auto;
+}
+
+.coach-doc-rows {
   display: grid;
 }
 
-.coach-schedule-coach-row {
+.coach-doc-row {
   align-items: center;
-  border-bottom: 1px solid #eef2f6;
   color: inherit;
   display: grid;
-  gap: 12px;
-  grid-template-columns: minmax(120px, 170px) minmax(120px, 1fr) minmax(180px, 1.4fr);
-  padding: 12px 14px;
+  gap: 18px;
+  grid-template-columns: 48px minmax(0, 1fr) minmax(170px, 270px);
+  min-height: 82px;
+  padding: 12px 0;
 }
 
-.coach-schedule-coach-row:hover {
-  background: #fafcff;
+.coach-doc-row:hover .coach-doc-main strong {
+  color: #1d4f86;
 }
 
-.coach-schedule-coach-row > div:first-child,
-.coach-schedule-row-meta {
+.coach-doc-icon {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #dededa;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  color: #056135;
+  display: inline-flex;
+  font-size: 20px;
+  font-weight: 900;
+  height: 48px;
+  justify-content: center;
+  width: 48px;
+}
+
+.coach-doc-main {
   display: grid;
-  gap: 4px;
+  gap: 8px;
   min-width: 0;
 }
 
-.coach-schedule-coach-row strong {
-  color: var(--text);
-  font-size: 14px;
+.coach-doc-main strong {
+  color: #242321;
+  font-size: 16px;
 }
 
-.coach-schedule-coach-row span,
-.coach-schedule-row-meta small {
-  color: var(--muted);
-  font-size: 12px;
+.coach-doc-main small,
+.coach-doc-time {
+  color: #8b8782;
+  font-size: 13px;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.coach-schedule-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-}
-
-.coach-schedule-tags span {
-  background: #f0f4f8;
-  border-radius: 999px;
-  color: #455a64;
-  font-size: 11px;
+.coach-doc-main b {
+  background: #eeeeec;
+  border-radius: 5px;
+  color: #77736e;
   font-weight: 700;
-  max-width: 130px;
   padding: 3px 8px;
 }
 
-.coach-schedule-row-meta > span {
-  color: var(--blue);
+.coach-doc-time {
+  color: #4f4d49;
   font-weight: 800;
+  text-align: right;
 }
 
-.coach-schedule-empty-state {
+.coach-doc-empty {
+  color: #77736e;
   display: grid;
-  gap: 6px;
-  padding: 48px 20px;
-  text-align: center;
+  gap: 8px;
+  padding: 48px 0;
 }
 
-@media (max-width: 920px) {
-  .coach-schedule-layout {
+.coach-doc-empty strong {
+  color: #242321;
+}
+
+@media (max-width: 1160px) {
+  .coach-schedule-doc-area {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .coach-schedule-shell {
     grid-template-columns: 1fr;
   }
 
-  .coach-schedule-coach-row {
+  .coach-schedule-workspace {
+    padding: 18px 18px 44px;
+  }
+
+  .coach-schedule-topbar,
+  .coach-workspace-header,
+  .coach-schedule-search {
+    width: 100%;
+  }
+
+  .coach-doc-row {
     align-items: start;
-    grid-template-columns: 1fr;
-    gap: 8px;
+    grid-template-columns: 48px minmax(0, 1fr);
   }
 
-  .coach-schedule-tags span {
-    max-width: 100%;
+  .coach-doc-time {
+    grid-column: 2;
+    text-align: left;
   }
 }
 
@@ -6404,9 +6528,8 @@ td span {
     grid-auto-flow: column;
   }
 
-  .sidebar-action {
-    flex: 0 0 auto;
-    margin-top: 0;
+  .auth-status-panel {
+    display: none;
   }
 
   .metrics {
