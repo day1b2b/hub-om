@@ -1,17 +1,15 @@
 /**
- * 이미 import된 coach_engagements의 operation_session_id를 hub-om DB 안에서 백필한다.
+ * coach_engagements 미매칭 건의 운영 세션 후보를 진단한다.
  *
  * 실행:
- *   npm run db:backfill:coach-operation-matches -- --dry-run
- *   npm run db:backfill:coach-operation-matches -- --apply
- *
- * COACH_DB_DATABASE_URL은 사용하지 않는다. import 이후 소스 DB 접속 env를 제거한 상태에서도 실행 가능하다.
+ *   npm run db:diagnose:coach-operation-matches
+ *   npm run db:diagnose:coach-operation-matches -- --limit=50
  */
 
 import { config } from "dotenv";
 import pg from "pg";
 import {
-  matchOperation,
+  rankOperationCandidates,
   type OperationCandidate,
   type ScheduleTimeRange
 } from "../src/lib/data/coachImport/matchOperation.ts";
@@ -33,15 +31,10 @@ interface CoachEngagementRow {
   schedule_time_ranges: string[] | null;
 }
 
-interface Summary {
-  checked: number;
-  matched: number;
-  unmatched: number;
-  updated: number;
-}
-
-function parseOptions(args: string[]): { apply: boolean } {
-  return { apply: args.includes("--apply") };
+function parseLimit(args: string[]): number {
+  const arg = args.find((value) => value.startsWith("--limit="));
+  const parsed = Number(arg?.slice("--limit=".length));
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : 30;
 }
 
 function dateOnly(value: unknown): string {
@@ -53,30 +46,34 @@ function dateOnly(value: unknown): string {
 }
 
 async function main(): Promise<void> {
-  const options = parseOptions(process.argv.slice(2));
   const targetUrl = process.env.DATABASE_URL;
-
   if (!targetUrl) {
-    console.error("[backfill-coach-operation-matches] DATABASE_URL이 없어 실행을 중단합니다.");
+    console.error("[diagnose-coach-operation-matches] DATABASE_URL이 없어 실행을 중단합니다.");
     process.exit(1);
   }
 
-  console.log(
-    `[backfill-coach-operation-matches] 모드: ${options.apply ? "apply (실제 쓰기)" : "dry-run (쓰기 없음)"}`
-  );
-
+  const limit = parseLimit(process.argv.slice(2));
   const client = new Client({ connectionString: targetUrl });
   await client.connect();
 
   try {
-    const candidates = await loadOperationCandidates(client);
-    const engagements = await loadUnmatchedCoachEngagements(client);
-    const summary: Summary = { checked: engagements.length, matched: 0, unmatched: 0, updated: 0 };
+    const [counts, candidates, engagements] = await Promise.all([
+      loadCounts(client),
+      loadOperationCandidates(client),
+      loadUnmatchedCoachEngagements(client)
+    ]);
 
-    const matches = engagements
-      .map((engagement) => ({
-        engagementId: engagement.id,
-        operationSessionId: matchOperation(
+    console.log(
+      `[diagnose-coach-operation-matches] 전체 ${counts.total}건 / 연결 ${counts.matched}건 / 미연결 ${counts.unmatched}건`
+    );
+
+    console.log("\n[미연결 course_name 상위]");
+    console.table(topCourseNames(engagements, 15));
+
+    console.log(`\n[미연결 후보 상위 ${limit}건]`);
+    console.table(
+      engagements.slice(0, limit).map((engagement) => {
+        const ranked = rankOperationCandidates(
           {
             courseName: engagement.course_name,
             coachName: engagement.coach_name,
@@ -88,48 +85,45 @@ async function main(): Promise<void> {
             scheduleTimes: parseScheduleTimeRanges(engagement.schedule_time_ranges)
           },
           candidates
-        )
-      }))
-      .filter((match) => {
-        if (match.operationSessionId) {
-          summary.matched += 1;
-          return true;
-        }
-        summary.unmatched += 1;
-        return false;
-      });
-
-    if (options.apply && matches.length > 0) {
-      await client.query("BEGIN");
-      try {
-        for (const match of matches) {
-          await client.query(
-            `UPDATE coach_engagements
-             SET operation_session_id = $1
-             WHERE id = $2 AND operation_session_id IS NULL`,
-            [match.operationSessionId, match.engagementId]
-          );
-          summary.updated += 1;
-        }
-        await client.query("COMMIT");
-      } catch (error) {
-        await client.query("ROLLBACK");
-        throw error;
-      }
-    }
-
-    console.log(
-      `[backfill-coach-operation-matches] ${options.apply ? "apply" : "dry-run"} 완료: ` +
-        `검사 ${summary.checked}건 / 매칭 ${summary.matched}건 / 미매칭 ${summary.unmatched}건 / 업데이트 ${summary.updated}건`
+        );
+        const best = ranked[0];
+        return {
+          engagement: engagement.course_name,
+          coach: engagement.coach_name ?? "",
+          dates: `${dateOnly(engagement.start_date)}~${dateOnly(engagement.end_date)}`,
+          schedules: (engagement.schedule_dates ?? []).join(","),
+          bestOperation: best?.candidate.operationId ?? "",
+          bestCompany: best?.candidate.companyName ?? "",
+          bestCourse: best?.candidate.courseName ?? "",
+          bestDates: best ? `${best.candidate.startDate}~${best.candidate.endDate}` : "",
+          score: best?.score ?? 0,
+          courseScore: best?.courseScore ?? 0,
+          dateScore: best?.dateScore ?? 0,
+          timeScore: best?.timeScore ?? 0,
+          coachScore: best?.coachScore ?? 0
+        };
+      })
     );
   } finally {
     await client.end();
   }
 }
 
+async function loadCounts(client: pg.Client): Promise<{ total: number; matched: number; unmatched: number }> {
+  const result = await client.query<{ total: number; matched: number; unmatched: number }>(
+    `SELECT count(*)::int AS total,
+            count(operation_session_id)::int AS matched,
+            count(*) FILTER (WHERE operation_session_id IS NULL)::int AS unmatched
+     FROM coach_engagements`
+  );
+
+  return result.rows[0];
+}
+
 async function loadOperationCandidates(client: pg.Client): Promise<OperationCandidate[]> {
   const result = await client.query<{
     id: string;
+    operation_id: string | null;
     company_name: string | null;
     course_name: string;
     start_date: unknown;
@@ -138,7 +132,7 @@ async function loadOperationCandidates(client: pg.Client): Promise<OperationCand
     coach_text: string | null;
     instructors_text: string | null;
   }>(
-    `SELECT os.id, companies.name AS company_name, c.course_name AS course_name,
+    `SELECT os.id, os.operation_id, companies.name AS company_name, c.course_name AS course_name,
             os.start_date, os.end_date, os.time_text, os.coach_text, os.instructors_text
      FROM operation_sessions os
      JOIN courses c ON os.course_record_id = c.id
@@ -148,6 +142,7 @@ async function loadOperationCandidates(client: pg.Client): Promise<OperationCand
 
   return result.rows.map((row) => ({
     id: row.id,
+    operationId: row.operation_id,
     companyName: row.company_name,
     courseName: row.course_name ?? "",
     startDate: dateOnly(row.start_date),
@@ -173,10 +168,23 @@ async function loadUnmatchedCoachEngagements(client: pg.Client): Promise<CoachEn
        ON ces.engagement_id = ce.id
       AND ces.cancelled_at IS NULL
      WHERE ce.operation_session_id IS NULL
-     GROUP BY ce.id, coaches.name`
+     GROUP BY ce.id, coaches.name
+     ORDER BY ce.start_date DESC, ce.course_name ASC`
   );
 
   return result.rows;
+}
+
+function topCourseNames(rows: CoachEngagementRow[], limit: number): Array<{ courseName: string; count: number }> {
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    counts.set(row.course_name, (counts.get(row.course_name) ?? 0) + 1);
+  }
+
+  return [...counts.entries()]
+    .map(([courseName, count]) => ({ courseName, count }))
+    .sort((left, right) => right.count - left.count)
+    .slice(0, limit);
 }
 
 function parseScheduleTimeRanges(values: string[] | null | undefined): ScheduleTimeRange[] {
