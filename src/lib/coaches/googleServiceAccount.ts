@@ -1,7 +1,9 @@
 import { createSign } from "node:crypto";
+import { readXlsxRows, type SpreadsheetRows } from "./xlsxReader";
 
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_SHEETS_URL = "https://sheets.googleapis.com/v4/spreadsheets";
+const GOOGLE_DRIVE_URL = "https://www.googleapis.com/drive/v3/files";
 
 interface GoogleTokenResponse {
   access_token?: string;
@@ -42,6 +44,14 @@ export async function readGoogleSheetValues(
   range: string,
   config = readGoogleServiceAccountConfig()
 ): Promise<string[][]> {
+  return (await readGoogleSpreadsheetRows(spreadsheetId, range, config)).values;
+}
+
+export async function readGoogleSpreadsheetRows(
+  spreadsheetId: string,
+  range: string,
+  config = readGoogleServiceAccountConfig()
+): Promise<SpreadsheetRows> {
   assertGoogleConfig(config);
   const token = await getGoogleAccessToken(config);
   const url = `${GOOGLE_SHEETS_URL}/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}?majorDimension=ROWS`;
@@ -50,11 +60,27 @@ export async function readGoogleSheetValues(
   });
 
   if (!response.ok) {
-    throw new Error(`Google Sheets read failed (${response.status}): ${await response.text()}`);
+    const text = await response.text();
+    if (response.status === 400 && /Office file/.test(text)) {
+      return readOfficeSpreadsheetRows(spreadsheetId, range, token);
+    }
+    throw new Error(`Google Sheets read failed (${response.status}): ${text}`);
   }
 
   const payload = (await response.json()) as { values?: string[][] };
-  return payload.values ?? [];
+  return { values: payload.values ?? [], struckCells: new Set() };
+}
+
+async function readOfficeSpreadsheetRows(fileId: string, range: string, token: string): Promise<SpreadsheetRows> {
+  const response = await fetch(`${GOOGLE_DRIVE_URL}/${encodeURIComponent(fileId)}?alt=media`, {
+    headers: { authorization: `Bearer ${token}` }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Google Drive file download failed (${response.status}): ${await response.text()}`);
+  }
+
+  return readXlsxRows(Buffer.from(await response.arrayBuffer()), range);
 }
 
 async function getGoogleAccessToken(config: GoogleServiceAccountConfig): Promise<string> {
@@ -80,7 +106,10 @@ async function getGoogleAccessToken(config: GoogleServiceAccountConfig): Promise
 }
 
 function buildJwtAssertion(config: GoogleServiceAccountConfig, now: number): string {
-  const scope = "https://www.googleapis.com/auth/spreadsheets.readonly";
+  const scope = [
+    "https://www.googleapis.com/auth/spreadsheets.readonly",
+    "https://www.googleapis.com/auth/drive.readonly"
+  ].join(" ");
   const header = base64UrlEncode(JSON.stringify({ alg: "RS256", typ: "JWT" }));
   const claims = base64UrlEncode(
     JSON.stringify({

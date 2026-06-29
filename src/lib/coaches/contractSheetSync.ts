@@ -1,7 +1,7 @@
 import { CoachEngagementSource, CoachEngagementStatus, CoachStatus, type Prisma } from "@prisma/client";
 import { generateCoachAccessToken, normalizeCoachName } from "./accessToken";
 import { parseLooseDate, toDateKey } from "./dateParse";
-import { readGoogleSheetValues } from "./googleServiceAccount";
+import { readGoogleSpreadsheetRows } from "./googleServiceAccount";
 import { cell, expandWeekdaySchedules, normalizeEmail, normalizePhone, parseWorkSchedules, type WorkSchedule } from "./sheetParsers";
 import type { SyncResult } from "./syncTypes";
 import { emptySyncResult } from "./syncTypes";
@@ -25,7 +25,7 @@ interface ParsedEngagement {
 
 export async function syncContractSheetEngagements(dryRun: boolean): Promise<SyncResult> {
   const { spreadsheetId, range } = readContractSheetConfig();
-  const rows = await readGoogleSheetValues(spreadsheetId, range);
+  const { values: rows, struckCells } = await readGoogleSpreadsheetRows(spreadsheetId, range);
   const result = emptySyncResult(dryRun);
   result.totalRows = Math.max(0, rows.length - 1);
 
@@ -56,7 +56,7 @@ export async function syncContractSheetEngagements(dryRun: boolean): Promise<Syn
       result.skipped++;
       continue;
     }
-    if (courseName.includes("취소") || cancelText.includes("취소")) {
+    if (courseName.includes("취소") || cancelText.includes("취소") || struckCells.has(`${index}:7`)) {
       result.skipped++;
       continue;
     }
