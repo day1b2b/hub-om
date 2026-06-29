@@ -20,7 +20,6 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
   const isCoachListPage =
     pathname === "/coaches" ||
     ((pathname?.startsWith("/coaches/") ?? false) && !isCoachSchedulePage);
-  const isCoachResourcesPage = pathname?.startsWith("/resources/coaches") ?? false;
   const isResourcesPage = pathname === "/resources";
 
   return (
@@ -36,7 +35,6 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
         <div className="nav-section">
           <div className="nav-section-title">코치</div>
           <Link className={isCoachSchedulePage ? "active" : ""} data-icon="◷" href="/coaches/schedule">코치 일정</Link>
-          <Link className={isCoachResourcesPage ? "active" : ""} data-icon="◎" href="/resources/coaches">코치 리소스</Link>
           <Link className={isCoachListPage ? "active" : ""} data-icon="☰" href="/coaches">코치 목록</Link>
         </div>
 

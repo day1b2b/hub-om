@@ -2532,6 +2532,29 @@ td span {
   padding: 0 8px;
 }
 
+.coach-detail-tabs {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  gap: 24px;
+  min-height: 42px;
+}
+
+.coach-detail-tabs a {
+  align-items: center;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 800;
+  min-height: 42px;
+}
+
+.coach-detail-tabs a.selected {
+  border-bottom-color: var(--blue);
+  color: var(--blue);
+}
+
 .detail-section {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -2659,6 +2682,45 @@ td span {
   line-height: 1.25;
   margin-top: 0;
   text-align: left;
+}
+
+.coach-detail-list {
+  display: grid;
+  padding: 6px 14px 14px;
+}
+
+.coach-detail-row {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  min-height: 44px;
+  padding: 10px 0;
+}
+
+.coach-detail-row:last-child {
+  border-bottom: 0;
+}
+
+.coach-detail-row strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.coach-detail-row span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.coach-detail-row-wide {
+  align-items: flex-start;
+}
+
+.coach-detail-row-wide > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
 }
 
 .panel-title-row {
