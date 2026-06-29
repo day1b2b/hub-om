@@ -295,9 +295,9 @@ async function applyImport(
   for (const coach of data.coaches) {
     const result = await client.query<{ id: string }>(
       `INSERT INTO coaches (
-         source_coach_id, name, normalized_name, work_type, status, is_active, display_order, deleted_at
+         source_coach_id, name, normalized_name, work_type, status, is_active, display_order, deleted_at, updated_at
        )
-       VALUES ($1, $2, $3, $4, $5::coach_status, $6, NULL, $7)
+       VALUES ($1, $2, $3, $4, $5::coach_status, $6, NULL, $7, CURRENT_TIMESTAMP)
        ON CONFLICT (source_coach_id) DO UPDATE SET
          name = EXCLUDED.name,
          normalized_name = EXCLUDED.normalized_name,
@@ -328,8 +328,8 @@ async function applyImport(
     //    name 등 운영 식별자는 절대 넣지 않는다.
     // =======================================================================
     await client.query(
-      `INSERT INTO coach_private_profiles (coach_id, employee_id, phone, email, birth_date, affiliation)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO coach_private_profiles (coach_id, employee_id, phone, email, birth_date, affiliation, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
        ON CONFLICT (coach_id) DO UPDATE SET
          employee_id = EXCLUDED.employee_id,
          phone = EXCLUDED.phone,
