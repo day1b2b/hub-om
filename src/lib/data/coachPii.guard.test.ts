@@ -44,11 +44,11 @@ for (const file of PUBLIC_LAYER_FILES) {
   });
 }
 
-test("coachPrivateAccess.ts는 assertAdminSession을 호출한다", () => {
+test("coachPrivateAccess.ts는 fail-closed 게이트(assertCoachPiiAccess)를 호출한다", () => {
   const source = readSource("coachPrivateAccess.ts");
   assert.ok(
-    source.includes("assertAdminSession"),
-    "coachPrivateAccess.ts가 assertAdminSession을 참조하지 않음 — admin 게이팅 누락"
+    source.includes("assertCoachPiiAccess"),
+    "coachPrivateAccess.ts가 assertCoachPiiAccess를 참조하지 않음 — fail-closed PII 게이팅 누락"
   );
 });
 
