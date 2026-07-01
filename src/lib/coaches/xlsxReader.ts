@@ -184,24 +184,25 @@ function parseRange(range: string): ParsedRange {
   const [rawSheetName, rawCells = "A:XFD"] = range.split("!");
   const sheetName = unquoteSheetName(rawSheetName);
   const [startRaw, endRaw = startRaw] = rawCells.split(":");
-  const start = parseA1Ref(startRaw) ?? { col: 0, row: 1 };
-  const end = parseA1Ref(endRaw) ?? { col: start.col, row: Number.MAX_SAFE_INTEGER };
+  const start = parseA1Ref(startRaw) ?? { col: 0, row: null };
+  const end = parseA1Ref(endRaw) ?? { col: start.col, row: null };
 
   return {
     sheetName,
     startCol: start.col,
     endCol: end.col,
-    startRow: start.row,
-    endRow: end.row
+    // 'A:Q'처럼 행 번호가 없는 열 전체 범위면 첫 행부터 끝까지 모두 읽는다.
+    startRow: start.row ?? 1,
+    endRow: end.row ?? Number.MAX_SAFE_INTEGER
   };
 }
 
-function parseA1Ref(value: string): { col: number; row: number } | null {
+function parseA1Ref(value: string): { col: number; row: number | null } | null {
   const match = value.match(/^([A-Z]+)(\d+)?$/i);
   if (!match) return null;
   return {
     col: columnToIndex(match[1]),
-    row: match[2] ? Number(match[2]) : 1
+    row: match[2] ? Number(match[2]) : null
   };
 }
 
