@@ -14,6 +14,7 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
   void teamScope;
   const isDatabaseAdminPage = pathname?.startsWith("/admin/database") ?? false;
   const isImportAdminPage = pathname?.startsWith("/admin/imports") ?? false;
+  const isSyncAdminPage = pathname?.startsWith("/admin/sync") ?? false;
   const isCreatePage = pathname === "/operations/new";
   const isOperationsPage = pathname === "/operations" || (pathname?.startsWith("/operations/") && !isCreatePage);
   const isCoachSchedulePage = pathname === "/coaches/schedule";
@@ -45,6 +46,7 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
           <Link className={isResourcesPage ? "active" : ""} data-icon="🔒" href="/resources">리소스</Link>
           <Link className={isDatabaseAdminPage ? "active" : ""} data-icon="🔒" href="/admin/database">DB 조회</Link>
           <Link className={isImportAdminPage ? "active" : ""} data-icon="🔒" href="/admin/imports">데이터 검수</Link>
+          <Link className={isSyncAdminPage ? "active" : ""} data-icon="🔒" href="/admin/sync">데이터 동기화</Link>
         </div>
       </nav>
     </aside>
