@@ -8,6 +8,24 @@ interface Props {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
+function Field({ label, value, wide }: { label: string; value?: string | number; wide?: boolean }) {
+  return (
+    <label className={wide ? "wide-field" : ""}>
+      <span>{label}</span>
+      <div className="om-confirm-field">{value || "-"}</div>
+    </label>
+  );
+}
+
+function Badge({ value }: { value: string }) {
+  return (
+    <label>
+      <span style={{ visibility: "hidden" }}>_</span>
+      <div className={`om-confirm-field om-badge-field ${value === "Y" ? "om-badge-y" : "om-badge-n"}`}>{value}</div>
+    </label>
+  );
+}
+
 export default async function OmRequestCompletePage({ searchParams }: Props) {
   const params = await searchParams;
   const id = typeof params.id === "string" ? params.id : null;
@@ -16,73 +34,88 @@ export default async function OmRequestCompletePage({ searchParams }: Props) {
   return (
     <main className="dashboard-shell">
       <AppSidebar label="OM 배정 요청" teamScope="both" />
-      <section className="content operations-page">
-        <div className="om-request-complete">
-          <h1>요청이 제출되었습니다</h1>
-          <p>OM 배정 요청이 접수되었습니다. 담당자가 확인 후 배정해드립니다.</p>
-
-          {request && (
-            <div className="om-request-summary">
-              <h2>제출 내용 확인</h2>
-              <table className="om-summary-table">
-                <tbody>
-                  <tr><th>팀</th><td>{request.team}</td></tr>
-                  <tr><th>LD</th><td>{request.ld}</td></tr>
-                  <tr><th>기업명</th><td>{request.company}</td></tr>
-                  <tr><th>교육형태</th><td>{request.trainingType}</td></tr>
-                  {request.courseId && <tr><th>코스 ID</th><td>{request.courseId}</td></tr>}
-                  <tr><th>과정명</th><td>{request.courseName}</td></tr>
-                  {request.instructorName && <tr><th>강사명</th><td>{request.instructorName}</td></tr>}
-                  <tr><th>싱크업 링크</th><td>{request.syncupLink}</td></tr>
-                  {request.driveLink && <tr><th>드라이브 링크</th><td>{request.driveLink}</td></tr>}
-                  <tr><th>스킬플로 셋팅</th><td>{request.skillfloSetup}</td></tr>
-                  <tr><th>스킬매치 셋팅</th><td>{request.skillmatchSetup}</td></tr>
-                  <tr><th>현장 운영</th><td>{request.onSiteOperation}</td></tr>
-                  <tr><th>실습 코치 요청</th><td>{request.coachRequest}</td></tr>
-                  <tr><th>총 회차</th><td>{request.totalSessions}회</td></tr>
-                </tbody>
-              </table>
-
-              <h3>교육 일정</h3>
-              <table className="om-summary-table">
-                <thead>
-                  <tr>
-                    <th>회차</th>
-                    <th>교육일</th>
-                    <th>시작</th>
-                    <th>종료</th>
-                    <th>시수</th>
-                    <th>장소</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {request.sessions.map((s, i) => (
-                    <tr key={i}>
-                      <td>{i + 1}회차</td>
-                      <td>{s.date}</td>
-                      <td>{s.timeStart}</td>
-                      <td>{s.timeEnd}</td>
-                      <td>{s.duration || "-"}</td>
-                      <td>{s.location}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              {request.notes && (
-                <>
-                  <h3>요청사항</h3>
-                  <p className="om-summary-notes">{request.notes}</p>
-                </>
-              )}
+      <section className="content operations-page operation-create-page">
+        <header className="page-header operation-create-header">
+          <div className="om-complete-header-inner">
+            <div className="om-complete-icon">✓</div>
+            <div>
+              <h1>요청이 접수되었습니다</h1>
+              <p className="page-subtitle">담당자가 확인 후 OM을 배정해드립니다.</p>
             </div>
-          )}
-
-          <div className="om-request-complete-actions">
-            <Link className="primary-link" href="/om-request">새 요청 제출</Link>
-            <Link className="secondary-link" href="/dashboard">대시보드로 이동</Link>
           </div>
+        </header>
+
+        {request && (
+          <div className="operation-form">
+
+            <div className="operation-form-section">
+              <div className="section-title"><h2>기본 정보</h2></div>
+              <div className="operation-form-grid">
+                <Field label="팀" value={request.team} />
+                <Field label="LD" value={request.ld} />
+                <Field label="기업명" value={request.company} />
+                <Field label="교육형태" value={request.trainingType} />
+                <Field label="코스 ID" value={request.courseId} />
+                <Field label="과정명" value={request.courseName} />
+                <Field label="강사명" value={request.instructorName} />
+                <Field wide label="싱크업 링크" value={request.syncupLink} />
+                <Field wide label="드라이브 링크" value={request.driveLink} />
+              </div>
+            </div>
+
+            <div className="operation-form-section">
+              <div className="section-title"><h2>셋팅 및 운영</h2></div>
+              <div className="operation-form-grid">
+                <Field label="스킬플로 셋팅" value={request.skillfloSetup} />
+                <Field label="스킬매치 셋팅" value={request.skillmatchSetup} />
+                <Field label="현장 운영" value={request.onSiteOperation} />
+                <Field label="실습 코치 요청" value={request.coachRequest} />
+              </div>
+            </div>
+
+            <div className="operation-form-section">
+              <div className="section-title"><h2>교육 일정 · 총 {request.totalSessions}회차</h2></div>
+              <div className="om-session-list">
+                <div className="om-session-list-header">
+                  <span>회차</span>
+                  <span>교육일</span>
+                  <span>시작</span>
+                  <span>종료</span>
+                  <span>시수</span>
+                  <span>장소</span>
+                </div>
+                {request.sessions.map((s, i) => (
+                  <div className="om-session-list-row" key={i}>
+                    <span className="om-session-num">{i + 1}</span>
+                    <span>{s.date}</span>
+                    <span>{s.timeStart}</span>
+                    <span>{s.timeEnd}</span>
+                    <span>{s.duration || "-"}</span>
+                    <span className="om-session-location">{s.location}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {request.notes && (
+              <div className="operation-form-section">
+                <div className="section-title"><h2>요청사항</h2></div>
+                <div className="operation-form-grid">
+                  <label className="full-row-field">
+                    <div className="om-confirm-field om-confirm-notes">{request.notes}</div>
+                  </label>
+                </div>
+              </div>
+            )}
+
+          </div>
+        )}
+
+        <div className="om-complete-actions">
+          <Link className="primary-link" href="/om-request">새 요청 제출</Link>
+          <Link className="secondary-link" href="/dashboard">대시보드로 이동</Link>
         </div>
+
       </section>
     </main>
   );

@@ -1,9 +1,39 @@
 "use client";
 
+import Script from "next/script";
 import { useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { OmRequestInput, OmRequestSession, TrainingType, YN } from "@/lib/data/omRequest/omRequestTypes";
+
+declare global {
+  interface Window {
+    daum: {
+      Postcode: new (options: { oncomplete: (data: { roadAddress: string; buildingName: string }) => void }) => { open: () => void };
+    };
+  }
+}
+
+function AddressSearchButton({ onSelect }: { onSelect: (address: string) => void }) {
+  function handleClick() {
+    if (!window.daum?.Postcode) return;
+    new window.daum.Postcode({
+      oncomplete(data) {
+        const address = data.buildingName ? `${data.roadAddress} (${data.buildingName})` : data.roadAddress;
+        onSelect(address);
+      }
+    }).open();
+  }
+
+  return (
+    <button type="button" className="address-search-btn" onClick={handleClick} aria-label="주소 검색">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="6.5" cy="6.5" r="5" stroke="currentColor" strokeWidth="1.5"/>
+        <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+      </svg>
+    </button>
+  );
+}
 
 const TEAM_OPTIONS = ["1팀", "2팀"];
 const TRAINING_TYPE_OPTIONS: TrainingType[] = ["오프라인", "블랜디드", "비대면", "해커톤"];
@@ -169,6 +199,8 @@ export function OmRequestForm({ ldName }: { ldName: string }) {
   }
 
   return (
+    <>
+    <Script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js" strategy="lazyOnload" />
     <form className="operation-form om-request-form" onSubmit={handleSubmit}>
 
       {/* 기본 정보 */}
@@ -278,7 +310,7 @@ export function OmRequestForm({ ldName }: { ldName: string }) {
       <div className="operation-form-section">
         <div className="section-title"><h2>교육 일정</h2></div>
         <div className="operation-form-grid compact">
-          <label>
+          <label className="om-session-count-field">
             <span>총 회차<RequiredMark /></span>
             <input
               min={1}
@@ -331,13 +363,16 @@ export function OmRequestForm({ ldName }: { ldName: string }) {
                 placeholder=""
                 onChange={(e) => updateSession(idx, "duration", e.target.value)}
               />
-              <input
-                required
-                type="text"
-                value={session.location}
-                placeholder="장소"
-                onChange={(e) => updateSession(idx, "location", e.target.value)}
-              />
+              <div className="location-input-wrapper">
+                <input
+                  required
+                  type="text"
+                  value={session.location}
+                  placeholder="장소 입력 또는 검색"
+                  onChange={(e) => updateSession(idx, "location", e.target.value)}
+                />
+                <AddressSearchButton onSelect={(addr) => updateSession(idx, "location", addr)} />
+              </div>
             </div>
           ))}
         </div>
@@ -348,7 +383,6 @@ export function OmRequestForm({ ldName }: { ldName: string }) {
         <div className="section-title"><h2>요청사항</h2></div>
         <div className="operation-form-grid">
           <label className="full-row-field">
-            <span>요청사항<RequiredMark /></span>
             <textarea
               required
               rows={5}
@@ -368,5 +402,6 @@ export function OmRequestForm({ ldName }: { ldName: string }) {
         </button>
       </div>
     </form>
+    </>
   );
 }

@@ -1373,7 +1373,7 @@ select {
 .operation-form-grid select,
 .operation-form-grid textarea,
 .name-select-row select {
-  background: #fbfcfe;
+  background: #ffffff;
   border: 1px solid var(--line);
   border-radius: 7px;
   color: var(--text);
@@ -8525,31 +8525,6 @@ td span {
   margin: 0 0 12px;
 }
 
-.om-request-complete {
-  align-items: flex-start;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  max-width: 480px;
-  padding: 40px 0;
-}
-
-.om-request-complete h1 {
-  font-size: 20px;
-  margin: 0;
-}
-
-.om-request-complete p {
-  color: var(--muted);
-  margin: 0;
-}
-
-.om-request-complete-actions {
-  display: flex;
-  gap: 12px;
-  margin-top: 8px;
-}
-
 .page-subtitle {
   color: var(--muted);
   font-size: 13px;
@@ -8562,59 +8537,94 @@ td span {
   margin-left: 2px;
 }
 
-.om-request-summary {
+/* 완료 페이지 */
+.om-complete-header-inner {
+  align-items: center;
+  display: flex;
+  gap: 14px;
+}
+
+.om-complete-icon {
+  align-items: center;
+  background: var(--green-bg);
+  border-radius: 50%;
+  color: var(--green);
+  display: flex;
+  flex-shrink: 0;
+  font-size: 18px;
+  font-weight: 700;
+  height: 40px;
+  justify-content: center;
+  width: 40px;
+}
+
+.om-complete-actions {
+  display: flex;
+  gap: 10px;
+  margin: 8px 0 32px;
+}
+
+.om-confirm-field {
+  background: var(--surface-strong);
   border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 20px;
-  width: 100%;
-  max-width: 700px;
-}
-
-.om-request-summary h2 {
-  font-size: 15px;
-  margin: 0 0 14px;
-}
-
-.om-request-summary h3 {
+  border-radius: 7px;
+  color: var(--text);
   font-size: 13px;
-  margin: 20px 0 10px;
-  color: var(--muted);
+  min-height: 36px;
+  padding: 8px 10px;
 }
 
-.om-summary-table {
-  border-collapse: collapse;
+.om-confirm-notes {
+  line-height: 1.7;
+  min-height: 80px;
+  white-space: pre-wrap;
+}
+
+.om-session-list {
+  border: 1px solid var(--line);
+  border-radius: 6px;
   font-size: 13px;
-  width: 100%;
+  margin: 0 18px 18px;
+  overflow: hidden;
 }
 
-.om-summary-table th,
-.om-summary-table td {
+.om-session-list-header {
+  background: var(--surface-strong);
   border-bottom: 1px solid var(--line);
-  padding: 7px 10px;
+  color: var(--muted);
+  display: grid;
+  font-size: 12px;
+  font-weight: 600;
+  gap: 8px;
+  grid-template-columns: 36px 110px 72px 72px 48px 1fr;
+  padding: 8px 12px;
+  text-align: center;
+}
+
+.om-session-list-header span:last-child {
   text-align: left;
 }
 
-.om-summary-table th {
+.om-session-list-row {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 36px 110px 72px 72px 48px 1fr;
+  padding: 8px 12px;
+  text-align: center;
+}
+
+.om-session-list-row:last-child {
+  border-bottom: none;
+}
+
+.om-session-num {
   color: var(--muted);
-  font-weight: 500;
-  width: 140px;
-  white-space: nowrap;
 }
 
-.om-summary-table thead th {
-  background: var(--surface-strong);
-  font-size: 12px;
-  width: auto;
-}
-
-.om-summary-notes {
-  background: var(--surface-strong);
-  border-radius: 6px;
-  font-size: 13px;
-  line-height: 1.6;
-  margin: 0;
-  padding: 12px 14px;
-  white-space: pre-wrap;
+.om-session-location {
+  text-align: left;
 }
 
 .date-input-wrapper {
@@ -8665,4 +8675,45 @@ td span {
   pointer-events: none;
   position: absolute;
   width: 0;
+}
+
+.om-session-count-field {
+  max-width: 120px;
+}
+
+.location-input-wrapper {
+  align-items: stretch;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  display: flex;
+  overflow: hidden;
+  width: 100%;
+}
+
+.location-input-wrapper input {
+  border: none !important;
+  flex: 1;
+  min-width: 0;
+  outline: none;
+}
+
+.location-input-wrapper:focus-within {
+  border-color: var(--blue);
+}
+
+.address-search-btn {
+  align-items: center;
+  background: transparent;
+  border: none;
+  border-left: 1px solid var(--line);
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  flex-shrink: 0;
+  padding: 0 8px;
+}
+
+.address-search-btn:hover {
+  background: var(--surface-strong);
+  color: var(--blue);
 }
