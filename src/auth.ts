@@ -74,6 +74,10 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         return true;
       }
 
+      if (process.env.DEV_AUTH_BYPASS === "true" && process.env.NODE_ENV !== "production") {
+        return true;
+      }
+
       if (SYNC_API_PATHS.has(pathname) && isAuthorizedBearerRequest(request.headers, process.env.SYNC_API_SECRET)) {
         return true;
       }

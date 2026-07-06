@@ -8420,3 +8420,249 @@ td span {
     grid-template-columns: repeat(3, 1fr);
   }
 }
+
+/* OM 배정 요청 */
+.om-request-form .yn-toggle-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.om-request-form .yn-btn {
+  background: var(--surface-strong);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 14px;
+}
+
+.om-request-form .yn-btn.selected {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: #fff;
+}
+
+.om-sessions-table {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  margin-top: 12px;
+  overflow: hidden;
+}
+
+.om-sessions-header {
+  background: var(--surface-strong);
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  gap: 8px;
+  grid-template-columns: 52px 148px 108px 108px 44px 1fr;
+  padding: 8px 12px;
+  text-align: center;
+}
+
+.om-sessions-row {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 52px 148px 108px 108px 44px 1fr;
+  justify-items: center;
+  padding: 6px 12px;
+}
+
+.om-sessions-row:last-child {
+  border-bottom: none;
+}
+
+.om-sessions-row .session-num {
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.om-sessions-row input {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-size: 13px;
+  padding: 4px 6px;
+  width: 100%;
+}
+
+.om-sessions-row > *:last-child {
+  justify-self: stretch;
+}
+
+.om-sessions-row select {
+  text-align: center;
+  width: 100%;
+}
+
+.om-sessions-row > *:not(:last-child) input[type="text"] {
+  text-align: center;
+}
+
+.date-input-wrapper input[type="text"] {
+  text-align: center;
+}
+
+.duration-input {
+  text-align: center;
+}
+
+.om-sessions-row input:focus {
+  border-color: var(--blue);
+  outline: none;
+}
+
+.om-request-error {
+  color: var(--red);
+  font-size: 13px;
+  margin: 0 0 12px;
+}
+
+.om-request-complete {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 480px;
+  padding: 40px 0;
+}
+
+.om-request-complete h1 {
+  font-size: 20px;
+  margin: 0;
+}
+
+.om-request-complete p {
+  color: var(--muted);
+  margin: 0;
+}
+
+.om-request-complete-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.page-subtitle {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 4px 0 0;
+}
+
+.required-mark {
+  color: var(--red);
+  font-style: normal;
+  margin-left: 2px;
+}
+
+.om-request-summary {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 20px;
+  width: 100%;
+  max-width: 700px;
+}
+
+.om-request-summary h2 {
+  font-size: 15px;
+  margin: 0 0 14px;
+}
+
+.om-request-summary h3 {
+  font-size: 13px;
+  margin: 20px 0 10px;
+  color: var(--muted);
+}
+
+.om-summary-table {
+  border-collapse: collapse;
+  font-size: 13px;
+  width: 100%;
+}
+
+.om-summary-table th,
+.om-summary-table td {
+  border-bottom: 1px solid var(--line);
+  padding: 7px 10px;
+  text-align: left;
+}
+
+.om-summary-table th {
+  color: var(--muted);
+  font-weight: 500;
+  width: 140px;
+  white-space: nowrap;
+}
+
+.om-summary-table thead th {
+  background: var(--surface-strong);
+  font-size: 12px;
+  width: auto;
+}
+
+.om-summary-notes {
+  background: var(--surface-strong);
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0;
+  padding: 12px 14px;
+  white-space: pre-wrap;
+}
+
+.date-input-wrapper {
+  align-items: stretch;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  display: flex;
+  overflow: hidden;
+  position: relative;
+}
+
+.date-input-wrapper:focus-within {
+  border-color: var(--blue);
+}
+
+.date-input-wrapper input[type="text"] {
+  border: none;
+  flex: 1;
+  min-width: 0;
+  outline: none;
+  padding: 4px 6px;
+}
+
+.date-input-wrapper input[type="text"]:focus {
+  outline: none;
+}
+
+.date-picker-btn {
+  align-items: center;
+  background: transparent;
+  border: none;
+  border-left: 1px solid var(--line);
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  flex-shrink: 0;
+  padding: 0 7px;
+}
+
+.date-picker-btn:hover {
+  background: var(--surface-strong);
+  color: var(--blue);
+}
+
+.date-picker-hidden {
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  width: 0;
+}

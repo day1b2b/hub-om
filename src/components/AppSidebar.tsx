@@ -22,6 +22,7 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
     pathname === "/coaches" ||
     ((pathname?.startsWith("/coaches/") ?? false) && !isCoachSchedulePage);
   const isResourcesPage = pathname === "/resources";
+  const isOmRequestPage = pathname?.startsWith("/om-request") ?? false;
 
   return (
     <aside className="sidebar" aria-label="hub-om 메뉴">
@@ -33,6 +34,11 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
         </div>
       </div>
       <nav className="nav-list">
+        <div className="nav-section">
+          <div className="nav-section-title">OM 배정</div>
+          <Link className={isOmRequestPage ? "active" : ""} data-icon="📋" href="/om-request">배정 요청</Link>
+        </div>
+
         <div className="nav-section">
           <div className="nav-section-title">코치</div>
           <Link className={isCoachSchedulePage ? "active" : ""} data-icon="◷" href="/coaches/schedule">코치 일정</Link>
