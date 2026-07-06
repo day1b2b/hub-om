@@ -90,16 +90,6 @@ function DateInput({ value, required, onChange }: { value: string; required?: bo
   );
 }
 
-function calcDuration(start: string, end: string): string {
-  if (!start || !end) return "-";
-  const [sh, sm] = start.split(":").map(Number);
-  const [eh, em] = end.split(":").map(Number);
-  const diff = (eh * 60 + em) - (sh * 60 + sm);
-  if (diff <= 0) return "-";
-  const h = Math.floor(diff / 60);
-  const m = diff % 60;
-  return m === 0 ? `${h}시간` : `${h}시간 ${m}분`;
-}
 
 function RequiredMark() {
   return <em className="required-mark" aria-label="필수">*</em>;
