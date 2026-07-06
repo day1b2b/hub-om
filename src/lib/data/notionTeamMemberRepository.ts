@@ -1,5 +1,5 @@
 import type { SourceTeam } from "./operationTypes";
-import type { ResourceOwnerRoster, TeamMemberRecord, TeamMemberRepository, TeamMemberRoleRoster } from "./teamMemberRepository";
+import type { ResourceOwnerRoster, TeamMemberRepository, TeamMemberRoleRoster } from "./teamMemberRepository";
 import { getResourceReadCacheTtlMs, readTimedCache, type TimedCacheEntry } from "@/lib/timedCache";
 
 const NOTION_VERSION = "2022-06-28";
@@ -81,10 +81,6 @@ export class NotionTeamMemberRepository implements TeamMemberRepository {
 
   async listRoleRosters(): Promise<TeamMemberRoleRoster> {
     return this.options.fallback.listRoleRosters();
-  }
-
-  async listMembers(): Promise<TeamMemberRecord[]> {
-    return this.options.fallback.listMembers();
   }
 
   private async listOwnersFromNotion(source: NotionTeamMemberSource): Promise<string[]> {

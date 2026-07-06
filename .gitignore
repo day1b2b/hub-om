@@ -1,6 +1,5 @@
 .omx/
 .local/
-/om-requests.json
 .DS_Store
 node_modules/
 .next/

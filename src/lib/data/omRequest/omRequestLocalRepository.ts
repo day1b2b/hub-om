@@ -46,20 +46,3 @@ export function updateOmRequestAssignment(id: string, assignedOm: string | null)
   writeAll(requests);
   return requests[idx];
 }
-
-export function updateOmRequest(id: string, input: OmRequestInput): OmRequest | null {
-  const requests = readAll();
-  const idx = requests.findIndex((r) => r.id === id);
-  if (idx === -1) return null;
-  requests[idx] = { ...requests[idx], ...input };
-  writeAll(requests);
-  return requests[idx];
-}
-
-export function deleteOmRequest(id: string): boolean {
-  const requests = readAll();
-  const next = requests.filter((r) => r.id !== id);
-  if (next.length === requests.length) return false;
-  writeAll(next);
-  return true;
-}
