@@ -2,12 +2,15 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { DEFAULT_RESOURCE_OWNER_ROSTER, DEFAULT_TEAM_MEMBER_ROLE_ROSTER } from "./defaultTeamMemberRoster";
 import type { SourceTeam } from "./operationTypes";
-import type { ResourceOwnerRoster, TeamMemberRepository, TeamMemberRoleRoster } from "./teamMemberRepository";
+import type { ResourceOwnerRoster, TeamMemberRecord, TeamMemberRepository, TeamMemberRoleRoster } from "./teamMemberRepository";
 
 interface LocalTeamMember {
   name?: string;
   role?: string;
   sourceTeam?: SourceTeam;
+  roleTitle?: string;
+  isActive?: boolean;
+  displayOrder?: number;
 }
 
 interface LocalTeamMemberPayload {
@@ -51,6 +54,21 @@ export class LocalJsonTeamMemberRepository implements TeamMemberRepository {
     );
 
     return hasRosterMembers(roster.om) ? roster : { ...roster, om: DEFAULT_TEAM_MEMBER_ROLE_ROSTER.om };
+  }
+
+  async listMembers(): Promise<TeamMemberRecord[]> {
+    const members = await this.readMembers();
+    if (members === null) return [];
+
+    return members.map((member, index) => ({
+      id: `${member.sourceTeam ?? "미분류"}-${member.role ?? "resource"}-${index}`,
+      name: member.name?.trim() ?? "",
+      role: normalizeRole(member.role),
+      sourceTeam: member.sourceTeam ?? null,
+      roleTitle: member.roleTitle ?? null,
+      isActive: member.isActive ?? true,
+      displayOrder: member.displayOrder ?? null
+    }));
   }
 
   private async readMembers() {

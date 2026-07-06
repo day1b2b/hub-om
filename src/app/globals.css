@@ -8430,6 +8430,70 @@ td span {
   }
 }
 
+/* 관리자 사용자 관리 페이지 */
+.admin-users-empty {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.admin-users-table-wrap {
+  overflow-x: auto;
+}
+
+.admin-users-table {
+  border-collapse: collapse;
+  font-size: 13px;
+  width: 100%;
+  max-width: 720px;
+}
+
+.admin-users-table th {
+  background: var(--surface-strong);
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-weight: 600;
+  padding: 9px 8px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.admin-users-table td {
+  border-bottom: 1px solid var(--line);
+  padding: 9px 8px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.admin-users-table .td-left {
+  text-align: left;
+}
+
+.admin-users-table tr.row-inactive td {
+  color: var(--muted);
+}
+
+.admin-users-table tr:last-child td {
+  border-bottom: none;
+}
+
+.admin-users-status-badge {
+  border-radius: 4px;
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+}
+
+.admin-users-status-badge.active {
+  background: var(--green-bg);
+  color: var(--green);
+}
+
+.admin-users-status-badge.inactive {
+  background: var(--surface-strong);
+  color: var(--muted);
+}
+
 /* OM 배정 요청 */
 .om-request-form .yn-toggle-row {
   display: flex;

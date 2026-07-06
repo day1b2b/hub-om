@@ -9,9 +9,20 @@ export const EMPTY_TEAM_MEMBER_ROLE_ROSTER: TeamMemberRoleRoster = {
   om: {}
 };
 
+export interface TeamMemberRecord {
+  id: string;
+  name: string;
+  role: TeamMemberRole | null;
+  sourceTeam: SourceTeam | null;
+  roleTitle: string | null;
+  isActive: boolean;
+  displayOrder: number | null;
+}
+
 export interface TeamMemberRepository {
   listResourceOwners(): Promise<ResourceOwnerRoster>;
   listRoleRosters(): Promise<TeamMemberRoleRoster>;
+  listMembers(): Promise<TeamMemberRecord[]>;
 }
 
 export class EmptyTeamMemberRepository implements TeamMemberRepository {
@@ -21,5 +32,9 @@ export class EmptyTeamMemberRepository implements TeamMemberRepository {
 
   async listRoleRosters(): Promise<TeamMemberRoleRoster> {
     return EMPTY_TEAM_MEMBER_ROLE_ROSTER;
+  }
+
+  async listMembers(): Promise<TeamMemberRecord[]> {
+    return [];
   }
 }
