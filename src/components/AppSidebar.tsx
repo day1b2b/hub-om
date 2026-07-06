@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { TeamScope } from "@/lib/teamScope";
@@ -22,21 +23,23 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
     pathname === "/coaches" ||
     ((pathname?.startsWith("/coaches/") ?? false) && !isCoachSchedulePage);
   const isResourcesPage = pathname === "/resources";
-  const isOmRequestPage = pathname?.startsWith("/om-request") ?? false;
+  const isOmManagePage = pathname?.startsWith("/om-request/manage") ?? false;
+  const isOmRequestPage = !isOmManagePage && (pathname?.startsWith("/om-request") ?? false);
 
   return (
     <aside className="sidebar" aria-label="hub-om 메뉴">
-      <div className="brand">
-        <span className="brand-mark">OD</span>
+      <Link className="brand" href="/dashboard">
+        <Image src="/hub-om-logo.svg" alt="hub-om" width={32} height={32} className="brand-logo" />
         <div>
           <strong>hub-om</strong>
           <span>{label}</span>
         </div>
-      </div>
+      </Link>
       <nav className="nav-list">
         <div className="nav-section">
           <div className="nav-section-title">OM 배정</div>
           <Link className={isOmRequestPage ? "active" : ""} data-icon="📋" href="/om-request">배정 요청</Link>
+          <Link className={isOmManagePage ? "active" : ""} data-icon="☑" href="/om-request/manage">배정 관리</Link>
         </div>
 
         <div className="nav-section">

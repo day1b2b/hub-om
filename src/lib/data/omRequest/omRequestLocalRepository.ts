@@ -37,11 +37,12 @@ export function createOmRequest(input: OmRequestInput): OmRequest {
   return newRequest;
 }
 
-export function updateOmRequestAssignment(id: string, assignedOm: string): OmRequest | null {
+export function updateOmRequestAssignment(id: string, assignedOm: string | null): OmRequest | null {
   const requests = readAll();
   const idx = requests.findIndex((r) => r.id === id);
   if (idx === -1) return null;
-  requests[idx] = { ...requests[idx], assignedOm, status: "배정완료" };
+  const om = assignedOm?.trim() || null;
+  requests[idx] = { ...requests[idx], assignedOm: om ?? undefined, status: om ? "배정완료" : "배정필요" };
   writeAll(requests);
   return requests[idx];
 }

@@ -295,12 +295,12 @@ export function OmRequestForm({ ldName }: { ldName: string }) {
         </div>
       </div>
 
-      {/* 셋팅 및 운영 */}
+      {/* 세팅 및 운영 */}
       <div className="operation-form-section">
-        <div className="section-title"><h2>셋팅 및 운영</h2></div>
+        <div className="section-title"><h2>세팅 및 운영</h2></div>
         <div className="operation-form-grid">
-          <YNToggle required label="스킬플로 셋팅" value={form.skillfloSetup} onChange={(v) => setField("skillfloSetup", v)} />
-          <YNToggle label="스킬매치 셋팅" value={form.skillmatchSetup} onChange={(v) => setField("skillmatchSetup", v)} />
+          <YNToggle required label="스킬플로 세팅" value={form.skillfloSetup} onChange={(v) => setField("skillfloSetup", v)} />
+          <YNToggle label="스킬매치 세팅" value={form.skillmatchSetup} onChange={(v) => setField("skillmatchSetup", v)} />
           <YNToggle required label="현장 운영" value={form.onSiteOperation} onChange={(v) => setField("onSiteOperation", v)} />
           <YNToggle required label="실습 코치 요청" value={form.coachRequest} onChange={(v) => setField("coachRequest", v)} />
         </div>
@@ -380,7 +380,7 @@ export function OmRequestForm({ ldName }: { ldName: string }) {
 
       {/* 요청사항 */}
       <div className="operation-form-section">
-        <div className="section-title"><h2>요청사항</h2></div>
+        <div className="section-title"><h2>요청사항<RequiredMark /></h2></div>
         <div className="operation-form-grid">
           <label className="full-row-field">
             <textarea
