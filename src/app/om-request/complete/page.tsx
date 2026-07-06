@@ -15,7 +15,7 @@ export default async function OmRequestCompletePage({ searchParams }: Props) {
 
   return (
     <main className="dashboard-shell">
-      <AppSidebar label="OM 배정 요청" teamScope={{ team: null, viewAll: true }} />
+      <AppSidebar label="OM 배정 요청" teamScope="both" />
       <section className="content operations-page">
         <div className="om-request-complete">
           <h1>요청이 제출되었습니다</h1>

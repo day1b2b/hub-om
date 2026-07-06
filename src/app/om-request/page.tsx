@@ -10,7 +10,7 @@ export default async function OmRequestPage() {
 
   return (
     <main className="dashboard-shell">
-      <AppSidebar label="OM 배정 요청" teamScope={{ team: null, viewAll: true }} />
+      <AppSidebar label="OM 배정 요청" teamScope="both" />
       <section className="content operations-page operation-create-page">
         <header className="page-header operation-create-header">
           <div>
