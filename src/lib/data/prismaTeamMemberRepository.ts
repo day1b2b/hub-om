@@ -1,7 +1,7 @@
 import type { MemberRole as PrismaMemberRole, SourceTeam as PrismaSourceTeam } from "@prisma/client";
 import { getPrismaClient } from "./prisma";
 import { DEFAULT_RESOURCE_OWNER_ROSTER, DEFAULT_TEAM_MEMBER_ROLE_ROSTER } from "./defaultTeamMemberRoster";
-import type { ResourceOwnerRoster, TeamMemberRepository, TeamMemberRole, TeamMemberRoleRoster } from "./teamMemberRepository";
+import type { ResourceOwnerRoster, TeamMemberRecord, TeamMemberRepository, TeamMemberRole, TeamMemberRoleRoster } from "./teamMemberRepository";
 import type { SourceTeam } from "./operationTypes";
 
 const SOURCE_TEAM_LABEL: Record<PrismaSourceTeam, SourceTeam> = {
@@ -67,6 +67,23 @@ export class PrismaTeamMemberRepository implements TeamMemberRepository {
     );
 
     return hasRosterMembers(roster.om) ? roster : { ...roster, om: DEFAULT_TEAM_MEMBER_ROLE_ROSTER.om };
+  }
+
+  async listMembers(): Promise<TeamMemberRecord[]> {
+    const prisma = getPrismaClient();
+    const members = await prisma.member.findMany({
+      orderBy: [{ isActive: "desc" }, { sourceTeam: "asc" }, { role: "asc" }, { displayOrder: "asc" }, { name: "asc" }]
+    });
+
+    return members.map((member) => ({
+      id: member.id,
+      name: member.name,
+      role: member.role ? TEAM_MEMBER_ROLE_LABEL[member.role] : null,
+      sourceTeam: member.sourceTeam ? SOURCE_TEAM_LABEL[member.sourceTeam] : null,
+      roleTitle: member.roleTitle,
+      isActive: member.isActive,
+      displayOrder: member.displayOrder
+    }));
   }
 }
 

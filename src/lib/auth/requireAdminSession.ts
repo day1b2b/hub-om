@@ -6,11 +6,20 @@ import { getConfiguredAdminEmails, isCoachPiiViewer } from "@/lib/auth/coachPiiV
 
 export { isCoachPiiViewer } from "@/lib/auth/coachPiiViewer";
 
+function getDevBypassSession(): Session | null {
+  if (process.env.DEV_AUTH_BYPASS !== "true" || process.env.NODE_ENV === "production") {
+    return null;
+  }
+
+  const email = process.env.DEV_AUTH_EMAIL ?? "dev@day1company.co.kr";
+  return { user: { email, name: "Dev User", image: null }, expires: "" } as Session;
+}
+
 /**
  * 페이지용 admin 가드. 비-admin이면 /dashboard로 redirect한다.
  */
 export async function requireAdminSession() {
-  const session = await auth();
+  const session = getDevBypassSession() ?? (await auth());
   const email = session?.user?.email;
 
   if (!email || !isAllowedWorkspaceEmail(email) || !isAdminEmail(email)) {
