@@ -9219,6 +9219,29 @@ td span {
   padding-bottom: 12px;
 }
 
+.om-detail-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 6px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.om-detail-delete-action {
+  color: var(--red);
+}
+
+.om-detail-delete-action:hover {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.om-detail-delete-action:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 .detail-total-badge {
   background: var(--surface-strong);
   border-radius: 4px;
