@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120" role="img" aria-labelledby="title desc">
+  <title id="title">hub-om logo</title>
+  <desc id="desc">A simple OM wordmark for OAuth consent screens.</desc>
+  <rect width="120" height="120" rx="24" fill="#ffffff"/>
+  <rect x="8" y="8" width="104" height="104" rx="22" fill="#f6f6f3" stroke="#deded9" stroke-width="2"/>
+  <text x="60" y="77" fill="#222322" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="54" font-weight="850" text-anchor="middle">OM</text>
+</svg>

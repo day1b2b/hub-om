@@ -94,6 +94,13 @@ enum SourceTeam {
   @@map("source_team")
 }
 
+enum MemberRole {
+  OM @map("om")
+  LD @map("ld")
+
+  @@map("member_role")
+}
+
 model Company {
   id             String   @id @default(uuid()) @db.Uuid
   name           String
@@ -180,6 +187,8 @@ model OperationSession {
 
   course        Course                  @relation(fields: [courseRecordId], references: [id])
   sourceRecords OperationSourceRecord[]
+  driveImportResults DriveImportResult[]
+  coachEngagements   CoachEngagement[]
 
   @@index([courseRecordId])
   @@index([operationStatus])
@@ -188,6 +197,85 @@ model OperationSession {
   @@index([omUserId])
   @@index([ldUserId])
   @@map("operation_sessions")
+}
+
+model DriveImportRun {
+  id                           String       @id @default(uuid()) @db.Uuid
+  mode                         String       @default("dry_run")
+  status                       ImportStatus @default(PENDING)
+  operationCount               Int          @default(0) @map("operation_count")
+  scannedRefCount              Int          @default(0) @map("scanned_ref_count")
+  scanFoundFolderCount         Int          @default(0) @map("scan_found_folder_count")
+  scanIssueCount               Int          @default(0) @map("scan_issue_count")
+  folderSearchCount            Int          @default(0) @map("folder_search_count")
+  folderSearchWithCandidatesCount Int       @default(0) @map("folder_search_with_candidates_count")
+  avgSatisfactionCandidateCount Int         @default(0) @map("avg_satisfaction_candidate_count")
+  instructorSatisfactionCandidateCount Int  @default(0) @map("instructor_satisfaction_candidate_count")
+  instructorCandidateCount     Int          @default(0) @map("instructor_candidate_count")
+  suspiciousCandidateCount     Int          @default(0) @map("suspicious_candidate_count")
+  errorCount                   Int          @default(0) @map("error_count")
+  summary                      Json?
+  notes                        String?
+  startedAt                    DateTime     @default(now()) @map("started_at")
+  finishedAt                   DateTime?    @map("finished_at")
+
+  results DriveImportResult[]
+
+  @@index([startedAt])
+  @@index([status])
+  @@map("drive_import_runs")
+}
+
+model DriveImportResult {
+  id                 String   @id @default(uuid()) @db.Uuid
+  runId              String   @map("run_id") @db.Uuid
+  operationSessionId String?  @map("operation_session_id") @db.Uuid
+  operationId        String   @map("operation_id")
+  companyName        String   @map("company_name")
+  courseName         String   @map("course_name")
+  startDate          DateTime? @map("start_date") @db.Date
+  endDate            DateTime? @map("end_date") @db.Date
+  inputKind          String   @map("input_kind")
+  inputValue         String?  @map("input_value")
+  resultKind         String   @map("result_kind")
+  folderId           String?  @map("folder_id")
+  folderTitle        String?  @map("folder_title")
+  folderUrl          String?  @map("folder_url")
+  fileCount          Int      @default(0) @map("file_count")
+  candidateCount     Int      @default(0) @map("candidate_count")
+  keyCandidates      Json?    @map("key_candidates")
+  folderCandidates   Json?    @map("folder_candidates")
+  issues             Json?
+  error              String?
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  run DriveImportRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  operationSession OperationSession? @relation(fields: [operationSessionId], references: [id])
+
+  @@index([runId])
+  @@index([operationSessionId])
+  @@index([operationId])
+  @@index([resultKind])
+  @@map("drive_import_results")
+}
+
+model Member {
+  id             String     @id @default(uuid()) @db.Uuid
+  role           MemberRole?
+  sourceTeam     SourceTeam? @map("source_team")
+  name           String
+  normalizedName String     @map("normalized_name")
+  roleTitle      String?    @map("role_title")
+  calendarId     String?    @map("calendar_id")
+  isActive       Boolean    @default(true) @map("is_active")
+  displayOrder   Int?       @map("display_order")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+
+  @@unique([role, sourceTeam, normalizedName])
+  @@index([sourceTeam, isActive])
+  @@index([role, sourceTeam, isActive])
+  @@map("members")
 }
 
 model DataImportRun {
@@ -240,4 +328,240 @@ model OperationSourceRecord {
   @@index([sourceSheet])
   @@index([sourceFingerprint])
   @@map("operation_source_records")
+}
+
+enum CoachStatus {
+  PENDING  @map("pending")
+  ACTIVE   @map("active")
+  INACTIVE @map("inactive")
+
+  @@map("coach_status")
+}
+
+enum CoachEngagementStatus {
+  SCHEDULED   @map("scheduled")
+  IN_PROGRESS @map("in_progress")
+  COMPLETED   @map("completed")
+  CANCELLED   @map("cancelled")
+
+  @@map("coach_engagement_status")
+}
+
+enum CoachEngagementSource {
+  SHEET  @map("sheet")
+  MANUAL @map("manual")
+
+  @@map("coach_engagement_source")
+}
+
+model Coach {
+  id             String      @id @default(uuid()) @db.Uuid
+  sourceCoachId  String      @unique @map("source_coach_id")
+  accessToken    String?     @unique @map("access_token")
+  name           String      // 운영상 식별자 (무분별 노출 금지)
+  normalizedName String      @map("normalized_name")
+  workType       String?     @map("work_type")
+  status         CoachStatus @default(ACTIVE) // coach-db 활동 상태
+  statusNote     String?     @map("status_note")
+  returnDate     DateTime?   @map("return_date") @db.Date
+  selfNote       String?     @map("self_note")
+  portfolioUrl   String?     @map("portfolio_url")
+  availabilityDetail String? @map("availability_detail")
+  managerNote    String?     @map("manager_note")
+  dxTag          String?     @map("dx_tag")
+  isActive       Boolean     @default(true) @map("is_active") // hub-om 운영 노출 여부 (status와 의미 분리)
+  displayOrder   Int?        @map("display_order")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+  deletedAt      DateTime?   @map("deleted_at")
+  deletedBy      String?     @map("deleted_by")
+
+  privateProfile      CoachPrivateProfile?
+  fields              CoachField[]
+  curriculums         CoachCurriculum[]
+  schedules           CoachSchedule[]
+  engagements         CoachEngagement[]
+  engagementSchedules CoachEngagementSchedule[]
+  privateAccessLogs   CoachPrivateAccessLog[]
+  scheduleAccessLogs  CoachScheduleAccessLog[]
+
+  @@index([normalizedName])
+  @@index([status, isActive])
+  @@map("coaches")
+}
+
+model CoachPrivateAccessLog {
+  id              String   @id @default(uuid()) @db.Uuid
+  coachId         String   @map("coach_id") @db.Uuid
+  accessedByEmail String   @map("accessed_by_email")
+  accessedAt      DateTime @default(now()) @map("accessed_at")
+  context         String?  // 예: "coach_detail", "engagement_feedback"
+  coach           Coach    @relation(fields: [coachId], references: [id], onDelete: Cascade)
+
+  @@index([coachId, accessedAt])
+  @@index([accessedByEmail, accessedAt])
+  @@map("coach_private_access_logs")
+}
+
+model CoachPrivateProfile {
+  coachId     String    @id @map("coach_id") @db.Uuid
+  employeeId  String?   @map("employee_id")
+  phone       String?
+  email       String?
+  birthDate   DateTime? @map("birth_date") @db.Date
+  affiliation String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  coach Coach @relation(fields: [coachId], references: [id], onDelete: Cascade)
+
+  @@map("coach_private_profiles")
+}
+
+model CoachFieldMaster {
+  id      String       @id @default(uuid()) @db.Uuid
+  name    String       @unique
+  coaches CoachField[]
+
+  @@map("coach_field_masters")
+}
+
+model CoachCurriculumMaster {
+  id      String            @id @default(uuid()) @db.Uuid
+  name    String            @unique
+  coaches CoachCurriculum[]
+
+  @@map("coach_curriculum_masters")
+}
+
+model CoachField {
+  coachId String @map("coach_id") @db.Uuid
+  tagId   String @map("tag_id") @db.Uuid
+  coach   Coach            @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  tag     CoachFieldMaster @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([coachId, tagId])
+  @@map("coach_fields")
+}
+
+model CoachCurriculum {
+  coachId String @map("coach_id") @db.Uuid
+  tagId   String @map("tag_id") @db.Uuid
+  coach   Coach                 @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  tag     CoachCurriculumMaster @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([coachId, tagId])
+  @@map("coach_curriculums")
+}
+
+model CoachSchedule {
+  id               String   @id @default(uuid()) @db.Uuid
+  sourceScheduleId String   @unique @map("source_schedule_id")
+  coachId          String   @map("coach_id") @db.Uuid
+  date             DateTime @db.Date
+  startTime        String   @map("start_time")
+  endTime          String   @map("end_time")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  coach Coach @relation(fields: [coachId], references: [id], onDelete: Cascade)
+
+  @@index([coachId, date])
+  @@map("coach_schedules")
+}
+
+model CoachScheduleAccessLog {
+  id                String    @id @default(uuid()) @db.Uuid
+  sourceAccessLogId String?   @unique @map("source_access_log_id")
+  coachId           String    @map("coach_id") @db.Uuid
+  yearMonth         String    @map("year_month")
+  accessedAt        DateTime  @default(now()) @map("accessed_at")
+  lastEditedAt      DateTime? @map("last_edited_at")
+
+  coach Coach @relation(fields: [coachId], references: [id], onDelete: Cascade)
+
+  @@unique([coachId, yearMonth])
+  @@index([yearMonth])
+  @@map("coach_schedule_access_logs")
+}
+
+model CoachEngagement {
+  id                 String                @id @default(uuid()) @db.Uuid
+  sourceEngagementId String                @unique @map("source_engagement_id")
+  coachId            String                @map("coach_id") @db.Uuid
+  operationSessionId String?               @map("operation_session_id") @db.Uuid
+  courseName         String                @map("course_name")
+  status             CoachEngagementStatus @default(SCHEDULED)
+  source             CoachEngagementSource @default(MANUAL)
+  startDate          DateTime              @map("start_date") @db.Date
+  endDate            DateTime              @map("end_date") @db.Date
+  startTime          String?               @map("start_time")
+  endTime            String?               @map("end_time")
+  rating             Int?                  @db.SmallInt
+  rehire             Boolean?
+  feedback           String?               // private 성격 강함 → admin 전용
+  hiredById          String?               @map("hired_by_id")
+  hiredByText        String?               @map("hired_by_text") // private 취급
+  createdAt          DateTime              @default(now()) @map("created_at")
+
+  coach            Coach             @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  operationSession OperationSession? @relation(fields: [operationSessionId], references: [id])
+  schedules        CoachEngagementSchedule[]
+
+  @@index([coachId])
+  @@index([operationSessionId])
+  @@map("coach_engagements")
+}
+
+model CoachEngagementSchedule {
+  id                         String    @id @default(uuid()) @db.Uuid
+  sourceEngagementScheduleId String    @unique @map("source_engagement_schedule_id")
+  engagementId               String    @map("engagement_id") @db.Uuid
+  coachId                    String    @map("coach_id") @db.Uuid
+  date                       DateTime  @db.Date
+  startTime                  String    @map("start_time")
+  endTime                    String    @map("end_time")
+  cancelledAt                DateTime? @map("cancelled_at")
+
+  engagement CoachEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+  coach      Coach           @relation(fields: [coachId], references: [id], onDelete: Cascade)
+
+  @@index([coachId, date])
+  @@index([date])
+  @@map("coach_engagement_schedules")
+}
+
+model CoachImportRun {
+  id                    String       @id @default(uuid()) @db.Uuid
+  mode                  String       @default("dry_run")
+  status                ImportStatus @default(PENDING)
+  coachCount            Int          @default(0) @map("coach_count")
+  engagementCount       Int          @default(0) @map("engagement_count")
+  scheduleCount         Int          @default(0) @map("schedule_count")
+  matchedOperationCount Int          @default(0) @map("matched_operation_count")
+  errorCount            Int          @default(0) @map("error_count")
+  summary               Json?
+  notes                 String?
+  startedAt             DateTime     @default(now()) @map("started_at")
+  finishedAt            DateTime?    @map("finished_at")
+
+  @@index([startedAt])
+  @@map("coach_import_runs")
+}
+
+model CoachSyncLog {
+  id          String    @id @default(uuid()) @db.Uuid
+  type        String
+  status      String
+  totalRows   Int       @default(0) @map("total_rows")
+  created     Int       @default(0)
+  updated     Int       @default(0)
+  skipped     Int       @default(0)
+  errors      Int       @default(0)
+  errorDetail String?   @map("error_detail")
+  triggeredBy String    @map("triggered_by")
+  startedAt   DateTime  @default(now()) @map("started_at")
+  finishedAt  DateTime? @map("finished_at")
+
+  @@index([type, startedAt])
+  @@map("coach_sync_logs")
 }

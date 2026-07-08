@@ -1,0 +1,65 @@
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import type { TeamScope } from "@/lib/teamScope";
+
+interface AppSidebarProps {
+  label?: string;
+  teamScope: TeamScope;
+}
+
+export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps) {
+  const pathname = usePathname();
+  void teamScope;
+  const isDatabaseAdminPage = pathname?.startsWith("/admin/database") ?? false;
+  const isImportAdminPage = pathname?.startsWith("/admin/imports") ?? false;
+  const isSyncAdminPage = pathname?.startsWith("/admin/sync") ?? false;
+  const isUsersAdminPage = pathname?.startsWith("/admin/users") ?? false;
+  const isCreatePage = pathname === "/operations/new";
+  const isOperationsPage = pathname === "/operations" || (pathname?.startsWith("/operations/") && !isCreatePage);
+  const isCoachSchedulePage = pathname === "/coaches/schedule";
+  const isCoachListPage =
+    pathname === "/coaches" ||
+    ((pathname?.startsWith("/coaches/") ?? false) && !isCoachSchedulePage);
+  const isResourcesPage = pathname === "/resources";
+  const isOmManagePage = pathname?.startsWith("/om-request/manage") ?? false;
+  const isOmRequestPage = !isOmManagePage && (pathname?.startsWith("/om-request") ?? false);
+
+  return (
+    <aside className="sidebar" aria-label="hub-om 메뉴">
+      <Link className="brand" href="/dashboard">
+        <Image src="/hub-om-logo.svg" alt="hub-om" width={32} height={32} className="brand-logo" />
+        <div>
+          <strong>hub-om</strong>
+          <span>{label}</span>
+        </div>
+      </Link>
+      <nav className="nav-list">
+        <div className="nav-section">
+          <div className="nav-section-title">OM 운영 요청</div>
+          <Link className={isOmRequestPage ? "active" : ""} data-icon="📋" href="/om-request">업무 요청</Link>
+          <Link className={isOmManagePage ? "active" : ""} data-icon="☑" href="/om-request/manage">담당 관리</Link>
+        </div>
+
+        <div className="nav-section">
+          <div className="nav-section-title">코치</div>
+          <Link className={isCoachSchedulePage ? "active" : ""} data-icon="◷" href="/coaches/schedule">코치 일정</Link>
+          <Link className={isCoachListPage ? "active" : ""} data-icon="☰" href="/coaches">코치 목록</Link>
+        </div>
+
+        <div className="nav-section nav-section-locked">
+          <div className="nav-section-title">관리자 전용</div>
+          <Link className={pathname === "/dashboard" ? "active" : ""} data-icon="🔒" href="/dashboard">대시보드</Link>
+          <Link className={isOperationsPage ? "active" : ""} data-icon="🔒" href="/operations">운영 현황</Link>
+          <Link className={isResourcesPage ? "active" : ""} data-icon="🔒" href="/resources">리소스</Link>
+          <Link className={isDatabaseAdminPage ? "active" : ""} data-icon="🔒" href="/admin/database">DB 조회</Link>
+          <Link className={isImportAdminPage ? "active" : ""} data-icon="🔒" href="/admin/imports">데이터 검수</Link>
+          <Link className={isSyncAdminPage ? "active" : ""} data-icon="🔒" href="/admin/sync">데이터 동기화</Link>
+          <Link className={isUsersAdminPage ? "active" : ""} data-icon="🔒" href="/admin/users">사용자 관리</Link>
+        </div>
+      </nav>
+    </aside>
+  );
+}

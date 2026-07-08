@@ -1,0 +1,4 @@
+interface:
+  display_name: "Hub OM Manager Workflow"
+  short_description: "hub-om AI 작업 절차와 안전 게이트"
+  default_prompt: "Use $hub-om-manager-workflow to complete this hub-om change safely from branch check through commit, push, and PR summary."

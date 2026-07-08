@@ -39,9 +39,12 @@ export type ResultReportStatus = "유" | "무" | "불필요" | "확인필요";
 
 export type ValidationStatus = "정상" | "검토필요";
 
+export type SourceTeam = "1팀" | "2팀" | "미분류";
+
 export interface OperationSession {
   id: string;
   operationId: string;
+  sourceTeam?: SourceTeam;
   courseId: string;
   companyName: string;
   courseName: string;
@@ -89,6 +92,65 @@ export interface OperationSession {
   padletLink: string;
   validationStatus: ValidationStatus;
   validationErrors: string[];
+}
+
+export interface CreateOperationInput {
+  archiveStatus: ArchiveStatus;
+  coach: string;
+  companyName: string;
+  companyWikiLink: string;
+  costRaw: string;
+  courseId: string;
+  courseName: string;
+  createdBy?: string;
+  driveLink: string;
+  educationDays: string;
+  educationFormat: EducationFormat;
+  endDate: string;
+  instructorCost: number | null;
+  instructorWikiLink: string;
+  instructors: string;
+  ld: string;
+  lectureManagementLink: string;
+  om: string;
+  onsiteRequired: OnsiteRequired;
+  operationCost: number | null;
+  operationDetail: string;
+  operationIssue: string;
+  operationStatus: OperationStatus;
+  operationType: OperationType;
+  padletLink: string;
+  region: string;
+  resultReportLink: string;
+  revenue: number | null;
+  roundNo: string;
+  specialNotes: string;
+  startDate: string;
+  timeText: string;
+  totalCost: number | null;
+}
+
+export interface UpdateOperationInput {
+  archiveStatus?: ArchiveStatus;
+  avgSatisfaction?: string;
+  coach?: string;
+  costRaw?: string;
+  driveLink?: string;
+  educationDays?: string;
+  instructorCost?: number | null;
+  instructorSatisfaction?: string;
+  instructors?: string;
+  lectureManagementLink?: string;
+  operationCost?: number | null;
+  operationDetail?: string;
+  operationIssue?: string;
+  omUpdate?: string;
+  padletLink?: string;
+  region?: string;
+  resultReportLink?: string;
+  specialNotes?: string;
+  timeText?: string;
+  totalCost?: number | null;
 }
 
 export interface OperationSummary {

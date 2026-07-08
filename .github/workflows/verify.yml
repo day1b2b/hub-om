@@ -1,0 +1,56 @@
+name: Verify
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - main
+  push:
+    branches:
+      - dev
+      - main
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate Prisma schema
+        env:
+          DATABASE_URL: postgresql://verify:verify@localhost:5432/verify?schema=public
+        run: npm run db:validate
+
+      - name: Generate Prisma Client
+        env:
+          DATABASE_URL: postgresql://verify:verify@localhost:5432/verify?schema=public
+        run: npm run db:generate
+
+      - name: Lint
+        env:
+          DATABASE_URL: postgresql://verify:verify@localhost:5432/verify?schema=public
+          OPERATION_DATA_SOURCE: local
+        run: npm run lint
+
+      - name: Typecheck
+        env:
+          DATABASE_URL: postgresql://verify:verify@localhost:5432/verify?schema=public
+          OPERATION_DATA_SOURCE: local
+        run: npm run typecheck
+
+      - name: Build
+        env:
+          DATABASE_URL: postgresql://verify:verify@localhost:5432/verify?schema=public
+          OPERATION_DATA_SOURCE: db
+        run: npm run build

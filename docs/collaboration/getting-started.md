@@ -61,7 +61,9 @@ chore/20260604-project-setup
 
 ## 4. 작업 전에 읽을 문서
 
-최소한 아래 문서는 읽고 시작합니다.
+AI 작업자에게 맡기는 작업은 먼저 [../operations/manager-ai-workflow.md](../operations/manager-ai-workflow.md)를 읽고 그 절차를 따릅니다.
+
+사람이 직접 작업할 때도 최소한 아래 문서는 읽고 시작합니다.
 
 1. [../../README.md](../../README.md)
 2. [../README.md](../README.md)
@@ -77,8 +79,10 @@ Claude Code에는 큰 요청을 한 번에 주지 않습니다.
 작업을 맡길 때는 먼저 이렇게 요청합니다.
 
 ```text
-CLAUDE.md의 작업 시작 프로토콜대로 먼저 확인하고 시작해줘.
+/hub-om-work 절차대로 먼저 확인하고 시작해줘.
 ```
+
+Codex에 맡길 때는 `$hub-om-manager-workflow` 스킬로 시작합니다.
 
 좋은 요청:
 

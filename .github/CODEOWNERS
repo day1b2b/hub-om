@@ -1,0 +1,15 @@
+# hub-om ownership guardrails.
+# Replace @OWNER with the GitHub usernames or teams that should confirm shared-risk changes,
+# then uncomment the rules below.
+
+# * @OWNER
+#
+# /prisma/schema.prisma @OWNER
+# /prisma/migrations/ @OWNER
+# /Dockerfile @OWNER
+# /scripts/docker-entrypoint.sh @OWNER
+# /prisma.config.ts @OWNER
+# /.env.example @OWNER
+# /docs/operations/ @OWNER
+# /docs/collaboration/ @OWNER
+# /.github/ @OWNER

@@ -10,6 +10,7 @@
 - Prisma 연결 환경변수: `DATABASE_URL`
 - migration용 직접 연결 환경변수 후보: `DIRECT_URL`
 - MVP 테이블: `companies`, `courses`, `operation_sessions`, `data_import_runs`, `operation_source_records`
+- Drive 조회 이력 테이블: `drive_import_runs`, `drive_import_results`
 
 ## 절대 금지
 
@@ -65,6 +66,37 @@ Claude Code는 사용자가 백업 확인 여부와 실행 범위를 명시하�
 - Coolify에서 `NODE_ENV=production`의 `Available at Buildtime`은 끕니다.
 - buildtime에 `NODE_ENV=production`이 들어가면 `npm ci`가 devDependencies를 생략해 TypeScript/빌드 도구가 빠질 수 있습니다.
 
+## Drive 조회 이력 저장
+
+Drive import 후보 검색/조회는 표준 운영 데이터를 바로 수정하지 않고 별도 이력 테이블에 저장합니다.
+
+- 실행 단위 요약은 `drive_import_runs`에 저장합니다.
+- 운영 건별 검색/스캔 결과는 `drive_import_results`에 저장합니다.
+- `drive_import_results.key_candidates`에는 Drive 링크, 강의관리 링크, 결과보고서 링크, 만족도, 강사명 등 주요 후보를 JSON으로 보존합니다.
+- `drive_import_results.folder_candidates`에는 폴더 URL이 없는 운영 건에서 찾은 상위 폴더 후보를 JSON으로 보존합니다.
+
+로컬 또는 Coolify 컨테이너에서 읽기 전용 드라이런을 실행합니다.
+
+```bash
+npm run drive:import:dry-run
+```
+
+일부 건만 검증할 때는 제한을 둡니다.
+
+```bash
+npm run drive:import:dry-run -- --limit 10 --concurrency 2
+```
+
+Coolify DB에 저장하려면 Coolify 앱 컨테이너 안에서 실행해야 합니다.
+이때 컨테이너의 `DATABASE_URL`은 Coolify secret/env의 운영 DB를 가리켜야 합니다.
+마이그레이션이 아직 적용되지 않았다면 먼저 `RUN_DB_MIGRATIONS=true`로 재배포하거나 컨테이너에서 아래 명령을 실행합니다.
+
+```bash
+npm run db:migrate:deploy
+```
+
+주의: 이 드라이런은 Drive와 DB를 읽고 `drive_import_*` 테이블에 이력을 쓰지만, `operation_sessions`의 표준 운영 필드는 변경하지 않습니다.
+
 ## 원천 수집/적재 규칙
 
 - 기존 엑셀/시트 원천 파일, Gmail 원문, 외부 시스템 데이터는 직접 수정하지 않습니다.
@@ -81,6 +113,8 @@ Claude Code는 사용자가 백업 확인 여부와 실행 범위를 명시하�
 실제 원천 파일명, 원천 행 예시, 고객사명, 담당자명, 금액, 링크, 파일명은 공개 저장소에 남기지 않습니다.
 
 원천 적재 adapter가 필요하면 비공개 저장소 또는 보안이 설정된 작업 공간에서 관리합니다. 공개 저장소에는 adapter 실행 규칙과 DB 쓰기 안전 규칙만 남깁니다.
+
+읽기 전용 연동 계약은 [source-read-contract.md](source-read-contract.md)를 따릅니다. MVP에서는 외부 원천에 쓰지 않고 읽기 결과를 표준 운영 데이터로 매핑하는 것부터 검증합니다.
 
 ## PR에 반드시 적을 것
 
