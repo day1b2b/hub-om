@@ -9302,6 +9302,49 @@ td span {
   pointer-events: none;
 }
 
+.request-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.request-edit-btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--text);
+  text-decoration: none;
+  background: none;
+  cursor: pointer;
+}
+
+.request-edit-btn:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.request-delete-btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--text);
+  background: none;
+  cursor: pointer;
+}
+
+.request-delete-btn:hover:not(:disabled) {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.request-delete-btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
 .om-pagination {
   align-items: center;
   display: flex;

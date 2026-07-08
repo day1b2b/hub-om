@@ -10,11 +10,11 @@ export default async function OmRequestPage() {
 
   return (
     <main className="dashboard-shell">
-      <AppSidebar label="OM 배정 요청" teamScope="both" />
+      <AppSidebar label="업무 요청" teamScope="both" />
       <section className="content operations-page operation-create-page">
         <header className="page-header operation-create-header">
           <div>
-            <h1>OM 배정 요청</h1>
+            <h1>OM 업무 요청</h1>
             <p className="page-subtitle">교육 운영 담당자(OM) 배정을 요청합니다.</p>
           </div>
         </header>

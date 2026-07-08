@@ -4,6 +4,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getOmRequest } from "@/lib/data/omRequest/omRequestLocalRepository";
 import { AssignForm } from "./AssignForm";
+import { RequestActions } from "./RequestActions";
 
 export const dynamic = "force-dynamic";
 
@@ -42,19 +43,20 @@ export default async function OmRequestDetailPage({ params }: Props) {
 
   return (
     <main className="dashboard-shell">
-      <AppSidebar label="OM 배정 관리" teamScope="both" />
+      <AppSidebar label="담당 관리" teamScope="both" />
       <section className="content operations-page">
 
         <header className="page-header">
           <div>
             <div className="detail-breadcrumb">
-              <Link href="/om-request/manage">배정 관리</Link>
+              <Link href="/om-request/manage">담당 관리</Link>
               <span>›</span>
               <span>{request.company} · {request.courseName}</span>
             </div>
             <h1>{request.courseName}</h1>
             <p className="page-subtitle">{request.company} · {request.team} · 접수 {createdAt}</p>
           </div>
+          <RequestActions id={request.id} />
         </header>
 
         <div className="detail-layout">
@@ -63,7 +65,7 @@ export default async function OmRequestDetailPage({ params }: Props) {
             <div className="operation-form-section">
               <div className="section-title"><h2>기본 정보</h2></div>
               <div className="operation-form-grid">
-                <Field label="팀" value={request.team} />
+                <Field label="구분" value={request.team} />
                 <Field label="LD" value={request.ld} />
                 <Field label="기업명" value={request.company} />
                 <Field label="교육형태" value={request.trainingType} />

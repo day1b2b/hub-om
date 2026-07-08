@@ -117,12 +117,12 @@ function YNToggle({
   );
 }
 
-export function OmRequestForm({ ldName }: { ldName: string }) {
+export function OmRequestForm({ ldName, initialData, requestId }: { ldName: string; initialData?: OmRequestInput; requestId?: string }) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [form, setForm] = useState<OmRequestInput>({
+  const [form, setForm] = useState<OmRequestInput>(initialData ?? {
     team: "1팀",
     ld: ldName,
     company: "",
@@ -174,14 +174,25 @@ export function OmRequestForm({ ldName }: { ldName: string }) {
     setSubmitting(true);
     setError(null);
     try {
-      const res = await fetch("/api/om-request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form)
-      });
-      if (!res.ok) throw new Error("저장에 실패했습니다.");
-      const created = await res.json() as { id: string };
-      router.push(`/om-request/complete?id=${created.id}`);
+      if (requestId) {
+        const res = await fetch(`/api/om-request/${requestId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form)
+        });
+        if (!res.ok) throw new Error("저장에 실패했습니다.");
+        router.push(`/om-request/manage/${requestId}`);
+        router.refresh();
+      } else {
+        const res = await fetch("/api/om-request", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form)
+        });
+        if (!res.ok) throw new Error("저장에 실패했습니다.");
+        const created = await res.json() as { id: string };
+        router.push(`/om-request/complete?id=${created.id}`);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "오류가 발생했습니다.");
       setSubmitting(false);
@@ -199,7 +210,7 @@ export function OmRequestForm({ ldName }: { ldName: string }) {
         <div className="operation-form-grid">
 
           <label>
-            <span>팀<RequiredMark /></span>
+            <span>구분<RequiredMark /></span>
             <select value={form.team} onChange={(e) => setField("team", e.target.value)}>
               {TEAM_OPTIONS.map((t) => <option key={t}>{t}</option>)}
             </select>
@@ -388,7 +399,7 @@ export function OmRequestForm({ ldName }: { ldName: string }) {
 
       <div className="operation-form-actions">
         <button className="primary-action" disabled={submitting} type="submit">
-          {submitting ? "제출 중..." : "요청 제출"}
+          {submitting ? "저장 중..." : requestId ? "수정 저장" : "요청 제출"}
         </button>
       </div>
     </form>

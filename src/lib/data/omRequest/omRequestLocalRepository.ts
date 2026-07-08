@@ -37,6 +37,23 @@ export function createOmRequest(input: OmRequestInput): OmRequest {
   return newRequest;
 }
 
+export function updateOmRequest(id: string, input: OmRequestInput): OmRequest | null {
+  const requests = readAll();
+  const idx = requests.findIndex((r) => r.id === id);
+  if (idx === -1) return null;
+  requests[idx] = { ...requests[idx], ...input };
+  writeAll(requests);
+  return requests[idx];
+}
+
+export function deleteOmRequest(id: string): boolean {
+  const requests = readAll();
+  const filtered = requests.filter((r) => r.id !== id);
+  if (filtered.length === requests.length) return false;
+  writeAll(filtered);
+  return true;
+}
+
 export function updateOmRequestAssignment(id: string, assignedOm: string | null): OmRequest | null {
   const requests = readAll();
   const idx = requests.findIndex((r) => r.id === id);
