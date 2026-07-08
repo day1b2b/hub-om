@@ -9345,6 +9345,120 @@ td span {
   pointer-events: none;
 }
 
+/* 사용자 관리 */
+.user-management {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 800px;
+}
+
+.user-add-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.user-input {
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 13px;
+  background: var(--surface);
+  color: var(--text);
+  min-width: 160px;
+}
+
+.user-input:focus {
+  outline: none;
+  border-color: var(--blue);
+}
+
+.user-add-btn {
+  padding: 7px 16px;
+  background: var(--blue);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.user-add-btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.user-list-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-list-count {
+  font-size: 13px;
+  color: var(--text-sub);
+}
+
+.user-delete-btn {
+  padding: 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 13px;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.user-delete-btn:hover:not(:disabled) {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.user-delete-btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.user-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.user-table th,
+.user-table td {
+  padding: 9px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+}
+
+.user-table th {
+  font-weight: 500;
+  color: var(--text-sub);
+  background: var(--surface);
+}
+
+.user-table tbody tr {
+  cursor: pointer;
+}
+
+.user-table tbody tr:hover {
+  background: var(--surface);
+}
+
+.user-table tbody tr.selected {
+  background: color-mix(in srgb, var(--blue) 8%, transparent);
+}
+
+.user-empty {
+  font-size: 13px;
+  color: var(--text-sub);
+  padding: 24px 0;
+}
+
 .om-pagination {
   align-items: center;
   display: flex;

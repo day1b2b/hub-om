@@ -16,3 +16,4 @@ yarn-error.log*
 pnpm-debug.log*
 data/excel/*
 !data/excel/.gitkeep
+team-users.json

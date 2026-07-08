@@ -42,7 +42,7 @@ export async function notifyOmRequestCreated(params: {
   const ldDisplay = ldSlackId ? `<@${ldSlackId}>` : params.ld;
 
   await postToSlack(
-    `:clipboard: *운영 요청이 접수되었습니다.*${mention}\n\n` +
+    `:clipboard: *운영 요청이 접수되었습니다.*${mention}\n` +
     `*1. 구분*\n${params.team}\n` +
     `*2. LD*\n${ldDisplay}\n` +
     `*3. 기업명*\n${params.company}\n` +
