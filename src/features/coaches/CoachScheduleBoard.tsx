@@ -5,10 +5,13 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import type { CoachScheduleDashboard, CoachScheduleDashboardCoach } from "@/lib/data/coachTypes";
+import type { HolidayMap } from "@/lib/holidayApi";
 
 interface CoachScheduleBoardProps {
   dashboard: CoachScheduleDashboard;
+  holidays: HolidayMap;
   loadFailed: boolean;
+  initialDate?: string;
 }
 
 const TIME_FILTERS = [
@@ -20,14 +23,30 @@ const TIME_FILTERS = [
 
 type TimeFilterKey = (typeof TIME_FILTERS)[number]["key"];
 
-export function CoachScheduleBoard({ dashboard, loadFailed }: CoachScheduleBoardProps) {
+
+export function CoachScheduleBoard({ dashboard, holidays, loadFailed, initialDate }: CoachScheduleBoardProps) {
   const router = useRouter();
-  const [selectedDate, setSelectedDate] = useState<string | null>(() => defaultSelectedDate(dashboard));
+
+  // 선택 날짜들 (0개: 안내, 1개: 단일 날짜, 2개 이상: 다중 필터)
+  const [selectedDates, setSelectedDates] = useState<Set<string>>(() => {
+    const d = defaultSelectedDate(dashboard, initialDate);
+    return d ? new Set([d]) : new Set();
+  });
+  // 범위 선택 모드
+  const [rangeMode, setRangeMode] = useState(false);
+  const [rangeAnchor, setRangeAnchor] = useState<string | null>(null);
+  const [hoverDate, setHoverDate] = useState<string | null>(null);
+
   const [timeFilter, setTimeFilter] = useState<TimeFilterKey>("all");
   const [query, setQuery] = useState("");
 
   const monthDate = useMemo(() => parseYearMonth(dashboard.yearMonth), [dashboard.yearMonth]);
-  const selectedDay = selectedDate ? dashboard.days[selectedDate] : null;
+  const sortedSelected = useMemo(() => [...selectedDates].sort(), [selectedDates]);
+  const isSingleDate = selectedDates.size === 1;
+  const isMultiDate = selectedDates.size > 1;
+  const singleDate = isSingleDate ? sortedSelected[0]! : null;
+  const singleDay = singleDate ? dashboard.days[singleDate] : null;
+
   const monthCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const [date, day] of Object.entries(dashboard.days)) {
@@ -35,20 +54,90 @@ export function CoachScheduleBoard({ dashboard, loadFailed }: CoachScheduleBoard
     }
     return counts;
   }, [dashboard.days, timeFilter]);
-  const filteredCoaches = useMemo(() => {
+
+  const totalAvailableDays = Object.values(monthCounts).filter((count) => count > 0).length;
+
+  // 단일 날짜 코치 목록
+  const singleDateCoaches = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-    return (selectedDay?.coaches ?? []).filter((coach) => {
+    return (singleDay?.coaches ?? []).filter((coach) => {
       if (!coachMatchesTimeFilter(coach, timeFilter)) return false;
       if (!normalizedQuery) return true;
-      return [
-        coach.name,
-        coach.workType ?? "",
-        ...coach.fields,
-        ...coach.recentEngagements.map((engagement) => engagement.courseName)
-      ].some((value) => value.toLowerCase().includes(normalizedQuery));
+      return [coach.name, coach.workType ?? "", ...coach.fields, ...coach.recentEngagements.map((e) => e.courseName)]
+        .some((v) => v.toLowerCase().includes(normalizedQuery));
     });
-  }, [query, selectedDay?.coaches, timeFilter]);
-  const totalAvailableDays = Object.values(monthCounts).filter((count) => count > 0).length;
+  }, [query, singleDay?.coaches, timeFilter]);
+
+  // 다중 날짜: 선택 날짜 중 이번 달 데이터 있는 날짜
+  const activeDays = useMemo(() => sortedSelected.filter((d) => dashboard.days[d]), [sortedSelected, dashboard.days]);
+
+  // 다중 날짜: 선택 날짜 모두 가능한 코치
+  const multiDateCoaches = useMemo(() => {
+    if (!isMultiDate || activeDays.length === 0) return [];
+    const coachDayCounts = new Map<string, number>();
+    const coachData = new Map<string, CoachScheduleDashboardCoach>();
+    for (const date of activeDays) {
+      const day = dashboard.days[date];
+      for (const coach of day.coaches) {
+        if (!coachMatchesTimeFilter(coach, timeFilter)) continue;
+        coachDayCounts.set(coach.id, (coachDayCounts.get(coach.id) ?? 0) + 1);
+        if (!coachData.has(coach.id)) coachData.set(coach.id, coach);
+      }
+    }
+    const normalizedQuery = query.trim().toLowerCase();
+    return [...coachDayCounts.entries()]
+      .filter(([, count]) => count === activeDays.length)
+      .map(([id]) => coachData.get(id)!)
+      .filter(Boolean)
+      .filter((coach) => {
+        if (!normalizedQuery) return true;
+        return [coach.name, coach.workType ?? "", ...coach.fields, ...coach.recentEngagements.map((e) => e.courseName)]
+          .some((v) => v.toLowerCase().includes(normalizedQuery));
+      });
+  }, [isMultiDate, activeDays, dashboard.days, timeFilter, query]);
+
+  function handleCalendarClick(date: string) {
+    if (rangeMode) {
+      if (!rangeAnchor) {
+        setRangeAnchor(date);
+        setSelectedDates(new Set([date]));
+      } else {
+        const from = rangeAnchor <= date ? rangeAnchor : date;
+        const to = rangeAnchor <= date ? date : rangeAnchor;
+        const range = new Set<string>();
+        let current = from;
+        while (current <= to) {
+          range.add(current);
+          const d = new Date(`${current}T00:00:00`);
+          d.setDate(d.getDate() + 1);
+          current = formatDate(d);
+        }
+        setSelectedDates(range);
+        setRangeAnchor(null);
+        setHoverDate(null);
+      }
+    } else {
+      setRangeAnchor(null);
+      setSelectedDates((prev) => {
+        const next = new Set(prev);
+        if (next.has(date)) next.delete(date);
+        else next.add(date);
+        return next;
+      });
+    }
+  }
+
+  function clearSelection() {
+    setSelectedDates(new Set());
+    setRangeAnchor(null);
+    setHoverDate(null);
+  }
+
+  function toggleRangeMode() {
+    setRangeMode((prev) => !prev);
+    setRangeAnchor(null);
+    setHoverDate(null);
+  }
 
   function moveMonth(offset: number) {
     const next = new Date(Date.UTC(monthDate.year, monthDate.monthIndex + offset, 1));
@@ -58,11 +147,20 @@ export function CoachScheduleBoard({ dashboard, loadFailed }: CoachScheduleBoard
   function goToday() {
     const today = formatDate(new Date());
     if (today.startsWith(dashboard.yearMonth)) {
-      setSelectedDate(today);
+      setSelectedDates(new Set([today]));
       return;
     }
     router.push(`/coaches/schedule?yearMonth=${today.slice(0, 7)}`);
   }
+
+  // 달력 범위 미리보기 계산
+  const previewRange = useMemo(() => {
+    if (!rangeMode || !rangeAnchor || !hoverDate) return null;
+    return {
+      from: rangeAnchor <= hoverDate ? rangeAnchor : hoverDate,
+      to: rangeAnchor <= hoverDate ? hoverDate : rangeAnchor,
+    };
+  }, [rangeMode, rangeAnchor, hoverDate]);
 
   return (
     <main className="dashboard-shell coach-schedule-shell">
@@ -94,6 +192,37 @@ export function CoachScheduleBoard({ dashboard, loadFailed }: CoachScheduleBoard
           </div>
         </header>
 
+        <div className="coach-date-range-bar">
+          <span className="coach-date-range-label">기간 검색</span>
+          <button
+            className={["coach-date-range-mode", rangeMode ? "active" : ""].filter(Boolean).join(" ")}
+            onClick={toggleRangeMode}
+            title={rangeMode ? "범위 선택 모드 해제" : "범위 선택 모드: 시작·종료 클릭으로 연속 범위 선택"}
+            type="button"
+          >
+            {rangeMode ? "범위 선택 중" : "범위 선택"}
+          </button>
+          {rangeMode && rangeAnchor ? (
+            <span className="coach-date-range-hint">{rangeAnchor} 선택됨 · 종료 날짜를 클릭하세요</span>
+          ) : !rangeMode ? (
+            <span className="coach-date-range-hint">날짜를 클릭해 선택 · 여러 날짜 조합 가능</span>
+          ) : (
+            <span className="coach-date-range-hint">시작 날짜를 클릭하세요</span>
+          )}
+          {isMultiDate && (
+            <span className="coach-date-range-result">
+              {activeDays.length > 0
+                ? `${activeDays.length}일 모두 가능 ${multiDateCoaches.length}명`
+                : "이 달에 선택한 날짜 없음"}
+            </span>
+          )}
+          {selectedDates.size > 0 && (
+            <button className="coach-date-range-clear" onClick={clearSelection} type="button">
+              초기화
+            </button>
+          )}
+        </div>
+
         <section className="coach-schedule-doc-area">
           <section className="coach-calendar-doc" aria-label="월별 코치 일정">
             <div className="coach-calendar-header">
@@ -104,15 +233,24 @@ export function CoachScheduleBoard({ dashboard, loadFailed }: CoachScheduleBoard
             <div className="coach-calendar-weekdays" aria-hidden="true">
               {["일", "월", "화", "수", "목", "금", "토"].map((day) => <span key={day}>{day}</span>)}
             </div>
-            <div className="coach-calendar-grid">
+            <div
+              className="coach-calendar-grid"
+              onMouseLeave={() => setHoverDate(null)}
+            >
               {buildCalendarCells(monthDate.year, monthDate.monthIndex).map((date, index) => {
                 if (!date) return <span aria-hidden="true" className="coach-calendar-empty-day" key={`empty-${index}`} />;
 
                 const count = monthCounts[date] ?? 0;
-                const isSelected = date === selectedDate;
+                const isSelected = selectedDates.has(date);
                 const dateObject = new Date(`${date}T00:00:00`);
                 const isWeekend = dateObject.getDay() === 0 || dateObject.getDay() === 6;
                 const intensity = count >= 20 ? "high" : count >= 10 ? "medium" : count > 0 ? "low" : "none";
+                const holiday = holidays[date];
+                const isInPreview = previewRange
+                  ? date >= previewRange.from && date <= previewRange.to
+                  : false;
+                const isPreviewStart = previewRange ? date === previewRange.from : false;
+                const isPreviewEnd = previewRange ? date === previewRange.to : false;
 
                 return (
                   <button
@@ -121,14 +259,21 @@ export function CoachScheduleBoard({ dashboard, loadFailed }: CoachScheduleBoard
                       "coach-calendar-day",
                       isSelected ? "selected" : "",
                       isWeekend ? "weekend" : "",
-                      `intensity-${intensity}`
+                      holiday ? "holiday" : "",
+                      `intensity-${intensity}`,
+                      isInPreview && !isSelected ? "range-preview" : "",
+                      isPreviewStart ? "range-preview-start" : "",
+                      isPreviewEnd ? "range-preview-end" : "",
                     ].filter(Boolean).join(" ")}
                     key={date}
-                    onClick={() => setSelectedDate(date)}
+                    onClick={() => handleCalendarClick(date)}
+                    onMouseEnter={() => rangeMode && rangeAnchor ? setHoverDate(date) : undefined}
+                    title={holiday ?? undefined}
                     type="button"
                   >
                     <span>{Number(date.slice(-2))}</span>
                     <strong>{count > 0 ? count : "-"}</strong>
+                    {holiday && <em className="coach-calendar-holiday-dot" aria-hidden="true" />}
                   </button>
                 );
               })}
@@ -159,19 +304,46 @@ export function CoachScheduleBoard({ dashboard, loadFailed }: CoachScheduleBoard
                 <strong>코치 일정 데이터를 불러오지 못했습니다.</strong>
                 <span>배포 DB 연결과 코치 import 상태를 확인하세요.</span>
               </div>
-            ) : !selectedDate ? (
+            ) : isMultiDate && activeDays.length === 0 ? (
+              <div className="coach-doc-empty">
+                <strong>이 달에 선택한 날짜의 데이터가 없습니다.</strong>
+                <span>다른 날짜를 선택하거나 월을 이동하세요.</span>
+              </div>
+            ) : isMultiDate && multiDateCoaches.length === 0 ? (
+              <div className="coach-doc-empty">
+                <strong>선택한 날짜 모두 가능한 코치가 없습니다.</strong>
+                <span>날짜를 조정하거나 시간대·검색어를 바꿔보세요.</span>
+              </div>
+            ) : isMultiDate ? (
+              <div className="coach-doc-rows">
+                {multiDateCoaches.map((coach) => (
+                  <Link className="coach-doc-row" href={`/coaches/${coach.id}`} key={coach.id}>
+                    <span className="coach-doc-icon">{coach.name.slice(0, 1)}</span>
+                    <span className="coach-doc-main">
+                      <strong>{coach.name}</strong>
+                      <small>
+                        <b>{coach.workType || "근무유형 없음"}</b>
+                        {coach.fields.length > 0 && <> · {coach.fields.slice(0, 3).join(", ")}</>}
+                        <> · {latestEngagementLabel(coach)}</>
+                      </small>
+                    </span>
+                    <span className="coach-doc-time">{formatScheduleLabel(coach.schedules)}</span>
+                  </Link>
+                ))}
+              </div>
+            ) : !singleDate ? (
               <div className="coach-doc-empty">
                 <strong>조회할 날짜를 선택하세요.</strong>
                 <span>달력에서 날짜를 누르면 해당 날짜의 가능 코치가 표시됩니다.</span>
               </div>
-            ) : filteredCoaches.length === 0 ? (
+            ) : singleDateCoaches.length === 0 ? (
               <div className="coach-doc-empty">
                 <strong>조건에 맞는 가능 코치가 없습니다.</strong>
                 <span>다른 날짜, 시간대, 검색어를 선택하세요.</span>
               </div>
             ) : (
               <div className="coach-doc-rows">
-                {filteredCoaches.map((coach) => (
+                {singleDateCoaches.map((coach) => (
                   <Link className="coach-doc-row" href={`/coaches/${coach.id}`} key={coach.id}>
                     <span className="coach-doc-icon">{coach.name.slice(0, 1)}</span>
                     <span className="coach-doc-main">
@@ -194,7 +366,8 @@ export function CoachScheduleBoard({ dashboard, loadFailed }: CoachScheduleBoard
   );
 }
 
-function defaultSelectedDate(dashboard: CoachScheduleDashboard): string | null {
+function defaultSelectedDate(dashboard: CoachScheduleDashboard, initialDate?: string): string | null {
+  if (initialDate && initialDate.startsWith(dashboard.yearMonth)) return initialDate;
   const today = formatDate(new Date());
   if (today.startsWith(dashboard.yearMonth)) return today;
   return Object.keys(dashboard.days).sort()[0] ?? null;
