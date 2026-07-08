@@ -8430,70 +8430,6 @@ td span {
   }
 }
 
-/* 관리자 사용자 관리 페이지 */
-.admin-users-empty {
-  color: var(--muted);
-  font-size: 0.9rem;
-}
-
-.admin-users-table-wrap {
-  overflow-x: auto;
-}
-
-.admin-users-table {
-  border-collapse: collapse;
-  font-size: 13px;
-  width: 100%;
-  max-width: 720px;
-}
-
-.admin-users-table th {
-  background: var(--surface-strong);
-  border-bottom: 1px solid var(--line);
-  color: var(--muted);
-  font-weight: 600;
-  padding: 9px 8px;
-  text-align: center;
-  white-space: nowrap;
-}
-
-.admin-users-table td {
-  border-bottom: 1px solid var(--line);
-  padding: 9px 8px;
-  text-align: center;
-  white-space: nowrap;
-}
-
-.admin-users-table .td-left {
-  text-align: left;
-}
-
-.admin-users-table tr.row-inactive td {
-  color: var(--muted);
-}
-
-.admin-users-table tr:last-child td {
-  border-bottom: none;
-}
-
-.admin-users-status-badge {
-  border-radius: 4px;
-  display: inline-block;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 2px 8px;
-}
-
-.admin-users-status-badge.active {
-  background: var(--green-bg);
-  color: var(--green);
-}
-
-.admin-users-status-badge.inactive {
-  background: var(--surface-strong);
-  color: var(--muted);
-}
-
 /* OM 배정 요청 */
 .om-request-form .yn-toggle-row {
   display: flex;
@@ -9219,29 +9155,6 @@ td span {
   padding-bottom: 12px;
 }
 
-.om-detail-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  margin-top: 6px;
-  padding-top: 18px;
-  border-top: 1px solid var(--line);
-}
-
-.om-detail-delete-action {
-  color: var(--red);
-}
-
-.om-detail-delete-action:hover {
-  border-color: var(--red);
-  color: var(--red);
-}
-
-.om-detail-delete-action:disabled {
-  opacity: 0.55;
-  cursor: default;
-}
-
 .detail-total-badge {
   background: var(--surface-strong);
   border-radius: 4px;
@@ -9387,6 +9300,163 @@ td span {
 .assign-cancel-btn:disabled {
   opacity: 0.4;
   pointer-events: none;
+}
+
+.request-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.request-edit-btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--text);
+  text-decoration: none;
+  background: none;
+  cursor: pointer;
+}
+
+.request-edit-btn:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.request-delete-btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--text);
+  background: none;
+  cursor: pointer;
+}
+
+.request-delete-btn:hover:not(:disabled) {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.request-delete-btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* 사용자 관리 */
+.user-management {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 800px;
+}
+
+.user-add-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.user-input {
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 13px;
+  background: var(--surface);
+  color: var(--text);
+  min-width: 160px;
+}
+
+.user-input:focus {
+  outline: none;
+  border-color: var(--blue);
+}
+
+.user-add-btn {
+  padding: 7px 16px;
+  background: var(--blue);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.user-add-btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.user-list-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-list-count {
+  font-size: 13px;
+  color: var(--text-sub);
+}
+
+.user-delete-btn {
+  padding: 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 13px;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.user-delete-btn:hover:not(:disabled) {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.user-delete-btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.user-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.user-table th,
+.user-table td {
+  padding: 9px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+}
+
+.user-table th {
+  font-weight: 500;
+  color: var(--text-sub);
+  background: var(--surface);
+}
+
+.user-table tbody tr {
+  cursor: pointer;
+}
+
+.user-table tbody tr:hover {
+  background: var(--surface);
+}
+
+.user-table tbody tr.selected {
+  background: color-mix(in srgb, var(--blue) 8%, transparent);
+}
+
+.user-empty {
+  font-size: 13px;
+  color: var(--text-sub);
+  padding: 24px 0;
 }
 
 .om-pagination {

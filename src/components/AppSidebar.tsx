@@ -38,9 +38,9 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
       </Link>
       <nav className="nav-list">
         <div className="nav-section">
-          <div className="nav-section-title">OM 배정</div>
-          <Link className={isOmRequestPage ? "active" : ""} data-icon="📋" href="/om-request">배정 요청</Link>
-          <Link className={isOmManagePage ? "active" : ""} data-icon="☑" href="/om-request/manage">배정 관리</Link>
+          <div className="nav-section-title">OM 운영 요청</div>
+          <Link className={isOmRequestPage ? "active" : ""} data-icon="📋" href="/om-request">업무 요청</Link>
+          <Link className={isOmManagePage ? "active" : ""} data-icon="☑" href="/om-request/manage">담당 관리</Link>
         </div>
 
         <div className="nav-section">

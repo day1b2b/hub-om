@@ -33,7 +33,7 @@ export default async function OmRequestCompletePage({ searchParams }: Props) {
 
   return (
     <main className="dashboard-shell">
-      <AppSidebar label="OM 배정 요청" teamScope="both" />
+      <AppSidebar label="업무 요청" teamScope="both" />
       <section className="content operations-page operation-create-page">
         <header className="page-header operation-create-header">
           <div className="om-complete-header-inner">
@@ -51,7 +51,7 @@ export default async function OmRequestCompletePage({ searchParams }: Props) {
             <div className="operation-form-section">
               <div className="section-title"><h2>기본 정보</h2></div>
               <div className="operation-form-grid">
-                <Field label="팀" value={request.team} />
+                <Field label="구분" value={request.team} />
                 <Field label="LD" value={request.ld} />
                 <Field label="기업명" value={request.company} />
                 <Field label="교육형태" value={request.trainingType} />

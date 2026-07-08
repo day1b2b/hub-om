@@ -13,11 +13,11 @@ export default async function OmRequestManagePage() {
 
   return (
     <main className="dashboard-shell">
-      <AppSidebar label="OM 배정 관리" teamScope="both" />
+      <AppSidebar label="담당 관리" teamScope="both" />
       <section className="content operations-page">
         <header className="page-header">
           <div>
-            <h1>배정 관리</h1>
+            <h1>담당 관리</h1>
             <p className="page-subtitle">접수된 OM 배정 요청을 확인하고 담당자를 배정합니다.</p>
           </div>
         </header>

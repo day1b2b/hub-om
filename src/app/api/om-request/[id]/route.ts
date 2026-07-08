@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import { deleteOmRequest, updateOmRequest } from "@/lib/data/omRequest/omRequestLocalRepository";
 import type { OmRequestInput } from "@/lib/data/omRequest/omRequestTypes";
 
-interface RouteParams {
+interface Props {
   params: Promise<{ id: string }>;
 }
 
-export async function PATCH(request: Request, { params }: RouteParams) {
+export async function PATCH(request: Request, { params }: Props) {
   try {
     const { id } = await params;
     const body = (await request.json()) as OmRequestInput;
@@ -14,15 +14,15 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     if (!updated) return NextResponse.json({ error: "요청 없음" }, { status: 404 });
     return NextResponse.json(updated);
   } catch {
-    return NextResponse.json({ error: "수정 실패" }, { status: 500 });
+    return NextResponse.json({ error: "저장 실패" }, { status: 500 });
   }
 }
 
-export async function DELETE(_request: Request, { params }: RouteParams) {
+export async function DELETE(_request: Request, { params }: Props) {
   try {
     const { id } = await params;
-    const deleted = deleteOmRequest(id);
-    if (!deleted) return NextResponse.json({ error: "요청 없음" }, { status: 404 });
+    const ok = deleteOmRequest(id);
+    if (!ok) return NextResponse.json({ error: "요청 없음" }, { status: 404 });
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "삭제 실패" }, { status: 500 });

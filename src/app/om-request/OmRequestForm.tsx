@@ -4,7 +4,7 @@ import Script from "next/script";
 import { useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import type { OmRequest, OmRequestInput, OmRequestSession, TrainingType, YN } from "@/lib/data/omRequest/omRequestTypes";
+import type { OmRequestInput, OmRequestSession, TrainingType, YN } from "@/lib/data/omRequest/omRequestTypes";
 
 declare global {
   interface Window {
@@ -117,39 +117,29 @@ function YNToggle({
   );
 }
 
-interface OmRequestFormProps {
-  ldName: string;
-  initialRequest?: OmRequest;
-  onCancelEdit?: () => void;
-  onSaved?: () => void;
-}
-
-export function OmRequestForm({ ldName, initialRequest, onCancelEdit, onSaved }: OmRequestFormProps) {
+export function OmRequestForm({ ldName, initialData, requestId }: { ldName: string; initialData?: OmRequestInput; requestId?: string }) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const isEditing = Boolean(initialRequest);
 
-  const [form, setForm] = useState<OmRequestInput>(
-    initialRequest ?? {
-      team: "1팀",
-      ld: ldName,
-      company: "",
-      trainingType: "오프라인",
-      courseId: "",
-      courseName: "",
-      instructorName: "",
-      driveLink: "",
-      syncupLink: "",
-      skillfloSetup: "N",
-      skillmatchSetup: "N",
-      onSiteOperation: "N",
-      coachRequest: "N",
-      totalSessions: 1,
-      sessions: [emptySession()],
-      notes: ""
-    }
-  );
+  const [form, setForm] = useState<OmRequestInput>(initialData ?? {
+    team: "1팀",
+    ld: ldName,
+    company: "",
+    trainingType: "오프라인",
+    courseId: "",
+    courseName: "",
+    instructorName: "",
+    driveLink: "",
+    syncupLink: "",
+    skillfloSetup: "N",
+    skillmatchSetup: "N",
+    onSiteOperation: "N",
+    coachRequest: "N",
+    totalSessions: 1,
+    sessions: [emptySession()],
+    notes: ""
+  });
 
   function setField<K extends keyof OmRequestInput>(key: K, value: OmRequestInput[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -184,18 +174,22 @@ export function OmRequestForm({ ldName, initialRequest, onCancelEdit, onSaved }:
     setSubmitting(true);
     setError(null);
     try {
-      const url = isEditing ? `/api/om-request/${initialRequest?.id}` : "/api/om-request";
-      const res = await fetch(url, {
-        method: isEditing ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form)
-      });
-      if (!res.ok) throw new Error(isEditing ? "수정에 실패했습니다." : "저장에 실패했습니다.");
-
-      if (isEditing) {
+      if (requestId) {
+        const res = await fetch(`/api/om-request/${requestId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form)
+        });
+        if (!res.ok) throw new Error("저장에 실패했습니다.");
+        router.push(`/om-request/manage/${requestId}`);
         router.refresh();
-        onSaved?.();
       } else {
+        const res = await fetch("/api/om-request", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form)
+        });
+        if (!res.ok) throw new Error("저장에 실패했습니다.");
         const created = await res.json() as { id: string };
         router.push(`/om-request/complete?id=${created.id}`);
       }
@@ -216,7 +210,7 @@ export function OmRequestForm({ ldName, initialRequest, onCancelEdit, onSaved }:
         <div className="operation-form-grid">
 
           <label>
-            <span>팀<RequiredMark /></span>
+            <span>구분<RequiredMark /></span>
             <select value={form.team} onChange={(e) => setField("team", e.target.value)}>
               {TEAM_OPTIONS.map((t) => <option key={t}>{t}</option>)}
             </select>
@@ -224,7 +218,12 @@ export function OmRequestForm({ ldName, initialRequest, onCancelEdit, onSaved }:
 
           <label>
             <span>LD<RequiredMark /></span>
-            <input required type="text" value={form.ld} readOnly />
+            <input
+              required
+              type="text"
+              value={form.ld}
+              onChange={(e) => setField("ld", e.target.value)}
+            />
           </label>
 
           <label>
@@ -398,22 +397,11 @@ export function OmRequestForm({ ldName, initialRequest, onCancelEdit, onSaved }:
 
       {error && <p className="om-request-error">{error}</p>}
 
-      {isEditing ? (
-        <div className="om-detail-actions">
-          <button className="secondary-action" disabled={submitting} type="submit">
-            {submitting ? "저장 중..." : "저장"}
-          </button>
-          <button type="button" className="secondary-action" disabled={submitting} onClick={onCancelEdit}>
-            취소
-          </button>
-        </div>
-      ) : (
-        <div className="operation-form-actions">
-          <button className="primary-action" disabled={submitting} type="submit">
-            {submitting ? "저장 중..." : "요청 제출"}
-          </button>
-        </div>
-      )}
+      <div className="operation-form-actions">
+        <button className="primary-action" disabled={submitting} type="submit">
+          {submitting ? "저장 중..." : requestId ? "수정 저장" : "요청 제출"}
+        </button>
+      </div>
     </form>
     </>
   );

@@ -1,6 +1,5 @@
 .omx/
 .local/
-/om-requests.json
 .DS_Store
 node_modules/
 .next/
@@ -9,6 +8,7 @@ dist/
 tsconfig.tsbuildinfo
 .env
 .env.local
+om-requests.json
 .env.*.local
 npm-debug.log*
 yarn-debug.log*
@@ -16,3 +16,4 @@ yarn-error.log*
 pnpm-debug.log*
 data/excel/*
 !data/excel/.gitkeep
+team-users.json
