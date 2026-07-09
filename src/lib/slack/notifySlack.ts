@@ -24,7 +24,7 @@ export async function notifyOmRequestCreated(params: {
   onSiteOperation: string;
   coachRequest: string;
   totalSessions: number;
-  sessions: { date: string; timeStart: string; timeEnd: string; location: string }[];
+  sessions: { date: string; timeStart: string; timeEnd: string; duration: string; location: string }[];
   notes: string;
 }) {
   const sessionLines = params.sessions
