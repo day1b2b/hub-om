@@ -7338,6 +7338,7 @@ td span {
   justify-content: center;
   line-height: 1.15;
   padding: 3px;
+  position: relative;
 }
 
 .coach-calendar-day.weekend span {
@@ -7537,16 +7538,24 @@ td span {
   color: #ffffff;
 }
 
-/* 범위 미리보기 */
-.coach-calendar-day.range-preview {
-  background: #e8f0fe;
+/* 다중 날짜 선택 시 체크 표시 */
+.coach-calendar-check {
+  align-items: center;
+  background: #4a7fd4;
+  border-radius: 50%;
+  color: #ffffff;
+  display: flex;
+  font-size: 9px;
+  font-style: normal;
+  height: 14px;
+  justify-content: center;
+  line-height: 1;
+  position: absolute;
+  right: 4px;
+  top: 4px;
+  width: 14px;
 }
 
-.coach-calendar-day.range-preview-start,
-.coach-calendar-day.range-preview-end {
-  background: #b8d0fc;
-  border-color: #4a7fd4;
-}
 
 /* 기간 검색 바 */
 .coach-date-range-bar {

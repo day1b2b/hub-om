@@ -32,10 +32,8 @@ export function CoachScheduleBoard({ dashboard, holidays, loadFailed, initialDat
     const d = defaultSelectedDate(dashboard, initialDate);
     return d ? new Set([d]) : new Set();
   });
-  // 범위 선택 모드
+  // 여러 날짜 선택 모드 (연속·비연속 모두 개별 클릭으로 추가/제거)
   const [rangeMode, setRangeMode] = useState(false);
-  const [rangeAnchor, setRangeAnchor] = useState<string | null>(null);
-  const [hoverDate, setHoverDate] = useState<string | null>(null);
 
   const [timeFilter, setTimeFilter] = useState<TimeFilterKey>("all");
   const [query, setQuery] = useState("");
@@ -98,45 +96,29 @@ export function CoachScheduleBoard({ dashboard, holidays, loadFailed, initialDat
 
   function handleCalendarClick(date: string) {
     if (rangeMode) {
-      if (!rangeAnchor) {
-        setRangeAnchor(date);
-        setSelectedDates(new Set([date]));
-      } else {
-        const from = rangeAnchor <= date ? rangeAnchor : date;
-        const to = rangeAnchor <= date ? date : rangeAnchor;
-        const range = new Set<string>();
-        let current = from;
-        while (current <= to) {
-          range.add(current);
-          const d = new Date(`${current}T00:00:00`);
-          d.setDate(d.getDate() + 1);
-          current = formatDate(d);
-        }
-        setSelectedDates(range);
-        setRangeAnchor(null);
-        setHoverDate(null);
-      }
-    } else {
-      setRangeAnchor(null);
+      // 여러 날짜 선택 모드: 연속이든 띄엄띄엄이든 클릭한 날짜만 개별로 추가/제거.
       setSelectedDates((prev) => {
         const next = new Set(prev);
         if (next.has(date)) next.delete(date);
         else next.add(date);
         return next;
       });
+    } else {
+      setSelectedDates((prev) => {
+        // 여러 날짜 선택 모드 밖에서는 클릭 한 번에 그 날짜 하나만 선택(이전 선택 교체).
+        // 같은 날짜를 다시 클릭하면 선택 해제.
+        if (prev.size === 1 && prev.has(date)) return new Set();
+        return new Set([date]);
+      });
     }
   }
 
   function clearSelection() {
     setSelectedDates(new Set());
-    setRangeAnchor(null);
-    setHoverDate(null);
   }
 
   function toggleRangeMode() {
     setRangeMode((prev) => !prev);
-    setRangeAnchor(null);
-    setHoverDate(null);
   }
 
   function moveMonth(offset: number) {
@@ -152,15 +134,6 @@ export function CoachScheduleBoard({ dashboard, holidays, loadFailed, initialDat
     }
     router.push(`/coaches/schedule?yearMonth=${today.slice(0, 7)}`);
   }
-
-  // 달력 범위 미리보기 계산
-  const previewRange = useMemo(() => {
-    if (!rangeMode || !rangeAnchor || !hoverDate) return null;
-    return {
-      from: rangeAnchor <= hoverDate ? rangeAnchor : hoverDate,
-      to: rangeAnchor <= hoverDate ? hoverDate : rangeAnchor,
-    };
-  }, [rangeMode, rangeAnchor, hoverDate]);
 
   return (
     <main className="dashboard-shell coach-schedule-shell">
@@ -197,17 +170,15 @@ export function CoachScheduleBoard({ dashboard, holidays, loadFailed, initialDat
           <button
             className={["coach-date-range-mode", rangeMode ? "active" : ""].filter(Boolean).join(" ")}
             onClick={toggleRangeMode}
-            title={rangeMode ? "범위 선택 모드 해제" : "범위 선택 모드: 시작·종료 클릭으로 연속 범위 선택"}
+            title={rangeMode ? "범위 선택 모드 해제" : "범위 선택 모드: 연속·비연속 날짜를 각각 클릭해 조합 선택"}
             type="button"
           >
             {rangeMode ? "범위 선택 중" : "범위 선택"}
           </button>
-          {rangeMode && rangeAnchor ? (
-            <span className="coach-date-range-hint">{rangeAnchor} 선택됨 · 종료 날짜를 클릭하세요</span>
-          ) : !rangeMode ? (
-            <span className="coach-date-range-hint">날짜를 클릭해 선택 · 여러 날짜 조합 가능</span>
+          {rangeMode ? (
+            <span className="coach-date-range-hint">날짜를 클릭해 추가·제거 · 연속이 아니어도 됩니다</span>
           ) : (
-            <span className="coach-date-range-hint">시작 날짜를 클릭하세요</span>
+            <span className="coach-date-range-hint">날짜를 클릭해 선택</span>
           )}
           {isMultiDate && (
             <span className="coach-date-range-result">
@@ -233,10 +204,7 @@ export function CoachScheduleBoard({ dashboard, holidays, loadFailed, initialDat
             <div className="coach-calendar-weekdays" aria-hidden="true">
               {["일", "월", "화", "수", "목", "금", "토"].map((day) => <span key={day}>{day}</span>)}
             </div>
-            <div
-              className="coach-calendar-grid"
-              onMouseLeave={() => setHoverDate(null)}
-            >
+            <div className="coach-calendar-grid">
               {buildCalendarCells(monthDate.year, monthDate.monthIndex).map((date, index) => {
                 if (!date) return <span aria-hidden="true" className="coach-calendar-empty-day" key={`empty-${index}`} />;
 
@@ -246,11 +214,6 @@ export function CoachScheduleBoard({ dashboard, holidays, loadFailed, initialDat
                 const isWeekend = dateObject.getDay() === 0 || dateObject.getDay() === 6;
                 const intensity = count >= 20 ? "high" : count >= 10 ? "medium" : count > 0 ? "low" : "none";
                 const holiday = holidays[date];
-                const isInPreview = previewRange
-                  ? date >= previewRange.from && date <= previewRange.to
-                  : false;
-                const isPreviewStart = previewRange ? date === previewRange.from : false;
-                const isPreviewEnd = previewRange ? date === previewRange.to : false;
 
                 return (
                   <button
@@ -261,19 +224,16 @@ export function CoachScheduleBoard({ dashboard, holidays, loadFailed, initialDat
                       isWeekend ? "weekend" : "",
                       holiday ? "holiday" : "",
                       `intensity-${intensity}`,
-                      isInPreview && !isSelected ? "range-preview" : "",
-                      isPreviewStart ? "range-preview-start" : "",
-                      isPreviewEnd ? "range-preview-end" : "",
                     ].filter(Boolean).join(" ")}
                     key={date}
                     onClick={() => handleCalendarClick(date)}
-                    onMouseEnter={() => rangeMode && rangeAnchor ? setHoverDate(date) : undefined}
                     title={holiday ?? undefined}
                     type="button"
                   >
                     <span>{Number(date.slice(-2))}</span>
                     <strong>{count > 0 ? count : "-"}</strong>
                     {holiday && <em className="coach-calendar-holiday-dot" aria-hidden="true" />}
+                    {isSelected && isMultiDate && <em className="coach-calendar-check" aria-hidden="true">✓</em>}
                   </button>
                 );
               })}
