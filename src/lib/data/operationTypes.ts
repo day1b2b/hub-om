@@ -89,6 +89,7 @@ export interface OperationSession {
   hasResultReport: ResultReportStatus;
   resultReportLink: string;
   lectureManagementLink: string;
+  lectureManagementNote: string;
   padletLink: string;
   validationStatus: ValidationStatus;
   validationErrors: string[];
@@ -134,13 +135,18 @@ export interface UpdateOperationInput {
   archiveStatus?: ArchiveStatus;
   avgSatisfaction?: string;
   coach?: string;
+  companyWikiLink?: string;
   costRaw?: string;
   driveLink?: string;
   educationDays?: string;
+  endDate?: string;
+  hasResultReport?: ResultReportStatus;
   instructorCost?: number | null;
   instructorSatisfaction?: string;
   instructors?: string;
+  instructorWikiLink?: string;
   lectureManagementLink?: string;
+  lectureManagementNote?: string;
   operationCost?: number | null;
   operationDetail?: string;
   operationIssue?: string;
@@ -149,6 +155,7 @@ export interface UpdateOperationInput {
   region?: string;
   resultReportLink?: string;
   specialNotes?: string;
+  startDate?: string;
   timeText?: string;
   totalCost?: number | null;
 }

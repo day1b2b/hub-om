@@ -564,7 +564,7 @@ button {
 
 .operation-detail-content {
   gap: 12px;
-  width: min(100%, 750px);
+  width: min(100%, 1180px);
 }
 
 .page-header {
@@ -2577,7 +2577,7 @@ td span {
   margin-top: 4px;
 }
 
-.detail-layout {
+.operation-detail-layout {
   align-items: start;
   display: grid;
   gap: 12px;
@@ -2686,6 +2686,63 @@ td span {
   line-height: 1.25;
   margin-top: 0;
   text-align: left;
+}
+
+.info-item-value-row {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.info-item-edit-trigger {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 700;
+  height: 20px;
+  padding: 0 8px;
+}
+
+.editable-info-item.editing {
+  gap: 6px;
+}
+
+.info-item-edit-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.info-item-edit-form input {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  flex: 1;
+  font-size: 12px;
+  min-width: 0;
+  padding: 6px 8px;
+}
+
+.info-item-edit-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.info-item-edit-actions button {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+
+.info-item-save-error {
+  color: #c0392b;
+  font-size: 11px;
 }
 
 .coach-detail-list {
@@ -4151,6 +4208,63 @@ td span {
   color: #75746f;
 }
 
+.archive-item-actions {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.archive-item-edit-trigger {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  height: 22px;
+  padding: 0 10px;
+}
+
+.archive-item-edit-trigger:hover {
+  background: var(--surface-hover, #f4f5f7);
+}
+
+.archive-item-row.editing {
+  align-items: start;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: 1fr;
+}
+
+.archive-item-edit-form {
+  display: flex;
+  gap: 6px;
+}
+
+.archive-item-edit-form input {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  flex: 1;
+  font-size: 12px;
+  min-width: 0;
+  padding: 6px 8px;
+}
+
+.archive-item-edit-form button {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+
+.archive-item-save-error {
+  color: #c0392b;
+  font-size: 11px;
+}
+
 .archive-complete-button {
   align-items: center;
   background: #ffffff;
@@ -4235,6 +4349,173 @@ td span {
 .session-table .status {
   font-size: 11px;
   min-width: 48px;
+}
+
+.session-row-edit-trigger {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  height: 22px;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+.session-row-edit-trigger:hover {
+  background: var(--surface-hover, #f4f5f7);
+}
+
+.session-row-delete-trigger {
+  border-color: rgba(180, 35, 24, 0.35);
+  color: var(--red);
+}
+
+.session-row-delete-trigger:hover {
+  background: var(--red-bg);
+}
+
+.course-sessions-header-actions {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.add-round-trigger {
+  background: transparent;
+  border: 1px solid rgba(23, 121, 66, 0.35);
+  border-radius: 999px;
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 700;
+  height: 24px;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+
+.add-round-trigger:hover {
+  background: var(--surface-hover, #f4f5f7);
+}
+
+.add-round-dialog {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  max-width: 440px;
+}
+
+.add-round-date-row {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.course-sessions-empty {
+  color: var(--muted);
+  font-size: 12px;
+  padding: 14px 16px;
+}
+
+.session-row-edit-form {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  white-space: normal;
+}
+
+.session-row-edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.session-row-edit-field > span:first-child {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.session-row-edit-field input {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 12px;
+  padding: 6px 8px;
+}
+
+.session-row-edit-date-range {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+}
+
+.session-row-edit-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.session-row-edit-actions button {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+
+.round-resource-cell {
+  white-space: normal;
+}
+
+.round-resource-cell-view {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.round-resource-edit-trigger {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  height: 22px;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+.round-resource-edit-trigger:hover {
+  background: var(--surface-hover, #f4f5f7);
+}
+
+.round-resource-cell-edit-form {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+  min-width: 220px;
+}
+
+.round-resource-cell-edit-form input {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  flex: 1;
+  font-size: 12px;
+  min-width: 0;
+  padding: 6px 8px;
+}
+
+.round-resource-cell-edit-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.round-resource-cell-edit-actions button {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 10px;
+  white-space: nowrap;
 }
 
 .session-link {
@@ -5924,6 +6205,172 @@ td span {
 .drive-review-dialog .drive-import-bulk-actions {
   border-bottom: 1px solid var(--line);
   padding: 10px 18px;
+}
+
+.lecture-note-dialog {
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  max-width: 760px;
+}
+
+.lecture-note-tabs {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 18px;
+}
+
+.lecture-note-tab {
+  background: #fbfcfe;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  height: 28px;
+  padding: 0 12px;
+}
+
+.lecture-note-tab.active {
+  background: var(--text);
+  border-color: var(--text);
+  color: #ffffff;
+}
+
+.lecture-note-tab-add {
+  background: transparent;
+  border: 1px dashed var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  height: 28px;
+  padding: 0 12px;
+}
+
+.lecture-note-tab-add:hover {
+  border-color: #c9c9c3;
+}
+
+.lecture-note-tab-header {
+  align-items: flex-end;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.lecture-note-tab-remove {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--red);
+  font-size: 12px;
+  font-weight: 700;
+  height: 34px;
+  padding: 0 10px;
+}
+
+.lecture-note-tab-remove:hover {
+  border-color: var(--red);
+}
+
+.lecture-note-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  padding: 16px 18px;
+}
+
+.lecture-note-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 220px;
+}
+
+.lecture-note-field > span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.lecture-note-field input {
+  background: #fbfcfe;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--text);
+  font: inherit;
+  height: 34px;
+  padding: 0 10px;
+  width: 100%;
+}
+
+.lecture-note-field input:focus {
+  outline: 2px solid rgba(117, 116, 111, 0.16);
+}
+
+.lecture-note-field-block {
+  max-width: none;
+  width: 100%;
+}
+
+.lecture-note-textarea {
+  background: #fbfcfe;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--text);
+  display: block;
+  font: inherit;
+  line-height: 1.5;
+  min-height: 140px;
+  padding: 10px 12px;
+  resize: vertical;
+  width: 100%;
+}
+
+.lecture-note-textarea:focus {
+  outline: 2px solid rgba(117, 116, 111, 0.16);
+}
+
+.lecture-note-footer {
+  align-items: center;
+  border-top: 1px solid var(--line);
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding: 12px 18px;
+}
+
+.lecture-note-actions {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.lecture-note-actions button {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 800;
+  min-height: 32px;
+  padding: 0 12px;
+}
+
+.lecture-note-actions button:hover:not(:disabled) {
+  border-color: #c9c9c3;
+}
+
+.lecture-note-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.lecture-note-save-error {
+  color: var(--red);
+  font-size: 12px;
 }
 
 .drive-candidate-list {
@@ -7817,7 +8264,8 @@ td span {
     grid-column: 1 / -1;
   }
 
-  .detail-layout {
+  .detail-layout,
+  .operation-detail-layout {
     grid-template-columns: 1fr;
   }
 

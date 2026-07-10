@@ -22,7 +22,13 @@ import type {
   SourceTeam,
   UpdateOperationInput
 } from "./operationTypes";
-import { deriveProfit, summarizeOperations } from "./operationCalculations";
+import {
+  buildOperationMonth,
+  deriveProfit,
+  deriveSessionDurationDays,
+  deriveSessionDurationType,
+  summarizeOperations
+} from "./operationCalculations";
 import type { OperationRepository } from "./operationRepository";
 import { getPrismaClient } from "./prisma";
 import { normalizeRoleAssigneeText } from "./roleAssignees";
@@ -97,6 +103,13 @@ const PRISMA_ARCHIVE_STATUS: Record<ArchiveStatus, PrismaArchiveStatus> = {
   "아카이빙전": PrismaArchiveStatus.NOT_READY,
   "아카이빙필요": PrismaArchiveStatus.NEEDED,
   "완료": PrismaArchiveStatus.DONE
+};
+
+const PRISMA_RESULT_REPORT_STATUS: Record<ResultReportStatus, PrismaResultReportStatus> = {
+  "유": PrismaResultReportStatus.YES,
+  "무": PrismaResultReportStatus.NO,
+  "불필요": PrismaResultReportStatus.NOT_REQUIRED,
+  "확인필요": PrismaResultReportStatus.NEEDS_REVIEW
 };
 
 const PRISMA_EDUCATION_FORMAT: Record<EducationFormat, PrismaEducationFormat> = {
@@ -190,6 +203,7 @@ export class PrismaOperationRepository implements OperationRepository {
         hasResultReport: RESULT_REPORT_STATUS[session.hasResultReport],
         resultReportLink: session.resultReportLink ?? "",
         lectureManagementLink: session.lectureManagementLink ?? "",
+        lectureManagementNote: session.lectureManagementNote ?? "",
         padletLink: session.padletLink ?? "",
         validationStatus: getValidationErrors(session.validationErrors).length > 0 ? "검토필요" : "정상",
         validationErrors: getValidationErrors(session.validationErrors)
@@ -321,13 +335,36 @@ export class PrismaOperationRepository implements OperationRepository {
     if (input.archiveStatus !== undefined) data.archiveStatus = PRISMA_ARCHIVE_STATUS[input.archiveStatus];
     if (input.avgSatisfaction !== undefined) data.avgSatisfaction = nullableText(input.avgSatisfaction);
     if (input.coach !== undefined) data.coachText = nullableText(input.coach);
+    if (input.companyWikiLink !== undefined) data.companyWikiLink = nullableText(input.companyWikiLink);
     if (input.costRaw !== undefined) data.costRaw = nullableText(input.costRaw);
     if (input.driveLink !== undefined) data.driveLink = nullableText(input.driveLink);
     if (input.educationDays !== undefined) data.educationDays = nullableText(input.educationDays);
+    if (input.hasResultReport !== undefined) data.hasResultReport = PRISMA_RESULT_REPORT_STATUS[input.hasResultReport];
+
+    if (input.startDate !== undefined || input.endDate !== undefined) {
+      const current = await this.getOperationById(operationId);
+
+      if (!current) {
+        throw new Error("Operation not found.");
+      }
+
+      const nextStartDate = input.startDate ?? current.startDate;
+      const nextEndDate = input.endDate ?? current.endDate;
+      const sessionDurationDays = deriveSessionDurationDays(nextStartDate, nextEndDate);
+
+      data.startDate = parseDateInput(nextStartDate, "startDate");
+      data.endDate = parseDateInput(nextEndDate, "endDate");
+      data.operationMonth = buildOperationMonth(nextStartDate);
+      data.sessionDurationDays = sessionDurationDays;
+      data.sessionDurationType = PRISMA_OPERATION_TYPE[deriveSessionDurationType(sessionDurationDays)];
+    }
+
     if (input.instructorCost !== undefined) data.instructorCost = input.instructorCost;
     if (input.instructorSatisfaction !== undefined) data.instructorSatisfaction = nullableText(input.instructorSatisfaction);
     if (input.instructors !== undefined) data.instructorsText = nullableText(input.instructors);
+    if (input.instructorWikiLink !== undefined) data.instructorWikiLink = nullableText(input.instructorWikiLink);
     if (input.lectureManagementLink !== undefined) data.lectureManagementLink = nullableText(input.lectureManagementLink);
+    if (input.lectureManagementNote !== undefined) data.lectureManagementNote = nullableText(input.lectureManagementNote);
     if (input.operationCost !== undefined) data.operationCost = input.operationCost;
     if (input.operationDetail !== undefined) data.operationDetail = nullableText(input.operationDetail);
     if (input.operationIssue !== undefined) data.operationIssue = nullableText(input.operationIssue);
@@ -361,6 +398,15 @@ export class PrismaOperationRepository implements OperationRepository {
     }
 
     return operation;
+  }
+
+  async deleteOperation(operationId: string, deletedBy?: string): Promise<void> {
+    const prisma = getPrismaClient();
+
+    await prisma.operationSession.update({
+      where: { operationId },
+      data: { deletedAt: new Date(), deletedBy: deletedBy ?? null }
+    });
   }
 
   async getSummary() {

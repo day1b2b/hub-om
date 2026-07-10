@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
-import type { ArchiveStatus, OperationSession, UpdateOperationInput } from "@/lib/data/operationTypes";
+import type { ArchiveStatus, OperationSession, ResultReportStatus, UpdateOperationInput } from "@/lib/data/operationTypes";
 import { summarizeSatisfactionValue } from "@/lib/data/satisfaction";
 import type { DriveImportCandidateAction, DriveImportCandidateField } from "@/lib/driveImports/driveImportTypes";
 
@@ -11,13 +11,18 @@ const APPLYABLE_FIELDS = [
   "archiveStatus",
   "avgSatisfaction",
   "coach",
+  "companyWikiLink",
   "costRaw",
   "driveLink",
   "educationDays",
+  "endDate",
+  "hasResultReport",
   "instructorCost",
   "instructorSatisfaction",
   "instructors",
+  "instructorWikiLink",
   "lectureManagementLink",
+  "lectureManagementNote",
   "operationCost",
   "operationDetail",
   "operationIssue",
@@ -26,6 +31,7 @@ const APPLYABLE_FIELDS = [
   "region",
   "resultReportLink",
   "specialNotes",
+  "startDate",
   "timeText",
   "totalCost"
 ] as const satisfies Array<keyof UpdateOperationInput>;
@@ -94,6 +100,16 @@ function assignUpdateValue(update: UpdateOperationInput, field: ApplyableField, 
     return;
   }
 
+  if (field === "hasResultReport") {
+    if (isResultReportStatus(value)) update.hasResultReport = value;
+    return;
+  }
+
+  if (field === "startDate" || field === "endDate") {
+    if (isDateText(value)) update[field] = value;
+    return;
+  }
+
   if (isMoneyField(field)) {
     update[field] = parseMoney(value);
     return;
@@ -109,6 +125,19 @@ function assignUpdateValue(update: UpdateOperationInput, field: ApplyableField, 
 
 function isArchiveStatus(value: string): value is ArchiveStatus {
   return value === "아카이빙전" || value === "아카이빙필요" || value === "완료";
+}
+
+function isResultReportStatus(value: string): value is ResultReportStatus {
+  return value === "유" || value === "무" || value === "불필요" || value === "확인필요";
+}
+
+function isDateText(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  return date.getUTCFullYear() === year && date.getUTCMonth() + 1 === month && date.getUTCDate() === day;
 }
 
 function isMoneyField(field: ApplyableField): field is "instructorCost" | "operationCost" | "totalCost" {
