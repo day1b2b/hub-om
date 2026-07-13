@@ -8252,63 +8252,6 @@ td span {
   font-size: 12px;
 }
 
-.memo-toggle {
-  background: none;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  color: var(--muted);
-  cursor: pointer;
-  font: inherit;
-  font-size: 12px;
-  padding: 4px 10px;
-  white-space: nowrap;
-}
-
-.memo-toggle:hover {
-  background: #eeeeec;
-  color: var(--text);
-}
-
-.memo-toggle.has-memo {
-  border-color: #9fb58d;
-  color: var(--text);
-}
-
-.course-memo-cell {
-  background: #fbfbfa;
-}
-
-.course-memo {
-  display: grid;
-  gap: 6px;
-  padding: 10px 14px 14px;
-}
-
-.course-memo textarea {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  color: var(--text);
-  font-family: inherit;
-  font-size: 13px;
-  line-height: 1.6;
-  min-height: 72px;
-  padding: 10px 12px;
-  resize: vertical;
-  width: 100%;
-}
-
-.course-memo textarea:focus {
-  border-color: #9fb58d;
-  outline: none;
-}
-
-.course-memo-status {
-  color: var(--muted);
-  font-size: 11px;
-  text-align: right;
-}
-
 /* 기업 위키(company-wiki) 목록/상세에서 추가로 쓰는 클래스 */
 .row-link {
   background: none;
