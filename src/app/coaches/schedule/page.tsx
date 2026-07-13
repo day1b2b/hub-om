@@ -1,6 +1,7 @@
 import { CoachScheduleBoard } from "@/features/coaches/CoachScheduleBoard";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getCoachRepository } from "@/lib/data/coachRepositoryFactory";
+import { fetchKoreanHolidays } from "@/lib/holidayApi";
 import type { CoachScheduleDashboard } from "@/lib/data/coachTypes";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +15,8 @@ export default async function CoachSchedulePage({ searchParams }: CoachScheduleP
 
   const params = await searchParams;
   const yearMonth = resolveYearMonth(firstParam(params.yearMonth));
+  const dateParam = firstParam(params.date);
+  const initialDate = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : undefined;
 
   let dashboard: CoachScheduleDashboard = {
     yearMonth,
@@ -22,13 +25,27 @@ export default async function CoachSchedulePage({ searchParams }: CoachScheduleP
   };
   let loadFailed = false;
 
-  try {
-    dashboard = await getCoachRepository().getScheduleDashboard(yearMonth);
-  } catch {
+  const [dashboardResult, holidays] = await Promise.allSettled([
+    getCoachRepository().getScheduleDashboard(yearMonth),
+    fetchKoreanHolidays(yearMonth),
+  ]);
+
+  if (dashboardResult.status === "fulfilled") {
+    dashboard = dashboardResult.value;
+  } else {
     loadFailed = true;
   }
 
-  return <CoachScheduleBoard dashboard={dashboard} loadFailed={loadFailed} />;
+  const holidayMap = holidays.status === "fulfilled" ? holidays.value : {};
+
+  return (
+    <CoachScheduleBoard
+      dashboard={dashboard}
+      holidays={holidayMap}
+      initialDate={initialDate}
+      loadFailed={loadFailed}
+    />
+  );
 }
 
 function firstParam(value: string | string[] | undefined): string | undefined {

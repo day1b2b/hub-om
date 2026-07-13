@@ -11,9 +11,9 @@ const ALL_SLOTS = Array.from({ length: 28 }, (_, index) => {
 });
 
 const BULK_RANGES = [
-  { label: "오전", start: "08:00", end: "13:00" },
+  { label: "오전", start: "08:00", end: "12:00" },
   { label: "오후", start: "13:00", end: "18:00" },
-  { label: "저녁", start: "18:00", end: "22:00" },
+  { label: "저녁", start: "19:00", end: "22:00" },
   { label: "종일", start: "08:00", end: "22:00" }
 ] as const;
 

@@ -3656,61 +3656,24 @@ td span {
 }
 
 .coach-origin-empty-panel {
-  background: #ffffff;
-  border: 1px solid #e8edf3;
-  border-radius: 12px;
-  color: #94a3b8;
+  color: #77736e;
   font-size: 14px;
-  padding: 24px;
+  padding: 48px 0;
 }
 
 .coach-origin-list-content {
-  background: #f7f8fa;
+  gap: 24px;
+  max-width: 1480px;
   min-height: 100vh;
-  padding: 28px 36px 64px;
+  padding: 22px 58px 54px;
+  width: min(100%, 1480px);
 }
 
-.coach-origin-list-header {
-  align-items: flex-start;
-  display: flex;
-  gap: 20px;
-  justify-content: space-between;
-  margin-bottom: 20px;
-}
-
-.coach-origin-list-header h1 {
-  color: #242424;
-  font-size: 28px;
-  font-weight: 900;
-  letter-spacing: 0;
-  line-height: 1.2;
-  margin: 0;
-}
-
-.coach-origin-list-header p:not(.eyebrow) {
-  color: #667085;
+.coach-origin-list-desc {
+  color: #797570;
   font-size: 14px;
   line-height: 1.5;
-  margin: 8px 0 0;
-}
-
-.coach-origin-primary-link {
-  align-items: center;
-  background: #202124;
-  border: 1px solid #202124;
-  border-radius: 8px;
-  color: #ffffff;
-  display: inline-flex;
-  font-size: 14px;
-  font-weight: 900;
-  min-height: 42px;
-  padding: 0 16px;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.coach-origin-primary-link:hover {
-  background: #111111;
+  margin: 8px 0 20px;
 }
 
 .coach-origin-list-toolbar {
@@ -3721,40 +3684,10 @@ td span {
   margin-bottom: 14px;
 }
 
-.coach-origin-list-search {
-  align-items: center;
-  background: #eeeeef;
-  border: 1px solid #eeeeef;
-  border-radius: 8px;
-  display: inline-flex;
-  gap: 8px;
-  min-height: 40px;
-  min-width: min(420px, 100%);
-  padding: 0 13px;
-}
-
-.coach-origin-list-search span {
-  color: #7b8088;
-  font-size: 18px;
-}
-
-.coach-origin-list-search input {
-  background: transparent;
-  border: 0;
-  color: #242424;
-  font-size: 14px;
-  outline: 0;
-  width: 100%;
-}
-
-.coach-origin-list-search input::placeholder {
-  color: #858b94;
-}
-
 .coach-origin-filter-select {
   align-items: center;
   background: #ffffff;
-  border: 1px solid #d8dde5;
+  border: 1px solid #c9c6c0;
   border-radius: 8px;
   display: inline-flex;
   gap: 8px;
@@ -3763,7 +3696,7 @@ td span {
 }
 
 .coach-origin-filter-select span {
-  color: #8a949f;
+  color: #797570;
   font-size: 12px;
   font-weight: 900;
   white-space: nowrap;
@@ -3773,7 +3706,7 @@ td span {
   appearance: none;
   background: transparent;
   border: 0;
-  color: #333333;
+  color: #22211f;
   font-size: 13px;
   font-weight: 800;
   outline: 0;
@@ -3781,31 +3714,22 @@ td span {
 }
 
 .coach-origin-list-card {
-  background: #ffffff;
-  border: 1px solid #e0e5ec;
-  border-radius: 8px;
-  overflow: hidden;
+  min-width: 0;
 }
 
 .coach-origin-list-meta {
   align-items: center;
-  border-bottom: 1px solid #e8edf3;
+  border-bottom: 1px solid #dededa;
   display: flex;
-  justify-content: space-between;
-  min-height: 48px;
-  padding: 0 16px;
-}
-
-.coach-origin-list-meta strong {
-  color: #242424;
-  font-size: 15px;
-  font-weight: 900;
+  margin-bottom: 14px;
+  min-height: 40px;
 }
 
 .coach-origin-list-meta span {
-  color: #8a949f;
-  font-size: 13px;
-  font-weight: 800;
+  color: #4f4d49;
+  font-size: 14px;
+  font-weight: 700;
+  margin-left: auto;
 }
 
 .coach-origin-list-rows {
@@ -3814,36 +3738,32 @@ td span {
 
 .coach-origin-list-row {
   align-items: center;
-  border-bottom: 1px solid #edf0f4;
   color: inherit;
   display: grid;
-  gap: 14px;
-  grid-template-columns: 40px minmax(0, 1fr) 74px 74px;
-  min-height: 70px;
-  padding: 12px 16px;
+  gap: 18px;
+  grid-template-columns: 48px minmax(0, 1fr) minmax(170px, 270px);
+  min-height: 82px;
+  padding: 12px 0;
   text-decoration: none;
 }
 
-.coach-origin-list-row:last-child {
-  border-bottom: 0;
-}
-
-.coach-origin-list-row:hover {
-  background: #fafbfc;
+.coach-origin-list-row:hover .coach-origin-row-main strong {
+  color: #1d4f86;
 }
 
 .coach-origin-avatar {
   align-items: center;
-  background: #f4f6f8;
-  border: 1px solid #e0e5ec;
+  background: #ffffff;
+  border: 1px solid #dededa;
   border-radius: 8px;
-  color: #5d6672;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  color: #4f4d49;
   display: inline-flex;
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 900;
-  height: 40px;
+  height: 48px;
   justify-content: center;
-  width: 40px;
+  width: 48px;
 }
 
 .coach-origin-row-main {
@@ -3860,7 +3780,7 @@ td span {
 }
 
 .coach-origin-row-main strong {
-  color: #242424;
+  color: #242321;
   font-size: 15px;
   font-weight: 900;
   overflow: hidden;
@@ -3894,7 +3814,7 @@ td span {
 }
 
 .coach-origin-row-main small {
-  color: #8a949f;
+  color: #8b8782;
   font-size: 12px;
   font-weight: 700;
   overflow: hidden;
@@ -3902,22 +3822,15 @@ td span {
   white-space: nowrap;
 }
 
-.coach-origin-row-stat {
-  display: grid;
-  gap: 3px;
-  justify-items: end;
-}
-
-.coach-origin-row-stat small {
-  color: #9aa5b1;
-  font-size: 11px;
-  font-weight: 900;
-}
-
-.coach-origin-row-stat strong {
-  color: #242424;
-  font-size: 16px;
-  font-weight: 900;
+.coach-origin-row-time {
+  color: #4f4d49;
+  font-size: 13px;
+  font-weight: 800;
+  min-width: 0;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .panel-title-row {
@@ -7645,7 +7558,23 @@ td span {
 }
 
 .coach-schedule-topnav a {
+  align-items: center;
+  background: #efefee;
+  border: 1.5px solid #c9c6c0;
+  border-radius: 7px;
   color: #22211f;
+  display: inline-flex;
+  font-weight: 900;
+  min-height: 42px;
+  padding: 0 16px;
+  text-decoration: none;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.coach-schedule-topnav a:hover {
+  background: #22211f;
+  border-color: #22211f;
+  color: #ffffff;
 }
 
 .coach-schedule-topnav span {
@@ -7790,6 +7719,7 @@ td span {
   justify-content: center;
   line-height: 1.15;
   padding: 3px;
+  position: relative;
 }
 
 .coach-calendar-day.weekend span {
@@ -7956,6 +7886,134 @@ td span {
 }
 
 .coach-doc-empty strong {
+  color: #242321;
+}
+
+/* 공휴일 */
+.coach-calendar-day.holiday span {
+  color: #c94a3f;
+}
+
+.coach-calendar-holiday-dot {
+  background: #c94a3f;
+  border-radius: 50%;
+  display: block;
+  height: 4px;
+  margin-top: 2px;
+  width: 4px;
+}
+
+/* 선택 날짜 (단일·다중 공통) — 채워진 배경으로 업그레이드 */
+.coach-calendar-day.selected {
+  background: #22211f;
+  border-color: #22211f;
+  box-shadow: none;
+}
+
+.coach-calendar-day.selected span {
+  color: #ffffff;
+}
+
+.coach-calendar-day.selected strong {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+
+/* 다중 날짜 선택 시 체크 표시 */
+.coach-calendar-check {
+  align-items: center;
+  background: #4a7fd4;
+  border-radius: 50%;
+  color: #ffffff;
+  display: flex;
+  font-size: 9px;
+  font-style: normal;
+  height: 14px;
+  justify-content: center;
+  line-height: 1;
+  position: absolute;
+  right: 4px;
+  top: 4px;
+  width: 14px;
+}
+
+
+/* 기간 검색 바 */
+.coach-date-range-bar {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #dededa;
+  border-radius: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-height: 52px;
+  padding: 10px 18px;
+}
+
+.coach-date-range-label {
+  color: #242321;
+  font-size: 14px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.coach-date-range-mode {
+  background: #ffffff;
+  border: 1.5px solid #c9c6c0;
+  border-radius: 7px;
+  color: #4f4d49;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 5px 14px;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+
+.coach-date-range-mode:hover {
+  border-color: #22211f;
+  color: #22211f;
+}
+
+.coach-date-range-mode.active {
+  background: #22211f;
+  border-color: #22211f;
+  color: #ffffff;
+}
+
+.coach-date-range-hint {
+  color: #8b8782;
+  font-size: 13px;
+}
+
+.coach-date-range-result {
+  background: #eef8f0;
+  border-radius: 6px;
+  color: #1a6644;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 5px 14px;
+  white-space: nowrap;
+}
+
+.coach-date-range-clear {
+  background: transparent;
+  border: 1px solid #c9c6c0;
+  border-radius: 7px;
+  color: #77736e;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  margin-left: auto;
+  padding: 5px 14px;
+  transition: border-color 0.12s, color 0.12s;
+}
+
+.coach-date-range-clear:hover {
+  border-color: #4f4d49;
   color: #242321;
 }
 
@@ -8572,20 +8630,14 @@ td span {
     padding: 20px;
   }
 
-  .coach-origin-list-header {
-    display: grid;
-  }
-
-  .coach-origin-primary-link {
-    justify-self: start;
-  }
-
   .coach-origin-list-row {
-    grid-template-columns: 40px minmax(0, 1fr);
+    align-items: start;
+    grid-template-columns: 48px minmax(0, 1fr);
   }
 
-  .coach-origin-row-stat {
-    display: none;
+  .coach-origin-row-time {
+    grid-column: 2;
+    text-align: left;
   }
 
   .calendar-grid {

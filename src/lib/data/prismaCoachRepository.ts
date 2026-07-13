@@ -465,6 +465,6 @@ function groupIntervalsByDayAndCoach(
 }
 
 function compareScheduleCoaches(a: CoachScheduleDashboardCoach, b: CoachScheduleDashboardCoach): number {
-  if (a.fields.length !== b.fields.length) return b.fields.length - a.fields.length;
+  if (a.engagementCount !== b.engagementCount) return b.engagementCount - a.engagementCount;
   return a.name.localeCompare(b.name, "ko");
 }
