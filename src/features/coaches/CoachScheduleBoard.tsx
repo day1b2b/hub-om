@@ -16,9 +16,9 @@ interface CoachScheduleBoardProps {
 
 const TIME_FILTERS = [
   { key: "all", label: "전체", title: "전체 가능", startMinutes: 0, endMinutes: 24 * 60 },
-  { key: "08-13", label: "오전", title: "오전 가능", startMinutes: 8 * 60, endMinutes: 13 * 60 },
+  { key: "08-12", label: "오전", title: "오전 가능", startMinutes: 8 * 60, endMinutes: 12 * 60 },
   { key: "13-18", label: "오후", title: "오후 가능", startMinutes: 13 * 60, endMinutes: 18 * 60 },
-  { key: "18-22", label: "저녁", title: "저녁 가능", startMinutes: 18 * 60, endMinutes: 22 * 60 }
+  { key: "19-22", label: "저녁", title: "저녁 가능", startMinutes: 19 * 60, endMinutes: 22 * 60 }
 ] as const;
 
 type TimeFilterKey = (typeof TIME_FILTERS)[number]["key"];
@@ -91,6 +91,10 @@ export function CoachScheduleBoard({ dashboard, holidays, loadFailed, initialDat
         if (!normalizedQuery) return true;
         return [coach.name, coach.workType ?? "", ...coach.fields, ...coach.recentEngagements.map((e) => e.courseName)]
           .some((v) => v.toLowerCase().includes(normalizedQuery));
+      })
+      .sort((a, b) => {
+        if (a.engagementCount !== b.engagementCount) return b.engagementCount - a.engagementCount;
+        return a.name.localeCompare(b.name, "ko");
       });
   }, [isMultiDate, activeDays, dashboard.days, timeFilter, query]);
 
@@ -170,10 +174,10 @@ export function CoachScheduleBoard({ dashboard, holidays, loadFailed, initialDat
           <button
             className={["coach-date-range-mode", rangeMode ? "active" : ""].filter(Boolean).join(" ")}
             onClick={toggleRangeMode}
-            title={rangeMode ? "범위 선택 모드 해제" : "범위 선택 모드: 연속·비연속 날짜를 각각 클릭해 조합 선택"}
+            title={rangeMode ? "다중 선택 모드 해제" : "다중 선택 모드: 연속·비연속 날짜를 각각 클릭해 조합 선택"}
             type="button"
           >
-            {rangeMode ? "범위 선택 중" : "범위 선택"}
+            {rangeMode ? "다중 선택 중" : "다중 선택"}
           </button>
           {rangeMode ? (
             <span className="coach-date-range-hint">날짜를 클릭해 추가·제거 · 연속이 아니어도 됩니다</span>
@@ -256,7 +260,7 @@ export function CoachScheduleBoard({ dashboard, holidays, loadFailed, initialDat
                   {filter.label}
                 </button>
               ))}
-              <span>이름순 정렬</span>
+              <span>투입 많은 순 정렬</span>
             </div>
 
             {loadFailed ? (
@@ -369,7 +373,20 @@ function toMinutes(time: string): number {
 
 function formatScheduleLabel(schedules: CoachScheduleDashboardCoach["schedules"]): string {
   if (schedules.length === 0) return "가능시간 없음";
-  return schedules.map((schedule) => `${schedule.startTime}~${schedule.endTime}`).join(", ");
+
+  const periods = TIME_FILTERS.filter((filter) => filter.key !== "all");
+  const matchedLabels = periods.filter((period) =>
+    schedules.some((schedule) => {
+      const start = toMinutes(schedule.startTime);
+      const end = toMinutes(schedule.endTime);
+      return start < period.endMinutes && end > period.startMinutes;
+    })
+  );
+
+  if (matchedLabels.length === 0) {
+    return schedules.map((schedule) => `${schedule.startTime}~${schedule.endTime}`).join(", ");
+  }
+  return matchedLabels.map((period) => period.label).join(" · ");
 }
 
 function latestEngagementLabel(coach: CoachScheduleDashboardCoach): string {
