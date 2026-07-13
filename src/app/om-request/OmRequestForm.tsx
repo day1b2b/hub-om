@@ -259,6 +259,17 @@ export function OmRequestForm({ ldName, initialData, requestId }: { ldName: stri
           </label>
 
           <label>
+            <span>사업자등록번호</span>
+            <input
+              type="text"
+              value={form.businessNumber ?? ""}
+              placeholder="-없이 10자리"
+              maxLength={10}
+              onChange={(e) => setField("businessNumber", e.target.value.replace(/\D/g, "").slice(0, 10))}
+            />
+          </label>
+
+          <label>
             <span>교육형태<RequiredMark /></span>
             <select value={form.trainingType} onChange={(e) => setField("trainingType", e.target.value as TrainingType)}>
               {TRAINING_TYPE_OPTIONS.map((t) => <option key={t}>{t}</option>)}
