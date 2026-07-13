@@ -8176,6 +8176,274 @@ td span {
   font-weight: 700;
 }
 
+.dday-card {
+  display: grid;
+  gap: 8px;
+  padding: 8px 18px 18px;
+}
+
+.dday-badge {
+  color: var(--text);
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1.05;
+}
+
+.dday-date {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.memo-toggle {
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 10px;
+  white-space: nowrap;
+}
+
+.memo-toggle:hover {
+  background: #eeeeec;
+  color: var(--text);
+}
+
+.memo-toggle.has-memo {
+  border-color: #9fb58d;
+  color: var(--text);
+}
+
+.course-memo-cell {
+  background: #fbfbfa;
+}
+
+.course-memo {
+  display: grid;
+  gap: 6px;
+  padding: 10px 14px 14px;
+}
+
+.course-memo textarea {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+  min-height: 72px;
+  padding: 10px 12px;
+  resize: vertical;
+  width: 100%;
+}
+
+.course-memo textarea:focus {
+  border-color: #9fb58d;
+  outline: none;
+}
+
+.course-memo-status {
+  color: var(--muted);
+  font-size: 11px;
+  text-align: right;
+}
+
+/* 기업 위키(company-wiki) 목록/상세에서 추가로 쓰는 클래스 */
+.row-link {
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  display: block;
+  font-weight: 700;
+  margin: -5px -6px;
+  padding: 5px 6px;
+  text-align: left;
+  width: 100%;
+}
+
+.row-link:hover {
+  background: var(--surface-strong);
+  color: var(--blue);
+}
+
+.status.muted {
+  background: var(--surface-strong);
+  color: var(--muted);
+}
+
+.section-body {
+  padding: 14px;
+}
+
+.role-tag {
+  background: var(--amber-bg);
+  border-radius: 5px;
+  color: var(--amber);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  white-space: nowrap;
+}
+
+.sample-tag {
+  background: var(--amber-bg);
+  border-radius: 999px;
+  color: var(--amber);
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 9px;
+}
+
+.venue-row {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+}
+
+.venue-row:last-child {
+  border-bottom: 0;
+}
+
+.venue-row strong {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.venue-row span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* 개인 대시보드 — 내 과정 일정(먼슬리 캘린더) */
+.me-cal-nav {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.me-cal-nav strong {
+  font-size: 13px;
+  min-width: 92px;
+  text-align: center;
+}
+
+.me-cal-nav button {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  min-height: 26px;
+  min-width: 26px;
+}
+
+.me-cal-nav button:hover {
+  background: var(--surface-strong);
+}
+
+.me-calendar {
+  padding: 12px 14px 16px;
+}
+
+.me-cal-weekdays {
+  display: grid;
+  gap: 2px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.me-cal-weekday {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 0 6px;
+  text-align: center;
+}
+
+.me-cal-week {
+  margin-bottom: 4px;
+  position: relative;
+}
+
+.me-cal-week-cells {
+  display: grid;
+  gap: 2px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  inset: 0;
+  position: absolute;
+}
+
+.me-cal-day {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 5px 6px;
+}
+
+.me-cal-day.is-other-month {
+  background: #fafaf9;
+}
+
+.me-cal-daynum {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.me-cal-day.is-today .me-cal-daynum {
+  align-items: center;
+  background: var(--green);
+  border-radius: 999px;
+  color: #ffffff;
+  display: inline-flex;
+  height: 18px;
+  justify-content: center;
+  min-width: 18px;
+  padding: 0 4px;
+}
+
+.me-cal-week-bars {
+  display: grid;
+  gap: 3px;
+  grid-auto-rows: 20px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  inset: 30px 0 4px;
+  pointer-events: none;
+  position: absolute;
+}
+
+.me-cal-bar {
+  align-self: start;
+  background: var(--green);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  margin: 0 1px;
+  overflow: hidden;
+  padding: 2px 7px;
+  pointer-events: auto;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.me-cal-bar.is-start {
+  border-bottom-left-radius: 4px;
+  border-top-left-radius: 4px;
+}
+
+.me-cal-bar.is-end {
+  border-bottom-right-radius: 4px;
+  border-top-right-radius: 4px;
+}
+
 @media (max-width: 1080px) {
   .dashboard-shell {
     grid-template-columns: 1fr;
