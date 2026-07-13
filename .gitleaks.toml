@@ -1,0 +1,21 @@
+# gitleaks 설정 — 저장소에 실수로 커밋된 비밀(키·토큰·비밀번호)을 탐지한다.
+# 기본 규칙을 그대로 쓰고, 비밀이 아님이 확인된 값만 예외로 둔다.
+
+title = "hub-om gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "비밀이 아님이 확인된 값 / 검사 제외 경로"
+regexes = [
+  # 로컬 개발 전용 대체 시크릿 (운영에서는 환경변수로 주입, 실제 비밀 아님)
+  '''hub-om-local-development-auth-secret''',
+]
+paths = [
+  '''(^|/)package-lock\.json$''',
+  '''(^|/)\.omc/''',
+  '''(^|/)scripts/security/''',
+  '''(^|/)node_modules/''',
+  '''(^|/)\.next/''',
+]
