@@ -28,7 +28,7 @@
     "export:feedback": "node scripts/export-feedback-pages.mjs"
   },
   "dependencies": {
-    "@prisma/adapter-pg": "^7.6.0",
+    "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "7.6.0",
     "next": "16.2.2",
     "next-auth": "5.0.0-beta.30",
