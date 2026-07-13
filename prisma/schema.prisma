@@ -175,6 +175,7 @@ model OperationSession {
   hasResultReport       ResultReportStatus @default(NEEDS_REVIEW) @map("has_result_report")
   resultReportLink      String?            @map("result_report_link")
   lectureManagementLink String?            @map("lecture_management_link")
+  lectureManagementNote String?            @map("lecture_management_note")
   padletLink            String?            @map("padlet_link")
   createdBy             String?            @map("created_by")
   updatedBy             String?            @map("updated_by")

@@ -33,7 +33,7 @@ export default async function OmRequestCompletePage({ searchParams }: Props) {
 
   return (
     <main className="dashboard-shell">
-      <AppSidebar label="OM 배정 요청" teamScope="both" />
+      <AppSidebar label="업무 요청" teamScope="both" />
       <section className="content operations-page operation-create-page">
         <header className="page-header operation-create-header">
           <div className="om-complete-header-inner">
@@ -51,9 +51,10 @@ export default async function OmRequestCompletePage({ searchParams }: Props) {
             <div className="operation-form-section">
               <div className="section-title"><h2>기본 정보</h2></div>
               <div className="operation-form-grid">
-                <Field label="팀" value={request.team} />
+                <Field label="구분" value={request.team} />
                 <Field label="LD" value={request.ld} />
                 <Field label="기업명" value={request.company} />
+                <Field label="사업자등록번호" value={request.businessNumber} />
                 <Field label="교육형태" value={request.trainingType} />
                 <Field label="코스 ID" value={request.courseId} />
                 <Field label="과정명" value={request.courseName} />
@@ -78,7 +79,8 @@ export default async function OmRequestCompletePage({ searchParams }: Props) {
               <div className="om-session-list">
                 <div className="om-session-list-header">
                   <span>회차</span>
-                  <span>교육일</span>
+                  <span>시작일</span>
+                  <span>종료일</span>
                   <span>시작</span>
                   <span>종료</span>
                   <span>시수</span>
@@ -88,6 +90,7 @@ export default async function OmRequestCompletePage({ searchParams }: Props) {
                   <div className="om-session-list-row" key={i}>
                     <span className="om-session-num">{i + 1}</span>
                     <span>{s.date}</span>
+                    <span>{s.dateEnd || "-"}</span>
                     <span>{s.timeStart}</span>
                     <span>{s.timeEnd}</span>
                     <span>{s.duration || "-"}</span>

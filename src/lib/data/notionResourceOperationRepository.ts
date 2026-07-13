@@ -173,6 +173,7 @@ function mapPageToOperation(page: NotionPage, config: NotionResourceSourceConfig
     hasResultReport: "확인필요",
     resultReportLink: "",
     lectureManagementLink: "",
+    lectureManagementNote: "",
     padletLink: "",
     validationStatus: "정상",
     validationErrors: []

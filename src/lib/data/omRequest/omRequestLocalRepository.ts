@@ -37,16 +37,6 @@ export function createOmRequest(input: OmRequestInput): OmRequest {
   return newRequest;
 }
 
-export function updateOmRequestAssignment(id: string, assignedOm: string | null): OmRequest | null {
-  const requests = readAll();
-  const idx = requests.findIndex((r) => r.id === id);
-  if (idx === -1) return null;
-  const om = assignedOm?.trim() || null;
-  requests[idx] = { ...requests[idx], assignedOm: om ?? undefined, status: om ? "배정완료" : "배정필요" };
-  writeAll(requests);
-  return requests[idx];
-}
-
 export function updateOmRequest(id: string, input: OmRequestInput): OmRequest | null {
   const requests = readAll();
   const idx = requests.findIndex((r) => r.id === id);
@@ -58,8 +48,18 @@ export function updateOmRequest(id: string, input: OmRequestInput): OmRequest | 
 
 export function deleteOmRequest(id: string): boolean {
   const requests = readAll();
-  const next = requests.filter((r) => r.id !== id);
-  if (next.length === requests.length) return false;
-  writeAll(next);
+  const filtered = requests.filter((r) => r.id !== id);
+  if (filtered.length === requests.length) return false;
+  writeAll(filtered);
   return true;
+}
+
+export function updateOmRequestAssignment(id: string, assignedOm: string | null): OmRequest | null {
+  const requests = readAll();
+  const idx = requests.findIndex((r) => r.id === id);
+  if (idx === -1) return null;
+  const om = assignedOm?.trim() || null;
+  requests[idx] = { ...requests[idx], assignedOm: om ?? undefined, status: om ? "배정완료" : "배정필요" };
+  writeAll(requests);
+  return requests[idx];
 }

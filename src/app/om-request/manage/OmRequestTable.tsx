@@ -58,7 +58,7 @@ export function OmRequestTable({ initialRequests }: { initialRequests: OmRequest
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [sortKey, setSortKey] = useState<SortKey>("createdAt");
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const requests = initialRequests;
 
@@ -75,10 +75,14 @@ export function OmRequestTable({ initialRequests }: { initialRequests: OmRequest
     );
   });
 
+  const DATE_KEYS = new Set<SortKey>(["createdAt", "start", "end"]);
   const sorted = [...filtered].sort((a, b) => {
     const va = getSortValue(a, sortKey);
     const vb = getSortValue(b, sortKey);
-    return sortDir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
+    const cmp = DATE_KEYS.has(sortKey)
+      ? va < vb ? -1 : va > vb ? 1 : 0
+      : va.localeCompare(vb, "ko");
+    return sortDir === "asc" ? cmp : -cmp;
   });
 
   const totalPages = Math.ceil(sorted.length / PAGE_SIZE);

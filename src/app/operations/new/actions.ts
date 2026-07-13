@@ -47,7 +47,7 @@ export async function createOperationAction(formData: FormData) {
     om: normalizeRoleAssigneeText(textValue(formData, "om"), "om", roleRoster),
     onsiteRequired: enumValue(formData, "onsiteRequired", ONSITE_REQUIRED, "UNKNOWN"),
     operationCost: moneyValue(formData, "operationCost"),
-    operationDetail: textValue(formData, "operationDetail"),
+    operationDetail: requiredTextValue(formData, "operationDetail"),
     operationIssue: textValue(formData, "operationIssue"),
     operationStatus: enumValue(formData, "operationStatus", OPERATION_STATUSES, "배정필요"),
     operationType: enumValue(formData, "operationType", OPERATION_TYPES, "검토필요"),

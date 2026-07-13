@@ -4,7 +4,7 @@ import Script from "next/script";
 import { useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import type { OmRequest, OmRequestInput, OmRequestSession, TrainingType, YN } from "@/lib/data/omRequest/omRequestTypes";
+import type { OmRequestInput, OmRequestSession, TrainingType, YN } from "@/lib/data/omRequest/omRequestTypes";
 
 declare global {
   interface Window {
@@ -45,7 +45,19 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
 });
 
 function emptySession(): OmRequestSession {
-  return { date: "", timeStart: "", timeEnd: "", duration: "", location: "" };
+  return { date: "", dateEnd: "", timeStart: "", timeEnd: "", duration: "", location: "" };
+}
+
+function calcDuration(timeStart: string, timeEnd: string): string {
+  if (!timeStart || !timeEnd) return "";
+  const [sh, sm] = timeStart.split(":").map(Number);
+  const [eh, em] = timeEnd.split(":").map(Number);
+  const startMinutes = sh * 60 + sm;
+  const endMinutes = eh * 60 + em;
+  if (endMinutes <= startMinutes) return "";
+  const totalHours = (endMinutes - startMinutes) / 60;
+  const adjusted = totalHours >= 7 ? totalHours - 1 : totalHours;
+  return adjusted % 1 === 0 ? String(adjusted) : String(adjusted);
 }
 
 function formatDateInput(raw: string): string {
@@ -117,39 +129,29 @@ function YNToggle({
   );
 }
 
-interface OmRequestFormProps {
-  ldName: string;
-  initialRequest?: OmRequest;
-  onCancelEdit?: () => void;
-  onSaved?: () => void;
-}
-
-export function OmRequestForm({ ldName, initialRequest, onCancelEdit, onSaved }: OmRequestFormProps) {
+export function OmRequestForm({ ldName, initialData, requestId }: { ldName: string; initialData?: OmRequestInput; requestId?: string }) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const isEditing = Boolean(initialRequest);
 
-  const [form, setForm] = useState<OmRequestInput>(
-    initialRequest ?? {
-      team: "1팀",
-      ld: ldName,
-      company: "",
-      trainingType: "오프라인",
-      courseId: "",
-      courseName: "",
-      instructorName: "",
-      driveLink: "",
-      syncupLink: "",
-      skillfloSetup: "N",
-      skillmatchSetup: "N",
-      onSiteOperation: "N",
-      coachRequest: "N",
-      totalSessions: 1,
-      sessions: [emptySession()],
-      notes: ""
-    }
-  );
+  const [form, setForm] = useState<OmRequestInput>(initialData ?? {
+    team: "1팀",
+    ld: ldName,
+    company: "",
+    trainingType: "오프라인",
+    courseId: "",
+    courseName: "",
+    instructorName: "",
+    driveLink: "",
+    syncupLink: "",
+    skillfloSetup: "N",
+    skillmatchSetup: "N",
+    onSiteOperation: "N",
+    coachRequest: "N",
+    totalSessions: 1,
+    sessions: [emptySession()],
+    notes: ""
+  });
 
   function setField<K extends keyof OmRequestInput>(key: K, value: OmRequestInput[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -174,7 +176,16 @@ export function OmRequestForm({ ldName, initialRequest, onCancelEdit, onSaved }:
 
   function updateSession(idx: number, key: keyof OmRequestSession, value: string) {
     setForm((prev) => {
-      const sessions = prev.sessions.map((s, i) => (i === idx ? { ...s, [key]: value } : s));
+      const sessions = prev.sessions.map((s, i) => {
+        if (i !== idx) return s;
+        const updated = { ...s, [key]: value };
+        if (key === "timeStart" || key === "timeEnd") {
+          const start = key === "timeStart" ? value : s.timeStart;
+          const end = key === "timeEnd" ? value : s.timeEnd;
+          updated.duration = calcDuration(start, end);
+        }
+        return updated;
+      });
       return { ...prev, sessions };
     });
   }
@@ -184,18 +195,22 @@ export function OmRequestForm({ ldName, initialRequest, onCancelEdit, onSaved }:
     setSubmitting(true);
     setError(null);
     try {
-      const url = isEditing ? `/api/om-request/${initialRequest?.id}` : "/api/om-request";
-      const res = await fetch(url, {
-        method: isEditing ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form)
-      });
-      if (!res.ok) throw new Error(isEditing ? "수정에 실패했습니다." : "저장에 실패했습니다.");
-
-      if (isEditing) {
+      if (requestId) {
+        const res = await fetch(`/api/om-request/${requestId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form)
+        });
+        if (!res.ok) throw new Error("저장에 실패했습니다.");
+        router.push(`/om-request/manage/${requestId}`);
         router.refresh();
-        onSaved?.();
       } else {
+        const res = await fetch("/api/om-request", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form)
+        });
+        if (!res.ok) throw new Error("저장에 실패했습니다.");
         const created = await res.json() as { id: string };
         router.push(`/om-request/complete?id=${created.id}`);
       }
@@ -216,7 +231,7 @@ export function OmRequestForm({ ldName, initialRequest, onCancelEdit, onSaved }:
         <div className="operation-form-grid">
 
           <label>
-            <span>팀<RequiredMark /></span>
+            <span>구분<RequiredMark /></span>
             <select value={form.team} onChange={(e) => setField("team", e.target.value)}>
               {TEAM_OPTIONS.map((t) => <option key={t}>{t}</option>)}
             </select>
@@ -224,7 +239,12 @@ export function OmRequestForm({ ldName, initialRequest, onCancelEdit, onSaved }:
 
           <label>
             <span>LD<RequiredMark /></span>
-            <input required type="text" value={form.ld} readOnly />
+            <input
+              required
+              type="text"
+              value={form.ld}
+              onChange={(e) => setField("ld", e.target.value)}
+            />
           </label>
 
           <label>
@@ -235,6 +255,17 @@ export function OmRequestForm({ ldName, initialRequest, onCancelEdit, onSaved }:
               value={form.company}
               placeholder="고객사명"
               onChange={(e) => setField("company", e.target.value)}
+            />
+          </label>
+
+          <label>
+            <span>사업자등록번호</span>
+            <input
+              type="text"
+              value={form.businessNumber ?? ""}
+              placeholder="-없이 10자리"
+              maxLength={10}
+              onChange={(e) => setField("businessNumber", e.target.value.replace(/\D/g, "").slice(0, 10))}
             />
           </label>
 
@@ -328,7 +359,8 @@ export function OmRequestForm({ ldName, initialRequest, onCancelEdit, onSaved }:
         <div className="om-sessions-table">
           <div className="om-sessions-header">
             <span>회차</span>
-            <span>교육일<em className="required-mark">*</em></span>
+            <span>시작일<em className="required-mark">*</em></span>
+            <span>종료일</span>
             <span>시작 시간<em className="required-mark">*</em></span>
             <span>종료 시간<em className="required-mark">*</em></span>
             <span>시수</span>
@@ -341,6 +373,10 @@ export function OmRequestForm({ ldName, initialRequest, onCancelEdit, onSaved }:
                 required
                 value={session.date}
                 onChange={(v) => updateSession(idx, "date", v)}
+              />
+              <DateInput
+                value={session.dateEnd ?? ""}
+                onChange={(v) => updateSession(idx, "dateEnd", v)}
               />
               <select
                 required
@@ -362,8 +398,8 @@ export function OmRequestForm({ ldName, initialRequest, onCancelEdit, onSaved }:
                 className="duration-input"
                 type="text"
                 value={session.duration}
-                placeholder=""
-                onChange={(e) => updateSession(idx, "duration", e.target.value)}
+                placeholder="자동"
+                readOnly
               />
               <div className="location-input-wrapper">
                 <input
@@ -398,22 +434,11 @@ export function OmRequestForm({ ldName, initialRequest, onCancelEdit, onSaved }:
 
       {error && <p className="om-request-error">{error}</p>}
 
-      {isEditing ? (
-        <div className="om-detail-actions">
-          <button className="secondary-action" disabled={submitting} type="submit">
-            {submitting ? "저장 중..." : "저장"}
-          </button>
-          <button type="button" className="secondary-action" disabled={submitting} onClick={onCancelEdit}>
-            취소
-          </button>
-        </div>
-      ) : (
-        <div className="operation-form-actions">
-          <button className="primary-action" disabled={submitting} type="submit">
-            {submitting ? "저장 중..." : "요청 제출"}
-          </button>
-        </div>
-      )}
+      <div className="operation-form-actions">
+        <button className="primary-action" disabled={submitting} type="submit">
+          {submitting ? "저장 중..." : requestId ? "수정 저장" : "요청 제출"}
+        </button>
+      </div>
     </form>
     </>
   );
