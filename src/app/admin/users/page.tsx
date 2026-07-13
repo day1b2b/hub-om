@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminUsersPage() {
   await requireWorkspaceSession();
-  const users = listTeamUsers();
+  const users = await listTeamUsers();
 
   return (
     <main className="dashboard-shell">
