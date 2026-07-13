@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import type { OmRequest } from "@/lib/data/omRequest/omRequestTypes";
 import type { OperationSession, OperationStatus } from "@/lib/data/operationTypes";
@@ -15,11 +15,9 @@ interface MyDashboardProps {
   assignedRequests: OmRequest[];
 }
 
-type DashboardScope = "이번달" | "연간";
-
 export function MyDashboard({ assignedRequests, omName, operations }: MyDashboardProps) {
   const today = useMemo(() => new Date(), []);
-  const [scope, setScope] = useState<DashboardScope>("이번달");
+  const [monthView, setMonthView] = useState(() => ({ year: today.getFullYear(), month: today.getMonth() }));
 
   if (!omName) {
     return (
@@ -44,10 +42,27 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
     );
   }
 
-  // 요약은 기간 토글(이번달/연간)로 좁힌다.
-  const scopedOperations = operations.filter((operation) =>
-    scope === "이번달" ? isSameMonth(operation, today) : isSameYear(operation, today)
-  );
+  // 요약·분석은 선택한 달 기준(맨 위 화살표로 전월/차월 이동).
+  function moveMonth(delta: number) {
+    setMonthView((current) => {
+      const next = new Date(current.year, current.month + delta, 1);
+      return { year: next.getFullYear(), month: next.getMonth() };
+    });
+  }
+  const scopedOperations = operations.filter((operation) => {
+    const start = parseDate(operation.startDate);
+    return start ? start.getFullYear() === monthView.year && start.getMonth() === monthView.month : false;
+  });
+  // 나의 담당 과정도 선택한 달에 진행되는 것만(세션 기간이 그 달과 겹치는 요청).
+  const monthStartTime = stripTime(new Date(monthView.year, monthView.month, 1)).getTime();
+  const monthEndTime = stripTime(new Date(monthView.year, monthView.month + 1, 0)).getTime();
+  const monthAssignedRequests = assignedRequests.filter((request) => {
+    const range = scheduleRange(request);
+    const start = parseDate(range.start);
+    const end = parseDate(range.end) ?? start;
+    if (!start || !end) return false;
+    return stripTime(start).getTime() <= monthEndTime && stripTime(end).getTime() >= monthStartTime;
+  });
   const active = scopedOperations.filter((operation) => operation.operationStatus === "진행중").length;
   const upcoming = scopedOperations.filter((operation) => isUpcoming(operation, today)).length;
   const done = scopedOperations.filter(isDone).length;
@@ -65,6 +80,37 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
   ).length;
   const hasIssue = operations.filter((operation) => operation.operationIssue.trim() !== "").length;
   const operationsWithLinks = operations.filter((operation) => operationLinks(operation).length > 0);
+
+  // 캘린더는 운영 + 나의 담당 과정을 모두 반영한다(담당 과정에 새 과정이 추가되면 캘린더에도 자동 표시).
+  const calendarEvents: CalendarEvent[] = [
+    ...operations.flatMap((operation) => {
+      const start = parseDate(operation.startDate);
+      const end = parseDate(operation.endDate) ?? start;
+      if (!start || !end) return [];
+      return [{
+        id: `op-${operation.operationId}`,
+        label: operation.companyName,
+        course: operation.courseName,
+        start: stripTime(start),
+        end: stripTime(end),
+        href: `/operations/${operation.operationId}`
+      }];
+    }),
+    ...assignedRequests.flatMap((request) => {
+      const range = scheduleRange(request);
+      const start = parseDate(range.start);
+      const end = parseDate(range.end) ?? start;
+      if (!start || !end) return [];
+      return [{
+        id: `req-${request.id}`,
+        label: request.company,
+        course: request.courseName,
+        start: stripTime(start),
+        end: stripTime(end),
+        href: `/om-request/manage/${request.id}`
+      }];
+    })
+  ];
 
   // 시각화(분석)도 기간 토글을 따른다.
   const pipeline = PIPELINE_LABELS.map((label) => ({
@@ -86,27 +132,7 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
             <h1>내 대시보드</h1>
             <p className="lede">{omName}님이 담당한 운영 현황과 지금 챙겨야 할 일을 모아 봅니다.</p>
           </div>
-          <div className="header-panel">
-            <span>데이터 기준</span>
-            <strong>{scope} 현황</strong>
-          </div>
         </header>
-
-        <div className="dashboard-controls" aria-label="대시보드 필터">
-          <div className="dashboard-tabs" role="group" aria-label="기간 범위">
-            {(["이번달", "연간"] as DashboardScope[]).map((item) => (
-              <button
-                aria-pressed={scope === item}
-                className={scope === item ? "selected" : ""}
-                key={item}
-                onClick={() => setScope(item)}
-                type="button"
-              >
-                {item} 현황
-              </button>
-            ))}
-          </div>
-        </div>
 
         <section className="metrics" aria-label="내 운영 요약">
           <Metric label="전체" value={scopedOperations.length} />
@@ -118,8 +144,10 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
         <section className="dashboard-panel">
           <div className="section-title">
             <h2>나의 담당 과정</h2>
-            <div className="dashboard-table-meta">
-              <span>{assignedRequests.length}건</span>
+            <div className="me-cal-nav" aria-label="월 선택">
+              <button aria-label="이전 달" onClick={() => moveMonth(-1)} type="button">‹</button>
+              <strong>{monthView.year}년 {monthView.month + 1}월</strong>
+              <button aria-label="다음 달" onClick={() => moveMonth(1)} type="button">›</button>
             </div>
           </div>
           <div className="table-wrap">
@@ -132,19 +160,33 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
                   <th>종료일</th>
                   <th>총 회차</th>
                   <th>LD</th>
-                  <th>메모</th>
                 </tr>
               </thead>
               <tbody>
-                {assignedRequests.length > 0 ? (
-                  assignedRequests.map((request) => (
-                    <AssignedCourseRow key={request.id} request={request} />
-                  ))
+                {monthAssignedRequests.length > 0 ? (
+                  monthAssignedRequests.map((request) => {
+                    const schedule = scheduleRange(request);
+                    return (
+                      <tr key={request.id}>
+                        <td>
+                          <Link className="course-link" href={`/om-request/manage/${request.id}`}>
+                            <strong>{request.company}</strong>
+                            <span>{request.courseName}</span>
+                          </Link>
+                        </td>
+                        <td>{request.trainingType}</td>
+                        <td>{schedule.start}</td>
+                        <td>{schedule.end}</td>
+                        <td>{request.totalSessions}회</td>
+                        <td>{request.ld || "-"}</td>
+                      </tr>
+                    );
+                  })
                 ) : (
                   <tr>
-                    <td className="empty-state" colSpan={7}>
-                      <strong>배정된 과정이 없습니다.</strong>
-                      <span>운영 요청이 나에게 배정되면 여기에 표시됩니다.</span>
+                    <td className="empty-state" colSpan={6}>
+                      <strong>{monthView.year}년 {monthView.month + 1}월에 진행되는 담당 과정이 없습니다.</strong>
+                      <span>다른 달로 이동하거나 배정을 확인하세요.</span>
                     </td>
                   </tr>
                 )}
@@ -172,7 +214,7 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
                 ))}
               </div>
             ) : (
-              <PanelEmpty label={`${scope}에 표시할 운영이 없습니다`} />
+              <PanelEmpty label={`${monthView.year}년 ${monthView.month + 1}월에 표시할 운영이 없습니다`} />
             )}
           </section>
 
@@ -196,7 +238,7 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
           </section>
         </section>
 
-        <MonthlyCalendar operations={operations} today={today} />
+        <MonthlyCalendar events={calendarEvents} today={today} />
 
         <section className="dashboard-panel">
           <div className="section-title">
@@ -280,93 +322,20 @@ function PanelEmpty({ label = "표시할 데이터가 없습니다" }: { label?:
   );
 }
 
-// 배정된 과정 한 건의 표 행. 과정별 회고 메모를 펼쳐서 쓸 수 있고,
-// 메모는 서버가 아니라 이 브라우저(localStorage)에 과정 id별로 보관한다.
-// 저장은 입력 이벤트에서 디바운스로 처리해 effect 안 setState를 쓰지 않는다.
-function AssignedCourseRow({ request }: { request: OmRequest }) {
-  const schedule = scheduleRange(request);
-  const memoKey = `hub-om:course-memo:${request.id}`;
-  const [open, setOpen] = useState(false);
-  const [memo, setMemo] = useState(() => readMemo(memoKey));
-  const [saved, setSaved] = useState(true);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hasMemo = memo.trim().length > 0;
-
-  function handleChange(event: ChangeEvent<HTMLTextAreaElement>) {
-    const value = event.target.value;
-    setMemo(value);
-    setSaved(false);
-
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      try {
-        window.localStorage.setItem(memoKey, value);
-        setSaved(true);
-      } catch {
-        // 저장 실패는 조용히 무시한다(개인 메모라 치명적이지 않음).
-      }
-    }, 500);
-  }
-
-  return (
-    <>
-      <tr>
-        <td>
-          <Link className="course-link" href={`/om-request/manage/${request.id}`}>
-            <strong>{request.company}</strong>
-            <span>{request.courseName}</span>
-          </Link>
-        </td>
-        <td>{request.trainingType}</td>
-        <td>{schedule.start}</td>
-        <td>{schedule.end}</td>
-        <td>{request.totalSessions}회</td>
-        <td>{request.ld || "-"}</td>
-        <td>
-          <button
-            aria-expanded={open}
-            className={hasMemo ? "memo-toggle has-memo" : "memo-toggle"}
-            onClick={() => setOpen((value) => !value)}
-            suppressHydrationWarning
-            type="button"
-          >
-            {hasMemo ? "메모 ●" : "메모"} {open ? "▲" : "▾"}
-          </button>
-        </td>
-      </tr>
-      {open ? (
-        <tr>
-          <td className="course-memo-cell" colSpan={7}>
-            <div className="course-memo">
-              <textarea
-                aria-label={`${request.courseName} 회고 메모`}
-                onChange={handleChange}
-                placeholder="이 과정에서 잘된 점, 아쉬운 점, 다음에 시도할 것을 기록하세요."
-                value={memo}
-              />
-              <span className="course-memo-status">{saved ? "저장됨 · 이 브라우저에만 보관" : "저장 중…"}</span>
-            </div>
-          </td>
-        </tr>
-      ) : null}
-    </>
-  );
-}
-
-function readMemo(storageKey: string): string {
-  if (typeof window === "undefined") return "";
-  try {
-    return window.localStorage.getItem(storageKey) ?? "";
-  } catch {
-    return "";
-  }
-}
-
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
-// 내 과정이 언제 진행되는지 월별 달력으로 보여준다.
+interface CalendarEvent {
+  id: string;
+  label: string;
+  course: string;
+  start: Date;
+  end: Date;
+  href: string;
+}
+
+// 내 과정이 언제 진행되는지 월별 달력으로 보여준다. 운영과 담당 과정을 모두 반영한다.
 // 여러 날에 걸치는 과정은 시작일~종료일까지 칸을 가로지르는 하나의 막대(bar)로 쭉 이어서 표시한다.
-function MonthlyCalendar({ operations, today }: { operations: OperationSession[]; today: Date }) {
+function MonthlyCalendar({ events, today }: { events: CalendarEvent[]; today: Date }) {
   const [view, setView] = useState(() => ({ year: today.getFullYear(), month: today.getMonth() }));
 
   const monthStart = new Date(view.year, view.month, 1);
@@ -374,13 +343,6 @@ function MonthlyCalendar({ operations, today }: { operations: OperationSession[]
   const leadingBlanks = monthStart.getDay();
   const totalCells = Math.ceil((leadingBlanks + daysInMonth) / 7) * 7;
   const todayKey = dateKey(stripTime(today));
-
-  const ranges = operations.flatMap((operation) => {
-    const start = parseDate(operation.startDate);
-    const end = parseDate(operation.endDate) ?? start;
-    if (!start || !end) return [];
-    return [{ operation, start: stripTime(start), end: stripTime(end) }];
-  });
 
   const cells = Array.from({ length: totalCells }, (_, index) => {
     const dayNumber = index - leadingBlanks + 1;
@@ -413,7 +375,7 @@ function MonthlyCalendar({ operations, today }: { operations: OperationSession[]
           ))}
         </div>
         {weeks.map((week, weekIndex) => {
-          const { bars, laneCount } = buildWeekBars(week, ranges);
+          const { bars, laneCount } = buildWeekBars(week, events);
           return (
             <div className="me-cal-week" key={weekIndex} style={{ height: Math.max(116, 34 + laneCount * 23) }}>
               <div className="me-cal-week-cells">
@@ -434,12 +396,12 @@ function MonthlyCalendar({ operations, today }: { operations: OperationSession[]
                 {bars.map((bar) => (
                   <a
                     className={["me-cal-bar", bar.isStart ? "is-start" : "", bar.isEnd ? "is-end" : ""].filter(Boolean).join(" ")}
-                    href={`/operations/${bar.operation.operationId}`}
-                    key={bar.operation.operationId}
+                    href={bar.event.href}
+                    key={bar.event.id}
                     style={{ gridColumn: `${bar.startCol + 1} / ${bar.endCol + 2}`, gridRow: bar.lane + 1 }}
-                    title={`${bar.operation.companyName} · ${bar.operation.courseName} (${bar.operation.startDate} ~ ${bar.operation.endDate})`}
+                    title={`${bar.event.label} · ${bar.event.course}`}
                   >
-                    {bar.operation.companyName}
+                    {bar.event.label}
                   </a>
                 ))}
               </div>
@@ -458,22 +420,22 @@ function dateKey(date: Date) {
 // 한 주에서 각 과정이 차지하는 열(시작~끝)과 겹침 방지 레인을 계산한다.
 function buildWeekBars(
   week: Array<{ date: Date; dayNumber: number; inMonth: boolean }>,
-  ranges: Array<{ operation: OperationSession; start: Date; end: Date }>
+  events: CalendarEvent[]
 ) {
   const weekStart = stripTime(week[0].date).getTime();
   const weekEnd = stripTime(week[6].date).getTime();
 
-  const segments = ranges
-    .filter((range) => range.start.getTime() <= weekEnd && range.end.getTime() >= weekStart)
-    .map((range) => {
-      const segStart = Math.max(range.start.getTime(), weekStart);
-      const segEnd = Math.min(range.end.getTime(), weekEnd);
+  const segments = events
+    .filter((event) => event.start.getTime() <= weekEnd && event.end.getTime() >= weekStart)
+    .map((event) => {
+      const segStart = Math.max(event.start.getTime(), weekStart);
+      const segEnd = Math.min(event.end.getTime(), weekEnd);
       return {
-        operation: range.operation,
+        event,
         startCol: week.findIndex((cell) => stripTime(cell.date).getTime() === segStart),
         endCol: week.findIndex((cell) => stripTime(cell.date).getTime() === segEnd),
-        isStart: range.start.getTime() >= weekStart,
-        isEnd: range.end.getTime() <= weekEnd
+        isStart: event.start.getTime() >= weekStart,
+        isEnd: event.end.getTime() <= weekEnd
       };
     })
     .sort((a, b) => a.startCol - b.startCol || b.endCol - b.startCol - (a.endCol - a.startCol));
@@ -524,16 +486,6 @@ function isUpcoming(operation: OperationSession, today: Date) {
 
 function isDone(operation: OperationSession) {
   return operation.operationStatus === "완료" || operation.operationStatus === "회고완료";
-}
-
-function isSameMonth(operation: OperationSession, today: Date) {
-  const start = parseDate(operation.startDate);
-  return start ? start.getFullYear() === today.getFullYear() && start.getMonth() === today.getMonth() : false;
-}
-
-function isSameYear(operation: OperationSession, today: Date) {
-  const start = parseDate(operation.startDate);
-  return start ? start.getFullYear() === today.getFullYear() : false;
 }
 
 function parseDate(value: string) {
