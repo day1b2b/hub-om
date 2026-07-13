@@ -8,6 +8,7 @@ import { EditableSessionRow } from "./EditableSessionRow";
 import { IssueReviewEditor } from "./IssueReviewEditor";
 import { LectureManagementNoteRow } from "./LectureManagementNoteRow";
 import { OperationDiscussionPanel } from "./OperationDiscussionPanel";
+import { ResultReportRequirementCell } from "./ResultReportRequirementCell";
 import type {
   OperationChannel,
   OperationSession,
@@ -169,6 +170,7 @@ export function OperationDetail({
                       <th>실습코치</th>
                       <th>관리</th>
                       <th>만족도</th>
+                      <th>결과보고서 여부</th>
                       <th>결과보고서</th>
                       <th>패들렛</th>
                       <th>강의관리</th>
@@ -202,22 +204,28 @@ export function OperationDetail({
                             missingText="미입력"
                           />
                         </td>
-                        <EditableRoundResourceCell
-                          companionDoneValue="유"
-                          companionField="hasResultReport"
-                          companionMissingValue="무"
-                          done={courseOperation.hasResultReport === "유"}
-                          doneText="등록됨"
-                          field="resultReportLink"
-                          missingText="미등록"
+                        <ResultReportRequirementCell
+                          hasResultReport={courseOperation.hasResultReport}
                           operationId={courseOperation.operationId}
-                          value={courseOperation.resultReportLink}
                         />
+                        {courseOperation.hasResultReport === "불필요" ? (
+                          <td className="round-resource-cell">
+                            <span className="archive-pill muted">대상 아님</span>
+                          </td>
+                        ) : (
+                          <EditableRoundResourceCell
+                            companionDoneValue="유"
+                            companionField="hasResultReport"
+                            companionMissingValue="무"
+                            done={courseOperation.hasResultReport === "유"}
+                            field="resultReportLink"
+                            operationId={courseOperation.operationId}
+                            value={courseOperation.resultReportLink}
+                          />
+                        )}
                         <EditableRoundResourceCell
                           done={isNavigableHref(courseOperation.padletLink)}
-                          doneText="등록됨"
                           field="padletLink"
-                          missingText="미등록"
                           operationId={courseOperation.operationId}
                           value={courseOperation.padletLink}
                         />

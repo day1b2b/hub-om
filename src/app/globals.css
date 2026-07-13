@@ -1640,6 +1640,11 @@ select {
   color: var(--red);
 }
 
+.archive-pill.muted {
+  background: var(--surface-hover, #f4f5f7);
+  color: var(--muted);
+}
+
 .toolbar {
   align-items: center;
   display: flex;
