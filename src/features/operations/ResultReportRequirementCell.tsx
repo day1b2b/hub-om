@@ -17,9 +17,9 @@ export function ResultReportRequirementCell({ hasResultReport, operationId }: Re
   return (
     <td className="round-resource-cell">
       <div className="round-resource-cell-view">
-        <span className={`archive-pill ${required ? "done" : "muted"}`}>{required ? "대상" : "대상 아님"}</span>
+        <span className={`archive-pill ${required ? "done" : "muted"}`}>{required ? "Y" : "N"}</span>
         <button className="round-resource-edit-trigger" disabled={isSaving} onClick={toggleRequired} type="button">
-          {required ? "대상 아님으로 변경" : "대상으로 변경"}
+          {required ? "N으로 변경" : "Y로 변경"}
         </button>
       </div>
     </td>
