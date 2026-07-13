@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AppSidebar } from "@/components/AppSidebar";
 import { AddRoundButton } from "./AddRoundButton";
 import { DeleteRoundButton } from "./DeleteRoundButton";
+import { EditableInfoItem } from "./EditableInfoItem";
 import { EditableResourceRow } from "./EditableResourceRow";
 import { EditableRoundResourceCell } from "./EditableRoundResourceCell";
 import { EditableSessionRow } from "./EditableSessionRow";
@@ -108,6 +109,12 @@ export function OperationDetail({
               <h2>일정 / 운영 조건</h2>
             </div>
             <div className="info-grid">
+              <EditableInfoItem
+                displayValue={operation.courseId || "미정"}
+                fields={[{ name: "courseId", placeholder: "예: 261326", value: operation.courseId }]}
+                label="코스ID"
+                operationId={operation.operationId}
+              />
               <InfoItem label="기간" value={formatCourseDateRange(courseOperations)} />
               <InfoItem label="시간" value={aggregateUniqueValues(courseOperations, (candidate) => candidate.timeText)} />
               <InfoItem

@@ -77,17 +77,17 @@ export function LectureManagementNoteRow({
               </button>
             </div>
 
-            <div className="lecture-note-tabs">
-              <button className={`lecture-note-tab ${mode === "text" ? "active" : ""}`} onClick={() => setMode("text")} type="button">
-                텍스트로 기록
-              </button>
-              <button className={`lecture-note-tab ${mode === "link" ? "active" : ""}`} onClick={() => setMode("link")} type="button">
-                링크로 등록
-              </button>
-            </div>
+            <div className="lecture-note-tabbar">
+              <div className="lecture-note-tabs">
+                <button className={`lecture-note-tab ${mode === "text" ? "active" : ""}`} onClick={() => setMode("text")} type="button">
+                  텍스트로 기록
+                </button>
+                <button className={`lecture-note-tab ${mode === "link" ? "active" : ""}`} onClick={() => setMode("link")} type="button">
+                  링크로 등록
+                </button>
+              </div>
 
-            {mode === "text" ? (
-              <>
+              {mode === "text" ? (
                 <div className="lecture-note-tabs">
                   {tabs.map((tab, index) => (
                     <button
@@ -103,65 +103,67 @@ export function LectureManagementNoteRow({
                     + 날짜 추가
                   </button>
                 </div>
+              ) : null}
+            </div>
 
-                <div className="lecture-note-body">
-                  <div className="lecture-note-tab-header">
-                    <label className="lecture-note-field">
-                      <span>교육 날짜</span>
-                      <input
-                        onChange={(event) => updateActiveTab({ date: event.target.value })}
-                        type="date"
-                        value={activeTab.date}
-                      />
-                    </label>
-                    {tabs.length > 1 ? (
-                      <button className="lecture-note-tab-remove" onClick={removeActiveTab} type="button">
-                        이 날짜 삭제
-                      </button>
-                    ) : null}
-                  </div>
-
+            {mode === "text" ? (
+              <div className="lecture-note-body">
+                <div className="lecture-note-tab-header">
                   <label className="lecture-note-field">
-                    <span>학습 인원</span>
+                    <span>교육 날짜</span>
                     <input
-                      onChange={(event) => updateActiveTab({ studentCount: event.target.value })}
-                      placeholder="예: 27명"
-                      type="text"
-                      value={activeTab.studentCount}
+                      onChange={(event) => updateActiveTab({ date: event.target.value })}
+                      type="date"
+                      value={activeTab.date}
                     />
                   </label>
-
-                  <label className="lecture-note-field lecture-note-field-block">
-                    <span>강의 요약</span>
-                    <textarea
-                      className="lecture-note-textarea"
-                      onChange={(event) => updateActiveTab({ courseSummary: event.target.value })}
-                      placeholder="시간대별 강의 진행 내용을 기록하세요."
-                      value={activeTab.courseSummary}
-                    />
-                  </label>
-
-                  <label className="lecture-note-field lecture-note-field-block">
-                    <span>운영진 의견</span>
-                    <textarea
-                      className="lecture-note-textarea"
-                      onChange={(event) => updateActiveTab({ staffOpinion: event.target.value })}
-                      placeholder="강사/학습자/교육환경/교담자 관련 의견을 기록하세요."
-                      value={activeTab.staffOpinion}
-                    />
-                  </label>
-
-                  <label className="lecture-note-field lecture-note-field-block">
-                    <span>이슈</span>
-                    <textarea
-                      className="lecture-note-textarea"
-                      onChange={(event) => updateActiveTab({ issue: event.target.value })}
-                      placeholder="발생한 이슈와 대응 내용을 기록하세요."
-                      value={activeTab.issue}
-                    />
-                  </label>
+                  {tabs.length > 1 ? (
+                    <button className="lecture-note-tab-remove" onClick={removeActiveTab} type="button">
+                      이 날짜 삭제
+                    </button>
+                  ) : null}
                 </div>
-              </>
+
+                <label className="lecture-note-field">
+                  <span>학습 인원</span>
+                  <input
+                    onChange={(event) => updateActiveTab({ studentCount: event.target.value })}
+                    placeholder="예: 27명"
+                    type="text"
+                    value={activeTab.studentCount}
+                  />
+                </label>
+
+                <label className="lecture-note-field lecture-note-field-block">
+                  <span>강의 요약</span>
+                  <textarea
+                    className="lecture-note-textarea"
+                    onChange={(event) => updateActiveTab({ courseSummary: event.target.value })}
+                    placeholder="시간대별 강의 진행 내용을 기록하세요."
+                    value={activeTab.courseSummary}
+                  />
+                </label>
+
+                <label className="lecture-note-field lecture-note-field-block">
+                  <span>운영진 의견</span>
+                  <textarea
+                    className="lecture-note-textarea"
+                    onChange={(event) => updateActiveTab({ staffOpinion: event.target.value })}
+                    placeholder="강사/학습자/교육환경/교담자 관련 의견을 기록하세요."
+                    value={activeTab.staffOpinion}
+                  />
+                </label>
+
+                <label className="lecture-note-field lecture-note-field-block">
+                  <span>이슈</span>
+                  <textarea
+                    className="lecture-note-textarea"
+                    onChange={(event) => updateActiveTab({ issue: event.target.value })}
+                    placeholder="발생한 이슈와 대응 내용을 기록하세요."
+                    value={activeTab.issue}
+                  />
+                </label>
+              </div>
             ) : (
               <div className="lecture-note-body">
                 <label className="lecture-note-field lecture-note-field-block">
