@@ -270,38 +270,20 @@ export function OperationDetail({
                   <span>{completedArchiveItems.length}/{requiredArchiveItems.length}</span>
                 </div>
                 <div className="archive-item-list" aria-label="아카이브 필수 항목">
-                  {requiredArchiveItems.map((archiveItem) =>
-                    archiveItem.field === "resultReportLink" ? (
-                      <EditableResourceRow
-                        companionDoneValue="유"
-                        companionField="hasResultReport"
-                        companionMissingValue="무"
-                        done={archiveItem.done}
-                        doneText={archiveItem.doneText}
-                        field={archiveItem.field}
-                        isLink
-                        key={archiveItem.label}
-                        label={archiveItem.label}
-                        missingText={archiveItem.missingText}
-                        operationId={operation.operationId}
-                        placeholder="https://"
-                        value={archiveItem.value}
-                      />
-                    ) : (
-                      <EditableResourceRow
-                        done={archiveItem.done}
-                        doneText={archiveItem.doneText}
-                        field={archiveItem.field}
-                        isLink
-                        key={archiveItem.label}
-                        label={archiveItem.label}
-                        missingText={archiveItem.missingText}
-                        operationId={operation.operationId}
-                        placeholder="https://"
-                        value={archiveItem.value}
-                      />
-                    )
-                  )}
+                  {requiredArchiveItems.map((archiveItem) => (
+                    <EditableResourceRow
+                      done={archiveItem.done}
+                      doneText={archiveItem.doneText}
+                      field={archiveItem.field}
+                      isLink
+                      key={archiveItem.label}
+                      label={archiveItem.label}
+                      missingText={archiveItem.missingText}
+                      operationId={operation.operationId}
+                      placeholder="https://"
+                      value={archiveItem.value}
+                    />
+                  ))}
                 </div>
               </div>
 
@@ -312,23 +294,6 @@ export function OperationDetail({
                 </div>
                 <div className="archive-item-list" aria-label="아카이브 참고 자료">
                   {referenceResourceLinks.map((resourceLink) => {
-                    if (resourceLink.field !== "companyWikiLink" && resourceLink.field !== "instructorWikiLink") {
-                      return (
-                        <EditableResourceRow
-                          done={isNavigableHref(resourceLink.href)}
-                          doneText="등록됨"
-                          field={resourceLink.field}
-                          isLink
-                          key={resourceLink.label}
-                          label={resourceLink.label}
-                          missingText="링크 없음"
-                          operationId={operation.operationId}
-                          placeholder="https://"
-                          value={resourceLink.href}
-                        />
-                      );
-                    }
-
                     const hasHref = isNavigableHref(resourceLink.href);
 
                     return (
@@ -428,7 +393,7 @@ function CompactValue({ label, value }: { label: string; value: string }) {
 interface ArchiveReadinessItem {
   done: boolean;
   doneText: string;
-  field: "driveLink" | "resultReportLink";
+  field: "driveLink" | "operationDetail";
   href?: string;
   label: string;
   missingText: string;
@@ -494,7 +459,6 @@ function LectureReportsByRound({
 
 function getReferenceResourceLinks(operation: OperationSession) {
   return [
-    { label: "운영상세", href: operation.operationDetail, field: "operationDetail" as const },
     { label: "기업위키", href: operation.companyWikiLink, field: "companyWikiLink" as const },
     { label: "강사위키", href: operation.instructorWikiLink, field: "instructorWikiLink" as const }
   ];
@@ -512,13 +476,13 @@ function getRequiredArchiveItems(operation: OperationSession): ArchiveReadinessI
       value: operation.driveLink
     },
     {
-      done: operation.hasResultReport === "유" && Boolean(operation.resultReportLink),
+      done: Boolean(operation.operationDetail),
       doneText: "등록됨",
-      field: "resultReportLink",
-      href: operation.resultReportLink,
-      label: "결과보고서",
+      field: "operationDetail",
+      href: operation.operationDetail,
+      label: "싱크업",
       missingText: "링크 없음",
-      value: operation.resultReportLink
+      value: operation.operationDetail
     }
   ];
 }
