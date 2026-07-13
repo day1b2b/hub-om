@@ -64,6 +64,10 @@ export function OperationDetail({
   teamScope
 }: OperationDetailProps) {
   const courseOperations = getCourseOperations(operation, relatedOperations);
+  const displayOperationStatus: OperationStatus =
+    operation.operationStatus === "배정필요" && Boolean(operation.om)
+      ? "배정예정"
+      : operation.operationStatus;
   const requiredArchiveItems = getRequiredArchiveItems(operation);
   const completedArchiveItems = requiredArchiveItems.filter((archiveItem) => archiveItem.done);
   const referenceResourceLinks = getReferenceResourceLinks(operation);
@@ -83,7 +87,7 @@ export function OperationDetail({
           <div className="title-row">
             <span className="title-company">{operation.companyName}</span>
             <h1>{operation.courseName}</h1>
-            <StatusBadge status={operation.operationStatus} />
+            <StatusBadge status={displayOperationStatus} />
             {operation.courseId ? null : <span className="title-course-id">코스ID 검토 필요</span>}
           </div>
           <div className="detail-header-actions">
