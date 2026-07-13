@@ -168,7 +168,7 @@ export function OperationCreateForm({ personOptions, teamScope, today }: Operati
         <div className="operation-form-grid compact">
           <label>
             <span>싱크업</span>
-            <input name="operationDetail" placeholder="https://..." />
+            <input name="operationDetail" placeholder="https://..." required type="url" />
           </label>
           <label>
             <span>드라이브</span>

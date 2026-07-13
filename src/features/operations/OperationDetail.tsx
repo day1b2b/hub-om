@@ -1,7 +1,16 @@
 import Link from "next/link";
 import { AppSidebar } from "@/components/AppSidebar";
+import { AddRoundButton } from "./AddRoundButton";
+import { DeleteRoundButton } from "./DeleteRoundButton";
+import { EditableInfoItem } from "./EditableInfoItem";
+import { EditableResourceRow } from "./EditableResourceRow";
+import { EditableRoundResourceCell } from "./EditableRoundResourceCell";
+import { EditableSessionRow } from "./EditableSessionRow";
 import { IssueReviewEditor } from "./IssueReviewEditor";
+import { LectureManagementNoteRow } from "./LectureManagementNoteRow";
 import { OperationDiscussionPanel } from "./OperationDiscussionPanel";
+import { ResultReportConditionSelect } from "./ResultReportConditionSelect";
+import { ResultReportRequirementCell } from "./ResultReportRequirementCell";
 import type {
   OperationChannel,
   OperationSession,
@@ -13,6 +22,7 @@ import type {
   OperationDiscussionItem
 } from "@/lib/data/operationCollaboration";
 import { displayRoleAssigneeText } from "@/lib/data/roleAssignees";
+import { isNavigableHref, toHref } from "@/lib/links";
 import { satisfactionNumber } from "@/lib/data/satisfaction";
 import { teamScopeSearchParam, type TeamScope } from "@/lib/teamScope";
 
@@ -34,8 +44,8 @@ const OPERATION_CHANNEL_LABEL: Record<OperationChannel, string> = {
 };
 
 const ONSITE_LABEL: Record<OnsiteRequired, string> = {
-  Y: "필요",
-  N: "불필요",
+  Y: "Y",
+  N: "N",
   PARTIAL: "일부 필요",
   UNKNOWN: "확인 필요"
 };
@@ -56,10 +66,13 @@ export function OperationDetail({
   const courseOperations = getCourseOperations(operation, relatedOperations);
   const requiredArchiveItems = getRequiredArchiveItems(operation);
   const completedArchiveItems = requiredArchiveItems.filter((archiveItem) => archiveItem.done);
-  const referenceResourceLinks = getReferenceResourceLinks(operation, collaboration);
+  const referenceResourceLinks = getReferenceResourceLinks(operation);
   const registeredReferenceLinks = referenceResourceLinks.filter((resourceLink) => isNavigableHref(resourceLink.href));
   const satisfactionSummary = getSatisfactionSummary(courseOperations);
   const teamQuery = teamScopeSearchParam(teamScope);
+  const nextRoundNo = String(Math.max(0, ...courseOperations.map((candidate) => Number(candidate.roundNo) || 0)) + 1);
+  const fallbackOperationId =
+    courseOperations.find((candidate) => candidate.operationId !== operation.operationId)?.operationId ?? null;
 
   return (
     <main className="dashboard-shell">
@@ -90,20 +103,44 @@ export function OperationDetail({
           />
         ) : null}
 
-        <section className="detail-layout">
+        <section className="operation-detail-layout">
           <section className="detail-section compact-info-section">
             <div className="section-title">
               <h2>일정 / 운영 조건</h2>
             </div>
             <div className="info-grid">
-              <InfoItem label="기간" value={`${operation.startDate} ~ ${operation.endDate}`} />
-              <InfoItem label="시간" value={operation.timeText || "시간 미정"} />
-              <InfoItem label="운영 유형" value={operation.operationType} />
-              <InfoItem label="교육 형태" value={operation.educationFormat} />
-              <InfoItem label="운영 채널" value={OPERATION_CHANNEL_LABEL[operation.operationChannel]} />
-              <InfoItem label="회차" value={operation.roundNo ? `${operation.roundNo}회차` : "확인 필요"} />
-              <InfoItem label="교육일수" value={operation.educationDays || "확인 필요"} />
-              <InfoItem label="현장 투입" value={ONSITE_LABEL[operation.onsiteRequired]} />
+              <EditableInfoItem
+                displayValue={operation.courseId || "미정"}
+                fields={[{ name: "courseId", placeholder: "예: 261326", value: operation.courseId }]}
+                label="코스ID"
+                operationId={operation.operationId}
+              />
+              <InfoItem label="기간" value={formatCourseDateRange(courseOperations)} />
+              <InfoItem label="시간" value={aggregateUniqueValues(courseOperations, (candidate) => candidate.timeText)} />
+              <InfoItem
+                label="운영 유형"
+                value={aggregateUniqueValues(courseOperations, (candidate) => candidate.operationType)}
+              />
+              <InfoItem
+                label="교육 형태"
+                value={aggregateUniqueValues(courseOperations, (candidate) => candidate.educationFormat)}
+              />
+              <InfoItem
+                label="운영 채널"
+                value={aggregateUniqueValues(courseOperations, (candidate) => OPERATION_CHANNEL_LABEL[candidate.operationChannel])}
+              />
+              <InfoItem label="회차" value={`총 ${courseOperations.length}회차`} />
+              <InfoItem label="교육일수" value={formatTotalEducationDays(courseOperations)} />
+              <InfoItem
+                label="현장 투입"
+                value={aggregateUniqueValues(courseOperations, (candidate) => ONSITE_LABEL[candidate.onsiteRequired])}
+              />
+              <ResultReportConditionSelect
+                rounds={courseOperations.map((candidate) => ({
+                  hasResultReport: candidate.hasResultReport,
+                  operationId: candidate.operationId
+                }))}
+              />
             </div>
           </section>
 
@@ -112,7 +149,7 @@ export function OperationDetail({
               <h2>담당 / 투입</h2>
             </div>
             <div className="info-grid">
-              <InfoItem label="OM" value={operation.om || "배정필요"} />
+              <InfoItem label="OM" value={operation.om || "미정"} />
               <InfoItem label="LD" value={operation.ld || "미정"} />
               <InfoItem label="강사" value={operation.instructors || "미정"} />
               <InfoItem label="실습코치" value={operation.coach || "미정"} />
@@ -121,23 +158,38 @@ export function OperationDetail({
             </div>
           </section>
 
-          {courseOperations.length > 1 ? (
-            <section className="detail-section course-sessions-section">
-              <div className="section-title">
-                <h2>동일 코스ID 운영 차수</h2>
+          <section className="detail-section course-sessions-section">
+            <div className="section-title">
+              <h2>동일 코스ID 운영 차수</h2>
+              <div className="course-sessions-header-actions">
                 <span>{operation.courseId} 기준 · {courseOperations.length}건</span>
+                <AddRoundButton
+                  baseCoach={operation.coach}
+                  baseInstructors={operation.instructors}
+                  baseOperationId={operation.operationId}
+                  baseTimeText={operation.timeText}
+                  nextRoundNo={nextRoundNo}
+                />
               </div>
+            </div>
+            {courseOperations.length > 1 ? (
               <div className="session-table-wrap">
                 <table className="session-table">
                   <thead>
                     <tr>
                       <th>회차</th>
-                      <th>상태</th>
-                      <th>일정 / 시간</th>
                       <th>OM</th>
                       <th>LD</th>
+                      <th>일정 / 시간</th>
                       <th>강사</th>
                       <th>실습코치</th>
+                      <th>관리</th>
+                      <th>만족도</th>
+                      <th>결과보고서 여부</th>
+                      <th>결과보고서</th>
+                      <th>패들렛</th>
+                      <th>강의관리</th>
+                      <th>삭제</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -151,24 +203,71 @@ export function OperationDetail({
                             {roundLabel(courseOperation, index)}
                           </Link>
                         </td>
-                        <td><StatusBadge status={courseOperation.operationStatus} /></td>
-                        <td>
-                          <span className="stacked-cell">
-                            <strong>{courseOperation.startDate} ~ {courseOperation.endDate}</strong>
-                            <small>{courseOperation.timeText || "시간 미정"}</small>
-                          </span>
-                        </td>
                         <td>{displayRoleAssigneeText(courseOperation.om, "배정필요")}</td>
                         <td>{displayRoleAssigneeText(courseOperation.ld, "미정")}</td>
-                        <td>{courseOperation.instructors || "미정"}</td>
-                        <td>{courseOperation.coach || "미정"}</td>
+                        <EditableSessionRow
+                          coach={courseOperation.coach}
+                          endDate={courseOperation.endDate}
+                          instructors={courseOperation.instructors}
+                          operationId={courseOperation.operationId}
+                          startDate={courseOperation.startDate}
+                          timeText={courseOperation.timeText}
+                        />
+                        <td>
+                          <SessionMetricPill
+                            doneText={courseOperation.avgSatisfaction}
+                            missingText="미입력"
+                          />
+                        </td>
+                        <ResultReportRequirementCell
+                          hasResultReport={courseOperation.hasResultReport}
+                          operationId={courseOperation.operationId}
+                        />
+                        {courseOperation.hasResultReport === "불필요" ? (
+                          <td className="round-resource-cell" />
+                        ) : (
+                          <EditableRoundResourceCell
+                            companionDoneValue="유"
+                            companionField="hasResultReport"
+                            companionMissingValue="무"
+                            done={courseOperation.hasResultReport === "유"}
+                            field="resultReportLink"
+                            operationId={courseOperation.operationId}
+                            value={courseOperation.resultReportLink}
+                          />
+                        )}
+                        <EditableRoundResourceCell
+                          done={isNavigableHref(courseOperation.padletLink)}
+                          field="padletLink"
+                          operationId={courseOperation.operationId}
+                          value={courseOperation.padletLink}
+                        />
+                        <td>
+                          <LectureManagementNoteRow
+                            done={Boolean(courseOperation.lectureManagementNote.trim())}
+                            operationId={courseOperation.operationId}
+                            startDate={courseOperation.startDate}
+                            value={courseOperation.lectureManagementNote}
+                          />
+                        </td>
+                        <td>
+                          <DeleteRoundButton
+                            fallbackOperationId={fallbackOperationId}
+                            isCurrent={courseOperation.operationId === operation.operationId}
+                            operationId={courseOperation.operationId}
+                            roundLabel={roundLabel(courseOperation, index)}
+                            teamQuery={teamQuery}
+                          />
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-            </section>
-          ) : null}
+            ) : (
+              <p className="course-sessions-empty">동일 코스ID의 다른 회차가 없습니다.</p>
+            )}
+          </section>
 
           <section className="detail-section resource-status-section" id="links">
             <div className="resource-card-grid">
@@ -179,7 +278,18 @@ export function OperationDetail({
                 </div>
                 <div className="archive-item-list" aria-label="아카이브 필수 항목">
                   {requiredArchiveItems.map((archiveItem) => (
-                    <ArchiveReadinessRow item={archiveItem} key={archiveItem.label} />
+                    <EditableResourceRow
+                      done={archiveItem.done}
+                      doneText={archiveItem.doneText}
+                      field={archiveItem.field}
+                      isLink
+                      key={archiveItem.label}
+                      label={archiveItem.label}
+                      missingText={archiveItem.missingText}
+                      operationId={operation.operationId}
+                      placeholder="https://"
+                      value={archiveItem.value}
+                    />
                   ))}
                 </div>
               </div>
@@ -190,9 +300,29 @@ export function OperationDetail({
                   <span>{registeredReferenceLinks.length}/{referenceResourceLinks.length}</span>
                 </div>
                 <div className="archive-item-list" aria-label="아카이브 참고 자료">
-                  {referenceResourceLinks.map((resourceLink) => (
-                    <ResourceReferenceRow href={resourceLink.href} key={resourceLink.label} label={resourceLink.label} />
-                  ))}
+                  {referenceResourceLinks.map((resourceLink) => {
+                    const hasHref = isNavigableHref(resourceLink.href);
+
+                    return (
+                      <div className={`archive-item-row ${hasHref ? "done" : "missing"}`} key={resourceLink.label}>
+                        <strong>{resourceLink.label}</strong>
+                        <div className="archive-item-actions">
+                          {hasHref ? (
+                            <a
+                              className="archive-item-state"
+                              href={toHref(resourceLink.href) ?? resourceLink.href}
+                              rel="noreferrer"
+                              target="_blank"
+                            >
+                              바로가기
+                            </a>
+                          ) : (
+                            <span className="archive-item-state">링크 없음</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -270,44 +400,11 @@ function CompactValue({ label, value }: { label: string; value: string }) {
 interface ArchiveReadinessItem {
   done: boolean;
   doneText: string;
+  field: "driveLink" | "operationDetail";
   href?: string;
   label: string;
   missingText: string;
-}
-
-function ArchiveReadinessRow({ item }: { item: ArchiveReadinessItem }) {
-  const href = item.href;
-  const hasHref = href ? isNavigableHref(href) : false;
-
-  return (
-    <div className={`archive-item-row ${item.done ? "done" : "missing"}`}>
-      <strong>{item.label}</strong>
-      {hasHref ? (
-        <a className="archive-item-state" href={href} rel="noreferrer" target="_blank">
-          열기
-        </a>
-      ) : (
-        <span className="archive-item-state">{item.done ? item.doneText : item.missingText}</span>
-      )}
-    </div>
-  );
-}
-
-function ResourceReferenceRow({ href, label }: { href: string; label: string }) {
-  const hasHref = isNavigableHref(href);
-
-  return (
-    <div className={`archive-item-row ${hasHref ? "done" : "missing"}`}>
-      <strong>{label}</strong>
-      {hasHref ? (
-        <a className="archive-item-state" href={href} rel="noreferrer" target="_blank">
-          열기
-        </a>
-      ) : (
-        <span className="archive-item-state">링크 없음</span>
-      )}
-    </div>
-  );
+  value: string;
 }
 
 function LectureReportsByRound({
@@ -367,17 +464,10 @@ function LectureReportsByRound({
   );
 }
 
-function isNavigableHref(value: string) {
-  return /^(https?:\/\/|slack:\/\/)/.test(value.trim());
-}
-
-function getReferenceResourceLinks(operation: OperationSession, collaboration: OperationCollaboration) {
+function getReferenceResourceLinks(operation: OperationSession) {
   return [
-    { label: "강의보고", href: collaboration.lectureReports[0]?.sourceUrl ?? "" },
-    { label: "패들렛", href: operation.padletLink },
-    { label: "운영상세", href: operation.operationDetail },
-    { label: "기업위키", href: operation.companyWikiLink },
-    { label: "강사위키", href: operation.instructorWikiLink }
+    { label: "기업위키", href: operation.companyWikiLink, field: "companyWikiLink" as const },
+    { label: "강사위키", href: operation.instructorWikiLink, field: "instructorWikiLink" as const }
   ];
 }
 
@@ -386,41 +476,32 @@ function getRequiredArchiveItems(operation: OperationSession): ArchiveReadinessI
     {
       done: Boolean(operation.driveLink),
       doneText: "등록됨",
+      field: "driveLink",
       href: operation.driveLink,
       label: "드라이브",
-      missingText: "링크 없음"
+      missingText: "링크 없음",
+      value: operation.driveLink
     },
     {
-      done: Boolean(operation.lectureManagementLink),
+      done: Boolean(operation.operationDetail),
       doneText: "등록됨",
-      href: operation.lectureManagementLink,
-      label: "강의관리",
-      missingText: "링크 없음"
-    },
-    {
-      done: operation.hasResultReport === "유" && Boolean(operation.resultReportLink),
-      doneText: "등록됨",
-      href: operation.resultReportLink,
-      label: "결과보고서",
-      missingText: "링크 없음"
-    },
-    {
-      done: satisfactionNumber(operation.avgSatisfaction) !== null,
-      doneText: "입력됨",
-      label: "만족도",
-      missingText: "미입력"
-    },
-    {
-      done: Boolean(operation.operationIssue || operation.omUpdate || operation.specialNotes),
-      doneText: "기록됨",
-      label: "이슈/회고",
-      missingText: "기록 없음"
+      field: "operationDetail",
+      href: operation.operationDetail,
+      label: "싱크업",
+      missingText: "링크 없음",
+      value: operation.operationDetail
     }
   ];
 }
 
 function StatusBadge({ status }: { status: OperationStatus }) {
   return <span className={`status ${STATUS_CLASS[status]}`}>{status}</span>;
+}
+
+function SessionMetricPill({ doneText, missingText }: { doneText: string; missingText: string }) {
+  const isDone = Boolean(doneText.trim());
+
+  return <span className={`archive-pill ${isDone ? "done" : "needed"}`}>{isDone ? doneText : missingText}</span>;
 }
 
 function formatMoney(value: number | null): string {
@@ -505,6 +586,34 @@ function discussionTitleWithoutCompany(title: string, companyName: string): stri
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function formatCourseDateRange(courseOperations: OperationSession[]): string {
+  const startDates = courseOperations.map((candidate) => candidate.startDate).filter(Boolean).sort();
+  const endDates = courseOperations.map((candidate) => candidate.endDate).filter(Boolean).sort();
+  const start = startDates[0];
+  const end = endDates[endDates.length - 1];
+
+  if (!start || !end) return "확인 필요";
+
+  return start === end ? start : `${start} ~ ${end}`;
+}
+
+function aggregateUniqueValues(
+  operations: OperationSession[],
+  mapper: (operation: OperationSession) => string
+): string {
+  const uniqueValues = [...new Set(operations.map(mapper).map((value) => value.trim()).filter(Boolean))];
+
+  if (uniqueValues.length === 0) return "확인 필요";
+
+  return uniqueValues.join(", ");
+}
+
+function formatTotalEducationDays(operations: OperationSession[]): string {
+  const totalDays = operations.reduce((sum, candidate) => sum + (candidate.sessionDurationDays ?? 0), 0);
+
+  return totalDays > 0 ? `총 ${totalDays}일` : "확인 필요";
 }
 
 function getCourseOperations(operation: OperationSession, relatedOperations: OperationSession[]): OperationSession[] {
