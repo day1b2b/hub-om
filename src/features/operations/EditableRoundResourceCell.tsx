@@ -16,9 +16,7 @@ interface EditableRoundResourceCellProps {
   companionField?: string;
   companionMissingValue?: string;
   done: boolean;
-  doneText: string;
   field: string;
-  missingText: string;
   operationId: string;
   value: string;
 }
@@ -28,9 +26,7 @@ export function EditableRoundResourceCell({
   companionField,
   companionMissingValue,
   done,
-  doneText,
   field,
-  missingText,
   operationId,
   value
 }: EditableRoundResourceCellProps) {
@@ -45,14 +41,12 @@ export function EditableRoundResourceCell({
       <td className="round-resource-cell">
         <div className="round-resource-cell-view">
           {hasHref ? (
-            <a className="archive-pill done" href={value} rel="noreferrer" target="_blank">
-              {doneText}
+            <a aria-label="등록 정보 확인" className="table-link-icon" href={value} rel="noreferrer" target="_blank">
+              ↗
             </a>
-          ) : (
-            <span className={`archive-pill ${done ? "done" : "needed"}`}>{done ? doneText : missingText}</span>
-          )}
+          ) : null}
           <button className="round-resource-edit-trigger" onClick={startEditing} type="button">
-            수정
+            {done ? "수정" : "등록"}
           </button>
         </div>
       </td>
