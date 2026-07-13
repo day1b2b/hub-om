@@ -45,7 +45,7 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
 });
 
 function emptySession(): OmRequestSession {
-  return { date: "", timeStart: "", timeEnd: "", duration: "", location: "" };
+  return { date: "", dateEnd: "", timeStart: "", timeEnd: "", duration: "", location: "" };
 }
 
 function calcDuration(timeStart: string, timeEnd: string): string {
@@ -348,7 +348,8 @@ export function OmRequestForm({ ldName, initialData, requestId }: { ldName: stri
         <div className="om-sessions-table">
           <div className="om-sessions-header">
             <span>회차</span>
-            <span>교육일<em className="required-mark">*</em></span>
+            <span>시작일<em className="required-mark">*</em></span>
+            <span>종료일</span>
             <span>시작 시간<em className="required-mark">*</em></span>
             <span>종료 시간<em className="required-mark">*</em></span>
             <span>시수</span>
@@ -361,6 +362,10 @@ export function OmRequestForm({ ldName, initialData, requestId }: { ldName: stri
                 required
                 value={session.date}
                 onChange={(v) => updateSession(idx, "date", v)}
+              />
+              <DateInput
+                value={session.dateEnd ?? ""}
+                onChange={(v) => updateSession(idx, "dateEnd", v)}
               />
               <select
                 required

@@ -3,6 +3,7 @@ export type YN = "Y" | "N";
 
 export interface OmRequestSession {
   date: string;
+  dateEnd?: string;
   timeStart: string;
   timeEnd: string;
   duration: string;

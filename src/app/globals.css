@@ -8922,7 +8922,7 @@ td span {
   font-weight: 600;
   color: var(--muted);
   gap: 8px;
-  grid-template-columns: 52px 148px 108px 108px 44px 1fr;
+  grid-template-columns: 52px 148px 148px 108px 108px 44px 1fr;
   padding: 8px 12px;
   text-align: center;
 }
@@ -8932,7 +8932,7 @@ td span {
   border-bottom: 1px solid var(--line);
   display: grid;
   gap: 8px;
-  grid-template-columns: 52px 148px 108px 108px 44px 1fr;
+  grid-template-columns: 52px 148px 148px 108px 108px 44px 1fr;
   justify-items: center;
   padding: 6px 12px;
 }
@@ -9058,7 +9058,7 @@ td span {
   font-size: 12px;
   font-weight: 600;
   gap: 8px;
-  grid-template-columns: 36px 110px 72px 72px 48px 1fr;
+  grid-template-columns: 36px 110px 110px 72px 72px 48px 1fr;
   padding: 8px 12px;
   text-align: center;
 }
@@ -9072,7 +9072,7 @@ td span {
   border-bottom: 1px solid var(--line);
   display: grid;
   gap: 8px;
-  grid-template-columns: 36px 110px 72px 72px 48px 1fr;
+  grid-template-columns: 36px 110px 110px 72px 72px 48px 1fr;
   padding: 8px 12px;
   text-align: center;
 }
