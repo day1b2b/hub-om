@@ -117,10 +117,9 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
 
         <section className="dashboard-panel">
           <div className="section-title">
-            <h2>내가 배정된 과정</h2>
+            <h2>나의 담당 과정</h2>
             <div className="dashboard-table-meta">
               <span>{assignedRequests.length}건</span>
-              <Link href="/om-request/manage">배정 관리</Link>
             </div>
           </div>
           <div className="table-wrap">
