@@ -15,6 +15,7 @@
     "db:archive:coach-db": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/archive-coach-db.ts",
     "db:import:operations": "node scripts/import-operations-from-local-json.mjs",
     "db:import:coach": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/import-coach-db.ts",
+    "db:seed:coach-sample": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/seed-coach-sample-data.ts",
     "db:verify:coach-data": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/verify-coach-data.ts",
     "db:backfill:coach-access-tokens": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/backfill-coach-access-tokens.ts",
     "db:backfill:coach-archive-service-data": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/backfill-coach-archive-service-data.ts",

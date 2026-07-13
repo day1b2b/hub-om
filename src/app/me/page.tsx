@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function MyDashboardPage() {
   const session = await requireWorkspaceSession();
-  const omName = resolveOmNameByEmail(session.user?.email);
+  const omName = await resolveOmNameByEmail(session.user?.email);
 
   if (!omName) {
     return <MyDashboard assignedRequests={[]} omName={null} operations={[]} />;

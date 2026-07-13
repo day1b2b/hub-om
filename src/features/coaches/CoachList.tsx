@@ -59,21 +59,12 @@ export function CoachList({ coaches, loadFailed }: CoachListProps) {
   }, [coaches, fieldFilter, query, sortKey, statusFilter, visibilityFilter, workTypeFilter]);
 
   return (
-    <main className="dashboard-shell">
+    <main className="dashboard-shell coach-schedule-shell">
       <AppSidebar label="Coaches" teamScope="both" />
 
       <section className="content coach-origin-list-content" id="coaches">
-        <header className="coach-origin-list-header">
-          <div>
-            <p className="eyebrow">코치 DB</p>
-            <h1>코치 목록</h1>
-            <p>기존 coach-db 기준으로 코치의 공개 프로필, 스케줄, 근무 이력을 조회합니다. 개인정보는 현재 표시하지 않습니다.</p>
-          </div>
-          <Link className="coach-origin-primary-link" href="/coaches/schedule">코치 일정</Link>
-        </header>
-
-        <section className="coach-origin-list-toolbar" aria-label="코치 검색과 필터">
-          <label className="coach-origin-list-search">
+        <div className="coach-schedule-topbar">
+          <label className="coach-schedule-search">
             <span aria-hidden="true">⌕</span>
             <input
               onChange={(event) => setQuery(event.target.value)}
@@ -82,6 +73,22 @@ export function CoachList({ coaches, loadFailed }: CoachListProps) {
               value={query}
             />
           </label>
+          <div className="coach-schedule-topnav">
+            <Link href="/coaches/schedule">코치 일정</Link>
+          </div>
+        </div>
+
+        <header className="coach-workspace-header">
+          <div>
+            <h1>코치 목록</h1>
+            <span className="coach-plan-badge">coach-db</span>
+          </div>
+        </header>
+        <p className="coach-origin-list-desc">
+          기존 coach-db 기준으로 코치의 공개 프로필, 스케줄, 근무 이력을 조회합니다. 개인정보는 현재 표시하지 않습니다.
+        </p>
+
+        <section className="coach-origin-list-toolbar" aria-label="코치 필터">
           <FilterSelect
             label="상태"
             onChange={(value) => setStatusFilter(value as (typeof STATUS_FILTERS)[number])}
@@ -101,7 +108,6 @@ export function CoachList({ coaches, loadFailed }: CoachListProps) {
 
         <section className="coach-origin-list-card">
           <div className="coach-origin-list-meta">
-            <strong>코치 목록</strong>
             <span>총 {filteredCoaches.length}명</span>
           </div>
 
@@ -125,13 +131,8 @@ export function CoachList({ coaches, loadFailed }: CoachListProps) {
                       {coach.fields.length > 0 ? ` · ${coach.fields.slice(0, 4).join(", ")}` : ""}
                     </small>
                   </span>
-                  <span className="coach-origin-row-stat">
-                    <small>근무일</small>
-                    <strong>{coach.workDayCount}</strong>
-                  </span>
-                  <span className="coach-origin-row-stat">
-                    <small>평가</small>
-                    <strong>{coach.avgRating === null ? "-" : coach.avgRating.toFixed(1)}</strong>
+                  <span className="coach-origin-row-time">
+                    근무일 {coach.workDayCount}일 · 평가 {coach.avgRating === null ? "-" : coach.avgRating.toFixed(1)}
                   </span>
                 </Link>
               ))}
