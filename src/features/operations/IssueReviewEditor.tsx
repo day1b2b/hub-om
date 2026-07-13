@@ -13,17 +13,17 @@ type SaveState = "idle" | "saving" | "saved" | "failed";
 const EDIT_FIELDS = [
   {
     field: "specialNotes",
-    label: "특이사항",
+    label: "특이사항/이슈",
     placeholder: "현장 운영자가 알아야 할 특이사항을 기록"
   },
   {
     field: "operationIssue",
-    label: "운영 이슈",
+    label: "회고 (OM+LD)",
     placeholder: "지연, 누락, 이슈, 후속 조치가 필요한 내용을 기록"
   },
   {
     field: "omUpdate",
-    label: "OM 업데이트",
+    label: "과정 메모",
     placeholder: "OM 관점의 변경 사항이나 다음 운영자에게 남길 메모"
   }
 ] as const;
