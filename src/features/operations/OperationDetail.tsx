@@ -84,9 +84,7 @@ export function OperationDetail({
             <span className="title-company">{operation.companyName}</span>
             <h1>{operation.courseName}</h1>
             <StatusBadge status={operation.operationStatus} />
-            <span className="title-course-id">
-              {operation.courseId ? "코스ID 검토 필요" : "코스ID 없음"}
-            </span>
+            {operation.courseId ? null : <span className="title-course-id">코스ID 검토 필요</span>}
           </div>
           <div className="detail-header-actions">
             <span>준비도 {completedArchiveItems.length}/{requiredArchiveItems.length}</span>
