@@ -9,24 +9,27 @@ interface ResultReportRequirementCellProps {
   operationId: string;
 }
 
+type SaveState = "idle" | "saving" | "failed";
+
 export function ResultReportRequirementCell({ hasResultReport, operationId }: ResultReportRequirementCellProps) {
   const router = useRouter();
-  const [isSaving, setIsSaving] = useState(false);
+  const [saveState, setSaveState] = useState<SaveState>("idle");
   const required = hasResultReport !== "불필요";
 
   return (
     <td className="round-resource-cell">
       <div className="round-resource-cell-view">
         <span className={`archive-pill ${required ? "done" : "muted"}`}>{required ? "Y" : "N"}</span>
-        <button className="round-resource-edit-trigger" disabled={isSaving} onClick={toggleRequired} type="button">
-          {required ? "N으로 변경" : "Y로 변경"}
+        <button className="round-resource-edit-trigger" disabled={saveState === "saving"} onClick={toggleRequired} type="button">
+          {saveState === "saving" ? "변경 중" : required ? "N으로 변경" : "Y로 변경"}
         </button>
       </div>
+      {saveState === "failed" ? <span className="archive-item-save-error">변경하지 못했습니다.</span> : null}
     </td>
   );
 
   async function toggleRequired() {
-    setIsSaving(true);
+    setSaveState("saving");
 
     const nextValue: ResultReportStatus = required ? "불필요" : "확인필요";
 
@@ -41,17 +44,18 @@ export function ResultReportRequirementCell({ hasResultReport, operationId }: Re
         body: JSON.stringify({ patches: [{ field: "hasResultReport", action: "replace", value: nextValue }] })
       });
     } catch {
-      setIsSaving(false);
+      setSaveState("failed");
       return;
     }
 
     const payload = (await response.json().catch(() => ({}))) as { ok?: boolean };
 
     if (!response.ok || !payload.ok) {
-      setIsSaving(false);
+      setSaveState("failed");
       return;
     }
 
+    setSaveState("idle");
     router.refresh();
   }
 }

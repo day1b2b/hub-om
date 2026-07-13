@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { isNavigableHref, toHref } from "@/lib/links";
 
 type SaveState = "idle" | "saving" | "failed";
 
@@ -52,7 +53,7 @@ export function EditableResourceRow({
         <strong>{label}</strong>
         <div className="archive-item-actions">
           {hasHref ? (
-            <a className="archive-item-state" href={value} rel="noreferrer" target="_blank">
+            <a className="archive-item-state" href={toHref(value) ?? value} rel="noreferrer" target="_blank">
               열기
             </a>
           ) : (
@@ -139,8 +140,4 @@ export function EditableResourceRow({
     setSaveState("idle");
     router.refresh();
   }
-}
-
-function isNavigableHref(value: string) {
-  return /^(https?:\/\/|slack:\/\/)/.test(value.trim());
 }

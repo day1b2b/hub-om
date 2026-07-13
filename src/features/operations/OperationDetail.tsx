@@ -21,6 +21,7 @@ import type {
   OperationDiscussionItem
 } from "@/lib/data/operationCollaboration";
 import { displayRoleAssigneeText } from "@/lib/data/roleAssignees";
+import { isNavigableHref } from "@/lib/links";
 import { satisfactionNumber } from "@/lib/data/satisfaction";
 import { teamScopeSearchParam, type TeamScope } from "@/lib/teamScope";
 
@@ -216,9 +217,7 @@ export function OperationDetail({
                           operationId={courseOperation.operationId}
                         />
                         {courseOperation.hasResultReport === "불필요" ? (
-                          <td className="round-resource-cell">
-                            <span className="archive-pill muted">대상 아님</span>
-                          </td>
+                          <td className="round-resource-cell" />
                         ) : (
                           <EditableRoundResourceCell
                             companionDoneValue="유"
@@ -240,6 +239,7 @@ export function OperationDetail({
                           <LectureManagementNoteRow
                             done={Boolean(courseOperation.lectureManagementNote.trim())}
                             operationId={courseOperation.operationId}
+                            startDate={courseOperation.startDate}
                             value={courseOperation.lectureManagementNote}
                           />
                         </td>
@@ -464,10 +464,6 @@ function LectureReportsByRound({
       </div>
     </section>
   );
-}
-
-function isNavigableHref(value: string) {
-  return /^(https?:\/\/|slack:\/\/)/.test(value.trim());
 }
 
 function getReferenceResourceLinks(operation: OperationSession) {

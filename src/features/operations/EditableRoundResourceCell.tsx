@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { isNavigableHref, toHref } from "@/lib/links";
 
 type SaveState = "idle" | "saving" | "failed";
 
@@ -41,7 +42,7 @@ export function EditableRoundResourceCell({
       <td className="round-resource-cell">
         <div className="round-resource-cell-view">
           {hasHref ? (
-            <a aria-label="등록 정보 확인" className="table-link-icon" href={value} rel="noreferrer" target="_blank">
+            <a aria-label="등록 정보 확인" className="table-link-icon" href={toHref(value) ?? value} rel="noreferrer" target="_blank">
               ↗
             </a>
           ) : null}
@@ -127,8 +128,4 @@ export function EditableRoundResourceCell({
     setSaveState("idle");
     router.refresh();
   }
-}
-
-function isNavigableHref(value: string) {
-  return /^(https?:\/\/|slack:\/\/)/.test(value.trim());
 }
