@@ -1,0 +1,37 @@
+name: Dependabot auto-merge
+
+# 안전한 의존성 업데이트를 사람 없이 자동 머지한다.
+# - 대상: 패치(semver-patch) 업데이트 + 모든 GitHub Actions 업데이트
+# - 마이너/메이저(npm)는 대상 아님 → 사람이 확인 후 머지
+# - 실제 머지는 CI(verify 등)가 통과해야만 일어난다(auto-merge).
+#
+# ⚠️ 동작 조건(저장소 설정, 1회만):
+#   1) Settings → General → "Allow auto-merge" 켜기
+#   2) Settings → Branches → dev 브랜치 보호 규칙에 필수 상태 체크(verify) 지정
+#   두 설정이 없으면 아래 단계는 아무 것도 하지 않는다(안전).
+
+on: pull_request
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dependabot 메타데이터 조회
+        id: meta
+        uses: dependabot/fetch-metadata@v2
+
+      - name: 안전한 업데이트만 auto-merge 활성화
+        if: >
+          steps.meta.outputs.update-type == 'version-update:semver-patch' ||
+          steps.meta.outputs.package-ecosystem == 'github_actions'
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge --auto --merge "$PR_URL" \
+            || echo "auto-merge를 켜지 못했습니다. 저장소 설정('Allow auto-merge' + dev 브랜치 보호)이 필요합니다."
