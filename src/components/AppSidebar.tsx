@@ -17,6 +17,8 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
   const isImportAdminPage = pathname?.startsWith("/admin/imports") ?? false;
   const isSyncAdminPage = pathname?.startsWith("/admin/sync") ?? false;
   const isUsersAdminPage = pathname?.startsWith("/admin/users") ?? false;
+  const isMyDashboardPage = pathname === "/me";
+  const isCompanyWikiPage = pathname === "/company-wiki";
   const isCreatePage = pathname === "/operations/new";
   const isOperationsPage = pathname === "/operations" || (pathname?.startsWith("/operations/") && !isCreatePage);
   const isCoachSchedulePage = pathname === "/coaches/schedule";
@@ -38,6 +40,11 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
       </Link>
       <nav className="nav-list">
         <div className="nav-section">
+          <div className="nav-section-title">개인</div>
+          <Link className={isMyDashboardPage ? "active" : ""} data-icon="👤" href="/me">내 대시보드</Link>
+        </div>
+
+        <div className="nav-section">
           <div className="nav-section-title">OM 운영 요청</div>
           <Link className={isOmRequestPage ? "active" : ""} data-icon="📋" href="/om-request">업무 요청</Link>
           <Link className={isOmManagePage ? "active" : ""} data-icon="☑" href="/om-request/manage">담당 관리</Link>
@@ -54,6 +61,7 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
           <Link className={pathname === "/dashboard" ? "active" : ""} data-icon="🔒" href="/dashboard">대시보드</Link>
           <Link className={isOperationsPage ? "active" : ""} data-icon="🔒" href="/operations">운영 현황</Link>
           <Link className={isResourcesPage ? "active" : ""} data-icon="🔒" href="/resources">리소스</Link>
+          <Link className={isCompanyWikiPage ? "active" : ""} data-icon="🔒" href="/company-wiki">기업 위키</Link>
           <Link className={isDatabaseAdminPage ? "active" : ""} data-icon="🔒" href="/admin/database">DB 조회</Link>
           <Link className={isImportAdminPage ? "active" : ""} data-icon="🔒" href="/admin/imports">데이터 검수</Link>
           <Link className={isSyncAdminPage ? "active" : ""} data-icon="🔒" href="/admin/sync">데이터 동기화</Link>
