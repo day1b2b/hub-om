@@ -19,6 +19,7 @@ export interface OmRequest {
   team: string;
   ld: string;
   company: string;
+  businessNumber?: string;
   trainingType: TrainingType;
   courseId: string;
   courseName: string;

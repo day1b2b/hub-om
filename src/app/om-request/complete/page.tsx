@@ -54,6 +54,7 @@ export default async function OmRequestCompletePage({ searchParams }: Props) {
                 <Field label="구분" value={request.team} />
                 <Field label="LD" value={request.ld} />
                 <Field label="기업명" value={request.company} />
+                <Field label="사업자등록번호" value={request.businessNumber} />
                 <Field label="교육형태" value={request.trainingType} />
                 <Field label="코스 ID" value={request.courseId} />
                 <Field label="과정명" value={request.courseName} />
