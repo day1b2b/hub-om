@@ -23,7 +23,7 @@ jobs:
     steps:
       - name: Dependabot 메타데이터 조회
         id: meta
-        uses: dependabot/fetch-metadata@v2
+        uses: dependabot/fetch-metadata@v3
 
       - name: 안전한 업데이트만 auto-merge 활성화
         if: >
