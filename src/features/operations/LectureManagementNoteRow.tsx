@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { isNavigableHref, toHref } from "@/lib/links";
 
 type SaveState = "idle" | "saving" | "failed";
+type NoteMode = "text" | "link";
 
 interface LectureManagementNoteRowProps {
   done: boolean;
@@ -43,6 +44,8 @@ export function LectureManagementNoteRow({
   const [isOpen, setIsOpen] = useState(false);
   const [tabs, setTabs] = useState<LectureNoteTab[]>(() => parseLectureNote(value, startDate));
   const [activeTabIndex, setActiveTabIndex] = useState(0);
+  const [mode, setMode] = useState<NoteMode>(() => (isNavigableHref(value) ? "link" : "text"));
+  const [linkDraft, setLinkDraft] = useState(() => (isNavigableHref(value) ? value : ""));
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const activeTab = tabs[activeTabIndex] ?? blankTab();
   const hasHref = isNavigableHref(value);
@@ -75,78 +78,103 @@ export function LectureManagementNoteRow({
             </div>
 
             <div className="lecture-note-tabs">
-              {tabs.map((tab, index) => (
-                <button
-                  className={`lecture-note-tab ${index === activeTabIndex ? "active" : ""}`}
-                  key={index}
-                  onClick={() => setActiveTabIndex(index)}
-                  type="button"
-                >
-                  {tab.date.trim() || `날짜 ${index + 1}`}
-                </button>
-              ))}
-              <button className="lecture-note-tab-add" onClick={addTab} type="button">
-                + 날짜 추가
+              <button className={`lecture-note-tab ${mode === "text" ? "active" : ""}`} onClick={() => setMode("text")} type="button">
+                텍스트로 기록
+              </button>
+              <button className={`lecture-note-tab ${mode === "link" ? "active" : ""}`} onClick={() => setMode("link")} type="button">
+                링크로 등록
               </button>
             </div>
 
-            <div className="lecture-note-body">
-              <div className="lecture-note-tab-header">
-                <label className="lecture-note-field">
-                  <span>교육 날짜</span>
+            {mode === "text" ? (
+              <>
+                <div className="lecture-note-tabs">
+                  {tabs.map((tab, index) => (
+                    <button
+                      className={`lecture-note-tab ${index === activeTabIndex ? "active" : ""}`}
+                      key={index}
+                      onClick={() => setActiveTabIndex(index)}
+                      type="button"
+                    >
+                      {tab.date.trim() || `날짜 ${index + 1}`}
+                    </button>
+                  ))}
+                  <button className="lecture-note-tab-add" onClick={addTab} type="button">
+                    + 날짜 추가
+                  </button>
+                </div>
+
+                <div className="lecture-note-body">
+                  <div className="lecture-note-tab-header">
+                    <label className="lecture-note-field">
+                      <span>교육 날짜</span>
+                      <input
+                        onChange={(event) => updateActiveTab({ date: event.target.value })}
+                        type="date"
+                        value={activeTab.date}
+                      />
+                    </label>
+                    {tabs.length > 1 ? (
+                      <button className="lecture-note-tab-remove" onClick={removeActiveTab} type="button">
+                        이 날짜 삭제
+                      </button>
+                    ) : null}
+                  </div>
+
+                  <label className="lecture-note-field">
+                    <span>학습 인원</span>
+                    <input
+                      onChange={(event) => updateActiveTab({ studentCount: event.target.value })}
+                      placeholder="예: 27명"
+                      type="text"
+                      value={activeTab.studentCount}
+                    />
+                  </label>
+
+                  <label className="lecture-note-field lecture-note-field-block">
+                    <span>강의 요약</span>
+                    <textarea
+                      className="lecture-note-textarea"
+                      onChange={(event) => updateActiveTab({ courseSummary: event.target.value })}
+                      placeholder="시간대별 강의 진행 내용을 기록하세요."
+                      value={activeTab.courseSummary}
+                    />
+                  </label>
+
+                  <label className="lecture-note-field lecture-note-field-block">
+                    <span>운영진 의견</span>
+                    <textarea
+                      className="lecture-note-textarea"
+                      onChange={(event) => updateActiveTab({ staffOpinion: event.target.value })}
+                      placeholder="강사/학습자/교육환경/교담자 관련 의견을 기록하세요."
+                      value={activeTab.staffOpinion}
+                    />
+                  </label>
+
+                  <label className="lecture-note-field lecture-note-field-block">
+                    <span>이슈</span>
+                    <textarea
+                      className="lecture-note-textarea"
+                      onChange={(event) => updateActiveTab({ issue: event.target.value })}
+                      placeholder="발생한 이슈와 대응 내용을 기록하세요."
+                      value={activeTab.issue}
+                    />
+                  </label>
+                </div>
+              </>
+            ) : (
+              <div className="lecture-note-body">
+                <label className="lecture-note-field lecture-note-field-block">
+                  <span>강의관리 링크</span>
                   <input
-                    onChange={(event) => updateActiveTab({ date: event.target.value })}
-                    type="date"
-                    value={activeTab.date}
+                    onChange={(event) => setLinkDraft(event.target.value)}
+                    placeholder="https://..."
+                    type="url"
+                    value={linkDraft}
                   />
                 </label>
-                {tabs.length > 1 ? (
-                  <button className="lecture-note-tab-remove" onClick={removeActiveTab} type="button">
-                    이 날짜 삭제
-                  </button>
-                ) : null}
               </div>
-
-              <label className="lecture-note-field">
-                <span>학습 인원</span>
-                <input
-                  onChange={(event) => updateActiveTab({ studentCount: event.target.value })}
-                  placeholder="예: 27명"
-                  type="text"
-                  value={activeTab.studentCount}
-                />
-              </label>
-
-              <label className="lecture-note-field lecture-note-field-block">
-                <span>강의 요약</span>
-                <textarea
-                  className="lecture-note-textarea"
-                  onChange={(event) => updateActiveTab({ courseSummary: event.target.value })}
-                  placeholder="시간대별 강의 진행 내용을 기록하세요."
-                  value={activeTab.courseSummary}
-                />
-              </label>
-
-              <label className="lecture-note-field lecture-note-field-block">
-                <span>운영진 의견</span>
-                <textarea
-                  className="lecture-note-textarea"
-                  onChange={(event) => updateActiveTab({ staffOpinion: event.target.value })}
-                  placeholder="강사/학습자/교육환경/교담자 관련 의견을 기록하세요."
-                  value={activeTab.staffOpinion}
-                />
-              </label>
-
-              <label className="lecture-note-field lecture-note-field-block">
-                <span>이슈</span>
-                <textarea
-                  className="lecture-note-textarea"
-                  onChange={(event) => updateActiveTab({ issue: event.target.value })}
-                  placeholder="발생한 이슈와 대응 내용을 기록하세요."
-                  value={activeTab.issue}
-                />
-              </label>
-            </div>
+            )}
 
             <div className="lecture-note-footer">
               {saveState === "failed" ? <span className="lecture-note-save-error">저장하지 못했습니다.</span> : null}
@@ -168,6 +196,8 @@ export function LectureManagementNoteRow({
   function openDialog() {
     setTabs(parseLectureNote(value, startDate));
     setActiveTabIndex(0);
+    setMode(isNavigableHref(value) ? "link" : "text");
+    setLinkDraft(isNavigableHref(value) ? value : "");
     setSaveState("idle");
     setIsOpen(true);
   }
@@ -175,6 +205,8 @@ export function LectureManagementNoteRow({
   function closeDialog() {
     setTabs(parseLectureNote(value, startDate));
     setActiveTabIndex(0);
+    setMode(isNavigableHref(value) ? "link" : "text");
+    setLinkDraft(isNavigableHref(value) ? value : "");
     setSaveState("idle");
     setIsOpen(false);
   }
@@ -200,9 +232,8 @@ export function LectureManagementNoteRow({
   async function save() {
     setSaveState("saving");
 
-    const patches = [
-      { field: "lectureManagementNote", action: "replace" as const, value: composeLectureNote(tabs) }
-    ];
+    const noteValue = mode === "link" ? linkDraft.trim() : composeLectureNote(tabs);
+    const patches = [{ field: "lectureManagementNote", action: "replace" as const, value: noteValue }];
 
     let response: Response;
 

@@ -21,7 +21,7 @@ import type {
   OperationDiscussionItem
 } from "@/lib/data/operationCollaboration";
 import { displayRoleAssigneeText } from "@/lib/data/roleAssignees";
-import { isNavigableHref } from "@/lib/links";
+import { isNavigableHref, toHref } from "@/lib/links";
 import { satisfactionNumber } from "@/lib/data/satisfaction";
 import { teamScopeSearchParam, type TeamScope } from "@/lib/teamScope";
 
@@ -311,20 +311,46 @@ export function OperationDetail({
                   <span>{registeredReferenceLinks.length}/{referenceResourceLinks.length}</span>
                 </div>
                 <div className="archive-item-list" aria-label="아카이브 참고 자료">
-                  {referenceResourceLinks.map((resourceLink) => (
-                    <EditableResourceRow
-                      done={isNavigableHref(resourceLink.href)}
-                      doneText="등록됨"
-                      field={resourceLink.field}
-                      isLink
-                      key={resourceLink.label}
-                      label={resourceLink.label}
-                      missingText="링크 없음"
-                      operationId={operation.operationId}
-                      placeholder="https://"
-                      value={resourceLink.href}
-                    />
-                  ))}
+                  {referenceResourceLinks.map((resourceLink) => {
+                    if (resourceLink.field !== "companyWikiLink" && resourceLink.field !== "instructorWikiLink") {
+                      return (
+                        <EditableResourceRow
+                          done={isNavigableHref(resourceLink.href)}
+                          doneText="등록됨"
+                          field={resourceLink.field}
+                          isLink
+                          key={resourceLink.label}
+                          label={resourceLink.label}
+                          missingText="링크 없음"
+                          operationId={operation.operationId}
+                          placeholder="https://"
+                          value={resourceLink.href}
+                        />
+                      );
+                    }
+
+                    const hasHref = isNavigableHref(resourceLink.href);
+
+                    return (
+                      <div className={`archive-item-row ${hasHref ? "done" : "missing"}`} key={resourceLink.label}>
+                        <strong>{resourceLink.label}</strong>
+                        <div className="archive-item-actions">
+                          {hasHref ? (
+                            <a
+                              className="archive-item-state"
+                              href={toHref(resourceLink.href) ?? resourceLink.href}
+                              rel="noreferrer"
+                              target="_blank"
+                            >
+                              바로가기
+                            </a>
+                          ) : (
+                            <span className="archive-item-state">링크 없음</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
