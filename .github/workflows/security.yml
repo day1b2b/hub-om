@@ -1,0 +1,122 @@
+name: Security
+
+# 매 PR(및 dev/main push)마다 보안 검사를 자동 실행한다.
+# - 시크릿 스캔만 '차단'(실패 시 머지 불가), 나머지는 '경고'로 시작한다.
+# - 팀이 적응하면 점진적으로 차단 범위를 넓힐 수 있다.
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - main
+  push:
+    branches:
+      - dev
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  secret-scan:
+    name: 시크릿 스캔 (차단)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install gitleaks
+        run: |
+          GL_VERSION=8.18.4
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GL_VERSION}/gitleaks_${GL_VERSION}_linux_x64.tar.gz" -o gitleaks.tar.gz
+          tar -xzf gitleaks.tar.gz gitleaks
+          chmod +x gitleaks
+
+      - name: Scan working tree for secrets
+        run: ./gitleaks detect --no-git --source . --config .gitleaks.toml --redact --verbose
+
+  dependency-audit:
+    name: 의존성 취약점 (critical 차단)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Report all advisories (경고)
+        run: npm audit || true
+
+      - name: Fail on critical production advisories (차단)
+        run: npm audit --omit=dev --audit-level=critical
+
+  sast:
+    name: 코드 정적 분석 (semgrep · 참고용)
+    runs-on: ubuntu-latest
+    # 참고용: 도구/네트워크 문제로 실패해도 전체 검사를 막지 않는다.
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install semgrep
+        run: pip install --quiet semgrep
+
+      - name: Run semgrep
+        run: |
+          semgrep scan \
+            --config p/javascript \
+            --config p/typescript \
+            --config p/react \
+            --config p/owasp-top-ten \
+            --config p/secrets \
+            --error \
+            --sarif --output semgrep.sarif || true
+          semgrep scan \
+            --config p/javascript \
+            --config p/typescript \
+            --config p/react \
+            --config p/owasp-top-ten \
+            --config p/secrets \
+            --text 2>&1 | tee "$GITHUB_STEP_SUMMARY" || true
+
+  custom-checks:
+    name: hub-om 커스텀 점검 (권한·개인정보 · 참고용)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Collect changed files (PR only)
+        id: changed
+        run: |
+          if [ -n "${{ github.base_ref }}" ]; then
+            git fetch origin "${{ github.base_ref }}" --depth=1 || true
+            CHANGED=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD" | tr '\n' ',' || true)
+          else
+            CHANGED=""
+          fi
+          echo "files=$CHANGED" >> "$GITHUB_OUTPUT"
+
+      - name: API 권한 커버리지 점검
+        env:
+          CHANGED_FILES: ${{ steps.changed.outputs.files }}
+        run: node scripts/security/check-api-auth.mjs
+
+      - name: 로그 개인정보 노출 점검
+        run: node scripts/security/check-pii-logs.mjs
