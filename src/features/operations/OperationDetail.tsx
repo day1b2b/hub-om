@@ -8,13 +8,13 @@ import { EditableSessionRow } from "./EditableSessionRow";
 import { IssueReviewEditor } from "./IssueReviewEditor";
 import { LectureManagementNoteRow } from "./LectureManagementNoteRow";
 import { OperationDiscussionPanel } from "./OperationDiscussionPanel";
+import { ResultReportConditionSelect } from "./ResultReportConditionSelect";
 import { ResultReportRequirementCell } from "./ResultReportRequirementCell";
 import type {
   OperationChannel,
   OperationSession,
   OperationStatus,
-  OnsiteRequired,
-  ResultReportStatus
+  OnsiteRequired
 } from "@/lib/data/operationTypes";
 import type {
   OperationCollaboration,
@@ -46,13 +46,6 @@ const ONSITE_LABEL: Record<OnsiteRequired, string> = {
   N: "N",
   PARTIAL: "일부 필요",
   UNKNOWN: "확인 필요"
-};
-
-const RESULT_REPORT_REQUIRED_LABEL: Record<ResultReportStatus, string> = {
-  "유": "Y",
-  "무": "Y",
-  "확인필요": "Y",
-  "불필요": "N"
 };
 
 interface OperationDetailProps {
@@ -134,9 +127,11 @@ export function OperationDetail({
                 label="현장 투입"
                 value={aggregateUniqueValues(courseOperations, (candidate) => ONSITE_LABEL[candidate.onsiteRequired])}
               />
-              <InfoItem
-                label="결과보고서 여부"
-                value={aggregateUniqueValues(courseOperations, (candidate) => RESULT_REPORT_REQUIRED_LABEL[candidate.hasResultReport])}
+              <ResultReportConditionSelect
+                rounds={courseOperations.map((candidate) => ({
+                  hasResultReport: candidate.hasResultReport,
+                  operationId: candidate.operationId
+                }))}
               />
             </div>
           </section>
