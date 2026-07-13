@@ -13,7 +13,8 @@ import type {
   OperationChannel,
   OperationSession,
   OperationStatus,
-  OnsiteRequired
+  OnsiteRequired,
+  ResultReportStatus
 } from "@/lib/data/operationTypes";
 import type {
   OperationCollaboration,
@@ -41,10 +42,17 @@ const OPERATION_CHANNEL_LABEL: Record<OperationChannel, string> = {
 };
 
 const ONSITE_LABEL: Record<OnsiteRequired, string> = {
-  Y: "필요",
-  N: "불필요",
+  Y: "Y",
+  N: "N",
   PARTIAL: "일부 필요",
   UNKNOWN: "확인 필요"
+};
+
+const RESULT_REPORT_REQUIRED_LABEL: Record<ResultReportStatus, string> = {
+  "유": "Y",
+  "무": "Y",
+  "확인필요": "Y",
+  "불필요": "N"
 };
 
 interface OperationDetailProps {
@@ -125,6 +133,10 @@ export function OperationDetail({
               <InfoItem
                 label="현장 투입"
                 value={aggregateUniqueValues(courseOperations, (candidate) => ONSITE_LABEL[candidate.onsiteRequired])}
+              />
+              <InfoItem
+                label="결과보고서 여부"
+                value={aggregateUniqueValues(courseOperations, (candidate) => RESULT_REPORT_REQUIRED_LABEL[candidate.hasResultReport])}
               />
             </div>
           </section>
