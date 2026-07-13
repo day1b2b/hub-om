@@ -35,7 +35,10 @@ COPY --from=build --chown=nextjs:nodejs /app/src ./src
 COPY --from=build --chown=nextjs:nodejs /app/scripts ./scripts
 COPY --chown=nextjs:nodejs scripts/docker-entrypoint.sh ./docker-entrypoint.sh
 
-RUN chmod +x /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh \
+  && echo '[]' > /app/om-requests.json \
+  && echo '[]' > /app/team-users.json \
+  && chown nextjs:nodejs /app/om-requests.json /app/team-users.json
 
 USER nextjs
 
