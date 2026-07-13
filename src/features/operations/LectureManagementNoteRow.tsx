@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { isNavigableHref, toHref } from "@/lib/links";
 
 type SaveState = "idle" | "saving" | "failed";
 
 interface LectureManagementNoteRowProps {
   done: boolean;
   operationId: string;
+  startDate: string;
   value: string;
 }
 
@@ -27,18 +29,19 @@ const STAFF_OPINION_MARKER = "[운영진 의견]";
 const ISSUE_MARKER = "[이슈]";
 const DATE_HEADER_PATTERN = /^\[날짜:\s*(.*?)\]\s*$/gm;
 
-function blankTab(): LectureNoteTab {
-  return { courseSummary: "", date: "", issue: "", staffOpinion: "", studentCount: "" };
+function blankTab(defaultDate: string = ""): LectureNoteTab {
+  return { courseSummary: "", date: defaultDate, issue: "", staffOpinion: "", studentCount: "" };
 }
 
 export function LectureManagementNoteRow({
   done,
   operationId,
+  startDate,
   value
 }: LectureManagementNoteRowProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
-  const [tabs, setTabs] = useState<LectureNoteTab[]>(() => parseLectureNote(value));
+  const [tabs, setTabs] = useState<LectureNoteTab[]>(() => parseLectureNote(value, startDate));
   const [activeTabIndex, setActiveTabIndex] = useState(0);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const activeTab = tabs[activeTabIndex] ?? blankTab();
@@ -48,7 +51,7 @@ export function LectureManagementNoteRow({
     <div className={`archive-item-row ${done ? "done" : "missing"}`}>
       <div className="archive-item-actions">
         {hasHref ? (
-          <a aria-label="등록 정보 확인" className="table-link-icon" href={value} rel="noreferrer" target="_blank">
+          <a aria-label="등록 정보 확인" className="table-link-icon" href={toHref(value) ?? value} rel="noreferrer" target="_blank">
             ↗
           </a>
         ) : null}
@@ -93,8 +96,7 @@ export function LectureManagementNoteRow({
                   <span>교육 날짜</span>
                   <input
                     onChange={(event) => updateActiveTab({ date: event.target.value })}
-                    placeholder="예: 2026-07-01"
-                    type="text"
+                    type="date"
                     value={activeTab.date}
                   />
                 </label>
@@ -164,14 +166,14 @@ export function LectureManagementNoteRow({
   );
 
   function openDialog() {
-    setTabs(parseLectureNote(value));
+    setTabs(parseLectureNote(value, startDate));
     setActiveTabIndex(0);
     setSaveState("idle");
     setIsOpen(true);
   }
 
   function closeDialog() {
-    setTabs(parseLectureNote(value));
+    setTabs(parseLectureNote(value, startDate));
     setActiveTabIndex(0);
     setSaveState("idle");
     setIsOpen(false);
@@ -230,11 +232,14 @@ export function LectureManagementNoteRow({
   }
 }
 
-function parseLectureNote(value: string): LectureNoteTab[] {
+function parseLectureNote(value: string, defaultDate: string): LectureNoteTab[] {
   const blocks = splitDateBlocks(value);
   const tabs = blocks.map((block) => ({ date: block.date, ...parseLectureNoteBody(block.body) }));
 
-  return tabs.length > 0 ? tabs : [blankTab()];
+  if (tabs.length === 0) return [blankTab(defaultDate)];
+  if (tabs.length === 1 && !tabs[0].date.trim() && !hasTabContent(tabs[0])) return [blankTab(defaultDate)];
+
+  return tabs;
 }
 
 function splitDateBlocks(value: string): { date: string; body: string }[] {
@@ -304,8 +309,4 @@ function composeLectureNoteBody(draft: LectureNoteDraft): string {
   ].filter(Boolean);
 
   return sections.join("\n\n");
-}
-
-function isNavigableHref(value: string) {
-  return /^(https?:\/\/|slack:\/\/)/.test(value.trim());
 }
