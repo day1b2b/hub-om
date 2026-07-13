@@ -48,6 +48,18 @@ function emptySession(): OmRequestSession {
   return { date: "", timeStart: "", timeEnd: "", duration: "", location: "" };
 }
 
+function calcDuration(timeStart: string, timeEnd: string): string {
+  if (!timeStart || !timeEnd) return "";
+  const [sh, sm] = timeStart.split(":").map(Number);
+  const [eh, em] = timeEnd.split(":").map(Number);
+  const startMinutes = sh * 60 + sm;
+  const endMinutes = eh * 60 + em;
+  if (endMinutes <= startMinutes) return "";
+  const totalHours = (endMinutes - startMinutes) / 60;
+  const adjusted = totalHours >= 7 ? totalHours - 1 : totalHours;
+  return adjusted % 1 === 0 ? String(adjusted) : String(adjusted);
+}
+
 function formatDateInput(raw: string): string {
   const digits = raw.replace(/\D/g, "").slice(0, 8);
   if (digits.length <= 4) return digits;
@@ -164,7 +176,16 @@ export function OmRequestForm({ ldName, initialData, requestId }: { ldName: stri
 
   function updateSession(idx: number, key: keyof OmRequestSession, value: string) {
     setForm((prev) => {
-      const sessions = prev.sessions.map((s, i) => (i === idx ? { ...s, [key]: value } : s));
+      const sessions = prev.sessions.map((s, i) => {
+        if (i !== idx) return s;
+        const updated = { ...s, [key]: value };
+        if (key === "timeStart" || key === "timeEnd") {
+          const start = key === "timeStart" ? value : s.timeStart;
+          const end = key === "timeEnd" ? value : s.timeEnd;
+          updated.duration = calcDuration(start, end);
+        }
+        return updated;
+      });
       return { ...prev, sessions };
     });
   }
@@ -361,8 +382,8 @@ export function OmRequestForm({ ldName, initialData, requestId }: { ldName: stri
                 className="duration-input"
                 type="text"
                 value={session.duration}
-                placeholder=""
-                onChange={(e) => updateSession(idx, "duration", e.target.value)}
+                placeholder="자동"
+                readOnly
               />
               <div className="location-input-wrapper">
                 <input
