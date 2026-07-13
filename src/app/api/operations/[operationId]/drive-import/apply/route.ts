@@ -13,6 +13,7 @@ const APPLYABLE_FIELDS = [
   "coach",
   "companyWikiLink",
   "costRaw",
+  "courseId",
   "driveLink",
   "educationDays",
   "endDate",

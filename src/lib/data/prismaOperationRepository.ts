@@ -337,6 +337,45 @@ export class PrismaOperationRepository implements OperationRepository {
     if (input.coach !== undefined) data.coachText = nullableText(input.coach);
     if (input.companyWikiLink !== undefined) data.companyWikiLink = nullableText(input.companyWikiLink);
     if (input.costRaw !== undefined) data.costRaw = nullableText(input.costRaw);
+
+    if (input.courseId !== undefined) {
+      const nextCourseId = normalizeVisibleText(input.courseId);
+
+      if (!nextCourseId) {
+        throw new Error("Course ID is required.");
+      }
+
+      const session = await prisma.operationSession.findUnique({
+        include: { course: true },
+        where: { operationId }
+      });
+
+      if (!session) {
+        throw new Error("Operation not found.");
+      }
+
+      const course = await prisma.course.upsert({
+        create: {
+          companyId: session.course.companyId,
+          courseId: nextCourseId,
+          name: session.course.name,
+          operationType: session.course.operationType,
+          revenue: session.course.revenue,
+          revenueRaw: session.course.revenueRaw
+        },
+        update: {},
+        where: {
+          companyId_courseId_name: {
+            companyId: session.course.companyId,
+            courseId: nextCourseId,
+            name: session.course.name
+          }
+        }
+      });
+
+      data.courseRecordId = course.id;
+    }
+
     if (input.driveLink !== undefined) data.driveLink = nullableText(input.driveLink);
     if (input.educationDays !== undefined) data.educationDays = nullableText(input.educationDays);
     if (input.hasResultReport !== undefined) data.hasResultReport = PRISMA_RESULT_REPORT_STATUS[input.hasResultReport];
