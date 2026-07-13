@@ -15,13 +15,14 @@ export function normalizePersonName(value: string) {
 
 // 로그인 이메일을 명단(team-users.json)의 OM 이름으로 매핑한다.
 // 명단에 없으면 null을 돌려주고, 화면에서 "명단에 없음" 상태로 처리한다.
-export function resolveOmNameByEmail(email: null | string | undefined): null | string {
+export async function resolveOmNameByEmail(email: null | string | undefined): Promise<null | string> {
   if (!email) return null;
 
   const target = email.trim().toLowerCase();
   if (!target) return null;
 
-  const match = listTeamUsers().find((user) => user.email.trim().toLowerCase() === target);
+  const users = await listTeamUsers();
+  const match = users.find((user) => user.email.trim().toLowerCase() === target);
   return match?.name ?? null;
 }
 

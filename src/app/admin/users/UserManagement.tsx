@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { TeamUser } from "@/lib/data/teamUsers/teamUserTypes";
+import type { TeamUser, TeamUserInput } from "@/lib/data/teamUsers/teamUserTypes";
 
 const TEAM_OPTIONS = ["1팀", "2팀"] as const;
 type TeamFilter = "전체" | "1팀" | "2팀";
@@ -17,6 +17,9 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [bulkText, setBulkText] = useState("");
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const [bulkError, setBulkError] = useState<string | null>(null);
 
   const filteredUsers =
     teamFilter === "전체" ? users : users.filter((u) => u.team === teamFilter);
@@ -50,6 +53,35 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
       setError(err instanceof Error ? err.message : "오류가 발생했습니다.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleBulkAdd() {
+    const inputs = parseBulkRows(bulkText);
+    if (inputs.length === 0) {
+      setBulkError("추가할 내용이 없습니다. 팀, 이름, 이메일, Slack ID 순서로 붙여넣어 주세요.");
+      return;
+    }
+
+    setBulkSaving(true);
+    setBulkError(null);
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(inputs),
+      });
+      if (!res.ok) {
+        const data = await res.json() as { error?: string };
+        throw new Error(data.error ?? "저장 실패");
+      }
+      const created = await res.json() as TeamUser[];
+      setUsers((prev) => [...prev, ...created]);
+      setBulkText("");
+    } catch (err) {
+      setBulkError(err instanceof Error ? err.message : "오류가 발생했습니다.");
+    } finally {
+      setBulkSaving(false);
     }
   }
 
@@ -211,6 +243,37 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
           {teamFilter === "전체" ? "등록된 사용자가 없습니다." : `${teamFilter} 사용자가 없습니다.`}
         </p>
       )}
+
+      <div className="user-bulk-add">
+        <p className="user-bulk-add-label">여러 명 한 번에 추가 (엑셀에서 팀, 이름, 이메일, Slack ID 순서로 복사해서 붙여넣기)</p>
+        <textarea
+          className="user-bulk-textarea"
+          onChange={(e) => setBulkText(e.target.value)}
+          placeholder={"1팀\t김정선\tjungsun.kim@day1company.co.kr\tjungsun.kim"}
+          rows={6}
+          value={bulkText}
+        />
+        {bulkError && <p className="om-request-error">{bulkError}</p>}
+        <button className="user-add-btn" disabled={bulkSaving} onClick={handleBulkAdd} type="button">
+          {bulkSaving ? "추가 중..." : "일괄 추가"}
+        </button>
+      </div>
     </div>
   );
+}
+
+function parseBulkRows(text: string): TeamUserInput[] {
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => line.split(/\t|,/).map((cell) => cell.trim()))
+    .filter((cells) => !(cells[0] === "팀" && cells[1] === "이름"))
+    .map(([team, name, email, slackId]) => ({
+      email: email ?? "",
+      name: name ?? "",
+      slackId: slackId ?? "",
+      team: team || undefined
+    }))
+    .filter((input) => input.name && input.email);
 }

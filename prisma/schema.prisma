@@ -566,3 +566,14 @@ model CoachSyncLog {
   @@index([type, startedAt])
   @@map("coach_sync_logs")
 }
+
+model TeamUser {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  email     String
+  slackId   String   @map("slack_id")
+  team      String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("team_users")
+}

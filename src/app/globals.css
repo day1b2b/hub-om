@@ -10112,6 +10112,35 @@ td span {
   pointer-events: none;
 }
 
+.user-bulk-add {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.user-bulk-add-label {
+  font-size: 12px;
+  color: var(--text-sub);
+}
+
+.user-bulk-textarea {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: inherit;
+  background: var(--surface);
+  color: var(--text);
+  resize: vertical;
+}
+
+.user-bulk-textarea:focus {
+  outline: none;
+  border-color: var(--blue);
+}
+
 .user-list-header {
   display: flex;
   align-items: center;
