@@ -42,10 +42,16 @@ export function LectureManagementNoteRow({
   const [activeTabIndex, setActiveTabIndex] = useState(0);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const activeTab = tabs[activeTabIndex] ?? blankTab();
+  const hasHref = isNavigableHref(value);
 
   return (
     <div className={`archive-item-row ${done ? "done" : "missing"}`}>
       <div className="archive-item-actions">
+        {hasHref ? (
+          <a aria-label="등록 정보 확인" className="table-link-icon" href={value} rel="noreferrer" target="_blank">
+            ↗
+          </a>
+        ) : null}
         <button className="archive-item-edit-trigger" onClick={openDialog} type="button">
           {done ? "확인" : "등록"}
         </button>
@@ -298,4 +304,8 @@ function composeLectureNoteBody(draft: LectureNoteDraft): string {
   ].filter(Boolean);
 
   return sections.join("\n\n");
+}
+
+function isNavigableHref(value: string) {
+  return /^(https?:\/\/|slack:\/\/)/.test(value.trim());
 }
