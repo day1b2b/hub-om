@@ -95,6 +95,7 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
       return [{
         id: `op-${operation.operationId}`,
         label: operation.companyName,
+        company: operation.companyName,
         course: operation.courseName,
         start: stripTime(start),
         end: stripTime(end),
@@ -111,6 +112,7 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
         return [{
           id: `req-${request.id}-${index}`,
           label: multiSession ? `${request.company} ${index + 1}차` : request.company,
+          company: request.company,
           course: request.courseName,
           start: stripTime(start),
           end: stripTime(end),
@@ -340,10 +342,20 @@ const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 interface CalendarEvent {
   id: string;
   label: string;
+  company: string;
   course: string;
   start: Date;
   end: Date;
   href: string;
+}
+
+// 기업별로 캘린더 막대 색을 다르게. 같은 기업은 항상 같은 색(이름 해시 기반).
+const CALENDAR_COLORS = ["#75976b", "#2d66a6", "#8f5b55", "#655c7c", "#6f5b2b", "#3f8a8f", "#a2734a", "#7a7d34", "#8a5a86", "#5b7fb0"];
+
+function colorForCompany(company: string): string {
+  let sum = 0;
+  for (let index = 0; index < company.length; index += 1) sum += company.charCodeAt(index);
+  return CALENDAR_COLORS[sum % CALENDAR_COLORS.length];
 }
 
 // 내 과정이 언제 진행되는지 월별 달력으로 보여준다. 운영과 담당 과정을 모두 반영한다.
@@ -411,7 +423,7 @@ function MonthlyCalendar({ events, today }: { events: CalendarEvent[]; today: Da
                     className={["me-cal-bar", bar.isStart ? "is-start" : "", bar.isEnd ? "is-end" : ""].filter(Boolean).join(" ")}
                     href={bar.event.href}
                     key={bar.event.id}
-                    style={{ gridColumn: `${bar.startCol + 1} / ${bar.endCol + 2}`, gridRow: bar.lane + 1 }}
+                    style={{ gridColumn: `${bar.startCol + 1} / ${bar.endCol + 2}`, gridRow: bar.lane + 1, background: colorForCompany(bar.event.company) }}
                     title={`${bar.event.label} · ${bar.event.course}`}
                   >
                     {bar.event.label}

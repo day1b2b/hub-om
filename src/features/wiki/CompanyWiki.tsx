@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
+import { getCompanyDetail } from "./companyDetails";
 
 interface CompanyStatus {
   cls: string;
@@ -13,46 +14,57 @@ interface CompanyRow {
   status?: CompanyStatus;
 }
 
-// 노션 기업위키 32건 기준. 상태가 알려진 건만 배지 표시, 나머지는 "-".
-// 실데이터/DB 미연동 UI 미리보기이며 상세는 예시(삼성전기) 데이터다.
+const ACTIVE: CompanyStatus = { cls: "active", label: "운영중" };
+const STOPPED: CompanyStatus = { cls: "needs-assignment", label: "중단" };
+
+// 노션 기업위키 원본을 기업명 기준으로 정리(중복 제거·과정명 분리·템플릿 행 제외).
+// 실데이터/DB 미연동 UI 미리보기, 상세는 예시 데이터.
 const COMPANIES: CompanyRow[] = [
-  { name: "기업명_과정명", status: { cls: "muted", label: "템플릿" } },
-  { name: "삼양식품_AI Agent 파일럿 과정" },
-  { name: "어플라이드머티어리얼즈코리아_신입 엔지니어 대상 비즈니스 스피치 교육", status: { cls: "active", label: "운영중" } },
-  { name: "유한킴벌리_AI&업무자동화 교육 프로그램", status: { cls: "active", label: "운영중" } },
-  { name: "중앙홀딩스_CL 승격자 교육과정", status: { cls: "active", label: "운영중" } },
+  { name: "삼성전기", status: ACTIVE },
+  { name: "삼성전자", status: ACTIVE },
+  { name: "어플라이드머티어리얼즈코리아", status: ACTIVE },
+  { name: "유한킴벌리", status: ACTIVE },
+  { name: "중앙홀딩스", status: ACTIVE },
+  { name: "KT", status: STOPPED },
+  { name: "삼양식품" },
   { name: "HL만도" },
   { name: "롯데호텔앤리조트" },
-  { name: "삼성전기", status: { cls: "active", label: "운영중" } },
-  { name: "삼성전자", status: { cls: "active", label: "운영중" } },
-  { name: "KT" },
-  { name: "(참고) 과정별", status: { cls: "muted", label: "참고문서" } },
-  { name: "중앙홀딩스_26년 CL승격자 교육과정" },
-  { name: "KT_AI_Academy_Agent 개발 심화" },
-  { name: "KT_AI_Academy_AID", status: { cls: "needs-assignment", label: "중단" } },
-  { name: "현대자동차 AI Agent 업무자동화 과정" },
+  { name: "현대자동차" },
   { name: "동국제강그룹" },
   { name: "한화인재경영원" },
-  { name: "홈앤서비스_AI 활용 DT 전문가 양성 과정" },
-  { name: "홈앤서비스_2026 AI 교육" },
-  { name: "LG경영연구원_단계별 생성형 AI 교육" },
+  { name: "홈앤서비스" },
+  { name: "LG경영연구원" },
   { name: "오스테오닉" },
-  { name: "CJONS_IT 직군 역량 강화 교육" },
-  { name: "CJONS_AX Champion(AI 아이디어 도출 워크숍)" },
-  { name: "롯데면세점_생성형 AI 기반 마케팅 실무 역량 강화" },
+  { name: "CJONS" },
+  { name: "롯데면세점" },
   { name: "HD한국조선해양" },
-  { name: "CJ ENM_THE AI ACADEMY (CREATOR)" },
-  { name: "신한라이프_" },
-  { name: "동국제약_역량별 생성형 AI 실무 활용 과정 및 싱글플랜" },
-  { name: "두나무_AI 실무융합 마스터클래스" },
-  { name: "머티어리얼즈코리아_과정명" },
-  { name: "KT 26년 AX 교육" },
+  { name: "CJ ENM" },
+  { name: "신한라이프" },
+  { name: "동국제약" },
+  { name: "두나무" },
+  { name: "머티어리얼즈코리아" },
   { name: "현대건설" }
 ];
 
 export function CompanyWiki() {
-  const [selected, setSelected] = useState<null | string>(null);
+  const [selected, setSelected] = useState<CompanyRow | null>(null);
   const [query, setQuery] = useState("");
+
+  // 상세를 열 때 히스토리 항목을 추가해, 브라우저 뒤로가기가 사이트를 벗어나지 않고 목록으로 돌아오게 한다.
+  useEffect(() => {
+    const onPopState = () => setSelected(null);
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  function openDetail(company: CompanyRow) {
+    setSelected(company);
+    window.history.pushState({ companyWiki: company.name }, "");
+  }
+
+  function closeDetail() {
+    window.history.back();
+  }
 
   const filtered = useMemo(() => {
     const keyword = query.trim().toLowerCase();
@@ -70,7 +82,7 @@ export function CompanyWiki() {
 
       <section className="content">
         {selected ? (
-          <CompanyWikiDetail companyName={selected} onBack={() => setSelected(null)} />
+          <CompanyWikiDetail company={selected} onBack={closeDetail} />
         ) : (
           <>
             <header className="page-header">
@@ -124,12 +136,12 @@ export function CompanyWiki() {
                   <tbody>
                     {filtered.length > 0 ? (
                       filtered.map((company, index) => {
-                        const isSamsungEM = company.name === "삼성전기";
+                        const detail = getCompanyDetail(company.name);
                         return (
                           <tr key={company.name}>
                             <td>{index + 1}</td>
                             <td>
-                              <button className="row-link" onClick={() => setSelected(company.name)} type="button">
+                              <button className="row-link" onClick={() => openDetail(company)} type="button">
                                 <strong>{company.name}</strong>
                               </button>
                             </td>
@@ -140,9 +152,9 @@ export function CompanyWiki() {
                                 <span className="td-muted">-</span>
                               )}
                             </td>
-                            <td>{isSamsungEM ? "이혜림" : "-"}</td>
-                            <td>{isSamsungEM ? "2026" : "-"}</td>
-                            <td>{isSamsungEM ? "2" : "-"}</td>
+                            <td>{detail.om}</td>
+                            <td>{detail.year}</td>
+                            <td>{detail.courses.length}</td>
                           </tr>
                         );
                       })
@@ -165,7 +177,10 @@ export function CompanyWiki() {
   );
 }
 
-function CompanyWikiDetail({ companyName, onBack }: { companyName: string; onBack: () => void }) {
+function CompanyWikiDetail({ company, onBack }: { company: CompanyRow; onBack: () => void }) {
+  const detail = getCompanyDetail(company.name);
+  const status = company.status ?? { cls: "muted", label: "확인필요" };
+
   return (
     <>
       <button className="back-link" onClick={onBack} type="button">← 기업위키 목록으로</button>
@@ -173,8 +188,8 @@ function CompanyWikiDetail({ companyName, onBack }: { companyName: string; onBac
       <div className="detail-header">
         <div className="title-row">
           <span className="title-company">기업위키</span>
-          <h1>{companyName}</h1>
-          <span className="status active">운영중</span>
+          <h1>{company.name}</h1>
+          <span className={`status ${status.cls}`}>{status.label}</span>
           <span className="sample-tag">예시 데이터</span>
         </div>
         <div className="detail-header-actions">
@@ -186,23 +201,23 @@ function CompanyWikiDetail({ companyName, onBack }: { companyName: string; onBac
         <div className="detail-panel">
           <div className="panel-title">기본 정보</div>
           <div className="info-grid">
-            <div className="info-item"><span>운영 담당자</span><strong>이혜림</strong></div>
-            <div className="info-item"><span>운영년도</span><strong>2026</strong></div>
+            <div className="info-item"><span>운영 담당자</span><strong>{detail.om}</strong></div>
+            <div className="info-item"><span>운영년도</span><strong>{detail.year}</strong></div>
           </div>
         </div>
         <div className="detail-panel">
           <div className="panel-title">위키 요약</div>
           <div className="info-grid">
-            <div className="info-item"><span>매핑 코스</span><strong>2건</strong></div>
-            <div className="info-item"><span>담당자 정보</span><strong>3명</strong></div>
-            <div className="info-item"><span>강의장</span><strong>3곳</strong></div>
-            <div className="info-item"><span>정산 방식</span><strong>계산서 발행</strong></div>
+            <div className="info-item"><span>매핑 코스</span><strong>{detail.courses.length}건</strong></div>
+            <div className="info-item"><span>담당자 정보</span><strong>{detail.contacts.length}명</strong></div>
+            <div className="info-item"><span>강의장</span><strong>{detail.venues.length}곳</strong></div>
+            <div className="info-item"><span>정산 방식</span><strong>{detail.settlement}</strong></div>
           </div>
         </div>
       </div>
 
       <div className="detail-section">
-        <div className="section-title"><h2>매핑 코스</h2><span>261060 · 261613 기준 2건</span></div>
+        <div className="section-title"><h2>매핑 코스</h2><span>{detail.courses.length}건</span></div>
         <div className="table-wrap">
           <table>
             <thead>
@@ -216,29 +231,23 @@ function CompanyWikiDetail({ companyName, onBack }: { companyName: string; onBac
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td><strong>261060</strong></td>
-                <td>AI 트렌드 특강</td>
-                <td><span className="archive-pill done">링크 보기</span></td>
-                <td><span className="archive-pill done">링크 보기</span></td>
-                <td><span className="archive-pill done">링크 보기</span></td>
-                <td><span className="archive-pill done">링크 보기</span></td>
-              </tr>
-              <tr>
-                <td><strong>261613</strong></td>
-                <td>AI 중급 활용 오프라인 과정</td>
-                <td><span className="archive-pill done">링크 보기</span></td>
-                <td><span className="archive-pill done">링크 보기</span></td>
-                <td><span className="archive-pill done">링크 보기</span></td>
-                <td><span className="archive-pill needed">미등록</span></td>
-              </tr>
+              {detail.courses.map((course) => (
+                <tr key={course.id}>
+                  <td><strong>{course.id}</strong></td>
+                  <td>{course.name}</td>
+                  <td><LinkPill on={course.syncup} /></td>
+                  <td><LinkPill on={course.lms} /></td>
+                  <td><LinkPill on={course.drive} /></td>
+                  <td><LinkPill on={course.report} /></td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
       </div>
 
       <div className="detail-section">
-        <div className="section-title"><h2>담당자 정보</h2><span>3명</span></div>
+        <div className="section-title"><h2>담당자 정보</h2><span>{detail.contacts.length}명</span></div>
         <div className="table-wrap">
           <table>
             <thead>
@@ -252,30 +261,16 @@ function CompanyWikiDetail({ companyName, onBack }: { companyName: string; onBac
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td><strong>이◯민(수원)</strong></td>
-                <td><span className="role-tag">프로(파트장)</span></td>
-                <td>ha***4u.lee@day1company.co.kr</td>
-                <td>010-****-1714</td>
-                <td>OM의 밀착 관리 좋아함 (1:1과외 수준)</td>
-                <td>처음~끝까지 모든 내용 공유 선호</td>
-              </tr>
-              <tr>
-                <td><strong>이◯영(부산)</strong></td>
-                <td><span className="role-tag">프로(파트장)</span></td>
-                <td>ho***18.lee@day1company.co.kr</td>
-                <td>010-****-8750</td>
-                <td>-</td>
-                <td>-</td>
-              </tr>
-              <tr>
-                <td><strong>김◯선(세종)</strong></td>
-                <td><span className="role-tag">프로</span></td>
-                <td>yo***96.kim@day1company.co.kr</td>
-                <td>010-****-5892</td>
-                <td>-</td>
-                <td>-</td>
-              </tr>
+              {detail.contacts.map((contact) => (
+                <tr key={contact.name}>
+                  <td><strong>{contact.name}</strong></td>
+                  <td><span className="role-tag">{contact.role}</span></td>
+                  <td>{contact.email}</td>
+                  <td>{contact.phone}</td>
+                  <td>{contact.comm}</td>
+                  <td>{contact.work}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -288,22 +283,18 @@ function CompanyWikiDetail({ companyName, onBack }: { companyName: string; onBac
             <div>
               <dt>정산 프로세스</dt>
               <dd>
-                1. 계산서 발행<br />
-                &nbsp;&nbsp;1) 발행을 위한 내용 확인 요청 (to 교담자)<br />
-                &nbsp;&nbsp;2) 계산서 발행 요청 구글폼 작성 (업무 유관자 심◯희님)<br /><br />
-                2. 상생협력법 약정서 날인<br />
-                &nbsp;&nbsp;1) 고객사에서 보내준 상생협력법 약정서 확인 후 인감 도장 날인 결재 상신<br />
-                &nbsp;&nbsp;2) 결재 후 인감 도장 날인 요청 (to 사업지원실) &gt; 슬랙 공지 참고<br />
-                &nbsp;&nbsp;* 방문 날인 운영 시간 : 오전 10:00 ~ 11:00 / 오후 13:30 ~ 15:00
+                {detail.settlementProcess.map((line, index) => (
+                  <span key={index}>{line}<br /></span>
+                ))}
               </dd>
             </div>
             <div>
               <dt>증빙 서류 패키지</dt>
-              <dd>전달 완료 (데이원 컴퍼니 사업자 등록증, 통장 사본)</dd>
+              <dd>{detail.evidence}</dd>
             </div>
             <div>
               <dt>고객사 고유 양식</dt>
-              <dd>없음 (필요 시, 고객사에서 요청 줌)</dd>
+              <dd>{detail.customForm}</dd>
             </div>
           </dl>
         </div>
@@ -313,58 +304,44 @@ function CompanyWikiDetail({ companyName, onBack }: { companyName: string; onBac
         <div className="section-title"><h2>담당자 운영 디테일</h2></div>
         <div className="section-body">
           <dl className="field-preview-list">
-            <div>
-              <dt>고객사 내부 배경</dt>
-              <dd>
-                <ul>
-                  <li>
-                    사내에서 AX를 강하게 드라이브 걸고 있고, AI 공모전 진행 중
-                    <ul><li>1분기 아이디어 제출, 2분기 활용 사례 발표, 3분기 아이디어 제출, 4분기 활용 사례 발표</li></ul>
-                  </li>
-                  <li>AI 특강을 확대하고자 하는 니즈 강함 → 사업 확장성이 큼 (AI 트렌드 특강 외에 추후 직무별 AI 교육 진행 예정)</li>
-                </ul>
-              </dd>
-            </div>
-            <div>
-              <dt>선호하는 교육 방식</dt>
-              <dd>
-                <ul>
-                  <li>실습 비율 80% 이상으로 구성 추구</li>
-                  <li>업무 실사례 공유 니즈 강하심</li>
-                </ul>
-              </dd>
-            </div>
-            <div>
-              <dt>리텐션 필살기</dt>
-              <dd>
-                <ul>
-                  <li>밀착 관리 (LD/OM 나눌 것 없이 둘 다!)</li>
-                  <li>아이디어 말씀드리고, 의견 드리는 것 매우 좋아하심</li>
-                  <li>특히 현장에 오전 일찍 가서 모두 챙겨드리는 것 매우 좋아하심</li>
-                </ul>
-              </dd>
-            </div>
-            <div>
-              <dt>강사 선호도</dt>
-              <dd>
-                <ul>
-                  <li>딜리버리 능력 좋은 분 선호</li>
-                  <li>플립러닝의 경우 온라인 강사가 오프라인 실습에 오시는 것 선호</li>
-                </ul>
-              </dd>
-            </div>
+            <BulletField label="고객사 내부 배경" items={detail.background} />
+            <BulletField label="선호하는 교육 방식" items={detail.preferredStyle} />
+            <BulletField label="리텐션 필살기" items={detail.retention} />
+            <BulletField label="강사 선호도" items={detail.instructorPref} />
           </dl>
         </div>
       </div>
 
       <div className="detail-section">
-        <div className="section-title"><h2>현장/인프라 정보</h2><span>3곳</span></div>
+        <div className="section-title"><h2>현장/인프라 정보</h2><span>{detail.venues.length}곳</span></div>
         <div className="section-body">
-          <div className="venue-row"><strong>{companyName} 수원 강의장</strong><span>상세 내용 미확보 (예시)</span></div>
-          <div className="venue-row"><strong>{companyName} 세종 강의장</strong><span>상세 내용 미확보 (예시)</span></div>
-          <div className="venue-row"><strong>{companyName} 부산 강의장</strong><span>상세 내용 미확보 (예시)</span></div>
+          {detail.venues.map((venue) => (
+            <div className="venue-row" key={venue}>
+              <strong>{venue}</strong>
+              <span>상세 내용 미확보 (예시)</span>
+            </div>
+          ))}
         </div>
       </div>
     </>
+  );
+}
+
+function LinkPill({ on }: { on: boolean }) {
+  return <span className={on ? "archive-pill done" : "archive-pill needed"}>{on ? "링크 보기" : "미등록"}</span>;
+}
+
+function BulletField({ label, items }: { label: string; items: string[] }) {
+  return (
+    <div>
+      <dt>{label}</dt>
+      <dd>
+        <ul>
+          {items.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </dd>
+    </div>
   );
 }
