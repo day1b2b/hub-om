@@ -18,6 +18,7 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
   const isSyncAdminPage = pathname?.startsWith("/admin/sync") ?? false;
   const isUsersAdminPage = pathname?.startsWith("/admin/users") ?? false;
   const isMyDashboardPage = pathname === "/me";
+  const isInstructorWikiPage = pathname === "/instructor-wiki";
   const isCompanyWikiPage = pathname === "/company-wiki";
   const isCreatePage = pathname === "/operations/new";
   const isOperationsPage = pathname === "/operations" || (pathname?.startsWith("/operations/") && !isCreatePage);
@@ -61,6 +62,7 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
           <Link className={pathname === "/dashboard" ? "active" : ""} data-icon="🔒" href="/dashboard">대시보드</Link>
           <Link className={isOperationsPage ? "active" : ""} data-icon="🔒" href="/operations">운영 현황</Link>
           <Link className={isResourcesPage ? "active" : ""} data-icon="🔒" href="/resources">리소스</Link>
+          <Link className={isInstructorWikiPage ? "active" : ""} data-icon="🔒" href="/instructor-wiki">강사 위키</Link>
           <Link className={isCompanyWikiPage ? "active" : ""} data-icon="🔒" href="/company-wiki">기업 위키</Link>
           <Link className={isDatabaseAdminPage ? "active" : ""} data-icon="🔒" href="/admin/database">DB 조회</Link>
           <Link className={isImportAdminPage ? "active" : ""} data-icon="🔒" href="/admin/imports">데이터 검수</Link>
