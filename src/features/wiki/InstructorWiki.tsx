@@ -6,6 +6,8 @@ import { AppSidebar } from "@/components/AppSidebar";
 import {
   cleanCourseName,
   hasActiveCourse,
+  ROLE_CLASS,
+  roleSummary,
   summarizeCompanies,
   type InstructorWikiEntry,
   type InstructorWikiProvenance
@@ -118,6 +120,7 @@ export function InstructorWiki({ entries, loadFailed, provenance }: InstructorWi
                 <tr>
                   <th>#</th>
                   <th>강사명</th>
+                  <th>역할</th>
                   <th>담당 기업</th>
                   <th>담당 코스</th>
                   <th>최근 담당 (기업 · 과정)</th>
@@ -127,7 +130,7 @@ export function InstructorWiki({ entries, loadFailed, provenance }: InstructorWi
               <tbody>
                 {loadFailed ? (
                   <tr>
-                    <td className="empty-state" colSpan={6}>
+                    <td className="empty-state" colSpan={7}>
                       <strong>운영 현황 데이터를 불러오지 못했습니다.</strong>
                       <span>데이터 연결 상태를 확인해 주세요.</span>
                     </td>
@@ -142,6 +145,11 @@ export function InstructorWiki({ entries, loadFailed, provenance }: InstructorWi
                           <Link className="row-link" href={`/instructor-wiki/${encodeURIComponent(entry.name)}`}>
                             <strong>{entry.name}</strong>
                           </Link>
+                        </td>
+                        <td>
+                          {roleSummary(entry).map((role) => (
+                            <span className={`status ${ROLE_CLASS[role]}`} key={role} style={{ marginRight: 4 }}>{role}</span>
+                          ))}
                         </td>
                         <td>{summarizeCompanies(entry.companies)}</td>
                         <td>{entry.courseCount}건</td>
@@ -167,7 +175,7 @@ export function InstructorWiki({ entries, loadFailed, provenance }: InstructorWi
                   })
                 ) : (
                   <tr>
-                    <td className="empty-state" colSpan={6}>
+                    <td className="empty-state" colSpan={7}>
                       <strong>{provenance === "empty" ? "운영 현황에 강사 정보가 없습니다." : "조건에 맞는 강사가 없습니다."}</strong>
                       <span>{provenance === "empty" ? "운영 현황에 강사가 배정되면 표시됩니다." : "검색어나 필터를 조정해 보세요."}</span>
                     </td>
