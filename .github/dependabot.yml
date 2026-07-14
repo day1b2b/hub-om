@@ -1,0 +1,44 @@
+# Dependabot — 의존성/GitHub Actions에 새 버전이 나오면 자동으로 업데이트 PR을 연다.
+# PR 개수를 줄이기 위해 성격이 같은 것끼리 묶는다(grouping).
+# - 패치(patch)와 GitHub Actions는 CI 통과 시 자동 머지 대상 (dependabot-auto-merge.yml 참고).
+# - 마이너(minor)는 한 PR로 묶되 사람이 확인 후 머지.
+# - 메이저(major)는 개별 PR로 와서 반드시 사람이 검토.
+
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+    commit-message:
+      prefix: "chore"
+    groups:
+      # 패치 업데이트는 한 PR로 묶는다. 짝 라이브러리(react/react-dom 등)도
+      # 함께 올라가 버전 불일치로 실패하는 일을 막는다. → 자동 머지 대상
+      npm-patch:
+        applies-to: version-updates
+        update-types:
+          - "patch"
+      # 마이너 업데이트도 묶어 검토 부담을 줄인다. → 사람이 확인 후 머지
+      npm-minor:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    labels:
+      - dependencies
+    commit-message:
+      prefix: "chore"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
