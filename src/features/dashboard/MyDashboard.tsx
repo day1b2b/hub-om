@@ -102,18 +102,21 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
       }];
     }),
     ...assignedRequests.flatMap((request) => {
-      const range = scheduleRange(request);
-      const start = parseDate(range.start);
-      const end = parseDate(range.end) ?? start;
-      if (!start || !end) return [];
-      return [{
-        id: `req-${request.id}`,
-        label: request.company,
-        course: request.courseName,
-        start: stripTime(start),
-        end: stripTime(end),
-        href: `/om-request/manage/${request.id}`
-      }];
+      // 교육 일정 차수(세션)를 각 날짜에 개별 표시한다. 세션에 dateEnd가 있으면 그 기간만큼 막대로.
+      const multiSession = request.sessions.length > 1;
+      return request.sessions.flatMap((session, index) => {
+        const start = parseDate(session.date);
+        const end = parseDate(session.dateEnd ?? session.date) ?? start;
+        if (!start || !end) return [];
+        return [{
+          id: `req-${request.id}-${index}`,
+          label: multiSession ? `${request.company} ${index + 1}차` : request.company,
+          course: request.courseName,
+          start: stripTime(start),
+          end: stripTime(end),
+          href: `/om-request/manage/${request.id}`
+        }];
+      });
     })
   ];
 
