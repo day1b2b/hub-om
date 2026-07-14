@@ -8335,6 +8335,10 @@ td span {
   text-align: center;
 }
 
+.me-focus-row td {
+  background: var(--green-bg);
+}
+
 .me-cal-nav button {
   background: var(--surface);
   border: 1px solid var(--line);

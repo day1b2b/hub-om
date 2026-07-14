@@ -63,6 +63,11 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
     if (!start || !end) return false;
     return stripTime(start).getTime() <= monthEndTime && stripTime(end).getTime() >= monthStartTime;
   });
+  // 담당 과정 표는 전체를 시작일 순으로 다 보여주고, 선택한 달에 진행되는 건만 강조한다.
+  const sortedAssignedRequests = [...assignedRequests].sort((a, b) =>
+    scheduleRange(a).start.localeCompare(scheduleRange(b).start)
+  );
+  const focusRequestIds = new Set(monthAssignedRequests.map((request) => request.id));
   const active = scopedOperations.filter((operation) => operation.operationStatus === "진행중").length;
   const upcoming = scopedOperations.filter((operation) => isUpcoming(operation, today)).length;
   const done = scopedOperations.filter(isDone).length;
@@ -112,14 +117,16 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
     })
   ];
 
-  // 시각화(분석)도 기간 토글을 따른다.
-  const pipeline = PIPELINE_LABELS.map((label) => ({
-    label,
-    count: scopedOperations.filter((operation) => operationPhase(operation.operationStatus) === label).length
-  }));
+  // 파이프라인: 운영은 상태별 단계로, 나의 담당 과정(배정 요청)은 아직 진행 전이라 사전세팅에 합산.
+  const pipeline = PIPELINE_LABELS.map((label) => {
+    const operationCount = scopedOperations.filter((operation) => operationPhase(operation.operationStatus) === label).length;
+    const requestCount = label === "사전세팅" ? monthAssignedRequests.length : 0;
+    return { label, count: operationCount + requestCount };
+  });
   const maxPipeline = Math.max(1, ...pipeline.map((item) => item.count));
-  const nextCourse = findNextCourse(operations, today);
-  const nextCourseDday = nextCourse ? daysUntil(nextCourse.startDate, today) : null;
+  // 다음 과정 D-day: 운영 + 담당 과정을 모두 고려해 가장 임박한 것을 찾는다.
+  const nextEvent = findNextEvent(calendarEvents, today);
+  const nextEventDday = nextEvent ? daysBetween(today, nextEvent.start) : null;
 
   return (
     <main className="dashboard-shell">
@@ -144,10 +151,13 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
         <section className="dashboard-panel">
           <div className="section-title">
             <h2>나의 담당 과정</h2>
-            <div className="me-cal-nav" aria-label="월 선택">
-              <button aria-label="이전 달" onClick={() => moveMonth(-1)} type="button">‹</button>
-              <strong>{monthView.year}년 {monthView.month + 1}월</strong>
-              <button aria-label="다음 달" onClick={() => moveMonth(1)} type="button">›</button>
+            <div className="dashboard-table-meta">
+              <span>전체 {sortedAssignedRequests.length}건 · {monthView.month + 1}월 {focusRequestIds.size}건</span>
+              <div className="me-cal-nav" aria-label="월 이동">
+                <button aria-label="이전 달" onClick={() => moveMonth(-1)} type="button">‹</button>
+                <strong>{monthView.year}년 {monthView.month + 1}월</strong>
+                <button aria-label="다음 달" onClick={() => moveMonth(1)} type="button">›</button>
+              </div>
             </div>
           </div>
           <div className="table-wrap">
@@ -163,11 +173,11 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
                 </tr>
               </thead>
               <tbody>
-                {monthAssignedRequests.length > 0 ? (
-                  monthAssignedRequests.map((request) => {
+                {sortedAssignedRequests.length > 0 ? (
+                  sortedAssignedRequests.map((request) => {
                     const schedule = scheduleRange(request);
                     return (
-                      <tr key={request.id}>
+                      <tr className={focusRequestIds.has(request.id) ? "me-focus-row" : ""} key={request.id}>
                         <td>
                           <Link className="course-link" href={`/om-request/manage/${request.id}`}>
                             <strong>{request.company}</strong>
@@ -185,8 +195,8 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
                 ) : (
                   <tr>
                     <td className="empty-state" colSpan={6}>
-                      <strong>{monthView.year}년 {monthView.month + 1}월에 진행되는 담당 과정이 없습니다.</strong>
-                      <span>다른 달로 이동하거나 배정을 확인하세요.</span>
+                      <strong>배정된 담당 과정이 없습니다.</strong>
+                      <span>업무 요청 후 담당으로 배정되면 여기에 표시됩니다.</span>
                     </td>
                   </tr>
                 )}
@@ -223,14 +233,14 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
               <h2>다음 과정 D-day</h2>
               <span>가장 임박한 예정 과정</span>
             </div>
-            {nextCourse ? (
+            {nextEvent ? (
               <div className="dday-card">
-                <strong className="dday-badge">{nextCourseDday === 0 ? "D-DAY" : `D-${nextCourseDday}`}</strong>
-                <Link className="course-link" href={`/operations/${nextCourse.operationId}`}>
-                  <strong>{nextCourse.companyName}</strong>
-                  <span>{nextCourse.courseName}</span>
+                <strong className="dday-badge">{nextEventDday === 0 ? "D-DAY" : `D-${nextEventDday}`}</strong>
+                <Link className="course-link" href={nextEvent.href}>
+                  <strong>{nextEvent.label}</strong>
+                  <span>{nextEvent.course}</span>
                 </Link>
-                <span className="dday-date">{nextCourse.startDate} 시작</span>
+                <span className="dday-date">{formatDateText(nextEvent.start)} 시작</span>
               </div>
             ) : (
               <PanelEmpty label="예정된 과정이 없습니다" />
@@ -499,31 +509,30 @@ function stripTime(value: Date) {
   return new Date(value.getFullYear(), value.getMonth(), value.getDate());
 }
 
-// 오늘 이후 시작하는 내 운영 중 가장 임박한 것을 찾는다.
-function findNextCourse(operations: OperationSession[], today: Date): OperationSession | null {
+// 오늘 이후 시작하는 과정(운영 + 담당 과정) 중 가장 임박한 것을 찾는다.
+function findNextEvent(events: CalendarEvent[], today: Date): CalendarEvent | null {
   const todayTime = stripTime(today).getTime();
-  let best: OperationSession | null = null;
-  let bestTime = Infinity;
+  let best: CalendarEvent | null = null;
 
-  for (const operation of operations) {
-    const start = parseDate(operation.startDate);
-    if (!start) continue;
-
-    const time = stripTime(start).getTime();
-    if (time >= todayTime && time < bestTime) {
-      bestTime = time;
-      best = operation;
+  for (const event of events) {
+    const time = event.start.getTime();
+    if (time >= todayTime && (!best || time < best.start.getTime())) {
+      best = event;
     }
   }
 
   return best;
 }
 
-function daysUntil(dateValue: string, today: Date): number {
-  const date = parseDate(dateValue);
-  if (!date) return 0;
+function daysBetween(from: Date, to: Date): number {
+  return Math.round((stripTime(to).getTime() - stripTime(from).getTime()) / (1000 * 60 * 60 * 24));
+}
 
-  return Math.round((stripTime(date).getTime() - stripTime(today).getTime()) / (1000 * 60 * 60 * 24));
+function formatDateText(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function formatToday(value: Date) {
