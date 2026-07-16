@@ -8365,6 +8365,33 @@ td span {
   border-style: solid;
 }
 
+/* 강사위키 — 파트너 ID 입력 칸 */
+.partner-id-field {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.partner-id-input {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 13px;
+  min-width: 240px;
+  padding: 8px 12px;
+}
+
+.partner-id-input:focus {
+  border-color: var(--blue);
+  outline: none;
+}
+
+.field-hint {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 8px;
+}
+
 /* 기업위키 — 갤러리/리스트 뷰 토글 */
 .view-toggle {
   border: 1px solid var(--line);
@@ -8447,12 +8474,14 @@ td span {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 10px;
+  color: inherit;
   cursor: pointer;
   display: flex;
   flex-direction: column;
   gap: 6px;
   padding: 16px;
   text-align: left;
+  text-decoration: none;
   transition: border-color 0.12s ease, box-shadow 0.12s ease;
 }
 
@@ -8654,9 +8683,16 @@ td span {
 }
 
 .me-cal-weekdays {
+  display: flex;
+  gap: 6px;
+}
+
+.me-cal-weekday-grid {
   display: grid;
+  flex: 1;
   gap: 2px;
   grid-template-columns: repeat(7, minmax(0, 1fr));
+  min-width: 0;
 }
 
 .me-cal-weekday {
@@ -8668,8 +8704,29 @@ td span {
 }
 
 .me-cal-week {
+  display: flex;
+  gap: 6px;
   margin-bottom: 4px;
+}
+
+.me-cal-week-body {
+  flex: 1;
+  min-width: 0;
   position: relative;
+}
+
+.me-cal-weeklabel-col {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  justify-content: center;
+  line-height: 1.25;
+  text-align: center;
+  width: 46px;
 }
 
 .me-cal-week-cells {
@@ -8695,6 +8752,35 @@ td span {
   color: var(--muted);
   font-size: 11px;
   font-weight: 700;
+}
+
+/* 토요일 파랑 · 일요일/공휴일 빨강 */
+.me-cal-weekday.is-sat,
+.me-cal-daynum.is-sat {
+  color: #2f6bff;
+}
+
+.me-cal-weekday.is-sun,
+.me-cal-daynum.is-sun {
+  color: #e5484d;
+}
+
+.me-cal-daytop {
+  align-items: center;
+  display: flex;
+  gap: 3px;
+  min-width: 0;
+}
+
+.me-cal-holiday {
+  color: #e5484d;
+  flex: 1;
+  font-size: 9px;
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .me-cal-day.is-today .me-cal-daynum {

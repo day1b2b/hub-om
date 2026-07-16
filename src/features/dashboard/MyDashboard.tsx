@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
+import { holidayName } from "./holidays";
 import type { OmRequest } from "@/lib/data/omRequest/omRequestTypes";
 import type { OperationSession, OperationStatus } from "@/lib/data/operationTypes";
 
@@ -504,27 +505,59 @@ function MonthlyCalendar({ events, today }: { events: CalendarEvent[]; today: Da
       </div>
       <div className="me-calendar">
         <div className="me-cal-weekdays">
-          {WEEKDAYS.map((label) => (
-            <div className="me-cal-weekday" key={label}>{label}</div>
-          ))}
+          <div className="me-cal-weeklabel-col" aria-hidden="true" />
+          <div className="me-cal-weekday-grid">
+            {WEEKDAYS.map((label, index) => (
+              <div
+                className={["me-cal-weekday", index === 0 ? "is-sun" : "", index === 6 ? "is-sat" : ""].filter(Boolean).join(" ")}
+                key={label}
+              >
+                {label}
+              </div>
+            ))}
+          </div>
         </div>
         {weeks.map((week, weekIndex) => {
           const { bars, laneCount } = buildWeekBars(week, events);
+          // 주차 라벨 = 대한민국(ISO 8601) 표준: 그 주의 목요일이 속한 달·주차. (6째주 없음)
+          const labelThursday = week[4].date;
+          const labelMonth = labelThursday.getMonth() + 1;
+          const labelWeek = Math.ceil(labelThursday.getDate() / 7);
           return (
             <div className="me-cal-week" key={weekIndex} style={{ height: Math.max(116, 34 + laneCount * 23) }}>
+              <div className="me-cal-weeklabel-col">
+                <span>{labelMonth}월</span>
+                <span>{labelWeek}째주</span>
+              </div>
+              <div className="me-cal-week-body">
               <div className="me-cal-week-cells">
-                {week.map((cell, cellIndex) => (
-                  <div
-                    className={[
-                      "me-cal-day",
-                      cell.inMonth ? "" : "is-other-month",
-                      cell.inMonth && dateKey(cell.date) === todayKey ? "is-today" : ""
-                    ].filter(Boolean).join(" ")}
-                    key={cellIndex}
-                  >
-                    {cell.inMonth ? <span className="me-cal-daynum">{cell.dayNumber}</span> : null}
-                  </div>
-                ))}
+                {week.map((cell, cellIndex) => {
+                  const dow = cell.date.getDay();
+                  const holiday = cell.inMonth ? holidayName(cell.date) : null;
+                  const isSun = dow === 0 || Boolean(holiday);
+                  const isSat = dow === 6 && !isSun;
+                  return (
+                    <div
+                      className={[
+                        "me-cal-day",
+                        cell.inMonth ? "" : "is-other-month",
+                        cell.inMonth && dateKey(cell.date) === todayKey ? "is-today" : ""
+                      ].filter(Boolean).join(" ")}
+                      key={cellIndex}
+                    >
+                      {cell.inMonth ? (
+                        <span className="me-cal-daytop">
+                          <span
+                            className={["me-cal-daynum", isSun ? "is-sun" : "", isSat ? "is-sat" : ""].filter(Boolean).join(" ")}
+                          >
+                            {cell.dayNumber}
+                          </span>
+                          {holiday ? <span className="me-cal-holiday" title={holiday}>{holiday}</span> : null}
+                        </span>
+                      ) : null}
+                    </div>
+                  );
+                })}
               </div>
               <div className="me-cal-week-bars">
                 {bars.map((bar) => (
@@ -538,6 +571,7 @@ function MonthlyCalendar({ events, today }: { events: CalendarEvent[]; today: Da
                     {bar.event.label}
                   </a>
                 ))}
+              </div>
               </div>
             </div>
           );
@@ -556,20 +590,23 @@ function buildWeekBars(
   week: Array<{ date: Date; dayNumber: number; inMonth: boolean }>,
   events: CalendarEvent[]
 ) {
-  const weekStart = stripTime(week[0].date).getTime();
-  const weekEnd = stripTime(week[6].date).getTime();
+  // 보이는 달(inMonth) 셀 범위로만 클리핑 → 앞뒤 달 날짜 칸에는 일정을 표시하지 않는다.
+  const monthCells = week.filter((cell) => cell.inMonth);
+  if (monthCells.length === 0) return { bars: [], laneCount: 1 };
+  const rangeStart = stripTime(monthCells[0].date).getTime();
+  const rangeEnd = stripTime(monthCells[monthCells.length - 1].date).getTime();
 
   const segments = events
-    .filter((event) => event.start.getTime() <= weekEnd && event.end.getTime() >= weekStart)
+    .filter((event) => event.start.getTime() <= rangeEnd && event.end.getTime() >= rangeStart)
     .map((event) => {
-      const segStart = Math.max(event.start.getTime(), weekStart);
-      const segEnd = Math.min(event.end.getTime(), weekEnd);
+      const segStart = Math.max(event.start.getTime(), rangeStart);
+      const segEnd = Math.min(event.end.getTime(), rangeEnd);
       return {
         event,
         startCol: week.findIndex((cell) => stripTime(cell.date).getTime() === segStart),
         endCol: week.findIndex((cell) => stripTime(cell.date).getTime() === segEnd),
-        isStart: event.start.getTime() >= weekStart,
-        isEnd: event.end.getTime() <= weekEnd
+        isStart: event.start.getTime() >= rangeStart,
+        isEnd: event.end.getTime() <= rangeEnd
       };
     })
     .sort((a, b) => a.startCol - b.startCol || b.endCol - b.startCol - (a.endCol - a.startCol));
