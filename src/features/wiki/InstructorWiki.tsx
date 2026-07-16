@@ -12,6 +12,7 @@ import {
   type InstructorWikiEntry,
   type InstructorWikiProvenance
 } from "./instructorWikiModel";
+import { WikiAvatar } from "./wikiAvatar";
 
 const STATUS_TABS = [
   { key: "all", label: "전체" },
@@ -31,6 +32,7 @@ export function InstructorWiki({ entries, loadFailed, provenance }: InstructorWi
   const [query, setQuery] = useState("");
   const [statusTab, setStatusTab] = useState<StatusTabKey>("all");
   const [companyFilter, setCompanyFilter] = useState("전체 기업");
+  const [view, setView] = useState<"gallery" | "list">("gallery");
 
   const companyOptions = useMemo(
     () => ["전체 기업", ...uniqueSorted(entries.flatMap((entry) => entry.companies))],
@@ -92,6 +94,10 @@ export function InstructorWiki({ entries, loadFailed, provenance }: InstructorWi
         </div>
 
         <div className="filter-row">
+          <div className="view-toggle">
+            <button className={view === "gallery" ? "selected" : ""} onClick={() => setView("gallery")} type="button">▦ 갤러리</button>
+            <button className={view === "list" ? "selected" : ""} onClick={() => setView("list")} type="button">☰ 리스트</button>
+          </div>
           <select onChange={(event) => setCompanyFilter(event.target.value)} value={companyFilter}>
             {companyOptions.map((option) => (
               <option key={option}>{option}</option>
@@ -109,82 +115,109 @@ export function InstructorWiki({ entries, loadFailed, provenance }: InstructorWi
           <span className="filter-result-count">총 {filtered.length}명</span>
         </div>
 
-        <div className="table-section">
-          <div className="table-header">
-            <h2>강사 목록</h2>
-            <span>{filtered.length}명</span>
+        {view === "gallery" ? (
+          <div className="wiki-gallery">
+            {loadFailed ? (
+              <div className="wiki-empty">
+                <strong>운영 현황 데이터를 불러오지 못했습니다.</strong>
+                <span>데이터 연결 상태를 확인해 주세요.</span>
+              </div>
+            ) : filtered.length > 0 ? (
+              filtered.map((entry) => {
+                const recent = entry.courses[0];
+                return (
+                  <Link className="wiki-card" href={`/instructor-wiki/${encodeURIComponent(entry.name)}`} key={entry.id}>
+                    <span className="wiki-card-head">
+                      <WikiAvatar name={entry.name} />
+                      <span className="wiki-card-name">{entry.name}</span>
+                    </span>
+                    <span className="wiki-card-meta">
+                      {roleSummary(entry).join(" · ") || "-"} · 기업 {entry.companies.length}곳 · 코스 {entry.courseCount}건
+                    </span>
+                    {recent ? (
+                      <span className="wiki-card-course">{recent.companyName} · {cleanCourseName(recent.courseName)}</span>
+                    ) : null}
+                  </Link>
+                );
+              })
+            ) : (
+              <div className="wiki-empty">
+                <strong>{provenance === "empty" ? "운영 현황에 강사 정보가 없습니다." : "조건에 맞는 강사가 없습니다."}</strong>
+                <span>{provenance === "empty" ? "운영 현황에 강사가 배정되면 표시됩니다." : "검색어나 필터를 조정해 보세요."}</span>
+              </div>
+            )}
           </div>
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>강사명</th>
-                  <th>역할</th>
-                  <th>담당 기업</th>
-                  <th>담당 코스</th>
-                  <th>최근 담당 (기업 · 과정)</th>
-                  <th>전문분야</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loadFailed ? (
+        ) : (
+          <div className="table-section">
+            <div className="table-header">
+              <h2>강사 목록</h2>
+              <span>{filtered.length}명</span>
+            </div>
+            <div className="table-wrap">
+              <table>
+                <thead>
                   <tr>
-                    <td className="empty-state" colSpan={7}>
-                      <strong>운영 현황 데이터를 불러오지 못했습니다.</strong>
-                      <span>데이터 연결 상태를 확인해 주세요.</span>
-                    </td>
+                    <th>#</th>
+                    <th>강사명</th>
+                    <th>역할</th>
+                    <th>담당 기업</th>
+                    <th>담당 코스</th>
+                    <th>최근 담당 (기업 · 과정)</th>
                   </tr>
-                ) : filtered.length > 0 ? (
-                  filtered.map((entry, index) => {
-                    const recent = entry.courses[0];
-                    return (
-                      <tr key={entry.id}>
-                        <td>{index + 1}</td>
-                        <td>
-                          <Link className="row-link" href={`/instructor-wiki/${encodeURIComponent(entry.name)}`}>
-                            <strong>{entry.name}</strong>
-                          </Link>
-                        </td>
-                        <td>
-                          {roleSummary(entry).map((role) => (
-                            <span className={`status ${ROLE_CLASS[role]}`} key={role} style={{ marginRight: 4 }}>{role}</span>
-                          ))}
-                        </td>
-                        <td>{summarizeCompanies(entry.companies)}</td>
-                        <td>{entry.courseCount}건</td>
-                        <td>
-                          {recent ? (
-                            <>
-                              <span className="title-company">{recent.companyName}</span>{" "}
-                              {cleanCourseName(recent.courseName)}
-                            </>
-                          ) : (
-                            <span className="td-muted">-</span>
-                          )}
-                        </td>
-                        <td>
-                          {entry.coach && entry.coach.fields.length > 0 ? (
-                            entry.coach.fields.slice(0, 3).join(", ")
-                          ) : (
-                            <span className="td-muted">coach-db 미연결</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td className="empty-state" colSpan={7}>
-                      <strong>{provenance === "empty" ? "운영 현황에 강사 정보가 없습니다." : "조건에 맞는 강사가 없습니다."}</strong>
-                      <span>{provenance === "empty" ? "운영 현황에 강사가 배정되면 표시됩니다." : "검색어나 필터를 조정해 보세요."}</span>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {loadFailed ? (
+                    <tr>
+                      <td className="empty-state" colSpan={6}>
+                        <strong>운영 현황 데이터를 불러오지 못했습니다.</strong>
+                        <span>데이터 연결 상태를 확인해 주세요.</span>
+                      </td>
+                    </tr>
+                  ) : filtered.length > 0 ? (
+                    filtered.map((entry, index) => {
+                      const recent = entry.courses[0];
+                      return (
+                        <tr key={entry.id}>
+                          <td>{index + 1}</td>
+                          <td>
+                            <Link className="row-link row-link--logo" href={`/instructor-wiki/${encodeURIComponent(entry.name)}`}>
+                              <WikiAvatar name={entry.name} size="sm" />
+                              <strong>{entry.name}</strong>
+                            </Link>
+                          </td>
+                          <td>
+                            {roleSummary(entry).map((role) => (
+                              <span className={`status ${ROLE_CLASS[role]}`} key={role} style={{ marginRight: 4 }}>{role}</span>
+                            ))}
+                          </td>
+                          <td>{summarizeCompanies(entry.companies)}</td>
+                          <td>{entry.courseCount}건</td>
+                          <td>
+                            {recent ? (
+                              <>
+                                <span className="title-company">{recent.companyName}</span>{" "}
+                                {cleanCourseName(recent.courseName)}
+                              </>
+                            ) : (
+                              <span className="td-muted">-</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td className="empty-state" colSpan={6}>
+                        <strong>{provenance === "empty" ? "운영 현황에 강사 정보가 없습니다." : "조건에 맞는 강사가 없습니다."}</strong>
+                        <span>{provenance === "empty" ? "운영 현황에 강사가 배정되면 표시됩니다." : "검색어나 필터를 조정해 보세요."}</span>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )}
       </section>
     </main>
   );

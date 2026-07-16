@@ -10,6 +10,7 @@ import {
   STATUS_LABEL,
   type InstructorWikiEntry
 } from "./instructorWikiModel";
+import { WikiAvatar } from "./wikiAvatar";
 
 export function InstructorWikiDetail({ entry }: { entry: InstructorWikiEntry }) {
   const coach = entry.coach;
@@ -23,6 +24,7 @@ export function InstructorWikiDetail({ entry }: { entry: InstructorWikiEntry }) 
 
         <div className="detail-header">
           <div className="title-row">
+            <WikiAvatar name={entry.name} size="lg" />
             <span className="title-company">강사위키</span>
             <h1>{entry.name}</h1>
             <span className="coach-plan-badge">운영 현황 연동</span>
@@ -35,6 +37,17 @@ export function InstructorWikiDetail({ entry }: { entry: InstructorWikiEntry }) 
           </div>
           <div className="detail-header-actions">
             <button type="button">수정</button>
+          </div>
+        </div>
+
+        <div className="detail-section">
+          <div className="section-title"><h2>파트너 ID</h2><span>강사 식별자 · 입력</span></div>
+          <div className="section-body">
+            <div className="partner-id-field">
+              <input className="partner-id-input" placeholder="파트너ID 입력 (예: PT-00123)" aria-label="파트너 ID" />
+              <button className="doc-register" type="button">저장</button>
+            </div>
+            <p className="field-hint">입력 미리보기예요. 데이터 연동 시 강사별 파트너ID가 자동 표시·저장됩니다.</p>
           </div>
         </div>
 
