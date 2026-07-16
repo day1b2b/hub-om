@@ -18,6 +18,7 @@ interface MyDashboardProps {
 export function MyDashboard({ assignedRequests, omName, operations }: MyDashboardProps) {
   const today = useMemo(() => new Date(), []);
   const [monthView, setMonthView] = useState(() => ({ year: today.getFullYear(), month: today.getMonth() }));
+  const [openStage, setOpenStage] = useState<null | string>(null);
 
   if (!omName) {
     return (
@@ -86,9 +87,13 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
   const hasIssue = operations.filter((operation) => operation.operationIssue.trim() !== "").length;
   const operationsWithLinks = operations.filter((operation) => operationLinks(operation).length > 0);
 
+  // 담당 과정(요청)과 운영이 같은 courseId면 같은 과정이다. 요청 쪽 표현(차수/세팅 정보)이 더 풍부하므로
+  // 요청이 대표하고, 운영 중복은 제거한다(캘린더·사전세팅에서 두 번 뜨지 않게).
+  const requestCourseIds = new Set(assignedRequests.map((request) => request.courseId));
   // 캘린더는 운영 + 나의 담당 과정을 모두 반영한다(담당 과정에 새 과정이 추가되면 캘린더에도 자동 표시).
   const calendarEvents: CalendarEvent[] = [
     ...operations.flatMap((operation) => {
+      if (requestCourseIds.has(operation.courseId)) return []; // 담당 과정의 차수 이벤트로 대체
       const start = parseDate(operation.startDate);
       const end = parseDate(operation.endDate) ?? start;
       if (!start || !end) return [];
@@ -122,13 +127,70 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
     })
   ];
 
-  // 파이프라인: 운영은 상태별 단계로, 나의 담당 과정(배정 요청)은 아직 진행 전이라 사전세팅에 합산.
-  const pipeline = PIPELINE_LABELS.map((label) => {
-    const operationCount = scopedOperations.filter((operation) => operationPhase(operation.operationStatus) === label).length;
-    const requestCount = label === "사전세팅" ? monthAssignedRequests.length : 0;
-    return { label, count: operationCount + requestCount };
-  });
-  const maxPipeline = Math.max(1, ...pipeline.map((item) => item.count));
+  // 파이프라인: 각 단계에 속한 기업·과정과 해야 할 업무(클릭 시 펼침)를 담는다.
+  const phaseOperations = (phase: PipelinePhase) => operations.filter((operation) => operationPhase(operation.operationStatus) === phase);
+  const daysToStart = (dateText: string): number | null => {
+    const date = parseDate(dateText);
+    return date ? daysBetween(today, date) : null;
+  };
+  // 클릭 시 운영 현황 상세로 보내기 위한 courseId → 운영 id 매핑.
+  const operationIdByCourse = new Map(operations.map((operation) => [operation.courseId, operation.operationId]));
+  // 사전세팅 = 과정 시작 D-7 ~ D-2(시작 2~7일 전) 창에 든 과정만.
+  const preItems: StageItem[] = [
+    ...assignedRequests.flatMap((request) => {
+      const days = daysToStart(scheduleRange(request).start);
+      if (days === null || days < 2 || days > 7) return [];
+      const matchedOperationId = operationIdByCourse.get(request.courseId);
+      return [{
+        id: `r-${request.id}`,
+        company: request.company,
+        course: request.courseName,
+        task: `D-${days} · ${requiredSetupText(request)}`,
+        // 매칭 운영이 있으면 운영 상세, 없으면 그 과정(배정)의 상세로 — 항상 상세 한 단계 안으로.
+        href: matchedOperationId ? `/operations/${matchedOperationId}` : `/om-request/manage/${request.id}`
+      }];
+    }),
+    ...operations.flatMap((operation) => {
+      if (requestCourseIds.has(operation.courseId)) return []; // 담당 과정(요청) 항목이 대표 → 중복 방지
+      const days = daysToStart(operation.startDate);
+      if (days === null || days < 2 || days > 7) return [];
+      return [{
+        id: `o-${operation.operationId}`,
+        company: operation.companyName,
+        course: operation.courseName,
+        task: `D-${days} · 운영 세팅 준비`,
+        href: `/operations/${operation.operationId}`
+      }];
+    })
+  ];
+  const fieldItems: StageItem[] = phaseOperations("현장 운영").map((operation) => ({
+    id: `o-${operation.operationId}`,
+    company: operation.companyName,
+    course: operation.courseName,
+    task: operation.operationIssue.trim() ? `이슈: ${operation.operationIssue}` : "현장 운영 진행 중",
+    href: `/operations/${operation.operationId}`
+  }));
+  const resultItems: StageItem[] = phaseOperations("결과").map((operation) => ({
+    id: `o-${operation.operationId}`,
+    company: operation.companyName,
+    course: operation.courseName,
+    task: resultTaskText(operation),
+    href: `/operations/${operation.operationId}`
+  }));
+  const stages = [
+    { label: "사전세팅", items: preItems, tasks: [] as Array<{ name: string; value: number }> },
+    { label: "현장 운영", items: fieldItems, tasks: [{ name: "운영이슈", value: hasIssue }] },
+    {
+      label: "결과",
+      items: resultItems,
+      tasks: [
+        { name: "회고 대기", value: pendingRetrospective },
+        { name: "아카이빙필요", value: needsArchive },
+        { name: "만족도 미확인", value: missingSatisfaction },
+        { name: "결과보고서 미확인", value: missingResultReport }
+      ]
+    }
+  ];
   // 다음 과정 D-day: 운영 + 담당 과정을 모두 고려해 가장 임박한 것을 찾는다.
   const nextEvent = findNextEvent(calendarEvents, today);
   const nextEventDday = nextEvent ? daysBetween(today, nextEvent.start) : null;
@@ -214,23 +276,56 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
           <section className="dashboard-panel">
             <div className="section-title">
               <h2>내 운영 파이프라인</h2>
-              <span>단계별 건수</span>
+              <span>단계 클릭 시 기업·업무</span>
             </div>
-            {scopedOperations.length > 0 ? (
-              <div className="bar-list">
-                {pipeline.map((item) => (
-                  <div className="bar-row" key={item.label}>
-                    <span>{item.label}</span>
-                    <div className="bar-track">
-                      <div className="bar-fill" style={{ width: `${(item.count / maxPipeline) * 100}%` }} />
-                    </div>
-                    <strong>{item.count}</strong>
+            <div className="stage-list">
+              {stages.map((stage) => {
+                const openTasks = stage.tasks.filter((task) => task.value > 0);
+                const isOpen = openStage === stage.label;
+                return (
+                  <div className="stage-group" key={stage.label}>
+                    <button
+                      aria-expanded={isOpen}
+                      className="stage-row"
+                      onClick={() => setOpenStage(isOpen ? null : stage.label)}
+                      type="button"
+                    >
+                      <div className="stage-head">
+                        <strong>{stage.label}</strong>
+                        <span className="stage-count">{stage.items.length}건</span>
+                        <span className="stage-toggle">{isOpen ? "▲" : "▾"}</span>
+                      </div>
+                      <div className="stage-tasks">
+                        {openTasks.length > 0 ? (
+                          openTasks.map((task) => (
+                            <span className="stage-task" key={task.name}>{task.name} {task.value}</span>
+                          ))
+                        ) : (
+                          <span className="stage-task-none">챙길 항목 없음</span>
+                        )}
+                      </div>
+                    </button>
+                    {isOpen ? (
+                      <div className="stage-items">
+                        {stage.items.length > 0 ? (
+                          stage.items.map((item) => (
+                            <a className="stage-item" href={item.href} key={item.id}>
+                              <span className="stage-item-course">
+                                <strong>{item.company}</strong>
+                                <span>{item.course}</span>
+                              </span>
+                              <span className="stage-item-task">{item.task}</span>
+                            </a>
+                          ))
+                        ) : (
+                          <div className="stage-item-empty">해당 단계의 과정이 없습니다.</div>
+                        )}
+                      </div>
+                    ) : null}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <PanelEmpty label={`${monthView.year}년 ${monthView.month + 1}월에 표시할 운영이 없습니다`} />
-            )}
+                );
+              })}
+            </div>
           </section>
 
           <section className="dashboard-panel">
@@ -254,20 +349,6 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
         </section>
 
         <MonthlyCalendar events={calendarEvents} today={today} />
-
-        <section className="dashboard-panel">
-          <div className="section-title">
-            <h2>내 할 일</h2>
-            <span>전체 기간 기준</span>
-          </div>
-          <div className="metrics" aria-label="내 할 일">
-            <Metric label="운영이슈" value={hasIssue} />
-            <Metric label="회고 대기" value={pendingRetrospective} />
-            <Metric label="아카이빙필요" value={needsArchive} />
-            <Metric label="만족도 미확인" value={missingSatisfaction} />
-            <Metric label="결과보고서 미확인" value={missingResultReport} />
-          </div>
-        </section>
 
         <section className="dashboard-panel">
           <div className="section-title">
@@ -319,14 +400,42 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
   );
 }
 
-const PIPELINE_LABELS = ["사전세팅", "현장 운영", "결과"] as const;
+type PipelinePhase = "사전세팅" | "현장 운영" | "결과";
 
 // 진행중 = 현장 운영, 완료·회고완료·아카이빙필요 = 결과.
 // 그 외(배정필요·배정예정 등 현장에 나가기 전 단계)는 모두 사전세팅으로 묶는다.
-function operationPhase(status: OperationStatus): (typeof PIPELINE_LABELS)[number] {
+function operationPhase(status: OperationStatus): PipelinePhase {
   if (status === "진행중") return "현장 운영";
   if (status === "완료" || status === "회고완료" || status === "아카이빙필요") return "결과";
   return "사전세팅";
+}
+
+interface StageItem {
+  id: string;
+  company: string;
+  course: string;
+  task: string;
+  href: string;
+}
+
+// 사전세팅 단계에서 배정 요청이 준비해야 할 업무(Y로 표시된 세팅). 없으면 기본 준비 문구.
+function requiredSetupText(request: OmRequest): string {
+  const setups: string[] = [];
+  if (request.skillfloSetup === "Y") setups.push("스킬플로");
+  if (request.skillmatchSetup === "Y") setups.push("스킬매치");
+  if (request.onSiteOperation === "Y") setups.push("현장운영");
+  if (request.coachRequest === "Y") setups.push("코치");
+  return setups.length > 0 ? `세팅: ${setups.join("·")}` : "사전 세팅 준비";
+}
+
+// 결과 단계에서 남은 마감 업무.
+function resultTaskText(operation: OperationSession): string {
+  const tasks: string[] = [];
+  if (operation.operationStatus === "완료") tasks.push("회고");
+  if (operation.archiveStatus === "아카이빙필요" || operation.operationStatus === "아카이빙필요") tasks.push("아카이빙");
+  if (isDone(operation) && operation.avgSatisfaction.trim() === "") tasks.push("만족도");
+  if (isDone(operation) && operation.hasResultReport === "확인필요") tasks.push("결과보고서");
+  return tasks.length > 0 ? `할 일: ${tasks.join("·")}` : "마감 완료";
 }
 
 function PanelEmpty({ label = "표시할 데이터가 없습니다" }: { label?: string }) {
