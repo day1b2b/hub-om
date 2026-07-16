@@ -14,17 +14,17 @@ const EDIT_FIELDS = [
   {
     field: "specialNotes",
     label: "특이사항 / 이슈",
-    placeholder: "현장 운영자가 알아야 할 특이사항을 기록"
+    placeholder: "이 과정의 특이사항, 이슈, 후속 조치 등"
   },
   {
     field: "operationIssue",
     label: "회고 (OM+LD)",
-    placeholder: "지연, 누락, 이슈, 후속 조치가 필요한 내용을 기록"
+    placeholder: "과정에 대한 회고 내용을 기록 (강사, 고객사와 회고 나눈 내용도 포함)"
   },
   {
     field: "omUpdate",
     label: "메모",
-    placeholder: "OM 관점의 변경 사항이나 다음 운영자에게 남길 메모"
+    placeholder: "업무 중 자유롭게 활용"
   }
 ] as const;
 
