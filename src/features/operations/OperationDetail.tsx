@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { AppSidebar } from "@/components/AppSidebar";
 import { AddRoundButton } from "./AddRoundButton";
+import { BulkEditRoundsButton } from "./BulkEditRoundsButton";
 import { DeleteRoundButton } from "./DeleteRoundButton";
+import { EditAllRoundsProvider } from "./EditAllRoundsProvider";
 import { EditableInfoItem } from "./EditableInfoItem";
 import { EditableResourceRow } from "./EditableResourceRow";
 import { EditableRoundResourceCell } from "./EditableRoundResourceCell";
@@ -158,6 +160,7 @@ export function OperationDetail({
           </section>
 
           <section className="detail-section course-sessions-section">
+            <EditAllRoundsProvider>
             <div className="section-title">
               <h2>동일 코스ID 운영 차수</h2>
               <div className="course-sessions-header-actions">
@@ -169,6 +172,7 @@ export function OperationDetail({
                   baseTimeText={operation.timeText}
                   nextRoundNo={nextRoundNo}
                 />
+                {courseOperations.length > 1 ? <BulkEditRoundsButton /> : null}
               </div>
             </div>
             {courseOperations.length > 1 ? (
@@ -266,6 +270,7 @@ export function OperationDetail({
             ) : (
               <p className="course-sessions-empty">동일 코스ID의 다른 회차가 없습니다.</p>
             )}
+            </EditAllRoundsProvider>
           </section>
 
           <section className="detail-section resource-status-section" id="links">
