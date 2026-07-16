@@ -4316,6 +4316,13 @@ td span {
   background: var(--surface-hover, #f4f5f7);
 }
 
+.bulk-save-rounds-bar {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+
 .add-round-dialog {
   grid-template-rows: auto minmax(0, 1fr) auto;
   max-width: 440px;
