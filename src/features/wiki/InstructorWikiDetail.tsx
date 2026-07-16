@@ -4,6 +4,8 @@ import {
   cleanCourseName,
   formatDateLabel,
   OPERATION_STATUS_CLASS,
+  ROLE_CLASS,
+  roleSummary,
   STATUS_CLASS,
   STATUS_LABEL,
   type InstructorWikiEntry
@@ -24,6 +26,9 @@ export function InstructorWikiDetail({ entry }: { entry: InstructorWikiEntry }) 
             <span className="title-company">강사위키</span>
             <h1>{entry.name}</h1>
             <span className="coach-plan-badge">운영 현황 연동</span>
+            {roleSummary(entry).map((role) => (
+              <span className={`status ${ROLE_CLASS[role]}`} key={role}>{role}</span>
+            ))}
             {coach ? (
               <span className={`status ${STATUS_CLASS[coach.status]}`}>coach-db · {STATUS_LABEL[coach.status]}</span>
             ) : null}
@@ -39,8 +44,8 @@ export function InstructorWikiDetail({ entry }: { entry: InstructorWikiEntry }) 
             <div className="info-grid">
               <div className="info-item"><span>담당 기업</span><strong>{entry.companies.length}곳</strong></div>
               <div className="info-item"><span>담당 코스</span><strong>{entry.courseCount}건</strong></div>
-              <div className="info-item"><span>전문분야</span><strong>{coach ? `${coach.fields.length}개` : "coach-db 미연결"}</strong></div>
-              <div className="info-item"><span>평균 평가</span><strong>{coach?.avgRating != null ? coach.avgRating.toFixed(1) : "-"}</strong></div>
+              <div className="info-item"><span>역할</span><strong>{roleSummary(entry).join(" · ") || "-"}</strong></div>
+              <div className="info-item"><span>평균 평가(coach)</span><strong>{coach?.avgRating != null ? coach.avgRating.toFixed(1) : "-"}</strong></div>
             </div>
           </div>
           <div className="detail-panel">
@@ -71,18 +76,29 @@ export function InstructorWikiDetail({ entry }: { entry: InstructorWikiEntry }) 
                 <tr>
                   <th>기업</th>
                   <th>과정명</th>
+                  <th>역할</th>
                   <th>차수</th>
                   <th>상태</th>
                   <th>기간</th>
+                  <th>강사 만족도</th>
                   <th>담당 OM</th>
                 </tr>
               </thead>
               <tbody>
                 {entry.courses.length > 0 ? (
-                  entry.courses.map((course) => (
-                    <tr key={`${course.operationId}-${course.companyName}-${course.courseName}`}>
+                  entry.courses.map((course, index) => (
+                    <tr key={`${course.operationId}-${course.role}-${index}`}>
                       <td><strong className="title-company">{course.companyName}</strong></td>
-                      <td>{cleanCourseName(course.courseName)}</td>
+                      <td>
+                        {cleanCourseName(course.courseName)}
+                        {course.instructorWikiLink ? (
+                          <>
+                            {" "}
+                            <a className="archive-pill done" href={course.instructorWikiLink} rel="noreferrer" target="_blank">위키↗</a>
+                          </>
+                        ) : null}
+                      </td>
+                      <td><span className={`status ${ROLE_CLASS[course.role]}`}>{course.role}</span></td>
                       <td>{course.roundNo || <span className="td-muted">-</span>}</td>
                       <td>
                         <span className={`status ${OPERATION_STATUS_CLASS[course.status] ?? "muted"}`}>{course.status}</span>
@@ -91,12 +107,13 @@ export function InstructorWikiDetail({ entry }: { entry: InstructorWikiEntry }) 
                         {course.startDate ? formatDateLabel(course.startDate) : "-"}
                         {course.endDate && course.endDate !== course.startDate ? ` ~ ${formatDateLabel(course.endDate)}` : ""}
                       </td>
+                      <td>{course.instructorSatisfaction ? course.instructorSatisfaction : <span className="td-muted">-</span>}</td>
                       <td>{course.om || <span className="td-muted">-</span>}</td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td className="empty-state" colSpan={6}>
+                    <td className="empty-state" colSpan={8}>
                       <strong>담당 코스가 없습니다.</strong>
                       <span>운영 현황에 이 강사가 배정되면 표시됩니다.</span>
                     </td>
