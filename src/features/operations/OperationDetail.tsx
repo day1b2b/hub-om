@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AppSidebar } from "@/components/AppSidebar";
 import { AddRoundButton } from "./AddRoundButton";
 import { BulkEditRoundsButton } from "./BulkEditRoundsButton";
+import { BulkSaveRoundsButton } from "./BulkSaveRoundsButton";
 import { DeleteRoundButton } from "./DeleteRoundButton";
 import { EditAllRoundsProvider } from "./EditAllRoundsProvider";
 import { EditableInfoItem } from "./EditableInfoItem";
@@ -270,6 +271,7 @@ export function OperationDetail({
             ) : (
               <p className="course-sessions-empty">동일 코스ID의 다른 회차가 없습니다.</p>
             )}
+            <BulkSaveRoundsButton />
             </EditAllRoundsProvider>
           </section>
 
