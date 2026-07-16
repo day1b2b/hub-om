@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useEditAllRoundsSignal } from "./EditAllRoundsProvider";
 
 type SaveState = "idle" | "saving" | "failed";
 
@@ -24,9 +25,43 @@ interface SessionDraft {
 
 export function EditableSessionRow({ coach, endDate, instructors, operationId, startDate, timeText }: EditableSessionRowProps) {
   const router = useRouter();
+  const editAllContext = useEditAllRoundsSignal();
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState<SessionDraft>(() => toDraft());
   const [saveState, setSaveState] = useState<SaveState>("idle");
+  const lastEditAllSignal = useRef(editAllContext?.editAllSignal ?? 0);
+  const saveRef = useRef<(() => Promise<boolean>) | null>(null);
+
+  useEffect(() => {
+    saveRef.current = save;
+  });
+
+  useEffect(() => {
+    const signal = editAllContext?.editAllSignal;
+    if (signal === undefined || signal === lastEditAllSignal.current) {
+      return;
+    }
+    lastEditAllSignal.current = signal;
+    startEditing();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editAllContext?.editAllSignal]);
+
+  useEffect(() => {
+    const registerRow = editAllContext?.registerRow;
+    const unregisterRow = editAllContext?.unregisterRow;
+
+    if (!registerRow || !unregisterRow) {
+      return;
+    }
+
+    if (isEditing) {
+      registerRow(operationId, () => saveRef.current!());
+    } else {
+      unregisterRow(operationId);
+    }
+
+    return () => unregisterRow(operationId);
+  }, [isEditing, operationId, editAllContext?.registerRow, editAllContext?.unregisterRow]);
 
   if (!isEditing) {
     return (
@@ -129,7 +164,7 @@ export function EditableSessionRow({ coach, endDate, instructors, operationId, s
     setIsEditing(false);
   }
 
-  async function save() {
+  async function save(): Promise<boolean> {
     setSaveState("saving");
 
     const patches = [
@@ -152,18 +187,19 @@ export function EditableSessionRow({ coach, endDate, instructors, operationId, s
       });
     } catch {
       setSaveState("failed");
-      return;
+      return false;
     }
 
     const payload = (await response.json().catch(() => ({}))) as { ok?: boolean };
 
     if (!response.ok || !payload.ok) {
       setSaveState("failed");
-      return;
+      return false;
     }
 
     setIsEditing(false);
     setSaveState("idle");
     router.refresh();
+    return true;
   }
 }
