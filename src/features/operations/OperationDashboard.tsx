@@ -5,22 +5,11 @@ import { useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import type {
   EducationFormat,
-  OperationSession,
-  OperationStatus
+  OperationSession
 } from "@/lib/data/operationTypes";
 import { splitPersonNames } from "@/lib/data/personNames";
 import { satisfactionNumber, summarizeSatisfactionValue } from "@/lib/data/satisfaction";
 import { teamScopeSearchParam, type TeamScope } from "@/lib/teamScope";
-
-const STATUS_FILTERS = ["전체", "진행중", "예정", "완료", "아카이빙필요", "검토필요"] as const;
-const STATUS_CLASS: Record<OperationStatus, string> = {
-  "배정필요": "needs-assignment",
-  "배정예정": "planned-assignment",
-  "진행중": "active",
-  "완료": "done",
-  "회고완료": "retrospective-done",
-  "아카이빙필요": "archive-needed"
-};
 
 interface OperationDashboardProps {
   operations: OperationSession[];
@@ -30,7 +19,6 @@ interface OperationDashboardProps {
 export function OperationDashboard({ operations, teamScope }: OperationDashboardProps) {
   const today = useMemo(() => new Date(), []);
   const teamQuery = teamScopeSearchParam(teamScope);
-  const [statusFilter, setStatusFilter] = useState<(typeof STATUS_FILTERS)[number]>("전체");
   const [companyFilter, setCompanyFilter] = useState("전체 기업");
   const [formatFilter, setFormatFilter] = useState<"전체 교육형태" | EducationFormat>("전체 교육형태");
   const [omFilter, setOmFilter] = useState("전체 OM");
@@ -83,20 +71,7 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
     });
   }, [archiveOnly, companyFilter, formatFilter, omFilter, query, range, teamOperations]);
 
-  const statusCounts = useMemo(() => {
-    return {
-      전체: baseFilteredOperations.length,
-      진행중: baseFilteredOperations.filter((operation) => operation.operationStatus === "진행중").length,
-      예정: baseFilteredOperations.filter((operation) => isUpcoming(operation, today)).length,
-      완료: baseFilteredOperations.filter((operation) => isDone(operation)).length,
-      아카이빙필요: baseFilteredOperations.filter((operation) => operation.archiveStatus === "아카이빙필요").length,
-      검토필요: baseFilteredOperations.filter((operation) => operation.validationStatus === "검토필요").length
-    };
-  }, [baseFilteredOperations, today]);
-
-  const filteredOperations = useMemo(() => {
-    return baseFilteredOperations.filter((operation) => matchesStatusFilter(operation, statusFilter, today));
-  }, [baseFilteredOperations, statusFilter, today]);
+  const filteredOperations = baseFilteredOperations;
 
   const metricCounts = useMemo(() => {
     return {
@@ -157,21 +132,6 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
           </div>
         </section>
 
-        <section className="status-tabs" aria-label="상태 필터">
-          {STATUS_FILTERS.map((item) => (
-            <button
-              aria-pressed={statusFilter === item}
-              className={statusFilter === item ? "selected" : ""}
-              key={item}
-              onClick={() => setStatusFilter(item)}
-              type="button"
-            >
-              {item}
-              <span>{statusCounts[item]}</span>
-            </button>
-          ))}
-        </section>
-
         <section className="metrics operations-metrics" aria-label="운영 요약">
           <Metric label="진행중" value={metricCounts.진행중} caption="표시 기준" />
           <Metric label="예정" value={metricCounts.예정} caption="표시 기준" />
@@ -230,7 +190,6 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>상태</th>
                   <th>교육형태</th>
                   <th>운영유형</th>
                   <th>코스ID</th>
@@ -255,7 +214,6 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
                   filteredOperations.map((operation, index) => (
                     <tr key={operation.operationId}>
                       <td>{index + 1}</td>
-                      <td><StatusBadge status={operation.operationStatus} /></td>
                       <td>{operation.educationFormat}</td>
                       <td>{operation.operationType}</td>
                       <td>{operation.courseId || "검토필요"}</td>
@@ -281,7 +239,7 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
                   ))
                 ) : (
                   <tr>
-                    <td className="empty-state" colSpan={19}>
+                    <td className="empty-state" colSpan={18}>
                       <strong>표시할 운영 건이 없습니다.</strong>
                       <span>필터를 초기화하거나 연결된 운영 데이터 상태를 확인하세요.</span>
                     </td>
@@ -310,10 +268,6 @@ function Metric({ caption, label, value }: { caption?: string; label: string; va
   );
 }
 
-function StatusBadge({ status }: { status: OperationStatus }) {
-  return <span className={`status ${STATUS_CLASS[status]}`}>{status}</span>;
-}
-
 function ExternalTableLink({ href }: { href: string }) {
   if (!isSafeHttpUrl(href)) return <span className="muted-inline">-</span>;
 
@@ -340,21 +294,6 @@ function isUpcoming(operation: OperationSession, today: Date) {
 
 function isDone(operation: OperationSession) {
   return operation.operationStatus === "완료" || operation.operationStatus === "회고완료";
-}
-
-function matchesStatusFilter(
-  operation: OperationSession,
-  statusFilter: (typeof STATUS_FILTERS)[number],
-  today: Date
-) {
-  return (
-    statusFilter === "전체" ||
-    operation.operationStatus === statusFilter ||
-    operation.archiveStatus === statusFilter ||
-    (statusFilter === "예정" && isUpcoming(operation, today)) ||
-    (statusFilter === "완료" && isDone(operation)) ||
-    (statusFilter === "검토필요" && operation.validationStatus === "검토필요")
-  );
 }
 
 function overlapsRange(operation: OperationSession, startValue: string, endValue: string) {
