@@ -1510,25 +1510,25 @@ select {
   font-weight: 700;
 }
 
-.operations-table td:nth-child(6) {
+.operations-table td:nth-child(5) {
   font-weight: 700;
   min-width: 120px;
 }
 
-.operations-table td:nth-child(7) {
+.operations-table td:nth-child(6) {
   max-width: 280px;
   min-width: 260px;
 }
 
-.operations-table td:nth-child(8) {
+.operations-table td:nth-child(7) {
   text-align: center;
   width: 56px;
 }
 
+.operations-table td:nth-child(15),
 .operations-table td:nth-child(16),
 .operations-table td:nth-child(17),
-.operations-table td:nth-child(18),
-.operations-table td:nth-child(19) {
+.operations-table td:nth-child(18) {
   text-align: right;
 }
 
