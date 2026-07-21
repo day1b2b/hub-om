@@ -80,17 +80,21 @@ export function MainDashboard({ operations, teamScope }: MainDashboardProps) {
               <h2>기업별 과정 수</h2>
               <span>막대 클릭 시 과정 표시 예정</span>
             </div>
-            <div className="bar-list">
-              {companyCounts.map((item) => (
-                <div className="bar-row" key={item.label}>
-                  <span>{item.label}</span>
-                  <div className="bar-track">
-                    <div className="bar-fill" style={{ width: `${(item.count / maxCompanyCount) * 100}%` }} />
+            {companyCounts.length > 0 ? (
+              <div className="bar-list">
+                {companyCounts.map((item) => (
+                  <div className="bar-row" key={item.label}>
+                    <span>{item.label}</span>
+                    <div className="bar-track">
+                      <div className="bar-fill" style={{ width: `${(item.count / maxCompanyCount) * 100}%` }} />
+                    </div>
+                    <strong>{item.count}</strong>
                   </div>
-                  <strong>{item.count}</strong>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <PanelEmpty />
+            )}
           </section>
 
           <section className="dashboard-panel">
@@ -141,23 +145,32 @@ export function MainDashboard({ operations, teamScope }: MainDashboardProps) {
                 </tr>
               </thead>
               <tbody>
-                {activeOrUpcoming.slice(0, 10).map((operation) => (
-                  <tr key={operation.operationId}>
-                    <td>{operation.operationStatus}</td>
-                    <td>
-                      <Link className="course-link" href={`/operations/${operation.operationId}${teamQuery}`}>
-                        <strong>{operation.companyName}</strong>
-                        <span>{operation.courseName}</span>
-                      </Link>
+                {activeOrUpcoming.length > 0 ? (
+                  activeOrUpcoming.slice(0, 10).map((operation) => (
+                    <tr key={operation.operationId}>
+                      <td>{operation.operationStatus}</td>
+                      <td>
+                        <Link className="course-link" href={`/operations/${operation.operationId}${teamQuery}`}>
+                          <strong>{operation.companyName}</strong>
+                          <span>{operation.courseName}</span>
+                        </Link>
+                      </td>
+                      <td>{operation.educationFormat}</td>
+                      <td>{operation.om || "배정필요"}</td>
+                      <td>{operation.ld || "미정"}</td>
+                      <td>{operation.startDate} ~ {operation.endDate}</td>
+                      <td>{formatShortMoney(operation.revenue ?? 0)}</td>
+                      <td>{operation.instructors || "-"}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td className="empty-state" colSpan={8}>
+                      <strong>예정되었거나 진행 중인 운영이 없습니다.</strong>
+                      <span>범위를 바꾸거나 운영 데이터를 확인하세요.</span>
                     </td>
-                    <td>{operation.educationFormat}</td>
-                    <td>{operation.om || "배정필요"}</td>
-                    <td>{operation.ld || "미정"}</td>
-                    <td>{operation.startDate} ~ {operation.endDate}</td>
-                    <td>{formatShortMoney(operation.revenue ?? 0)}</td>
-                    <td>{operation.instructors || "-"}</td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
@@ -184,7 +197,20 @@ function Metric({ label, value }: { label: string; value: number | string }) {
   );
 }
 
+function PanelEmpty({ label = "표시할 데이터가 없습니다", hint }: { label?: string; hint?: string }) {
+  return (
+    <div className="empty-state">
+      <strong>{label}</strong>
+      {hint ? <span>{hint}</span> : null}
+    </div>
+  );
+}
+
 function CompactList({ items }: { items: Array<{ count: number; label: string }> }) {
+  if (items.length === 0) {
+    return <PanelEmpty />;
+  }
+
   return (
     <div className="compact-list">
       {items.map((item) => (
@@ -198,6 +224,10 @@ function CompactList({ items }: { items: Array<{ count: number; label: string }>
 }
 
 function DonutChart({ items }: { items: Array<{ count: number; label: string }> }) {
+  if (items.length === 0) {
+    return <PanelEmpty />;
+  }
+
   const total = items.reduce((sum, item) => sum + item.count, 0) || 1;
   const colors = ["#9fb58d", "#d9caa7", "#aab7bd", "#c8b6a5", "#d7b5aa"];
   const gradient = items
@@ -226,6 +256,10 @@ function DonutChart({ items }: { items: Array<{ count: number; label: string }> 
 }
 
 function MonthlyTrendChart({ items }: { items: Array<{ count: number; label: string }> }) {
+  if (!items.some((item) => item.count > 0)) {
+    return <PanelEmpty label="올해 등록된 운영이 없습니다" />;
+  }
+
   const width = 720;
   const height = 150;
   const padding = { bottom: 28, left: 30, right: 18, top: 18 };
