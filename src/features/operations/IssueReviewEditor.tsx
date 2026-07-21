@@ -19,7 +19,7 @@ const EDIT_FIELDS = [
   {
     field: "operationIssue",
     label: "회고 (OM+LD)",
-    placeholder: "과정에 대한 회고 내용을 기록 (강사, 고객사와 회고 나눈 내용도 포함)"
+    placeholder: "과정에 대한 회고 (강사, 고객사와 회고 나눈 내용도 포함)"
   },
   {
     field: "omUpdate",
