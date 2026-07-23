@@ -540,6 +540,7 @@ button {
 
 .public-home-actions .primary-link:hover {
   background: color-mix(in srgb, var(--accent) 85%, black);
+  color: #ffd400;
 }
 
 .public-home-actions .secondary-link {
