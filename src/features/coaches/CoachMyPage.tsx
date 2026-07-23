@@ -52,7 +52,7 @@ export function CoachMyPage({ reservations, inProgressCourses, pastCourses }: Co
         <header className="coach-workspace-header">
           <div>
             <h1>마이페이지</h1>
-            <span className="coach-plan-badge">hub-om</span>
+            <span className="coach-plan-badge">coach-db</span>
           </div>
         </header>
 

@@ -2819,6 +2819,14 @@ td span {
   margin: 0;
 }
 
+/* 코치 일정 페이지의 골드 톤(가용일 배지 #fff4cf/#8c7436)에 맞춘 override.
+   전역 .status.active(초록, --green/--green-bg)는 다른 화면에서도 쓰이므로
+   건드리지 않고, 코치 상세의 이 배지만 이 규칙으로 덮어쓴다. */
+.coach-origin-title-row .status.active {
+  background: #fff4cf;
+  color: #8c7436;
+}
+
 .coach-status-toggle {
   background: #f2f3f4;
   border-radius: 999px;

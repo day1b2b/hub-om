@@ -247,7 +247,7 @@ export function CoachScheduleBoard({ currentUserEmail, dashboard, holidays, load
         <header className="coach-workspace-header">
           <div>
             <h1>코치 일정</h1>
-            <span className="coach-plan-badge">hub-om</span>
+            <span className="coach-plan-badge">coach-db</span>
           </div>
           <div className="coach-workspace-actions">
             <button onClick={goToday} type="button">오늘</button>
