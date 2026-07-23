@@ -23,6 +23,7 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
   const isMyDashboardPage = pathname === "/me";
   const isInstructorWikiPage = pathname === "/instructor-wiki";
   const isCompanyWikiPage = pathname === "/company-wiki";
+  const isAnnouncementsPage = pathname?.startsWith("/announcements") ?? false;
   const isCreatePage = pathname === "/operations/new";
   const isOperationsPage = pathname === "/operations" || (pathname?.startsWith("/operations/") && !isCreatePage);
   const isCoachSchedulePage = pathname === "/coaches/schedule";
@@ -65,6 +66,7 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
           <Link className={isResourcesPage ? "active" : ""} data-icon="🔒" href="/resources">리소스</Link>
           <Link className={isInstructorWikiPage ? "active" : ""} data-icon="🔒" href="/instructor-wiki">강사 위키</Link>
           <Link className={isCompanyWikiPage ? "active" : ""} data-icon="🔒" href="/company-wiki">기업 위키</Link>
+          <Link className={isAnnouncementsPage ? "active" : ""} data-icon="🔒" href="/announcements">공지사항</Link>
           <Link className={isDatabaseAdminPage ? "active" : ""} data-icon="🔒" href="/admin/database">DB 조회</Link>
           <Link className={isImportAdminPage ? "active" : ""} data-icon="🔒" href="/admin/imports">데이터 검수</Link>
           <Link className={isSyncAdminPage ? "active" : ""} data-icon="🔒" href="/admin/sync">데이터 동기화</Link>
