@@ -7,13 +7,13 @@ import type { MyActiveReservation, MyConfirmedCourse } from "@/lib/data/coachMyP
 
 interface CoachMyPageProps {
   reservations: MyActiveReservation[];
-  confirmedCourses: MyConfirmedCourse[];
+  inProgressCourses: MyConfirmedCourse[];
+  pastCourses: MyConfirmedCourse[];
 }
 
-export function CoachMyPage({ reservations, confirmedCourses }: CoachMyPageProps) {
+export function CoachMyPage({ reservations, inProgressCourses, pastCourses }: CoachMyPageProps) {
   const [activeReservations, setActiveReservations] = useState(reservations);
   const [cancellingKey, setCancellingKey] = useState<string | null>(null);
-  const [expandedCourse, setExpandedCourse] = useState<string | null>(null);
 
   async function handleCancel(coachId: string, date: string) {
     if (!confirm("예약을 취소하시겠습니까?")) return;
@@ -111,52 +111,76 @@ export function CoachMyPage({ reservations, confirmedCourses }: CoachMyPageProps
           </div>
         </section>
 
-        <section className="dashboard-panel">
-          <div className="section-title">
-            <h2>지난 과정</h2>
-            <div className="dashboard-table-meta">
-              <span>{confirmedCourses.length}건</span>
-            </div>
-          </div>
-          {confirmedCourses.length === 0 ? (
-            <div className="coach-doc-empty">
-              <strong>확정된 과정이 아직 없습니다.</strong>
-              <span>예약한 코치의 투입이 확정되면 여기에 표시됩니다.</span>
-            </div>
-          ) : (
-            <div className="my-course-card-list">
-              {confirmedCourses.map((course) => {
-                const key = course.courseName;
-                const isExpanded = expandedCourse === key;
-                return (
-                  <div className="my-course-card" key={key}>
-                    <button
-                      className="my-course-card-header"
-                      onClick={() => setExpandedCourse(isExpanded ? null : key)}
-                      type="button"
-                    >
-                      <span className="my-course-toggle-icon">{isExpanded ? "▼" : "▶"}</span>
-                      <span className="my-course-title">{course.courseName}</span>
-                      <span className="my-course-coach-count">코치 {course.coaches.length}명</span>
-                      <span className="my-course-period">
-                        {course.startDate.slice(0, 7)} ~ {course.endDate.slice(0, 7)}
-                      </span>
-                    </button>
-                    {isExpanded && (
-                      <div className="my-course-card-body">
-                        {course.coaches.map((coach) => (
-                          <CoachReviewRow coach={coach} key={coach.engagementId} />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
+        <CourseCardSection
+          courses={inProgressCourses}
+          emptyText={{ title: "진행중인 과정이 없습니다.", hint: "예약한 코치의 투입이 확정되면 여기에 표시됩니다." }}
+          title="진행중 과정"
+        />
+
+        <CourseCardSection
+          courses={pastCourses}
+          emptyText={{ title: "지난 과정이 아직 없습니다.", hint: "진행중 과정의 기간이 지나면 자동으로 여기로 옮겨집니다." }}
+          title="지난 과정"
+        />
       </section>
     </main>
+  );
+}
+
+interface CourseCardSectionProps {
+  courses: MyConfirmedCourse[];
+  emptyText: { title: string; hint: string };
+  title: string;
+}
+
+function CourseCardSection({ courses, emptyText, title }: CourseCardSectionProps) {
+  const [expandedCourse, setExpandedCourse] = useState<string | null>(null);
+
+  return (
+    <section className="dashboard-panel">
+      <div className="section-title">
+        <h2>{title}</h2>
+        <div className="dashboard-table-meta">
+          <span>{courses.length}건</span>
+        </div>
+      </div>
+      {courses.length === 0 ? (
+        <div className="coach-doc-empty">
+          <strong>{emptyText.title}</strong>
+          <span>{emptyText.hint}</span>
+        </div>
+      ) : (
+        <div className="my-course-card-list">
+          {courses.map((course) => {
+            const key = course.courseName;
+            const isExpanded = expandedCourse === key;
+            return (
+              <div className="my-course-card" key={key}>
+                <button
+                  className="my-course-card-header"
+                  onClick={() => setExpandedCourse(isExpanded ? null : key)}
+                  type="button"
+                >
+                  <span className="my-course-toggle-icon">{isExpanded ? "▼" : "▶"}</span>
+                  <span className="my-course-title">{course.courseName}</span>
+                  <span className="my-course-coach-count">코치 {course.coaches.length}명</span>
+                  <span className="my-course-period">
+                    {course.startDate.slice(0, 7)} ~ {course.endDate.slice(0, 7)}
+                  </span>
+                </button>
+                {isExpanded && (
+                  <div className="my-course-card-body">
+                    {course.coaches.map((coach) => (
+                      <CoachReviewRow coach={coach} key={coach.engagementId} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
   );
 }
 

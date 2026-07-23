@@ -1,6 +1,6 @@
 import { CoachMyPage } from "@/features/coaches/CoachMyPage";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
-import { listMyActiveReservations, listMyConfirmedCourses } from "@/lib/data/coachMyPage";
+import { listMyActiveReservations, listMyConfirmedCourses, partitionConfirmedCourses } from "@/lib/data/coachMyPage";
 
 export const dynamic = "force-dynamic";
 
@@ -13,5 +13,8 @@ export default async function CoachMyPageRoute() {
     listMyConfirmedCourses(email)
   ]);
 
-  return <CoachMyPage confirmedCourses={confirmedCourses} reservations={reservations} />;
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const { inProgress, past } = partitionConfirmedCourses(confirmedCourses, todayIso);
+
+  return <CoachMyPage inProgressCourses={inProgress} pastCourses={past} reservations={reservations} />;
 }

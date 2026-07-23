@@ -127,3 +127,25 @@ export async function listMyConfirmedCourses(email: string): Promise<MyConfirmed
 
   return [...groups.values()].sort((a, b) => b.endDate.localeCompare(a.endDate));
 }
+
+export interface PartitionedConfirmedCourses {
+  inProgress: MyConfirmedCourse[];
+  past: MyConfirmedCourse[];
+}
+
+// 과정 전체 기간(코치들 중 가장 늦은 종료일)이 오늘보다 이전이면 지난 과정으로,
+// 그 외(오늘 포함 진행 중이거나 아직 시작 전)에는 진행중 과정으로 분류한다.
+export function partitionConfirmedCourses(courses: MyConfirmedCourse[], todayIso: string): PartitionedConfirmedCourses {
+  const inProgress: MyConfirmedCourse[] = [];
+  const past: MyConfirmedCourse[] = [];
+
+  for (const course of courses) {
+    if (course.endDate < todayIso) past.push(course);
+    else inProgress.push(course);
+  }
+
+  return {
+    inProgress: inProgress.sort((a, b) => a.startDate.localeCompare(b.startDate)),
+    past
+  };
+}
