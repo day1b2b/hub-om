@@ -57,15 +57,6 @@ export function CoachList({ coaches, loadFailed }: CoachListProps) {
 
       <section className="content coach-origin-list-content" id="coaches">
         <div className="coach-schedule-topbar">
-          <label className="coach-schedule-search">
-            <span aria-hidden="true">⌕</span>
-            <input
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="이름, 근무유형, 분야 검색"
-              type="search"
-              value={query}
-            />
-          </label>
           <div className="coach-schedule-topnav">
             <Link href="/coaches/schedule">코치 일정</Link>
             <Link href="/coaches/my-page">마이페이지</Link>
@@ -96,6 +87,16 @@ export function CoachList({ coaches, loadFailed }: CoachListProps) {
             selected={workTypeFilters}
           />
           <SortSelect onChange={setSortKey} value={sortKey} />
+          <span className="coach-origin-toolbar-spacer" />
+          <label className="coach-schedule-search">
+            <span aria-hidden="true">⌕</span>
+            <input
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="이름, 근무유형, 분야 검색"
+              type="search"
+              value={query}
+            />
+          </label>
         </section>
 
         <section className="coach-origin-list-card">

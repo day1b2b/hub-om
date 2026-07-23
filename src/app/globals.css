@@ -3705,6 +3705,11 @@ td span {
   margin-bottom: 14px;
 }
 
+.coach-origin-toolbar-spacer {
+  flex: 1;
+  min-width: 8px;
+}
+
 .coach-origin-filter-select {
   align-items: center;
   background: #ffffff;
