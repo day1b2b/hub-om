@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { CoachEngagementSource, CoachEngagementStatus, type Prisma } from "@prisma/client";
+import { cancelReservationsForConfirmedSchedules } from "./reservationAutoCancel";
 
 export function parseEngagementStatus(value: unknown): CoachEngagementStatus {
   if (value === "scheduled") return CoachEngagementStatus.SCHEDULED;
@@ -70,6 +71,7 @@ export async function regenerateWeekdaySchedules(
 
   if (rows.length > 0) {
     await tx.coachEngagementSchedule.createMany({ data: rows });
+    await cancelReservationsForConfirmedSchedules(tx, rows.map((row) => ({ coachId: row.coachId, date: row.date, engagementId })));
   }
 }
 

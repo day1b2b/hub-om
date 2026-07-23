@@ -2620,8 +2620,8 @@ td span {
 }
 
 .coach-detail-tabs a.selected {
-  border-bottom-color: var(--blue);
-  color: var(--blue);
+  border-bottom-color: #056135;
+  color: #056135;
 }
 
 .detail-section {
@@ -2850,7 +2850,7 @@ td span {
 }
 
 .coach-origin-detail-content {
-  background: #f6f8fb;
+  background: var(--bg);
   max-width: 1180px;
   min-height: 100vh;
   padding: 28px 36px 64px;
@@ -2879,6 +2879,14 @@ td span {
   margin: 0;
 }
 
+/* 코치 일정 페이지의 골드 톤(가용일 배지 #fff4cf/#8c7436)에 맞춘 override.
+   전역 .status.active(초록, --green/--green-bg)는 다른 화면에서도 쓰이므로
+   건드리지 않고, 코치 상세의 이 배지만 이 규칙으로 덮어쓴다. */
+.coach-origin-title-row .status.active {
+  background: #fff4cf;
+  color: #8c7436;
+}
+
 .coach-status-toggle {
   background: #f2f3f4;
   border-radius: 999px;
@@ -2903,7 +2911,7 @@ td span {
 .coach-status-toggle button[aria-pressed="true"] {
   background: #ffffff;
   box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
-  color: #287a38;
+  color: #8c7436;
 }
 
 .coach-status-toggle button:disabled {
@@ -3386,8 +3394,8 @@ td span {
 }
 
 .coach-origin-chip.green {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: #fff4cf;
+  color: #8c7436;
 }
 
 .coach-origin-chip.gray {
@@ -3459,9 +3467,9 @@ td span {
 }
 
 .coach-origin-access-chip {
-  background: #e8f5e9;
+  background: #fff4cf;
   border-radius: 999px;
-  color: #2e7d32;
+  color: #8c7436;
   font-size: 11px;
   font-weight: 900;
   justify-self: start;
@@ -3489,7 +3497,7 @@ td span {
 
 .coach-origin-weekdays span:last-child,
 .coach-origin-calendar-day.saturday:not(.available):not(.confirmed) {
-  color: #1565c0;
+  color: #056135;
 }
 
 .coach-origin-calendar-grid {
@@ -3513,12 +3521,12 @@ td span {
 }
 
 .coach-origin-calendar-day.available {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: #fff4cf;
+  color: #8c7436;
 }
 
 .coach-origin-calendar-day.confirmed {
-  background: #1976d2;
+  background: #056135;
   color: #ffffff;
 }
 
@@ -3549,13 +3557,13 @@ td span {
 }
 
 .coach-origin-legend i.available {
-  background: #e8f5e9;
-  border-color: #e8f5e9;
+  background: #fff4cf;
+  border-color: #fff4cf;
 }
 
 .coach-origin-legend i.confirmed {
-  background: #1976d2;
-  border-color: #1976d2;
+  background: #056135;
+  border-color: #056135;
 }
 
 .coach-origin-work-summary {
@@ -3578,7 +3586,7 @@ td span {
 }
 
 .coach-origin-work-summary strong {
-  color: #1976d2;
+  color: #056135;
   font-size: 14px;
   font-weight: 900;
 }
@@ -3599,7 +3607,7 @@ td span {
 }
 
 .coach-origin-mini-bars i {
-  background: #1976d2;
+  background: #056135;
   border-radius: 4px;
   display: block;
   opacity: 0.82;
@@ -3656,13 +3664,13 @@ td span {
 }
 
 .coach-origin-day-list span.confirmed {
-  background: #e3f2fd;
-  color: #1976d2;
+  background: #eaf3ec;
+  color: #056135;
 }
 
 .coach-origin-day-list span.available {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: #fff4cf;
+  color: #8c7436;
 }
 
 .coach-origin-day-list small {
@@ -3681,8 +3689,8 @@ td span {
 .coach-origin-engagement-row {
   align-items: center;
   background: #ffffff;
-  border: 1px solid #e8edf3;
-  border-left: 4px solid #d8e0ea;
+  border: 1px solid #e3ede6;
+  border-left: 4px solid #a9cdb4;
   border-radius: 8px;
   display: grid;
   gap: 10px;
@@ -3695,10 +3703,22 @@ td span {
   justify-self: start;
 }
 
+/* 근무이력의 "완료" 배지도 전역 파란 토큰 대신 이 탭 안에서만 초록으로. */
+.coach-origin-engagement-row .status.done {
+  background: #eaf3ec;
+  color: #056135;
+}
+
 .coach-origin-engagement-row time {
   color: #94a3b8;
   font-size: 12px;
   font-weight: 800;
+}
+
+.coach-origin-engagement-course {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
 }
 
 .coach-origin-engagement-row strong {
@@ -3708,7 +3728,14 @@ td span {
   overflow-wrap: anywhere;
 }
 
-.coach-origin-engagement-row small {
+.coach-origin-engagement-summary {
+  color: #77736e;
+  font-size: 12px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.coach-origin-engagement-rating {
   color: #f57f17;
   font-size: 12px;
   font-weight: 800;
@@ -3744,6 +3771,11 @@ td span {
   margin-bottom: 14px;
 }
 
+.coach-origin-toolbar-spacer {
+  flex: 1;
+  min-width: 8px;
+}
+
 .coach-origin-filter-select {
   align-items: center;
   background: #ffffff;
@@ -3777,6 +3809,77 @@ td span {
   min-width: 0;
 }
 
+.coach-origin-multi-filter {
+  position: relative;
+}
+
+.coach-origin-multi-filter > button {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #c9c6c0;
+  border-radius: 8px;
+  color: #797570;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 900;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+.coach-origin-multi-filter > button.selected {
+  background: #eaf3ec;
+  border-color: #056135;
+  color: #056135;
+}
+
+.coach-origin-multi-filter > button i {
+  font-size: 9px;
+  font-style: normal;
+}
+
+.coach-origin-multi-filter-panel {
+  background: #ffffff;
+  border: 1px solid #dededa;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  display: grid;
+  gap: 2px;
+  left: 0;
+  margin-top: 4px;
+  max-height: 260px;
+  min-width: 200px;
+  overflow-y: auto;
+  padding: 8px;
+  position: absolute;
+  top: 100%;
+  z-index: 20;
+}
+
+.coach-origin-multi-filter-option {
+  align-items: center;
+  border-radius: 6px;
+  color: #22211f;
+  cursor: pointer;
+  display: flex;
+  font-size: 13px;
+  font-weight: 700;
+  gap: 8px;
+  padding: 6px 8px;
+}
+
+.coach-origin-multi-filter-option:hover {
+  background: #f6f6f3;
+}
+
+.coach-origin-multi-filter-empty {
+  color: #a4acb5;
+  font-size: 12px;
+  padding: 6px 8px;
+}
+
 .coach-origin-list-meta {
   align-items: center;
   border-bottom: 1px solid #dededa;
@@ -3801,29 +3904,58 @@ td span {
   color: inherit;
   display: grid;
   gap: 18px;
-  grid-template-columns: 48px minmax(0, 1fr) minmax(170px, 270px);
+  grid-template-columns: auto minmax(0, 1fr) minmax(150px, 220px) auto;
   min-height: 82px;
   padding: 12px 0;
-  text-decoration: none;
 }
 
 .coach-origin-list-row:hover .coach-origin-row-main strong {
   color: #1d4f86;
 }
 
-.coach-origin-avatar {
-  align-items: center;
+.coach-origin-row-identity {
+  color: inherit;
+  display: contents;
+  text-decoration: none;
+}
+
+.coach-origin-notion-link {
   background: #ffffff;
   border: 1px solid #dededa;
   border-radius: 8px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
   color: #4f4d49;
-  display: inline-flex;
-  font-size: 18px;
-  font-weight: 900;
-  height: 48px;
-  justify-content: center;
-  width: 48px;
+  font-size: 12px;
+  font-weight: 800;
+  justify-self: end;
+  padding: 8px 12px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.coach-origin-notion-link:hover {
+  background: #f6f6f3;
+}
+
+.coach-origin-delete-btn {
+  background: #ffffff;
+  border: 1px solid #e3b3ad;
+  border-radius: 8px;
+  color: #b3382c;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  justify-self: end;
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+
+.coach-origin-delete-btn:hover {
+  background: #fdf1f0;
+}
+
+.coach-origin-delete-btn:disabled {
+  cursor: default;
+  opacity: 0.5;
 }
 
 .coach-origin-row-main {
@@ -3837,6 +3969,17 @@ td span {
   display: flex;
   gap: 8px;
   min-width: 0;
+}
+
+.coach-origin-list-row .coach-doc-icon {
+  flex-shrink: 0;
+  height: 44px;
+  width: 44px;
+}
+
+.coach-origin-list-row .coach-doc-icon svg {
+  height: 20px;
+  width: 20px;
 }
 
 .coach-origin-row-main strong {
@@ -3883,14 +4026,29 @@ td span {
 }
 
 .coach-origin-row-time {
-  color: #4f4d49;
-  font-size: 13px;
-  font-weight: 800;
+  align-items: flex-end;
+  color: #8b8782;
+  display: grid;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 4px;
   min-width: 0;
   overflow: hidden;
   text-align: right;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.coach-origin-row-rating {
+  color: #f5a623;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.coach-origin-row-rating.empty {
+  color: #c2beb8;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .panel-title-row {
@@ -7897,17 +8055,18 @@ td span {
 
 .coach-doc-icon {
   align-items: center;
-  background: #ffffff;
-  border: 1px solid #dededa;
-  border-radius: 8px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
-  color: #056135;
+  background: #f1f3f5;
+  border-radius: 999px;
+  color: #8b8782;
   display: inline-flex;
-  font-size: 20px;
-  font-weight: 900;
   height: 48px;
   justify-content: center;
   width: 48px;
+}
+
+.coach-doc-icon svg {
+  height: 22px;
+  width: 22px;
 }
 
 .coach-doc-main {
@@ -7945,6 +8104,314 @@ td span {
   text-align: right;
 }
 
+.coach-doc-identity {
+  display: contents;
+}
+
+.coach-doc-reserve {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.coach-doc-reserve-chips {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+button.coach-doc-reserve-chip {
+  background: #ffffff;
+  border: 1px solid #dededa;
+  border-radius: 999px;
+  color: #4f4d49;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 10px;
+  white-space: nowrap;
+}
+
+button.coach-doc-reserve-chip:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.coach-doc-reserve-chip.reserved {
+  align-items: center;
+  background: #eaf3ec;
+  border-radius: 999px;
+  color: #056135;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 4px;
+  padding: 5px 6px 5px 10px;
+  white-space: nowrap;
+}
+
+.coach-doc-reserve-chip.reserved button {
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  color: #056135;
+  cursor: pointer;
+  font-weight: 900;
+  line-height: 1;
+  padding: 2px 6px;
+}
+
+.coach-doc-reserve-chip.reserved button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.my-page-two-col {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.my-reservation-panel {
+  padding-bottom: 4px;
+}
+
+.my-reservation-card-list {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+}
+
+.my-reservation-card {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #e8edf3;
+  border-radius: 10px;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  padding: 10px 14px;
+}
+
+.my-reservation-identity {
+  align-items: baseline;
+  color: inherit;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  text-decoration: none;
+}
+
+.my-reservation-identity strong {
+  color: #1e2430;
+  font-size: 14px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.my-reservation-identity span {
+  color: #94a3b8;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.my-reservation-identity:hover strong {
+  color: #056135;
+}
+
+.my-reservation-cancel {
+  background: none;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  color: #b3261e;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 12px;
+}
+
+.my-reservation-cancel:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+@media (max-width: 900px) {
+  .my-page-two-col {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.my-course-card-list {
+  display: grid;
+  gap: 10px;
+}
+
+.my-course-card {
+  background: #ffffff;
+  border: 1px solid #e8edf3;
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  overflow: hidden;
+}
+
+.my-course-card-header {
+  align-items: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  gap: 10px;
+  padding: 14px 18px;
+  text-align: left;
+  width: 100%;
+}
+
+.my-course-toggle-icon {
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.my-course-title {
+  color: #1e2430;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.my-course-coach-count {
+  background: #eef1f6;
+  border-radius: 999px;
+  color: #445160;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+}
+
+.my-course-period {
+  color: #94a3b8;
+  font-size: 12px;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.my-course-card-body {
+  border-top: 1px solid #eef1f6;
+  display: grid;
+  gap: 14px;
+  padding: 16px 18px;
+}
+
+.my-coach-block {
+  display: grid;
+  gap: 8px;
+}
+
+.my-coach-block-header {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.my-coach-name {
+  color: #1d6fd8;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.my-coach-dates {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.my-review-row {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.my-review-rating {
+  display: flex;
+  flex-shrink: 0;
+  gap: 1px;
+}
+
+.my-review-rating button {
+  background: none;
+  border: none;
+  color: #f5a623;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px;
+}
+
+.my-review-rating button:disabled {
+  cursor: not-allowed;
+}
+
+.my-review-feedback {
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  flex: 1;
+  font-size: 13px;
+  min-width: 0;
+  padding: 7px 14px;
+}
+
+.my-review-saved-flash {
+  color: #056135;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 700;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  width: 40px;
+}
+
+.my-review-saved-flash.visible {
+  opacity: 1;
+}
+
+.my-review-save {
+  background: #056135;
+  border: 1px solid #056135;
+  border-radius: 999px;
+  color: #ffffff;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 14px;
+}
+
+.my-review-save:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.my-round-list {
+  display: grid;
+  gap: 6px;
+}
+
+.my-round-row {
+  align-items: center;
+  background: #f8fafc;
+  border-radius: 8px;
+  display: flex;
+  gap: 10px;
+  padding: 8px 12px;
+}
+
+.my-round-label {
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 700;
+  width: 32px;
+}
+
 .coach-doc-empty {
   color: #77736e;
   display: grid;
@@ -7954,6 +8421,10 @@ td span {
 
 .coach-doc-empty strong {
   color: #242321;
+}
+
+.coach-admin-placeholder {
+  padding: 0 20px;
 }
 
 /* 공휴일 */
@@ -8113,6 +8584,11 @@ td span {
   .coach-doc-time {
     grid-column: 2;
     text-align: left;
+  }
+
+  .coach-doc-reserve {
+    grid-column: 2;
+    justify-content: flex-start;
   }
 
   .coach-public-header,
@@ -9019,12 +9495,17 @@ td span {
 
   .coach-origin-list-row {
     align-items: start;
-    grid-template-columns: 48px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .coach-origin-row-time {
-    grid-column: 2;
+    align-items: flex-start;
+    grid-column: 1;
     text-align: left;
+  }
+
+  .coach-origin-notion-link {
+    justify-self: start;
   }
 
   .calendar-grid {
@@ -9404,9 +9885,35 @@ td span {
 }
 
 .sync-card-actions {
+  align-items: center;
   display: flex;
   gap: 8px;
   flex-shrink: 0;
+}
+
+.sync-external-link {
+  color: var(--blue);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.sync-external-link:hover {
+  text-decoration: underline;
+}
+
+.sync-summary-line {
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 600;
+  margin: 10px 0 0;
+}
+
+.sync-summary-empty {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 4px 0 0;
 }
 
 .sync-btn {
@@ -10698,6 +11205,145 @@ td span {
   color: var(--muted);
 }
 
+/* 코치 프로필 수정 폼 */
+.coach-profile-edit-toggle {
+  background: #ffffff;
+  border: 1px solid #dededa;
+  border-radius: 8px;
+  color: #4f4d49;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  margin-top: 14px;
+  padding: 8px 14px;
+}
+
+.coach-profile-edit-toggle:hover {
+  background: #f6f6f3;
+}
+
+.coach-profile-edit-form {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 14px;
+}
+
+.coach-profile-edit-form label {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  color: #4f4d49;
+}
+
+.coach-profile-edit-form input,
+.coach-profile-edit-form textarea {
+  border: 1px solid #dededa;
+  border-radius: 8px;
+  font-size: 13px;
+  padding: 8px 10px;
+}
+
+.coach-profile-edit-wide {
+  grid-column: 1 / -1;
+}
+
+.coach-profile-edit-error {
+  color: #b3382c;
+  font-size: 12px;
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.coach-profile-edit-actions {
+  display: flex;
+  gap: 8px;
+  grid-column: 1 / -1;
+}
+
+.coach-profile-edit-actions button {
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 8px 14px;
+}
+
+.coach-profile-edit-actions button:first-child {
+  background: #056135;
+  border: 1px solid #056135;
+  color: #ffffff;
+}
+
+.coach-profile-edit-actions button:last-child {
+  background: #ffffff;
+  border: 1px solid #dededa;
+  color: #4f4d49;
+}
+
+.coach-profile-edit-actions button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* 관리자페이지 - 삭제 내역 */
+.coach-admin-deleted-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.coach-admin-deleted-toolbar {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.coach-admin-deleted-toolbar > span {
+  color: #4f4d49;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.coach-admin-deleted-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.coach-admin-deleted-actions button {
+  background: #ffffff;
+  border: 1px solid #dededa;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 8px 14px;
+}
+
+.coach-admin-deleted-actions button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.coach-admin-deleted-danger {
+  border-color: #e3b3ad !important;
+  color: #b3382c;
+}
+
+.coach-admin-deleted-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.coach-admin-deleted-table th {
+  border-bottom: 1px solid #dededa;
+  color: #85837f;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 10px;
+  text-align: left;
+}
+
 .hub-bot {
   bottom: 20px;
   position: fixed;
@@ -10788,6 +11434,277 @@ td span {
   font-size: 12px;
   padding: 8px 10px;
   text-align: left;
+}
+
+.coach-admin-deleted-table td {
+  border-bottom: 1px solid #eeeeec;
+  font-size: 13px;
+  padding: 10px;
+}
+
+/* 관리자페이지 - 일정 등록 링크 */
+.coach-admin-schedule-link {
+  display: grid;
+  gap: 14px;
+}
+
+.coach-admin-schedule-month {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+}
+
+.coach-admin-schedule-month button {
+  background: #ffffff;
+  border: 1px solid #dededa;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px 10px;
+}
+
+.coach-admin-schedule-month strong {
+  font-size: 15px;
+}
+
+.coach-admin-schedule-filters {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.coach-admin-schedule-filters button {
+  background: #ffffff;
+  border: 1px solid #dededa;
+  border-radius: 999px;
+  color: #4f4d49;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 14px;
+}
+
+.coach-admin-schedule-filters button.selected {
+  background: #056135;
+  border-color: #056135;
+  color: #ffffff;
+}
+
+.coach-admin-schedule-status {
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 4px 10px;
+}
+
+.coach-admin-schedule-status.completed {
+  background: #e9f1dd;
+  color: #4f7a3f;
+}
+
+.coach-admin-schedule-status.accessedOnly {
+  background: #fff4cf;
+  color: #8c7436;
+}
+
+.coach-admin-schedule-status.notAccessed {
+  background: #f6e3e1;
+  color: #b3382c;
+}
+
+/* 코치 상세 - 메모 */
+.coach-notes-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.coach-notes-composer {
+  display: grid;
+  gap: 8px;
+}
+
+.coach-notes-composer textarea {
+  border: 1px solid #dededa;
+  border-radius: 8px;
+  font-size: 13px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+.coach-notes-composer button {
+  background: #056135;
+  border: 1px solid #056135;
+  border-radius: 8px;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  justify-self: start;
+  padding: 8px 14px;
+}
+
+.coach-notes-composer button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.coach-notes-list {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.coach-notes-list > li {
+  background: #ffffff;
+  border: 1px solid #eeeeec;
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.coach-notes-list > li.flagged {
+  background: #fdf1f0;
+  border-color: #e3b3ad;
+}
+
+.coach-notes-meta {
+  color: #85837f;
+  display: flex;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.coach-notes-list p {
+  color: #2f2d2a;
+  font-size: 13px;
+  margin: 0 0 8px;
+  white-space: pre-wrap;
+}
+
+.coach-notes-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.coach-notes-actions button,
+.coach-notes-actions a {
+  background: none;
+  border: none;
+  color: #4f4d49;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.coach-notes-edit {
+  display: grid;
+  gap: 8px;
+}
+
+.coach-notes-edit textarea {
+  border: 1px solid #dededa;
+  border-radius: 8px;
+  font-size: 13px;
+  padding: 8px 10px;
+}
+
+/* 관리자페이지 - 콘텐츠 관리 */
+.coach-content-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.coach-content-feed {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.coach-content-feed > li {
+  background: #ffffff;
+  border: 1px solid #eeeeec;
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.coach-content-feed > li.flagged {
+  background: #fdf1f0;
+  border-color: #e3b3ad;
+}
+
+.coach-content-feed-meta {
+  align-items: center;
+  color: #85837f;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 12px;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.coach-content-feed-meta a {
+  color: #1d4f86;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.coach-content-source {
+  color: #85837f;
+}
+
+.coach-content-feed p {
+  color: #2f2d2a;
+  font-size: 13px;
+  margin: 0 0 8px;
+  white-space: pre-wrap;
+}
+
+.coach-content-kind {
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 3px 9px;
+}
+
+.coach-content-kind.note {
+  background: #e9f1dd;
+  color: #4f7a3f;
+}
+
+.coach-content-kind.review {
+  background: #fff4cf;
+  color: #8c7436;
+}
+
+.coach-content-kind.history {
+  background: #eef1e8;
+  color: #4f4d49;
+}
+
+.coach-review-rating-picker {
+  display: flex;
+  gap: 4px;
+}
+
+.coach-review-rating-picker button {
+  background: none;
+  border: none;
+  color: #dededa;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 0;
+}
+
+.coach-review-rating-picker button.selected {
+  color: #f5a623;
 }
 
 .hub-bot-examples button:hover {

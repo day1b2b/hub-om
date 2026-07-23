@@ -8,7 +8,10 @@ import type {
   CoachScheduleView,
   CoachStatusValue
 } from "@/lib/data/coachTypes";
+import { CoachDeleteButton } from "./CoachDeleteButton";
 import { CoachInputLinkActions } from "./CoachInputLinkActions";
+import { CoachNotesPanel } from "./CoachNotesPanel";
+import { CoachProfileEditForm } from "./CoachProfileEditForm";
 import { CoachStatusToggle } from "./CoachStatusToggle";
 
 export type CoachDetailTab = "profile" | "schedule" | "engagements";
@@ -70,6 +73,7 @@ export function CoachDetailView({
             {coach.deletedAt ? <span className="coach-origin-muted-pill deleted">삭제됨</span> : null}
             {coach.statusNote ? <span className="coach-origin-note">+ {coach.statusNote}</span> : null}
             {!coach.deletedAt ? <CoachStatusToggle coachId={coach.id} status={coach.status} /> : null}
+            {!coach.deletedAt ? <CoachDeleteButton coachId={coach.id} coachName={coach.name} /> : null}
           </div>
           <div className="coach-origin-tags">
             {splitWorkTypes(coach.workType).map((workType) => (
@@ -131,6 +135,7 @@ function ProfilePane({ coach }: { coach: CoachDetail }) {
           <InfoItem label="노출 상태" value={coach.isActive ? "노출" : "비노출"} />
           <InfoItem label="삭제 상태" value={coach.deletedAt ? "삭제됨" : "정상"} />
         </div>
+        {!coach.deletedAt ? <CoachProfileEditForm coach={coach} /> : null}
       </section>
 
       <section className="coach-origin-card">
@@ -144,7 +149,7 @@ function ProfilePane({ coach }: { coach: CoachDetail }) {
         <div className="coach-origin-section-title">
           <span>가능 분야</span>
         </div>
-        <ChipList items={coach.fields} tone="blue" />
+        <ChipList items={coach.fields} tone="green" />
       </section>
 
       <section className="coach-origin-card coach-origin-wide-card">
@@ -152,6 +157,13 @@ function ProfilePane({ coach }: { coach: CoachDetail }) {
           <span>가능 커리큘럼</span>
         </div>
         <ChipList items={coach.curriculums} tone="mixed" />
+      </section>
+
+      <section className="coach-origin-card coach-origin-wide-card">
+        <div className="coach-origin-section-title">
+          <span>메모</span>
+        </div>
+        <CoachNotesPanel coachId={coach.id} />
       </section>
     </section>
   );
@@ -295,8 +307,13 @@ function EngagementPane({ engagements }: { engagements: CoachEngagementView[] })
               {formatDateLabel(engagement.startDate)}
               {engagement.endDate ? `~${formatDateLabel(engagement.endDate)}` : ""}
             </time>
-            <strong>{cleanCourseName(engagement.courseName)}</strong>
-            {engagement.rating ? <small>평점 {engagement.rating}</small> : null}
+            <span className="coach-origin-engagement-course">
+              <strong>{cleanCourseName(engagement.courseName)}</strong>
+              {engagement.feedback ? <small className="coach-origin-engagement-summary">{engagement.feedback}</small> : null}
+            </span>
+            {engagement.rating ? (
+              <small className="coach-origin-engagement-rating">평점 {engagement.rating}</small>
+            ) : null}
           </article>
         ))
       ) : (
@@ -315,13 +332,13 @@ function InfoItem({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ChipList({ items, tone }: { items: string[]; tone: "blue" | "mixed" }) {
+function ChipList({ items, tone }: { items: string[]; tone: "green" | "mixed" }) {
   if (items.length === 0) return <p className="coach-origin-empty-text">등록된 항목이 없습니다.</p>;
 
   return (
     <div className="coach-origin-chip-list">
       {items.map((item) => (
-        <span className={`coach-origin-chip ${tone === "mixed" ? curriculumTone(item) : "blue"}`} key={item}>{item}</span>
+        <span className={`coach-origin-chip ${tone === "mixed" ? curriculumTone(item) : tone}`} key={item}>{item}</span>
       ))}
     </div>
   );

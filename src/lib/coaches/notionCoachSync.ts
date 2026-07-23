@@ -13,6 +13,7 @@ type JsonObject = Record<string, unknown>;
 
 interface NotionCoachRecord {
   name: string;
+  notionPageId: string | null;
   phone: string | null;
   email: string | null;
   birthDate: Date | null;
@@ -147,6 +148,7 @@ function mapPageToCoachRecord(page: JsonObject): NotionCoachRecord | null {
 
   return {
     name,
+    notionPageId: typeof page.id === "string" ? page.id : null,
     phone: getText(properties["연락처"]) || null,
     email: getText(properties["이메일"]) || null,
     birthDate: parseBirthDate(getText(properties["생년월일"])),
@@ -162,6 +164,7 @@ function mapPageToCoachRecord(page: JsonObject): NotionCoachRecord | null {
 
 function publicCoachUpdate(record: NotionCoachRecord) {
   return {
+    ...(record.notionPageId ? { notionPageId: record.notionPageId } : {}),
     ...(record.workType ? { workType: record.workType } : {}),
     ...(record.portfolioUrl ? { portfolioUrl: record.portfolioUrl } : {}),
     ...(record.selfNote ? { selfNote: record.selfNote } : {}),

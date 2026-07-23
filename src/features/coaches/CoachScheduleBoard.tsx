@@ -4,10 +4,17 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
-import type { CoachScheduleDashboard, CoachScheduleDashboardCoach } from "@/lib/data/coachTypes";
+import type {
+  CoachDayReservationView,
+  CoachScheduleDashboard,
+  CoachScheduleDashboardCoach,
+  CoachScheduleDashboardDay
+} from "@/lib/data/coachTypes";
 import type { HolidayMap } from "@/lib/holidayApi";
+import { CoachAvatarIcon } from "./CoachAvatarIcon";
 
 interface CoachScheduleBoardProps {
+  currentUserEmail: string;
   dashboard: CoachScheduleDashboard;
   holidays: HolidayMap;
   loadFailed: boolean;
@@ -23,8 +30,7 @@ const TIME_FILTERS = [
 
 type TimeFilterKey = (typeof TIME_FILTERS)[number]["key"];
 
-
-export function CoachScheduleBoard({ dashboard, holidays, loadFailed, initialDate }: CoachScheduleBoardProps) {
+export function CoachScheduleBoard({ currentUserEmail, dashboard, holidays, loadFailed, initialDate }: CoachScheduleBoardProps) {
   const router = useRouter();
 
   // 선택 날짜들 (0개: 안내, 1개: 단일 날짜, 2개 이상: 다중 필터)
@@ -36,14 +42,23 @@ export function CoachScheduleBoard({ dashboard, holidays, loadFailed, initialDat
   const [rangeMode, setRangeMode] = useState(false);
 
   const [timeFilter, setTimeFilter] = useState<TimeFilterKey>("all");
-  const [query, setQuery] = useState("");
+  const [reservingKey, setReservingKey] = useState<string | null>(null);
+
+  // 달 이동 시에도 이전에 조회했던 달의 선택 날짜를 계속 조합할 수 있도록 달별 일정 데이터를 누적한다.
+  // (렌더 중 상태 조정: https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes)
+  const [daysCache, setDaysCache] = useState<Record<string, CoachScheduleDashboardDay>>(() => ({ ...dashboard.days }));
+  const [cachedDashboardDays, setCachedDashboardDays] = useState(dashboard.days);
+  if (dashboard.days !== cachedDashboardDays) {
+    setCachedDashboardDays(dashboard.days);
+    setDaysCache((prev) => ({ ...prev, ...dashboard.days }));
+  }
 
   const monthDate = useMemo(() => parseYearMonth(dashboard.yearMonth), [dashboard.yearMonth]);
   const sortedSelected = useMemo(() => [...selectedDates].sort(), [selectedDates]);
   const isSingleDate = selectedDates.size === 1;
   const isMultiDate = selectedDates.size > 1;
   const singleDate = isSingleDate ? sortedSelected[0]! : null;
-  const singleDay = singleDate ? dashboard.days[singleDate] : null;
+  const singleDay = singleDate ? daysCache[singleDate] : null;
 
   const monthCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -57,46 +72,34 @@ export function CoachScheduleBoard({ dashboard, holidays, loadFailed, initialDat
 
   // 단일 날짜 코치 목록
   const singleDateCoaches = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-    return (singleDay?.coaches ?? []).filter((coach) => {
-      if (!coachMatchesTimeFilter(coach, timeFilter)) return false;
-      if (!normalizedQuery) return true;
-      return [coach.name, coach.workType ?? "", ...coach.fields, ...coach.recentEngagements.map((e) => e.courseName)]
-        .some((v) => v.toLowerCase().includes(normalizedQuery));
-    });
-  }, [query, singleDay?.coaches, timeFilter]);
+    return (singleDay?.coaches ?? []).filter((coach) => coachMatchesTimeFilter(coach, timeFilter));
+  }, [singleDay?.coaches, timeFilter]);
 
-  // 다중 날짜: 선택 날짜 중 이번 달 데이터 있는 날짜
-  const activeDays = useMemo(() => sortedSelected.filter((d) => dashboard.days[d]), [sortedSelected, dashboard.days]);
+  // 다중 날짜: 선택 날짜 중 데이터를 불러온 적 있는 날짜(다른 달로 이동해 조회한 날짜 포함)
+  const activeDays = useMemo(() => sortedSelected.filter((d) => daysCache[d]), [sortedSelected, daysCache]);
 
-  // 다중 날짜: 선택 날짜 모두 가능한 코치
+  // 다중 날짜: 선택 날짜 모두 가능한 코치 (다른 달에서 선택한 날짜도 함께 조합)
   const multiDateCoaches = useMemo(() => {
     if (!isMultiDate || activeDays.length === 0) return [];
     const coachDayCounts = new Map<string, number>();
     const coachData = new Map<string, CoachScheduleDashboardCoach>();
     for (const date of activeDays) {
-      const day = dashboard.days[date];
+      const day = daysCache[date];
       for (const coach of day.coaches) {
         if (!coachMatchesTimeFilter(coach, timeFilter)) continue;
         coachDayCounts.set(coach.id, (coachDayCounts.get(coach.id) ?? 0) + 1);
         if (!coachData.has(coach.id)) coachData.set(coach.id, coach);
       }
     }
-    const normalizedQuery = query.trim().toLowerCase();
     return [...coachDayCounts.entries()]
       .filter(([, count]) => count === activeDays.length)
       .map(([id]) => coachData.get(id)!)
       .filter(Boolean)
-      .filter((coach) => {
-        if (!normalizedQuery) return true;
-        return [coach.name, coach.workType ?? "", ...coach.fields, ...coach.recentEngagements.map((e) => e.courseName)]
-          .some((v) => v.toLowerCase().includes(normalizedQuery));
-      })
       .sort((a, b) => {
         if (a.engagementCount !== b.engagementCount) return b.engagementCount - a.engagementCount;
         return a.name.localeCompare(b.name, "ko");
       });
-  }, [isMultiDate, activeDays, dashboard.days, timeFilter, query]);
+  }, [isMultiDate, activeDays, daysCache, timeFilter]);
 
   function handleCalendarClick(date: string) {
     if (rangeMode) {
@@ -130,13 +133,72 @@ export function CoachScheduleBoard({ dashboard, holidays, loadFailed, initialDat
     router.push(`/coaches/schedule?yearMonth=${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, "0")}`);
   }
 
-  function goToday() {
-    const today = formatDate(new Date());
-    if (today.startsWith(dashboard.yearMonth)) {
-      setSelectedDates(new Set([today]));
-      return;
+  // 같은 코치·날짜를 여러 매니저가 중복으로 연락하지 않도록 남기는 가벼운 예약 표시.
+  // 서버는 요청한 날짜별 "최종 예약자"를 항상 돌려주므로, 성공/충돌을 구분해 알리지 않고
+  // 그 결과를 그대로 화면에 반영한다(이미 다른 매니저가 예약 중이면 그 이름이 바로 표시됨).
+  function applyReservationPatch(coachId: string, date: string, reservation: CoachDayReservationView | null) {
+    setDaysCache((prev) => {
+      const day = prev[date];
+      if (!day) return prev;
+      const coaches = day.coaches.map((c) => (c.id === coachId ? { ...c, reservation } : c));
+      return { ...prev, [date]: { ...day, coaches } };
+    });
+  }
+
+  // 단일 날짜 화면에서는 dates가 1개, 다중 날짜 화면에서는 선택 날짜별로 각각 1개씩 호출한다.
+  async function handleReserve(coachId: string, dates: string[]) {
+    const key = `${coachId}__${dates.join(",")}`;
+    setReservingKey(key);
+    try {
+      const response = await fetch(`/api/coaches/${coachId}/reservations`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dates })
+      });
+      if (response.ok) {
+        const body = (await response.json()) as {
+          results: Array<{ date: string; reservedByName: string; reservedByEmail: string }>;
+        };
+        for (const r of body.results) {
+          applyReservationPatch(coachId, r.date, { reservedByName: r.reservedByName, reservedByEmail: r.reservedByEmail });
+        }
+      } else {
+        alert("예약하지 못했습니다.");
+      }
+    } catch {
+      alert("예약하지 못했습니다.");
+    } finally {
+      setReservingKey(null);
     }
-    router.push(`/coaches/schedule?yearMonth=${today.slice(0, 7)}`);
+  }
+
+  async function handleCancelReservation(coachId: string, dates: string[]) {
+    if (!confirm(dates.length > 1 ? "선택한 날짜의 예약을 모두 취소하시겠습니까?" : "예약을 취소하시겠습니까?")) return;
+    const key = `${coachId}__${dates.join(",")}`;
+    setReservingKey(key);
+    try {
+      const response = await fetch(`/api/coaches/${coachId}/reservations`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dates })
+      });
+      if (response.ok) {
+        const body = (await response.json()) as { cancelledDates: string[] };
+        for (const date of body.cancelledDates) {
+          applyReservationPatch(coachId, date, null);
+        }
+      } else {
+        alert("취소하지 못했습니다.");
+      }
+    } catch {
+      alert("취소하지 못했습니다.");
+    } finally {
+      setReservingKey(null);
+    }
+  }
+
+  function reservationOn(coachId: string, date: string) {
+    return daysCache[date]?.coaches.find((c) => c.id === coachId)?.reservation ?? null;
   }
 
   return (
@@ -144,28 +206,10 @@ export function CoachScheduleBoard({ dashboard, holidays, loadFailed, initialDat
       <AppSidebar label="Coach schedule" teamScope="both" />
 
       <section className="content coach-schedule-workspace" id="coach-schedule">
-        <div className="coach-schedule-topbar">
-          <label className="coach-schedule-search">
-            <span aria-hidden="true">⌕</span>
-            <input
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="코치, 분야, 과정 검색"
-              type="search"
-              value={query}
-            />
-          </label>
-          <div className="coach-schedule-topnav">
-            <Link href="/coaches">코치 목록</Link>
-          </div>
-        </div>
-
         <header className="coach-workspace-header">
           <div>
             <h1>코치 일정</h1>
-            <span className="coach-plan-badge">hub-om</span>
-          </div>
-          <div className="coach-workspace-actions">
-            <button onClick={goToday} type="button">오늘</button>
+            <span className="coach-plan-badge">coach-db</span>
           </div>
         </header>
 
@@ -188,7 +232,7 @@ export function CoachScheduleBoard({ dashboard, holidays, loadFailed, initialDat
             <span className="coach-date-range-result">
               {activeDays.length > 0
                 ? `${activeDays.length}일 모두 가능 ${multiDateCoaches.length}명`
-                : "이 달에 선택한 날짜 없음"}
+                : "선택한 날짜에 가능한 코치 없음"}
             </span>
           )}
           {selectedDates.size > 0 && (
@@ -270,8 +314,8 @@ export function CoachScheduleBoard({ dashboard, holidays, loadFailed, initialDat
               </div>
             ) : isMultiDate && activeDays.length === 0 ? (
               <div className="coach-doc-empty">
-                <strong>이 달에 선택한 날짜의 데이터가 없습니다.</strong>
-                <span>다른 날짜를 선택하거나 월을 이동하세요.</span>
+                <strong>선택한 날짜의 데이터가 없습니다.</strong>
+                <span>다른 날짜를 선택하거나 월을 이동해 이어서 선택하세요.</span>
               </div>
             ) : isMultiDate && multiDateCoaches.length === 0 ? (
               <div className="coach-doc-empty">
@@ -281,18 +325,52 @@ export function CoachScheduleBoard({ dashboard, holidays, loadFailed, initialDat
             ) : isMultiDate ? (
               <div className="coach-doc-rows">
                 {multiDateCoaches.map((coach) => (
-                  <Link className="coach-doc-row" href={`/coaches/${coach.id}`} key={coach.id}>
-                    <span className="coach-doc-icon">{coach.name.slice(0, 1)}</span>
-                    <span className="coach-doc-main">
-                      <strong>{coach.name}</strong>
-                      <small>
-                        <b>{coach.workType || "근무유형 없음"}</b>
-                        {coach.fields.length > 0 && <> · {coach.fields.slice(0, 3).join(", ")}</>}
-                        <> · {latestEngagementLabel(coach)}</>
-                      </small>
+                  <div className="coach-doc-row" key={coach.id}>
+                    <Link className="coach-doc-identity" href={`/coaches/${coach.id}`}>
+                      <span className="coach-doc-icon"><CoachAvatarIcon /></span>
+                      <span className="coach-doc-main">
+                        <strong>{coach.name}</strong>
+                        <small>
+                          <b>{coach.workType || "근무유형 없음"}</b>
+                          {coach.fields.length > 0 && <> · {coach.fields.slice(0, 3).join(", ")}</>}
+                          <> · {formatScheduleLabel(coach.schedules)}</>
+                          <> · {latestEngagementLabel(coach)}</>
+                        </small>
+                      </span>
+                    </Link>
+                    <span className="coach-doc-reserve coach-doc-reserve-chips">
+                      {activeDays.map((date) => {
+                        const reservation = reservationOn(coach.id, date);
+                        const isBusy = reservingKey === `${coach.id}__${date}`;
+                        const dayLabel = date.slice(5).replace("-", "/");
+                        return reservation ? (
+                          <span className="coach-doc-reserve-chip reserved" key={date} title={reservation.reservedByEmail}>
+                            {dayLabel} · {reservation.reservedByName}
+                            {reservation.reservedByEmail === currentUserEmail && (
+                              <button
+                                aria-label={`${dayLabel} 예약 취소`}
+                                disabled={isBusy}
+                                onClick={() => handleCancelReservation(coach.id, [date])}
+                                type="button"
+                              >
+                                ×
+                              </button>
+                            )}
+                          </span>
+                        ) : (
+                          <button
+                            className="coach-doc-reserve-chip"
+                            disabled={isBusy}
+                            key={date}
+                            onClick={() => handleReserve(coach.id, [date])}
+                            type="button"
+                          >
+                            {isBusy ? "..." : `${dayLabel} 예약`}
+                          </button>
+                        );
+                      })}
                     </span>
-                    <span className="coach-doc-time">{formatScheduleLabel(coach.schedules)}</span>
-                  </Link>
+                  </div>
                 ))}
               </div>
             ) : !singleDate ? (
@@ -307,20 +385,52 @@ export function CoachScheduleBoard({ dashboard, holidays, loadFailed, initialDat
               </div>
             ) : (
               <div className="coach-doc-rows">
-                {singleDateCoaches.map((coach) => (
-                  <Link className="coach-doc-row" href={`/coaches/${coach.id}`} key={coach.id}>
-                    <span className="coach-doc-icon">{coach.name.slice(0, 1)}</span>
-                    <span className="coach-doc-main">
-                      <strong>{coach.name}</strong>
-                      <small>
-                        <b>{coach.workType || "근무유형 없음"}</b>
-                        {coach.fields.length > 0 && <> · {coach.fields.slice(0, 3).join(", ")}</>}
-                        <> · {latestEngagementLabel(coach)}</>
-                      </small>
-                    </span>
-                    <span className="coach-doc-time">{formatScheduleLabel(coach.schedules)}</span>
-                  </Link>
-                ))}
+                {singleDateCoaches.map((coach) => {
+                  const reservation = coach.reservation;
+                  const isBusy = reservingKey === `${coach.id}__${singleDate}`;
+                  return (
+                    <div className="coach-doc-row" key={coach.id}>
+                      <Link className="coach-doc-identity" href={`/coaches/${coach.id}`}>
+                        <span className="coach-doc-icon"><CoachAvatarIcon /></span>
+                        <span className="coach-doc-main">
+                          <strong>{coach.name}</strong>
+                          <small>
+                            <b>{coach.workType || "근무유형 없음"}</b>
+                            {coach.fields.length > 0 && <> · {coach.fields.slice(0, 3).join(", ")}</>}
+                            <> · {formatScheduleLabel(coach.schedules)}</>
+                            <> · {latestEngagementLabel(coach)}</>
+                          </small>
+                        </span>
+                      </Link>
+                      <span className="coach-doc-reserve coach-doc-reserve-chips">
+                        {reservation ? (
+                          <span className="coach-doc-reserve-chip reserved" title={reservation.reservedByEmail}>
+                            {singleDate!.slice(5).replace("-", "/")} · {reservation.reservedByName}
+                            {reservation.reservedByEmail === currentUserEmail && (
+                              <button
+                                aria-label="예약 취소"
+                                disabled={isBusy}
+                                onClick={() => handleCancelReservation(coach.id, [singleDate!])}
+                                type="button"
+                              >
+                                ×
+                              </button>
+                            )}
+                          </span>
+                        ) : (
+                          <button
+                            className="coach-doc-reserve-chip"
+                            disabled={isBusy}
+                            onClick={() => handleReserve(coach.id, [singleDate!])}
+                            type="button"
+                          >
+                            {isBusy ? "예약 중..." : `${singleDate!.slice(5).replace("-", "/")} 예약`}
+                          </button>
+                        )}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </section>

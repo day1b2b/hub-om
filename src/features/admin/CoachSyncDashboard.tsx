@@ -3,25 +3,32 @@
 import { useState } from "react";
 import type { SyncResult } from "@/lib/coaches/syncTypes";
 
+const CONTRACT_SHEET_URL = "https://docs.google.com/spreadsheets/d/1xFgbLPL1ZLGxQws0ofK0kU8eehrFqEeAiwNbtQ56lyw/edit";
+
 interface SyncSource {
   id: string;
   name: string;
   endpoint: string;
   description: string;
+  externalUrl?: string;
+  externalUrlLabel?: string;
 }
 
 const SYNC_SOURCES: SyncSource[] = [
   {
     id: "engagements",
-    name: "코치 계약시트",
+    name: "계약시트 동기화",
     endpoint: "/api/sync/engagements",
-    description: "Google Drive의 계약 요청 시트(Office Excel)에서 코치·투입 계약을 동기화합니다."
+    description:
+      "구글시트 \"조교실습코치_일반계약요청\"에서 투입 이력과 스케줄을 가져옵니다. 2026년 이후 신규 코치는 자동 생성됩니다.",
+    externalUrl: CONTRACT_SHEET_URL,
+    externalUrlLabel: "시트 보기"
   },
   {
     id: "notion",
-    name: "Notion 코치",
+    name: "노션 코치 동기화",
     endpoint: "/api/admin/sync-notion",
-    description: "Notion 코치 DB에서 코치 기본 정보를 동기화합니다."
+    description: "노션 2026 DB에서 코치 정보(연락처, 이메일, 유형, 분야, 커리큘럼 등)를 가져옵니다."
   },
   {
     id: "samsung",
@@ -53,7 +60,12 @@ interface SyncApiResponse {
   error?: string;
 }
 
-export function CoachSyncDashboard() {
+interface CoachSyncDashboardProps {
+  sourceIds?: string[];
+}
+
+export function CoachSyncDashboard({ sourceIds }: CoachSyncDashboardProps = {}) {
+  const sources = sourceIds ? SYNC_SOURCES.filter((source) => sourceIds.includes(source.id)) : SYNC_SOURCES;
   const [states, setStates] = useState<Record<string, SourceState>>({});
 
   function stateOf(id: string): SourceState {
@@ -88,7 +100,7 @@ export function CoachSyncDashboard() {
 
   return (
     <div className="sync-source-list">
-      {SYNC_SOURCES.map((source) => {
+      {sources.map((source) => {
         const state = stateOf(source.id);
         const busy = state.phase === "previewing" || state.phase === "applying";
 
@@ -106,7 +118,7 @@ export function CoachSyncDashboard() {
                   onClick={() => callSync(source, true)}
                   type="button"
                 >
-                  {state.phase === "previewing" ? "미리보는 중…" : "미리보기"}
+                  {state.phase === "previewing" ? "미리보는 중…" : "변경사항 미리보기"}
                 </button>
                 <button
                   className="sync-btn sync-btn-apply"
@@ -114,13 +126,18 @@ export function CoachSyncDashboard() {
                   onClick={() => setSource(source.id, { ...state, phase: "confirming" })}
                   type="button"
                 >
-                  {state.phase === "applying" ? "반영 중…" : "실제 반영"}
+                  {state.phase === "applying" ? "실행 중…" : "동기화 실행"}
                 </button>
+                {source.externalUrl ? (
+                  <a className="sync-external-link" href={source.externalUrl} rel="noreferrer" target="_blank">
+                    {source.externalUrlLabel ?? "바로가기"}
+                  </a>
+                ) : null}
               </div>
             </div>
 
             {state.phase === "confirming" ? (
-              <div className="sync-confirm" role="alertdialog" aria-label="실제 반영 확인">
+              <div className="sync-confirm" role="alertdialog" aria-label="동기화 실행 확인">
                 <p>
                   <strong>{source.name}</strong>을(를) 실제 DB에 반영합니다. 되돌리려면 백업이 필요합니다. 진행할까요?
                 </p>
@@ -141,7 +158,9 @@ export function CoachSyncDashboard() {
 
             {state.phase === "failed" ? <p className="sync-error">오류: {state.error}</p> : null}
 
-            {state.result ? <SyncResultView applied={state.applied ?? false} result={state.result} /> : null}
+            {state.result ? (
+              <SyncResultView applied={state.applied ?? false} result={state.result} sourceName={source.name} />
+            ) : null}
           </article>
         );
       })}
@@ -149,14 +168,30 @@ export function CoachSyncDashboard() {
   );
 }
 
-function SyncResultView({ result, applied }: { result: SyncResult; applied: boolean }) {
+function SyncResultView({
+  applied,
+  result,
+  sourceName
+}: {
+  applied: boolean;
+  result: SyncResult;
+  sourceName: string;
+}) {
   const [showChanges, setShowChanges] = useState(false);
+  const hasChanges = result.changes ? result.changes.length > 0 : result.created > 0 || result.updated > 0;
 
   return (
     <div className="sync-result">
       <div className={`sync-result-banner ${applied ? "applied" : "preview"}`}>
         {applied ? "✅ 실제 반영 완료" : "미리보기 결과 (저장 안 됨)"}
       </div>
+
+      <p className="sync-summary-line">
+        {sourceName} {result.totalRows}명 신규 {result.created}명 업데이트 {result.updated}명 스킵 {result.skipped}건
+      </p>
+      {!hasChanges ? (
+        <p className="sync-summary-empty">변경 사항이 없습니다. DB와 {sourceName}이(가) 일치합니다.</p>
+      ) : null}
 
       <dl className="sync-stats">
         <Stat label="읽은 행" value={result.totalRows} />
