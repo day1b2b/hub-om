@@ -7896,44 +7896,6 @@ td span {
   justify-content: flex-end;
 }
 
-.coach-doc-reserved-badge {
-  background: #eaf3ec;
-  border-radius: 999px;
-  color: #056135;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 6px 12px;
-  white-space: nowrap;
-}
-
-.coach-doc-reserve-button,
-.coach-doc-reserve-cancel {
-  border-radius: 999px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 700;
-  padding: 7px 14px;
-  white-space: nowrap;
-}
-
-.coach-doc-reserve-button {
-  background: #056135;
-  border: 1px solid #056135;
-  color: #ffffff;
-}
-
-.coach-doc-reserve-button:disabled,
-.coach-doc-reserve-cancel:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-.coach-doc-reserve-cancel {
-  background: #ffffff;
-  border: 1px solid #dededa;
-  color: #77736e;
-}
-
 .coach-doc-reserve-chips {
   flex-wrap: wrap;
   justify-content: flex-end;

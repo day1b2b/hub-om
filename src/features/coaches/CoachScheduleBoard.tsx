@@ -12,6 +12,7 @@ import type {
 import type { HolidayMap } from "@/lib/holidayApi";
 
 interface CoachScheduleBoardProps {
+  currentUserEmail: string;
   dashboard: CoachScheduleDashboard;
   holidays: HolidayMap;
   loadFailed: boolean;
@@ -28,7 +29,7 @@ const TIME_FILTERS = [
 type TimeFilterKey = (typeof TIME_FILTERS)[number]["key"];
 
 
-export function CoachScheduleBoard({ dashboard, holidays, loadFailed, initialDate }: CoachScheduleBoardProps) {
+export function CoachScheduleBoard({ currentUserEmail, dashboard, holidays, loadFailed, initialDate }: CoachScheduleBoardProps) {
   const router = useRouter();
 
   // 선택 날짜들 (0개: 안내, 1개: 단일 날짜, 2개 이상: 다중 필터)
@@ -367,14 +368,16 @@ export function CoachScheduleBoard({ dashboard, holidays, loadFailed, initialDat
                         return reservation ? (
                           <span className="coach-doc-reserve-chip reserved" key={date} title={reservation.reservedByEmail}>
                             {dayLabel} · {reservation.reservedByName}
-                            <button
-                              aria-label={`${dayLabel} 예약 취소`}
-                              disabled={isBusy}
-                              onClick={() => handleCancelReservation(coach.id, [date])}
-                              type="button"
-                            >
-                              ×
-                            </button>
+                            {reservation.reservedByEmail === currentUserEmail && (
+                              <button
+                                aria-label={`${dayLabel} 예약 취소`}
+                                disabled={isBusy}
+                                onClick={() => handleCancelReservation(coach.id, [date])}
+                                type="button"
+                              >
+                                ×
+                              </button>
+                            )}
                           </span>
                         ) : (
                           <button
@@ -421,29 +424,29 @@ export function CoachScheduleBoard({ dashboard, holidays, loadFailed, initialDat
                           </small>
                         </span>
                       </Link>
-                      <span className="coach-doc-reserve">
+                      <span className="coach-doc-reserve coach-doc-reserve-chips">
                         {reservation ? (
-                          <>
-                            <span className="coach-doc-reserved-badge" title={reservation.reservedByEmail}>
-                              예약 · {reservation.reservedByName}
-                            </span>
-                            <button
-                              className="coach-doc-reserve-cancel"
-                              disabled={isBusy}
-                              onClick={() => handleCancelReservation(coach.id, [singleDate!])}
-                              type="button"
-                            >
-                              취소
-                            </button>
-                          </>
+                          <span className="coach-doc-reserve-chip reserved" title={reservation.reservedByEmail}>
+                            {singleDate!.slice(5).replace("-", "/")} · {reservation.reservedByName}
+                            {reservation.reservedByEmail === currentUserEmail && (
+                              <button
+                                aria-label="예약 취소"
+                                disabled={isBusy}
+                                onClick={() => handleCancelReservation(coach.id, [singleDate!])}
+                                type="button"
+                              >
+                                ×
+                              </button>
+                            )}
+                          </span>
                         ) : (
                           <button
-                            className="coach-doc-reserve-button"
+                            className="coach-doc-reserve-chip"
                             disabled={isBusy}
                             onClick={() => handleReserve(coach.id, [singleDate!])}
                             type="button"
                           >
-                            {isBusy ? "예약 중" : "예약"}
+                            {isBusy ? "예약 중..." : `${singleDate!.slice(5).replace("-", "/")} 예약`}
                           </button>
                         )}
                       </span>

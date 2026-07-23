@@ -73,7 +73,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 }
 
 export async function DELETE(request: Request, { params }: RouteContext) {
-  await requireWorkspaceSession();
+  const session = await requireWorkspaceSession();
   const { id } = await params;
   const body = (await request.json().catch(() => ({}))) as { dates?: unknown };
   const dates = parseDates(body.dates);
@@ -82,9 +82,12 @@ export async function DELETE(request: Request, { params }: RouteContext) {
     return NextResponse.json({ ok: false, error: "날짜 값이 올바르지 않습니다." }, { status: 400 });
   }
 
+  const currentUserEmail = session.user?.email ?? "";
+
   const prisma = getPrismaClient();
+  // 본인이 예약한 날짜만 취소한다. 다른 매니저의 예약 건은 대상에서 제외된다.
   const result = await prisma.coachDayReservation.updateMany({
-    where: { coachId: id, date: { in: dates.map(toDbDate) }, cancelledAt: null },
+    where: { coachId: id, date: { in: dates.map(toDbDate) }, cancelledAt: null, reservedByEmail: currentUserEmail },
     data: { cancelledAt: new Date() }
   });
 
