@@ -1,8 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import type { TeamScope } from "@/lib/teamScope";
 
 interface AppSidebarProps {
@@ -12,7 +12,10 @@ interface AppSidebarProps {
 
 export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps) {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const displayName = session?.user?.name || session?.user?.email || "";
   void teamScope;
+  void label;
   const isDatabaseAdminPage = pathname?.startsWith("/admin/database") ?? false;
   const isImportAdminPage = pathname?.startsWith("/admin/imports") ?? false;
   const isSyncAdminPage = pathname?.startsWith("/admin/sync") ?? false;
@@ -33,10 +36,8 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
   return (
     <aside className="sidebar" aria-label="hub-om 메뉴">
       <Link className="brand" href="/dashboard">
-        <Image src="/hub-om-logo.svg" alt="hub-om" width={32} height={32} className="brand-logo" />
         <div>
-          <strong>hub-om</strong>
-          <span>{label}</span>
+          <strong>Hello{displayName ? `, ${displayName}` : ""}!</strong>
         </div>
       </Link>
       <nav className="nav-list">
