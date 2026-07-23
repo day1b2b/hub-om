@@ -4,7 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
-import type { CoachScheduleDashboard, CoachScheduleDashboardCoach } from "@/lib/data/coachTypes";
+import type {
+  CoachScheduleDashboard,
+  CoachScheduleDashboardCoach,
+  CoachScheduleDashboardDay
+} from "@/lib/data/coachTypes";
 import type { HolidayMap } from "@/lib/holidayApi";
 
 interface CoachScheduleBoardProps {
@@ -38,12 +42,21 @@ export function CoachScheduleBoard({ dashboard, holidays, loadFailed, initialDat
   const [timeFilter, setTimeFilter] = useState<TimeFilterKey>("all");
   const [query, setQuery] = useState("");
 
+  // 달 이동 시에도 이전에 조회했던 달의 선택 날짜를 계속 조합할 수 있도록 달별 일정 데이터를 누적한다.
+  // (렌더 중 상태 조정: https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes)
+  const [daysCache, setDaysCache] = useState<Record<string, CoachScheduleDashboardDay>>(() => ({ ...dashboard.days }));
+  const [cachedDashboardDays, setCachedDashboardDays] = useState(dashboard.days);
+  if (dashboard.days !== cachedDashboardDays) {
+    setCachedDashboardDays(dashboard.days);
+    setDaysCache((prev) => ({ ...prev, ...dashboard.days }));
+  }
+
   const monthDate = useMemo(() => parseYearMonth(dashboard.yearMonth), [dashboard.yearMonth]);
   const sortedSelected = useMemo(() => [...selectedDates].sort(), [selectedDates]);
   const isSingleDate = selectedDates.size === 1;
   const isMultiDate = selectedDates.size > 1;
   const singleDate = isSingleDate ? sortedSelected[0]! : null;
-  const singleDay = singleDate ? dashboard.days[singleDate] : null;
+  const singleDay = singleDate ? daysCache[singleDate] : null;
 
   const monthCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -66,16 +79,16 @@ export function CoachScheduleBoard({ dashboard, holidays, loadFailed, initialDat
     });
   }, [query, singleDay?.coaches, timeFilter]);
 
-  // 다중 날짜: 선택 날짜 중 이번 달 데이터 있는 날짜
-  const activeDays = useMemo(() => sortedSelected.filter((d) => dashboard.days[d]), [sortedSelected, dashboard.days]);
+  // 다중 날짜: 선택 날짜 중 데이터를 불러온 적 있는 날짜(다른 달로 이동해 조회한 날짜 포함)
+  const activeDays = useMemo(() => sortedSelected.filter((d) => daysCache[d]), [sortedSelected, daysCache]);
 
-  // 다중 날짜: 선택 날짜 모두 가능한 코치
+  // 다중 날짜: 선택 날짜 모두 가능한 코치 (다른 달에서 선택한 날짜도 함께 조합)
   const multiDateCoaches = useMemo(() => {
     if (!isMultiDate || activeDays.length === 0) return [];
     const coachDayCounts = new Map<string, number>();
     const coachData = new Map<string, CoachScheduleDashboardCoach>();
     for (const date of activeDays) {
-      const day = dashboard.days[date];
+      const day = daysCache[date];
       for (const coach of day.coaches) {
         if (!coachMatchesTimeFilter(coach, timeFilter)) continue;
         coachDayCounts.set(coach.id, (coachDayCounts.get(coach.id) ?? 0) + 1);
@@ -96,7 +109,7 @@ export function CoachScheduleBoard({ dashboard, holidays, loadFailed, initialDat
         if (a.engagementCount !== b.engagementCount) return b.engagementCount - a.engagementCount;
         return a.name.localeCompare(b.name, "ko");
       });
-  }, [isMultiDate, activeDays, dashboard.days, timeFilter, query]);
+  }, [isMultiDate, activeDays, daysCache, timeFilter, query]);
 
   function handleCalendarClick(date: string) {
     if (rangeMode) {
@@ -188,7 +201,7 @@ export function CoachScheduleBoard({ dashboard, holidays, loadFailed, initialDat
             <span className="coach-date-range-result">
               {activeDays.length > 0
                 ? `${activeDays.length}일 모두 가능 ${multiDateCoaches.length}명`
-                : "이 달에 선택한 날짜 없음"}
+                : "선택한 날짜에 가능한 코치 없음"}
             </span>
           )}
           {selectedDates.size > 0 && (
@@ -270,8 +283,8 @@ export function CoachScheduleBoard({ dashboard, holidays, loadFailed, initialDat
               </div>
             ) : isMultiDate && activeDays.length === 0 ? (
               <div className="coach-doc-empty">
-                <strong>이 달에 선택한 날짜의 데이터가 없습니다.</strong>
-                <span>다른 날짜를 선택하거나 월을 이동하세요.</span>
+                <strong>선택한 날짜의 데이터가 없습니다.</strong>
+                <span>다른 날짜를 선택하거나 월을 이동해 이어서 선택하세요.</span>
               </div>
             ) : isMultiDate && multiDateCoaches.length === 0 ? (
               <div className="coach-doc-empty">
