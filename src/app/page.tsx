@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 
 export const metadata: Metadata = {
   title: "hub-om | 기업교육 운영 관리",
@@ -11,12 +10,14 @@ export default function PublicHomePage() {
     <main className="public-home">
       <section className="public-hero" aria-labelledby="home-title">
         <div className="public-hero-copy">
-          <Image alt="OM" className="public-home-logo" height={72} priority src="/hub-om-logo-120.png" width={72} />
-          <p className="eyebrow">hub-om</p>
+          <p className="eyebrow">
+            <span aria-hidden="true" className="eyebrow-dot" />
+            hub-om · LIVE STATUS
+          </p>
           <h1 id="home-title">기업교육 운영 현황을 한 곳에서 관리합니다.</h1>
           <p className="lede">
-            hub-om은 운영 담당자가 과정 일정, 담당자, 운영 이슈, 관련 커뮤니케이션, 자료 후보를
-            확인하고 교육 운영 상태를 관리하기 위한 내부 업무 도구입니다.
+            과정 일정, 담당자, 운영 이슈, 관련 커뮤니케이션, 자료 후보를 하나의 화면에서 확인하고
+            교육 운영 상태를 관리하는 내부 업무 도구입니다.
           </p>
           <div className="public-home-actions">
             <a className="primary-link" href="/sign-in?callbackUrl=/dashboard">
@@ -27,20 +28,41 @@ export default function PublicHomePage() {
             </a>
           </div>
         </div>
+
+        <aside aria-label="hub-om 핵심 가치" className="public-hero-panel">
+          <p className="public-hero-panel-head">CORE_VALUES</p>
+          <ol className="public-hero-panel-list">
+            <li>
+              <span className="public-hero-panel-idx">01</span>
+              <span className="public-hero-panel-value">Customer-Centric</span>
+            </li>
+            <li>
+              <span className="public-hero-panel-idx">02</span>
+              <span className="public-hero-panel-value">Global Optimization</span>
+            </li>
+            <li>
+              <span className="public-hero-panel-idx">03</span>
+              <span className="public-hero-panel-value">Growth of Our People</span>
+            </li>
+          </ol>
+        </aside>
       </section>
 
       <section className="public-home-section" aria-labelledby="features-title">
-        <h2 id="features-title">주요 기능</h2>
+        <h2 id="features-title">Key Functions</h2>
         <div className="public-home-grid">
           <article>
+            <span className="public-home-grid-idx">01</span>
             <h3>운영 현황 확인</h3>
             <p>과정별 일정, 상태, 담당자, 준비 항목을 표준 운영 화면에서 확인합니다.</p>
           </article>
           <article>
+            <span className="public-home-grid-idx">02</span>
             <h3>관련 논의 추적</h3>
             <p>과정과 관련된 메일 논의 후보를 읽기 전용으로 조회해 운영 맥락을 빠르게 찾습니다.</p>
           </article>
           <article>
+            <span className="public-home-grid-idx">03</span>
             <h3>자료 후보 검토</h3>
             <p>Drive, Sheets, Calendar 연동이 설정된 경우 운영 자료와 일정 후보를 검토합니다.</p>
           </article>
