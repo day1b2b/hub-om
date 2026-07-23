@@ -42,7 +42,6 @@ export function CoachScheduleBoard({ currentUserEmail, dashboard, holidays, load
   const [rangeMode, setRangeMode] = useState(false);
 
   const [timeFilter, setTimeFilter] = useState<TimeFilterKey>("all");
-  const [query, setQuery] = useState("");
   const [reservingKey, setReservingKey] = useState<string | null>(null);
 
   // 달 이동 시에도 이전에 조회했던 달의 선택 날짜를 계속 조합할 수 있도록 달별 일정 데이터를 누적한다.
@@ -73,14 +72,8 @@ export function CoachScheduleBoard({ currentUserEmail, dashboard, holidays, load
 
   // 단일 날짜 코치 목록
   const singleDateCoaches = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-    return (singleDay?.coaches ?? []).filter((coach) => {
-      if (!coachMatchesTimeFilter(coach, timeFilter)) return false;
-      if (!normalizedQuery) return true;
-      return [coach.name, coach.workType ?? "", ...coach.fields, ...coach.recentEngagements.map((e) => e.courseName)]
-        .some((v) => v.toLowerCase().includes(normalizedQuery));
-    });
-  }, [query, singleDay?.coaches, timeFilter]);
+    return (singleDay?.coaches ?? []).filter((coach) => coachMatchesTimeFilter(coach, timeFilter));
+  }, [singleDay?.coaches, timeFilter]);
 
   // 다중 날짜: 선택 날짜 중 데이터를 불러온 적 있는 날짜(다른 달로 이동해 조회한 날짜 포함)
   const activeDays = useMemo(() => sortedSelected.filter((d) => daysCache[d]), [sortedSelected, daysCache]);
@@ -98,21 +91,15 @@ export function CoachScheduleBoard({ currentUserEmail, dashboard, holidays, load
         if (!coachData.has(coach.id)) coachData.set(coach.id, coach);
       }
     }
-    const normalizedQuery = query.trim().toLowerCase();
     return [...coachDayCounts.entries()]
       .filter(([, count]) => count === activeDays.length)
       .map(([id]) => coachData.get(id)!)
       .filter(Boolean)
-      .filter((coach) => {
-        if (!normalizedQuery) return true;
-        return [coach.name, coach.workType ?? "", ...coach.fields, ...coach.recentEngagements.map((e) => e.courseName)]
-          .some((v) => v.toLowerCase().includes(normalizedQuery));
-      })
       .sort((a, b) => {
         if (a.engagementCount !== b.engagementCount) return b.engagementCount - a.engagementCount;
         return a.name.localeCompare(b.name, "ko");
       });
-  }, [isMultiDate, activeDays, daysCache, timeFilter, query]);
+  }, [isMultiDate, activeDays, daysCache, timeFilter]);
 
   function handleCalendarClick(date: string) {
     if (rangeMode) {
@@ -144,15 +131,6 @@ export function CoachScheduleBoard({ currentUserEmail, dashboard, holidays, load
   function moveMonth(offset: number) {
     const next = new Date(Date.UTC(monthDate.year, monthDate.monthIndex + offset, 1));
     router.push(`/coaches/schedule?yearMonth=${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, "0")}`);
-  }
-
-  function goToday() {
-    const today = formatDate(new Date());
-    if (today.startsWith(dashboard.yearMonth)) {
-      setSelectedDates(new Set([today]));
-      return;
-    }
-    router.push(`/coaches/schedule?yearMonth=${today.slice(0, 7)}`);
   }
 
   // 같은 코치·날짜를 여러 매니저가 중복으로 연락하지 않도록 남기는 가벼운 예약 표시.
@@ -228,29 +206,10 @@ export function CoachScheduleBoard({ currentUserEmail, dashboard, holidays, load
       <AppSidebar label="Coach schedule" teamScope="both" />
 
       <section className="content coach-schedule-workspace" id="coach-schedule">
-        <div className="coach-schedule-topbar">
-          <label className="coach-schedule-search">
-            <span aria-hidden="true">⌕</span>
-            <input
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="코치, 분야, 과정 검색"
-              type="search"
-              value={query}
-            />
-          </label>
-          <div className="coach-schedule-topnav">
-            <Link href="/coaches">코치 목록</Link>
-            <Link href="/coaches/my-page">마이페이지</Link>
-          </div>
-        </div>
-
         <header className="coach-workspace-header">
           <div>
             <h1>코치 일정</h1>
             <span className="coach-plan-badge">coach-db</span>
-          </div>
-          <div className="coach-workspace-actions">
-            <button onClick={goToday} type="button">오늘</button>
           </div>
         </header>
 
