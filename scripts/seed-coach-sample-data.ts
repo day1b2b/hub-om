@@ -57,8 +57,19 @@ function ymd(year: number, month: number, day: number): Date {
   return new Date(Date.UTC(year, month - 1, day));
 }
 
+// 코치 일정 화면에서 달 이동/다중 선택을 확인할 수 있도록 7월(이번 달)과 8월(다음 달) 모두 시드한다.
+const SEED_MONTHS = [7, 8];
+
 async function main(): Promise<void> {
   console.log("[seed-coach-sample-data] 샘플 데이터 생성 시작");
+
+  // sourceScheduleId 형식이 바뀌었으므로(코치-일 -> 코치-월-일), 이전 형식으로 남은 샘플 일정을 먼저 정리한다.
+  const { count: removedCount } = await prisma.coachSchedule.deleteMany({
+    where: { sourceScheduleId: { startsWith: "seed-schedule-" } }
+  });
+  if (removedCount > 0) {
+    console.log(`[seed-coach-sample-data] 기존 샘플 일정 ${removedCount}건 정리`);
+  }
 
   const fieldMasterMap = new Map<string, string>();
   for (const name of FIELDS) {
@@ -125,26 +136,28 @@ async function main(): Promise<void> {
       });
     }
 
-    // 이번 달 몇 개 날짜에 일정 배정 (코치별로 살짝 다르게)
-    const days = [3 + index, 10 + index, 17 + index].filter((d) => d <= 28);
-    for (const day of days) {
-      const sourceScheduleId = `seed-schedule-${index + 1}-${day}`;
-      await prisma.coachSchedule.upsert({
-        where: { sourceScheduleId },
-        create: {
-          sourceScheduleId,
-          coachId: coach.id,
-          date: ymd(2026, 7, day),
-          startTime: "10:00",
-          endTime: "18:00"
-        },
-        update: {
-          date: ymd(2026, 7, day),
-          startTime: "10:00",
-          endTime: "18:00"
-        }
-      });
-      scheduleCount += 1;
+    // 이번 달·다음 달 몇 개 날짜에 일정 배정 (코치별로 살짝 다르게, 달 이동/다중 선택 확인용)
+    for (const month of SEED_MONTHS) {
+      const days = [3 + index, 10 + index, 17 + index].filter((d) => d <= 28);
+      for (const day of days) {
+        const sourceScheduleId = `seed-schedule-${index + 1}-${month}-${day}`;
+        await prisma.coachSchedule.upsert({
+          where: { sourceScheduleId },
+          create: {
+            sourceScheduleId,
+            coachId: coach.id,
+            date: ymd(2026, month, day),
+            startTime: "10:00",
+            endTime: "18:00"
+          },
+          update: {
+            date: ymd(2026, month, day),
+            startTime: "10:00",
+            endTime: "18:00"
+          }
+        });
+        scheduleCount += 1;
+      }
     }
   }
 
