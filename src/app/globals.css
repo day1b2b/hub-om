@@ -2843,7 +2843,7 @@ td span {
 .coach-status-toggle button[aria-pressed="true"] {
   background: #ffffff;
   box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
-  color: #287a38;
+  color: #056135;
 }
 
 .coach-status-toggle button:disabled {
@@ -3326,8 +3326,8 @@ td span {
 }
 
 .coach-origin-chip.green {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: #eaf3ec;
+  color: #056135;
 }
 
 .coach-origin-chip.gray {
@@ -3399,9 +3399,9 @@ td span {
 }
 
 .coach-origin-access-chip {
-  background: #e8f5e9;
+  background: #eaf3ec;
   border-radius: 999px;
-  color: #2e7d32;
+  color: #056135;
   font-size: 11px;
   font-weight: 900;
   justify-self: start;
@@ -3453,8 +3453,8 @@ td span {
 }
 
 .coach-origin-calendar-day.available {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: #eaf3ec;
+  color: #056135;
 }
 
 .coach-origin-calendar-day.confirmed {
@@ -3489,8 +3489,8 @@ td span {
 }
 
 .coach-origin-legend i.available {
-  background: #e8f5e9;
-  border-color: #e8f5e9;
+  background: #eaf3ec;
+  border-color: #eaf3ec;
 }
 
 .coach-origin-legend i.confirmed {
@@ -3601,8 +3601,8 @@ td span {
 }
 
 .coach-origin-day-list span.available {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: #eaf3ec;
+  color: #056135;
 }
 
 .coach-origin-day-list small {
