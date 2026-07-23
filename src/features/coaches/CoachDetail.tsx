@@ -295,9 +295,16 @@ function EngagementPane({ engagements }: { engagements: CoachEngagementView[] })
               {formatDateLabel(engagement.startDate)}
               {engagement.endDate ? `~${formatDateLabel(engagement.endDate)}` : ""}
             </time>
-            <strong>{cleanCourseName(engagement.courseName)}</strong>
-            {engagement.rating ? <small>평점 {engagement.rating}</small> : null}
-            {engagement.feedback ? <p className="coach-origin-engagement-feedback">{engagement.feedback}</p> : null}
+            <span className="coach-origin-engagement-course">
+              <strong>{cleanCourseName(engagement.courseName)}</strong>
+              {(engagement.rating || engagement.feedback) && (
+                <small className="coach-origin-engagement-summary">
+                  {engagement.rating ? `평점 ${engagement.rating}` : ""}
+                  {engagement.rating && engagement.feedback ? " · " : ""}
+                  {engagement.feedback ?? ""}
+                </small>
+              )}
+            </span>
           </article>
         ))
       ) : (

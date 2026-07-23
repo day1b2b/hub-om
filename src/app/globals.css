@@ -3634,7 +3634,7 @@ td span {
   border-radius: 8px;
   display: grid;
   gap: 10px;
-  grid-template-columns: 58px 158px minmax(0, 1fr) 70px;
+  grid-template-columns: 58px 158px minmax(0, 1fr);
   min-height: 48px;
   padding: 10px 12px;
 }
@@ -3655,6 +3655,12 @@ td span {
   font-weight: 800;
 }
 
+.coach-origin-engagement-course {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
 .coach-origin-engagement-row strong {
   color: #333333;
   font-size: 14px;
@@ -3662,17 +3668,10 @@ td span {
   overflow-wrap: anywhere;
 }
 
-.coach-origin-engagement-row small {
-  color: #f57f17;
+.coach-origin-engagement-summary {
+  color: #77736e;
   font-size: 12px;
-  font-weight: 800;
-  text-align: right;
-}
-
-.coach-origin-engagement-feedback {
-  color: #64748b;
-  font-size: 13px;
-  grid-column: 1 / -1;
+  font-weight: 700;
   overflow-wrap: anywhere;
 }
 
