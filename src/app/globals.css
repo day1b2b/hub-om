@@ -8105,6 +8105,20 @@ button.coach-doc-reserve-chip:disabled {
   white-space: nowrap;
 }
 
+.my-review-saved-flash {
+  color: #056135;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 700;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  width: 40px;
+}
+
+.my-review-saved-flash.visible {
+  opacity: 1;
+}
+
 .my-round-list {
   display: grid;
   gap: 6px;

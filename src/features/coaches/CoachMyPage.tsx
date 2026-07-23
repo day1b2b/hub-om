@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import type { MyActiveReservation, MyConfirmedCourse } from "@/lib/data/coachMyPage";
 
@@ -169,6 +169,9 @@ function CoachReviewRow({ coach }: CoachReviewRowProps) {
   const [feedback, setFeedback] = useState(coach.feedback ?? "");
   const [rehire, setRehire] = useState(coach.rehire ?? false);
   const [saving, setSaving] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
+  const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savedFlashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function save(next: { rating?: number | null; feedback?: string; rehire?: boolean }) {
     setSaving(true);
@@ -178,11 +181,32 @@ function CoachReviewRow({ coach }: CoachReviewRowProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(next)
       });
-      if (!response.ok) alert("저장하지 못했습니다.");
+      if (response.ok) {
+        setJustSaved(true);
+        if (savedFlashTimer.current) clearTimeout(savedFlashTimer.current);
+        savedFlashTimer.current = setTimeout(() => setJustSaved(false), 1500);
+      } else {
+        alert("저장하지 못했습니다.");
+      }
     } catch {
       alert("저장하지 못했습니다.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  function handleFeedbackChange(value: string) {
+    setFeedback(value);
+    if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
+    // 타이핑을 멈춘 지 0.6초 뒤 자동 저장(계속 입력 중이면 저장을 미룬다).
+    feedbackTimer.current = setTimeout(() => save({ feedback: value }), 600);
+  }
+
+  function flushFeedback() {
+    if (feedbackTimer.current) {
+      clearTimeout(feedbackTimer.current);
+      feedbackTimer.current = null;
+      save({ feedback });
     }
   }
 
@@ -218,8 +242,8 @@ function CoachReviewRow({ coach }: CoachReviewRowProps) {
         </div>
         <input
           className="my-review-feedback"
-          onBlur={() => save({ feedback })}
-          onChange={(event) => setFeedback(event.target.value)}
+          onBlur={flushFeedback}
+          onChange={(event) => handleFeedbackChange(event.target.value)}
           placeholder="한줄 평가"
           type="text"
           value={feedback}
@@ -236,6 +260,9 @@ function CoachReviewRow({ coach }: CoachReviewRowProps) {
           />
           재투입
         </label>
+        <span className={`my-review-saved-flash${justSaved ? " visible" : ""}`} aria-live="polite">
+          {justSaved ? "저장됨" : ""}
+        </span>
       </div>
 
       {coach.rounds.length > 0 && (
