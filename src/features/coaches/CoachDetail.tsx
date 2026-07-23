@@ -144,7 +144,7 @@ function ProfilePane({ coach }: { coach: CoachDetail }) {
         <div className="coach-origin-section-title">
           <span>가능 분야</span>
         </div>
-        <ChipList items={coach.fields} tone="blue" />
+        <ChipList items={coach.fields} tone="green" />
       </section>
 
       <section className="coach-origin-card coach-origin-wide-card">
@@ -316,13 +316,13 @@ function InfoItem({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ChipList({ items, tone }: { items: string[]; tone: "blue" | "mixed" }) {
+function ChipList({ items, tone }: { items: string[]; tone: "green" | "mixed" }) {
   if (items.length === 0) return <p className="coach-origin-empty-text">등록된 항목이 없습니다.</p>;
 
   return (
     <div className="coach-origin-chip-list">
       {items.map((item) => (
-        <span className={`coach-origin-chip ${tone === "mixed" ? curriculumTone(item) : "blue"}`} key={item}>{item}</span>
+        <span className={`coach-origin-chip ${tone === "mixed" ? curriculumTone(item) : tone}`} key={item}>{item}</span>
       ))}
     </div>
   );

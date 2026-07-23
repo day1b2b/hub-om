@@ -3437,7 +3437,7 @@ td span {
 
 .coach-origin-weekdays span:last-child,
 .coach-origin-calendar-day.saturday:not(.available):not(.confirmed) {
-  color: #1565c0;
+  color: #056135;
 }
 
 .coach-origin-calendar-grid {
