@@ -24,6 +24,8 @@ function toDbDate(date: string): Date {
 }
 
 // 코치·날짜 조합 하나(단일 선택 화면)부터 여러 날짜(다중 선택 화면)까지 한 번에 예약/취소한다.
+// 요청한 날짜별로 "최종적으로 누가 예약 중인지"를 항상 돌려줘서, 화면은 성공/충돌을 구분해
+// 별도로 알릴 필요 없이 그 값을 그대로 표시에 반영하면 된다.
 export async function POST(request: Request, { params }: RouteContext) {
   const session = await requireWorkspaceSession();
   const { id } = await params;
@@ -42,15 +44,13 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   const existingRows = await prisma.coachDayReservation.findMany({
     where: { coachId: id, date: { in: dates.map(toDbDate) }, cancelledAt: null },
-    select: { date: true, reservedByName: true }
+    select: { date: true, reservedByName: true, reservedByEmail: true }
   });
-  const existingByDate = new Map(existingRows.map((row) => [row.date.toISOString().slice(0, 10), row.reservedByName]));
+  const existingByDate = new Map(
+    existingRows.map((row) => [row.date.toISOString().slice(0, 10), row])
+  );
 
   const datesToCreate = dates.filter((date) => !existingByDate.has(date));
-  const conflicts = dates
-    .filter((date) => existingByDate.has(date))
-    .map((date) => ({ date, reservedByName: existingByDate.get(date)! }));
-
   const reservedByName = session.user?.name ?? session.user?.email ?? "매니저";
   const reservedByEmail = session.user?.email ?? "";
 
@@ -65,11 +65,14 @@ export async function POST(request: Request, { params }: RouteContext) {
     });
   }
 
-  return NextResponse.json({
-    ok: true,
-    created: datesToCreate,
-    conflicts
+  const results = dates.map((date) => {
+    const existing = existingByDate.get(date);
+    return existing
+      ? { date, reservedByName: existing.reservedByName, reservedByEmail: existing.reservedByEmail }
+      : { date, reservedByName, reservedByEmail };
   });
+
+  return NextResponse.json({ ok: true, results });
 }
 
 export async function DELETE(request: Request, { params }: RouteContext) {
@@ -86,10 +89,17 @@ export async function DELETE(request: Request, { params }: RouteContext) {
 
   const prisma = getPrismaClient();
   // 본인이 예약한 날짜만 취소한다. 다른 매니저의 예약 건은 대상에서 제외된다.
-  const result = await prisma.coachDayReservation.updateMany({
+  const ownRows = await prisma.coachDayReservation.findMany({
     where: { coachId: id, date: { in: dates.map(toDbDate) }, cancelledAt: null, reservedByEmail: currentUserEmail },
-    data: { cancelledAt: new Date() }
+    select: { id: true, date: true }
   });
 
-  return NextResponse.json({ ok: true, cancelledCount: result.count });
+  if (ownRows.length > 0) {
+    await prisma.coachDayReservation.updateMany({
+      where: { id: { in: ownRows.map((row) => row.id) } },
+      data: { cancelledAt: new Date() }
+    });
+  }
+
+  return NextResponse.json({ ok: true, cancelledDates: ownRows.map((row) => row.date.toISOString().slice(0, 10)) });
 }

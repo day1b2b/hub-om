@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import type {
+  CoachDayReservationView,
   CoachScheduleDashboard,
   CoachScheduleDashboardCoach,
   CoachScheduleDashboardDay
@@ -155,7 +156,17 @@ export function CoachScheduleBoard({ currentUserEmail, dashboard, holidays, load
   }
 
   // 같은 코치·날짜를 여러 매니저가 중복으로 연락하지 않도록 남기는 가벼운 예약 표시.
-  // (누가 예약했는지 보여주는 용도이며, 취소는 아무 매니저나 할 수 있다.)
+  // 서버는 요청한 날짜별 "최종 예약자"를 항상 돌려주므로, 성공/충돌을 구분해 알리지 않고
+  // 그 결과를 그대로 화면에 반영한다(이미 다른 매니저가 예약 중이면 그 이름이 바로 표시됨).
+  function applyReservationPatch(coachId: string, date: string, reservation: CoachDayReservationView | null) {
+    setDaysCache((prev) => {
+      const day = prev[date];
+      if (!day) return prev;
+      const coaches = day.coaches.map((c) => (c.id === coachId ? { ...c, reservation } : c));
+      return { ...prev, [date]: { ...day, coaches } };
+    });
+  }
+
   // 단일 날짜 화면에서는 dates가 1개, 다중 날짜 화면에서는 선택 날짜별로 각각 1개씩 호출한다.
   async function handleReserve(coachId: string, dates: string[]) {
     const key = `${coachId}__${dates.join(",")}`;
@@ -167,9 +178,11 @@ export function CoachScheduleBoard({ currentUserEmail, dashboard, holidays, load
         body: JSON.stringify({ dates })
       });
       if (response.ok) {
-        const body = (await response.json()) as { conflicts?: Array<{ date: string; reservedByName: string }> };
-        if (body.conflicts && body.conflicts.length > 0) {
-          alert(body.conflicts.map((c) => `${c.date}: 이미 ${c.reservedByName}님이 예약했습니다.`).join("\n"));
+        const body = (await response.json()) as {
+          results: Array<{ date: string; reservedByName: string; reservedByEmail: string }>;
+        };
+        for (const r of body.results) {
+          applyReservationPatch(coachId, r.date, { reservedByName: r.reservedByName, reservedByEmail: r.reservedByEmail });
         }
       } else {
         alert("예약하지 못했습니다.");
@@ -178,7 +191,6 @@ export function CoachScheduleBoard({ currentUserEmail, dashboard, holidays, load
       alert("예약하지 못했습니다.");
     } finally {
       setReservingKey(null);
-      router.refresh();
     }
   }
 
@@ -192,12 +204,18 @@ export function CoachScheduleBoard({ currentUserEmail, dashboard, holidays, load
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ dates })
       });
-      if (!response.ok) alert("취소하지 못했습니다.");
+      if (response.ok) {
+        const body = (await response.json()) as { cancelledDates: string[] };
+        for (const date of body.cancelledDates) {
+          applyReservationPatch(coachId, date, null);
+        }
+      } else {
+        alert("취소하지 못했습니다.");
+      }
     } catch {
       alert("취소하지 못했습니다.");
     } finally {
       setReservingKey(null);
-      router.refresh();
     }
   }
 
