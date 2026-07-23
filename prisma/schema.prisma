@@ -630,3 +630,18 @@ model TeamUser {
 
   @@map("team_users")
 }
+
+model Announcement {
+  id          String    @id @default(uuid()) @db.Uuid
+  title       String
+  content     String
+  authorEmail String    @map("author_email")
+  authorName  String?   @map("author_name")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+  deletedBy   String?   @map("deleted_by")
+
+  @@index([deletedAt, createdAt])
+  @@map("announcements")
+}

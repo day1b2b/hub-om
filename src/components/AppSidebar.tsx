@@ -1,8 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import type { TeamScope } from "@/lib/teamScope";
 
 interface AppSidebarProps {
@@ -12,7 +12,10 @@ interface AppSidebarProps {
 
 export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps) {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const displayName = session?.user?.name || session?.user?.email || "";
   void teamScope;
+  void label;
   const isDatabaseAdminPage = pathname?.startsWith("/admin/database") ?? false;
   const isImportAdminPage = pathname?.startsWith("/admin/imports") ?? false;
   const isSyncAdminPage = pathname?.startsWith("/admin/sync") ?? false;
@@ -20,6 +23,7 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
   const isMyDashboardPage = pathname === "/me";
   const isInstructorWikiPage = pathname === "/instructor-wiki";
   const isCompanyWikiPage = pathname === "/company-wiki";
+  const isAnnouncementsPage = pathname?.startsWith("/announcements") ?? false;
   const isCreatePage = pathname === "/operations/new";
   const isOperationsPage = pathname === "/operations" || (pathname?.startsWith("/operations/") && !isCreatePage);
   const isCoachSchedulePage = pathname === "/coaches/schedule";
@@ -35,10 +39,8 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
   return (
     <aside className="sidebar" aria-label="hub-om 메뉴">
       <Link className="brand" href="/dashboard">
-        <Image src="/hub-om-logo.svg" alt="hub-om" width={32} height={32} className="brand-logo" />
         <div>
-          <strong>hub-om</strong>
-          <span>{label}</span>
+          <strong>Hello{displayName ? `, ${displayName}` : ""}!</strong>
         </div>
       </Link>
       <nav className="nav-list">
@@ -68,6 +70,7 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
           <Link className={isResourcesPage ? "active" : ""} data-icon="🔒" href="/resources">리소스</Link>
           <Link className={isInstructorWikiPage ? "active" : ""} data-icon="🔒" href="/instructor-wiki">강사 위키</Link>
           <Link className={isCompanyWikiPage ? "active" : ""} data-icon="🔒" href="/company-wiki">기업 위키</Link>
+          <Link className={isAnnouncementsPage ? "active" : ""} data-icon="🔒" href="/announcements">공지사항</Link>
           <Link className={isDatabaseAdminPage ? "active" : ""} data-icon="🔒" href="/admin/database">DB 조회</Link>
           <Link className={isImportAdminPage ? "active" : ""} data-icon="🔒" href="/admin/imports">데이터 검수</Link>
           <Link className={isSyncAdminPage ? "active" : ""} data-icon="🔒" href="/admin/sync">데이터 동기화</Link>

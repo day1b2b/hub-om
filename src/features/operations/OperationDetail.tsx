@@ -29,6 +29,8 @@ import { isNavigableHref, toHref } from "@/lib/links";
 import { satisfactionNumber } from "@/lib/data/satisfaction";
 import { teamScopeSearchParam, type TeamScope } from "@/lib/teamScope";
 
+const SHOW_OPERATION_DISCUSSION = false;
+
 const STATUS_CLASS: Record<OperationStatus, string> = {
   "배정필요": "needs-assignment",
   "배정예정": "planned-assignment",
@@ -366,19 +368,21 @@ export function OperationDetail({
             <IssueReviewEditor key={operation.operationId} operation={operation} />
           </section>
 
-          <section className="detail-section wide-detail-section slack-discussion-section" id="discussions">
-            <OperationDiscussionPanel
-              availability={collaboration.discussionSourceAvailability}
-              companyName={operation.companyName}
-              diagnostics={collaboration.discussionDiagnostics}
-              emailCandidates={collaboration.discussionEmailCandidates}
-              initialItems={collaboration.discussionReferences}
-              issues={collaboration.discussionIssues}
-              key={operation.operationId}
-              operationId={operation.operationId}
-              status={collaboration.discussionStatus}
-            />
-          </section>
+          {SHOW_OPERATION_DISCUSSION && (
+            <section className="detail-section wide-detail-section slack-discussion-section" id="discussions">
+              <OperationDiscussionPanel
+                availability={collaboration.discussionSourceAvailability}
+                companyName={operation.companyName}
+                diagnostics={collaboration.discussionDiagnostics}
+                emailCandidates={collaboration.discussionEmailCandidates}
+                initialItems={collaboration.discussionReferences}
+                issues={collaboration.discussionIssues}
+                key={operation.operationId}
+                operationId={operation.operationId}
+                status={collaboration.discussionStatus}
+              />
+            </section>
+          )}
         </section>
       </section>
     </main>
