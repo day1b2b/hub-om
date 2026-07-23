@@ -2790,7 +2790,7 @@ td span {
 }
 
 .coach-origin-detail-content {
-  background: #f6f8fb;
+  background: var(--bg);
   max-width: 1180px;
   min-height: 100vh;
   padding: 28px 36px 64px;
