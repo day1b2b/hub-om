@@ -91,6 +91,7 @@ export async function syncContractSheetEngagements(dryRun: boolean): Promise<Syn
           availabilityDetail: null,
           managerNote: null,
           dxTag: null,
+          notionPageId: null,
           isActive: true,
           displayOrder: null,
           createdAt: new Date(),

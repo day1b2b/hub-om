@@ -111,21 +111,32 @@ export function CoachList({ coaches, loadFailed }: CoachListProps) {
           ) : filteredCoaches.length > 0 ? (
             <div className="coach-origin-list-rows">
               {filteredCoaches.map((coach) => (
-                <Link className="coach-origin-list-row" href={`/coaches/${coach.id}`} key={coach.id}>
-                  <span className="coach-origin-avatar">{coach.name.slice(0, 1)}</span>
-                  <span className="coach-origin-row-main">
-                    <span>
-                      <strong>{coach.name}</strong>
+                <div className="coach-origin-list-row" key={coach.id}>
+                  <Link className="coach-origin-row-identity" href={`/coaches/${coach.id}`}>
+                    <span className="coach-origin-row-main">
+                      <span>
+                        <strong>{coach.name}</strong>
+                      </span>
+                      <small>
+                        {coach.workType || "근무유형 없음"}
+                        {coach.fields.length > 0 ? ` · ${coach.fields.slice(0, 4).join(", ")}` : ""}
+                      </small>
                     </span>
-                    <small>
-                      {coach.workType || "근무유형 없음"}
-                      {coach.fields.length > 0 ? ` · ${coach.fields.slice(0, 4).join(", ")}` : ""}
-                    </small>
-                  </span>
-                  <span className="coach-origin-row-time">
-                    근무일 {coach.workDayCount}일 · 평가 {coach.avgRating === null ? "-" : coach.avgRating.toFixed(1)}
-                  </span>
-                </Link>
+                    <span className="coach-origin-row-time">
+                      근무일 {coach.workDayCount}일 · 평가 {coach.avgRating === null ? "-" : coach.avgRating.toFixed(1)}
+                    </span>
+                  </Link>
+                  {coach.notionPageId && (
+                    <a
+                      className="coach-origin-notion-link"
+                      href={`https://www.notion.so/${coach.notionPageId.replaceAll("-", "")}`}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      노션 바로가기
+                    </a>
+                  )}
+                </div>
               ))}
             </div>
           ) : (

@@ -58,6 +58,7 @@ export class PrismaCoachRepository implements CoachRepository {
         dxTag: true,
         isActive: true,
         deletedAt: true,
+        notionPageId: true,
         fields: {
           select: { tag: { select: { name: true } } }
         },
@@ -87,7 +88,8 @@ export class PrismaCoachRepository implements CoachRepository {
         deletedAt: coach.deletedAt ? coach.deletedAt.toISOString() : null,
         fields: coach.fields.map((field) => field.tag.name),
         avgRating: ratings.length > 0 ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length : null,
-        workDayCount: workDates.size
+        workDayCount: workDates.size,
+        notionPageId: coach.notionPageId
       };
     });
   }
@@ -110,6 +112,7 @@ export class PrismaCoachRepository implements CoachRepository {
         dxTag: true,
         isActive: true,
         deletedAt: true,
+        notionPageId: true,
         fields: {
           select: { tag: { select: { name: true } } }
         },
@@ -146,6 +149,7 @@ export class PrismaCoachRepository implements CoachRepository {
       fields: coach.fields.map((field) => field.tag.name),
       avgRating: ratings.length > 0 ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length : null,
       workDayCount: workDates.size,
+      notionPageId: coach.notionPageId,
       curriculums: coach.curriculums.map((curriculum) => curriculum.tag.name),
       coachInputUrl: buildSkillfloCoachUrl(coach.accessToken),
       statusNote: coach.statusNote ?? archivedDetail?.statusNote ?? null,

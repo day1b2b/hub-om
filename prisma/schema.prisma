@@ -370,6 +370,7 @@ model Coach {
   availabilityDetail String? @map("availability_detail")
   managerNote    String?     @map("manager_note")
   dxTag          String?     @map("dx_tag")
+  notionPageId   String?     @map("notion_page_id") // 노션 코치 DB의 해당 코치 페이지 ID (바로가기 링크용)
   isActive       Boolean     @default(true) @map("is_active") // hub-om 운영 노출 여부 (status와 의미 분리)
   displayOrder   Int?        @map("display_order")
   createdAt      DateTime    @default(now()) @map("created_at")

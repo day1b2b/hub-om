@@ -75,6 +75,7 @@ export async function syncSamsungSchedule(dryRun: boolean): Promise<SyncResult> 
             availabilityDetail: null,
             managerNote: null,
             dxTag: "DS",
+            notionPageId: null,
             isActive: true,
             displayOrder: null,
             createdAt: new Date(),

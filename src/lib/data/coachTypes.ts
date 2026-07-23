@@ -21,6 +21,7 @@ export interface CoachSummary {
   fields: string[];
   avgRating: number | null;
   workDayCount: number;
+  notionPageId: string | null;
 }
 
 export interface CoachDetail extends CoachSummary {
