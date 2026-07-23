@@ -3466,7 +3466,7 @@ td span {
 }
 
 .coach-origin-calendar-day.confirmed {
-  background: #1976d2;
+  background: #056135;
   color: #ffffff;
 }
 
@@ -3502,8 +3502,8 @@ td span {
 }
 
 .coach-origin-legend i.confirmed {
-  background: #1976d2;
-  border-color: #1976d2;
+  background: #056135;
+  border-color: #056135;
 }
 
 .coach-origin-work-summary {
@@ -3526,7 +3526,7 @@ td span {
 }
 
 .coach-origin-work-summary strong {
-  color: #1976d2;
+  color: #056135;
   font-size: 14px;
   font-weight: 900;
 }
@@ -3547,7 +3547,7 @@ td span {
 }
 
 .coach-origin-mini-bars i {
-  background: #1976d2;
+  background: #056135;
   border-radius: 4px;
   display: block;
   opacity: 0.82;
@@ -3604,8 +3604,8 @@ td span {
 }
 
 .coach-origin-day-list span.confirmed {
-  background: #e3f2fd;
-  color: #1976d2;
+  background: #eaf3ec;
+  color: #056135;
 }
 
 .coach-origin-day-list span.available {
@@ -3629,8 +3629,8 @@ td span {
 .coach-origin-engagement-row {
   align-items: center;
   background: #ffffff;
-  border: 1px solid #e8edf3;
-  border-left: 4px solid #d8e0ea;
+  border: 1px solid #e3ede6;
+  border-left: 4px solid #a9cdb4;
   border-radius: 8px;
   display: grid;
   gap: 10px;
@@ -3641,6 +3641,12 @@ td span {
 
 .coach-origin-engagement-row .status {
   justify-self: start;
+}
+
+/* 근무이력의 "완료" 배지도 전역 파란 토큰 대신 이 탭 안에서만 초록으로. */
+.coach-origin-engagement-row .status.done {
+  background: #eaf3ec;
+  color: #056135;
 }
 
 .coach-origin-engagement-row time {
