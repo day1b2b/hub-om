@@ -240,6 +240,7 @@ export function CoachScheduleBoard({ currentUserEmail, dashboard, holidays, load
           </label>
           <div className="coach-schedule-topnav">
             <Link href="/coaches">코치 목록</Link>
+            <Link href="/coaches/my-page">마이페이지</Link>
           </div>
         </div>
 

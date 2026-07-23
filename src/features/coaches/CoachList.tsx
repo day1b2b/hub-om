@@ -75,6 +75,7 @@ export function CoachList({ coaches, loadFailed }: CoachListProps) {
           </label>
           <div className="coach-schedule-topnav">
             <Link href="/coaches/schedule">코치 일정</Link>
+            <Link href="/coaches/my-page">마이페이지</Link>
           </div>
         </div>
 

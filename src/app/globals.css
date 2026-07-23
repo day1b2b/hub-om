@@ -7947,6 +7947,81 @@ button.coach-doc-reserve-chip:disabled {
   opacity: 0.6;
 }
 
+.my-confirmed-course-list {
+  display: grid;
+  gap: 10px;
+}
+
+.my-confirmed-course {
+  border: 1px solid #eeeeec;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.my-confirmed-course-header {
+  align-items: center;
+  background: #ffffff;
+  border: none;
+  cursor: pointer;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1.4fr) 160px minmax(0, 1fr);
+  padding: 14px 16px;
+  text-align: left;
+  width: 100%;
+}
+
+.my-confirmed-course-name {
+  color: #242321;
+  font-weight: 700;
+}
+
+.my-confirmed-course-period,
+.my-confirmed-course-coaches {
+  color: #77736e;
+  font-size: 13px;
+}
+
+.my-confirmed-course-body {
+  border-top: 1px solid #eeeeec;
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+}
+
+.my-confirmed-course-coach-row {
+  align-items: center;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 100px auto minmax(120px, 1fr) auto;
+}
+
+.my-review-rating {
+  display: flex;
+  gap: 2px;
+}
+
+.my-review-rating button {
+  background: none;
+  border: none;
+  color: #dededa;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 2px;
+}
+
+.my-review-rating button.filled {
+  color: #f5a623;
+}
+
+.my-review-feedback {
+  border: 1px solid #dededa;
+  border-radius: 6px;
+  font-size: 13px;
+  padding: 6px 10px;
+}
+
 .coach-doc-empty {
   color: #77736e;
   display: grid;
