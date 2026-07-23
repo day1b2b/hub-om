@@ -2560,8 +2560,8 @@ td span {
 }
 
 .coach-detail-tabs a.selected {
-  border-bottom-color: var(--blue);
-  color: var(--blue);
+  border-bottom-color: #056135;
+  color: #056135;
 }
 
 .detail-section {
