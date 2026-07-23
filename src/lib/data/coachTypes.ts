@@ -44,6 +44,7 @@ export interface CoachEngagementView {
   endTime: string | null;
   rating: number | null;
   rehire: boolean | null;
+  feedback: string | null;
 }
 
 export interface CoachScheduleView {

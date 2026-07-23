@@ -3655,6 +3655,13 @@ td span {
   text-align: right;
 }
 
+.coach-origin-engagement-feedback {
+  color: #64748b;
+  font-size: 13px;
+  grid-column: 1 / -1;
+  overflow-wrap: anywhere;
+}
+
 .coach-origin-empty-panel {
   color: #77736e;
   font-size: 14px;

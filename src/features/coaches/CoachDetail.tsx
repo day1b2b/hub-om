@@ -297,6 +297,7 @@ function EngagementPane({ engagements }: { engagements: CoachEngagementView[] })
             </time>
             <strong>{cleanCourseName(engagement.courseName)}</strong>
             {engagement.rating ? <small>평점 {engagement.rating}</small> : null}
+            {engagement.feedback ? <p className="coach-origin-engagement-feedback">{engagement.feedback}</p> : null}
           </article>
         ))
       ) : (

@@ -157,7 +157,7 @@ export class PrismaCoachRepository implements CoachRepository {
 
   async listEngagements(coachId: string): Promise<CoachEngagementView[]> {
     const prisma = getPrismaClient();
-    // feedback/hiredByText(민감)는 select하지 않는다.
+    // hiredByText(섭외 관련, 민감)는 select하지 않는다. feedback(평가 한줄평)은 공개 조회로 취급한다.
     const engagements = await prisma.coachEngagement.findMany({
       where: { coachId },
       select: {
@@ -171,7 +171,8 @@ export class PrismaCoachRepository implements CoachRepository {
         startTime: true,
         endTime: true,
         rating: true,
-        rehire: true
+        rehire: true,
+        feedback: true
       },
       orderBy: [{ startDate: "desc" }, { id: "asc" }]
     });
@@ -187,7 +188,8 @@ export class PrismaCoachRepository implements CoachRepository {
       startTime: engagement.startTime,
       endTime: engagement.endTime,
       rating: engagement.rating,
-      rehire: engagement.rehire
+      rehire: engagement.rehire,
+      feedback: engagement.feedback
     }));
   }
 
