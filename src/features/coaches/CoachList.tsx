@@ -3,7 +3,19 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
-import type { CoachSummary } from "@/lib/data/coachTypes";
+import type { CoachStatusValue, CoachSummary } from "@/lib/data/coachTypes";
+
+const STATUS_LABEL: Record<CoachStatusValue, string> = {
+  active: "활동중",
+  pending: "대기",
+  inactive: "비활동"
+};
+
+const STATUS_CLASS: Record<CoachStatusValue, string> = {
+  active: "active",
+  pending: "planned-assignment",
+  inactive: "needs-assignment"
+};
 
 const SORT_OPTIONS = [
   { value: "workDays", label: "근무일 많은 순" },
@@ -108,6 +120,7 @@ export function CoachList({ coaches, loadFailed }: CoachListProps) {
                   <Link className="coach-origin-row-identity" href={`/coaches/${coach.id}`}>
                     <span className="coach-origin-row-main">
                       <span>
+                        <i className={`status ${STATUS_CLASS[coach.status]}`}>{STATUS_LABEL[coach.status]}</i>
                         <strong>{coach.name}</strong>
                       </span>
                       <small>
