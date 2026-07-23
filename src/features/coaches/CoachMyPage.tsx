@@ -42,13 +42,6 @@ export function CoachMyPage({ reservations, inProgressCourses, pastCourses }: Co
       <AppSidebar label="My coach page" teamScope="both" />
 
       <section className="content coach-schedule-workspace" id="coach-my-page">
-        <div className="coach-schedule-topbar">
-          <div className="coach-schedule-topnav">
-            <Link href="/coaches/schedule">코치 일정</Link>
-            <Link href="/coaches">코치 목록</Link>
-          </div>
-        </div>
-
         <header className="coach-workspace-header">
           <div>
             <h1>마이페이지</h1>

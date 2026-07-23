@@ -56,13 +56,6 @@ export function CoachList({ coaches, loadFailed }: CoachListProps) {
       <AppSidebar label="Coaches" teamScope="both" />
 
       <section className="content coach-origin-list-content" id="coaches">
-        <div className="coach-schedule-topbar">
-          <div className="coach-schedule-topnav">
-            <Link href="/coaches/schedule">코치 일정</Link>
-            <Link href="/coaches/my-page">마이페이지</Link>
-          </div>
-        </div>
-
         <header className="coach-workspace-header">
           <div>
             <h1>코치 목록</h1>
