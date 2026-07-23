@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import type { CoachSummary } from "@/lib/data/coachTypes";
 
@@ -149,25 +149,48 @@ function MultiFilterChips({
   options: string[];
   selected: Set<string>;
 }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    function handleClickOutside(event: MouseEvent) {
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) setIsOpen(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen]);
+
+  const buttonLabel = selected.size > 0 ? `${label} (${selected.size})` : label;
+
   return (
-    <div className="coach-origin-multi-filter">
-      <span className="coach-origin-multi-filter-label">{label}</span>
-      <div className="coach-origin-multi-filter-chips">
-        {options.length === 0 ? (
-          <span className="coach-origin-multi-filter-empty">옵션 없음</span>
-        ) : (
-          options.map((option) => (
-            <button
-              className={selected.has(option) ? "selected" : ""}
-              key={option}
-              onClick={() => onToggle(option)}
-              type="button"
-            >
-              {option}
-            </button>
-          ))
-        )}
-      </div>
+    <div className="coach-origin-multi-filter" ref={rootRef}>
+      <button
+        className={selected.size > 0 ? "selected" : ""}
+        onClick={() => setIsOpen((prev) => !prev)}
+        type="button"
+      >
+        {buttonLabel}
+        <i aria-hidden="true">{isOpen ? "▲" : "▼"}</i>
+      </button>
+      {isOpen && (
+        <div className="coach-origin-multi-filter-panel">
+          {options.length === 0 ? (
+            <span className="coach-origin-multi-filter-empty">옵션 없음</span>
+          ) : (
+            options.map((option) => (
+              <label className="coach-origin-multi-filter-option" key={option}>
+                <input
+                  checked={selected.has(option)}
+                  onChange={() => onToggle(option)}
+                  type="checkbox"
+                />
+                {option}
+              </label>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }
