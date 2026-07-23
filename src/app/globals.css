@@ -10713,9 +10713,9 @@ td span {
   box-shadow: 0 8px 24px rgba(23, 32, 42, 0.14);
   color: var(--green);
   display: flex;
-  height: 48px;
+  height: 64px;
   justify-content: center;
-  width: 48px;
+  width: 64px;
 }
 
 .hub-bot-toggle:hover {
@@ -10728,7 +10728,7 @@ td span {
   border: 1px solid var(--line);
   border-radius: 10px;
   box-shadow: 0 16px 50px rgba(23, 32, 42, 0.16);
-  bottom: 64px;
+  bottom: 80px;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   height: 460px;
