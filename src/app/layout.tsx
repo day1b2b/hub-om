@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { AuthStatus } from "@/components/AuthStatus";
+import { HubBot } from "@/components/HubBot";
 import { Providers } from "@/components/Providers";
 import "./globals.css";
 
@@ -15,6 +16,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
       <body>
         <Providers>{children}</Providers>
         <AuthStatus />
+        <HubBot />
       </body>
     </html>
   );
