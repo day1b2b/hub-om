@@ -56,52 +56,64 @@ export function CoachMyPage({ reservations, confirmedCourses }: CoachMyPageProps
           </div>
         </header>
 
-        <section className="dashboard-panel">
+        <section className="dashboard-panel operations-list-panel">
           <div className="section-title">
             <h2>내 예약</h2>
             <div className="dashboard-table-meta">
               <span>{activeReservations.length}건</span>
             </div>
           </div>
-          {activeReservations.length === 0 ? (
-            <div className="coach-doc-empty">
-              <strong>예약 중인 일정이 없습니다.</strong>
-              <span>코치 일정 화면에서 예약하면 여기에 표시됩니다.</span>
-            </div>
-          ) : (
-            <div className="coach-doc-rows">
-              {activeReservations.map((reservation) => {
-                const key = `${reservation.coachId}__${reservation.date}`;
-                const isBusy = cancellingKey === key;
-                return (
-                  <div className="coach-doc-row my-reservation-row" key={key}>
-                    <Link className="coach-doc-identity" href={`/coaches/${reservation.coachId}`}>
-                      <span className="coach-doc-icon">{reservation.coachName.slice(0, 1)}</span>
-                      <span className="coach-doc-main">
-                        <strong>{reservation.coachName}</strong>
-                        <small>{reservation.date}</small>
-                      </span>
-                    </Link>
-                    <span className="coach-doc-reserve">
-                      <button
-                        className="coach-doc-reserve-chip reserved"
-                        disabled={isBusy}
-                        onClick={() => handleCancel(reservation.coachId, reservation.date)}
-                        type="button"
-                      >
-                        {isBusy ? "취소 중..." : "예약 취소"}
-                      </button>
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          <div className="table-wrap">
+            <table className="my-page-table">
+              <thead>
+                <tr>
+                  <th>코치</th>
+                  <th>날짜</th>
+                  <th aria-label="취소" />
+                </tr>
+              </thead>
+              <tbody>
+                {activeReservations.length > 0 ? (
+                  activeReservations.map((reservation) => {
+                    const key = `${reservation.coachId}__${reservation.date}`;
+                    const isBusy = cancellingKey === key;
+                    return (
+                      <tr key={key}>
+                        <td>
+                          <Link className="course-link" href={`/coaches/${reservation.coachId}`}>
+                            <strong>{reservation.coachName}</strong>
+                          </Link>
+                        </td>
+                        <td>{reservation.date}</td>
+                        <td className="my-page-table-action">
+                          <button
+                            className="my-page-cancel-link"
+                            disabled={isBusy}
+                            onClick={() => handleCancel(reservation.coachId, reservation.date)}
+                            type="button"
+                          >
+                            {isBusy ? "취소 중..." : "예약 취소"}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td className="empty-state" colSpan={3}>
+                      <strong>예약 중인 일정이 없습니다.</strong>
+                      <span>코치 일정 화면에서 예약하면 여기에 표시됩니다.</span>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </section>
 
         <section className="dashboard-panel">
           <div className="section-title">
-            <h2>확정된 과정</h2>
+            <h2>지난 과정</h2>
             <div className="dashboard-table-meta">
               <span>{confirmedCourses.length}건</span>
             </div>
@@ -112,27 +124,26 @@ export function CoachMyPage({ reservations, confirmedCourses }: CoachMyPageProps
               <span>예약한 코치의 투입이 확정되면 여기에 표시됩니다.</span>
             </div>
           ) : (
-            <div className="my-confirmed-course-list">
+            <div className="my-course-card-list">
               {confirmedCourses.map((course) => {
-                const key = `${course.courseName}|${course.startDate}|${course.endDate}`;
+                const key = course.courseName;
                 const isExpanded = expandedCourse === key;
                 return (
-                  <div className="my-confirmed-course" key={key}>
+                  <div className="my-course-card" key={key}>
                     <button
-                      className="my-confirmed-course-header"
+                      className="my-course-card-header"
                       onClick={() => setExpandedCourse(isExpanded ? null : key)}
                       type="button"
                     >
-                      <span className="my-confirmed-course-name">{course.courseName}</span>
-                      <span className="my-confirmed-course-period">
-                        {course.startDate} ~ {course.endDate}
-                      </span>
-                      <span className="my-confirmed-course-coaches">
-                        {course.coaches.map((c) => c.coachName).join(", ")}
+                      <span className="my-course-toggle-icon">{isExpanded ? "▼" : "▶"}</span>
+                      <span className="my-course-title">{course.courseName}</span>
+                      <span className="my-course-coach-count">코치 {course.coaches.length}명</span>
+                      <span className="my-course-period">
+                        {course.startDate.slice(0, 7)} ~ {course.endDate.slice(0, 7)}
                       </span>
                     </button>
                     {isExpanded && (
-                      <div className="my-confirmed-course-body">
+                      <div className="my-course-card-body">
                         {course.coaches.map((coach) => (
                           <CoachReviewRow coach={coach} key={coach.engagementId} />
                         ))}
@@ -156,23 +167,18 @@ interface CoachReviewRowProps {
 function CoachReviewRow({ coach }: CoachReviewRowProps) {
   const [rating, setRating] = useState(coach.rating ?? 0);
   const [feedback, setFeedback] = useState(coach.feedback ?? "");
+  const [rehire, setRehire] = useState(coach.rehire ?? false);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
 
-  async function handleSave() {
+  async function save(next: { rating?: number | null; feedback?: string; rehire?: boolean }) {
     setSaving(true);
-    setSaved(false);
     try {
       const response = await fetch(`/api/engagements/${coach.engagementId}/review`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rating: rating || null, feedback })
+        body: JSON.stringify(next)
       });
-      if (response.ok) {
-        setSaved(true);
-      } else {
-        alert("저장하지 못했습니다.");
-      }
+      if (!response.ok) alert("저장하지 못했습니다.");
     } catch {
       alert("저장하지 못했습니다.");
     } finally {
@@ -181,37 +187,70 @@ function CoachReviewRow({ coach }: CoachReviewRowProps) {
   }
 
   return (
-    <div className="my-confirmed-course-coach-row">
-      <strong>{coach.coachName}</strong>
-      <div className="my-review-rating" role="radiogroup" aria-label={`${coach.coachName} 평점`}>
-        {[1, 2, 3, 4, 5].map((value) => (
-          <button
-            aria-pressed={rating >= value}
-            className={rating >= value ? "filled" : ""}
-            key={value}
-            onClick={() => {
-              setRating(value);
-              setSaved(false);
-            }}
-            type="button"
-          >
-            ★
-          </button>
-        ))}
+    <div className="my-coach-block">
+      <div className="my-coach-block-header">
+        <Link className="my-coach-name" href={`/coaches/${coach.coachId}`}>
+          {coach.coachName}
+        </Link>
+        <span className="my-coach-dates">
+          {coach.startDate} ~ {coach.endDate}
+        </span>
+        <span className={`status ${coach.statusLabel === "완료" ? "done" : "active"}`}>{coach.statusLabel}</span>
       </div>
-      <input
-        className="my-review-feedback"
-        onChange={(event) => {
-          setFeedback(event.target.value);
-          setSaved(false);
-        }}
-        placeholder="한줄평가"
-        type="text"
-        value={feedback}
-      />
-      <button className="coach-doc-reserve-chip" disabled={saving} onClick={handleSave} type="button">
-        {saving ? "저장 중..." : saved ? "저장됨" : "저장"}
-      </button>
+
+      <div className="my-review-row">
+        <div className="my-review-rating" role="radiogroup" aria-label={`${coach.coachName} 평점`}>
+          {[1, 2, 3, 4, 5].map((value) => (
+            <button
+              aria-pressed={rating >= value}
+              disabled={saving}
+              key={value}
+              onClick={() => {
+                const next = rating === value ? 0 : value;
+                setRating(next);
+                save({ rating: next || null });
+              }}
+              type="button"
+            >
+              {rating >= value ? "★" : "☆"}
+            </button>
+          ))}
+        </div>
+        <input
+          className="my-review-feedback"
+          onBlur={() => save({ feedback })}
+          onChange={(event) => setFeedback(event.target.value)}
+          placeholder="한줄 평가"
+          type="text"
+          value={feedback}
+        />
+        <label className="my-review-rehire">
+          <input
+            checked={rehire}
+            disabled={saving}
+            onChange={(event) => {
+              setRehire(event.target.checked);
+              save({ rehire: event.target.checked });
+            }}
+            type="checkbox"
+          />
+          재투입
+        </label>
+      </div>
+
+      {coach.rounds.length > 0 && (
+        <div className="my-round-list">
+          {coach.rounds.map((round) => (
+            <div className="my-round-row" key={`${round.date}-${round.startTime}`}>
+              <span className="my-round-label">회차</span>
+              <span>
+                {round.date} {round.startTime}~{round.endTime}
+              </span>
+              <span className={`status ${coach.statusLabel === "완료" ? "done" : "active"}`}>{coach.statusLabel}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

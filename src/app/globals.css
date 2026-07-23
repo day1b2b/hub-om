@@ -7954,79 +7954,176 @@ button.coach-doc-reserve-chip:disabled {
   opacity: 0.6;
 }
 
-.my-confirmed-course-list {
+.my-page-table {
+  min-width: unset;
+}
+
+.my-page-table-action {
+  text-align: right;
+  width: 100px;
+}
+
+.my-page-cancel-link {
+  background: none;
+  border: none;
+  color: #b3261e;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px;
+}
+
+.my-page-cancel-link:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.my-course-card-list {
   display: grid;
   gap: 10px;
 }
 
-.my-confirmed-course {
-  border: 1px solid #eeeeec;
-  border-radius: 10px;
+.my-course-card {
+  background: #ffffff;
+  border: 1px solid #e8edf3;
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   overflow: hidden;
 }
 
-.my-confirmed-course-header {
+.my-course-card-header {
   align-items: center;
-  background: #ffffff;
+  background: none;
   border: none;
   cursor: pointer;
-  display: grid;
-  gap: 12px;
-  grid-template-columns: minmax(0, 1.4fr) 160px minmax(0, 1fr);
-  padding: 14px 16px;
+  display: flex;
+  gap: 10px;
+  padding: 14px 18px;
   text-align: left;
   width: 100%;
 }
 
-.my-confirmed-course-name {
-  color: #242321;
+.my-course-toggle-icon {
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.my-course-title {
+  color: #1e2430;
+  font-size: 14px;
   font-weight: 700;
 }
 
-.my-confirmed-course-period,
-.my-confirmed-course-coaches {
-  color: #77736e;
-  font-size: 13px;
+.my-course-coach-count {
+  background: #eef1f6;
+  border-radius: 999px;
+  color: #445160;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
 }
 
-.my-confirmed-course-body {
-  border-top: 1px solid #eeeeec;
+.my-course-period {
+  color: #94a3b8;
+  font-size: 12px;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.my-course-card-body {
+  border-top: 1px solid #eef1f6;
   display: grid;
-  gap: 10px;
-  padding: 14px 16px;
+  gap: 14px;
+  padding: 16px 18px;
 }
 
-.my-confirmed-course-coach-row {
+.my-coach-block {
+  display: grid;
+  gap: 8px;
+}
+
+.my-coach-block-header {
   align-items: center;
-  display: grid;
-  gap: 12px;
-  grid-template-columns: 100px auto minmax(120px, 1fr) auto;
+  display: flex;
+  gap: 10px;
+}
+
+.my-coach-name {
+  color: #1d6fd8;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.my-coach-dates {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.my-review-row {
+  align-items: center;
+  display: flex;
+  gap: 10px;
 }
 
 .my-review-rating {
   display: flex;
-  gap: 2px;
+  flex-shrink: 0;
+  gap: 1px;
 }
 
 .my-review-rating button {
   background: none;
   border: none;
-  color: #dededa;
+  color: #f5a623;
   cursor: pointer;
-  font-size: 18px;
+  font-size: 16px;
   line-height: 1;
   padding: 2px;
 }
 
-.my-review-rating button.filled {
-  color: #f5a623;
+.my-review-rating button:disabled {
+  cursor: not-allowed;
 }
 
 .my-review-feedback {
-  border: 1px solid #dededa;
-  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  flex: 1;
   font-size: 13px;
-  padding: 6px 10px;
+  min-width: 0;
+  padding: 7px 14px;
+}
+
+.my-review-rehire {
+  align-items: center;
+  color: #445160;
+  display: flex;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.my-round-list {
+  display: grid;
+  gap: 6px;
+}
+
+.my-round-row {
+  align-items: center;
+  background: #f8fafc;
+  border-radius: 8px;
+  display: flex;
+  gap: 10px;
+  padding: 8px 12px;
+}
+
+.my-round-label {
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 700;
+  width: 32px;
 }
 
 .coach-doc-empty {
