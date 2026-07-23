@@ -67,6 +67,11 @@ export interface CoachScheduleDashboardEngagement {
   endDate: string;
 }
 
+export interface CoachDayReservationView {
+  reservedByName: string;
+  reservedByEmail: string;
+}
+
 export interface CoachScheduleDashboardCoach {
   id: string;
   name: string;
@@ -79,6 +84,7 @@ export interface CoachScheduleDashboardCoach {
   avgRating: number | null;
   recentEngagements: CoachScheduleDashboardEngagement[];
   engagementCount: number;
+  reservation: CoachDayReservationView | null;
 }
 
 export interface CoachScheduleDashboardDay {

@@ -41,6 +41,7 @@ export function CoachScheduleBoard({ dashboard, holidays, loadFailed, initialDat
 
   const [timeFilter, setTimeFilter] = useState<TimeFilterKey>("all");
   const [query, setQuery] = useState("");
+  const [reservingKey, setReservingKey] = useState<string | null>(null);
 
   // 달 이동 시에도 이전에 조회했던 달의 선택 날짜를 계속 조합할 수 있도록 달별 일정 데이터를 누적한다.
   // (렌더 중 상태 조정: https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes)
@@ -150,6 +151,48 @@ export function CoachScheduleBoard({ dashboard, holidays, loadFailed, initialDat
       return;
     }
     router.push(`/coaches/schedule?yearMonth=${today.slice(0, 7)}`);
+  }
+
+  // 같은 코치·날짜를 여러 매니저가 중복으로 연락하지 않도록 남기는 가벼운 예약 표시.
+  // (누가 예약했는지 보여주는 용도이며, 취소는 아무 매니저나 할 수 있다.)
+  async function handleReserve(coachId: string, date: string) {
+    const key = `${coachId}__${date}`;
+    setReservingKey(key);
+    try {
+      const response = await fetch(`/api/coaches/${coachId}/reservations`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date })
+      });
+      if (response.status === 409) {
+        const body = (await response.json().catch(() => null)) as { reservedByName?: string } | null;
+        alert(body?.reservedByName ? `이미 ${body.reservedByName}님이 예약했습니다.` : "이미 다른 매니저가 예약했습니다.");
+      } else if (!response.ok) {
+        alert("예약하지 못했습니다.");
+      }
+    } catch {
+      alert("예약하지 못했습니다.");
+    } finally {
+      setReservingKey(null);
+      router.refresh();
+    }
+  }
+
+  async function handleCancelReservation(coachId: string, date: string) {
+    if (!confirm("예약을 취소하시겠습니까?")) return;
+    const key = `${coachId}__${date}`;
+    setReservingKey(key);
+    try {
+      const response = await fetch(`/api/coaches/${coachId}/reservations?date=${encodeURIComponent(date)}`, {
+        method: "DELETE"
+      });
+      if (!response.ok) alert("취소하지 못했습니다.");
+    } catch {
+      alert("취소하지 못했습니다.");
+    } finally {
+      setReservingKey(null);
+      router.refresh();
+    }
   }
 
   return (
@@ -320,20 +363,52 @@ export function CoachScheduleBoard({ dashboard, holidays, loadFailed, initialDat
               </div>
             ) : (
               <div className="coach-doc-rows">
-                {singleDateCoaches.map((coach) => (
-                  <Link className="coach-doc-row" href={`/coaches/${coach.id}`} key={coach.id}>
-                    <span className="coach-doc-icon">{coach.name.slice(0, 1)}</span>
-                    <span className="coach-doc-main">
-                      <strong>{coach.name}</strong>
-                      <small>
-                        <b>{coach.workType || "근무유형 없음"}</b>
-                        {coach.fields.length > 0 && <> · {coach.fields.slice(0, 3).join(", ")}</>}
-                        <> · {latestEngagementLabel(coach)}</>
-                      </small>
-                    </span>
-                    <span className="coach-doc-time">{formatScheduleLabel(coach.schedules)}</span>
-                  </Link>
-                ))}
+                {singleDateCoaches.map((coach) => {
+                  const reservation = coach.reservation;
+                  const isBusy = reservingKey === `${coach.id}__${singleDate}`;
+                  return (
+                    <div className="coach-doc-row" key={coach.id}>
+                      <Link className="coach-doc-identity" href={`/coaches/${coach.id}`}>
+                        <span className="coach-doc-icon">{coach.name.slice(0, 1)}</span>
+                        <span className="coach-doc-main">
+                          <strong>{coach.name}</strong>
+                          <small>
+                            <b>{coach.workType || "근무유형 없음"}</b>
+                            {coach.fields.length > 0 && <> · {coach.fields.slice(0, 3).join(", ")}</>}
+                            <> · {formatScheduleLabel(coach.schedules)}</>
+                            <> · {latestEngagementLabel(coach)}</>
+                          </small>
+                        </span>
+                      </Link>
+                      <span className="coach-doc-reserve">
+                        {reservation ? (
+                          <>
+                            <span className="coach-doc-reserved-badge" title={reservation.reservedByEmail}>
+                              예약 · {reservation.reservedByName}
+                            </span>
+                            <button
+                              className="coach-doc-reserve-cancel"
+                              disabled={isBusy}
+                              onClick={() => handleCancelReservation(coach.id, singleDate!)}
+                              type="button"
+                            >
+                              취소
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            className="coach-doc-reserve-button"
+                            disabled={isBusy}
+                            onClick={() => handleReserve(coach.id, singleDate!)}
+                            type="button"
+                          >
+                            {isBusy ? "예약 중" : "예약"}
+                          </button>
+                        )}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </section>

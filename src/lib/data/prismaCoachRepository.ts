@@ -4,6 +4,7 @@ import {
   CoachStatus as PrismaCoachStatus
 } from "@prisma/client";
 import type {
+  CoachDayReservationView,
   CoachDetail,
   CoachEngagementScheduleView,
   CoachEngagementStatusValue,
@@ -257,7 +258,7 @@ export class PrismaCoachRepository implements CoachRepository {
     const prisma = getPrismaClient();
     const [startDate, endDate] = monthRange(yearMonth);
 
-    const [coaches, availabilityRows, busyRows] = await Promise.all([
+    const [coaches, availabilityRows, busyRows, reservationRows] = await Promise.all([
       prisma.coach.findMany({
         where: {
           deletedAt: null,
@@ -332,6 +333,21 @@ export class PrismaCoachRepository implements CoachRepository {
           startTime: true,
           endTime: true
         }
+      }),
+      prisma.coachDayReservation.findMany({
+        where: {
+          date: {
+            gte: startDate,
+            lte: endDate
+          },
+          cancelledAt: null
+        },
+        select: {
+          coachId: true,
+          date: true,
+          reservedByName: true,
+          reservedByEmail: true
+        }
       })
     ]);
 
@@ -349,9 +365,17 @@ export class PrismaCoachRepository implements CoachRepository {
             endDate: toDateString(engagement.endDate)
           })),
           engagementCount: coach._count.engagements
-        } satisfies Omit<CoachScheduleDashboardCoach, "schedules">
+        } satisfies Omit<CoachScheduleDashboardCoach, "schedules" | "reservation">
       ])
     );
+
+    const reservationByDayCoach = new Map<string, CoachDayReservationView>();
+    for (const row of reservationRows) {
+      reservationByDayCoach.set(`${row.coachId}|${toDateString(row.date)}`, {
+        reservedByName: row.reservedByName,
+        reservedByEmail: row.reservedByEmail
+      });
+    }
 
     const availabilityByDayCoach = groupIntervalsByDayAndCoach(availabilityRows);
     const busyByDayCoach = groupIntervalsByDayAndCoach(busyRows);
@@ -370,7 +394,8 @@ export class PrismaCoachRepository implements CoachRepository {
 
         coachesForDay.push({
           ...info,
-          schedules: toIntervals(remaining)
+          schedules: toIntervals(remaining),
+          reservation: reservationByDayCoach.get(`${coachId}|${date}`) ?? null
         });
       }
 
