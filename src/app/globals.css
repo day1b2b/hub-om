@@ -8051,28 +8051,82 @@ button.coach-doc-reserve-chip:disabled {
   opacity: 0.6;
 }
 
-.my-page-table {
-  min-width: unset;
+.my-page-two-col {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 
-.my-page-table-action {
-  text-align: right;
-  width: 100px;
+.my-reservation-panel {
+  padding-bottom: 4px;
 }
 
-.my-page-cancel-link {
+.my-reservation-card-list {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+}
+
+.my-reservation-card {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #e8edf3;
+  border-radius: 10px;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  padding: 10px 14px;
+}
+
+.my-reservation-identity {
+  align-items: baseline;
+  color: inherit;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  text-decoration: none;
+}
+
+.my-reservation-identity strong {
+  color: #1e2430;
+  font-size: 14px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.my-reservation-identity span {
+  color: #94a3b8;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.my-reservation-identity:hover strong {
+  color: #056135;
+}
+
+.my-reservation-cancel {
   background: none;
-  border: none;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
   color: #b3261e;
   cursor: pointer;
+  flex-shrink: 0;
   font-size: 12px;
   font-weight: 700;
-  padding: 4px;
+  padding: 5px 12px;
 }
 
-.my-page-cancel-link:disabled {
+.my-reservation-cancel:disabled {
   cursor: not-allowed;
   opacity: 0.6;
+}
+
+@media (max-width: 900px) {
+  .my-page-two-col {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .my-course-card-list {

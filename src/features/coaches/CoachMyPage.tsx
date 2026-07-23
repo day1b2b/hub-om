@@ -49,66 +49,51 @@ export function CoachMyPage({ reservations, inProgressCourses, pastCourses }: Co
           </div>
         </header>
 
-        <section className="dashboard-panel operations-list-panel">
-          <div className="section-title">
-            <h2>내 예약</h2>
-            <div className="dashboard-table-meta">
-              <span>{activeReservations.length}건</span>
+        <div className="my-page-two-col">
+          <section className="dashboard-panel my-reservation-panel">
+            <div className="section-title">
+              <h2>내 예약</h2>
+              <div className="dashboard-table-meta">
+                <span>{activeReservations.length}건</span>
+              </div>
             </div>
-          </div>
-          <div className="table-wrap">
-            <table className="my-page-table">
-              <thead>
-                <tr>
-                  <th>코치</th>
-                  <th>날짜</th>
-                  <th aria-label="취소" />
-                </tr>
-              </thead>
-              <tbody>
-                {activeReservations.length > 0 ? (
-                  activeReservations.map((reservation) => {
-                    const key = `${reservation.coachId}__${reservation.date}`;
-                    const isBusy = cancellingKey === key;
-                    return (
-                      <tr key={key}>
-                        <td>
-                          <Link className="course-link" href={`/coaches/${reservation.coachId}`}>
-                            <strong>{reservation.coachName}</strong>
-                          </Link>
-                        </td>
-                        <td>{reservation.date}</td>
-                        <td className="my-page-table-action">
-                          <button
-                            className="my-page-cancel-link"
-                            disabled={isBusy}
-                            onClick={() => handleCancel(reservation.coachId, reservation.date)}
-                            type="button"
-                          >
-                            {isBusy ? "취소 중..." : "예약 취소"}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td className="empty-state" colSpan={3}>
-                      <strong>예약 중인 일정이 없습니다.</strong>
-                      <span>코치 일정 화면에서 예약하면 여기에 표시됩니다.</span>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
+            {activeReservations.length === 0 ? (
+              <div className="coach-doc-empty">
+                <strong>예약 중인 일정이 없습니다.</strong>
+                <span>코치 일정 화면에서 예약하면 여기에 표시됩니다.</span>
+              </div>
+            ) : (
+              <div className="my-reservation-card-list">
+                {activeReservations.map((reservation) => {
+                  const key = `${reservation.coachId}__${reservation.date}`;
+                  const isBusy = cancellingKey === key;
+                  return (
+                    <div className="my-reservation-card" key={key}>
+                      <Link className="my-reservation-identity" href={`/coaches/${reservation.coachId}`}>
+                        <strong>{reservation.coachName}</strong>
+                        <span>{reservation.date}</span>
+                      </Link>
+                      <button
+                        className="my-reservation-cancel"
+                        disabled={isBusy}
+                        onClick={() => handleCancel(reservation.coachId, reservation.date)}
+                        type="button"
+                      >
+                        {isBusy ? "취소 중..." : "취소"}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
 
-        <CourseCardSection
-          courses={inProgressCourses}
-          emptyText={{ title: "진행중인 과정이 없습니다.", hint: "예약한 코치의 투입이 확정되면 여기에 표시됩니다." }}
-          title="진행중 과정"
-        />
+          <CourseCardSection
+            courses={inProgressCourses}
+            emptyText={{ title: "진행중인 과정이 없습니다.", hint: "예약한 코치의 투입이 확정되면 여기에 표시됩니다." }}
+            title="진행중 과정"
+          />
+        </div>
 
         <CourseCardSection
           courses={pastCourses}
