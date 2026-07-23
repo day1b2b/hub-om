@@ -16,5 +16,5 @@ export default async function CoachMyPageRoute() {
   const todayIso = new Date().toISOString().slice(0, 10);
   const { inProgress, past } = partitionConfirmedCourses(confirmedCourses, todayIso);
 
-  return <CoachMyPage inProgressCourses={inProgress} pastCourses={past} reservations={reservations} />;
+  return <CoachMyPage inProgressCourses={inProgress} pastCourses={past} reservations={reservations} todayIso={todayIso} />;
 }

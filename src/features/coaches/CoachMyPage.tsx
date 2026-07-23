@@ -9,9 +9,10 @@ interface CoachMyPageProps {
   reservations: MyActiveReservation[];
   inProgressCourses: MyConfirmedCourse[];
   pastCourses: MyConfirmedCourse[];
+  todayIso: string;
 }
 
-export function CoachMyPage({ reservations, inProgressCourses, pastCourses }: CoachMyPageProps) {
+export function CoachMyPage({ reservations, inProgressCourses, pastCourses, todayIso }: CoachMyPageProps) {
   const [activeReservations, setActiveReservations] = useState(reservations);
   const [cancellingKey, setCancellingKey] = useState<string | null>(null);
 
@@ -92,6 +93,7 @@ export function CoachMyPage({ reservations, inProgressCourses, pastCourses }: Co
             courses={inProgressCourses}
             emptyText={{ title: "진행중인 과정이 없습니다.", hint: "예약한 코치의 투입이 확정되면 여기에 표시됩니다." }}
             title="진행중 과정"
+            todayIso={todayIso}
           />
         </div>
 
@@ -99,6 +101,7 @@ export function CoachMyPage({ reservations, inProgressCourses, pastCourses }: Co
           courses={pastCourses}
           emptyText={{ title: "지난 과정이 아직 없습니다.", hint: "진행중 과정의 기간이 지나면 자동으로 여기로 옮겨집니다." }}
           title="지난 과정"
+          todayIso={todayIso}
         />
       </section>
     </main>
@@ -109,9 +112,10 @@ interface CourseCardSectionProps {
   courses: MyConfirmedCourse[];
   emptyText: { title: string; hint: string };
   title: string;
+  todayIso: string;
 }
 
-function CourseCardSection({ courses, emptyText, title }: CourseCardSectionProps) {
+function CourseCardSection({ courses, emptyText, title, todayIso }: CourseCardSectionProps) {
   const [expandedCourse, setExpandedCourse] = useState<string | null>(null);
 
   return (
@@ -149,7 +153,7 @@ function CourseCardSection({ courses, emptyText, title }: CourseCardSectionProps
                 {isExpanded && (
                   <div className="my-course-card-body">
                     {course.coaches.map((coach) => (
-                      <CoachReviewRow coach={coach} key={coach.engagementId} />
+                      <CoachReviewRow coach={coach} key={coach.engagementId} todayIso={todayIso} />
                     ))}
                   </div>
                 )}
@@ -164,24 +168,24 @@ function CourseCardSection({ courses, emptyText, title }: CourseCardSectionProps
 
 interface CoachReviewRowProps {
   coach: MyConfirmedCourse["coaches"][number];
+  todayIso: string;
 }
 
-function CoachReviewRow({ coach }: CoachReviewRowProps) {
+function CoachReviewRow({ coach, todayIso }: CoachReviewRowProps) {
   const [rating, setRating] = useState(coach.rating ?? 0);
   const [feedback, setFeedback] = useState(coach.feedback ?? "");
-  const [rehire, setRehire] = useState(coach.rehire ?? false);
   const [saving, setSaving] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
-  const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedFlashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  async function save(next: { rating?: number | null; feedback?: string; rehire?: boolean }) {
+  // 별점만 눌러도, 한줄평가 없이도 저장 가능 — 둘 다 그대로 현재 값을 보낸다.
+  async function handleSave() {
     setSaving(true);
     try {
       const response = await fetch(`/api/engagements/${coach.engagementId}/review`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(next)
+        body: JSON.stringify({ rating: rating || null, feedback })
       });
       if (response.ok) {
         setJustSaved(true);
@@ -194,21 +198,6 @@ function CoachReviewRow({ coach }: CoachReviewRowProps) {
       alert("저장하지 못했습니다.");
     } finally {
       setSaving(false);
-    }
-  }
-
-  function handleFeedbackChange(value: string) {
-    setFeedback(value);
-    if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
-    // 타이핑을 멈춘 지 0.6초 뒤 자동 저장(계속 입력 중이면 저장을 미룬다).
-    feedbackTimer.current = setTimeout(() => save({ feedback: value }), 600);
-  }
-
-  function flushFeedback() {
-    if (feedbackTimer.current) {
-      clearTimeout(feedbackTimer.current);
-      feedbackTimer.current = null;
-      save({ feedback });
     }
   }
 
@@ -231,11 +220,7 @@ function CoachReviewRow({ coach }: CoachReviewRowProps) {
               aria-pressed={rating >= value}
               disabled={saving}
               key={value}
-              onClick={() => {
-                const next = rating === value ? 0 : value;
-                setRating(next);
-                save({ rating: next || null });
-              }}
+              onClick={() => setRating(rating === value ? 0 : value)}
               type="button"
             >
               {rating >= value ? "★" : "☆"}
@@ -244,40 +229,34 @@ function CoachReviewRow({ coach }: CoachReviewRowProps) {
         </div>
         <input
           className="my-review-feedback"
-          onBlur={flushFeedback}
-          onChange={(event) => handleFeedbackChange(event.target.value)}
+          onChange={(event) => setFeedback(event.target.value)}
           placeholder="한줄 평가"
           type="text"
           value={feedback}
         />
-        <label className="my-review-rehire">
-          <input
-            checked={rehire}
-            disabled={saving}
-            onChange={(event) => {
-              setRehire(event.target.checked);
-              save({ rehire: event.target.checked });
-            }}
-            type="checkbox"
-          />
-          재투입
-        </label>
         <span className={`my-review-saved-flash${justSaved ? " visible" : ""}`} aria-live="polite">
           {justSaved ? "저장됨" : ""}
         </span>
+        <button className="my-review-save" disabled={saving} onClick={handleSave} type="button">
+          {saving ? "저장 중..." : "저장"}
+        </button>
       </div>
 
       {coach.rounds.length > 0 && (
         <div className="my-round-list">
-          {coach.rounds.map((round) => (
-            <div className="my-round-row" key={`${round.date}-${round.startTime}`}>
-              <span className="my-round-label">회차</span>
-              <span>
-                {round.date} {round.startTime}~{round.endTime}
-              </span>
-              <span className={`status ${coach.statusLabel === "완료" ? "done" : "active"}`}>{coach.statusLabel}</span>
-            </div>
-          ))}
+          {coach.rounds.map((round) => {
+            // 회차 자체는 어제까지 지났으면 과정 전체 상태(진행중)와 무관하게 완료로 표시한다.
+            const roundLabel = round.date < todayIso ? "완료" : coach.statusLabel;
+            return (
+              <div className="my-round-row" key={`${round.date}-${round.startTime}`}>
+                <span className="my-round-label">회차</span>
+                <span>
+                  {round.date} {round.startTime}~{round.endTime}
+                </span>
+                <span className={`status ${roundLabel === "완료" ? "done" : "active"}`}>{roundLabel}</span>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

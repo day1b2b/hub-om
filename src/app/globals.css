@@ -8245,17 +8245,6 @@ button.coach-doc-reserve-chip:disabled {
   padding: 7px 14px;
 }
 
-.my-review-rehire {
-  align-items: center;
-  color: #445160;
-  display: flex;
-  flex-shrink: 0;
-  font-size: 12px;
-  font-weight: 600;
-  gap: 6px;
-  white-space: nowrap;
-}
-
 .my-review-saved-flash {
   color: #056135;
   flex-shrink: 0;
@@ -8268,6 +8257,23 @@ button.coach-doc-reserve-chip:disabled {
 
 .my-review-saved-flash.visible {
   opacity: 1;
+}
+
+.my-review-save {
+  background: #056135;
+  border: 1px solid #056135;
+  border-radius: 999px;
+  color: #ffffff;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 14px;
+}
+
+.my-review-save:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .my-round-list {
