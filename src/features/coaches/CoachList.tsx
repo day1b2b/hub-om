@@ -20,8 +20,8 @@ interface CoachListProps {
 
 export function CoachList({ coaches, loadFailed }: CoachListProps) {
   const [query, setQuery] = useState("");
-  const [fieldFilter, setFieldFilter] = useState("전체");
-  const [workTypeFilter, setWorkTypeFilter] = useState("전체");
+  const [fieldFilters, setFieldFilters] = useState<Set<string>>(new Set());
+  const [workTypeFilters, setWorkTypeFilters] = useState<Set<string>>(new Set());
   const [sortKey, setSortKey] = useState<SortKey>("workDays");
 
   const fields = useMemo(() => uniqueSorted(coaches.flatMap((coach) => coach.fields)), [coaches]);
@@ -33,12 +33,23 @@ export function CoachList({ coaches, loadFailed }: CoachListProps) {
       .filter((coach) => {
         const searchable = [coach.name, coach.workType ?? "", ...coach.fields].join(" ").toLowerCase();
         const queryMatches = !normalizedQuery || searchable.includes(normalizedQuery);
-        const fieldMatches = fieldFilter === "전체" || coach.fields.includes(fieldFilter);
-        const workTypeMatches = workTypeFilter === "전체" || splitWorkTypes(coach.workType).includes(workTypeFilter);
+        // 선택한 항목 중 하나라도 해당하면 통과(OR 매칭). 아무 것도 선택 안 하면 전체 통과.
+        const fieldMatches = fieldFilters.size === 0 || coach.fields.some((field) => fieldFilters.has(field));
+        const workTypeMatches =
+          workTypeFilters.size === 0 || splitWorkTypes(coach.workType).some((workType) => workTypeFilters.has(workType));
         return queryMatches && fieldMatches && workTypeMatches;
       })
       .sort((a, b) => compareCoaches(a, b, sortKey));
-  }, [coaches, fieldFilter, query, sortKey, workTypeFilter]);
+  }, [coaches, fieldFilters, query, sortKey, workTypeFilters]);
+
+  function toggleFilter(setState: (updater: (prev: Set<string>) => Set<string>) => void, value: string) {
+    setState((prev) => {
+      const next = new Set(prev);
+      if (next.has(value)) next.delete(value);
+      else next.add(value);
+      return next;
+    });
+  }
 
   return (
     <main className="dashboard-shell coach-schedule-shell">
@@ -72,8 +83,18 @@ export function CoachList({ coaches, loadFailed }: CoachListProps) {
         </p>
 
         <section className="coach-origin-list-toolbar" aria-label="코치 필터">
-          <FilterSelect label="가능 분야" onChange={setFieldFilter} options={["전체", ...fields]} value={fieldFilter} />
-          <FilterSelect label="근무유형" onChange={setWorkTypeFilter} options={["전체", ...workTypes]} value={workTypeFilter} />
+          <MultiFilterChips
+            label="가능 분야"
+            onToggle={(value) => toggleFilter(setFieldFilters, value)}
+            options={fields}
+            selected={fieldFilters}
+          />
+          <MultiFilterChips
+            label="근무유형"
+            onToggle={(value) => toggleFilter(setWorkTypeFilters, value)}
+            options={workTypes}
+            selected={workTypeFilters}
+          />
           <SortSelect onChange={setSortKey} value={sortKey} />
         </section>
 
@@ -117,26 +138,37 @@ export function CoachList({ coaches, loadFailed }: CoachListProps) {
   );
 }
 
-function FilterSelect({
+function MultiFilterChips({
   label,
-  onChange,
+  onToggle,
   options,
-  value
+  selected
 }: {
   label: string;
-  onChange: (value: string) => void;
+  onToggle: (value: string) => void;
   options: string[];
-  value: string;
+  selected: Set<string>;
 }) {
   return (
-    <label className="coach-origin-filter-select">
-      <span>{label}</span>
-      <select onChange={(event) => onChange(event.target.value)} value={value}>
-        {options.map((option) => (
-          <option key={option} value={option}>{option}</option>
-        ))}
-      </select>
-    </label>
+    <div className="coach-origin-multi-filter">
+      <span className="coach-origin-multi-filter-label">{label}</span>
+      <div className="coach-origin-multi-filter-chips">
+        {options.length === 0 ? (
+          <span className="coach-origin-multi-filter-empty">옵션 없음</span>
+        ) : (
+          options.map((option) => (
+            <button
+              className={selected.has(option) ? "selected" : ""}
+              key={option}
+              onClick={() => onToggle(option)}
+              type="button"
+            >
+              {option}
+            </button>
+          ))
+        )}
+      </div>
+    </div>
   );
 }
 

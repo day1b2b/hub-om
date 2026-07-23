@@ -3738,6 +3738,53 @@ td span {
   min-width: 0;
 }
 
+.coach-origin-multi-filter {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #c9c6c0;
+  border-radius: 8px;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 40px;
+  padding: 6px 10px;
+}
+
+.coach-origin-multi-filter-label {
+  color: #797570;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.coach-origin-multi-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.coach-origin-multi-filter-chips button {
+  background: #f1f3f5;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: #59636e;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+}
+
+.coach-origin-multi-filter-chips button.selected {
+  background: #eaf3ec;
+  border-color: #056135;
+  color: #056135;
+}
+
+.coach-origin-multi-filter-empty {
+  color: #a4acb5;
+  font-size: 12px;
+}
+
 .coach-origin-list-meta {
   align-items: center;
   border-bottom: 1px solid #dededa;
