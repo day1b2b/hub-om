@@ -12,7 +12,7 @@ export default function PublicHomePage() {
         <div className="public-hero-copy">
           <p className="eyebrow">
             <span aria-hidden="true" className="eyebrow-dot" />
-            hub-om · LIVE STATUS
+            hub-om
           </p>
           <h1 id="home-title">기업교육 운영 현황을 한 곳에서 관리합니다.</h1>
           <p className="lede">
