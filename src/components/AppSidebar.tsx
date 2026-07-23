@@ -24,9 +24,10 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
   const isOperationsPage = pathname === "/operations" || (pathname?.startsWith("/operations/") && !isCreatePage);
   const isCoachSchedulePage = pathname === "/coaches/schedule";
   const isCoachMyPage = pathname === "/coaches/my-page";
+  const isCoachAdminPage = pathname === "/coaches/admin";
   const isCoachListPage =
     pathname === "/coaches" ||
-    ((pathname?.startsWith("/coaches/") ?? false) && !isCoachSchedulePage && !isCoachMyPage);
+    ((pathname?.startsWith("/coaches/") ?? false) && !isCoachSchedulePage && !isCoachMyPage && !isCoachAdminPage);
   const isResourcesPage = pathname === "/resources";
   const isOmManagePage = pathname?.startsWith("/om-request/manage") ?? false;
   const isOmRequestPage = !isOmManagePage && (pathname?.startsWith("/om-request") ?? false);
@@ -57,6 +58,7 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
           <Link className={isCoachSchedulePage ? "active" : ""} data-icon="◷" href="/coaches/schedule">코치 일정</Link>
           <Link className={isCoachListPage ? "active" : ""} data-icon="☰" href="/coaches">코치 목록</Link>
           <Link className={isCoachMyPage ? "active" : ""} data-icon="🙋" href="/coaches/my-page">마이페이지</Link>
+          <Link className={isCoachAdminPage ? "active" : ""} data-icon="🛠" href="/coaches/admin">관리자페이지</Link>
         </div>
 
         <div className="nav-section nav-section-locked">

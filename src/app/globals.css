@@ -8330,6 +8330,10 @@ button.coach-doc-reserve-chip:disabled {
   color: #242321;
 }
 
+.coach-admin-placeholder {
+  padding: 0 20px;
+}
+
 /* 공휴일 */
 .coach-calendar-day.holiday span {
   color: #c94a3f;
