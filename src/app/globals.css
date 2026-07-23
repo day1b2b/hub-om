@@ -3634,7 +3634,7 @@ td span {
   border-radius: 8px;
   display: grid;
   gap: 10px;
-  grid-template-columns: 58px 158px minmax(0, 1fr);
+  grid-template-columns: 58px 158px minmax(0, 1fr) 70px;
   min-height: 48px;
   padding: 10px 12px;
 }
@@ -3673,6 +3673,13 @@ td span {
   font-size: 12px;
   font-weight: 700;
   overflow-wrap: anywhere;
+}
+
+.coach-origin-engagement-rating {
+  color: #f57f17;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: right;
 }
 
 .coach-origin-empty-panel {
