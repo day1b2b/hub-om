@@ -33,10 +33,10 @@ export function CoachList({ coaches, loadFailed }: CoachListProps) {
       .filter((coach) => {
         const searchable = [coach.name, coach.workType ?? "", ...coach.fields].join(" ").toLowerCase();
         const queryMatches = !normalizedQuery || searchable.includes(normalizedQuery);
-        // 선택한 항목 중 하나라도 해당하면 통과(OR 매칭). 아무 것도 선택 안 하면 전체 통과.
-        const fieldMatches = fieldFilters.size === 0 || coach.fields.some((field) => fieldFilters.has(field));
-        const workTypeMatches =
-          workTypeFilters.size === 0 || splitWorkTypes(coach.workType).some((workType) => workTypeFilters.has(workType));
+        // 선택한 항목을 전부 가지고 있어야 통과(AND 매칭). 아무 것도 선택 안 하면 전체 통과.
+        const coachWorkTypes = splitWorkTypes(coach.workType);
+        const fieldMatches = [...fieldFilters].every((field) => coach.fields.includes(field));
+        const workTypeMatches = [...workTypeFilters].every((workType) => coachWorkTypes.includes(workType));
         return queryMatches && fieldMatches && workTypeMatches;
       })
       .sort((a, b) => compareCoaches(a, b, sortKey));
