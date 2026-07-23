@@ -77,57 +77,40 @@ export function CoachList({ coaches, loadFailed }: CoachListProps) {
           <SortSelect onChange={setSortKey} value={sortKey} />
         </section>
 
-        <section className="dashboard-panel operations-list-panel">
-          <div className="section-title">
-            <h2>코치 목록</h2>
-            <div className="dashboard-table-meta">
-              <span>총 {filteredCoaches.length}명</span>
+        <section className="coach-origin-list-card">
+          <div className="coach-origin-list-meta">
+            <span>총 {filteredCoaches.length}명</span>
+          </div>
+
+          {loadFailed ? (
+            <div className="coach-origin-empty-panel">
+              코치 데이터를 불러오지 못했습니다. 데이터 연결 상태를 확인하세요.
             </div>
-          </div>
-          <div className="table-wrap">
-            <table className="my-page-table">
-              <thead>
-                <tr>
-                  <th>이름</th>
-                  <th>근무유형</th>
-                  <th>가능 분야</th>
-                  <th>근무일</th>
-                  <th>평가</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loadFailed ? (
-                  <tr>
-                    <td className="empty-state" colSpan={5}>
-                      <strong>코치 데이터를 불러오지 못했습니다.</strong>
-                      <span>데이터 연결 상태를 확인하세요.</span>
-                    </td>
-                  </tr>
-                ) : filteredCoaches.length > 0 ? (
-                  filteredCoaches.map((coach) => (
-                    <tr key={coach.id}>
-                      <td>
-                        <Link className="course-link" href={`/coaches/${coach.id}`}>
-                          <strong>{coach.name}</strong>
-                        </Link>
-                      </td>
-                      <td>{coach.workType || "-"}</td>
-                      <td>{coach.fields.length > 0 ? coach.fields.join(", ") : "-"}</td>
-                      <td>{coach.workDayCount}일</td>
-                      <td>{coach.avgRating === null ? "-" : coach.avgRating.toFixed(1)}</td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td className="empty-state" colSpan={5}>
-                      <strong>조건에 맞는 코치가 없습니다.</strong>
-                      <span>검색어나 필터를 조정하세요.</span>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          ) : filteredCoaches.length > 0 ? (
+            <div className="coach-origin-list-rows">
+              {filteredCoaches.map((coach) => (
+                <Link className="coach-origin-list-row" href={`/coaches/${coach.id}`} key={coach.id}>
+                  <span className="coach-origin-avatar">{coach.name.slice(0, 1)}</span>
+                  <span className="coach-origin-row-main">
+                    <span>
+                      <strong>{coach.name}</strong>
+                    </span>
+                    <small>
+                      {coach.workType || "근무유형 없음"}
+                      {coach.fields.length > 0 ? ` · ${coach.fields.slice(0, 4).join(", ")}` : ""}
+                    </small>
+                  </span>
+                  <span className="coach-origin-row-time">
+                    근무일 {coach.workDayCount}일 · 평가 {coach.avgRating === null ? "-" : coach.avgRating.toFixed(1)}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="coach-origin-empty-panel">
+              조건에 맞는 코치가 없습니다. 검색어나 필터를 조정하세요.
+            </div>
+          )}
         </section>
       </section>
     </main>
