@@ -3844,7 +3844,7 @@ td span {
   color: inherit;
   display: grid;
   gap: 18px;
-  grid-template-columns: minmax(0, 1fr) minmax(150px, 220px) auto;
+  grid-template-columns: auto minmax(0, 1fr) minmax(150px, 220px) auto;
   min-height: 82px;
   padding: 12px 0;
 }
@@ -3876,6 +3876,28 @@ td span {
   background: #f6f6f3;
 }
 
+.coach-origin-delete-btn {
+  background: #ffffff;
+  border: 1px solid #e3b3ad;
+  border-radius: 8px;
+  color: #b3382c;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  justify-self: end;
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+
+.coach-origin-delete-btn:hover {
+  background: #fdf1f0;
+}
+
+.coach-origin-delete-btn:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
 .coach-origin-row-main {
   display: grid;
   gap: 6px;
@@ -3887,6 +3909,17 @@ td span {
   display: flex;
   gap: 8px;
   min-width: 0;
+}
+
+.coach-origin-list-row .coach-doc-icon {
+  flex-shrink: 0;
+  height: 44px;
+  width: 44px;
+}
+
+.coach-origin-list-row .coach-doc-icon svg {
+  height: 20px;
+  width: 20px;
 }
 
 .coach-origin-row-main strong {
@@ -9784,9 +9817,35 @@ button.coach-doc-reserve-chip:disabled {
 }
 
 .sync-card-actions {
+  align-items: center;
   display: flex;
   gap: 8px;
   flex-shrink: 0;
+}
+
+.sync-external-link {
+  color: var(--blue);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.sync-external-link:hover {
+  text-decoration: underline;
+}
+
+.sync-summary-line {
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 600;
+  margin: 10px 0 0;
+}
+
+.sync-summary-empty {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 4px 0 0;
 }
 
 .sync-btn {
@@ -11076,4 +11135,414 @@ button.coach-doc-reserve-chip:disabled {
 
 .td-muted {
   color: var(--muted);
+}
+
+/* 코치 프로필 수정 폼 */
+.coach-profile-edit-toggle {
+  background: #ffffff;
+  border: 1px solid #dededa;
+  border-radius: 8px;
+  color: #4f4d49;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  margin-top: 14px;
+  padding: 8px 14px;
+}
+
+.coach-profile-edit-toggle:hover {
+  background: #f6f6f3;
+}
+
+.coach-profile-edit-form {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 14px;
+}
+
+.coach-profile-edit-form label {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  color: #4f4d49;
+}
+
+.coach-profile-edit-form input,
+.coach-profile-edit-form textarea {
+  border: 1px solid #dededa;
+  border-radius: 8px;
+  font-size: 13px;
+  padding: 8px 10px;
+}
+
+.coach-profile-edit-wide {
+  grid-column: 1 / -1;
+}
+
+.coach-profile-edit-error {
+  color: #b3382c;
+  font-size: 12px;
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.coach-profile-edit-actions {
+  display: flex;
+  gap: 8px;
+  grid-column: 1 / -1;
+}
+
+.coach-profile-edit-actions button {
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 8px 14px;
+}
+
+.coach-profile-edit-actions button:first-child {
+  background: #056135;
+  border: 1px solid #056135;
+  color: #ffffff;
+}
+
+.coach-profile-edit-actions button:last-child {
+  background: #ffffff;
+  border: 1px solid #dededa;
+  color: #4f4d49;
+}
+
+.coach-profile-edit-actions button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* 관리자페이지 - 삭제 내역 */
+.coach-admin-deleted-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.coach-admin-deleted-toolbar {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.coach-admin-deleted-toolbar > span {
+  color: #4f4d49;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.coach-admin-deleted-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.coach-admin-deleted-actions button {
+  background: #ffffff;
+  border: 1px solid #dededa;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 8px 14px;
+}
+
+.coach-admin-deleted-actions button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.coach-admin-deleted-danger {
+  border-color: #e3b3ad !important;
+  color: #b3382c;
+}
+
+.coach-admin-deleted-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.coach-admin-deleted-table th {
+  border-bottom: 1px solid #dededa;
+  color: #85837f;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.coach-admin-deleted-table td {
+  border-bottom: 1px solid #eeeeec;
+  font-size: 13px;
+  padding: 10px;
+}
+
+/* 관리자페이지 - 일정 등록 링크 */
+.coach-admin-schedule-link {
+  display: grid;
+  gap: 14px;
+}
+
+.coach-admin-schedule-month {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+}
+
+.coach-admin-schedule-month button {
+  background: #ffffff;
+  border: 1px solid #dededa;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px 10px;
+}
+
+.coach-admin-schedule-month strong {
+  font-size: 15px;
+}
+
+.coach-admin-schedule-filters {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.coach-admin-schedule-filters button {
+  background: #ffffff;
+  border: 1px solid #dededa;
+  border-radius: 999px;
+  color: #4f4d49;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 14px;
+}
+
+.coach-admin-schedule-filters button.selected {
+  background: #056135;
+  border-color: #056135;
+  color: #ffffff;
+}
+
+.coach-admin-schedule-status {
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 4px 10px;
+}
+
+.coach-admin-schedule-status.completed {
+  background: #e9f1dd;
+  color: #4f7a3f;
+}
+
+.coach-admin-schedule-status.accessedOnly {
+  background: #fff4cf;
+  color: #8c7436;
+}
+
+.coach-admin-schedule-status.notAccessed {
+  background: #f6e3e1;
+  color: #b3382c;
+}
+
+/* 코치 상세 - 메모 */
+.coach-notes-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.coach-notes-composer {
+  display: grid;
+  gap: 8px;
+}
+
+.coach-notes-composer textarea {
+  border: 1px solid #dededa;
+  border-radius: 8px;
+  font-size: 13px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+.coach-notes-composer button {
+  background: #056135;
+  border: 1px solid #056135;
+  border-radius: 8px;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  justify-self: start;
+  padding: 8px 14px;
+}
+
+.coach-notes-composer button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.coach-notes-list {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.coach-notes-list > li {
+  background: #ffffff;
+  border: 1px solid #eeeeec;
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.coach-notes-list > li.flagged {
+  background: #fdf1f0;
+  border-color: #e3b3ad;
+}
+
+.coach-notes-meta {
+  color: #85837f;
+  display: flex;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.coach-notes-list p {
+  color: #2f2d2a;
+  font-size: 13px;
+  margin: 0 0 8px;
+  white-space: pre-wrap;
+}
+
+.coach-notes-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.coach-notes-actions button,
+.coach-notes-actions a {
+  background: none;
+  border: none;
+  color: #4f4d49;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.coach-notes-edit {
+  display: grid;
+  gap: 8px;
+}
+
+.coach-notes-edit textarea {
+  border: 1px solid #dededa;
+  border-radius: 8px;
+  font-size: 13px;
+  padding: 8px 10px;
+}
+
+/* 관리자페이지 - 콘텐츠 관리 */
+.coach-content-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.coach-content-feed {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.coach-content-feed > li {
+  background: #ffffff;
+  border: 1px solid #eeeeec;
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.coach-content-feed > li.flagged {
+  background: #fdf1f0;
+  border-color: #e3b3ad;
+}
+
+.coach-content-feed-meta {
+  align-items: center;
+  color: #85837f;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 12px;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.coach-content-feed-meta a {
+  color: #1d4f86;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.coach-content-source {
+  color: #85837f;
+}
+
+.coach-content-feed p {
+  color: #2f2d2a;
+  font-size: 13px;
+  margin: 0 0 8px;
+  white-space: pre-wrap;
+}
+
+.coach-content-kind {
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 3px 9px;
+}
+
+.coach-content-kind.note {
+  background: #e9f1dd;
+  color: #4f7a3f;
+}
+
+.coach-content-kind.review {
+  background: #fff4cf;
+  color: #8c7436;
+}
+
+.coach-content-kind.history {
+  background: #eef1e8;
+  color: #4f4d49;
+}
+
+.coach-review-rating-picker {
+  display: flex;
+  gap: 4px;
+}
+
+.coach-review-rating-picker button {
+  background: none;
+  border: none;
+  color: #dededa;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 0;
+}
+
+.coach-review-rating-picker button.selected {
+  color: #f5a623;
 }

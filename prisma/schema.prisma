@@ -387,10 +387,36 @@ model Coach {
   privateAccessLogs   CoachPrivateAccessLog[]
   scheduleAccessLogs  CoachScheduleAccessLog[]
   dayReservations     CoachDayReservation[]
+  contentEntries      CoachContentEntry[]
 
   @@index([normalizedName])
   @@index([status, isActive])
   @@map("coaches")
+}
+
+enum CoachContentEntryKind {
+  NOTE
+  EDIT_HISTORY
+}
+
+model CoachContentEntry {
+  id          String                 @id @default(uuid()) @db.Uuid
+  coachId     String                 @map("coach_id") @db.Uuid
+  kind        CoachContentEntryKind
+  content     String
+  authorEmail String?                @map("author_email")
+  authorName  String?                @map("author_name")
+  sourceField String?                @map("source_field") // 수정이력용: 변경된 필드 식별자 (예: coaches.managerNote)
+  flaggedAt   DateTime?              @map("flagged_at") // 메모 "경고" 표시
+  createdAt   DateTime               @default(now()) @map("created_at")
+  updatedAt   DateTime               @updatedAt @map("updated_at")
+  deletedAt   DateTime?              @map("deleted_at")
+
+  coach Coach @relation(fields: [coachId], references: [id], onDelete: Cascade)
+
+  @@index([coachId])
+  @@index([kind])
+  @@map("coach_content_entries")
 }
 
 model CoachPrivateAccessLog {
@@ -525,6 +551,7 @@ model CoachEngagement {
   rating             Int?                  @db.SmallInt
   rehire             Boolean?
   feedback           String?               // private 성격 강함 → admin 전용
+  reviewFlaggedAt    DateTime?             @map("review_flagged_at") // 콘텐츠 관리 탭의 리뷰 "경고" 표시
   hiredById          String?               @map("hired_by_id")
   hiredByText        String?               @map("hired_by_text") // private 취급
   createdAt          DateTime              @default(now()) @map("created_at")

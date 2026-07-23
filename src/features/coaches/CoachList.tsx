@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import type { CoachStatusValue, CoachSummary } from "@/lib/data/coachTypes";
+import { CoachAvatarIcon } from "./CoachAvatarIcon";
 
 const STATUS_LABEL: Record<CoachStatusValue, string> = {
   active: "활동중",
@@ -118,6 +119,7 @@ export function CoachList({ coaches, loadFailed }: CoachListProps) {
               {filteredCoaches.map((coach) => (
                 <div className="coach-origin-list-row" key={coach.id}>
                   <Link className="coach-origin-row-identity" href={`/coaches/${coach.id}`}>
+                    <span className="coach-doc-icon"><CoachAvatarIcon /></span>
                     <span className="coach-origin-row-main">
                       <span>
                         <i className={`status ${STATUS_CLASS[coach.status]}`}>{STATUS_LABEL[coach.status]}</i>

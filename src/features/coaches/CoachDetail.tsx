@@ -8,7 +8,10 @@ import type {
   CoachScheduleView,
   CoachStatusValue
 } from "@/lib/data/coachTypes";
+import { CoachDeleteButton } from "./CoachDeleteButton";
 import { CoachInputLinkActions } from "./CoachInputLinkActions";
+import { CoachNotesPanel } from "./CoachNotesPanel";
+import { CoachProfileEditForm } from "./CoachProfileEditForm";
 import { CoachStatusToggle } from "./CoachStatusToggle";
 
 export type CoachDetailTab = "profile" | "schedule" | "engagements";
@@ -70,6 +73,7 @@ export function CoachDetailView({
             {coach.deletedAt ? <span className="coach-origin-muted-pill deleted">삭제됨</span> : null}
             {coach.statusNote ? <span className="coach-origin-note">+ {coach.statusNote}</span> : null}
             {!coach.deletedAt ? <CoachStatusToggle coachId={coach.id} status={coach.status} /> : null}
+            {!coach.deletedAt ? <CoachDeleteButton coachId={coach.id} coachName={coach.name} /> : null}
           </div>
           <div className="coach-origin-tags">
             {splitWorkTypes(coach.workType).map((workType) => (
@@ -131,6 +135,7 @@ function ProfilePane({ coach }: { coach: CoachDetail }) {
           <InfoItem label="노출 상태" value={coach.isActive ? "노출" : "비노출"} />
           <InfoItem label="삭제 상태" value={coach.deletedAt ? "삭제됨" : "정상"} />
         </div>
+        {!coach.deletedAt ? <CoachProfileEditForm coach={coach} /> : null}
       </section>
 
       <section className="coach-origin-card">
@@ -152,6 +157,13 @@ function ProfilePane({ coach }: { coach: CoachDetail }) {
           <span>가능 커리큘럼</span>
         </div>
         <ChipList items={coach.curriculums} tone="mixed" />
+      </section>
+
+      <section className="coach-origin-card coach-origin-wide-card">
+        <div className="coach-origin-section-title">
+          <span>메모</span>
+        </div>
+        <CoachNotesPanel coachId={coach.id} />
       </section>
     </section>
   );
