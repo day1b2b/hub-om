@@ -99,11 +99,6 @@ button {
   width: 24px;
 }
 
-.brand-logo {
-  border-radius: 6px;
-  flex-shrink: 0;
-}
-
 .brand-mark::after {
   background: #ffffff;
   border-radius: 2px;
