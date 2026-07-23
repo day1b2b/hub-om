@@ -227,6 +227,10 @@ function SortSelect({ onChange, value }: { onChange: (value: SortKey) => void; v
 }
 
 function compareCoaches(a: CoachSummary, b: CoachSummary, sortKey: SortKey): number {
+  // 활동중인 코치를 항상 상단에, 그 외(대기/비활동)는 하단에 — 선택한 정렬 기준보다 우선한다.
+  const activeOrder = Number(a.status !== "active") - Number(b.status !== "active");
+  if (activeOrder !== 0) return activeOrder;
+
   if (sortKey === "rating") return (b.avgRating ?? -1) - (a.avgRating ?? -1) || a.name.localeCompare(b.name, "ko");
   if (sortKey === "name") return a.name.localeCompare(b.name, "ko");
   return b.workDayCount - a.workDayCount || (b.avgRating ?? -1) - (a.avgRating ?? -1) || a.name.localeCompare(b.name, "ko");
