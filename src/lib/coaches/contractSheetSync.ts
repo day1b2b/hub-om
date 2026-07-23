@@ -337,6 +337,6 @@ async function replaceSchedules(tx: Prisma.TransactionClient, engagementId: stri
 
   await cancelReservationsForConfirmedSchedules(
     tx,
-    engagement.schedules.map((schedule) => ({ coachId: engagement.coachId, date: schedule.date }))
+    engagement.schedules.map((schedule) => ({ coachId: engagement.coachId, date: schedule.date, engagementId }))
   );
 }

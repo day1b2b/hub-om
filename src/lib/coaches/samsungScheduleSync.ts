@@ -137,7 +137,7 @@ export async function syncSamsungSchedule(dryRun: boolean): Promise<SyncResult> 
       where: { courseName: { in: [COURSE_NAME, OLD_COURSE_NAME] } }
     });
 
-    const confirmedSchedules: Array<{ coachId: string; date: Date }> = [];
+    const confirmedSchedules: Array<{ coachId: string; date: Date; engagementId: string }> = [];
 
     for (let index = 0; index < entries.length; index++) {
       const entry = entries[index];
@@ -169,7 +169,7 @@ export async function syncSamsungSchedule(dryRun: boolean): Promise<SyncResult> 
             endTime: "18:00"
           }
         });
-        confirmedSchedules.push({ coachId: entry.coachId, date });
+        confirmedSchedules.push({ coachId: entry.coachId, date, engagementId: created.id });
       }
       result.created++;
     }

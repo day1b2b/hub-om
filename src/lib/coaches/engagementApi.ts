@@ -71,7 +71,7 @@ export async function regenerateWeekdaySchedules(
 
   if (rows.length > 0) {
     await tx.coachEngagementSchedule.createMany({ data: rows });
-    await cancelReservationsForConfirmedSchedules(tx, rows.map((row) => ({ coachId: row.coachId, date: row.date })));
+    await cancelReservationsForConfirmedSchedules(tx, rows.map((row) => ({ coachId: row.coachId, date: row.date, engagementId })));
   }
 }
 

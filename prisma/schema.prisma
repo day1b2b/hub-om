@@ -482,9 +482,15 @@ model CoachDayReservation {
   createdAt       DateTime  @default(now()) @map("created_at")
   cancelledAt     DateTime? @map("cancelled_at")
 
-  coach Coach @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  // 예약이 실제 투입 확정으로 이어져 자동 취소된 경우, 그 확정 건을 가리킨다.
+  // (마이페이지의 "확정된 과정" 목록에 과정명·기간·코치를 보여주는 데 사용)
+  confirmedEngagementId String? @map("confirmed_engagement_id") @db.Uuid
+
+  coach               Coach            @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  confirmedEngagement CoachEngagement? @relation(fields: [confirmedEngagementId], references: [id], onDelete: SetNull)
 
   @@index([coachId, date])
+  @@index([confirmedEngagementId])
   @@map("coach_day_reservations")
 }
 
@@ -522,9 +528,10 @@ model CoachEngagement {
   hiredByText        String?               @map("hired_by_text") // private 취급
   createdAt          DateTime              @default(now()) @map("created_at")
 
-  coach            Coach             @relation(fields: [coachId], references: [id], onDelete: Cascade)
-  operationSession OperationSession? @relation(fields: [operationSessionId], references: [id])
-  schedules        CoachEngagementSchedule[]
+  coach              Coach                 @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  operationSession   OperationSession?     @relation(fields: [operationSessionId], references: [id])
+  schedules          CoachEngagementSchedule[]
+  confirmedFromReservations CoachDayReservation[]
 
   @@index([coachId])
   @@index([operationSessionId])
