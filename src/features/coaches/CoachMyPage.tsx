@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import type { MyActiveReservation, MyConfirmedCourse } from "@/lib/data/coachMyPage";
@@ -172,6 +173,7 @@ interface CoachReviewRowProps {
 }
 
 function CoachReviewRow({ coach, todayIso }: CoachReviewRowProps) {
+  const router = useRouter();
   const [rating, setRating] = useState(coach.rating ?? 0);
   const [feedback, setFeedback] = useState(coach.feedback ?? "");
   const [saving, setSaving] = useState(false);
@@ -191,6 +193,8 @@ function CoachReviewRow({ coach, todayIso }: CoachReviewRowProps) {
         setJustSaved(true);
         if (savedFlashTimer.current) clearTimeout(savedFlashTimer.current);
         savedFlashTimer.current = setTimeout(() => setJustSaved(false), 1500);
+        // 카드를 접었다 펼치면 이 값으로 다시 초기화되므로, 서버 데이터도 최신으로 맞춰둔다.
+        router.refresh();
       } else {
         alert("저장하지 못했습니다.");
       }
