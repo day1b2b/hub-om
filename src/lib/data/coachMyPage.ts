@@ -1,5 +1,7 @@
 import type { CoachEngagementStatus } from "@prisma/client";
 import { toDateKey } from "@/lib/coaches/dateParse";
+import { normalizePersonName, resolveOmNameByEmail } from "./myOperations";
+import { splitPersonNames } from "./personNames";
 import { getPrismaClient } from "./prisma";
 
 export interface MyActiveReservation {
@@ -59,25 +61,75 @@ export interface MyConfirmedCourse {
   coaches: MyConfirmedCourseCoach[];
 }
 
-// 본인이 예약했던 코치·날짜가 실제 투입으로 확정되면서 자동 취소된 건들을,
-// 과정명 단위로 묶어 마이페이지에 보여준다. 같은 과정이라도 코치별로
-// 투입 기간이 다를 수 있어 카드 안에서는 코치별 기간을 따로 보여주고,
-// 카드 헤더의 기간은 그 코치들 기간을 모두 합친 범위로 표시한다.
+const ENGAGEMENT_SELECT = {
+  id: true,
+  courseName: true,
+  startDate: true,
+  endDate: true,
+  status: true,
+  rating: true,
+  feedback: true,
+  rehire: true
+} as const;
+
+interface EngagementWithCoach {
+  coach: { id: string; name: string };
+  engagement: {
+    id: string;
+    courseName: string;
+    startDate: Date;
+    endDate: Date;
+    status: CoachEngagementStatus;
+    rating: number | null;
+    feedback: string | null;
+    rehire: boolean | null;
+  };
+}
+
+// 본인이 예약했던 코치·날짜가 실제 투입으로 확정되면서 자동 취소된 건들과,
+// 계약 시트의 "담당자"(hiredByText)가 본인 이름과 일치하는 건(예약 없이
+// 바로 확정된 건 포함)을 모아, 과정명 단위로 묶어 마이페이지에 보여준다.
+// 같은 과정이라도 코치별로 투입 기간이 다를 수 있어 카드 안에서는 코치별
+// 기간을 따로 보여주고, 카드 헤더의 기간은 그 코치들 기간을 모두 합친
+// 범위로 표시한다.
 export async function listMyConfirmedCourses(email: string): Promise<MyConfirmedCourse[]> {
   if (!email) return [];
 
   const prisma = getPrismaClient();
-  const rows = await prisma.coachDayReservation.findMany({
+
+  const reservationRows = await prisma.coachDayReservation.findMany({
     where: { reservedByEmail: email, confirmedEngagementId: { not: null } },
     select: {
       coach: { select: { id: true, name: true } },
-      confirmedEngagement: {
-        select: { id: true, courseName: true, startDate: true, endDate: true, status: true, rating: true, feedback: true, rehire: true }
-      }
+      confirmedEngagement: { select: ENGAGEMENT_SELECT }
     }
   });
 
-  const engagementIds = [...new Set(rows.map((row) => row.confirmedEngagement?.id).filter((id): id is string => !!id))];
+  const byEngagementId = new Map<string, EngagementWithCoach>();
+  for (const row of reservationRows) {
+    if (!row.confirmedEngagement) continue;
+    byEngagementId.set(row.confirmedEngagement.id, { coach: row.coach, engagement: row.confirmedEngagement });
+  }
+
+  // 계약 시트 동기화로 예약 단계 없이 바로 들어온 확정 건도, 담당자 이름이
+  // 나와 일치하면 함께 보여준다. hiredByText는 자유 텍스트라 정확한 이름
+  // 매칭이 안 될 수 있음(오타·별명 등) — 그런 경우 이 화면엔 안 뜬다.
+  const myOmName = await resolveOmNameByEmail(email);
+  if (myOmName) {
+    const target = normalizePersonName(myOmName);
+    const candidates = await prisma.coachEngagement.findMany({
+      where: { hiredByText: { contains: myOmName } },
+      select: { ...ENGAGEMENT_SELECT, hiredByText: true, coach: { select: { id: true, name: true } } }
+    });
+    for (const candidate of candidates) {
+      if (byEngagementId.has(candidate.id)) continue;
+      const matches = splitPersonNames(candidate.hiredByText).some((name) => normalizePersonName(name) === target);
+      if (!matches) continue;
+      byEngagementId.set(candidate.id, { coach: candidate.coach, engagement: candidate });
+    }
+  }
+
+  const engagementIds = [...byEngagementId.keys()];
   const scheduleRows = engagementIds.length
     ? await prisma.coachEngagementSchedule.findMany({
         where: { engagementId: { in: engagementIds }, cancelledAt: null },
@@ -93,10 +145,7 @@ export async function listMyConfirmedCourses(email: string): Promise<MyConfirmed
   }
 
   const groups = new Map<string, MyConfirmedCourse>();
-  for (const row of rows) {
-    const engagement = row.confirmedEngagement;
-    if (!engagement) continue;
-
+  for (const { coach, engagement } of byEngagementId.values()) {
     const engagementStartDate = toDateKey(engagement.startDate);
     const engagementEndDate = toDateKey(engagement.endDate);
 
@@ -111,8 +160,8 @@ export async function listMyConfirmedCourses(email: string): Promise<MyConfirmed
 
     if (!group.coaches.some((c) => c.engagementId === engagement.id)) {
       group.coaches.push({
-        coachId: row.coach.id,
-        coachName: row.coach.name,
+        coachId: coach.id,
+        coachName: coach.name,
         engagementId: engagement.id,
         startDate: engagementStartDate,
         endDate: engagementEndDate,
