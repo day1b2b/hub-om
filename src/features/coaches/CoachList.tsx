@@ -129,7 +129,12 @@ export function CoachList({ coaches, loadFailed }: CoachListProps) {
                       </small>
                     </span>
                     <span className="coach-origin-row-time">
-                      근무일 {coach.workDayCount}일 · 평가 {coach.avgRating === null ? "-" : coach.avgRating.toFixed(1)}
+                      <span>근무일 {coach.workDayCount}일</span>
+                      {coach.avgRating === null ? (
+                        <span className="coach-origin-row-rating empty">평가 없음</span>
+                      ) : (
+                        <span className="coach-origin-row-rating">★ {coach.avgRating.toFixed(1)}</span>
+                      )}
                     </span>
                   </Link>
                   {coach.notionPageId && (

@@ -3933,14 +3933,29 @@ td span {
 }
 
 .coach-origin-row-time {
-  color: #4f4d49;
-  font-size: 13px;
-  font-weight: 800;
+  align-items: flex-end;
+  color: #8b8782;
+  display: grid;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 4px;
   min-width: 0;
   overflow: hidden;
   text-align: right;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.coach-origin-row-rating {
+  color: #f5a623;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.coach-origin-row-rating.empty {
+  color: #c2beb8;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .panel-title-row {
@@ -9387,6 +9402,7 @@ button.coach-doc-reserve-chip:disabled {
   }
 
   .coach-origin-row-time {
+    align-items: flex-start;
     grid-column: 1;
     text-align: left;
   }
