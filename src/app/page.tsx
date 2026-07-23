@@ -14,11 +14,8 @@ export default function PublicHomePage() {
             <span aria-hidden="true" className="eyebrow-dot" />
             hub-om
           </p>
-          <h1 id="home-title">기업교육 운영 현황을 한 곳에서 관리합니다.</h1>
-          <p className="lede">
-            과정 일정, 담당자, 운영 이슈, 관련 커뮤니케이션, 자료 후보를 하나의 화면에서 확인하고
-            교육 운영 상태를 관리하는 내부 업무 도구입니다.
-          </p>
+          <h1 id="home-title">기업교육 운영의 모든 것을 한 곳에서</h1>
+          <p className="lede">일정부터 이슈, 자료까지 — 한 화면에서 시작하고 완성합니다.</p>
           <div className="public-home-actions">
             <a className="primary-link" href="/sign-in?callbackUrl=/dashboard">
               회사 계정으로 로그인
