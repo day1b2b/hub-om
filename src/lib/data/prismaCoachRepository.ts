@@ -424,17 +424,27 @@ interface ArchivedCoachPublicDetail {
 
 async function loadArchivedCoachPublicDetail(sourceCoachId: string): Promise<ArchivedCoachPublicDetail | null> {
   const prisma = getPrismaClient();
-  const rows = await prisma.$queryRaw<Array<{ row_data: Record<string, unknown> | null }>>`
-    SELECT ar.row_data
-    FROM coachdb_archive_rows ar
-    JOIN coachdb_archive_snapshots s ON s.id = ar.snapshot_id
-    WHERE s.status = 'completed'
-      AND ar.table_schema = 'public'
-      AND ar.table_name = 'coaches'
-      AND ar.row_key = ${sourceCoachId}
-    ORDER BY s.started_at DESC
-    LIMIT 1
-  `;
+  let rows: Array<{ row_data: Record<string, unknown> | null }>;
+
+  try {
+    rows = await prisma.$queryRaw<Array<{ row_data: Record<string, unknown> | null }>>`
+      SELECT ar.row_data
+      FROM coachdb_archive_rows ar
+      JOIN coachdb_archive_snapshots s ON s.id = ar.snapshot_id
+      WHERE s.status = 'completed'
+        AND ar.table_schema = 'public'
+        AND ar.table_name = 'coaches'
+        AND ar.row_key = ${sourceCoachId}
+      ORDER BY s.started_at DESC
+      LIMIT 1
+    `;
+  } catch (error) {
+    // coachdb_archive_rows/snapshots는 scripts/archive-coach-db.ts로만 생성되는 테이블이라
+    // (원본 coach-db에 접근 못 하는) 로컬 개발 DB에는 아예 없을 수 있다. 그 경우는 없는 걸로
+    // 취급하고, 그 외 예상 못 한 에러는 그대로 올린다.
+    if (error instanceof Error && error.message.includes("42P01")) return null;
+    throw error;
+  }
 
   const row = rows[0]?.row_data;
   if (!row) return null;
