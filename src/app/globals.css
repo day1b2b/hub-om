@@ -440,7 +440,6 @@ button {
   min-height: 100vh;
 }
 
-.public-home-section,
 .public-home-footer {
   margin: 0 auto;
   max-width: 980px;
@@ -596,60 +595,6 @@ button {
 .public-hero-panel-value {
   font-size: 15px;
   font-weight: 700;
-}
-
-.public-home-section {
-  border-top: 1px solid var(--line);
-  display: grid;
-  gap: 16px;
-  padding-bottom: 34px;
-  padding-top: 34px;
-}
-
-.public-home-section h2 {
-  color: var(--muted);
-  font-family: var(--mono);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.public-home-section p {
-  color: var(--muted);
-  line-height: 1.75;
-  margin-bottom: 0;
-  max-width: 820px;
-}
-
-.public-home-grid {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.public-home-grid article {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 18px;
-}
-
-.public-home-grid-idx {
-  color: var(--accent);
-  display: block;
-  font-family: var(--mono);
-  font-size: 11px;
-  margin-bottom: 10px;
-}
-
-.public-home-grid h3 {
-  font-size: 15px;
-  margin: 0 0 8px;
-}
-
-.public-home-grid p {
-  font-size: 13px;
 }
 
 .public-home-footer {
@@ -9095,10 +9040,6 @@ td span {
     grid-template-columns: 1fr;
   }
 
-  .public-home-grid {
-    grid-template-columns: 1fr;
-  }
-
   .priority-strip {
     grid-template-columns: 1fr;
   }
@@ -9133,7 +9074,6 @@ td span {
   }
 
   .public-hero,
-  .public-home-section,
   .public-home-footer {
     padding-left: 18px;
     padding-right: 18px;
