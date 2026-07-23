@@ -29,6 +29,21 @@ const TIME_FILTERS = [
 
 type TimeFilterKey = (typeof TIME_FILTERS)[number]["key"];
 
+function CoachAvatarIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+      <circle cx="12" cy="8" fill="currentColor" r="3.5" />
+      <path
+        d="M4.5 19.5c0-3.6 3.36-6.5 7.5-6.5s7.5 2.9 7.5 6.5"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.6"
+      />
+    </svg>
+  );
+}
+
 
 export function CoachScheduleBoard({ currentUserEmail, dashboard, holidays, loadFailed, initialDate }: CoachScheduleBoardProps) {
   const router = useRouter();
@@ -327,7 +342,7 @@ export function CoachScheduleBoard({ currentUserEmail, dashboard, holidays, load
                 {multiDateCoaches.map((coach) => (
                   <div className="coach-doc-row" key={coach.id}>
                     <Link className="coach-doc-identity" href={`/coaches/${coach.id}`}>
-                      <span className="coach-doc-icon">{coach.name.slice(0, 1)}</span>
+                      <span className="coach-doc-icon"><CoachAvatarIcon /></span>
                       <span className="coach-doc-main">
                         <strong>{coach.name}</strong>
                         <small>
@@ -391,7 +406,7 @@ export function CoachScheduleBoard({ currentUserEmail, dashboard, holidays, load
                   return (
                     <div className="coach-doc-row" key={coach.id}>
                       <Link className="coach-doc-identity" href={`/coaches/${coach.id}`}>
-                        <span className="coach-doc-icon">{coach.name.slice(0, 1)}</span>
+                        <span className="coach-doc-icon"><CoachAvatarIcon /></span>
                         <span className="coach-doc-main">
                           <strong>{coach.name}</strong>
                           <small>
