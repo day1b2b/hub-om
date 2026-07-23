@@ -48,12 +48,15 @@ interface SeedCourse {
     sourceCoachId: string;
     startDate: Date;
     endDate: Date;
+    status: CoachEngagementStatus;
     rating: number | null;
     feedback: string | null;
     rehire: boolean | null;
   }>;
 }
 
+// 오늘(스크립트 실행 시점 기준 2026-07-23)을 지났으면 "지난 과정",
+// 아니면 "진행중 과정"에 뜨도록 날짜를 나눠서 넣는다.
 const COURSES: SeedCourse[] = [
   {
     courseName: "[부가세 별도] (B2B) AI 리더십 워크숍",
@@ -62,6 +65,7 @@ const COURSES: SeedCourse[] = [
         sourceCoachId: "seed-coach-1",
         startDate: ymd(2026, 6, 15),
         endDate: ymd(2026, 6, 15),
+        status: CoachEngagementStatus.COMPLETED,
         rating: 5,
         feedback: "현장 대응이 훌륭했어요",
         rehire: true
@@ -75,6 +79,7 @@ const COURSES: SeedCourse[] = [
         sourceCoachId: "seed-coach-2",
         startDate: ymd(2026, 6, 8),
         endDate: ymd(2026, 6, 10),
+        status: CoachEngagementStatus.COMPLETED,
         rating: null,
         feedback: null,
         rehire: null
@@ -83,6 +88,44 @@ const COURSES: SeedCourse[] = [
         sourceCoachId: "seed-coach-3",
         startDate: ymd(2026, 6, 22),
         endDate: ymd(2026, 6, 23),
+        status: CoachEngagementStatus.COMPLETED,
+        rating: null,
+        feedback: null,
+        rehire: null
+      }
+    ]
+  },
+  {
+    courseName: "[부가세 별도] (B2B) AI 활용 세미나 시즌 2",
+    coaches: [
+      {
+        sourceCoachId: "seed-coach-4",
+        startDate: ymd(2026, 7, 15),
+        endDate: ymd(2026, 8, 5),
+        status: CoachEngagementStatus.IN_PROGRESS,
+        rating: null,
+        feedback: null,
+        rehire: null
+      },
+      {
+        sourceCoachId: "seed-coach-5",
+        startDate: ymd(2026, 7, 20),
+        endDate: ymd(2026, 7, 24),
+        status: CoachEngagementStatus.IN_PROGRESS,
+        rating: null,
+        feedback: null,
+        rehire: null
+      }
+    ]
+  },
+  {
+    courseName: "[부가세 별도] (B2B) 데이터 리터러시 워크숍",
+    coaches: [
+      {
+        sourceCoachId: "seed-coach-6",
+        startDate: ymd(2026, 8, 1),
+        endDate: ymd(2026, 8, 3),
+        status: CoachEngagementStatus.SCHEDULED,
         rating: null,
         feedback: null,
         rehire: null
@@ -123,7 +166,7 @@ async function main(): Promise<void> {
           sourceEngagementId: `seed-mypage:${course.courseName}:${def.sourceCoachId}`,
           coachId: coach.id,
           courseName: course.courseName,
-          status: CoachEngagementStatus.COMPLETED,
+          status: def.status,
           source: CoachEngagementSource.MANUAL,
           startDate: def.startDate,
           endDate: def.endDate,
