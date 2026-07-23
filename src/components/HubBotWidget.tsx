@@ -51,9 +51,9 @@ export function HubBotWidget() {
   return (
     <div className="hub-bot">
       {isOpen && (
-        <div className="hub-bot-panel" ref={panelRef} role="dialog" aria-label="업무 챗봇">
+        <div className="hub-bot-panel" ref={panelRef} role="dialog" aria-label="미로 업무 챗봇">
           <div className="hub-bot-panel-header">
-            <span>hub-bot</span>
+            <span>미로</span>
             <button type="button" onClick={() => setIsOpen(false)} aria-label="챗봇 닫기">
               ×
             </button>
@@ -108,7 +108,7 @@ export function HubBotWidget() {
         type="button"
         className="hub-bot-toggle"
         onClick={() => setIsOpen((open) => !open)}
-        aria-label="업무 챗봇 열기"
+        aria-label="미로 업무 챗봇 열기"
       >
         <CatFaceIcon />
       </button>
