@@ -621,12 +621,13 @@ model CoachSyncLog {
 }
 
 model TeamUser {
-  id        String   @id @default(uuid()) @db.Uuid
+  id        String      @id @default(uuid()) @db.Uuid
   name      String
   email     String
-  slackId   String   @map("slack_id")
+  slackId   String      @map("slack_id")
   team      String?
-  createdAt DateTime @default(now()) @map("created_at")
+  role      MemberRole?
+  createdAt DateTime    @default(now()) @map("created_at")
 
   @@map("team_users")
 }
