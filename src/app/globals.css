@@ -593,6 +593,75 @@ button {
   width: min(100%, 1180px);
 }
 
+.announcement-body {
+  line-height: 1.7;
+}
+
+.announcement-body a {
+  color: var(--blue);
+}
+
+.rich-text-editor {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.rich-text-toolbar {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  gap: 4px;
+  padding: 6px;
+}
+
+.rich-text-toolbar button {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 12px;
+  min-width: 28px;
+  padding: 4px 8px;
+}
+
+.rich-text-toolbar button:hover {
+  background: var(--surface-secondary, #f9fafb);
+  border-color: var(--line);
+}
+
+.rich-text-toolbar-divider {
+  background: var(--line);
+  height: 18px;
+  margin: 0 2px;
+  width: 1px;
+}
+
+.rich-text-color-swatch {
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  height: 18px;
+  min-width: 0;
+  padding: 0;
+  width: 18px;
+}
+
+.rich-text-editable {
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.6;
+  min-height: 220px;
+  padding: 8px 10px;
+}
+
+.rich-text-editable:focus {
+  outline: none;
+}
+
+.rich-text-editable a {
+  color: var(--blue);
+}
+
 .announcement-attachments {
   border-top: 1px solid var(--border-color, #e5e7eb);
   margin-top: 12px;
