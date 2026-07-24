@@ -22,7 +22,7 @@ export function AnnouncementList({ announcements, loadFailed }: AnnouncementList
   return (
     <main className="dashboard-shell">
       <AppSidebar label="공지사항" teamScope="both" />
-      <section className="content operations-page announcements-content">
+      <section className="content operations-page">
         <header className="page-header">
           <div>
             <h1>공지사항</h1>

@@ -593,10 +593,6 @@ button {
   width: min(100%, 1180px);
 }
 
-.announcements-content {
-  width: min(100%, 860px);
-}
-
 .announcement-body {
   line-height: 1.7;
 }
