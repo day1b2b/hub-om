@@ -26,6 +26,8 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
   const [bulkText, setBulkText] = useState("");
   const [bulkSaving, setBulkSaving] = useState(false);
   const [bulkError, setBulkError] = useState<string | null>(null);
+  const [assignRole, setAssignRole] = useState<TeamUserRole>("om");
+  const [assigning, setAssigning] = useState(false);
 
   const filteredUsers =
     teamFilter === "전체" ? users : users.filter((u) => u.team === teamFilter);
@@ -110,6 +112,27 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
       alert("삭제에 실패했습니다.");
     } finally {
       setDeleting(false);
+    }
+  }
+
+  async function handleAssignRole() {
+    if (!selected.size) return;
+    const label = ROLE_LABEL[assignRole];
+    if (!confirm(`선택한 ${selected.size}명을 ${label}(으)로 지정하시겠습니까?`)) return;
+    setAssigning(true);
+    try {
+      const res = await fetch("/api/admin/users/role", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: [...selected], role: assignRole }),
+      });
+      if (!res.ok) throw new Error();
+      setUsers((prev) => prev.map((u) => (selected.has(u.id) ? { ...u, role: assignRole } : u)));
+      setSelected(new Set());
+    } catch {
+      alert("구분 지정에 실패했습니다.");
+    } finally {
+      setAssigning(false);
     }
   }
 
@@ -214,9 +237,23 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
               {teamFilter === "전체" ? `총 ${users.length}명` : `${teamFilter} ${filteredUsers.length}명`}
             </span>
             {selected.size > 0 && (
-              <button className="user-delete-btn" disabled={deleting} onClick={handleDelete}>
-                {deleting ? "삭제 중..." : `${selected.size}명 삭제`}
-              </button>
+              <div className="user-bulk-assign">
+                <select
+                  value={assignRole}
+                  onChange={(e) => setAssignRole(e.target.value as TeamUserRole)}
+                  className="user-input"
+                >
+                  {ROLE_OPTIONS.map((r) => (
+                    <option key={r.value} value={r.value}>{r.label}</option>
+                  ))}
+                </select>
+                <button className="user-add-btn" disabled={assigning} onClick={handleAssignRole} type="button">
+                  {assigning ? "지정 중..." : `${selected.size}명 구분 지정`}
+                </button>
+                <button className="user-delete-btn" disabled={deleting} onClick={handleDelete}>
+                  {deleting ? "삭제 중..." : `${selected.size}명 삭제`}
+                </button>
+              </div>
             )}
           </div>
           <table className="user-table">
