@@ -307,6 +307,7 @@ function buildOperationSessionCreateData(input: {
     ldName: nullableText(normalizeRoleAssigneeText(normalizeVisibleText(input.fields.ld), "ld", input.roleRoster)),
     lectureManagementLink: nullableText(input.fields.lectureManagementLink),
     omName: nullableText(normalizeRoleAssigneeText(normalizeVisibleText(input.fields.om), "om", input.roleRoster)),
+    omUpdate: nullableText(input.fields.omUpdate),
     onsiteRequired: OnsiteRequired.UNKNOWN,
     onsiteText: nullableText(input.fields.onsiteText),
     operationChannel: enumFromText(
