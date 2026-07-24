@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { MAX_ATTACHMENT_BYTES, MAX_ATTACHMENT_COUNT } from "@/lib/data/announcements/announcementAttachmentLimits";
+import { RichTextEditor } from "@/features/announcements/RichTextEditor";
 
 interface ExistingAttachment {
   id: string;
@@ -72,6 +73,11 @@ export function AnnouncementForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const plainText = content.replace(/<[^>]*>/g, "").trim();
+    if (!plainText) {
+      setError("내용이 필요합니다.");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -80,7 +86,7 @@ export function AnnouncementForm({
 
       const formData = new FormData();
       formData.append("title", title.trim());
-      formData.append("content", content.trim());
+      formData.append("content", content);
       selectedFiles.forEach((file) => formData.append("files", file));
       removedAttachmentIds.forEach((id) => formData.append("removeAttachmentIds", id));
 
@@ -109,14 +115,7 @@ export function AnnouncementForm({
         type="text"
         value={title}
       />
-      <textarea
-        required
-        className="user-bulk-textarea"
-        onChange={(e) => setContent(e.target.value)}
-        placeholder="내용"
-        rows={12}
-        value={content}
-      />
+      <RichTextEditor value={content} onChange={setContent} />
 
       <div className="announcement-attachment-field">
         <label className="announcement-attachment-label" htmlFor="announcement-files">
