@@ -1,9 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import type { TeamUser, TeamUserInput } from "@/lib/data/teamUsers/teamUserTypes";
+import type { TeamUser, TeamUserInput, TeamUserRole } from "@/lib/data/teamUsers/teamUserTypes";
 
 const TEAM_OPTIONS = ["1팀", "2팀"] as const;
+const ROLE_OPTIONS: { value: TeamUserRole; label: string }[] = [
+  { value: "ld", label: "LD" },
+  { value: "om", label: "OM" }
+];
+const ROLE_LABEL: Record<TeamUserRole, string> = { ld: "LD", om: "OM" };
 type TeamFilter = "전체" | "1팀" | "2팀";
 
 export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
@@ -13,6 +18,7 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
   const [email, setEmail] = useState("");
   const [slackId, setSlackId] = useState("");
   const [team, setTeam] = useState("");
+  const [role, setRole] = useState<TeamUserRole | "">("");
   const [teamFilter, setTeamFilter] = useState<TeamFilter>("전체");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -37,6 +43,7 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
           email: email.trim(),
           slackId: slackId.trim(),
           team: team || undefined,
+          role: role || undefined,
         }),
       });
       if (!res.ok) {
@@ -49,6 +56,7 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
       setEmail("");
       setSlackId("");
       setTeam("");
+      setRole("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "오류가 발생했습니다.");
     } finally {
@@ -143,6 +151,16 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
             <option key={t} value={t}>{t}</option>
           ))}
         </select>
+        <select
+          value={role}
+          onChange={(e) => setRole(e.target.value as TeamUserRole | "")}
+          className="user-input"
+        >
+          <option value="">구분 선택</option>
+          {ROLE_OPTIONS.map((r) => (
+            <option key={r.value} value={r.value}>{r.label}</option>
+          ))}
+        </select>
         <input
           required
           type="text"
@@ -211,6 +229,7 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
                     onChange={toggleAll}
                   />
                 </th>
+                <th>팀</th>
                 <th>구분</th>
                 <th>이름</th>
                 <th>이메일</th>
@@ -228,6 +247,7 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
                     />
                   </td>
                   <td>{u.team || "-"}</td>
+                  <td>{u.role ? ROLE_LABEL[u.role] : "-"}</td>
                   <td>{u.name}</td>
                   <td>{u.email}</td>
                   <td>{u.slackId || "-"}</td>
@@ -245,11 +265,11 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
       )}
 
       <div className="user-bulk-add">
-        <p className="user-bulk-add-label">여러 명 한 번에 추가 (엑셀에서 팀, 이름, 이메일, Slack ID 순서로 복사해서 붙여넣기)</p>
+        <p className="user-bulk-add-label">여러 명 한 번에 추가 (엑셀에서 팀, 구분(LD/OM), 이름, 이메일, Slack ID 순서로 복사해서 붙여넣기)</p>
         <textarea
           className="user-bulk-textarea"
           onChange={(e) => setBulkText(e.target.value)}
-          placeholder={"1팀\t김정선\tjungsun.kim@day1company.co.kr\tjungsun.kim"}
+          placeholder={"1팀\tOM\t김정선\tjungsun.kim@day1company.co.kr\tjungsun.kim"}
           rows={6}
           value={bulkText}
         />
@@ -262,18 +282,26 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
   );
 }
 
+function parseRole(value: string | undefined): TeamUserRole | undefined {
+  const normalized = (value ?? "").trim().toLowerCase();
+  if (normalized === "ld") return "ld";
+  if (normalized === "om") return "om";
+  return undefined;
+}
+
 function parseBulkRows(text: string): TeamUserInput[] {
   return text
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => line.split(/\t|,/).map((cell) => cell.trim()))
-    .filter((cells) => !(cells[0] === "팀" && cells[1] === "이름"))
-    .map(([team, name, email, slackId]) => ({
+    .filter((cells) => !(cells[0] === "팀" && (cells[1] === "이름" || cells[1] === "구분")))
+    .map(([team, role, name, email, slackId]) => ({
       email: email ?? "",
       name: name ?? "",
       slackId: slackId ?? "",
-      team: team || undefined
+      team: team || undefined,
+      role: parseRole(role)
     }))
     .filter((input) => input.name && input.email);
 }
