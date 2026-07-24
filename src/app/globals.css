@@ -627,6 +627,63 @@ button {
   width: min(100%, 1180px);
 }
 
+.announcements-content {
+  width: min(100%, 860px);
+}
+
+.announcement-attachments {
+  border-top: 1px solid var(--border-color, #e5e7eb);
+  margin-top: 12px;
+  padding-top: 12px;
+}
+
+.announcement-attachments-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+
+.announcement-attachments ul {
+  display: grid;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.announcement-attachment-size {
+  color: var(--text-secondary, #6b7280);
+  font-size: 12px;
+}
+
+.announcement-attachment-field {
+  display: grid;
+  gap: 8px;
+}
+
+.announcement-attachment-label {
+  color: var(--text-secondary, #6b7280);
+  font-size: 13px;
+}
+
+.announcement-attachment-list {
+  display: grid;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.announcement-attachment-list li {
+  align-items: center;
+  background: var(--surface-secondary, #f9fafb);
+  border-radius: 6px;
+  display: flex;
+  font-size: 13px;
+  justify-content: space-between;
+  padding: 6px 10px;
+}
+
 .page-header {
   align-items: center;
   display: flex;

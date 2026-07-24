@@ -24,7 +24,11 @@ export default async function AnnouncementDetailPage({ params }: Props) {
       content: true,
       authorName: true,
       authorEmail: true,
-      createdAt: true
+      createdAt: true,
+      attachments: {
+        select: { id: true, fileName: true, size: true },
+        orderBy: { createdAt: "asc" }
+      }
     }
   });
 
@@ -52,7 +56,28 @@ export default async function AnnouncementDetailPage({ params }: Props) {
         </header>
 
         <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.7 }}>{announcement.content}</div>
+
+        {announcement.attachments.length > 0 && (
+          <div className="announcement-attachments">
+            <h2 className="announcement-attachments-title">첨부파일 {announcement.attachments.length}개</h2>
+            <ul>
+              {announcement.attachments.map((file) => (
+                <li key={file.id}>
+                  <a href={`/api/announcements/${announcement.id}/attachments/${file.id}`}>
+                    {file.fileName} <span className="announcement-attachment-size">({formatFileSize(file.size)})</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </section>
     </main>
   );
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
 }
