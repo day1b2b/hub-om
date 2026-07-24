@@ -94,3 +94,25 @@ export async function deleteTeamUsers(ids: string[]): Promise<number> {
 
   return result.count;
 }
+
+export async function updateTeamUsersRole(ids: string[], role: TeamUserRole): Promise<number> {
+  if (!hasDatabaseUrl()) {
+    const users = readAll();
+    let updated = 0;
+    const next = users.map((u) => {
+      if (!ids.includes(u.id)) return u;
+      updated += 1;
+      return { ...u, role };
+    });
+    writeAll(next);
+    return updated;
+  }
+
+  const prisma = getPrismaClient();
+  const result = await prisma.teamUser.updateMany({
+    where: { id: { in: ids } },
+    data: { role: ROLE_TO_PRISMA[role] }
+  });
+
+  return result.count;
+}

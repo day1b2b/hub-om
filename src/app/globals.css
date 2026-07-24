@@ -11194,6 +11194,12 @@ button.coach-doc-reserve-chip:disabled {
   color: var(--text-sub);
 }
 
+.user-bulk-assign {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
 .user-delete-btn {
   padding: 5px 12px;
   border: 1px solid var(--line);
