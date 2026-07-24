@@ -50,8 +50,11 @@ jobs:
       - name: Report all advisories (경고)
         run: npm audit || true
 
-      - name: Fail on critical production advisories (차단)
-        run: npm audit --omit=dev --audit-level=critical
+      # 수정 버전이 아직 없는 취약점은 기술 책임자 확인 후
+      # scripts/security/audit-allowlist.json에 예외로 등록한다.
+      # 예외 목록에 없는 새 critical은 기존과 동일하게 차단한다.
+      - name: Fail on critical production advisories (차단 · 확인된 예외 허용)
+        run: node scripts/security/check-audit-allowlist.mjs
 
   sast:
     name: 코드 정적 분석 (semgrep · 참고용)
