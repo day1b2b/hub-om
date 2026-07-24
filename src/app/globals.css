@@ -593,10 +593,6 @@ button {
   width: min(100%, 1180px);
 }
 
-.announcements-content {
-  width: min(100%, 860px);
-}
-
 .announcement-attachments {
   border-top: 1px solid var(--border-color, #e5e7eb);
   margin-top: 12px;
