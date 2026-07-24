@@ -214,39 +214,22 @@ button {
   width: 100%;
 }
 
-.auth-status-panel {
-  align-items: stretch;
-  background: #ffffff;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  box-shadow: none;
-  display: grid;
-  gap: 6px;
-  left: 16px;
-  padding: 9px;
-  position: fixed;
-  bottom: 70px;
-  width: 188px;
-  z-index: 20;
-}
-
-.auth-status-panel span,
-.auth-status-panel strong {
-  display: block;
-}
-
-.auth-status-panel span {
-  color: var(--muted);
-  font-size: 10px;
-}
-
-.auth-status-panel strong {
-  color: var(--text);
+.sidebar-signout {
+  background: #f5f7fa;
+  border: 1px solid #f5f7fa;
+  border-radius: 6px;
+  color: #17202a;
   font-size: 12px;
-  line-height: 1.3;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-weight: 700;
+  margin-bottom: 20px;
+  min-height: 28px;
+  padding: 0 8px;
+  width: 100%;
+}
+
+.sidebar-signout:hover {
+  background: #d8efe5;
+  border-color: #d8efe5;
 }
 
 .primary-action {
@@ -258,26 +241,9 @@ button {
   padding: 8px 12px;
 }
 
-.auth-status-panel button {
-  background: #f5f7fa;
-  border: 1px solid #f5f7fa;
-  border-radius: 6px;
-  color: #17202a;
-  font-size: 12px;
-  font-weight: 700;
-  min-height: 28px;
-  padding: 0 8px;
-  width: 100%;
-}
-
 .primary-action:hover {
   background: var(--blue);
   border-color: var(--blue);
-}
-
-.auth-status-panel button:hover {
-  background: #d8efe5;
-  border-color: #d8efe5;
 }
 
 .sign-in-shell {
@@ -9417,7 +9383,7 @@ button.coach-doc-reserve-chip:disabled {
     display: none;
   }
 
-  .auth-status-panel {
+  .sidebar-signout {
     display: none;
   }
 

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import type { TeamScope } from "@/lib/teamScope";
 
 interface AppSidebarProps {
@@ -43,6 +43,15 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
           <strong>Hello{displayName ? `, ${displayName}` : ""}!</strong>
         </div>
       </Link>
+      {displayName ? (
+        <button
+          type="button"
+          className="sidebar-signout"
+          onClick={() => signOut({ redirectTo: "/sign-in" })}
+        >
+          로그아웃
+        </button>
+      ) : null}
       <nav className="nav-list">
         <div className="nav-section">
           <div className="nav-section-title">개인</div>
