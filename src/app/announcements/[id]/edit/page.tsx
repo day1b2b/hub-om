@@ -18,7 +18,15 @@ export default async function AnnouncementEditPage({ params }: Props) {
   const prisma = getPrismaClient();
   const announcement = await prisma.announcement.findFirst({
     where: { id, deletedAt: null },
-    select: { id: true, title: true, content: true }
+    select: {
+      id: true,
+      title: true,
+      content: true,
+      attachments: {
+        select: { id: true, fileName: true, size: true },
+        orderBy: { createdAt: "asc" }
+      }
+    }
   });
 
   if (!announcement) notFound();
@@ -39,6 +47,7 @@ export default async function AnnouncementEditPage({ params }: Props) {
         </header>
         <AnnouncementForm
           announcementId={announcement.id}
+          initialAttachments={announcement.attachments}
           initialContent={announcement.content}
           initialTitle={announcement.title}
           mode="edit"

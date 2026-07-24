@@ -9,4 +9,12 @@ export interface AnnouncementSummary {
 
 export interface AnnouncementDetail extends AnnouncementSummary {
   content: string;
+  attachments: AnnouncementAttachmentSummary[];
+}
+
+export interface AnnouncementAttachmentSummary {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  size: number;
 }
