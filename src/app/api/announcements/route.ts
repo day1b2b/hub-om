@@ -3,6 +3,7 @@ import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getPrismaClient } from "@/lib/data/prisma";
 import type { AnnouncementSummary } from "@/lib/data/announcements/announcementTypes";
 import { MAX_ATTACHMENT_BYTES, MAX_ATTACHMENT_COUNT } from "@/lib/data/announcements/announcementAttachmentLimits";
+import { announcementContentToPlainText, sanitizeAnnouncementContent } from "@/lib/data/announcements/sanitizeAnnouncementContent";
 
 export const dynamic = "force-dynamic";
 
@@ -40,13 +41,14 @@ export async function POST(request: Request) {
 
   const formData = await request.formData();
   const title = stringValue(formData.get("title"));
-  const content = stringValue(formData.get("content"));
+  const rawContent = stringValue(formData.get("content"));
+  const content = rawContent ? sanitizeAnnouncementContent(rawContent) : null;
   const files = formData.getAll("files").filter((entry): entry is File => entry instanceof File);
 
   if (!title) {
     return NextResponse.json({ ok: false, error: "제목이 필요합니다." }, { status: 400 });
   }
-  if (!content) {
+  if (!content || !announcementContentToPlainText(content)) {
     return NextResponse.json({ ok: false, error: "내용이 필요합니다." }, { status: 400 });
   }
   if (files.length > MAX_ATTACHMENT_COUNT) {

@@ -4,6 +4,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getPrismaClient } from "@/lib/data/prisma";
 import { AnnouncementActions } from "@/features/announcements/AnnouncementActions";
+import { sanitizeAnnouncementContent } from "@/lib/data/announcements/sanitizeAnnouncementContent";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +56,10 @@ export default async function AnnouncementDetailPage({ params }: Props) {
           <AnnouncementActions id={announcement.id} />
         </header>
 
-        <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.7 }}>{announcement.content}</div>
+        <div
+          className="announcement-body"
+          dangerouslySetInnerHTML={{ __html: sanitizeAnnouncementContent(announcement.content) }}
+        />
 
         {announcement.attachments.length > 0 && (
           <div className="announcement-attachments">

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getPrismaClient } from "@/lib/data/prisma";
 import { MAX_ATTACHMENT_BYTES, MAX_ATTACHMENT_COUNT } from "@/lib/data/announcements/announcementAttachmentLimits";
+import { announcementContentToPlainText, sanitizeAnnouncementContent } from "@/lib/data/announcements/sanitizeAnnouncementContent";
 
 export const dynamic = "force-dynamic";
 
@@ -63,14 +64,15 @@ export async function PUT(request: Request, { params }: RouteContext) {
   }
 
   const title = stringValue(formData.get("title"));
-  const content = stringValue(formData.get("content"));
+  const rawContent = stringValue(formData.get("content"));
+  const content = rawContent ? sanitizeAnnouncementContent(rawContent) : null;
   const files = formData.getAll("files").filter((entry): entry is File => entry instanceof File);
   const removeAttachmentIds = formData.getAll("removeAttachmentIds").filter((entry): entry is string => typeof entry === "string");
 
   if (!title) {
     return NextResponse.json({ ok: false, error: "제목이 필요합니다." }, { status: 400 });
   }
-  if (!content) {
+  if (!content || !announcementContentToPlainText(content)) {
     return NextResponse.json({ ok: false, error: "내용이 필요합니다." }, { status: 400 });
   }
   const remainingCount = existing._count.attachments - removeAttachmentIds.length + files.length;
