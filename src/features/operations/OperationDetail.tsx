@@ -157,7 +157,7 @@ export function OperationDetail({
               <InfoItem label="LD" value={operation.ld || "미정"} />
               <InfoItem label="강사" value={operation.instructors || "미정"} />
               <InfoItem label="실습코치" value={operation.coach || "미정"} />
-              <InfoItem label="지역" value={operation.region || "미정"} />
+              <InfoItem label="교육장 (장소)" value={operation.region || "미정"} />
               <InfoItem label="남은 회차" value={remainingRoundText(operation)} />
             </div>
           </section>
