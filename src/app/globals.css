@@ -4642,7 +4642,7 @@ td span {
 
 .bulk-add-rounds-dialog {
   grid-template-rows: auto minmax(0, 1fr) auto;
-  max-width: 760px;
+  max-width: 860px;
 }
 
 .bulk-add-rounds-body {
@@ -4654,13 +4654,40 @@ td span {
   padding: 18px;
 }
 
+.bulk-add-rounds-template-row {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+}
+
+.bulk-add-rounds-template-row span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.bulk-add-rounds-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.bulk-add-rounds-field > span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .bulk-add-rounds-textarea {
   border: 1px solid var(--line);
   border-radius: 6px;
+  box-sizing: border-box;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
+  min-height: 120px;
   padding: 10px 12px;
   resize: vertical;
+  width: 100%;
 }
 
 .bulk-add-rounds-preview-wrap {

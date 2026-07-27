@@ -22,6 +22,9 @@ interface ParsedRound {
 
 const PLACEHOLDER_TEXT = "1\t2026-03-09\t2026-03-09\t09:30 ~ 17:30\t강사A\t코치A\n2\t2026-03-16\t2026-03-16\t09:30 ~ 17:30\t강사A\t코치A";
 
+const TEMPLATE_HEADER = ["회차", "시작일", "종료일", "시간", "강사", "실습코치"];
+const TEMPLATE_SAMPLE_ROW = ["1", "2026-03-09", "2026-03-09", "09:30 ~ 17:30", "강사A", "코치A"];
+
 export function BulkAddRoundsButton({ baseOperationId }: BulkAddRoundsButtonProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
@@ -56,7 +59,14 @@ export function BulkAddRoundsButton({ baseOperationId }: BulkAddRoundsButtonProp
             </div>
 
             <div className="bulk-add-rounds-body">
-              <label className="lecture-note-field">
+              <div className="bulk-add-rounds-template-row">
+                <button className="secondary-action" onClick={downloadTemplate} type="button">
+                  양식 다운로드 (엑셀)
+                </button>
+                <span>양식을 채운 뒤 회차~실습코치 6개 열을 복사해 아래에 붙여넣으세요.</span>
+              </div>
+
+              <label className="bulk-add-rounds-field">
                 <span>붙여넣기 (회차 / 시작일 / 종료일 / 시간 / 강사 / 실습코치)</span>
                 <textarea
                   className="bulk-add-rounds-textarea"
@@ -135,6 +145,20 @@ export function BulkAddRoundsButton({ baseOperationId }: BulkAddRoundsButtonProp
   function handlePasteChange(value: string) {
     setPasteText(value);
     setRows(parsePastedRounds(value));
+  }
+
+  function downloadTemplate() {
+    const csvBody = [TEMPLATE_HEADER, TEMPLATE_SAMPLE_ROW].map((row) => row.join(",")).join("\r\n");
+    const blob = new Blob(["﻿" + csvBody], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = "차수_일괄등록_양식.csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   }
 
   async function saveAll() {
