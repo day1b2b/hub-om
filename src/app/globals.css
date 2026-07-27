@@ -4640,6 +4640,59 @@ td span {
   grid-template-columns: 1fr 1fr;
 }
 
+.bulk-add-rounds-dialog {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  max-width: 760px;
+}
+
+.bulk-add-rounds-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  overflow: auto;
+  padding: 18px;
+}
+
+.bulk-add-rounds-textarea {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  padding: 10px 12px;
+  resize: vertical;
+}
+
+.bulk-add-rounds-preview-wrap {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  max-height: 280px;
+  overflow: auto;
+}
+
+.bulk-add-rounds-preview-table {
+  border-collapse: collapse;
+  font-size: 12px;
+  width: 100%;
+}
+
+.bulk-add-rounds-preview-table th,
+.bulk-add-rounds-preview-table td {
+  border-bottom: 1px solid var(--line);
+  padding: 6px 10px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.bulk-add-rounds-preview-table tr.invalid td {
+  background: var(--red-bg);
+  color: var(--red);
+}
+
+.bulk-add-rounds-row-status {
+  white-space: normal;
+}
+
 .course-sessions-empty {
   color: var(--muted);
   font-size: 12px;
