@@ -260,6 +260,7 @@ export function OperationDetail({
                           <DeleteRoundButton
                             fallbackOperationId={fallbackOperationId}
                             isCurrent={courseOperation.operationId === operation.operationId}
+                            isLastRound={courseOperations.length === 1}
                             operationId={courseOperation.operationId}
                             roundLabel={roundLabel(courseOperation, index)}
                             teamQuery={teamQuery}
