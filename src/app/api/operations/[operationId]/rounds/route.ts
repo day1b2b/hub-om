@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
+import { isSameCourse } from "@/lib/data/operationCalculations";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import type { CreateOperationInput } from "@/lib/data/operationTypes";
 
@@ -41,11 +42,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   const allOperations = await repository.listOperations();
   const duplicateRound = allOperations.some(
-    (candidate) =>
-      candidate.companyName === baseOperation.companyName &&
-      candidate.courseName === baseOperation.courseName &&
-      candidate.courseId === baseOperation.courseId &&
-      candidate.roundNo === roundNo
+    (candidate) => isSameCourse(candidate, baseOperation) && candidate.roundNo === roundNo
   );
 
   if (duplicateRound) {

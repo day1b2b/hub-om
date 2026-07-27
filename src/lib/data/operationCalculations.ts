@@ -31,6 +31,10 @@ const OPERATION_TYPES = new Set<OperationType>([
   "상시형"
 ]);
 
+export function isSameCourse(a: OperationSession, b: OperationSession): boolean {
+  return a.courseId === b.courseId && a.courseName === b.courseName && a.companyName === b.companyName;
+}
+
 export function normalizeCourseId(value: unknown): string {
   return String(value ?? "")
     .replace(/[\u200B-\u200D\uFEFF]/g, "")

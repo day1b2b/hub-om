@@ -25,6 +25,7 @@ import type {
   OperationCollaboration,
   OperationDiscussionItem
 } from "@/lib/data/operationCollaboration";
+import { isSameCourse } from "@/lib/data/operationCalculations";
 import { displayRoleAssigneeText } from "@/lib/data/roleAssignees";
 import { isNavigableHref, toHref } from "@/lib/links";
 import { satisfactionNumber } from "@/lib/data/satisfaction";
@@ -166,9 +167,9 @@ export function OperationDetail({
           <section className="detail-section course-sessions-section">
             <EditAllRoundsProvider>
             <div className="section-title">
-              <h2>동일 코스ID 운영 차수</h2>
+              <h2>동일 과정 운영 차수</h2>
               <div className="course-sessions-header-actions">
-                <span>{operation.courseId} 기준 · {courseOperations.length}건</span>
+                <span>코스ID {operation.courseId} · {operation.courseName} 기준 · {courseOperations.length}건</span>
                 <AddRoundButton
                   baseCoach={operation.coach}
                   baseInstructors={operation.instructors}
@@ -627,7 +628,7 @@ function formatTotalEducationDays(operations: OperationSession[]): string {
 
 function getCourseOperations(operation: OperationSession, relatedOperations: OperationSession[]): OperationSession[] {
   const baseOperations = operation.courseId
-    ? relatedOperations.filter((candidate) => candidate.courseId === operation.courseId)
+    ? relatedOperations.filter((candidate) => isSameCourse(candidate, operation))
     : [operation];
 
   const uniqueOperations = new Map<string, OperationSession>();
