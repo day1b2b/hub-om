@@ -4640,12 +4640,6 @@ td span {
   grid-template-columns: 1fr 1fr;
 }
 
-.course-sessions-empty {
-  color: var(--muted);
-  font-size: 12px;
-  padding: 14px 16px;
-}
-
 .session-row-edit-form {
   align-items: end;
   display: flex;
