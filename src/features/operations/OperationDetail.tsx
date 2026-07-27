@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AppSidebar } from "@/components/AppSidebar";
 import { AddRoundButton } from "./AddRoundButton";
+import { BulkAddRoundsButton } from "./BulkAddRoundsButton";
 import { BulkEditRoundsButton } from "./BulkEditRoundsButton";
 import { BulkSaveRoundsButton } from "./BulkSaveRoundsButton";
 import { DeleteRoundButton } from "./DeleteRoundButton";
@@ -175,6 +176,7 @@ export function OperationDetail({
                   baseTimeText={operation.timeText}
                   nextRoundNo={nextRoundNo}
                 />
+                <BulkAddRoundsButton baseOperationId={operation.operationId} />
                 {courseOperations.length > 1 ? <BulkEditRoundsButton /> : null}
               </div>
             </div>
@@ -259,6 +261,7 @@ export function OperationDetail({
                         <DeleteRoundButton
                           fallbackOperationId={fallbackOperationId}
                           isCurrent={courseOperation.operationId === operation.operationId}
+                          isLastRound={courseOperations.length === 1}
                           operationId={courseOperation.operationId}
                           roundLabel={roundLabel(courseOperation, index)}
                           teamQuery={teamQuery}
