@@ -39,6 +39,22 @@ export async function POST(request: Request, { params }: RouteContext) {
     return NextResponse.json({ ok: false, error: "회차, 시작일, 종료일은 필수입니다." }, { status: 400 });
   }
 
+  const allOperations = await repository.listOperations();
+  const duplicateRound = allOperations.some(
+    (candidate) =>
+      candidate.companyName === baseOperation.companyName &&
+      candidate.courseName === baseOperation.courseName &&
+      candidate.courseId === baseOperation.courseId &&
+      candidate.roundNo === roundNo
+  );
+
+  if (duplicateRound) {
+    return NextResponse.json(
+      { ok: false, error: `이미 등록된 회차입니다 (${roundNo}회차). 엑셀 내용을 확인한 뒤 다시 시도해주세요.` },
+      { status: 409 }
+    );
+  }
+
   try {
     const operation = await repository.createOperation({
       archiveStatus: "아카이빙전",
