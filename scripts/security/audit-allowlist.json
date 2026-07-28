@@ -1,37 +1,4 @@
 {
   "comment": "npm audit critical 차단 게이트의 '확인된 예외' 목록. check-audit-allowlist.mjs가 읽는다. 예외 추가/삭제는 기술 책임자 확인 후에만 한다. 수정 버전이 출시되면 업그레이드하고 해당 예외를 삭제한다.",
-  "exceptions": [
-    {
-      "ghsa": "GHSA-7rqj-j65f-68wh",
-      "package": "@auth/core",
-      "reason": "2026-07-23 공개, 수정 버전 미출시 (이메일 homoglyph @ 우회 — hub-om은 Google OAuth만 사용)",
-      "added": "2026-07-24",
-      "recheck": "2026-08-21",
-      "tracking": "https://github.com/day1b2b/hub-om/issues/121"
-    },
-    {
-      "ghsa": "GHSA-xmf8-cvqr-rfgj",
-      "package": "@auth/core",
-      "reason": "2026-07-23 공개, 수정 버전 미출시 (잘못된 Bearer 헤더에 getToken() 예외)",
-      "added": "2026-07-24",
-      "recheck": "2026-08-21",
-      "tracking": "https://github.com/day1b2b/hub-om/issues/121"
-    },
-    {
-      "ghsa": "GHSA-8fpg-xm3f-6cx3",
-      "package": "next-auth",
-      "reason": "2026-07-23 공개. 수정 버전(5.0.0-beta.32) 있음 — auth 의존성 변경은 기술 책임자 검토가 필요해 업그레이드 전까지 한시 예외. 업그레이드가 최우선 후속 작업",
-      "added": "2026-07-24",
-      "recheck": "2026-08-07",
-      "tracking": "https://github.com/day1b2b/hub-om/issues/121"
-    },
-    {
-      "ghsa": "GHSA-x445-f3h2-j279",
-      "package": "@auth/core",
-      "reason": "2026-07-23 공개, 수정 버전 미출시 (OAuth state/nonce/PKCE 쿠키 provider 미바인딩)",
-      "added": "2026-07-24",
-      "recheck": "2026-08-21",
-      "tracking": "https://github.com/day1b2b/hub-om/issues/121"
-    }
-  ]
+  "exceptions": []
 }
