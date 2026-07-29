@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { OperationDetail } from "@/features/operations/OperationDetail";
 import { LocalJsonOperationRepository } from "@/lib/data/localJsonOperationRepository";
 import { readOperationCollaboration } from "@/lib/data/operationCollaboration";
+import { isSameCourse } from "@/lib/data/operationCalculations";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,7 @@ export default async function PreviewOperationDetailPage() {
     notFound();
   }
 
-  const relatedOperations = operations.filter((candidate) => candidate.courseId === operation.courseId);
+  const relatedOperations = operations.filter((candidate) => isSameCourse(candidate, operation));
   const collaboration = await readOperationCollaboration(operation, {});
 
   return (

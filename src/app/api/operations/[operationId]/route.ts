@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
+import { isSameCourse } from "@/lib/data/operationCalculations";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +22,7 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
   }
 
   const siblingCount = operation.courseId
-    ? (await repository.listOperations()).filter((candidate) => candidate.courseId === operation.courseId).length
+    ? (await repository.listOperations()).filter((candidate) => isSameCourse(candidate, operation)).length
     : 1;
 
   if (siblingCount <= 1) {
