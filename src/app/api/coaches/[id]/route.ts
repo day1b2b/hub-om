@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { CoachStatus, type Prisma } from "@prisma/client";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { normalizeCoachName } from "@/lib/coaches/accessToken";
+import { logProfileEdit } from "@/lib/coaches/contentEntries";
 import { getPrismaClient } from "@/lib/data/prisma";
 
 export const dynamic = "force-dynamic";
@@ -106,8 +107,23 @@ export async function GET(_request: Request, { params }: RouteContext) {
   });
 }
 
+const PROFILE_FIELD_KEYS = [
+  "name",
+  "workType",
+  "statusNote",
+  "returnDate",
+  "selfNote",
+  "portfolioUrl",
+  "availabilityDetail",
+  "managerNote",
+  "dxTag",
+  "isActive",
+  "fields",
+  "curriculums"
+] as const;
+
 export async function PUT(request: Request, { params }: RouteContext) {
-  await requireWorkspaceSession();
+  const session = await requireWorkspaceSession();
 
   const { id } = await params;
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
@@ -184,6 +200,12 @@ export async function PUT(request: Request, { params }: RouteContext) {
     }
 
     return coach;
+  });
+
+  const changedFields = PROFILE_FIELD_KEYS.filter((key) => body[key] !== undefined);
+  await logProfileEdit(id, changedFields, {
+    email: session.user?.email ?? "",
+    name: session.user?.name ?? session.user?.email ?? "매니저"
   });
 
   return NextResponse.json({ ok: true, coach: updated });

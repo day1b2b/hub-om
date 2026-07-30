@@ -11,7 +11,8 @@ interface CoachSchedulePageProps {
 }
 
 export default async function CoachSchedulePage({ searchParams }: CoachSchedulePageProps) {
-  await requireWorkspaceSession();
+  const session = await requireWorkspaceSession();
+  const currentUserEmail = session.user?.email ?? "";
 
   const params = await searchParams;
   const yearMonth = resolveYearMonth(firstParam(params.yearMonth));
@@ -40,6 +41,7 @@ export default async function CoachSchedulePage({ searchParams }: CoachScheduleP
 
   return (
     <CoachScheduleBoard
+      currentUserEmail={currentUserEmail}
       dashboard={dashboard}
       holidays={holidayMap}
       initialDate={initialDate}

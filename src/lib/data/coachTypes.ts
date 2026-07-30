@@ -21,6 +21,7 @@ export interface CoachSummary {
   fields: string[];
   avgRating: number | null;
   workDayCount: number;
+  notionPageId: string | null;
 }
 
 export interface CoachDetail extends CoachSummary {
@@ -44,6 +45,7 @@ export interface CoachEngagementView {
   endTime: string | null;
   rating: number | null;
   rehire: boolean | null;
+  feedback: string | null;
 }
 
 export interface CoachScheduleView {
@@ -67,6 +69,11 @@ export interface CoachScheduleDashboardEngagement {
   endDate: string;
 }
 
+export interface CoachDayReservationView {
+  reservedByName: string;
+  reservedByEmail: string;
+}
+
 export interface CoachScheduleDashboardCoach {
   id: string;
   name: string;
@@ -79,6 +86,7 @@ export interface CoachScheduleDashboardCoach {
   avgRating: number | null;
   recentEngagements: CoachScheduleDashboardEngagement[];
   engagementCount: number;
+  reservation: CoachDayReservationView | null;
 }
 
 export interface CoachScheduleDashboardDay {

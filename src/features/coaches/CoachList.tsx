@@ -1,19 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import type { CoachStatusValue, CoachSummary } from "@/lib/data/coachTypes";
-
-const STATUS_FILTERS = ["전체", "활동중", "대기", "비활동"] as const;
-const VISIBILITY_FILTERS = ["전체", "노출", "비노출"] as const;
-const SORT_OPTIONS = [
-  { value: "workDays", label: "근무일 많은 순" },
-  { value: "rating", label: "평가 높은 순" },
-  { value: "name", label: "이름순" }
-] as const;
-
-type SortKey = (typeof SORT_OPTIONS)[number]["value"];
+import { CoachAvatarIcon } from "./CoachAvatarIcon";
 
 const STATUS_LABEL: Record<CoachStatusValue, string> = {
   active: "활동중",
@@ -27,17 +18,23 @@ const STATUS_CLASS: Record<CoachStatusValue, string> = {
   inactive: "needs-assignment"
 };
 
+const SORT_OPTIONS = [
+  { value: "workDays", label: "근무일 많은 순" },
+  { value: "rating", label: "평가 높은 순" },
+  { value: "name", label: "이름순" }
+] as const;
+
+type SortKey = (typeof SORT_OPTIONS)[number]["value"];
+
 interface CoachListProps {
   coaches: CoachSummary[];
   loadFailed: boolean;
 }
 
 export function CoachList({ coaches, loadFailed }: CoachListProps) {
-  const [statusFilter, setStatusFilter] = useState<(typeof STATUS_FILTERS)[number]>("전체");
-  const [visibilityFilter, setVisibilityFilter] = useState<(typeof VISIBILITY_FILTERS)[number]>("전체");
   const [query, setQuery] = useState("");
-  const [fieldFilter, setFieldFilter] = useState("전체");
-  const [workTypeFilter, setWorkTypeFilter] = useState("전체");
+  const [fieldFilters, setFieldFilters] = useState<Set<string>>(new Set());
+  const [workTypeFilters, setWorkTypeFilters] = useState<Set<string>>(new Set());
   const [sortKey, setSortKey] = useState<SortKey>("workDays");
 
   const fields = useMemo(() => uniqueSorted(coaches.flatMap((coach) => coach.fields)), [coaches]);
@@ -49,35 +46,29 @@ export function CoachList({ coaches, loadFailed }: CoachListProps) {
       .filter((coach) => {
         const searchable = [coach.name, coach.workType ?? "", ...coach.fields].join(" ").toLowerCase();
         const queryMatches = !normalizedQuery || searchable.includes(normalizedQuery);
-        const statusMatches = statusFilter === "전체" || STATUS_LABEL[coach.status] === statusFilter;
-        const visibilityMatches = visibilityFilter === "전체" || visibilityLabel(coach) === visibilityFilter;
-        const fieldMatches = fieldFilter === "전체" || coach.fields.includes(fieldFilter);
-        const workTypeMatches = workTypeFilter === "전체" || splitWorkTypes(coach.workType).includes(workTypeFilter);
-        return queryMatches && statusMatches && visibilityMatches && fieldMatches && workTypeMatches;
+        // 선택한 항목을 전부 가지고 있어야 통과(AND 매칭). 아무 것도 선택 안 하면 전체 통과.
+        const coachWorkTypes = splitWorkTypes(coach.workType);
+        const fieldMatches = [...fieldFilters].every((field) => coach.fields.includes(field));
+        const workTypeMatches = [...workTypeFilters].every((workType) => coachWorkTypes.includes(workType));
+        return queryMatches && fieldMatches && workTypeMatches;
       })
       .sort((a, b) => compareCoaches(a, b, sortKey));
-  }, [coaches, fieldFilter, query, sortKey, statusFilter, visibilityFilter, workTypeFilter]);
+  }, [coaches, fieldFilters, query, sortKey, workTypeFilters]);
+
+  function toggleFilter(setState: (updater: (prev: Set<string>) => Set<string>) => void, value: string) {
+    setState((prev) => {
+      const next = new Set(prev);
+      if (next.has(value)) next.delete(value);
+      else next.add(value);
+      return next;
+    });
+  }
 
   return (
     <main className="dashboard-shell coach-schedule-shell">
       <AppSidebar label="Coaches" teamScope="both" />
 
       <section className="content coach-origin-list-content" id="coaches">
-        <div className="coach-schedule-topbar">
-          <label className="coach-schedule-search">
-            <span aria-hidden="true">⌕</span>
-            <input
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="이름, 근무유형, 분야 검색"
-              type="search"
-              value={query}
-            />
-          </label>
-          <div className="coach-schedule-topnav">
-            <Link href="/coaches/schedule">코치 일정</Link>
-          </div>
-        </div>
-
         <header className="coach-workspace-header">
           <div>
             <h1>코치 목록</h1>
@@ -89,21 +80,29 @@ export function CoachList({ coaches, loadFailed }: CoachListProps) {
         </p>
 
         <section className="coach-origin-list-toolbar" aria-label="코치 필터">
-          <FilterSelect
-            label="상태"
-            onChange={(value) => setStatusFilter(value as (typeof STATUS_FILTERS)[number])}
-            options={[...STATUS_FILTERS]}
-            value={statusFilter}
+          <MultiFilterChips
+            label="가능 분야"
+            onToggle={(value) => toggleFilter(setFieldFilters, value)}
+            options={fields}
+            selected={fieldFilters}
           />
-          <FilterSelect
-            label="노출"
-            onChange={(value) => setVisibilityFilter(value as (typeof VISIBILITY_FILTERS)[number])}
-            options={[...VISIBILITY_FILTERS]}
-            value={visibilityFilter}
+          <MultiFilterChips
+            label="근무유형"
+            onToggle={(value) => toggleFilter(setWorkTypeFilters, value)}
+            options={workTypes}
+            selected={workTypeFilters}
           />
-          <FilterSelect label="가능 분야" onChange={setFieldFilter} options={["전체", ...fields]} value={fieldFilter} />
-          <FilterSelect label="근무유형" onChange={setWorkTypeFilter} options={["전체", ...workTypes]} value={workTypeFilter} />
           <SortSelect onChange={setSortKey} value={sortKey} />
+          <span className="coach-origin-toolbar-spacer" />
+          <label className="coach-schedule-search">
+            <span aria-hidden="true">⌕</span>
+            <input
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="이름, 근무유형, 분야 검색"
+              type="search"
+              value={query}
+            />
+          </label>
         </section>
 
         <section className="coach-origin-list-card">
@@ -118,23 +117,39 @@ export function CoachList({ coaches, loadFailed }: CoachListProps) {
           ) : filteredCoaches.length > 0 ? (
             <div className="coach-origin-list-rows">
               {filteredCoaches.map((coach) => (
-                <Link className="coach-origin-list-row" href={`/coaches/${coach.id}`} key={coach.id}>
-                  <span className="coach-origin-avatar">{coach.name.slice(0, 1)}</span>
-                  <span className="coach-origin-row-main">
-                    <span>
-                      <strong>{coach.name}</strong>
-                      <i className={`status ${STATUS_CLASS[coach.status]}`}>{STATUS_LABEL[coach.status]}</i>
-                      {!coach.isActive ? <i className="coach-origin-state-badge hidden">비노출</i> : null}
+                <div className="coach-origin-list-row" key={coach.id}>
+                  <Link className="coach-origin-row-identity" href={`/coaches/${coach.id}`}>
+                    <span className="coach-doc-icon"><CoachAvatarIcon /></span>
+                    <span className="coach-origin-row-main">
+                      <span>
+                        <i className={`status ${STATUS_CLASS[coach.status]}`}>{STATUS_LABEL[coach.status]}</i>
+                        <strong>{coach.name}</strong>
+                      </span>
+                      <small>
+                        {coach.workType || "근무유형 없음"}
+                        {coach.fields.length > 0 ? ` · ${coach.fields.slice(0, 4).join(", ")}` : ""}
+                      </small>
                     </span>
-                    <small>
-                      {coach.workType || "근무유형 없음"}
-                      {coach.fields.length > 0 ? ` · ${coach.fields.slice(0, 4).join(", ")}` : ""}
-                    </small>
-                  </span>
-                  <span className="coach-origin-row-time">
-                    근무일 {coach.workDayCount}일 · 평가 {coach.avgRating === null ? "-" : coach.avgRating.toFixed(1)}
-                  </span>
-                </Link>
+                    <span className="coach-origin-row-time">
+                      <span>근무일 {coach.workDayCount}일</span>
+                      {coach.avgRating === null ? (
+                        <span className="coach-origin-row-rating empty">평가 없음</span>
+                      ) : (
+                        <span className="coach-origin-row-rating">★ {coach.avgRating.toFixed(1)}</span>
+                      )}
+                    </span>
+                  </Link>
+                  {coach.notionPageId && (
+                    <a
+                      className="coach-origin-notion-link"
+                      href={`https://www.notion.so/${coach.notionPageId.replaceAll("-", "")}`}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      노션 바로가기
+                    </a>
+                  )}
+                </div>
               ))}
             </div>
           ) : (
@@ -148,26 +163,60 @@ export function CoachList({ coaches, loadFailed }: CoachListProps) {
   );
 }
 
-function FilterSelect({
+function MultiFilterChips({
   label,
-  onChange,
+  onToggle,
   options,
-  value
+  selected
 }: {
   label: string;
-  onChange: (value: string) => void;
+  onToggle: (value: string) => void;
   options: string[];
-  value: string;
+  selected: Set<string>;
 }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    function handleClickOutside(event: MouseEvent) {
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) setIsOpen(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen]);
+
+  const buttonLabel = selected.size > 0 ? `${label} (${selected.size})` : label;
+
   return (
-    <label className="coach-origin-filter-select">
-      <span>{label}</span>
-      <select onChange={(event) => onChange(event.target.value)} value={value}>
-        {options.map((option) => (
-          <option key={option} value={option}>{option}</option>
-        ))}
-      </select>
-    </label>
+    <div className="coach-origin-multi-filter" ref={rootRef}>
+      <button
+        className={selected.size > 0 ? "selected" : ""}
+        onClick={() => setIsOpen((prev) => !prev)}
+        type="button"
+      >
+        {buttonLabel}
+        <i aria-hidden="true">{isOpen ? "▲" : "▼"}</i>
+      </button>
+      {isOpen && (
+        <div className="coach-origin-multi-filter-panel">
+          {options.length === 0 ? (
+            <span className="coach-origin-multi-filter-empty">옵션 없음</span>
+          ) : (
+            options.map((option) => (
+              <label className="coach-origin-multi-filter-option" key={option}>
+                <input
+                  checked={selected.has(option)}
+                  onChange={() => onToggle(option)}
+                  type="checkbox"
+                />
+                {option}
+              </label>
+            ))
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -185,25 +234,13 @@ function SortSelect({ onChange, value }: { onChange: (value: SortKey) => void; v
 }
 
 function compareCoaches(a: CoachSummary, b: CoachSummary, sortKey: SortKey): number {
-  const deletedOrder = Number(Boolean(a.deletedAt)) - Number(Boolean(b.deletedAt));
-  if (deletedOrder !== 0) return deletedOrder;
-  const visibleOrder = Number(!a.isActive) - Number(!b.isActive);
-  if (visibleOrder !== 0) return visibleOrder;
-  const activeOrder = statusOrder(a.status) - statusOrder(b.status);
+  // 활동중인 코치를 항상 상단에, 그 외(대기/비활동)는 하단에 — 선택한 정렬 기준보다 우선한다.
+  const activeOrder = Number(a.status !== "active") - Number(b.status !== "active");
   if (activeOrder !== 0) return activeOrder;
+
   if (sortKey === "rating") return (b.avgRating ?? -1) - (a.avgRating ?? -1) || a.name.localeCompare(b.name, "ko");
   if (sortKey === "name") return a.name.localeCompare(b.name, "ko");
   return b.workDayCount - a.workDayCount || (b.avgRating ?? -1) - (a.avgRating ?? -1) || a.name.localeCompare(b.name, "ko");
-}
-
-function visibilityLabel(coach: CoachSummary): (typeof VISIBILITY_FILTERS)[number] {
-  return coach.isActive ? "노출" : "비노출";
-}
-
-function statusOrder(status: CoachStatusValue): number {
-  if (status === "active") return 0;
-  if (status === "pending") return 1;
-  return 2;
 }
 
 function splitWorkTypes(value: string | null): string[] {

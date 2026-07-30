@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 interface DeleteRoundButtonProps {
   fallbackOperationId: string | null;
   isCurrent: boolean;
+  isLastRound: boolean;
   operationId: string;
   roundLabel: string;
   teamQuery: string;
@@ -14,12 +15,26 @@ interface DeleteRoundButtonProps {
 export function DeleteRoundButton({
   fallbackOperationId,
   isCurrent,
+  isLastRound,
   operationId,
   roundLabel,
   teamQuery
 }: DeleteRoundButtonProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
+
+  if (isLastRound) {
+    return (
+      <button
+        className="session-row-edit-trigger session-row-delete-trigger"
+        disabled
+        title="마지막 회차는 삭제할 수 없습니다. 과정 자체를 지우려면 관리자에게 문의하세요."
+        type="button"
+      >
+        삭제 불가
+      </button>
+    );
+  }
 
   return (
     <button

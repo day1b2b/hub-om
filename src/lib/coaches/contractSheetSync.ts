@@ -6,6 +6,7 @@ import { cell, expandWeekdaySchedules, normalizeEmail, normalizePhone, parseWork
 import type { SyncResult } from "./syncTypes";
 import { emptySyncResult } from "./syncTypes";
 import { mergeWorkTypeStrings, normalizeWorkTypeString } from "./workType";
+import { cancelReservationsForConfirmedSchedules } from "./reservationAutoCancel";
 import { getPrismaClient } from "@/lib/data/prisma";
 
 interface ParsedEngagement {
@@ -90,6 +91,7 @@ export async function syncContractSheetEngagements(dryRun: boolean): Promise<Syn
           availabilityDetail: null,
           managerNote: null,
           dxTag: null,
+          notionPageId: null,
           isActive: true,
           displayOrder: null,
           createdAt: new Date(),
@@ -333,4 +335,9 @@ async function replaceSchedules(tx: Prisma.TransactionClient, engagementId: stri
       }
     });
   }
+
+  await cancelReservationsForConfirmedSchedules(
+    tx,
+    engagement.schedules.map((schedule) => ({ coachId: engagement.coachId, date: schedule.date, engagementId }))
+  );
 }

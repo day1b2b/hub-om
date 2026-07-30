@@ -6,6 +6,7 @@ import { cell, normalizeEmail, normalizePhone } from "./sheetParsers";
 import type { SyncResult } from "./syncTypes";
 import { emptySyncResult } from "./syncTypes";
 import { mergeWorkTypeStrings, normalizeWorkTypeString } from "./workType";
+import { cancelReservationsForConfirmedSchedules } from "./reservationAutoCancel";
 import { getPrismaClient } from "@/lib/data/prisma";
 
 const DEFAULT_SAMSUNG_SHEET_ID = "1GWF3v9lLpS0SlM45QGAHmj2k2N1U2AX8zB8DOMlXHr0";
@@ -74,6 +75,7 @@ export async function syncSamsungSchedule(dryRun: boolean): Promise<SyncResult> 
             availabilityDetail: null,
             managerNote: null,
             dxTag: "DS",
+            notionPageId: null,
             isActive: true,
             displayOrder: null,
             createdAt: new Date(),
@@ -136,6 +138,8 @@ export async function syncSamsungSchedule(dryRun: boolean): Promise<SyncResult> 
       where: { courseName: { in: [COURSE_NAME, OLD_COURSE_NAME] } }
     });
 
+    const confirmedSchedules: Array<{ coachId: string; date: Date; engagementId: string }> = [];
+
     for (let index = 0; index < entries.length; index++) {
       const entry = entries[index];
       const created = await tx.coachEngagement.create({
@@ -166,9 +170,12 @@ export async function syncSamsungSchedule(dryRun: boolean): Promise<SyncResult> 
             endTime: "18:00"
           }
         });
+        confirmedSchedules.push({ coachId: entry.coachId, date, engagementId: created.id });
       }
       result.created++;
     }
+
+    await cancelReservationsForConfirmedSchedules(tx, confirmedSchedules);
   }, { timeout: 60000 });
 
   return result;

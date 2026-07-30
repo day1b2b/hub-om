@@ -1,9 +1,13 @@
 import fs from "fs";
 import path from "path";
+import type { MemberRole } from "@prisma/client";
 import { getPrismaClient } from "../prisma";
-import type { TeamUser, TeamUserInput } from "./teamUserTypes";
+import type { TeamUser, TeamUserInput, TeamUserRole } from "./teamUserTypes";
 
 const DATA_FILE = path.join(process.cwd(), "team-users.json");
+
+const ROLE_TO_PRISMA: Record<TeamUserRole, MemberRole> = { ld: "LD", om: "OM" };
+const ROLE_FROM_PRISMA: Record<MemberRole, TeamUserRole> = { LD: "ld", OM: "om" };
 
 function hasDatabaseUrl(): boolean {
   return process.env.OPERATION_DATA_SOURCE !== "local" && Boolean(process.env.DATABASE_URL);
@@ -22,13 +26,22 @@ function writeAll(users: TeamUser[]) {
   fs.writeFileSync(DATA_FILE, JSON.stringify(users, null, 2), "utf-8");
 }
 
-function toTeamUser(row: { id: string; name: string; email: string; slackId: string; team: string | null; createdAt: Date }): TeamUser {
+function toTeamUser(row: {
+  id: string;
+  name: string;
+  email: string;
+  slackId: string;
+  team: string | null;
+  role: MemberRole | null;
+  createdAt: Date;
+}): TeamUser {
   return {
     id: row.id,
     name: row.name,
     email: row.email,
     slackId: row.slackId,
     team: row.team ?? undefined,
+    role: row.role ? ROLE_FROM_PRISMA[row.role] : undefined,
     createdAt: row.createdAt.toISOString()
   };
 }
@@ -60,7 +73,8 @@ export async function createTeamUser(input: TeamUserInput): Promise<TeamUser> {
       email: input.email,
       name: input.name,
       slackId: input.slackId,
-      team: input.team ?? null
+      team: input.team ?? null,
+      role: input.role ? ROLE_TO_PRISMA[input.role] : null
     }
   });
 
@@ -77,6 +91,28 @@ export async function deleteTeamUsers(ids: string[]): Promise<number> {
 
   const prisma = getPrismaClient();
   const result = await prisma.teamUser.deleteMany({ where: { id: { in: ids } } });
+
+  return result.count;
+}
+
+export async function updateTeamUsersRole(ids: string[], role: TeamUserRole): Promise<number> {
+  if (!hasDatabaseUrl()) {
+    const users = readAll();
+    let updated = 0;
+    const next = users.map((u) => {
+      if (!ids.includes(u.id)) return u;
+      updated += 1;
+      return { ...u, role };
+    });
+    writeAll(next);
+    return updated;
+  }
+
+  const prisma = getPrismaClient();
+  const result = await prisma.teamUser.updateMany({
+    where: { id: { in: ids } },
+    data: { role: ROLE_TO_PRISMA[role] }
+  });
 
   return result.count;
 }
