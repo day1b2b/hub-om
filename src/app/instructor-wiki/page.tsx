@@ -7,6 +7,7 @@ import {
 } from "@/features/wiki/instructorWikiModel";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getCoachRepository } from "@/lib/data/coachRepositoryFactory";
+import { getAllInstructorNotes } from "@/lib/data/instructorWikiStore";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 
 export const dynamic = "force-dynamic";
@@ -36,5 +37,16 @@ export default async function InstructorWikiPage() {
 
   const provenance: InstructorWikiProvenance = entries.length > 0 ? "operations" : "empty";
 
-  return <InstructorWiki entries={entries} loadFailed={loadFailed} provenance={provenance} />;
+  // OM이 "섭외 지양"으로 저장한 강사명 목록(목록 화면 표시용).
+  const notes = getAllInstructorNotes();
+  const recruitAvoidNames = Object.keys(notes).filter((name) => notes[name]?.recruitAvoid);
+
+  return (
+    <InstructorWiki
+      entries={entries}
+      loadFailed={loadFailed}
+      provenance={provenance}
+      recruitAvoidNames={recruitAvoidNames}
+    />
+  );
 }

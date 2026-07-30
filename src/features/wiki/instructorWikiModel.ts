@@ -81,8 +81,9 @@ const ACTIVE_OPERATION_STATUSES: OperationStatus[] = ["배정필요", "배정예
 // 운영 현황 instructors 필드는 자유 텍스트다. 구분자로만 분리하고 이름은 원문 유지한다.
 // (예: "박강사", "홍길동, 김철수", "홍길동/이영희")
 export function parseInstructorNames(raw: string): string[] {
+  // 구분자: 쉼표/슬래시/가운뎃점/세미콜론 + 공백(시트는 강사명을 공백으로 나열).
   return (raw ?? "")
-    .split(/[,/·;\n、，]+/)
+    .split(/[\s,/·;、，]+/)
     .map((name) => name.trim())
     .filter(Boolean);
 }
@@ -113,13 +114,10 @@ export function aggregateInstructors(operations: OperationSession[]): Instructor
     });
   };
 
-  // 운영 현황의 강사(instructors) + 실습코치(coach) 모두 반영한다.
+  // 강사위키는 운영 현황의 강사(instructors)만 집계한다. 실습코치(coach)는 제외.
   for (const operation of operations) {
     for (const name of parseInstructorNames(operation.instructors)) {
       addCourse(operation, name, "강사");
-    }
-    for (const name of parseInstructorNames(operation.coach)) {
-      addCourse(operation, name, "실습코치");
     }
   }
 

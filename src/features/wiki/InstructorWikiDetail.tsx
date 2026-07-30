@@ -11,9 +11,14 @@ import {
   type InstructorWikiEntry
 } from "./instructorWikiModel";
 import { WikiAvatar } from "./wikiAvatar";
+import { RecruitAvoidToggle } from "./RecruitAvoidToggle";
+import { InstructorEditor } from "./InstructorEditor";
+import { ProfileAttachments } from "./ProfileAttachments";
+import { getInstructorNote } from "@/lib/data/instructorWikiStore";
 
 export function InstructorWikiDetail({ entry }: { entry: InstructorWikiEntry }) {
   const coach = entry.coach;
+  const note = getInstructorNote(entry.name);
 
   return (
     <main className="dashboard-shell">
@@ -27,6 +32,7 @@ export function InstructorWikiDetail({ entry }: { entry: InstructorWikiEntry }) 
             <WikiAvatar name={entry.name} size="lg" />
             <span className="title-company">강사위키</span>
             <h1>{entry.name}</h1>
+            <RecruitAvoidToggle name={entry.name} initialAvoid={note.recruitAvoid ?? false} />
             <span className="coach-plan-badge">운영 현황 연동</span>
             {roleSummary(entry).map((role) => (
               <span className={`status ${ROLE_CLASS[role]}`} key={role}>{role}</span>
@@ -35,48 +41,50 @@ export function InstructorWikiDetail({ entry }: { entry: InstructorWikiEntry }) 
               <span className={`status ${STATUS_CLASS[coach.status]}`}>coach-db · {STATUS_LABEL[coach.status]}</span>
             ) : null}
           </div>
-          <div className="detail-header-actions">
-            <button type="button">수정</button>
-          </div>
         </div>
 
+        <InstructorEditor name={entry.name} initial={note} />
+
         <div className="detail-section">
-          <div className="section-title"><h2>파트너 ID</h2><span>강사 식별자 · 입력</span></div>
+          <div className="section-title">
+            <h2>강사 프로필</h2>
+            <span>{coach ? "강사 DB 매칭됨" : "미연결 · 미매칭"}</span>
+          </div>
           <div className="section-body">
-            <div className="partner-id-field">
-              <input className="partner-id-input" placeholder="파트너ID 입력 (예: PT-00123)" aria-label="파트너 ID" />
-              <button className="doc-register" type="button">저장</button>
-            </div>
-            <p className="field-hint">입력 미리보기예요. 데이터 연동 시 강사별 파트너ID가 자동 표시·저장됩니다.</p>
+            <dl className="field-preview-list">
+              <div>
+                <dt>전문분야</dt>
+                <dd>{coach && coach.fields.length > 0 ? coach.fields.join(" · ") : "coach-db 연결 시 표시"}</dd>
+              </div>
+              <div>
+                <dt>가능 커리큘럼</dt>
+                <dd>
+                  {coach && coach.curriculums.length > 0 ? (
+                    <ul>
+                      {coach.curriculums.map((curriculum) => (
+                        <li key={curriculum}>{curriculum}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    "coach-db 연결 시 표시"
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt>첨부 파일</dt>
+                <dd><ProfileAttachments /></dd>
+              </div>
+            </dl>
           </div>
         </div>
 
         <div className="detail-grid">
-          <div className="detail-panel">
+          <div className="detail-panel detail-panel--full">
             <div className="panel-title">운영 요약</div>
-            <div className="info-grid">
-              <div className="info-item"><span>담당 기업</span><strong>{entry.companies.length}곳</strong></div>
+            <div className="info-grid info-grid--row">
               <div className="info-item"><span>담당 코스</span><strong>{entry.courseCount}건</strong></div>
               <div className="info-item"><span>역할</span><strong>{roleSummary(entry).join(" · ") || "-"}</strong></div>
               <div className="info-item"><span>평균 평가(coach)</span><strong>{coach?.avgRating != null ? coach.avgRating.toFixed(1) : "-"}</strong></div>
-            </div>
-          </div>
-          <div className="detail-panel">
-            <div className="panel-title">담당 기업</div>
-            <div className="section-body" style={{ padding: 0 }}>
-              {entry.companies.length > 0 ? (
-                <div className="field-preview-list">
-                  <div>
-                    <dd style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                      {entry.companies.map((company) => (
-                        <span className="role-tag" key={company}>{company}</span>
-                      ))}
-                    </dd>
-                  </div>
-                </div>
-              ) : (
-                <span className="td-muted">담당 기업 정보가 없습니다.</span>
-              )}
             </div>
           </div>
         </div>
@@ -137,58 +145,6 @@ export function InstructorWikiDetail({ entry }: { entry: InstructorWikiEntry }) 
           </div>
         </div>
 
-        <div className="detail-section">
-          <div className="section-title">
-            <h2>강사 프로필 (coach-db)</h2>
-            <span>{coach ? "강사 DB 매칭됨" : "미연결 · 미매칭"}</span>
-          </div>
-          <div className="section-body">
-            <dl className="field-preview-list">
-              <div>
-                <dt>전문분야</dt>
-                <dd>{coach && coach.fields.length > 0 ? coach.fields.join(" · ") : "coach-db 연결 시 표시"}</dd>
-              </div>
-              <div>
-                <dt>근무유형</dt>
-                <dd>{coach?.workType || "coach-db 연결 시 표시"}</dd>
-              </div>
-              <div>
-                <dt>가능 커리큘럼</dt>
-                <dd>
-                  {coach && coach.curriculums.length > 0 ? (
-                    <ul>
-                      {coach.curriculums.map((curriculum) => (
-                        <li key={curriculum}>{curriculum}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    "coach-db 연결 시 표시"
-                  )}
-                </dd>
-              </div>
-            </dl>
-          </div>
-        </div>
-
-        <div className="detail-section">
-          <div className="section-title"><h2>계약 / 정산</h2><span>PII · 위키 미연동</span></div>
-          <div className="section-body">
-            <dl className="field-preview-list">
-              <div>
-                <dt>연락처 · 이메일</dt>
-                <dd><span className="td-muted">개인정보 · 코치 상세(PII 권한)에서 확인</span></dd>
-              </div>
-              <div>
-                <dt>소속 · 사업자</dt>
-                <dd><span className="td-muted">개인정보 · 코치 상세(PII 권한)에서 확인</span></dd>
-              </div>
-              <div>
-                <dt>정산 계좌 · 강사료</dt>
-                <dd><span className="td-muted">개인정보 · 코치 상세(PII 권한)에서 확인</span></dd>
-              </div>
-            </dl>
-          </div>
-        </div>
       </section>
     </main>
   );

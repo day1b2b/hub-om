@@ -8,7 +8,6 @@ import {
   hasActiveCourse,
   ROLE_CLASS,
   roleSummary,
-  summarizeCompanies,
   type InstructorWikiEntry,
   type InstructorWikiProvenance
 } from "./instructorWikiModel";
@@ -26,13 +25,15 @@ interface InstructorWikiProps {
   entries: InstructorWikiEntry[];
   loadFailed: boolean;
   provenance: InstructorWikiProvenance;
+  recruitAvoidNames?: string[];
 }
 
-export function InstructorWiki({ entries, loadFailed, provenance }: InstructorWikiProps) {
+export function InstructorWiki({ entries, loadFailed, provenance, recruitAvoidNames = [] }: InstructorWikiProps) {
   const [query, setQuery] = useState("");
   const [statusTab, setStatusTab] = useState<StatusTabKey>("all");
   const [companyFilter, setCompanyFilter] = useState("전체 기업");
   const [view, setView] = useState<"gallery" | "list">("gallery");
+  const avoidSet = useMemo(() => new Set(recruitAvoidNames), [recruitAvoidNames]);
 
   const companyOptions = useMemo(
     () => ["전체 기업", ...uniqueSorted(entries.flatMap((entry) => entry.companies))],
@@ -130,9 +131,10 @@ export function InstructorWiki({ entries, loadFailed, provenance }: InstructorWi
                     <span className="wiki-card-head">
                       <WikiAvatar name={entry.name} />
                       <span className="wiki-card-name">{entry.name}</span>
+                      {avoidSet.has(entry.name) ? <span className="recruit-avoid-tag">⛔ 섭외지양</span> : null}
                     </span>
                     <span className="wiki-card-meta">
-                      {roleSummary(entry).join(" · ") || "-"} · 기업 {entry.companies.length}곳 · 코스 {entry.courseCount}건
+                      {roleSummary(entry).join(" · ") || "-"} · 코스 {entry.courseCount}건
                     </span>
                     {recent ? (
                       <span className="wiki-card-course">{recent.companyName} · {cleanCourseName(recent.courseName)}</span>
@@ -160,7 +162,6 @@ export function InstructorWiki({ entries, loadFailed, provenance }: InstructorWi
                     <th>#</th>
                     <th>강사명</th>
                     <th>역할</th>
-                    <th>담당 기업</th>
                     <th>담당 코스</th>
                     <th>최근 담당 (기업 · 과정)</th>
                   </tr>
@@ -168,7 +169,7 @@ export function InstructorWiki({ entries, loadFailed, provenance }: InstructorWi
                 <tbody>
                   {loadFailed ? (
                     <tr>
-                      <td className="empty-state" colSpan={6}>
+                      <td className="empty-state" colSpan={5}>
                         <strong>운영 현황 데이터를 불러오지 못했습니다.</strong>
                         <span>데이터 연결 상태를 확인해 주세요.</span>
                       </td>
@@ -183,6 +184,7 @@ export function InstructorWiki({ entries, loadFailed, provenance }: InstructorWi
                             <Link className="row-link row-link--logo" href={`/instructor-wiki/${encodeURIComponent(entry.name)}`}>
                               <WikiAvatar name={entry.name} size="sm" />
                               <strong>{entry.name}</strong>
+                              {avoidSet.has(entry.name) ? <span className="recruit-avoid-tag">⛔ 섭외지양</span> : null}
                             </Link>
                           </td>
                           <td>
@@ -190,7 +192,6 @@ export function InstructorWiki({ entries, loadFailed, provenance }: InstructorWi
                               <span className={`status ${ROLE_CLASS[role]}`} key={role} style={{ marginRight: 4 }}>{role}</span>
                             ))}
                           </td>
-                          <td>{summarizeCompanies(entry.companies)}</td>
                           <td>{entry.courseCount}건</td>
                           <td>
                             {recent ? (
@@ -207,7 +208,7 @@ export function InstructorWiki({ entries, loadFailed, provenance }: InstructorWi
                     })
                   ) : (
                     <tr>
-                      <td className="empty-state" colSpan={6}>
+                      <td className="empty-state" colSpan={5}>
                         <strong>{provenance === "empty" ? "운영 현황에 강사 정보가 없습니다." : "조건에 맞는 강사가 없습니다."}</strong>
                         <span>{provenance === "empty" ? "운영 현황에 강사가 배정되면 표시됩니다." : "검색어나 필터를 조정해 보세요."}</span>
                       </td>
