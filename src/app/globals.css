@@ -2654,6 +2654,15 @@ td span {
   padding: 11px 14px;
 }
 
+/* 상세 요약 패널을 가로 전체 한 줄로 */
+.detail-panel--full {
+  grid-column: 1 / -1;
+}
+
+.info-grid--row {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .info-item strong {
   line-height: 1.4;
   overflow-wrap: anywhere;
@@ -8373,7 +8382,8 @@ td span {
   gap: 8px;
 }
 
-.partner-id-input {
+.partner-id-input,
+.wiki-input {
   border: 1px solid var(--line);
   border-radius: 8px;
   font-size: 13px;
@@ -8381,7 +8391,170 @@ td span {
   padding: 8px 12px;
 }
 
-.partner-id-input:focus {
+.wiki-input {
+  max-width: 360px;
+  width: 100%;
+}
+
+.wiki-textarea {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  max-width: 360px;
+  padding: 8px 12px;
+  resize: vertical;
+  width: 100%;
+}
+
+.wiki-textarea:focus {
+  border-color: var(--blue);
+  outline: none;
+}
+
+/* 강사 특이사항 등 넉넉한 입력 */
+.wiki-textarea--lg {
+  max-width: 560px;
+  min-height: 110px;
+}
+
+.editor-actions {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.editor-status {
+  color: var(--green, #1f9d55);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.editor-status.is-error {
+  color: #e5484d;
+}
+
+/* 강사위키 — 섭외 지양 토글/배지 */
+.recruit-avoid {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+}
+
+.recruit-avoid-badge {
+  background: #e5484d;
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.recruit-avoid-btn {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+.recruit-avoid-btn.is-on {
+  border-color: #e5484d;
+  color: #e5484d;
+}
+
+.recruit-avoid-tag {
+  background: #e5484d;
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 7px;
+  white-space: nowrap;
+}
+
+/* 강사위키 편집 모드 컨트롤 */
+.editor-controls {
+  align-items: center;
+  display: inline-flex;
+  gap: 8px;
+}
+
+.editor-edit,
+.editor-save,
+.editor-cancel {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 12px;
+}
+
+.editor-save {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.editor-edit:hover,
+.editor-cancel:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.wiki-view {
+  white-space: pre-wrap;
+}
+
+/* 강사 프로필 파일 첨부 */
+.profile-attach {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.attach-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.attach-list li {
+  align-items: center;
+  background: var(--surface-strong, #f2f5f9);
+  border-radius: 6px;
+  display: flex;
+  font-size: 12px;
+  gap: 8px;
+  justify-content: space-between;
+  padding: 4px 10px;
+}
+
+.attach-remove {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.attach-remove:hover {
+  color: #e5484d;
+}
+
+.partner-id-input:focus,
+.wiki-input:focus {
   border-color: var(--blue);
   outline: none;
 }
