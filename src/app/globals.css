@@ -2747,6 +2747,7 @@ td span {
 
 .wide-detail-section,
 .course-sessions-section,
+.course-groups-section,
 .course-report-section {
   grid-column: 1 / -1;
 }
@@ -4430,6 +4431,67 @@ td span {
 .archive-item-row.missing .archive-item-state {
   background: #f0efeb;
   color: #75746f;
+}
+
+.course-group-list {
+  display: grid;
+  gap: 0;
+  padding: 4px 14px 12px;
+}
+
+.course-group-item {
+  border-bottom: 1px solid var(--line);
+  padding: 8px 0;
+}
+
+.course-group-item:last-child {
+  border-bottom: 0;
+}
+
+.course-group-item summary {
+  align-items: center;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  font-size: 13px;
+  font-weight: 700;
+  justify-content: space-between;
+  list-style: none;
+}
+
+.course-group-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.course-group-item summary > span:last-child {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.course-group-rounds {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.course-group-rounds a {
+  align-items: center;
+  border-radius: 6px;
+  color: var(--muted);
+  display: flex;
+  font-size: 12px;
+  justify-content: space-between;
+  padding: 6px 8px;
+}
+
+.course-group-rounds a:hover {
+  background: var(--surface-hover, #f5f5f3);
+}
+
+.course-group-rounds a > span:first-child {
+  color: var(--text);
+  font-weight: 700;
 }
 
 .archive-item-actions {
@@ -9632,6 +9694,7 @@ button.coach-doc-reserve-chip:disabled {
 
   .wide-detail-section,
   .course-sessions-section,
+  .course-groups-section,
   .course-report-section {
     grid-column: auto;
   }
