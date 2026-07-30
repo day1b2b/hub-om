@@ -3,7 +3,7 @@ import { OperationDetail } from "@/features/operations/OperationDetail";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { mergeExternalResourceOperations } from "@/lib/data/externalResourceMerge";
 import { LocalJsonOperationRepository } from "@/lib/data/localJsonOperationRepository";
-import { isSameCourse } from "@/lib/data/operationCalculations";
+import { isSameCourse, normalizeCourseId } from "@/lib/data/operationCalculations";
 import { readOperationCollaboration } from "@/lib/data/operationCollaboration";
 import { hasNotionResourceConfig, listNotionResourceOperations } from "@/lib/data/notionResourceOperationRepository";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
@@ -57,6 +57,11 @@ export default async function OperationDetailPage({ params, searchParams }: Oper
   const relatedOperations = operation.courseId
     ? scopedOperations.filter((candidate) => isSameCourse(candidate, operation))
     : [operation];
+  const sameCourseIdOperations = operation.courseId
+    ? scopedOperations.filter(
+        (candidate) => normalizeCourseId(candidate.courseId) === normalizeCourseId(operation.courseId)
+      )
+    : [];
   const collaboration = await readOperationCollaboration(operation, {
     gmailOAuthAccessToken: session.googleAccessToken
   });
@@ -66,6 +71,7 @@ export default async function OperationDetailPage({ params, searchParams }: Oper
       collaboration={collaboration}
       operation={operation}
       relatedOperations={relatedOperations}
+      sameCourseIdOperations={sameCourseIdOperations}
       teamScope={teamScope}
     />
   );

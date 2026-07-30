@@ -61,6 +61,7 @@ interface OperationDetailProps {
   collaboration: OperationCollaboration;
   operation: OperationSession;
   relatedOperations?: OperationSession[];
+  sameCourseIdOperations?: OperationSession[];
   teamScope: TeamScope;
 }
 
@@ -68,9 +69,11 @@ export function OperationDetail({
   collaboration,
   operation,
   relatedOperations = [operation],
+  sameCourseIdOperations = [],
   teamScope
 }: OperationDetailProps) {
   const courseOperations = getCourseOperations(operation, relatedOperations);
+  const otherCourseGroups = getOtherCourseGroups(operation, sameCourseIdOperations);
   const showOperationStatus = !(operation.operationStatus === "배정필요" && Boolean(operation.om));
   const requiredArchiveItems = getRequiredArchiveItems(operation);
   const completedArchiveItems = requiredArchiveItems.filter((archiveItem) => archiveItem.done);
@@ -276,6 +279,35 @@ export function OperationDetail({
             <BulkSaveRoundsButton />
             </EditAllRoundsProvider>
           </section>
+
+          {otherCourseGroups.length > 0 ? (
+            <section className="detail-section course-groups-section">
+              <div className="section-title">
+                <h2>코스ID {operation.courseId} 내 다른 과정</h2>
+                <span>{otherCourseGroups.length}개 과정</span>
+              </div>
+              <div className="course-group-list">
+                {otherCourseGroups.map((group) => (
+                  <details className="course-group-item" key={group.key}>
+                    <summary>
+                      <span>{group.courseName}</span>
+                      <span>{group.operations.length}개 회차</span>
+                    </summary>
+                    <ul className="course-group-rounds">
+                      {group.operations.map((groupOperation, index) => (
+                        <li key={groupOperation.operationId}>
+                          <Link href={`/operations/${groupOperation.operationId}${teamQuery}`}>
+                            <span>{roundLabel(groupOperation, index)}</span>
+                            <span>{groupOperation.startDate || "일정 미정"}</span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                ))}
+              </div>
+            </section>
+          ) : null}
 
           <section className="detail-section resource-status-section" id="links">
             <div className="resource-card-grid">
@@ -642,6 +674,36 @@ function getCourseOperations(operation: OperationSession, relatedOperations: Ope
   }
 
   return [...uniqueOperations.values()].sort(compareCourseOperation);
+}
+
+interface CourseGroup {
+  courseName: string;
+  key: string;
+  operations: OperationSession[];
+}
+
+function getOtherCourseGroups(operation: OperationSession, sameCourseIdOperations: OperationSession[]): CourseGroup[] {
+  const currentGroupKey = courseGroupKey(operation);
+  const groups = new Map<string, CourseGroup>();
+
+  for (const candidate of sameCourseIdOperations) {
+    const key = courseGroupKey(candidate);
+    if (key === currentGroupKey) continue;
+
+    const group = groups.get(key) ?? { courseName: candidate.courseName, key, operations: [] };
+    group.operations.push(candidate);
+    groups.set(key, group);
+  }
+
+  for (const group of groups.values()) {
+    group.operations.sort(compareCourseOperation);
+  }
+
+  return [...groups.values()].sort((a, b) => a.courseName.localeCompare(b.courseName));
+}
+
+function courseGroupKey(operation: OperationSession): string {
+  return `${operation.companyName}__${operation.courseId}__${operation.courseName}`;
 }
 
 function compareCourseOperation(a: OperationSession, b: OperationSession): number {

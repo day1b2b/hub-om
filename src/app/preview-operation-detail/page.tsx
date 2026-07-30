@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { OperationDetail } from "@/features/operations/OperationDetail";
 import { LocalJsonOperationRepository } from "@/lib/data/localJsonOperationRepository";
 import { readOperationCollaboration } from "@/lib/data/operationCollaboration";
-import { isSameCourse } from "@/lib/data/operationCalculations";
+import { isSameCourse, normalizeCourseId } from "@/lib/data/operationCalculations";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +16,9 @@ export default async function PreviewOperationDetailPage() {
   }
 
   const relatedOperations = operations.filter((candidate) => isSameCourse(candidate, operation));
+  const sameCourseIdOperations = operations.filter(
+    (candidate) => normalizeCourseId(candidate.courseId) === normalizeCourseId(operation.courseId)
+  );
   const collaboration = await readOperationCollaboration(operation, {});
 
   return (
@@ -23,6 +26,7 @@ export default async function PreviewOperationDetailPage() {
       collaboration={collaboration}
       operation={operation}
       relatedOperations={relatedOperations}
+      sameCourseIdOperations={sameCourseIdOperations}
       teamScope="both"
     />
   );
