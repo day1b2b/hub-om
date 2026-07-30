@@ -7,6 +7,7 @@ import path from "path";
 const DATA_FILE = path.join(process.cwd(), ".local", "instructor-wiki.json");
 
 export interface InstructorNote {
+  displayName?: string;  // 강사명 수정값
   partnerId?: string;
   notes?: string;        // 강사 특이사항
   recruitAvoid?: boolean; // 섭외 지양

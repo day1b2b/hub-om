@@ -14,11 +14,13 @@ import { WikiAvatar } from "./wikiAvatar";
 import { RecruitAvoidToggle } from "./RecruitAvoidToggle";
 import { InstructorEditor } from "./InstructorEditor";
 import { ProfileAttachments } from "./ProfileAttachments";
+import { NameEditor } from "./NameEditor";
 import { getInstructorNote } from "@/lib/data/instructorWikiStore";
 
 export function InstructorWikiDetail({ entry }: { entry: InstructorWikiEntry }) {
   const coach = entry.coach;
   const note = getInstructorNote(entry.name);
+  const displayName = note.displayName?.trim() || entry.name;
 
   return (
     <main className="dashboard-shell">
@@ -31,7 +33,7 @@ export function InstructorWikiDetail({ entry }: { entry: InstructorWikiEntry }) 
           <div className="title-row">
             <WikiAvatar name={entry.name} size="lg" />
             <span className="title-company">강사위키</span>
-            <h1>{entry.name}</h1>
+            <NameEditor name={entry.name} initialName={displayName} />
             <RecruitAvoidToggle name={entry.name} initialAvoid={note.recruitAvoid ?? false} />
             <span className="coach-plan-badge">운영 현황 연동</span>
             {roleSummary(entry).map((role) => (
@@ -54,7 +56,7 @@ export function InstructorWikiDetail({ entry }: { entry: InstructorWikiEntry }) 
             <dl className="field-preview-list">
               <div>
                 <dt>전문분야</dt>
-                <dd>{coach && coach.fields.length > 0 ? coach.fields.join(" · ") : "coach-db 연결 시 표시"}</dd>
+                <dd>{coach && coach.fields.length > 0 ? coach.fields.join(" · ") : <span className="td-muted">-</span>}</dd>
               </div>
               <div>
                 <dt>가능 커리큘럼</dt>
@@ -66,7 +68,7 @@ export function InstructorWikiDetail({ entry }: { entry: InstructorWikiEntry }) 
                       ))}
                     </ul>
                   ) : (
-                    "coach-db 연결 시 표시"
+                    <span className="td-muted">-</span>
                   )}
                 </dd>
               </div>

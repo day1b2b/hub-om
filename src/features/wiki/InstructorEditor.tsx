@@ -3,7 +3,7 @@
 import { useState, type ChangeEvent } from "react";
 import type { InstructorNote } from "@/lib/data/instructorWikiStore";
 
-type Field = Exclude<keyof InstructorNote, "recruitAvoid">;
+type Field = Exclude<keyof InstructorNote, "recruitAvoid" | "displayName">;
 type FormState = Record<Field, string>;
 
 // 강사위키 OM 입력 폼. 평소엔 읽기 전용, "수정" 버튼을 눌러야 편집 가능. 저장 시 /api/instructor-wiki/save로 전송.

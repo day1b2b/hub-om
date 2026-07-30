@@ -9239,6 +9239,12 @@ button.coach-doc-reserve-chip:disabled {
 }
 
 /* 강사위키 편집 모드 컨트롤 */
+.editor-topbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
 .editor-controls {
   align-items: center;
   display: inline-flex;
@@ -9248,25 +9254,41 @@ button.coach-doc-reserve-chip:disabled {
 .editor-edit,
 .editor-save,
 .editor-cancel {
-  background: transparent;
-  border: 1px solid var(--line);
   border-radius: 6px;
   cursor: pointer;
   font-size: 12px;
-  padding: 4px 12px;
+  padding: 4px 11px;
+}
+
+.editor-edit {
+  background: transparent;
+  border: 1px solid var(--blue);
+  color: var(--blue);
+  font-weight: 600;
 }
 
 .editor-save {
   background: var(--blue);
-  border-color: var(--blue);
+  border: 1px solid var(--blue);
   color: #ffffff;
   font-weight: 700;
 }
 
-.editor-edit:hover,
+.editor-cancel {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--text);
+}
+
 .editor-cancel:hover {
   border-color: var(--blue);
   color: var(--blue);
+}
+
+/* 이름 수정 버튼은 헤더 맨 오른쪽으로 */
+.name-edit-toggle {
+  margin-left: auto;
+  order: 10;
 }
 
 .wiki-view {
