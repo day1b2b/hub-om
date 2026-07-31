@@ -1,9 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import type { TeamUser, TeamUserInput } from "@/lib/data/teamUsers/teamUserTypes";
+import type { TeamUser, TeamUserInput, TeamUserRole } from "@/lib/data/teamUsers/teamUserTypes";
 
 const TEAM_OPTIONS = ["1팀", "2팀"] as const;
+const ROLE_OPTIONS: { value: TeamUserRole; label: string }[] = [
+  { value: "ld", label: "LD" },
+  { value: "om", label: "OM" }
+];
+const ROLE_LABEL: Record<TeamUserRole, string> = { ld: "LD", om: "OM" };
 type TeamFilter = "전체" | "1팀" | "2팀";
 
 export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
@@ -13,6 +18,7 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
   const [email, setEmail] = useState("");
   const [slackId, setSlackId] = useState("");
   const [team, setTeam] = useState("");
+  const [role, setRole] = useState<TeamUserRole | "">("");
   const [teamFilter, setTeamFilter] = useState<TeamFilter>("전체");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -20,6 +26,8 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
   const [bulkText, setBulkText] = useState("");
   const [bulkSaving, setBulkSaving] = useState(false);
   const [bulkError, setBulkError] = useState<string | null>(null);
+  const [assignRole, setAssignRole] = useState<TeamUserRole>("om");
+  const [assigning, setAssigning] = useState(false);
 
   const filteredUsers =
     teamFilter === "전체" ? users : users.filter((u) => u.team === teamFilter);
@@ -37,6 +45,7 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
           email: email.trim(),
           slackId: slackId.trim(),
           team: team || undefined,
+          role: role || undefined,
         }),
       });
       if (!res.ok) {
@@ -49,6 +58,7 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
       setEmail("");
       setSlackId("");
       setTeam("");
+      setRole("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "오류가 발생했습니다.");
     } finally {
@@ -105,6 +115,27 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
     }
   }
 
+  async function handleAssignRole() {
+    if (!selected.size) return;
+    const label = ROLE_LABEL[assignRole];
+    if (!confirm(`선택한 ${selected.size}명을 ${label}(으)로 지정하시겠습니까?`)) return;
+    setAssigning(true);
+    try {
+      const res = await fetch("/api/admin/users/role", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: [...selected], role: assignRole }),
+      });
+      if (!res.ok) throw new Error();
+      setUsers((prev) => prev.map((u) => (selected.has(u.id) ? { ...u, role: assignRole } : u)));
+      setSelected(new Set());
+    } catch {
+      alert("구분 지정에 실패했습니다.");
+    } finally {
+      setAssigning(false);
+    }
+  }
+
   function toggleSelect(id: string) {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -141,6 +172,16 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
           <option value="">팀 선택</option>
           {TEAM_OPTIONS.map((t) => (
             <option key={t} value={t}>{t}</option>
+          ))}
+        </select>
+        <select
+          value={role}
+          onChange={(e) => setRole(e.target.value as TeamUserRole | "")}
+          className="user-input"
+        >
+          <option value="">구분 선택</option>
+          {ROLE_OPTIONS.map((r) => (
+            <option key={r.value} value={r.value}>{r.label}</option>
           ))}
         </select>
         <input
@@ -196,9 +237,23 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
               {teamFilter === "전체" ? `총 ${users.length}명` : `${teamFilter} ${filteredUsers.length}명`}
             </span>
             {selected.size > 0 && (
-              <button className="user-delete-btn" disabled={deleting} onClick={handleDelete}>
-                {deleting ? "삭제 중..." : `${selected.size}명 삭제`}
-              </button>
+              <div className="user-bulk-assign">
+                <select
+                  value={assignRole}
+                  onChange={(e) => setAssignRole(e.target.value as TeamUserRole)}
+                  className="user-input"
+                >
+                  {ROLE_OPTIONS.map((r) => (
+                    <option key={r.value} value={r.value}>{r.label}</option>
+                  ))}
+                </select>
+                <button className="user-add-btn" disabled={assigning} onClick={handleAssignRole} type="button">
+                  {assigning ? "지정 중..." : `${selected.size}명 구분 지정`}
+                </button>
+                <button className="user-delete-btn" disabled={deleting} onClick={handleDelete}>
+                  {deleting ? "삭제 중..." : `${selected.size}명 삭제`}
+                </button>
+              </div>
             )}
           </div>
           <table className="user-table">
@@ -211,6 +266,7 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
                     onChange={toggleAll}
                   />
                 </th>
+                <th>팀</th>
                 <th>구분</th>
                 <th>이름</th>
                 <th>이메일</th>
@@ -228,6 +284,7 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
                     />
                   </td>
                   <td>{u.team || "-"}</td>
+                  <td>{u.role ? ROLE_LABEL[u.role] : "-"}</td>
                   <td>{u.name}</td>
                   <td>{u.email}</td>
                   <td>{u.slackId || "-"}</td>
@@ -245,11 +302,11 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
       )}
 
       <div className="user-bulk-add">
-        <p className="user-bulk-add-label">여러 명 한 번에 추가 (엑셀에서 팀, 이름, 이메일, Slack ID 순서로 복사해서 붙여넣기)</p>
+        <p className="user-bulk-add-label">여러 명 한 번에 추가 (엑셀에서 팀, 구분(LD/OM), 이름, 이메일, Slack ID 순서로 복사해서 붙여넣기)</p>
         <textarea
           className="user-bulk-textarea"
           onChange={(e) => setBulkText(e.target.value)}
-          placeholder={"1팀\t김정선\tjungsun.kim@day1company.co.kr\tjungsun.kim"}
+          placeholder={"1팀\tOM\t김정선\tjungsun.kim@day1company.co.kr\tjungsun.kim"}
           rows={6}
           value={bulkText}
         />
@@ -262,18 +319,26 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
   );
 }
 
+function parseRole(value: string | undefined): TeamUserRole | undefined {
+  const normalized = (value ?? "").trim().toLowerCase();
+  if (normalized === "ld") return "ld";
+  if (normalized === "om") return "om";
+  return undefined;
+}
+
 function parseBulkRows(text: string): TeamUserInput[] {
   return text
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => line.split(/\t|,/).map((cell) => cell.trim()))
-    .filter((cells) => !(cells[0] === "팀" && cells[1] === "이름"))
-    .map(([team, name, email, slackId]) => ({
+    .filter((cells) => !(cells[0] === "팀" && (cells[1] === "이름" || cells[1] === "구분")))
+    .map(([team, role, name, email, slackId]) => ({
       email: email ?? "",
       name: name ?? "",
       slackId: slackId ?? "",
-      team: team || undefined
+      team: team || undefined,
+      role: parseRole(role)
     }))
     .filter((input) => input.name && input.email);
 }

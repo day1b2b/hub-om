@@ -48,7 +48,7 @@ export function AddRoundButton({
             <div className="drive-review-header">
               <div>
                 <h2 id="add-round-title">차수 추가</h2>
-                <p>동일 코스ID로 새 회차를 추가합니다.</p>
+                <p>동일 과정에 새 회차를 추가합니다.</p>
               </div>
               <button aria-label="차수 추가 닫기" onClick={closeDialog} type="button">
                 닫기

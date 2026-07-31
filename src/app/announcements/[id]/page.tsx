@@ -4,6 +4,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getPrismaClient } from "@/lib/data/prisma";
 import { AnnouncementActions } from "@/features/announcements/AnnouncementActions";
+import { sanitizeAnnouncementContent } from "@/lib/data/announcements/sanitizeAnnouncementContent";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,11 @@ export default async function AnnouncementDetailPage({ params }: Props) {
       content: true,
       authorName: true,
       authorEmail: true,
-      createdAt: true
+      createdAt: true,
+      attachments: {
+        select: { id: true, fileName: true, size: true },
+        orderBy: { createdAt: "asc" }
+      }
     }
   });
 
@@ -51,8 +56,32 @@ export default async function AnnouncementDetailPage({ params }: Props) {
           <AnnouncementActions id={announcement.id} />
         </header>
 
-        <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.7 }}>{announcement.content}</div>
+        <div
+          className="announcement-body"
+          dangerouslySetInnerHTML={{ __html: sanitizeAnnouncementContent(announcement.content) }}
+        />
+
+        {announcement.attachments.length > 0 && (
+          <div className="announcement-attachments">
+            <h2 className="announcement-attachments-title">첨부파일 {announcement.attachments.length}개</h2>
+            <ul>
+              {announcement.attachments.map((file) => (
+                <li key={file.id}>
+                  <a href={`/api/announcements/${announcement.id}/attachments/${file.id}`}>
+                    {file.fileName} <span className="announcement-attachment-size">({formatFileSize(file.size)})</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </section>
     </main>
   );
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
 }

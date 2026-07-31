@@ -1,0 +1,4 @@
+{
+  "comment": "npm audit critical 차단 게이트의 '확인된 예외' 목록. check-audit-allowlist.mjs가 읽는다. 예외 추가/삭제는 기술 책임자 확인 후에만 한다. 수정 버전이 출시되면 업그레이드하고 해당 예외를 삭제한다.",
+  "exceptions": []
+}

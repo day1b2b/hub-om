@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
+import { isSameCourse } from "@/lib/data/operationCalculations";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import type { CreateOperationInput } from "@/lib/data/operationTypes";
 
@@ -37,6 +38,18 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   if (!roundNo || !startDate || !endDate) {
     return NextResponse.json({ ok: false, error: "회차, 시작일, 종료일은 필수입니다." }, { status: 400 });
+  }
+
+  const allOperations = await repository.listOperations();
+  const duplicateRound = allOperations.some(
+    (candidate) => isSameCourse(candidate, baseOperation) && candidate.roundNo === roundNo
+  );
+
+  if (duplicateRound) {
+    return NextResponse.json(
+      { ok: false, error: `이미 등록된 회차입니다 (${roundNo}회차). 엑셀 내용을 확인한 뒤 다시 시도해주세요.` },
+      { status: 409 }
+    );
   }
 
   try {

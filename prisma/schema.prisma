@@ -621,12 +621,13 @@ model CoachSyncLog {
 }
 
 model TeamUser {
-  id        String   @id @default(uuid()) @db.Uuid
+  id        String      @id @default(uuid()) @db.Uuid
   name      String
   email     String
-  slackId   String   @map("slack_id")
+  slackId   String      @map("slack_id")
   team      String?
-  createdAt DateTime @default(now()) @map("created_at")
+  role      MemberRole?
+  createdAt DateTime    @default(now()) @map("created_at")
 
   @@map("team_users")
 }
@@ -642,6 +643,60 @@ model Announcement {
   deletedAt   DateTime? @map("deleted_at")
   deletedBy   String?   @map("deleted_by")
 
+  attachments AnnouncementAttachment[]
+
   @@index([deletedAt, createdAt])
   @@map("announcements")
+}
+
+model AnnouncementAttachment {
+  id             String   @id @default(uuid()) @db.Uuid
+  announcementId String   @map("announcement_id") @db.Uuid
+  fileName       String   @map("file_name")
+  mimeType       String   @map("mime_type")
+  size           Int
+  data           Bytes
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+
+  @@index([announcementId])
+  @@map("announcement_attachments")
+}
+
+// coach-db 원본 보관용 테이블. 데이터 적재는 scripts/archive-coach-db.ts로만 한다.
+// schema에 등록해두지 않으면 prisma migrate dev가 drift로 판단해 DROP 마이그레이션을
+// 자동 생성한다 (20260723062051에서 실제로 발생해 20260731에 복원함).
+model CoachdbArchiveSnapshot {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sourceDatabase String    @map("source_database")
+  sourceSchema   String    @default("public") @map("source_schema")
+  tableCount     Int       @default(0) @map("table_count")
+  rowCount       Int       @default(0) @map("row_count")
+  status         String    @default("running")
+  errorMessage   String?   @map("error_message")
+  startedAt      DateTime  @default(now()) @map("started_at")
+  finishedAt     DateTime? @map("finished_at")
+
+  rows CoachdbArchiveRow[]
+
+  @@map("coachdb_archive_snapshots")
+}
+
+model CoachdbArchiveRow {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  snapshotId  String   @map("snapshot_id") @db.Uuid
+  tableSchema String   @map("table_schema")
+  tableName   String   @map("table_name")
+  rowKey      String   @map("row_key")
+  rowData     Json     @map("row_data")
+  archivedAt  DateTime @default(now()) @map("archived_at")
+
+  snapshot CoachdbArchiveSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([snapshotId, tableSchema, tableName, rowKey], map: "coachdb_archive_rows_snapshot_table_key_unique")
+  @@index([tableSchema, tableName], map: "coachdb_archive_rows_table_idx")
+  @@index([snapshotId], map: "coachdb_archive_rows_snapshot_idx")
+  @@index([rowData(ops: JsonbOps)], map: "coachdb_archive_rows_data_gin_idx", type: Gin)
+  @@map("coachdb_archive_rows")
 }

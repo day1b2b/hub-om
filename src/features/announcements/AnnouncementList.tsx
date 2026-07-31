@@ -17,6 +17,8 @@ function formatDate(iso: string): string {
 export function AnnouncementList({ announcements, loadFailed }: AnnouncementListProps) {
   const router = useRouter();
 
+  const total = announcements.length;
+
   return (
     <main className="dashboard-shell">
       <AppSidebar label="공지사항" teamScope="both" />
@@ -37,20 +39,23 @@ export function AnnouncementList({ announcements, loadFailed }: AnnouncementList
         ) : (
           <table className="user-table">
             <colgroup>
-              <col style={{ width: "60%" }} />
+              <col style={{ width: "10%" }} />
+              <col style={{ width: "50%" }} />
               <col style={{ width: "20%" }} />
               <col style={{ width: "20%" }} />
             </colgroup>
             <thead>
               <tr>
+                <th>번호</th>
                 <th>제목</th>
                 <th>작성자</th>
                 <th>등록일</th>
               </tr>
             </thead>
             <tbody>
-              {announcements.map((item) => (
+              {announcements.map((item, index) => (
                 <tr key={item.id} onClick={() => router.push(`/announcements/${item.id}`)}>
+                  <td>{total - index}</td>
                   <td>{item.title}</td>
                   <td>{item.authorName || item.authorEmail}</td>
                   <td>{formatDate(item.createdAt)}</td>
