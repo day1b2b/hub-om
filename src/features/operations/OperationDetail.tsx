@@ -73,7 +73,7 @@ export function OperationDetail({
   teamScope
 }: OperationDetailProps) {
   const courseOperations = getCourseOperations(operation, relatedOperations);
-  const otherCourseGroups = getOtherCourseGroups(operation, sameCourseIdOperations);
+  const courseGroups = getCourseGroups(operation, sameCourseIdOperations);
   const showOperationStatus = !(operation.operationStatus === "배정필요" && Boolean(operation.om));
   const requiredArchiveItems = getRequiredArchiveItems(operation);
   const completedArchiveItems = requiredArchiveItems.filter((archiveItem) => archiveItem.done);
@@ -167,6 +167,31 @@ export function OperationDetail({
             </div>
           </section>
 
+          <section className="detail-section resource-status-section required-items-section">
+            <div className="resource-summary-card">
+              <div className="resource-row-head">
+                <strong>필수 항목</strong>
+                <span>{completedArchiveItems.length}/{requiredArchiveItems.length}</span>
+              </div>
+              <div className="archive-item-list" aria-label="아카이브 필수 항목">
+                {requiredArchiveItems.map((archiveItem) => (
+                  <EditableResourceRow
+                    done={archiveItem.done}
+                    doneText={archiveItem.doneText}
+                    field={archiveItem.field}
+                    isLink
+                    key={archiveItem.label}
+                    label={archiveItem.label}
+                    missingText={archiveItem.missingText}
+                    operationId={operation.operationId}
+                    placeholder="https://"
+                    value={archiveItem.value}
+                  />
+                ))}
+              </div>
+            </div>
+          </section>
+
           <section className="detail-section course-sessions-section">
             <EditAllRoundsProvider>
             <div className="section-title">
@@ -194,12 +219,12 @@ export function OperationDetail({
                     <th>일정 / 시간</th>
                     <th>강사</th>
                     <th>실습코치</th>
-                    <th>관리</th>
                     <th>만족도</th>
                     <th>결과보고서 여부</th>
                     <th>결과보고서</th>
                     <th>패들렛</th>
                     <th>강의관리</th>
+                    <th>관리</th>
                     <th>삭제</th>
                   </tr>
                 </thead>
@@ -223,44 +248,45 @@ export function OperationDetail({
                         operationId={courseOperation.operationId}
                         startDate={courseOperation.startDate}
                         timeText={courseOperation.timeText}
-                      />
-                      <td>
-                        <SessionMetricPill
-                          doneText={courseOperation.avgSatisfaction}
-                          missingText="미입력"
+                      >
+                        <td>
+                          <SessionMetricPill
+                            doneText={courseOperation.avgSatisfaction}
+                            missingText="미입력"
+                          />
+                        </td>
+                        <ResultReportRequirementCell
+                          hasResultReport={courseOperation.hasResultReport}
+                          operationId={courseOperation.operationId}
                         />
-                      </td>
-                      <ResultReportRequirementCell
-                        hasResultReport={courseOperation.hasResultReport}
-                        operationId={courseOperation.operationId}
-                      />
-                      {courseOperation.hasResultReport === "불필요" ? (
-                        <td className="round-resource-cell" />
-                      ) : (
+                        {courseOperation.hasResultReport === "불필요" ? (
+                          <td className="round-resource-cell" />
+                        ) : (
+                          <EditableRoundResourceCell
+                            companionDoneValue="유"
+                            companionField="hasResultReport"
+                            companionMissingValue="무"
+                            done={courseOperation.hasResultReport === "유"}
+                            field="resultReportLink"
+                            operationId={courseOperation.operationId}
+                            value={courseOperation.resultReportLink}
+                          />
+                        )}
                         <EditableRoundResourceCell
-                          companionDoneValue="유"
-                          companionField="hasResultReport"
-                          companionMissingValue="무"
-                          done={courseOperation.hasResultReport === "유"}
-                          field="resultReportLink"
+                          done={isNavigableHref(courseOperation.padletLink)}
+                          field="padletLink"
                           operationId={courseOperation.operationId}
-                          value={courseOperation.resultReportLink}
+                          value={courseOperation.padletLink}
                         />
-                      )}
-                      <EditableRoundResourceCell
-                        done={isNavigableHref(courseOperation.padletLink)}
-                        field="padletLink"
-                        operationId={courseOperation.operationId}
-                        value={courseOperation.padletLink}
-                      />
-                      <td>
-                        <LectureManagementNoteRow
-                          done={Boolean(courseOperation.lectureManagementNote.trim())}
-                          operationId={courseOperation.operationId}
-                          startDate={courseOperation.startDate}
-                          value={courseOperation.lectureManagementNote}
-                        />
-                      </td>
+                        <td>
+                          <LectureManagementNoteRow
+                            done={Boolean(courseOperation.lectureManagementNote.trim())}
+                            operationId={courseOperation.operationId}
+                            startDate={courseOperation.startDate}
+                            value={courseOperation.lectureManagementNote}
+                          />
+                        </td>
+                      </EditableSessionRow>
                       <td>
                         <DeleteRoundButton
                           fallbackOperationId={fallbackOperationId}
@@ -280,22 +306,32 @@ export function OperationDetail({
             </EditAllRoundsProvider>
           </section>
 
-          {otherCourseGroups.length > 0 ? (
+          {courseGroups.length > 0 ? (
             <section className="detail-section course-groups-section">
               <div className="section-title">
-                <h2>코스ID {operation.courseId} 내 다른 과정</h2>
-                <span>{otherCourseGroups.length}개 과정</span>
+                <h2>코스ID {operation.courseId} 내 과정</h2>
+                <span>{courseGroups.length}개 과정</span>
               </div>
               <div className="course-group-list">
-                {otherCourseGroups.map((group) => (
-                  <details className="course-group-item" key={group.key}>
+                {courseGroups.map((group) => (
+                  <details
+                    className={group.isCurrent ? "course-group-item current-course-group" : "course-group-item"}
+                    key={group.key}
+                    open={group.isCurrent}
+                  >
                     <summary>
-                      <span>{group.courseName}</span>
+                      <span>
+                        {group.courseName}
+                        {group.isCurrent ? <span className="current-course-tag">현재 보고 있는 과정</span> : null}
+                      </span>
                       <span>{group.operations.length}개 회차</span>
                     </summary>
                     <ul className="course-group-rounds">
                       {group.operations.map((groupOperation, index) => (
-                        <li key={groupOperation.operationId}>
+                        <li
+                          className={groupOperation.operationId === operation.operationId ? "current-session" : undefined}
+                          key={groupOperation.operationId}
+                        >
                           <Link href={`/operations/${groupOperation.operationId}${teamQuery}`}>
                             <span>{roundLabel(groupOperation, index)}</span>
                             <span>{groupOperation.startDate || "일정 미정"}</span>
@@ -311,29 +347,6 @@ export function OperationDetail({
 
           <section className="detail-section resource-status-section" id="links">
             <div className="resource-card-grid">
-              <div className="resource-summary-card">
-                <div className="resource-row-head">
-                  <strong>필수 항목</strong>
-                  <span>{completedArchiveItems.length}/{requiredArchiveItems.length}</span>
-                </div>
-                <div className="archive-item-list" aria-label="아카이브 필수 항목">
-                  {requiredArchiveItems.map((archiveItem) => (
-                    <EditableResourceRow
-                      done={archiveItem.done}
-                      doneText={archiveItem.doneText}
-                      field={archiveItem.field}
-                      isLink
-                      key={archiveItem.label}
-                      label={archiveItem.label}
-                      missingText={archiveItem.missingText}
-                      operationId={operation.operationId}
-                      placeholder="https://"
-                      value={archiveItem.value}
-                    />
-                  ))}
-                </div>
-              </div>
-
               <div className="resource-summary-card">
                 <div className="resource-row-head">
                   <strong>참고 자료</strong>
@@ -678,19 +691,18 @@ function getCourseOperations(operation: OperationSession, relatedOperations: Ope
 
 interface CourseGroup {
   courseName: string;
+  isCurrent: boolean;
   key: string;
   operations: OperationSession[];
 }
 
-function getOtherCourseGroups(operation: OperationSession, sameCourseIdOperations: OperationSession[]): CourseGroup[] {
+function getCourseGroups(operation: OperationSession, sameCourseIdOperations: OperationSession[]): CourseGroup[] {
   const currentGroupKey = courseGroupKey(operation);
   const groups = new Map<string, CourseGroup>();
 
   for (const candidate of sameCourseIdOperations) {
     const key = courseGroupKey(candidate);
-    if (key === currentGroupKey) continue;
-
-    const group = groups.get(key) ?? { courseName: candidate.courseName, key, operations: [] };
+    const group = groups.get(key) ?? { courseName: candidate.courseName, isCurrent: key === currentGroupKey, key, operations: [] };
     group.operations.push(candidate);
     groups.set(key, group);
   }

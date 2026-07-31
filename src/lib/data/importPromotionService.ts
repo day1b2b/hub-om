@@ -58,6 +58,7 @@ const EDUCATION_FORMAT_BY_TEXT: Record<string, EducationFormat> = {
   "오프라인": EducationFormat.OFFLINE,
   "비대면": EducationFormat.REMOTE,
   "온라인": EducationFormat.REMOTE,
+  "블렌디드": EducationFormat.BLENDED,
   "블랜디드": EducationFormat.BLENDED,
   "플립러닝": EducationFormat.FLIPPED,
   "검토필요": EducationFormat.NEEDS_REVIEW

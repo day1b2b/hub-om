@@ -17,7 +17,7 @@ const ASSIGNMENT_PLANNED_VALUES = new Set(["★배정 예정", "배정 예정", 
 const EDUCATION_FORMATS = new Set<EducationFormat>([
   "오프라인",
   "비대면",
-  "블랜디드",
+  "블렌디드",
   "플립러닝"
 ]);
 const OPERATION_TYPES = new Set<OperationType>([
@@ -45,7 +45,7 @@ export function normalizeCourseId(value: unknown): string {
 export function normalizeEducationFormat(rawValue: string): EducationFormat {
   const value = rawValue.trim();
   if (value === "플랫폼(온라인운영)") return "비대면";
-  if (value === "온/오프라인") return "블랜디드";
+  if (value === "온/오프라인" || value === "블랜디드") return "블렌디드";
 
   const normalized = value as EducationFormat;
   return EDUCATION_FORMATS.has(normalized) ? normalized : "검토필요";
@@ -57,7 +57,7 @@ export function deriveOperationChannel(rawValue: string): OperationChannel {
   if (value === "오프라인") return "onsite";
   if (value === "비대면") return "live_online";
   if (value === "플랫폼(온라인운영)") return "online_platform";
-  if (value === "블랜디드" || value === "온/오프라인" || value === "플립러닝") return "blended";
+  if (value === "블렌디드" || value === "블랜디드" || value === "온/오프라인" || value === "플립러닝") return "blended";
 
   return "needs_review";
 }

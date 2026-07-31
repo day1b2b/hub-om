@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useEditAllRoundsSignal } from "./EditAllRoundsProvider";
 
 type SaveState = "idle" | "saving" | "failed";
 
 interface EditableSessionRowProps {
+  children?: ReactNode;
   coach: string;
   endDate: string;
   instructors: string;
@@ -23,7 +24,7 @@ interface SessionDraft {
   timeText: string;
 }
 
-export function EditableSessionRow({ coach, endDate, instructors, operationId, startDate, timeText }: EditableSessionRowProps) {
+export function EditableSessionRow({ children, coach, endDate, instructors, operationId, startDate, timeText }: EditableSessionRowProps) {
   const router = useRouter();
   const editAllContext = useEditAllRoundsSignal();
   const [isEditing, setIsEditing] = useState(false);
@@ -74,6 +75,7 @@ export function EditableSessionRow({ coach, endDate, instructors, operationId, s
         </td>
         <td>{instructors || "미정"}</td>
         <td>{coach || "미정"}</td>
+        {children}
         <td>
           <button className="session-row-edit-trigger" onClick={startEditing} type="button">
             수정
@@ -135,6 +137,7 @@ export function EditableSessionRow({ coach, endDate, instructors, operationId, s
         </div>
         {saveState === "failed" ? <span className="archive-item-save-error">저장하지 못했습니다.</span> : null}
       </td>
+      {children}
       <td>
         <div className="session-row-edit-actions">
           <button disabled={saveState === "saving"} onClick={save} type="button">
