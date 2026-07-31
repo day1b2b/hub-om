@@ -36,7 +36,7 @@ function AddressSearchButton({ onSelect }: { onSelect: (address: string) => void
 }
 
 const TEAM_OPTIONS = ["1팀", "2팀"];
-const TRAINING_TYPE_OPTIONS: TrainingType[] = ["오프라인", "블랜디드", "비대면", "해커톤"];
+const TRAINING_TYPE_OPTIONS: TrainingType[] = ["오프라인", "블렌디드", "비대면", "해커톤"];
 
 const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
   const h = String(Math.floor(i / 2)).padStart(2, "0");

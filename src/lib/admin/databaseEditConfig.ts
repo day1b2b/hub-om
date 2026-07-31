@@ -17,7 +17,7 @@ export const ADMIN_ENUM_LABELS: Record<string, Record<string, string>> = {
     NOT_READY: "아카이빙전"
   },
   educationFormat: {
-    BLENDED: "블랜디드",
+    BLENDED: "블렌디드",
     FLIPPED: "플립러닝",
     NEEDS_REVIEW: "검토필요",
     OFFLINE: "오프라인",
@@ -49,7 +49,7 @@ export const ADMIN_ENUM_LABELS: Record<string, Record<string, string>> = {
     true: "활성"
   },
   operationChannel: {
-    BLENDED: "블랜디드",
+    BLENDED: "블렌디드",
     LIVE_ONLINE: "실시간 비대면",
     NEEDS_REVIEW: "검토필요",
     ONLINE_PLATFORM: "온라인 플랫폼",

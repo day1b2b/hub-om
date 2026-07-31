@@ -86,7 +86,7 @@ export function OperationCreateForm({ personOptions, teamScope, today }: Operati
           <label>
             <span>교육형태</span>
             <select defaultValue="검토필요" name="educationFormat">
-              {["오프라인", "비대면", "블랜디드", "플립러닝", "검토필요"].map((format) => (
+              {["오프라인", "비대면", "블렌디드", "플립러닝", "검토필요"].map((format) => (
                 <option key={format}>{format}</option>
               ))}
             </select>
