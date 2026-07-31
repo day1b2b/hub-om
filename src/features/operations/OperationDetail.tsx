@@ -73,7 +73,7 @@ export function OperationDetail({
   teamScope
 }: OperationDetailProps) {
   const courseOperations = getCourseOperations(operation, relatedOperations);
-  const otherCourseGroups = getOtherCourseGroups(operation, sameCourseIdOperations);
+  const courseGroups = getCourseGroups(operation, sameCourseIdOperations);
   const showOperationStatus = !(operation.operationStatus === "배정필요" && Boolean(operation.om));
   const requiredArchiveItems = getRequiredArchiveItems(operation);
   const completedArchiveItems = requiredArchiveItems.filter((archiveItem) => archiveItem.done);
@@ -306,22 +306,32 @@ export function OperationDetail({
             </EditAllRoundsProvider>
           </section>
 
-          {otherCourseGroups.length > 0 ? (
+          {courseGroups.length > 0 ? (
             <section className="detail-section course-groups-section">
               <div className="section-title">
-                <h2>코스ID {operation.courseId} 내 다른 과정</h2>
-                <span>{otherCourseGroups.length}개 과정</span>
+                <h2>코스ID {operation.courseId} 내 과정</h2>
+                <span>{courseGroups.length}개 과정</span>
               </div>
               <div className="course-group-list">
-                {otherCourseGroups.map((group) => (
-                  <details className="course-group-item" key={group.key}>
+                {courseGroups.map((group) => (
+                  <details
+                    className={group.isCurrent ? "course-group-item current-course-group" : "course-group-item"}
+                    key={group.key}
+                    open={group.isCurrent}
+                  >
                     <summary>
-                      <span>{group.courseName}</span>
+                      <span>
+                        {group.courseName}
+                        {group.isCurrent ? <span className="current-course-tag">현재 보고 있는 과정</span> : null}
+                      </span>
                       <span>{group.operations.length}개 회차</span>
                     </summary>
                     <ul className="course-group-rounds">
                       {group.operations.map((groupOperation, index) => (
-                        <li key={groupOperation.operationId}>
+                        <li
+                          className={groupOperation.operationId === operation.operationId ? "current-session" : undefined}
+                          key={groupOperation.operationId}
+                        >
                           <Link href={`/operations/${groupOperation.operationId}${teamQuery}`}>
                             <span>{roundLabel(groupOperation, index)}</span>
                             <span>{groupOperation.startDate || "일정 미정"}</span>
@@ -681,19 +691,18 @@ function getCourseOperations(operation: OperationSession, relatedOperations: Ope
 
 interface CourseGroup {
   courseName: string;
+  isCurrent: boolean;
   key: string;
   operations: OperationSession[];
 }
 
-function getOtherCourseGroups(operation: OperationSession, sameCourseIdOperations: OperationSession[]): CourseGroup[] {
+function getCourseGroups(operation: OperationSession, sameCourseIdOperations: OperationSession[]): CourseGroup[] {
   const currentGroupKey = courseGroupKey(operation);
   const groups = new Map<string, CourseGroup>();
 
   for (const candidate of sameCourseIdOperations) {
     const key = courseGroupKey(candidate);
-    if (key === currentGroupKey) continue;
-
-    const group = groups.get(key) ?? { courseName: candidate.courseName, key, operations: [] };
+    const group = groups.get(key) ?? { courseName: candidate.courseName, isCurrent: key === currentGroupKey, key, operations: [] };
     group.operations.push(candidate);
     groups.set(key, group);
   }

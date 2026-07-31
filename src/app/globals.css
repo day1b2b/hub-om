@@ -4503,6 +4503,20 @@ td span {
   font-weight: 700;
 }
 
+.course-group-rounds li.current-session a {
+  background: #eef5ff;
+}
+
+.current-course-tag {
+  background: #eef5ff;
+  border-radius: 999px;
+  color: #3468c0;
+  font-size: 11px;
+  font-weight: 700;
+  margin-left: 8px;
+  padding: 2px 8px;
+}
+
 .archive-item-actions {
   align-items: center;
   display: flex;
