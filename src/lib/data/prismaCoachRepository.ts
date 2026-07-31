@@ -4,6 +4,7 @@ import {
   CoachStatus as PrismaCoachStatus
 } from "@prisma/client";
 import type {
+  CoachDayReservationView,
   CoachDetail,
   CoachEngagementScheduleView,
   CoachEngagementStatusValue,
@@ -57,6 +58,7 @@ export class PrismaCoachRepository implements CoachRepository {
         dxTag: true,
         isActive: true,
         deletedAt: true,
+        notionPageId: true,
         fields: {
           select: { tag: { select: { name: true } } }
         },
@@ -86,7 +88,8 @@ export class PrismaCoachRepository implements CoachRepository {
         deletedAt: coach.deletedAt ? coach.deletedAt.toISOString() : null,
         fields: coach.fields.map((field) => field.tag.name),
         avgRating: ratings.length > 0 ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length : null,
-        workDayCount: workDates.size
+        workDayCount: workDates.size,
+        notionPageId: coach.notionPageId
       };
     });
   }
@@ -109,6 +112,7 @@ export class PrismaCoachRepository implements CoachRepository {
         dxTag: true,
         isActive: true,
         deletedAt: true,
+        notionPageId: true,
         fields: {
           select: { tag: { select: { name: true } } }
         },
@@ -145,6 +149,7 @@ export class PrismaCoachRepository implements CoachRepository {
       fields: coach.fields.map((field) => field.tag.name),
       avgRating: ratings.length > 0 ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length : null,
       workDayCount: workDates.size,
+      notionPageId: coach.notionPageId,
       curriculums: coach.curriculums.map((curriculum) => curriculum.tag.name),
       coachInputUrl: buildSkillfloCoachUrl(coach.accessToken),
       statusNote: coach.statusNote ?? archivedDetail?.statusNote ?? null,
@@ -156,7 +161,7 @@ export class PrismaCoachRepository implements CoachRepository {
 
   async listEngagements(coachId: string): Promise<CoachEngagementView[]> {
     const prisma = getPrismaClient();
-    // feedback/hiredByText(민감)는 select하지 않는다.
+    // hiredByText(섭외 관련, 민감)는 select하지 않는다. feedback(평가 한줄평)은 공개 조회로 취급한다.
     const engagements = await prisma.coachEngagement.findMany({
       where: { coachId },
       select: {
@@ -170,7 +175,8 @@ export class PrismaCoachRepository implements CoachRepository {
         startTime: true,
         endTime: true,
         rating: true,
-        rehire: true
+        rehire: true,
+        feedback: true
       },
       orderBy: [{ startDate: "desc" }, { id: "asc" }]
     });
@@ -186,7 +192,8 @@ export class PrismaCoachRepository implements CoachRepository {
       startTime: engagement.startTime,
       endTime: engagement.endTime,
       rating: engagement.rating,
-      rehire: engagement.rehire
+      rehire: engagement.rehire,
+      feedback: engagement.feedback
     }));
   }
 
@@ -257,7 +264,7 @@ export class PrismaCoachRepository implements CoachRepository {
     const prisma = getPrismaClient();
     const [startDate, endDate] = monthRange(yearMonth);
 
-    const [coaches, availabilityRows, busyRows] = await Promise.all([
+    const [coaches, availabilityRows, busyRows, reservationRows] = await Promise.all([
       prisma.coach.findMany({
         where: {
           deletedAt: null,
@@ -332,6 +339,21 @@ export class PrismaCoachRepository implements CoachRepository {
           startTime: true,
           endTime: true
         }
+      }),
+      prisma.coachDayReservation.findMany({
+        where: {
+          date: {
+            gte: startDate,
+            lte: endDate
+          },
+          cancelledAt: null
+        },
+        select: {
+          coachId: true,
+          date: true,
+          reservedByName: true,
+          reservedByEmail: true
+        }
       })
     ]);
 
@@ -349,9 +371,17 @@ export class PrismaCoachRepository implements CoachRepository {
             endDate: toDateString(engagement.endDate)
           })),
           engagementCount: coach._count.engagements
-        } satisfies Omit<CoachScheduleDashboardCoach, "schedules">
+        } satisfies Omit<CoachScheduleDashboardCoach, "schedules" | "reservation">
       ])
     );
+
+    const reservationByDayCoach = new Map<string, CoachDayReservationView>();
+    for (const row of reservationRows) {
+      reservationByDayCoach.set(`${row.coachId}|${toDateString(row.date)}`, {
+        reservedByName: row.reservedByName,
+        reservedByEmail: row.reservedByEmail
+      });
+    }
 
     const availabilityByDayCoach = groupIntervalsByDayAndCoach(availabilityRows);
     const busyByDayCoach = groupIntervalsByDayAndCoach(busyRows);
@@ -370,7 +400,8 @@ export class PrismaCoachRepository implements CoachRepository {
 
         coachesForDay.push({
           ...info,
-          schedules: toIntervals(remaining)
+          schedules: toIntervals(remaining),
+          reservation: reservationByDayCoach.get(`${coachId}|${date}`) ?? null
         });
       }
 
@@ -397,17 +428,27 @@ interface ArchivedCoachPublicDetail {
 
 async function loadArchivedCoachPublicDetail(sourceCoachId: string): Promise<ArchivedCoachPublicDetail | null> {
   const prisma = getPrismaClient();
-  const rows = await prisma.$queryRaw<Array<{ row_data: Record<string, unknown> | null }>>`
-    SELECT ar.row_data
-    FROM coachdb_archive_rows ar
-    JOIN coachdb_archive_snapshots s ON s.id = ar.snapshot_id
-    WHERE s.status = 'completed'
-      AND ar.table_schema = 'public'
-      AND ar.table_name = 'coaches'
-      AND ar.row_key = ${sourceCoachId}
-    ORDER BY s.started_at DESC
-    LIMIT 1
-  `;
+  let rows: Array<{ row_data: Record<string, unknown> | null }>;
+
+  try {
+    rows = await prisma.$queryRaw<Array<{ row_data: Record<string, unknown> | null }>>`
+      SELECT ar.row_data
+      FROM coachdb_archive_rows ar
+      JOIN coachdb_archive_snapshots s ON s.id = ar.snapshot_id
+      WHERE s.status = 'completed'
+        AND ar.table_schema = 'public'
+        AND ar.table_name = 'coaches'
+        AND ar.row_key = ${sourceCoachId}
+      ORDER BY s.started_at DESC
+      LIMIT 1
+    `;
+  } catch (error) {
+    // coachdb_archive_rows/snapshots는 scripts/archive-coach-db.ts로만 생성되는 테이블이라
+    // (원본 coach-db에 접근 못 하는) 로컬 개발 DB에는 아예 없을 수 있다. 그 경우는 없는 걸로
+    // 취급하고, 그 외 예상 못 한 에러는 그대로 올린다.
+    if (error instanceof Error && error.message.includes("42P01")) return null;
+    throw error;
+  }
 
   const row = rows[0]?.row_data;
   if (!row) return null;
@@ -465,6 +506,6 @@ function groupIntervalsByDayAndCoach(
 }
 
 function compareScheduleCoaches(a: CoachScheduleDashboardCoach, b: CoachScheduleDashboardCoach): number {
-  if (a.fields.length !== b.fields.length) return b.fields.length - a.fields.length;
+  if (a.engagementCount !== b.engagementCount) return b.engagementCount - a.engagementCount;
   return a.name.localeCompare(b.name, "ko");
 }

@@ -27,6 +27,7 @@ RUN apk add --no-cache libc6-compat openssl \
 
 COPY --from=build --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=build --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=build --chown=nextjs:nodejs /app/public ./public
 COPY --from=deps --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=build --chown=nextjs:nodejs /app/package.json ./package.json
 COPY --from=build --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.ts
@@ -35,7 +36,10 @@ COPY --from=build --chown=nextjs:nodejs /app/src ./src
 COPY --from=build --chown=nextjs:nodejs /app/scripts ./scripts
 COPY --chown=nextjs:nodejs scripts/docker-entrypoint.sh ./docker-entrypoint.sh
 
-RUN chmod +x /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh \
+  && echo '[]' > /app/om-requests.json \
+  && echo '[]' > /app/team-users.json \
+  && chown nextjs:nodejs /app/om-requests.json /app/team-users.json
 
 USER nextjs
 

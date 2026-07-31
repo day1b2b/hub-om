@@ -15,6 +15,8 @@
     "db:archive:coach-db": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/archive-coach-db.ts",
     "db:import:operations": "node scripts/import-operations-from-local-json.mjs",
     "db:import:coach": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/import-coach-db.ts",
+    "db:seed:coach-sample": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/seed-coach-sample-data.ts",
+    "db:seed:my-page-sample": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/seed-my-page-sample-data.ts",
     "db:verify:coach-data": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/verify-coach-data.ts",
     "db:backfill:coach-access-tokens": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/backfill-coach-access-tokens.ts",
     "db:backfill:coach-archive-service-data": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/backfill-coach-archive-service-data.ts",
@@ -27,21 +29,23 @@
     "export:feedback": "node scripts/export-feedback-pages.mjs"
   },
   "dependencies": {
-    "@prisma/adapter-pg": "^7.6.0",
-    "@prisma/client": "7.6.0",
-    "next": "16.2.2",
-    "next-auth": "5.0.0-beta.30",
-    "pg": "^8.21.0",
-    "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "7.8.0",
+    "next": "16.2.12",
+    "next-auth": "5.0.0-beta.32",
+    "pg": "^8.22.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "sanitize-html": "^2.17.6"
   },
   "devDependencies": {
     "@types/node": "22.19.15",
-    "@types/react": "19.2.14",
+    "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
+    "@types/sanitize-html": "^2.16.1",
     "eslint": "9.39.4",
-    "eslint-config-next": "16.2.2",
-    "prisma": "7.6.0",
+    "eslint-config-next": "16.2.12",
+    "prisma": "7.8.0",
     "typescript": "5.9.3"
   },
   "overrides": {

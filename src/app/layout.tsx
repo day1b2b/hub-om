@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { AuthStatus } from "@/components/AuthStatus";
+import { HubBot } from "@/components/HubBot";
+import { Providers } from "@/components/Providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -12,8 +13,8 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
   return (
     <html lang="ko">
       <body>
-        {children}
-        <AuthStatus />
+        <Providers>{children}</Providers>
+        <HubBot />
       </body>
     </html>
   );

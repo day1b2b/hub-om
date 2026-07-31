@@ -175,6 +175,7 @@ model OperationSession {
   hasResultReport       ResultReportStatus @default(NEEDS_REVIEW) @map("has_result_report")
   resultReportLink      String?            @map("result_report_link")
   lectureManagementLink String?            @map("lecture_management_link")
+  lectureManagementNote String?            @map("lecture_management_note")
   padletLink            String?            @map("padlet_link")
   createdBy             String?            @map("created_by")
   updatedBy             String?            @map("updated_by")
@@ -369,6 +370,7 @@ model Coach {
   availabilityDetail String? @map("availability_detail")
   managerNote    String?     @map("manager_note")
   dxTag          String?     @map("dx_tag")
+  notionPageId   String?     @map("notion_page_id") // 노션 코치 DB의 해당 코치 페이지 ID (바로가기 링크용)
   isActive       Boolean     @default(true) @map("is_active") // hub-om 운영 노출 여부 (status와 의미 분리)
   displayOrder   Int?        @map("display_order")
   createdAt      DateTime    @default(now()) @map("created_at")
@@ -384,10 +386,37 @@ model Coach {
   engagementSchedules CoachEngagementSchedule[]
   privateAccessLogs   CoachPrivateAccessLog[]
   scheduleAccessLogs  CoachScheduleAccessLog[]
+  dayReservations     CoachDayReservation[]
+  contentEntries      CoachContentEntry[]
 
   @@index([normalizedName])
   @@index([status, isActive])
   @@map("coaches")
+}
+
+enum CoachContentEntryKind {
+  NOTE
+  EDIT_HISTORY
+}
+
+model CoachContentEntry {
+  id          String                 @id @default(uuid()) @db.Uuid
+  coachId     String                 @map("coach_id") @db.Uuid
+  kind        CoachContentEntryKind
+  content     String
+  authorEmail String?                @map("author_email")
+  authorName  String?                @map("author_name")
+  sourceField String?                @map("source_field") // 수정이력용: 변경된 필드 식별자 (예: coaches.managerNote)
+  flaggedAt   DateTime?              @map("flagged_at") // 메모 "경고" 표시
+  createdAt   DateTime               @default(now()) @map("created_at")
+  updatedAt   DateTime               @updatedAt @map("updated_at")
+  deletedAt   DateTime?              @map("deleted_at")
+
+  coach Coach @relation(fields: [coachId], references: [id], onDelete: Cascade)
+
+  @@index([coachId])
+  @@index([kind])
+  @@map("coach_content_entries")
 }
 
 model CoachPrivateAccessLog {
@@ -469,6 +498,29 @@ model CoachSchedule {
   @@map("coach_schedules")
 }
 
+// 코치 일정 화면에서 매니저들이 같은 코치·날짜에 중복으로 연락하지 않도록
+// 남기는 가벼운 예약(선점) 표시. 실제 투입 확정 기록은 CoachEngagement가 담당한다.
+model CoachDayReservation {
+  id              String    @id @default(uuid()) @db.Uuid
+  coachId         String    @map("coach_id") @db.Uuid
+  date            DateTime  @db.Date
+  reservedByEmail String    @map("reserved_by_email")
+  reservedByName  String    @map("reserved_by_name")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  cancelledAt     DateTime? @map("cancelled_at")
+
+  // 예약이 실제 투입 확정으로 이어져 자동 취소된 경우, 그 확정 건을 가리킨다.
+  // (마이페이지의 "확정된 과정" 목록에 과정명·기간·코치를 보여주는 데 사용)
+  confirmedEngagementId String? @map("confirmed_engagement_id") @db.Uuid
+
+  coach               Coach            @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  confirmedEngagement CoachEngagement? @relation(fields: [confirmedEngagementId], references: [id], onDelete: SetNull)
+
+  @@index([coachId, date])
+  @@index([confirmedEngagementId])
+  @@map("coach_day_reservations")
+}
+
 model CoachScheduleAccessLog {
   id                String    @id @default(uuid()) @db.Uuid
   sourceAccessLogId String?   @unique @map("source_access_log_id")
@@ -499,13 +551,15 @@ model CoachEngagement {
   rating             Int?                  @db.SmallInt
   rehire             Boolean?
   feedback           String?               // private 성격 강함 → admin 전용
+  reviewFlaggedAt    DateTime?             @map("review_flagged_at") // 콘텐츠 관리 탭의 리뷰 "경고" 표시
   hiredById          String?               @map("hired_by_id")
   hiredByText        String?               @map("hired_by_text") // private 취급
   createdAt          DateTime              @default(now()) @map("created_at")
 
-  coach            Coach             @relation(fields: [coachId], references: [id], onDelete: Cascade)
-  operationSession OperationSession? @relation(fields: [operationSessionId], references: [id])
-  schedules        CoachEngagementSchedule[]
+  coach              Coach                 @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  operationSession   OperationSession?     @relation(fields: [operationSessionId], references: [id])
+  schedules          CoachEngagementSchedule[]
+  confirmedFromReservations CoachDayReservation[]
 
   @@index([coachId])
   @@index([operationSessionId])
@@ -564,4 +618,48 @@ model CoachSyncLog {
 
   @@index([type, startedAt])
   @@map("coach_sync_logs")
+}
+
+model TeamUser {
+  id        String      @id @default(uuid()) @db.Uuid
+  name      String
+  email     String
+  slackId   String      @map("slack_id")
+  team      String?
+  role      MemberRole?
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  @@map("team_users")
+}
+
+model Announcement {
+  id          String    @id @default(uuid()) @db.Uuid
+  title       String
+  content     String
+  authorEmail String    @map("author_email")
+  authorName  String?   @map("author_name")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+  deletedBy   String?   @map("deleted_by")
+
+  attachments AnnouncementAttachment[]
+
+  @@index([deletedAt, createdAt])
+  @@map("announcements")
+}
+
+model AnnouncementAttachment {
+  id             String   @id @default(uuid()) @db.Uuid
+  announcementId String   @map("announcement_id") @db.Uuid
+  fileName       String   @map("file_name")
+  mimeType       String   @map("mime_type")
+  size           Int
+  data           Bytes
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+
+  @@index([announcementId])
+  @@map("announcement_attachments")
 }

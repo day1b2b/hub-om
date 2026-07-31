@@ -24,13 +24,14 @@ export async function notifyOmRequestCreated(params: {
   onSiteOperation: string;
   coachRequest: string;
   totalSessions: number;
-  sessions: { date: string; timeStart: string; timeEnd: string; location: string }[];
+  sessions: { date: string; dateEnd?: string; timeStart: string; timeEnd: string; duration: string; location: string }[];
   notes: string;
 }) {
   const sessionLines = params.sessions
     .map((s, i) => {
       const duration = s.duration ? (s.duration.endsWith("h") ? s.duration : `${s.duration}h`) : "";
-      return `• ${i + 1}회차 / ${s.date} / ${s.timeStart} ~ ${s.timeEnd}${duration ? ` / ${duration}` : ""} / ${s.location}`;
+      const dateRange = s.dateEnd ? `${s.date} ~ ${s.dateEnd}` : s.date;
+      return `• ${i + 1}회차 / ${dateRange} / ${s.timeStart} ~ ${s.timeEnd}${duration ? ` / ${duration}` : ""} / ${s.location}`;
     })
     .join("\n");
 

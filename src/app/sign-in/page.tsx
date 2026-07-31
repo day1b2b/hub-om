@@ -15,6 +15,10 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
   const redirectTo = safeRedirectPath(params.callbackUrl);
   const isReauth = params.reauth === "google";
 
+  if (!isReauth && process.env.DEV_AUTH_BYPASS === "true" && process.env.NODE_ENV !== "production") {
+    redirect(redirectTo);
+  }
+
   if (!isReauth && session?.user?.email && isAllowedWorkspaceEmail(session.user.email)) {
     redirect(redirectTo);
   }

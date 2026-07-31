@@ -1,7 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { summarizeOperations } from "./operationCalculations";
+import {
+  buildOperationMonth,
+  deriveSessionDurationDays,
+  deriveSessionDurationType,
+  summarizeOperations
+} from "./operationCalculations";
 import type { OperationRepository } from "./operationRepository";
 import type { CreateOperationInput, OperationSession, UpdateOperationInput } from "./operationTypes";
 
@@ -68,6 +73,7 @@ export class LocalJsonOperationRepository implements OperationRepository {
       instructors: normalizeVisibleText(input.instructors),
       ld: normalizeVisibleText(input.ld),
       lectureManagementLink: normalizeVisibleText(input.lectureManagementLink),
+      lectureManagementNote: "",
       om: normalizeVisibleText(input.om),
       onsiteRequired: input.onsiteRequired,
       onsiteText: onsiteRequiredLabel(input.onsiteRequired),
@@ -114,27 +120,40 @@ export class LocalJsonOperationRepository implements OperationRepository {
     }
 
     const totalCost = input.totalCost === undefined ? operation.totalCost : input.totalCost;
+    const startDate = input.startDate ?? operation.startDate;
+    const endDate = input.endDate ?? operation.endDate;
+    const sessionDurationDays = deriveSessionDurationDays(startDate, endDate);
     const updatedOperation: OperationSession = {
       ...operation,
       archiveStatus: input.archiveStatus ?? operation.archiveStatus,
       avgSatisfaction: normalizeOptionalText(input.avgSatisfaction, operation.avgSatisfaction),
       coach: normalizeOptionalText(input.coach, operation.coach),
+      companyWikiLink: normalizeOptionalText(input.companyWikiLink, operation.companyWikiLink),
       costRaw: normalizeOptionalText(input.costRaw, operation.costRaw),
+      courseId: normalizeOptionalText(input.courseId, operation.courseId),
       driveLink: normalizeOptionalText(input.driveLink, operation.driveLink),
       educationDays: normalizeOptionalText(input.educationDays, operation.educationDays),
+      endDate,
+      hasResultReport: input.hasResultReport ?? operation.hasResultReport,
       instructorCost: input.instructorCost === undefined ? operation.instructorCost : input.instructorCost,
       instructorSatisfaction: normalizeOptionalText(input.instructorSatisfaction, operation.instructorSatisfaction),
       instructors: normalizeOptionalText(input.instructors, operation.instructors),
+      instructorWikiLink: normalizeOptionalText(input.instructorWikiLink, operation.instructorWikiLink),
       lectureManagementLink: normalizeOptionalText(input.lectureManagementLink, operation.lectureManagementLink),
+      lectureManagementNote: normalizeOptionalText(input.lectureManagementNote, operation.lectureManagementNote),
       operationCost: input.operationCost === undefined ? operation.operationCost : input.operationCost,
       operationDetail: normalizeOptionalText(input.operationDetail, operation.operationDetail),
       operationIssue: normalizeOptionalText(input.operationIssue, operation.operationIssue),
+      operationMonth: buildOperationMonth(startDate),
       omUpdate: normalizeOptionalText(input.omUpdate, operation.omUpdate),
       padletLink: normalizeOptionalText(input.padletLink, operation.padletLink),
       profit: operation.revenue !== null && totalCost !== null ? operation.revenue - totalCost : null,
       region: normalizeOptionalText(input.region, operation.region),
       resultReportLink: normalizeOptionalText(input.resultReportLink, operation.resultReportLink),
+      sessionDurationDays,
+      sessionDurationType: deriveSessionDurationType(sessionDurationDays),
       specialNotes: normalizeOptionalText(input.specialNotes, operation.specialNotes),
+      startDate,
       timeText: normalizeOptionalText(input.timeText, operation.timeText),
       totalCost
     };
@@ -147,6 +166,15 @@ export class LocalJsonOperationRepository implements OperationRepository {
     await writeFile(absolutePath, `${JSON.stringify({ operations: nextOperations }, null, 2)}\n`, "utf8");
 
     return updatedOperation;
+  }
+
+  async deleteOperation(operationId: string): Promise<void> {
+    const operations = await this.listOperations();
+    const nextOperations = operations.filter((candidate) => candidate.operationId !== operationId);
+    const { absolutePath, localDir } = this.getLocalFilePath();
+
+    await mkdir(localDir, { recursive: true });
+    await writeFile(absolutePath, `${JSON.stringify({ operations: nextOperations }, null, 2)}\n`, "utf8");
   }
 
   async getSummary() {

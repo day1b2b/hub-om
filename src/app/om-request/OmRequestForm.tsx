@@ -45,7 +45,19 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
 });
 
 function emptySession(): OmRequestSession {
-  return { date: "", timeStart: "", timeEnd: "", duration: "", location: "" };
+  return { date: "", dateEnd: "", timeStart: "", timeEnd: "", duration: "", location: "" };
+}
+
+function calcDuration(timeStart: string, timeEnd: string): string {
+  if (!timeStart || !timeEnd) return "";
+  const [sh, sm] = timeStart.split(":").map(Number);
+  const [eh, em] = timeEnd.split(":").map(Number);
+  const startMinutes = sh * 60 + sm;
+  const endMinutes = eh * 60 + em;
+  if (endMinutes <= startMinutes) return "";
+  const totalHours = (endMinutes - startMinutes) / 60;
+  const adjusted = totalHours >= 7 ? totalHours - 1 : totalHours;
+  return adjusted % 1 === 0 ? String(adjusted) : String(adjusted);
 }
 
 function formatDateInput(raw: string): string {
@@ -164,7 +176,16 @@ export function OmRequestForm({ ldName, initialData, requestId }: { ldName: stri
 
   function updateSession(idx: number, key: keyof OmRequestSession, value: string) {
     setForm((prev) => {
-      const sessions = prev.sessions.map((s, i) => (i === idx ? { ...s, [key]: value } : s));
+      const sessions = prev.sessions.map((s, i) => {
+        if (i !== idx) return s;
+        const updated = { ...s, [key]: value };
+        if (key === "timeStart" || key === "timeEnd") {
+          const start = key === "timeStart" ? value : s.timeStart;
+          const end = key === "timeEnd" ? value : s.timeEnd;
+          updated.duration = calcDuration(start, end);
+        }
+        return updated;
+      });
       return { ...prev, sessions };
     });
   }
@@ -234,6 +255,17 @@ export function OmRequestForm({ ldName, initialData, requestId }: { ldName: stri
               value={form.company}
               placeholder="고객사명"
               onChange={(e) => setField("company", e.target.value)}
+            />
+          </label>
+
+          <label>
+            <span>사업자등록번호</span>
+            <input
+              type="text"
+              value={form.businessNumber ?? ""}
+              placeholder="-없이 10자리"
+              maxLength={10}
+              onChange={(e) => setField("businessNumber", e.target.value.replace(/\D/g, "").slice(0, 10))}
             />
           </label>
 
@@ -327,7 +359,8 @@ export function OmRequestForm({ ldName, initialData, requestId }: { ldName: stri
         <div className="om-sessions-table">
           <div className="om-sessions-header">
             <span>회차</span>
-            <span>교육일<em className="required-mark">*</em></span>
+            <span>시작일<em className="required-mark">*</em></span>
+            <span>종료일</span>
             <span>시작 시간<em className="required-mark">*</em></span>
             <span>종료 시간<em className="required-mark">*</em></span>
             <span>시수</span>
@@ -340,6 +373,10 @@ export function OmRequestForm({ ldName, initialData, requestId }: { ldName: stri
                 required
                 value={session.date}
                 onChange={(v) => updateSession(idx, "date", v)}
+              />
+              <DateInput
+                value={session.dateEnd ?? ""}
+                onChange={(v) => updateSession(idx, "dateEnd", v)}
               />
               <select
                 required
@@ -361,8 +398,8 @@ export function OmRequestForm({ ldName, initialData, requestId }: { ldName: stri
                 className="duration-input"
                 type="text"
                 value={session.duration}
-                placeholder=""
-                onChange={(e) => updateSession(idx, "duration", e.target.value)}
+                placeholder="자동"
+                readOnly
               />
               <div className="location-input-wrapper">
                 <input

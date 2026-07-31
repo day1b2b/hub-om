@@ -3,6 +3,7 @@ export type YN = "Y" | "N";
 
 export interface OmRequestSession {
   date: string;
+  dateEnd?: string;
   timeStart: string;
   timeEnd: string;
   duration: string;
@@ -18,6 +19,7 @@ export interface OmRequest {
   team: string;
   ld: string;
   company: string;
+  businessNumber?: string;
   trainingType: TrainingType;
   courseId: string;
   courseName: string;

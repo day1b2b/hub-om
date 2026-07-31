@@ -1,0 +1,77 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+
+interface DeleteRoundButtonProps {
+  fallbackOperationId: string | null;
+  isCurrent: boolean;
+  isLastRound: boolean;
+  operationId: string;
+  roundLabel: string;
+  teamQuery: string;
+}
+
+export function DeleteRoundButton({
+  fallbackOperationId,
+  isCurrent,
+  isLastRound,
+  operationId,
+  roundLabel,
+  teamQuery
+}: DeleteRoundButtonProps) {
+  const router = useRouter();
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  if (isLastRound) {
+    return (
+      <button
+        className="session-row-edit-trigger session-row-delete-trigger"
+        disabled
+        title="마지막 회차는 삭제할 수 없습니다. 과정 자체를 지우려면 관리자에게 문의하세요."
+        type="button"
+      >
+        삭제 불가
+      </button>
+    );
+  }
+
+  return (
+    <button
+      className="session-row-edit-trigger session-row-delete-trigger"
+      disabled={isDeleting}
+      onClick={handleDelete}
+      type="button"
+    >
+      {isDeleting ? "삭제 중" : "삭제"}
+    </button>
+  );
+
+  async function handleDelete() {
+    if (!confirm(`${roundLabel}를 삭제하시겠습니까? 삭제 후에는 목록에서 보이지 않습니다.`)) return;
+
+    setIsDeleting(true);
+
+    let response: Response;
+
+    try {
+      response = await fetch(`/api/operations/${encodeURIComponent(operationId)}`, { method: "DELETE" });
+    } catch {
+      setIsDeleting(false);
+      alert("삭제하지 못했습니다.");
+      return;
+    }
+
+    if (!response.ok) {
+      setIsDeleting(false);
+      alert("삭제하지 못했습니다.");
+      return;
+    }
+
+    if (isCurrent) {
+      router.push(fallbackOperationId ? `/operations/${fallbackOperationId}${teamQuery}` : `/operations${teamQuery}`);
+    }
+
+    router.refresh();
+  }
+}
