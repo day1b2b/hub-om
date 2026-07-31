@@ -8,7 +8,7 @@ import type {
   OperationSession
 } from "@/lib/data/operationTypes";
 import { splitPersonNames } from "@/lib/data/personNames";
-import { satisfactionNumber, summarizeSatisfactionValue } from "@/lib/data/satisfaction";
+import { satisfactionNumber } from "@/lib/data/satisfaction";
 import { teamScopeSearchParam, type TeamScope } from "@/lib/teamScope";
 
 interface OperationDashboardProps {
@@ -72,6 +72,10 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
   }, [archiveOnly, companyFilter, formatFilter, omFilter, query, range, teamOperations]);
 
   const filteredOperations = baseFilteredOperations;
+
+  const courseGroups = useMemo(() => {
+    return groupOperationsByCourse(filteredOperations, today);
+  }, [filteredOperations, today]);
 
   const metricCounts = useMemo(() => {
     return {
@@ -174,15 +178,15 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
             아카이빙 미완료
           </label>
           <button className="secondary-action" type="button">엑셀 다운로드</button>
-          <span className="filter-result-count">총 {filteredOperations.length}건</span>
+          <span className="filter-result-count">총 {courseGroups.length}건</span>
         </section>
 
         <section className="dashboard-panel operations-list-panel">
           <div className="section-title">
             <h2>운영 목록</h2>
             <div className="dashboard-table-meta">
-              <span>{filteredOperations.length}건</span>
-              <span>운영 차수 기준</span>
+              <span>{courseGroups.length}건</span>
+              <span>과정 기준</span>
             </div>
           </div>
           <div className="table-wrap">
@@ -210,31 +214,32 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
                 </tr>
               </thead>
               <tbody>
-                {filteredOperations.length > 0 ? (
-                  filteredOperations.map((operation, index) => (
-                    <tr key={operation.operationId}>
+                {courseGroups.length > 0 ? (
+                  courseGroups.map((group, index) => (
+                    <tr key={group.key}>
                       <td>{index + 1}</td>
-                      <td>{operation.educationFormat}</td>
-                      <td>{operation.operationType}</td>
-                      <td>{operation.courseId || "검토필요"}</td>
-                      <td><strong>{operation.companyName}</strong></td>
+                      <td>{summarizeText(group.operations, (operation) => operation.educationFormat)}</td>
+                      <td>{summarizeText(group.operations, (operation) => operation.operationType)}</td>
+                      <td>{group.courseId || "검토필요"}</td>
+                      <td><strong>{group.companyName}</strong></td>
                       <td>
-                        <Link className="course-link" href={`/operations/${operation.operationId}${teamQuery}`}>
-                          <strong>{operation.courseName}</strong>
+                        <Link className="course-link" href={`/operations/${group.linkOperationId}${teamQuery}`}>
+                          <strong>{group.courseName}</strong>
                         </Link>
+                        <span className="muted-inline"> · {group.operations.length}개 회차</span>
                       </td>
-                      <td><ExternalTableLink href={operation.operationDetail} /></td>
-                      <td>{operation.om || "배정필요"}</td>
-                      <td>{operation.ld || "미정"}</td>
-                      <td>{operation.startDate}</td>
-                      <td>{operation.endDate}</td>
-                      <td>{operation.instructors || "-"}</td>
-                      <td>{operation.coach || "-"}</td>
-                      <td>{formatSatisfactionValue(operation.avgSatisfaction)}</td>
-                      <td>{formatSatisfactionValue(operation.instructorSatisfaction)}</td>
-                      <td>{formatMoney(operation.revenue)}</td>
-                      <td>{formatMoney(operation.instructorCost)}</td>
-                      <td>{formatMoney(operation.operationCost)}</td>
+                      <td><ExternalTableLink href={group.operationDetail} /></td>
+                      <td>{summarizeText(group.operations, (operation) => operation.om, "배정필요")}</td>
+                      <td>{summarizeText(group.operations, (operation) => operation.ld, "미정")}</td>
+                      <td>{group.startDate}</td>
+                      <td>{group.endDate}</td>
+                      <td>{summarizeText(group.operations, (operation) => operation.instructors)}</td>
+                      <td>{summarizeText(group.operations, (operation) => operation.coach)}</td>
+                      <td>{formatSatisfactionValue(average(satisfactionValues(group.operations, (operation) => operation.avgSatisfaction)))}</td>
+                      <td>{formatSatisfactionValue(average(satisfactionValues(group.operations, (operation) => operation.instructorSatisfaction)))}</td>
+                      <td>{formatMoney(sumMoney(group.operations, (operation) => operation.revenue))}</td>
+                      <td>{formatMoney(sumMoney(group.operations, (operation) => operation.instructorCost))}</td>
+                      <td>{formatMoney(sumMoney(group.operations, (operation) => operation.operationCost))}</td>
                     </tr>
                   ))
                 ) : (
@@ -254,8 +259,8 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
   );
 }
 
-function formatSatisfactionValue(value: string) {
-  return summarizeSatisfactionValue(value) || "-";
+function formatSatisfactionValue(value: string | null) {
+  return value ?? "-";
 }
 
 function Metric({ caption, label, value }: { caption?: string; label: string; value: number | string }) {
@@ -285,6 +290,107 @@ function isSafeHttpUrl(value: string) {
   } catch {
     return false;
   }
+}
+
+interface CourseGroup {
+  companyName: string;
+  courseId: string;
+  courseName: string;
+  endDate: string;
+  key: string;
+  linkOperationId: string;
+  operationDetail: string;
+  operations: OperationSession[];
+  startDate: string;
+}
+
+function groupOperationsByCourse(operations: OperationSession[], today: Date): CourseGroup[] {
+  const groups = new Map<string, OperationSession[]>();
+
+  for (const operation of operations) {
+    const key = courseGroupKey(operation);
+    const existing = groups.get(key) ?? [];
+    existing.push(operation);
+    groups.set(key, existing);
+  }
+
+  return [...groups.entries()]
+    .map(([key, groupOperations]) => buildCourseGroup(key, groupOperations, today))
+    .sort((a, b) => a.startDate.localeCompare(b.startDate));
+}
+
+function courseGroupKey(operation: OperationSession): string {
+  return `${operation.companyName}__${operation.courseId}__${operation.courseName}`;
+}
+
+function buildCourseGroup(key: string, operations: OperationSession[], today: Date): CourseGroup {
+  const first = operations[0];
+  const startDates = operations.map((operation) => operation.startDate).filter(Boolean).sort();
+  const endDates = operations.map((operation) => operation.endDate).filter(Boolean).sort();
+  const representative = pickRepresentativeOperation(operations, today);
+
+  return {
+    companyName: first.companyName,
+    courseId: first.courseId,
+    courseName: first.courseName,
+    endDate: endDates[endDates.length - 1] ?? "",
+    key,
+    linkOperationId: representative.operationId,
+    operationDetail: operations.find((operation) => operation.operationDetail)?.operationDetail ?? "",
+    operations,
+    startDate: startDates[0] ?? ""
+  };
+}
+
+function pickRepresentativeOperation(operations: OperationSession[], today: Date): OperationSession {
+  const todayTime = stripTime(today).getTime();
+  const withDates = operations.filter((operation) => parseDate(operation.startDate) && parseDate(operation.endDate));
+
+  const current = withDates.find((operation) => {
+    const start = parseDate(operation.startDate)!.getTime();
+    const end = parseDate(operation.endDate)!.getTime();
+    return start <= todayTime && todayTime <= end;
+  });
+  if (current) return current;
+
+  const upcoming = withDates
+    .filter((operation) => parseDate(operation.startDate)!.getTime() > todayTime)
+    .sort((a, b) => a.startDate.localeCompare(b.startDate));
+  if (upcoming.length > 0) return upcoming[0];
+
+  const past = withDates.slice().sort((a, b) => b.endDate.localeCompare(a.endDate));
+  if (past.length > 0) return past[0];
+
+  return operations[0];
+}
+
+function summarizeText(
+  operations: OperationSession[],
+  getValue: (operation: OperationSession) => string,
+  emptyFallback = "-"
+): string {
+  const values = unique(operations.map(getValue));
+  if (values.length === 0) return emptyFallback;
+  if (values.length === 1) return values[0];
+  return "상이";
+}
+
+function satisfactionValues(
+  operations: OperationSession[],
+  getValue: (operation: OperationSession) => string
+): number[] {
+  return operations
+    .map((operation) => satisfactionNumber(getValue(operation)))
+    .filter((value): value is number => value !== null);
+}
+
+function sumMoney(
+  operations: OperationSession[],
+  getValue: (operation: OperationSession) => number | null
+): number | null {
+  const values = operations.map(getValue).filter((value): value is number => value !== null);
+  if (values.length === 0) return null;
+  return values.reduce((sum, value) => sum + value, 0);
 }
 
 function isUpcoming(operation: OperationSession, today: Date) {
