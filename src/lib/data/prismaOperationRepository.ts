@@ -52,7 +52,7 @@ const ARCHIVE_STATUS: Record<string, ArchiveStatus> = {
 const EDUCATION_FORMAT: Record<string, EducationFormat> = {
   OFFLINE: "오프라인",
   REMOTE: "비대면",
-  BLENDED: "블랜디드",
+  BLENDED: "블렌디드",
   FLIPPED: "플립러닝",
   NEEDS_REVIEW: "검토필요"
 };
@@ -115,7 +115,7 @@ const PRISMA_RESULT_REPORT_STATUS: Record<ResultReportStatus, PrismaResultReport
 const PRISMA_EDUCATION_FORMAT: Record<EducationFormat, PrismaEducationFormat> = {
   "오프라인": PrismaEducationFormat.OFFLINE,
   "비대면": PrismaEducationFormat.REMOTE,
-  "블랜디드": PrismaEducationFormat.BLENDED,
+  "블렌디드": PrismaEducationFormat.BLENDED,
   "플립러닝": PrismaEducationFormat.FLIPPED,
   "검토필요": PrismaEducationFormat.NEEDS_REVIEW
 };
