@@ -162,6 +162,31 @@ export function OperationDetail({
             </div>
           </section>
 
+          <section className="detail-section resource-status-section required-items-section">
+            <div className="resource-summary-card">
+              <div className="resource-row-head">
+                <strong>필수 항목</strong>
+                <span>{completedArchiveItems.length}/{requiredArchiveItems.length}</span>
+              </div>
+              <div className="archive-item-list" aria-label="아카이브 필수 항목">
+                {requiredArchiveItems.map((archiveItem) => (
+                  <EditableResourceRow
+                    done={archiveItem.done}
+                    doneText={archiveItem.doneText}
+                    field={archiveItem.field}
+                    isLink
+                    key={archiveItem.label}
+                    label={archiveItem.label}
+                    missingText={archiveItem.missingText}
+                    operationId={operation.operationId}
+                    placeholder="https://"
+                    value={archiveItem.value}
+                  />
+                ))}
+              </div>
+            </div>
+          </section>
+
           <section className="detail-section course-sessions-section">
             <EditAllRoundsProvider>
             <div className="section-title">
@@ -189,12 +214,12 @@ export function OperationDetail({
                       <th>일정 / 시간</th>
                       <th>강사</th>
                       <th>실습코치</th>
-                      <th>관리</th>
                       <th>만족도</th>
                       <th>결과보고서 여부</th>
                       <th>결과보고서</th>
                       <th>패들렛</th>
                       <th>강의관리</th>
+                      <th>관리</th>
                       <th>삭제</th>
                     </tr>
                   </thead>
@@ -218,44 +243,45 @@ export function OperationDetail({
                           operationId={courseOperation.operationId}
                           startDate={courseOperation.startDate}
                           timeText={courseOperation.timeText}
-                        />
-                        <td>
-                          <SessionMetricPill
-                            doneText={courseOperation.avgSatisfaction}
-                            missingText="미입력"
+                        >
+                          <td>
+                            <SessionMetricPill
+                              doneText={courseOperation.avgSatisfaction}
+                              missingText="미입력"
+                            />
+                          </td>
+                          <ResultReportRequirementCell
+                            hasResultReport={courseOperation.hasResultReport}
+                            operationId={courseOperation.operationId}
                           />
-                        </td>
-                        <ResultReportRequirementCell
-                          hasResultReport={courseOperation.hasResultReport}
-                          operationId={courseOperation.operationId}
-                        />
-                        {courseOperation.hasResultReport === "불필요" ? (
-                          <td className="round-resource-cell" />
-                        ) : (
+                          {courseOperation.hasResultReport === "불필요" ? (
+                            <td className="round-resource-cell" />
+                          ) : (
+                            <EditableRoundResourceCell
+                              companionDoneValue="유"
+                              companionField="hasResultReport"
+                              companionMissingValue="무"
+                              done={courseOperation.hasResultReport === "유"}
+                              field="resultReportLink"
+                              operationId={courseOperation.operationId}
+                              value={courseOperation.resultReportLink}
+                            />
+                          )}
                           <EditableRoundResourceCell
-                            companionDoneValue="유"
-                            companionField="hasResultReport"
-                            companionMissingValue="무"
-                            done={courseOperation.hasResultReport === "유"}
-                            field="resultReportLink"
+                            done={isNavigableHref(courseOperation.padletLink)}
+                            field="padletLink"
                             operationId={courseOperation.operationId}
-                            value={courseOperation.resultReportLink}
+                            value={courseOperation.padletLink}
                           />
-                        )}
-                        <EditableRoundResourceCell
-                          done={isNavigableHref(courseOperation.padletLink)}
-                          field="padletLink"
-                          operationId={courseOperation.operationId}
-                          value={courseOperation.padletLink}
-                        />
-                        <td>
-                          <LectureManagementNoteRow
-                            done={Boolean(courseOperation.lectureManagementNote.trim())}
-                            operationId={courseOperation.operationId}
-                            startDate={courseOperation.startDate}
-                            value={courseOperation.lectureManagementNote}
-                          />
-                        </td>
+                          <td>
+                            <LectureManagementNoteRow
+                              done={Boolean(courseOperation.lectureManagementNote.trim())}
+                              operationId={courseOperation.operationId}
+                              startDate={courseOperation.startDate}
+                              value={courseOperation.lectureManagementNote}
+                            />
+                          </td>
+                        </EditableSessionRow>
                         <td>
                           <DeleteRoundButton
                             fallbackOperationId={fallbackOperationId}
@@ -279,29 +305,6 @@ export function OperationDetail({
 
           <section className="detail-section resource-status-section" id="links">
             <div className="resource-card-grid">
-              <div className="resource-summary-card">
-                <div className="resource-row-head">
-                  <strong>필수 항목</strong>
-                  <span>{completedArchiveItems.length}/{requiredArchiveItems.length}</span>
-                </div>
-                <div className="archive-item-list" aria-label="아카이브 필수 항목">
-                  {requiredArchiveItems.map((archiveItem) => (
-                    <EditableResourceRow
-                      done={archiveItem.done}
-                      doneText={archiveItem.doneText}
-                      field={archiveItem.field}
-                      isLink
-                      key={archiveItem.label}
-                      label={archiveItem.label}
-                      missingText={archiveItem.missingText}
-                      operationId={operation.operationId}
-                      placeholder="https://"
-                      value={archiveItem.value}
-                    />
-                  ))}
-                </div>
-              </div>
-
               <div className="resource-summary-card">
                 <div className="resource-row-head">
                   <strong>참고 자료</strong>
