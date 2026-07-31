@@ -1670,13 +1670,18 @@ select {
 
 .operations-table td:nth-child(7) {
   text-align: center;
+  width: 64px;
+}
+
+.operations-table td:nth-child(8) {
+  text-align: center;
   width: 56px;
 }
 
-.operations-table td:nth-child(15),
 .operations-table td:nth-child(16),
 .operations-table td:nth-child(17),
-.operations-table td:nth-child(18) {
+.operations-table td:nth-child(18),
+.operations-table td:nth-child(19) {
   text-align: right;
 }
 

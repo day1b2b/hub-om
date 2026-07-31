@@ -199,6 +199,7 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
                   <th>코스ID</th>
                   <th>기업</th>
                   <th>과정명</th>
+                  <th>총 회차</th>
                   <th>싱크업</th>
                   <th>OM</th>
                   <th>LD</th>
@@ -226,8 +227,8 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
                         <Link className="course-link" href={`/operations/${group.linkOperationId}${teamQuery}`}>
                           <strong>{group.courseName}</strong>
                         </Link>
-                        <span className="muted-inline"> · {group.operations.length}개 회차</span>
                       </td>
+                      <td>{group.operations.length}</td>
                       <td><ExternalTableLink href={group.operationDetail} /></td>
                       <td>{summarizeText(group.operations, (operation) => operation.om, "배정필요")}</td>
                       <td>{summarizeText(group.operations, (operation) => operation.ld, "미정")}</td>
@@ -244,7 +245,7 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
                   ))
                 ) : (
                   <tr>
-                    <td className="empty-state" colSpan={18}>
+                    <td className="empty-state" colSpan={19}>
                       <strong>표시할 운영 건이 없습니다.</strong>
                       <span>필터를 초기화하거나 연결된 운영 데이터 상태를 확인하세요.</span>
                     </td>
