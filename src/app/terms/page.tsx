@@ -107,9 +107,10 @@ export default function TermsPage() {
             개인정보 및 Google 사용자 데이터 처리 기준은 개인정보처리방침에서 정합니다. 사용자는
             서비스를 이용함으로써 개인정보처리방침에 따른 데이터 처리를 이해하고 동의합니다.
           </p>
-          <p>
+          {/* 개인정보처리방침 링크 숨김 처리 */}
+          {/* <p>
             <a href="/privacy">개인정보처리방침 보기</a>
-          </p>
+          </p> */}
         </section>
 
         <section>
@@ -129,7 +130,8 @@ export default function TermsPage() {
         </section>
 
         <footer className="legal-footer">
-          <a href="/privacy">개인정보처리방침</a>
+          {/* 개인정보처리방침 링크 숨김 처리 */}
+          {/* <a href="/privacy">개인정보처리방침</a> */}
           <Link href="/">홈으로 돌아가기</Link>
         </footer>
       </article>
