@@ -161,7 +161,6 @@ export default function PrivacyPage() {
             <li>부서명: 고객센터</li>
             <li>연락처: 02-501-9396 / tm@day1company.co.kr</li>
           </ul>
-          <p style={{ color: "red" }}>* 이후 배포 시 확인 필요</p>
         </section>
 
         <footer className="legal-footer">
