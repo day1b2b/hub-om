@@ -43,7 +43,8 @@ export default function PublicHomePage() {
       </section>
 
       <footer className="public-home-footer">
-        <a href="/privacy">개인정보처리방침</a>
+        {/* 개인정보 미수집 사이트로 판단되어 개인정보처리방침 링크 숨김 처리 */}
+        {/* <a href="/privacy">개인정보처리방침</a> */}
         <a href="/terms">서비스 약관</a>
       </footer>
     </main>
