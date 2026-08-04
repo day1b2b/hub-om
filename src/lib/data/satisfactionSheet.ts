@@ -1,0 +1,244 @@
+import { summarizeSatisfactionValue } from "@/lib/data/satisfaction";
+import {
+  matchOperation,
+  rankOperationCandidates,
+  type EngagementKey,
+  type OperationCandidate,
+  type RankedOperationCandidate
+} from "@/lib/data/coachImport/matchOperation";
+
+/**
+ * eduops_log 만족도 집계 시트의 한 행을 표준 형태로 정리한다.
+ *
+ * 시트 헤더(영문 snake_case)를 키로 사용하며, 컬럼 순서에 의존하지 않는다.
+ * 알려진 헤더: record_id, courseId, client, course, degree, date, audience,
+ * instructor, n, target, overall, pos_pct, manager, created_at, received_at
+ */
+export interface SatisfactionSheetRow {
+  recordId: string;
+  courseId: string;
+  client: string;
+  course: string;
+  degree: string;
+  /** 원본 시트 값 (예: "260724") */
+  rawDate: string;
+  /** 정규화된 ISO 날짜 (예: "2026-07-24"), 파싱 실패 시 "" */
+  date: string;
+  audience: string;
+  /** 원본 강사 표기 (예: "김기호 강사") */
+  rawInstructor: string;
+  /** 정규화된 강사명 (예: "김기호") */
+  instructor: string;
+  respondents: number | null;
+  /** 전체 만족도 원본 값 */
+  rawOverall: string;
+  /** 정규화된 전체 만족도 (0~5, 소수 2자리) 또는 "" */
+  overall: string;
+  /** 긍정 응답 비율(%) 또는 null */
+  posPct: number | null;
+}
+
+const HEADER_ALIASES: Record<keyof RowLookup, string[]> = {
+  recordId: ["record_id", "recordid"],
+  courseId: ["courseid", "course_id"],
+  client: ["client", "고객사"],
+  course: ["course", "과정", "과정명"],
+  degree: ["degree", "차수", "기수"],
+  date: ["date", "일자", "강의일정"],
+  audience: ["audience", "대상"],
+  instructor: ["instructor", "강사", "강사명"],
+  respondents: ["n", "응답수", "응답자수"],
+  overall: ["overall", "전체만족도", "평균만족도", "만족도"],
+  posPct: ["pos_pct", "pospct", "긍정률", "긍정비율"]
+};
+
+interface RowLookup {
+  recordId: string;
+  courseId: string;
+  client: string;
+  course: string;
+  degree: string;
+  date: string;
+  audience: string;
+  instructor: string;
+  respondents: string;
+  overall: string;
+  posPct: string;
+}
+
+function normalizeHeader(value: string): string {
+  return value.normalize("NFKC").trim().toLowerCase().replace(/\s+/g, "");
+}
+
+function pick(record: Record<string, string>, aliases: string[]): string {
+  const normalized = new Map(Object.entries(record).map(([key, value]) => [normalizeHeader(key), value]));
+  for (const alias of aliases) {
+    const hit = normalized.get(normalizeHeader(alias));
+    if (hit != null && String(hit).trim() !== "") return String(hit).trim();
+  }
+  return "";
+}
+
+/** "260724" → "2026-07-24". 이미 ISO면 그대로. 실패 시 "". */
+export function normalizeSheetDate(value: string): string {
+  const text = String(value ?? "").trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+
+  const digits = text.replace(/[^0-9]/g, "");
+  if (digits.length === 6) {
+    const year = 2000 + Number(digits.slice(0, 2));
+    const month = digits.slice(2, 4);
+    const day = digits.slice(4, 6);
+    if (Number(month) >= 1 && Number(month) <= 12 && Number(day) >= 1 && Number(day) <= 31) {
+      return `${year}-${month}-${day}`;
+    }
+  }
+  if (digits.length === 8) {
+    const year = digits.slice(0, 4);
+    const month = digits.slice(4, 6);
+    const day = digits.slice(6, 8);
+    if (Number(month) >= 1 && Number(month) <= 12 && Number(day) >= 1 && Number(day) <= 31) {
+      return `${year}-${month}-${day}`;
+    }
+  }
+  return "";
+}
+
+/** "김기호 강사" → "김기호". 뒤따르는 직함/괄호 표기를 제거한다. */
+export function normalizeInstructorName(value: string): string {
+  return String(value ?? "")
+    .normalize("NFKC")
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/(강사|교수|강사님|튜터|코치)\s*$/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function toNumberOrNull(value: string): number | null {
+  const text = String(value ?? "").replace(/[^0-9.\-]/g, "");
+  if (text === "") return null;
+  const parsed = Number(text);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+export function toSatisfactionSheetRow(record: Record<string, string>): SatisfactionSheetRow {
+  const rawDate = pick(record, HEADER_ALIASES.date);
+  const rawInstructor = pick(record, HEADER_ALIASES.instructor);
+  const rawOverall = pick(record, HEADER_ALIASES.overall);
+
+  return {
+    recordId: pick(record, HEADER_ALIASES.recordId),
+    courseId: pick(record, HEADER_ALIASES.courseId),
+    client: pick(record, HEADER_ALIASES.client),
+    course: pick(record, HEADER_ALIASES.course),
+    degree: pick(record, HEADER_ALIASES.degree),
+    rawDate,
+    date: normalizeSheetDate(rawDate),
+    audience: pick(record, HEADER_ALIASES.audience),
+    rawInstructor,
+    instructor: normalizeInstructorName(rawInstructor),
+    respondents: toNumberOrNull(pick(record, HEADER_ALIASES.respondents)),
+    rawOverall,
+    overall: summarizeSatisfactionValue(rawOverall),
+    posPct: toNumberOrNull(pick(record, HEADER_ALIASES.posPct))
+  };
+}
+
+/** 시트 행을 기존 매칭 엔진이 이해하는 EngagementKey로 변환한다. */
+export function toEngagementKey(row: SatisfactionSheetRow): EngagementKey {
+  return {
+    courseName: row.course,
+    coachName: row.instructor || null,
+    startDate: row.date,
+    endDate: row.date,
+    scheduleDates: row.date ? [row.date] : []
+  };
+}
+
+export type SatisfactionMatchStatus = "matched" | "ambiguous" | "unmatched";
+
+export interface SatisfactionMatchResult {
+  row: SatisfactionSheetRow;
+  status: SatisfactionMatchStatus;
+  operationId: string | null;
+  ranked: RankedOperationCandidate[];
+}
+
+/**
+ * 만족도 시트 한 행을 운영 후보들과 매칭한다.
+ * 기존 matchOperation 엔진을 재사용하며, DB에 아무것도 쓰지 않는다(드라이런 안전).
+ */
+export function matchSatisfactionRow(
+  row: SatisfactionSheetRow,
+  candidates: OperationCandidate[]
+): SatisfactionMatchResult {
+  const ranked = rankOperationCandidates(toEngagementKey(row), candidates);
+  const operationId = matchOperation(toEngagementKey(row), candidates);
+
+  let status: SatisfactionMatchStatus;
+  if (operationId) status = "matched";
+  else if (ranked.length > 0) status = "ambiguous";
+  else status = "unmatched";
+
+  return { row, status, operationId, ranked };
+}
+
+/** 최소 CSV 파서: 따옴표, 필드 내 쉼표/줄바꿈, CRLF, BOM 처리. */
+export function parseCsv(text: string): string[][] {
+  const rows: string[][] = [];
+  let field = "";
+  let row: string[] = [];
+  let inQuotes = false;
+  const content = String(text ?? "").replace(/^﻿/, "");
+
+  for (let i = 0; i < content.length; i += 1) {
+    const char = content[i];
+    if (inQuotes) {
+      if (char === '"') {
+        if (content[i + 1] === '"') {
+          field += '"';
+          i += 1;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        field += char;
+      }
+      continue;
+    }
+    if (char === '"') {
+      inQuotes = true;
+    } else if (char === ",") {
+      row.push(field);
+      field = "";
+    } else if (char === "\n") {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = "";
+    } else if (char === "\r") {
+      // CRLF의 \r는 무시
+    } else {
+      field += char;
+    }
+  }
+  if (field !== "" || row.length > 0) {
+    row.push(field);
+    rows.push(row);
+  }
+  return rows.filter((cells) => cells.some((cell) => cell.trim() !== ""));
+}
+
+/** CSV 텍스트(헤더 포함)를 표준 만족도 행 배열로 변환한다. */
+export function parseSatisfactionCsv(text: string): SatisfactionSheetRow[] {
+  const rows = parseCsv(text);
+  if (rows.length === 0) return [];
+  const header = rows[0].map((cell) => cell.trim());
+  return rows.slice(1).map((cells) => {
+    const record: Record<string, string> = {};
+    header.forEach((key, index) => {
+      record[key] = cells[index] ?? "";
+    });
+    return toSatisfactionSheetRow(record);
+  });
+}
