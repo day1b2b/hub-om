@@ -148,6 +148,7 @@ export function toSatisfactionSheetRow(record: Record<string, string>): Satisfac
 export function toEngagementKey(row: SatisfactionSheetRow): EngagementKey {
   return {
     courseName: row.course,
+    courseId: row.courseId || null,
     coachName: row.instructor || null,
     startDate: row.date,
     endDate: row.date,

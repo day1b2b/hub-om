@@ -1,5 +1,7 @@
 export interface EngagementKey {
   courseName: string;
+  /** 과정코드. 후보와 정확히 일치하면 과정명 표기 흔들림과 무관하게 강하게 매칭한다. */
+  courseId?: string | null;
   coachName?: string | null;
   startDate: string;
   endDate: string;
@@ -13,6 +15,8 @@ export interface OperationCandidate {
   id: string;
   operationId?: string | null;
   courseName: string;
+  /** 운영의 과정코드(OperationSession.courseId). engagement와 일치하면 매칭 우선키가 된다. */
+  courseId?: string | null;
   companyName?: string | null;
   startDate: string;
   endDate: string;
@@ -39,7 +43,8 @@ export interface RankedOperationCandidate {
  * 코치 투입이력(engagement)을 운영 세션(operation)에 매칭한다.
  *
  * 매칭 규칙:
- *   1. 과정명이 충분히 유사해야 한다.
+ *   0. courseId가 engagement·후보 양쪽에 있고 일치하면 과정명 조건을 대체한다(강한 신호).
+ *   1. (courseId로 확정되지 않으면) 과정명이 충분히 유사해야 한다.
  *   2. 일정은 정확히 같거나 기간이 충분히 겹쳐야 한다.
  *   3. 시간 정보가 있으면 보조 점수로만 사용한다.
  *
@@ -83,7 +88,7 @@ function simplifyCourseName(value: string): string {
 }
 
 function scoreCandidate(engagement: EngagementKey, candidate: OperationCandidate): RankedOperationCandidate {
-  const courseScore = scoreCourseName(engagement.courseName, candidate);
+  const courseScore = scoreCourseName(engagement, candidate);
   const dateScore = scoreDateRange(engagement, candidate);
   const timeScore = scoreTime(engagement, candidate);
   const coachScore = scoreCoach(engagement, candidate);
@@ -102,12 +107,24 @@ function scoreCandidate(engagement: EngagementKey, candidate: OperationCandidate
   };
 }
 
-function scoreCourseName(engagementCourseName: string, candidate: OperationCandidate): number {
-  const engagementName = normalizeCourseName(engagementCourseName);
+function normalizeCourseId(value: string | null | undefined): string {
+  return String(value ?? "").normalize("NFKC").trim();
+}
+
+function scoreCourseName(engagement: EngagementKey, candidate: OperationCandidate): number {
+  // courseId가 양쪽에 있고 정확히 일치하면, 과정명 표기가 흔들려도 강하게 매칭한다.
+  // (같은 courseId 안에 여러 세션이 있어도 이후 날짜 게이트가 계속 구분하므로 오매칭되지 않는다.)
+  const engagementCourseId = normalizeCourseId(engagement.courseId);
+  const candidateCourseId = normalizeCourseId(candidate.courseId);
+  if (engagementCourseId && candidateCourseId && engagementCourseId === candidateCourseId) {
+    return 100;
+  }
+
+  const engagementName = normalizeCourseName(engagement.courseName);
   const candidateName = normalizeCourseName(candidate.courseName);
   if (engagementName === candidateName) return 100;
 
-  const engagementSimple = simplifyCourseName(engagementCourseName);
+  const engagementSimple = simplifyCourseName(engagement.courseName);
   const candidateSimple = simplifyCourseName(candidate.courseName);
   if (engagementSimple && engagementSimple === candidateSimple) return 95;
 
