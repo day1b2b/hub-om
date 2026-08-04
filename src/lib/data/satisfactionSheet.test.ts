@@ -5,6 +5,7 @@ import type { OperationCandidate } from "@/lib/data/coachImport/matchOperation";
 import {
   matchSatisfactionRow,
   parseSatisfactionCsv,
+  sheetValuesToRows,
   normalizeInstructorName,
   normalizeSheetDate,
   toEngagementKey,
@@ -160,4 +161,19 @@ test("CSV 파싱: 헤더 매핑 + 따옴표 안 쉼표 처리", () => {
   assert.equal(rows[1].instructor, "홍길동");
   assert.equal(rows[1].respondents, 22);
   assert.equal(rows[1].posPct, 100);
+});
+
+test("sheetValuesToRows: 헤더 행 번호 + 빈 행 제외", () => {
+  const values = [
+    ["record_id", "courseId", "course", "date", "instructor", "n", "overall", "pos_pct"],
+    ["r1", "260759", "KT AX Openclass", "260724", "김기호 강사", "14", "4.36", "85.7"],
+    ["", "", "", "", "", "", "", ""], // 빈 행
+    ["r2", "260759", "신입과정", "260724", "홍길동", "22", "4.68", "100"]
+  ];
+  const rows = sheetValuesToRows(values, 1);
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0].course, "KT AX Openclass");
+  assert.equal(rows[0].instructor, "김기호");
+  assert.equal(rows[1].instructor, "홍길동");
+  assert.equal(rows[1].overall, "4.68");
 });

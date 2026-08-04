@@ -229,16 +229,29 @@ export function parseCsv(text: string): string[][] {
   return rows.filter((cells) => cells.some((cell) => cell.trim() !== ""));
 }
 
+/**
+ * 2차원 시트 값(헤더 포함)을 표준 만족도 행 배열로 변환한다.
+ * headerRowNumber는 1부터 시작(구글시트 행 번호와 동일). 빈 행은 제외한다.
+ */
+export function sheetValuesToRows(values: string[][], headerRowNumber = 1): SatisfactionSheetRow[] {
+  if (!Array.isArray(values) || values.length === 0) return [];
+  const headerIndex = Math.max(0, Math.floor(headerRowNumber) - 1);
+  const header = (values[headerIndex] ?? []).map((cell) => String(cell ?? "").trim());
+  if (header.length === 0) return [];
+
+  return values
+    .slice(headerIndex + 1)
+    .map((cells) => {
+      const record: Record<string, string> = {};
+      header.forEach((key, index) => {
+        if (key) record[key] = String(cells[index] ?? "");
+      });
+      return toSatisfactionSheetRow(record);
+    })
+    .filter((row) => row.course !== "" || row.overall !== "" || row.instructor !== "");
+}
+
 /** CSV 텍스트(헤더 포함)를 표준 만족도 행 배열로 변환한다. */
 export function parseSatisfactionCsv(text: string): SatisfactionSheetRow[] {
-  const rows = parseCsv(text);
-  if (rows.length === 0) return [];
-  const header = rows[0].map((cell) => cell.trim());
-  return rows.slice(1).map((cells) => {
-    const record: Record<string, string> = {};
-    header.forEach((key, index) => {
-      record[key] = cells[index] ?? "";
-    });
-    return toSatisfactionSheetRow(record);
-  });
+  return sheetValuesToRows(parseCsv(text), 1);
 }
