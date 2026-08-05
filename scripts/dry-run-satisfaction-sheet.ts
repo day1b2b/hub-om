@@ -19,7 +19,7 @@ import {
   parseSatisfactionCsv,
   type SatisfactionMatchResult
 } from "@/lib/data/satisfactionSheet.ts";
-import type { OperationCandidate } from "@/lib/data/coachImport/matchOperation.ts";
+import type { OperationCandidate } from "@/lib/data/operationMatch/matchOperation.ts";
 
 const { Client } = pg;
 

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import type { OperationCandidate } from "@/lib/data/coachImport/matchOperation";
+import type { OperationCandidate } from "@/lib/data/operationMatch/matchOperation";
 import {
   matchSatisfactionRow,
   parseSatisfactionCsv,

@@ -5,7 +5,7 @@ import {
   type EngagementKey,
   type OperationCandidate,
   type RankedOperationCandidate
-} from "@/lib/data/coachImport/matchOperation";
+} from "@/lib/data/operationMatch/matchOperation";
 
 /**
  * eduops_log 만족도 집계 시트의 한 행을 표준 형태로 정리한다.
