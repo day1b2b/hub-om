@@ -47,6 +47,7 @@ export async function POST(request: Request) {
       operationId: operation.operationId,
       companyName: operation.companyName,
       courseName: operation.courseName,
+      courseId: operation.courseId,
       startDate: operation.startDate,
       endDate: operation.endDate,
       coachText: operation.coach,

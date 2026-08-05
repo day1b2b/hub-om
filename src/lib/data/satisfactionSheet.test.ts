@@ -146,6 +146,27 @@ test("courseId 충돌 방지: 같은 courseId라도 과정명·강사·일정이
   assert.equal(b.operationId, "op-axops");
 });
 
+test("EngagementKey 변환: courseId도 전달한다", () => {
+  const key = toEngagementKey(toSatisfactionSheetRow(ROW_KT_OPENCLASS));
+  assert.equal(key.courseId, "260759");
+});
+
+test("매칭: 운영 등록명이 시트와 달라도 courseId가 같고 일정이 맞으면 matched", () => {
+  const candidates: OperationCandidate[] = [
+    {
+      id: "op-openclass",
+      courseId: "260759",
+      courseName: "케이티 임직원 대상 특별 교육", // 시트 과정명과 표기가 전혀 다름
+      companyName: "KT",
+      startDate: "2026-07-24",
+      endDate: "2026-07-24"
+    }
+  ];
+  const result = matchSatisfactionRow(toSatisfactionSheetRow(ROW_KT_OPENCLASS), candidates);
+  assert.equal(result.status, "matched");
+  assert.equal(result.operationId, "op-openclass");
+});
+
 test("CSV 파싱: 헤더 매핑 + 따옴표 안 쉼표 처리", () => {
   const csv = [
     "record_id,courseId,client,course,degree,date,audience,instructor,n,target,overall,pos_pct",
