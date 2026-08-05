@@ -21,7 +21,7 @@
 
 import { config } from "dotenv";
 import pg from "pg";
-import { matchOperation, type OperationCandidate } from "../src/lib/data/coachImport/matchOperation.ts";
+import { matchOperation, type OperationCandidate } from "../src/lib/data/operationMatch/matchOperation.ts";
 
 const { Client } = pg;
 

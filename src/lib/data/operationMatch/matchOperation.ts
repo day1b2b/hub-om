@@ -40,10 +40,40 @@ export interface RankedOperationCandidate {
 }
 
 /**
- * 코치 투입이력(engagement)을 운영 세션(operation)에 매칭한다.
+ * 매칭 판정 기준값. 기능(만족도·코치 등)별로 다르게 조절할 수 있도록 옵션으로 뺀다.
+ * 값을 넘기지 않으면 아래 기본값을 쓴다(기존 동작과 동일).
+ */
+export interface MatchOptions {
+  /** 매칭 확정 최소 점수 (기본 150) */
+  minMatchScore?: number;
+  /** 1등과 2등 점수 차가 이보다 작으면 모호로 보고 매칭하지 않음 (기본 10) */
+  minMargin?: number;
+  /** 과정 점수가 이 미만이면 후보에서 제외 (기본 70) */
+  courseGate?: number;
+  /** 날짜 점수가 이 미만이면 후보에서 제외 (기본 65) */
+  dateGate?: number;
+}
+
+export const DEFAULT_MATCH_OPTIONS: Required<MatchOptions> = {
+  minMatchScore: 150,
+  minMargin: 10,
+  courseGate: 70,
+  dateGate: 65
+};
+
+function resolveOptions(options?: MatchOptions): Required<MatchOptions> {
+  return { ...DEFAULT_MATCH_OPTIONS, ...options };
+}
+
+/**
+ * 어떤 대상(engagement)을 운영 세션(operation)에 매칭한다.
+ *
+ * 특정 기능에 종속되지 않는 공용 엔진이다. 만족도 시트, 코치 투입이력 등
+ * 각 기능은 자기 데이터를 EngagementKey로 변환(얇은 어댑터)해 이 엔진을 호출하고,
+ * 필요하면 MatchOptions로 자기 기준값만 조절한다.
  *
  * 매칭 규칙:
- *   0. courseId가 engagement·후보 양쪽에 있고 일치하면 과정명 조건을 대체한다(강한 신호).
+ *   0. courseId가 대상·후보 양쪽에 있고 일치하면 과정명 조건을 대체한다(강한 신호).
  *   1. (courseId로 확정되지 않으면) 과정명이 충분히 유사해야 한다.
  *   2. 일정은 정확히 같거나 기간이 충분히 겹쳐야 한다.
  *   3. 시간 정보가 있으면 보조 점수로만 사용한다.
@@ -54,22 +84,28 @@ export interface RankedOperationCandidate {
  */
 export function matchOperation(
   engagement: EngagementKey,
-  candidates: OperationCandidate[]
+  candidates: OperationCandidate[],
+  options?: MatchOptions
 ): string | null {
-  const scored = rankOperationCandidates(engagement, candidates).filter((entry) => entry.score >= 150);
+  const resolved = resolveOptions(options);
+  const scored = rankOperationCandidates(engagement, candidates, options).filter(
+    (entry) => entry.score >= resolved.minMatchScore
+  );
 
   if (scored.length === 0) return null;
-  if (scored.length > 1 && scored[0].score - scored[1].score < 10) return null;
+  if (scored.length > 1 && scored[0].score - scored[1].score < resolved.minMargin) return null;
 
   return scored[0].candidate.id;
 }
 
 export function rankOperationCandidates(
   engagement: EngagementKey,
-  candidates: OperationCandidate[]
+  candidates: OperationCandidate[],
+  options?: MatchOptions
 ): RankedOperationCandidate[] {
+  const resolved = resolveOptions(options);
   return candidates
-    .map((candidate) => scoreCandidate(engagement, candidate))
+    .map((candidate) => scoreCandidate(engagement, candidate, resolved))
     .filter((entry) => entry.courseScore > 0 || entry.dateScore > 0)
     .sort((a, b) => b.score - a.score);
 }
@@ -87,13 +123,17 @@ function simplifyCourseName(value: string): string {
     .trim();
 }
 
-function scoreCandidate(engagement: EngagementKey, candidate: OperationCandidate): RankedOperationCandidate {
+function scoreCandidate(
+  engagement: EngagementKey,
+  candidate: OperationCandidate,
+  options: Required<MatchOptions>
+): RankedOperationCandidate {
   const courseScore = scoreCourseName(engagement, candidate);
   const dateScore = scoreDateRange(engagement, candidate);
   const timeScore = scoreTime(engagement, candidate);
   const coachScore = scoreCoach(engagement, candidate);
 
-  if (courseScore < 70 || dateScore < 65) {
+  if (courseScore < options.courseGate || dateScore < options.dateGate) {
     return { candidate, courseScore, dateScore, timeScore, coachScore, score: 0 };
   }
 

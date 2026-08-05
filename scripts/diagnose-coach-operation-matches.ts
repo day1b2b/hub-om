@@ -12,7 +12,7 @@ import {
   rankOperationCandidates,
   type OperationCandidate,
   type ScheduleTimeRange
-} from "../src/lib/data/coachImport/matchOperation.ts";
+} from "../src/lib/data/operationMatch/matchOperation.ts";
 
 const { Client } = pg;
 

@@ -3,7 +3,7 @@ import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { parseGoogleSpreadsheetUrl, readGoogleSheetRows } from "@/lib/data/googleSheetsImport";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { matchSatisfactionRow, sheetValuesToRows } from "@/lib/data/satisfactionSheet";
-import type { OperationCandidate } from "@/lib/data/coachImport/matchOperation";
+import type { OperationCandidate } from "@/lib/data/operationMatch/matchOperation";
 
 export const dynamic = "force-dynamic";
 
