@@ -21,12 +21,14 @@
     "db:backfill:coach-access-tokens": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/backfill-coach-access-tokens.ts",
     "db:backfill:coach-archive-service-data": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/backfill-coach-archive-service-data.ts",
     "db:backfill:coach-operation-matches": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/backfill-coach-operation-matches.ts",
+    "db:backfill:team-user-team-labels": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/backfill-team-user-team-labels.ts",
     "db:diagnose:coach-operation-matches": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/diagnose-coach-operation-matches.ts",
     "db:import:team-members": "node scripts/import-team-members.mjs",
     "db:promote-source-only": "node scripts/promote-source-only-operations.mjs",
     "drive:import:dry-run": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/run-drive-import-dry-run.mjs",
     "email:discussion:preview": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/preview-email-discussion-read.mjs",
-    "export:feedback": "node scripts/export-feedback-pages.mjs"
+    "export:feedback": "node scripts/export-feedback-pages.mjs",
+    "satisfaction:dry-run": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/dry-run-satisfaction-sheet.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",

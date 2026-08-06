@@ -32,6 +32,8 @@ import { satisfactionNumber } from "@/lib/data/satisfaction";
 import { teamScopeSearchParam, type TeamScope } from "@/lib/teamScope";
 
 const SHOW_OPERATION_DISCUSSION = false;
+const SHOW_LECTURE_REPORTS = false;
+const SHOW_READINESS_SUMMARY = false;
 
 const STATUS_CLASS: Record<OperationStatus, string> = {
   "배정필요": "needs-assignment",
@@ -98,12 +100,14 @@ export function OperationDetail({
             {operation.courseId ? null : <span className="title-course-id">코스ID 검토 필요</span>}
           </div>
           <div className="detail-header-actions">
-            <span>준비도 {completedArchiveItems.length}/{requiredArchiveItems.length}</span>
+            {SHOW_READINESS_SUMMARY ? (
+              <span>준비도 {completedArchiveItems.length}/{requiredArchiveItems.length}</span>
+            ) : null}
             <button aria-label="상세 메뉴" type="button">•••</button>
           </div>
         </header>
 
-        {collaboration.lectureReports.length > 0 ? (
+        {SHOW_LECTURE_REPORTS && collaboration.lectureReports.length > 0 ? (
           <LectureReportsByRound
             courseOperations={courseOperations}
             currentOperation={operation}
