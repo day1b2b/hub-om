@@ -620,6 +620,26 @@ model CoachSyncLog {
   @@map("coach_sync_logs")
 }
 
+model SalesRevenueSyncLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  status      String
+  applied     Boolean  @default(false)
+  readCount   Int      @default(0) @map("read_count")
+  matched     Int      @default(0)
+  filled      Int      @default(0)
+  changed     Int      @default(0)
+  unchanged   Int      @default(0)
+  updatedRows Int      @default(0) @map("updated_rows")
+  unmatched   Int      @default(0)
+  ambiguous   Int      @default(0)
+  triggeredBy String   @map("triggered_by")
+  detail      Json?
+  startedAt   DateTime @default(now()) @map("started_at")
+
+  @@index([startedAt])
+  @@map("sales_revenue_sync_logs")
+}
+
 model TeamUser {
   id        String      @id @default(uuid()) @db.Uuid
   name      String

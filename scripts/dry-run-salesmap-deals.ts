@@ -45,6 +45,10 @@ async function main(): Promise<void> {
   console.log(
     `[salesmap:dry-run] 전체 딜 ${summary.totalDeals} / 코스ID 있음 ${summary.withCourseId} · 없음 ${summary.withoutCourseId} / 고유 코스ID ${summary.distinctCourseIds}`
   );
+  console.log(`  금액 없어 합산 제외: ${summary.skippedNoAmount}건`);
+  if (summary.truncated) {
+    console.log("  ⚠️ 페이지 상한에 걸려 딜을 다 못 읽었습니다. SALESMAP_MAX_PAGES 를 올리세요. (지금 숫자는 불완전)");
+  }
 
   console.log("\n[① 코스ID 붙은 딜의 단계 분포 — 실주/견적 단계가 보이면 확정단계 필터 필요]");
   console.table(summary.stageBreakdownForCourseIdDeals);

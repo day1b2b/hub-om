@@ -106,13 +106,32 @@ export class SalesmapSourceReader implements OperationSourceReader {
     const readAt = new Date().toISOString();
 
     try {
-      const deals = await fetchAllDeals(this.config);
+      const { deals, truncated } = await fetchAllDeals(this.config);
+      const { byCourseId, skippedNoAmount } = aggregateByCourseId(deals, this.config);
+      const issues: SourceReadIssue[] = [];
+
+      if (skippedNoAmount > 0) {
+        issues.push({
+          code: "salesmap_deal_missing_amount",
+          message: `금액이 없는 딜 ${skippedNoAmount}건을 건너뛰었습니다.`,
+          recoverable: true
+        });
+      }
+
+      if (truncated) {
+        issues.push({
+          code: "salesmap_deal_pagination_truncated",
+          message: `딜이 많아 일부만 읽었습니다(최대 ${this.config.maxPages}페이지). 전체가 반영되지 않을 수 있습니다.`,
+          recoverable: true
+        });
+      }
+
       return {
         source: "sales",
-        status: "ok",
+        status: truncated ? "partial" : "ok",
         readAt,
-        items: aggregateSalesRecords(deals, this.config),
-        issues: []
+        items: [...byCourseId.values()].map(salesRecordFromAggregate),
+        issues
       };
     } catch {
       return {
@@ -161,7 +180,13 @@ function validateSalesmapConfig(config: SalesmapConfig): SourceReadIssue[] {
   return issues;
 }
 
-async function fetchAllDeals(config: SalesmapConfig): Promise<SalesmapDeal[]> {
+interface FetchAllDealsResult {
+  deals: SalesmapDeal[];
+  /** maxPages에 도달했는데도 다음 커서가 남아 딜을 다 읽지 못한 경우 true. */
+  truncated: boolean;
+}
+
+async function fetchAllDeals(config: SalesmapConfig): Promise<FetchAllDealsResult> {
   const deals: SalesmapDeal[] = [];
   let cursor: string | null = null;
 
@@ -188,7 +213,8 @@ async function fetchAllDeals(config: SalesmapConfig): Promise<SalesmapDeal[]> {
     if (!cursor) break;
   }
 
-  return deals;
+  // 루프를 다 돌고도 커서가 남아 있으면 = 페이지 상한에 잘렸다는 뜻(침묵 실패 방지).
+  return { deals, truncated: Boolean(cursor) };
 }
 
 interface AggregatedSale {
@@ -199,17 +225,31 @@ interface AggregatedSale {
   dealCount: number;
 }
 
-/** 코스ID 있는 딜만 남겨 코스ID별로 묶고 금액을 합산한다. */
-function aggregateByCourseId(deals: SalesmapDeal[], config: SalesmapConfig): Map<string, AggregatedSale> {
+interface AggregateResult {
+  byCourseId: Map<string, AggregatedSale>;
+  /** 코스ID는 있지만 금액이 비어 있어 합산에서 제외한 딜 수. */
+  skippedNoAmount: number;
+}
+
+/**
+ * 코스ID 있는 딜만 남겨 코스ID별로 묶고 금액을 합산한다.
+ * 금액이 비어 있는 딜은 0으로 처리하지 않고 제외한다(기존 매출을 0으로 덮어쓰는 사고 방지).
+ */
+function aggregateByCourseId(deals: SalesmapDeal[], config: SalesmapConfig): AggregateResult {
   const byCourseId = new Map<string, AggregatedSale>();
+  let skippedNoAmount = 0;
 
   for (const deal of deals) {
     const courseId = readCourseId(deal, config);
     if (!courseId) continue;
 
-    const revenue = readNumberField(deal.price ?? deal["금액"]) ?? 0;
-    const existing = byCourseId.get(courseId);
+    const revenue = readNumberField(deal.price ?? deal["금액"]);
+    if (revenue === undefined) {
+      skippedNoAmount += 1;
+      continue;
+    }
 
+    const existing = byCourseId.get(courseId);
     if (existing) {
       existing.revenue += revenue;
       existing.dealCount += 1;
@@ -226,11 +266,11 @@ function aggregateByCourseId(deals: SalesmapDeal[], config: SalesmapConfig): Map
     }
   }
 
-  return byCourseId;
+  return { byCourseId, skippedNoAmount };
 }
 
-function aggregateSalesRecords(deals: SalesmapDeal[], config: SalesmapConfig): SalesRecord[] {
-  return [...aggregateByCourseId(deals, config).values()].map((sale) => ({
+function salesRecordFromAggregate(sale: AggregatedSale): SalesRecord {
+  return {
     sourceRecordId: sale.courseId,
     courseId: sale.courseId,
     companyName: sale.companyName,
@@ -238,7 +278,7 @@ function aggregateSalesRecords(deals: SalesmapDeal[], config: SalesmapConfig): S
     revenue: sale.revenue,
     probability: undefined,
     sourceUrl: undefined
-  }));
+  };
 }
 
 function readCourseId(deal: SalesmapDeal, config: SalesmapConfig): string | undefined {
@@ -266,6 +306,8 @@ export interface SalesmapDealsSummary {
   totalDeals: number;
   withCourseId: number;
   withoutCourseId: number;
+  skippedNoAmount: number;
+  truncated: boolean;
   distinctCourseIds: number;
   stageBreakdownForCourseIdDeals: Array<{ stage: string; dealCount: number; revenueSum: number }>;
   multiDealCourseIds: Array<{ courseId: string; dealCount: number; revenueSum: number }>;
@@ -273,7 +315,7 @@ export interface SalesmapDealsSummary {
 }
 
 export async function summarizeSalesmapDeals(config: SalesmapConfig = readSalesmapConfig()): Promise<SalesmapDealsSummary> {
-  const deals = await fetchAllDeals(config);
+  const { deals, truncated } = await fetchAllDeals(config);
   const courseIdDeals = deals.filter((deal) => readCourseId(deal, config));
 
   const stageMap = new Map<string, { dealCount: number; revenueSum: number }>();
@@ -286,12 +328,14 @@ export async function summarizeSalesmapDeals(config: SalesmapConfig = readSalesm
     stageMap.set(stage, entry);
   }
 
-  const aggregated = aggregateByCourseId(deals, config);
+  const { byCourseId: aggregated, skippedNoAmount } = aggregateByCourseId(deals, config);
 
   return {
     totalDeals: deals.length,
     withCourseId: courseIdDeals.length,
     withoutCourseId: deals.length - courseIdDeals.length,
+    skippedNoAmount,
+    truncated,
     distinctCourseIds: aggregated.size,
     stageBreakdownForCourseIdDeals: [...stageMap.entries()]
       .map(([stage, value]) => ({ stage, dealCount: value.dealCount, revenueSum: value.revenueSum }))
@@ -327,9 +371,12 @@ function readStringField(value: unknown): string | undefined {
 }
 
 function readNumberField(value: unknown): number | undefined {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "number") return Number.isFinite(value) ? value : undefined;
   if (typeof value === "string") {
-    const parsed = Number(value.replace(/[^0-9.\-]/g, ""));
+    const cleaned = value.replace(/[^0-9.\-]/g, "");
+    // 빈 문자열/부호만 남은 값은 "금액 없음"으로 본다(0으로 오인 금지).
+    if (cleaned === "" || cleaned === "-" || cleaned === "." || cleaned === "-.") return undefined;
+    const parsed = Number(cleaned);
     return Number.isFinite(parsed) ? parsed : undefined;
   }
   return undefined;
