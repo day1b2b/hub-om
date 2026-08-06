@@ -1,5 +1,6 @@
 import { AppSidebar } from "@/components/AppSidebar";
 import { CoachSyncDashboard } from "@/features/admin/CoachSyncDashboard";
+import { SalesRevenueSyncPanel } from "@/features/admin/SalesRevenueSyncPanel";
 import { requireAdminSession } from "@/lib/auth/requireAdminSession";
 import { getStoredTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFactory";
 import { resolveTeamScope } from "@/lib/teamScope";
@@ -36,6 +37,18 @@ export default async function AdminSyncPage({ searchParams }: AdminSyncPageProps
         </header>
 
         <CoachSyncDashboard />
+
+        <header className="page-header">
+          <div>
+            <p className="eyebrow">매출 동기화</p>
+            <h2>세일즈맵 매출</h2>
+            <p className="lede">
+              코스ID로 매칭해 과정 매출 칸을 세일즈맵 금액으로 채웁니다. 새 과정이 생겼을 때 눌러 갱신하세요.
+            </p>
+          </div>
+        </header>
+
+        <SalesRevenueSyncPanel />
       </section>
     </main>
   );
