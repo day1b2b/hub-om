@@ -80,11 +80,15 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
           <Link className={isCoachAdminPage ? "active" : ""} data-icon="🛠" href="/coaches/admin">관리자페이지</Link>
         </div>
 
+        <div className="nav-section">
+          <div className="nav-section-title">공지/운영TOOL</div>
+          <Link className={isAnnouncementsPage ? "active" : ""} data-icon="🔒" href="/announcements">공지사항</Link>
+        </div>
+
         <div className="nav-section nav-section-locked">
           <div className="nav-section-title">관리자 전용</div>
           <Link className={pathname === "/dashboard" ? "active" : ""} data-icon="🔒" href="/dashboard">대시보드</Link>
           <Link className={isResourcesPage ? "active" : ""} data-icon="🔒" href="/resources">리소스</Link>
-          <Link className={isAnnouncementsPage ? "active" : ""} data-icon="🔒" href="/announcements">공지사항</Link>
           <Link className={isDatabaseAdminPage ? "active" : ""} data-icon="🔒" href="/admin/database">DB 조회</Link>
           <Link className={isImportAdminPage ? "active" : ""} data-icon="🔒" href="/admin/imports">데이터 검수</Link>
           <Link className={isSyncAdminPage ? "active" : ""} data-icon="🔒" href="/admin/sync">데이터 동기화</Link>
