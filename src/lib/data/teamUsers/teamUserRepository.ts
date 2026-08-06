@@ -95,6 +95,32 @@ export async function deleteTeamUsers(ids: string[]): Promise<number> {
   return result.count;
 }
 
+export async function updateTeamUserTeam(id: string, team: string | null): Promise<TeamUser | null> {
+  if (!hasDatabaseUrl()) {
+    const users = readAll();
+    let updatedUser: TeamUser | null = null;
+    const next = users.map((u) => {
+      if (u.id !== id) return u;
+      updatedUser = { ...u, team: team ?? undefined };
+      return updatedUser;
+    });
+    if (!updatedUser) return null;
+    writeAll(next);
+    return updatedUser;
+  }
+
+  const prisma = getPrismaClient();
+  try {
+    const row = await prisma.teamUser.update({
+      where: { id },
+      data: { team }
+    });
+    return toTeamUser(row);
+  } catch {
+    return null;
+  }
+}
+
 export async function updateTeamUsersRole(ids: string[], role: TeamUserRole): Promise<number> {
   if (!hasDatabaseUrl()) {
     const users = readAll();

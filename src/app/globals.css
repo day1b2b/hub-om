@@ -11608,6 +11608,32 @@ button.coach-doc-reserve-chip:disabled {
   padding: 24px 0;
 }
 
+.user-team-cell {
+  padding: 3px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 13px;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.user-team-cell:hover {
+  border-color: var(--line);
+  background: var(--surface);
+}
+
+.user-team-edit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.user-team-edit .user-input {
+  min-width: 120px;
+  padding: 5px 8px;
+}
+
 .om-pagination {
   align-items: center;
   display: flex;
