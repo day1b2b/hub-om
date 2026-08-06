@@ -189,9 +189,10 @@ function ResultView({ applied, result }: { applied: boolean; result: SalesRevenu
               {realChanges.slice(0, 200).map((change, index) => (
                 <li key={index}>
                   <span className="sync-change-action">{change.action === "fill" ? "새로채움" : "변경"}</span>
+                  <span className="sync-change-course">코스 {change.courseId}</span>
                   <span>
                     {change.companyName ? `${change.companyName} ` : ""}
-                    {change.courseName ?? change.courseId}
+                    {change.courseName ?? ""}
                   </span>
                   <span className="sync-change-details">
                     {change.before == null ? "(빈칸)" : change.before.toLocaleString("ko-KR")} →{" "}
