@@ -116,7 +116,7 @@ function ResultView({ applied, result }: { applied: boolean; result: SalesRevenu
 
       <p className="sync-summary-line">
         세일즈맵 {result.readCount}건 · 매칭 {result.matchedCourseIds} · 새로채움 {result.filled} · 변경 {result.changed} ·
-        동일 {result.unchanged} · 미매칭 {result.unmatchedCourseIds.length} · 모호 {result.ambiguousCourseIds.length}
+        동일 {result.unchanged} · 미매칭 {result.unmatchedCourseIds.length} · 여러과정 {result.multiCourseIds.length}
       </p>
       {applied ? <p className="sync-summary-line">실제 갱신된 과정 행: {result.updatedRows.toLocaleString("ko-KR")}</p> : null}
 
@@ -131,11 +131,7 @@ function ResultView({ applied, result }: { applied: boolean; result: SalesRevenu
           value={result.unmatchedCourseIds.length}
           tone={result.unmatchedCourseIds.length > 0 ? "error" : undefined}
         />
-        <Stat
-          label="모호(수동확인)"
-          value={result.ambiguousCourseIds.length}
-          tone={result.ambiguousCourseIds.length > 0 ? "error" : undefined}
-        />
+        <Stat label="여러 과정" value={result.multiCourseIds.length} />
       </dl>
 
       {result.unmatchedCourseIds.length > 0 ? (
@@ -152,18 +148,18 @@ function ResultView({ applied, result }: { applied: boolean; result: SalesRevenu
         </details>
       ) : null}
 
-      {result.ambiguousCourseIds.length > 0 ? (
+      {result.multiCourseIds.length > 0 ? (
         <details className="sync-detail">
           <summary>
-            같은 코스ID가 여러 과정에 걸려 반영하지 않음 {result.ambiguousCourseIds.length}건 (수동 확인 필요)
+            같은 코스ID를 여러 과정에 채운 코스ID {result.multiCourseIds.length}건 (총 매출엔 1번만 집계)
           </summary>
           <ul>
-            {result.ambiguousCourseIds.slice(0, 100).map((courseId) => (
+            {result.multiCourseIds.slice(0, 100).map((courseId) => (
               <li key={courseId}>{courseId}</li>
             ))}
           </ul>
-          {result.ambiguousCourseIds.length > 100 ? (
-            <p className="sync-more">…외 {result.ambiguousCourseIds.length - 100}건</p>
+          {result.multiCourseIds.length > 100 ? (
+            <p className="sync-more">…외 {result.multiCourseIds.length - 100}건</p>
           ) : null}
         </details>
       ) : null}

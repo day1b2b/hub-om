@@ -16,6 +16,24 @@ interface OperationDashboardProps {
   teamScope: TeamScope;
 }
 
+/**
+ * 매출 합계를 코스ID당 1번만 집계한다.
+ * 같은 코스ID가 여러 과정(행)에 걸쳐 있어도 총액이 중복 집계되지 않는다.
+ * 코스ID가 없는 항목은 각각 1건으로 집계한다.
+ */
+function sumRevenueByCourseId(operations: ReadonlyArray<Pick<OperationSession, "courseId" | "revenue">>): number {
+  const countedCourseIds = new Set<string>();
+  let total = 0;
+  for (const operation of operations) {
+    if (operation.courseId) {
+      if (countedCourseIds.has(operation.courseId)) continue;
+      countedCourseIds.add(operation.courseId);
+    }
+    total += operation.revenue ?? 0;
+  }
+  return total;
+}
+
 export function OperationDashboard({ operations, teamScope }: OperationDashboardProps) {
   const today = useMemo(() => new Date(), []);
   const teamQuery = teamScopeSearchParam(teamScope);
@@ -90,7 +108,7 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
       .map((operation) => satisfactionNumber(operation.avgSatisfaction))
       .filter((value): value is number => value !== null)
   );
-  const totalRevenue = filteredOperations.reduce((sum, operation) => sum + (operation.revenue ?? 0), 0);
+  const totalRevenue = sumRevenueByCourseId(filteredOperations);
 
   return (
     <main className="dashboard-shell">
@@ -238,7 +256,7 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
                       <td>{summarizeText(group.operations, (operation) => operation.coach)}</td>
                       <td>{formatSatisfactionValue(average(satisfactionValues(group.operations, (operation) => operation.avgSatisfaction)))}</td>
                       <td>{formatSatisfactionValue(average(satisfactionValues(group.operations, (operation) => operation.instructorSatisfaction)))}</td>
-                      <td>{formatMoney(sumMoney(group.operations, (operation) => operation.revenue))}</td>
+                      <td>{formatMoney(sumRevenueByCourseId(group.operations))}</td>
                       <td>{formatMoney(sumMoney(group.operations, (operation) => operation.instructorCost))}</td>
                       <td>{formatMoney(sumMoney(group.operations, (operation) => operation.operationCost))}</td>
                     </tr>
