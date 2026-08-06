@@ -32,8 +32,8 @@
     "salesmap:dry-run": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/dry-run-salesmap-deals.ts"
   },
   "dependencies": {
-    "@prisma/adapter-pg": "^7.8.0",
-    "@prisma/client": "7.8.0",
+    "@prisma/adapter-pg": "^7.9.1",
+    "@prisma/client": "7.9.1",
     "next": "16.2.12",
     "next-auth": "5.0.0-beta.32",
     "pg": "^8.22.0",
@@ -48,7 +48,7 @@
     "@types/sanitize-html": "^2.16.1",
     "eslint": "9.39.4",
     "eslint-config-next": "16.2.12",
-    "prisma": "7.8.0",
+    "prisma": "7.9.1",
     "typescript": "5.9.3"
   },
   "overrides": {
