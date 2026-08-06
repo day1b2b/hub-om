@@ -27,7 +27,7 @@ export interface SalesRevenueSyncResult {
   unchanged: number;
   updatedRows: number;
   unmatchedCourseIds: string[];
-  ambiguousCourseIds: string[];
+  multiCourseIds: string[];
   applied: boolean;
   changes: SalesRevenueChange[];
   issues: string[];
@@ -80,7 +80,7 @@ export async function runSalesRevenueSync({
 
   const changes: SalesRevenueChange[] = [];
   const unmatchedCourseIds: string[] = [];
-  const ambiguousCourseIds: string[] = [];
+  const multiCourseIds: string[] = [];
   let matchedCourseIds = 0;
   let filled = 0;
   let changed = 0;
@@ -93,36 +93,37 @@ export async function runSalesRevenueSync({
       unmatchedCourseIds.push(record.courseId);
       continue;
     }
-    if (matched.length > 1) {
-      // 같은 코스ID가 여러 과정 행에 걸림 → 어디에 넣을지 모호하고 총액이 복제될 수 있으므로
-      // 자동 반영하지 않고 사람이 확인하도록 보고만 한다.
-      ambiguousCourseIds.push(record.courseId);
-      continue;
-    }
     matchedCourseIds += 1;
 
-    const course = matched[0];
-    const before = toNumber(course.revenue);
-    const after = record.revenue;
-    const action: SalesRevenueChange["action"] =
-      before === null ? "fill" : before !== after ? "change" : "same";
-
-    if (action === "same") {
-      unchanged += 1;
-    } else {
-      if (action === "fill") filled += 1;
-      else changed += 1;
-      pendingUpdates.push({ id: course.id, revenue: after });
+    // 같은 코스ID가 여러 과정 행에 걸리면 과정별로 모두 채운다(화면 표시용).
+    // 총 매출 합계는 대시보드에서 코스ID당 1번만 집계하므로 중복 집계되지 않는다.
+    if (matched.length > 1) {
+      multiCourseIds.push(record.courseId);
     }
 
-    changes.push({
-      courseId: record.courseId,
-      companyName: course.company?.name,
-      courseName: course.name,
-      before,
-      after,
-      action
-    });
+    for (const course of matched) {
+      const before = toNumber(course.revenue);
+      const after = record.revenue;
+      const action: SalesRevenueChange["action"] =
+        before === null ? "fill" : before !== after ? "change" : "same";
+
+      if (action === "same") {
+        unchanged += 1;
+      } else {
+        if (action === "fill") filled += 1;
+        else changed += 1;
+        pendingUpdates.push({ id: course.id, revenue: after });
+      }
+
+      changes.push({
+        courseId: record.courseId,
+        companyName: course.company?.name,
+        courseName: course.name,
+        before,
+        after,
+        action
+      });
+    }
   }
 
   // 일부만 읽은(partial) 상태에서는 값이 부분 합산일 수 있으므로 실제 쓰기를 막는다.
@@ -161,7 +162,7 @@ export async function runSalesRevenueSync({
     unchanged,
     updatedRows,
     unmatchedCourseIds,
-    ambiguousCourseIds,
+    multiCourseIds,
     applied: apply && !blockedByPartial,
     changes,
     issues
@@ -181,11 +182,11 @@ export async function runSalesRevenueSync({
           unchanged: result.unchanged,
           updatedRows: result.updatedRows,
           unmatched: result.unmatchedCourseIds.length,
-          ambiguous: result.ambiguousCourseIds.length,
+          ambiguous: result.multiCourseIds.length,
           triggeredBy: actorEmail,
           detail: {
             unmatchedCourseIds: result.unmatchedCourseIds.slice(0, 500),
-            ambiguousCourseIds: result.ambiguousCourseIds.slice(0, 500),
+            multiCourseIds: result.multiCourseIds.slice(0, 500),
             issues: result.issues
           }
         }
@@ -215,7 +216,7 @@ function emptyResult(readStatus: string, issues: string[], configured: boolean):
     unchanged: 0,
     updatedRows: 0,
     unmatchedCourseIds: [],
-    ambiguousCourseIds: [],
+    multiCourseIds: [],
     applied: false,
     changes: [],
     issues
