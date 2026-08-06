@@ -27,6 +27,7 @@ export interface SalesRevenueSyncResult {
   unchanged: number;
   updatedRows: number;
   unmatchedCourseIds: string[];
+  ambiguousCourseIds: string[];
   applied: boolean;
   changes: SalesRevenueChange[];
   issues: string[];
@@ -40,7 +41,13 @@ interface CourseRow {
   company: { name: string } | null;
 }
 
-export async function runSalesRevenueSync({ apply }: { apply: boolean }): Promise<SalesRevenueSyncResult> {
+export async function runSalesRevenueSync({
+  apply,
+  actorEmail
+}: {
+  apply: boolean;
+  actorEmail: string;
+}): Promise<SalesRevenueSyncResult> {
   if (!hasSalesmapConfig()) {
     return emptyResult("disabled", ["세일즈맵 토큰(SALESMAP_API_TOKEN)이 설정되지 않았습니다."], false);
   }
@@ -73,11 +80,12 @@ export async function runSalesRevenueSync({ apply }: { apply: boolean }): Promis
 
   const changes: SalesRevenueChange[] = [];
   const unmatchedCourseIds: string[] = [];
+  const ambiguousCourseIds: string[] = [];
   let matchedCourseIds = 0;
   let filled = 0;
   let changed = 0;
   let unchanged = 0;
-  let updatedRows = 0;
+  const pendingUpdates: Array<{ id: string; revenue: number }> = [];
 
   for (const record of records) {
     const matched = coursesByCourseId.get(record.courseId);
@@ -85,41 +93,61 @@ export async function runSalesRevenueSync({ apply }: { apply: boolean }): Promis
       unmatchedCourseIds.push(record.courseId);
       continue;
     }
+    if (matched.length > 1) {
+      // 같은 코스ID가 여러 과정 행에 걸림 → 어디에 넣을지 모호하고 총액이 복제될 수 있으므로
+      // 자동 반영하지 않고 사람이 확인하도록 보고만 한다.
+      ambiguousCourseIds.push(record.courseId);
+      continue;
+    }
     matchedCourseIds += 1;
 
-    for (const course of matched) {
-      const before = toNumber(course.revenue);
-      const after = record.revenue;
-      const action: SalesRevenueChange["action"] =
-        before === null ? "fill" : before !== after ? "change" : "same";
+    const course = matched[0];
+    const before = toNumber(course.revenue);
+    const after = record.revenue;
+    const action: SalesRevenueChange["action"] =
+      before === null ? "fill" : before !== after ? "change" : "same";
 
-      if (action === "same") {
-        unchanged += 1;
-      } else {
-        if (action === "fill") filled += 1;
-        else changed += 1;
-
-        if (apply) {
-          await prisma.course.update({
-            where: { id: course.id },
-            data: { revenue: after, revenueRaw: String(after) }
-          });
-          updatedRows += 1;
-        }
-      }
-
-      changes.push({
-        courseId: record.courseId,
-        companyName: course.company?.name,
-        courseName: course.name,
-        before,
-        after,
-        action
-      });
+    if (action === "same") {
+      unchanged += 1;
+    } else {
+      if (action === "fill") filled += 1;
+      else changed += 1;
+      pendingUpdates.push({ id: course.id, revenue: after });
     }
+
+    changes.push({
+      courseId: record.courseId,
+      companyName: course.company?.name,
+      courseName: course.name,
+      before,
+      after,
+      action
+    });
   }
 
-  return {
+  // 일부만 읽은(partial) 상태에서는 값이 부분 합산일 수 있으므로 실제 쓰기를 막는다.
+  const blockedByPartial = apply && read.status === "partial";
+  const issues = read.issues.map((issue) => issue.message);
+  let updatedRows = 0;
+
+  if (apply && !blockedByPartial && pendingUpdates.length > 0) {
+    // 전부 성공 아니면 전부 취소(중간 실패 시 절반만 써지는 것 방지).
+    await prisma.$transaction(
+      pendingUpdates.map((update) =>
+        prisma.course.update({
+          where: { id: update.id },
+          data: { revenue: update.revenue, revenueRaw: String(update.revenue) }
+        })
+      )
+    );
+    updatedRows = pendingUpdates.length;
+  }
+
+  if (blockedByPartial) {
+    issues.push("세일즈맵 딜을 일부만 읽어(partial) 반영을 막았습니다. SALESMAP_MAX_PAGES를 올린 뒤 다시 시도하세요.");
+  }
+
+  const result: SalesRevenueSyncResult = {
     configured: true,
     readStatus: read.status,
     readCount: records.length,
@@ -129,10 +157,41 @@ export async function runSalesRevenueSync({ apply }: { apply: boolean }): Promis
     unchanged,
     updatedRows,
     unmatchedCourseIds,
-    applied: apply,
+    ambiguousCourseIds,
+    applied: apply && !blockedByPartial,
     changes,
-    issues: read.issues.map((issue) => issue.message)
+    issues
   };
+
+  // 감사 로그: 실제 반영 시도(POST)만 기록한다. 로그 실패가 동기화를 막지 않도록 격리한다.
+  if (apply) {
+    try {
+      await prisma.salesRevenueSyncLog.create({
+        data: {
+          status: result.readStatus,
+          applied: result.applied,
+          readCount: result.readCount,
+          matched: result.matchedCourseIds,
+          filled: result.filled,
+          changed: result.changed,
+          unchanged: result.unchanged,
+          updatedRows: result.updatedRows,
+          unmatched: result.unmatchedCourseIds.length,
+          ambiguous: result.ambiguousCourseIds.length,
+          triggeredBy: actorEmail,
+          detail: {
+            unmatchedCourseIds: result.unmatchedCourseIds.slice(0, 500),
+            ambiguousCourseIds: result.ambiguousCourseIds.slice(0, 500),
+            issues: result.issues
+          }
+        }
+      });
+    } catch {
+      // 감사 로그 기록 실패는 무시(동기화 결과에 영향 주지 않음).
+    }
+  }
+
+  return result;
 }
 
 function toNumber(value: unknown): number | null {
@@ -152,6 +211,7 @@ function emptyResult(readStatus: string, issues: string[], configured: boolean):
     unchanged: 0,
     updatedRows: 0,
     unmatchedCourseIds: [],
+    ambiguousCourseIds: [],
     applied: false,
     changes: [],
     issues

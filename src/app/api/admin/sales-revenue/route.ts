@@ -14,14 +14,16 @@ export async function POST() {
 }
 
 async function handle(apply: boolean) {
+  let actorEmail: string;
   try {
-    await assertAdminSession();
+    const session = await assertAdminSession();
+    actorEmail = session.user?.email ?? "unknown";
   } catch {
     return NextResponse.json({ ok: false, error: "admin 권한이 필요합니다." }, { status: 403 });
   }
 
   try {
-    const result = await runSalesRevenueSync({ apply });
+    const result = await runSalesRevenueSync({ apply, actorEmail });
 
     if (!result.configured) {
       return NextResponse.json(
