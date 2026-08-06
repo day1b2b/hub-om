@@ -58,11 +58,44 @@ interface SalesmapDeal {
   [flattenedKoreanKey: string]: unknown;
 }
 
-interface SalesmapDealListResponse {
-  data?: SalesmapDeal[];
+interface SalesmapDealListData {
+  dealList?: SalesmapDeal[];
   deals?: SalesmapDeal[];
   items?: SalesmapDeal[];
   nextCursor?: string | null;
+}
+
+interface SalesmapDealListResponse {
+  success?: boolean;
+  // 실제 응답은 { success, data: { dealList: [...], nextCursor } } 형태.
+  // 과거 추정(배열이 바로 data)이나 다른 키도 관대하게 받는다.
+  data?: SalesmapDealListData | SalesmapDeal[];
+  dealList?: SalesmapDeal[];
+  deals?: SalesmapDeal[];
+  items?: SalesmapDeal[];
+  nextCursor?: string | null;
+}
+
+/** 응답 봉투에서 이번 페이지 딜 배열과 다음 커서를 안전하게 꺼낸다. */
+function extractDealPage(payload: SalesmapDealListResponse): {
+  pageDeals: SalesmapDeal[];
+  nextCursor: string | null;
+} {
+  const data = payload.data;
+
+  if (Array.isArray(data)) {
+    return { pageDeals: data, nextCursor: payload.nextCursor ?? null };
+  }
+  if (data && typeof data === "object") {
+    const list = data.dealList ?? data.deals ?? data.items ?? [];
+    return {
+      pageDeals: Array.isArray(list) ? list : [],
+      nextCursor: data.nextCursor ?? payload.nextCursor ?? null
+    };
+  }
+
+  const fallback = payload.dealList ?? payload.deals ?? payload.items ?? [];
+  return { pageDeals: Array.isArray(fallback) ? fallback : [], nextCursor: payload.nextCursor ?? null };
 }
 
 let cachedSalesRead: TimedCacheEntry<SourceReadResult<SalesRecord>> | null = null;
@@ -133,7 +166,7 @@ export class SalesmapSourceReader implements OperationSourceReader {
         items: [...byCourseId.values()].map(salesRecordFromAggregate),
         issues
       };
-    } catch {
+    } catch (error) {
       return {
         source: "sales",
         status: "failed",
@@ -142,7 +175,7 @@ export class SalesmapSourceReader implements OperationSourceReader {
         issues: [
           {
             code: "salesmap_read_failed",
-            message: "Salesmap deals could not be read.",
+            message: `세일즈맵 딜을 읽지 못했습니다: ${error instanceof Error ? error.message : String(error)}`,
             recoverable: true
           }
         ]
@@ -202,14 +235,14 @@ async function fetchAllDeals(config: SalesmapConfig): Promise<FetchAllDealsResul
       headers: { authorization: `Bearer ${config.apiToken}` }
     });
     if (!response.ok) {
-      throw new Error(`salesmap_deal_list_failed_${response.status}`);
+      throw new Error(`Salesmap API가 HTTP ${response.status}로 응답했습니다.`);
     }
 
     const payload = (await response.json()) as SalesmapDealListResponse;
-    const pageDeals = payload.data ?? payload.deals ?? payload.items ?? [];
+    const { pageDeals, nextCursor } = extractDealPage(payload);
     deals.push(...pageDeals);
 
-    cursor = payload.nextCursor ?? null;
+    cursor = nextCursor;
     if (!cursor) break;
   }
 
