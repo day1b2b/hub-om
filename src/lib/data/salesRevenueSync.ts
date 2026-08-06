@@ -132,13 +132,17 @@ export async function runSalesRevenueSync({
 
   if (apply && !blockedByPartial && pendingUpdates.length > 0) {
     // 전부 성공 아니면 전부 취소(중간 실패 시 절반만 써지는 것 방지).
+    // 첫 대량 반영(수백 건)에서도 기본 시간제한에 걸리지 않도록 인터랙티브 트랜잭션 + 넉넉한 timeout.
     await prisma.$transaction(
-      pendingUpdates.map((update) =>
-        prisma.course.update({
-          where: { id: update.id },
-          data: { revenue: update.revenue, revenueRaw: String(update.revenue) }
-        })
-      )
+      async (tx) => {
+        for (const update of pendingUpdates) {
+          await tx.course.update({
+            where: { id: update.id },
+            data: { revenue: update.revenue, revenueRaw: String(update.revenue) }
+          });
+        }
+      },
+      { timeout: 120_000, maxWait: 10_000 }
     );
     updatedRows = pendingUpdates.length;
   }
