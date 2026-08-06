@@ -3,13 +3,13 @@
 import { useState } from "react";
 import type { TeamUser, TeamUserInput, TeamUserRole } from "@/lib/data/teamUsers/teamUserTypes";
 
-const TEAM_OPTIONS = ["1팀", "2팀"] as const;
+const TEAM_OPTIONS = ["AX 1파트", "AX 2파트", "AX 3파트"] as const;
 const ROLE_OPTIONS: { value: TeamUserRole; label: string }[] = [
-  { value: "ld", label: "LD" },
-  { value: "om", label: "OM" }
+  { value: "om", label: "OM" },
+  { value: "ld", label: "LD" }
 ];
 const ROLE_LABEL: Record<TeamUserRole, string> = { ld: "LD", om: "OM" };
-type TeamFilter = "전체" | "1팀" | "2팀";
+type TeamFilter = "전체" | "AX 1파트" | "AX 2파트" | "AX 3파트";
 
 export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
   const [users, setUsers] = useState<TeamUser[]>(initialUsers);
@@ -214,7 +214,7 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
       {error && <p className="om-request-error">{error}</p>}
 
       <div className="om-manage-filters">
-        {(["전체", "1팀", "2팀"] as TeamFilter[]).map((f) => {
+        {(["전체", "AX 1파트", "AX 2파트", "AX 3파트"] as TeamFilter[]).map((f) => {
           const count = f === "전체" ? users.length : users.filter((u) => u.team === f).length;
           return (
             <button
@@ -302,11 +302,11 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
       )}
 
       <div className="user-bulk-add">
-        <p className="user-bulk-add-label">여러 명 한 번에 추가 (엑셀에서 팀, 구분(LD/OM), 이름, 이메일, Slack ID 순서로 복사해서 붙여넣기)</p>
+        <p className="user-bulk-add-label">여러 명 한 번에 추가 (엑셀에서 팀, 구분(OM/LD), 이름, 이메일, Slack ID 순서로 복사해서 붙여넣기)</p>
         <textarea
           className="user-bulk-textarea"
           onChange={(e) => setBulkText(e.target.value)}
-          placeholder={"1팀\tOM\t김정선\tjungsun.kim@day1company.co.kr\tjungsun.kim"}
+          placeholder={"AX 1파트\tOM\t김정선\tjungsun.kim@day1company.co.kr\tjungsun.kim"}
           rows={6}
           value={bulkText}
         />

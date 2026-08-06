@@ -21,6 +21,7 @@
     "db:backfill:coach-access-tokens": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/backfill-coach-access-tokens.ts",
     "db:backfill:coach-archive-service-data": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/backfill-coach-archive-service-data.ts",
     "db:backfill:coach-operation-matches": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/backfill-coach-operation-matches.ts",
+    "db:backfill:team-user-team-labels": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/backfill-team-user-team-labels.ts",
     "db:diagnose:coach-operation-matches": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/diagnose-coach-operation-matches.ts",
     "db:import:team-members": "node scripts/import-team-members.mjs",
     "db:promote-source-only": "node scripts/promote-source-only-operations.mjs",

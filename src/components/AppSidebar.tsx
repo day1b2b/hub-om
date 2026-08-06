@@ -85,7 +85,7 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
           <Link className={isImportAdminPage ? "active" : ""} data-icon="🔒" href="/admin/imports">데이터 검수</Link>
           <Link className={isSyncAdminPage ? "active" : ""} data-icon="🔒" href="/admin/sync">데이터 동기화</Link>
           <Link className={isSatisfactionPreviewPage ? "active" : ""} data-icon="🔒" href="/admin/satisfaction-preview">만족도 매칭</Link>
-          <Link className={isUsersAdminPage ? "active" : ""} data-icon="🔒" href="/admin/users">사용자 관리</Link>
+          <Link className={isUsersAdminPage ? "active" : ""} data-icon="🔒" href="/admin/users">멤버 관리</Link>
         </div>
       </nav>
     </aside>
