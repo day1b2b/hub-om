@@ -1,3 +1,4 @@
+export { CompositeOperationSourceReader, hasBuiltInSourceConfig } from "./compositeSourceReader";
 export { DisabledOperationSourceReader } from "./disabledSourceReader";
 export {
   buildGmailDiscussionReadPlan,
@@ -6,6 +7,7 @@ export {
   type GmailDiscussionReadPlan
 } from "./gmailDiscussionReader";
 export { GoogleCalendarSourceReader, hasGoogleCalendarConfig } from "./googleCalendarSourceReader";
+export { hasSalesmapConfig, SalesmapSourceReader, summarizeSalesmapDeals } from "./salesmapSourceReader";
 export {
   hasManualEmailDiscussionArchiveConfig,
   readManualEmailOperationDiscussionReferences
