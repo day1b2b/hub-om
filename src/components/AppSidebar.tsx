@@ -66,6 +66,13 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
         </div>
 
         <div className="nav-section">
+          <div className="nav-section-title">운영현황/위키</div>
+          <Link className={isOperationsPage ? "active" : ""} data-icon="🔒" href="/operations">운영 현황</Link>
+          <Link className={isCompanyWikiPage ? "active" : ""} data-icon="🔒" href="/company-wiki">기업 위키</Link>
+          <Link className={isInstructorWikiPage ? "active" : ""} data-icon="🔒" href="/instructor-wiki">강사 위키</Link>
+        </div>
+
+        <div className="nav-section">
           <div className="nav-section-title">코치</div>
           <Link className={isCoachSchedulePage ? "active" : ""} data-icon="◷" href="/coaches/schedule">코치 일정</Link>
           <Link className={isCoachListPage ? "active" : ""} data-icon="☰" href="/coaches">코치 목록</Link>
@@ -76,10 +83,7 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
         <div className="nav-section nav-section-locked">
           <div className="nav-section-title">관리자 전용</div>
           <Link className={pathname === "/dashboard" ? "active" : ""} data-icon="🔒" href="/dashboard">대시보드</Link>
-          <Link className={isOperationsPage ? "active" : ""} data-icon="🔒" href="/operations">운영 현황</Link>
           <Link className={isResourcesPage ? "active" : ""} data-icon="🔒" href="/resources">리소스</Link>
-          <Link className={isInstructorWikiPage ? "active" : ""} data-icon="🔒" href="/instructor-wiki">강사 위키</Link>
-          <Link className={isCompanyWikiPage ? "active" : ""} data-icon="🔒" href="/company-wiki">기업 위키</Link>
           <Link className={isAnnouncementsPage ? "active" : ""} data-icon="🔒" href="/announcements">공지사항</Link>
           <Link className={isDatabaseAdminPage ? "active" : ""} data-icon="🔒" href="/admin/database">DB 조회</Link>
           <Link className={isImportAdminPage ? "active" : ""} data-icon="🔒" href="/admin/imports">데이터 검수</Link>
