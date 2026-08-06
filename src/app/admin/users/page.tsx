@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 type MemberTab = "ld-om" | "instructors" | "coaches";
 
 const TABS: Array<{ tab: MemberTab; label: string }> = [
-  { tab: "ld-om", label: "LD/OM" },
+  { tab: "ld-om", label: "OM/LD" },
   { tab: "instructors", label: "강사" },
   { tab: "coaches", label: "실습코치" }
 ];
@@ -33,7 +33,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
         <header className="page-header">
           <div>
             <h1>멤버 관리</h1>
-            <p className="page-subtitle">LD, OM, 강사, 실습코치 멤버를 관리합니다.</p>
+            <p className="page-subtitle">OM, LD, 강사, 실습코치 멤버를 관리합니다.</p>
           </div>
         </header>
 
