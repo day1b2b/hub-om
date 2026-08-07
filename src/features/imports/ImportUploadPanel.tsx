@@ -54,7 +54,9 @@ export function ImportUploadPanel() {
             <strong>운영 현황 일괄 등록</strong>
             <p>
               엑셀 파일을 올리면 먼저 검토 대기 상태로 저장됩니다. 아래 표에서 확인한 뒤 운영 현황(/operations)에
-              반영하세요. 양식에는 (예시) 행이 들어 있으니, 그 행을 지우거나 실제 값으로 바꿔서 올려주세요.
+              반영하세요. 양식에는 (예시) 행이 들어 있으니, 그 행을 지우거나 실제 값으로 바꿔서 올려주세요. 담당OM/담당LD는
+              멤버 관리(/admin/users)에 등록된 이름과 정확히 같아야 반영됩니다 — 다르면 오류 없이 빈 값으로 반영되니
+              주의해 주세요.
             </p>
           </div>
           <a className="primary-link" download href="/api/admin/imports/template">
