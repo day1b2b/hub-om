@@ -28,20 +28,20 @@ export function ImportAdminDashboard({ runs }: ImportAdminDashboardProps) {
 
   return (
     <main className="dashboard-shell">
-      <AppSidebar label="데이터 가져오기" teamScope="both" />
+      <AppSidebar label="데이터 일괄 등록" teamScope="both" />
       <section className="content">
         <header className="page-header">
           <div>
-            <p className="eyebrow">데이터 가져오기</p>
-            <h1>운영 데이터를 올리고 확인하기</h1>
-            <p className="lede">파일이나 API로 가져온 데이터를 먼저 확인한 뒤, 필요한 값만 운영 데이터에 반영합니다.</p>
+            <p className="eyebrow">데이터 일괄 등록</p>
+            <h1>운영 현황 엑셀 일괄 등록</h1>
+            <p className="lede">엑셀 파일을 올려 먼저 확인한 뒤, 필요한 값만 운영 현황에 반영합니다.</p>
           </div>
           <Link className="primary-link" href="/">
             운영 목록
           </Link>
         </header>
 
-        <section className="metrics import-compact-metrics" aria-label="가져오기 요약">
+        <section className="metrics import-compact-metrics" aria-label="일괄 등록 요약">
           <Metric label="가져온 묶음" value={runs.length} />
           <Metric label="완료" value={completedRuns} />
           <Metric label="검토 필요" value={reviewRuns} />
@@ -59,8 +59,8 @@ export function ImportAdminDashboard({ runs }: ImportAdminDashboardProps) {
           </div>
           {runs.length === 0 ? (
             <EmptyState
-              title="아직 가져온 데이터가 없습니다"
-              description="CSV 또는 JSON 파일을 올리면 이곳에 검토할 묶음이 생깁니다."
+              title="아직 등록한 데이터가 없습니다"
+              description="엑셀 파일을 올리면 이곳에 검토할 묶음이 생깁니다."
             />
           ) : (
             <div className="table-wrap">
@@ -132,7 +132,7 @@ export function ImportRunDetailView({ run }: ImportRunDetailViewProps) {
 
   return (
     <main className="dashboard-shell">
-      <AppSidebar label="데이터 가져오기" teamScope="both" />
+      <AppSidebar label="데이터 일괄 등록" teamScope="both" />
       <section className="content">
         <header className="page-header">
           <div>

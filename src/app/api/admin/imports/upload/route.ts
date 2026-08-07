@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { storeParsedImport } from "@/lib/data/importStagingWriter";
-import { parseImportFile } from "@/lib/data/importUploadParser";
+import { parseImportFile, parseXlsxImport } from "@/lib/data/importUploadParser";
 import type { SourceTeam } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -29,8 +29,11 @@ export async function POST(request: Request) {
   const defaultYear = parseImportYear(parseText(formData.get("importYear")));
 
   try {
-    const content = await file.text();
-    const parsed = parseImportFile(file.name, content, { defaultYear });
+    const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+    const parsed =
+      extension === "xlsx" || extension === "xls"
+        ? parseXlsxImport(await file.arrayBuffer(), { defaultYear })
+        : parseImportFile(file.name, await file.text(), { defaultYear });
 
     if (parsed.rows.length === 0) {
       return NextResponse.json({ ok: false, error: "저장할 row가 없습니다." }, { status: 400 });
@@ -89,5 +92,6 @@ function inferSourceType(fileName: string) {
   const extension = fileName.split(".").pop()?.toLowerCase() ?? "";
   if (extension === "json") return "json";
   if (extension === "csv") return "csv";
+  if (extension === "xlsx" || extension === "xls") return "spreadsheet";
   return "upload";
 }
