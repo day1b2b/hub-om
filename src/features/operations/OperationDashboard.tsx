@@ -42,7 +42,10 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
   const [omFilter, setOmFilter] = useState("전체 OM");
   const [archiveOnly, setArchiveOnly] = useState(false);
   const [query, setQuery] = useState("");
-  const [range, setRange] = useState(() => getMonthRange(today, 0));
+  // 기본 날짜 필터는 "전체"(빈 범위 = 전체 조회). 사용자가 필요할 때 좁힌다.
+  const [range, setRange] = useState<{ start: string; end: string }>({ start: "", end: "" });
+  const [page, setPage] = useState(1);
+  const pageSize = 50;
   const teamOperations = operations;
 
   const filterOptions = useMemo(() => {
@@ -95,6 +98,11 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
     return groupOperationsByCourse(filteredOperations, today);
   }, [filteredOperations, today]);
 
+  // 필터로 결과가 줄면 현재 페이지를 유효 범위로 클램프해 빈 페이지가 뜨지 않게 한다.
+  const totalPages = Math.max(1, Math.ceil(courseGroups.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pagedGroups = courseGroups.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
   const metricCounts = useMemo(() => {
     return {
       진행중: filteredOperations.filter((operation) => isOngoing(operation, today)).length,
@@ -116,7 +124,7 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
     setOmFilter("전체 OM");
     setArchiveOnly(false);
     setQuery("");
-    setRange(getMonthRange(today, 0));
+    setRange({ start: "", end: "" });
   }
 
   return (
@@ -156,6 +164,7 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
             />
           </div>
           <div className="quick-range" role="group" aria-label="빠른 기간 선택">
+            <button type="button" onClick={() => setRange({ start: "", end: "" })}>전체</button>
             <button type="button" onClick={() => setRange(getMonthRange(today, 0))}>이번달</button>
             <button type="button" onClick={() => setRange(getMonthRange(today, 1))}>다음달</button>
             <button type="button" onClick={() => setRange(getQuarterRange(today))}>이번 분기</button>
@@ -247,9 +256,9 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
               </thead>
               <tbody>
                 {courseGroups.length > 0 ? (
-                  courseGroups.map((group, index) => (
+                  pagedGroups.map((group, index) => (
                     <tr key={group.key}>
-                      <td>{index + 1}</td>
+                      <td>{(currentPage - 1) * pageSize + index + 1}</td>
                       <td>{summarizeText(group.operations, (operation) => operation.educationFormat)}</td>
                       <td>{summarizeText(group.operations, (operation) => operation.operationType)}</td>
                       <td>{group.courseId || "검토필요"}</td>
@@ -285,6 +294,19 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
               </tbody>
             </table>
           </div>
+          {totalPages > 1 ? (
+            <div className="operations-pagination" role="group" aria-label="페이지 이동">
+              <button type="button" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}>
+                이전
+              </button>
+              <span>
+                {currentPage} / {totalPages} 페이지
+              </span>
+              <button type="button" disabled={currentPage >= totalPages} onClick={() => setPage(currentPage + 1)}>
+                다음
+              </button>
+            </div>
+          ) : null}
         </section>
       </section>
     </main>
