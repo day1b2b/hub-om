@@ -21,11 +21,6 @@ interface ImportAdminDashboardProps {
 }
 
 export function ImportAdminDashboard({ runs }: ImportAdminDashboardProps) {
-  const totalRows = runs.reduce((sum, run) => sum + run.rowCount, 0);
-  const totalErrors = runs.reduce((sum, run) => sum + run.errorCount, 0);
-  const completedRuns = runs.filter((run) => run.status === "완료").length;
-  const reviewRuns = runs.filter((run) => run.status === "오류있음" || run.status === "실패").length;
-
   return (
     <main className="dashboard-shell">
       <AppSidebar label="데이터 일괄 등록" teamScope="both" />
@@ -41,20 +36,11 @@ export function ImportAdminDashboard({ runs }: ImportAdminDashboardProps) {
           </Link>
         </header>
 
-        <section className="metrics import-compact-metrics" aria-label="일괄 등록 요약">
-          <Metric label="가져온 묶음" value={runs.length} />
-          <Metric label="완료" value={completedRuns} />
-          <Metric label="검토 필요" value={reviewRuns} />
-          <Metric label="전체 행" value={totalRows} />
-          <Metric label="확인할 행" value={totalErrors} />
-          <Metric label="최근 가져오기" value={runs[0]?.startedAt ?? "-"} compact />
-        </section>
-
         <ImportUploadPanel />
 
         <section className="table-section">
           <div className="table-header">
-            <h2>가져오기 내역</h2>
+            <h2>등록 이력</h2>
             <span>{runs.length}건</span>
           </div>
           {runs.length === 0 ? (
@@ -68,8 +54,8 @@ export function ImportAdminDashboard({ runs }: ImportAdminDashboardProps) {
                 <thead>
                   <tr>
                     <th>상태</th>
-                    <th>가져온 데이터</th>
-                    <th>가져온 시각</th>
+                    <th>등록 데이터</th>
+                    <th>등록 시각</th>
                     <th>행 수</th>
                     <th>확인 결과</th>
                     <th>검토</th>
@@ -166,7 +152,7 @@ export function ImportRunDetailView({ run }: ImportRunDetailViewProps) {
           </div>
           {isNotionRun ? (
             <div className="import-promote-action readonly">
-              <span>Notion 데이터는 가져오기와 검수까지만 저장합니다. 운영 DB 반영은 막혀 있습니다.</span>
+              <span>Notion 데이터는 등록(검수)까지만 저장합니다. 운영 DB 반영은 막혀 있습니다.</span>
             </div>
           ) : (
             <ImportPromoteButton importRunId={run.id} />
@@ -182,22 +168,13 @@ export function ImportRunDetailView({ run }: ImportRunDetailViewProps) {
             <span>최대 200건 표시</span>
           </div>
           {run.records.length === 0 ? (
-            <EmptyState title="저장된 행이 없습니다" description="파일을 다시 올리거나 가져오기 설정을 확인해 주세요." />
+            <EmptyState title="저장된 행이 없습니다" description="파일을 다시 올리거나 등록 설정을 확인해 주세요." />
           ) : (
             <ImportReviewTable canPromoteRecords={!isNotionRun} records={run.records} />
           )}
         </section>
       </section>
     </main>
-  );
-}
-
-function Metric({ compact, label, value }: { compact?: boolean; label: string; value: number | string }) {
-  return (
-    <div className={`metric${compact ? " compact" : ""}`}>
-      <span>{label}</span>
-      <strong>{typeof value === "number" ? value.toLocaleString("ko-KR") : value}</strong>
-    </div>
   );
 }
 
@@ -228,7 +205,7 @@ function getSourceTypeLabel(sourceType: string) {
     return "JSON 파일";
   }
 
-  return "가져온 데이터";
+  return "등록된 데이터";
 }
 
 function isNotionImport(sourceType: string) {

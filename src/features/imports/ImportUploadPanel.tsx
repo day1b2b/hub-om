@@ -64,18 +64,6 @@ export function ImportUploadPanel() {
 
         <form action={uploadImport} className="import-upload-panel">
           <label>
-            담당 팀
-            <select name="sourceTeam" defaultValue="unknown">
-              <option value="unknown">모르겠음</option>
-              <option value="team_1">기업교육 1팀</option>
-              <option value="team_2">기업교육 2팀</option>
-            </select>
-          </label>
-          <label>
-            가져온 곳 이름
-            <input name="sourceName" placeholder="비워두면 파일명 사용" />
-          </label>
-          <label>
             기준 연도
             <input
               max={2100}

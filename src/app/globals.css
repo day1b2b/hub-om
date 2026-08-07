@@ -842,25 +842,6 @@ h2 {
   line-height: 1.35;
 }
 
-.import-compact-metrics {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-}
-
-.import-compact-metrics .metric {
-  min-height: 48px;
-  padding: 8px 10px;
-}
-
-.import-compact-metrics .metric span {
-  font-size: 11px;
-}
-
-.import-compact-metrics .metric strong {
-  font-size: 16px;
-  line-height: 1.25;
-  margin-top: 2px;
-}
-
 .primary-link,
 .text-link {
   color: var(--blue);
@@ -1083,7 +1064,7 @@ h2 {
   border-top: 1px solid var(--line);
   display: grid;
   gap: 10px;
-  grid-template-columns: minmax(130px, 0.8fr) minmax(140px, 0.8fr) minmax(180px, 1fr) minmax(210px, 1.2fr) auto;
+  grid-template-columns: minmax(140px, 0.6fr) minmax(220px, 1.4fr) auto;
   margin-top: 10px;
   padding-top: 12px;
 }
@@ -9888,7 +9869,6 @@ button.coach-doc-reserve-chip:disabled {
     overflow-y: hidden;
   }
 
-  .import-compact-metrics,
   .import-review-summary,
   .import-review-toolbar,
   .sheet-import-grid {
@@ -10064,7 +10044,6 @@ button.coach-doc-reserve-chip:disabled {
     text-align: left;
   }
 
-  .import-compact-metrics,
   .import-review-summary,
   .import-review-toolbar,
   .sheet-import-grid,
