@@ -395,20 +395,22 @@ function formatSatisfactionValue(value: string | null) {
  * 예) 현재 5 / 전체 10 → [1, "…", 3, 4, 5, 6, 7, "…", 10]
  */
 function getPageNumbers(current: number, total: number): Array<number | "ellipsis"> {
-  if (total <= 7) {
-    return Array.from({ length: total }, (_, index) => index + 1);
+  // 한 번에 숫자 3개만 보여준다(현재 페이지 중심으로 슬라이드). 처음/끝 버튼으로 양끝 이동.
+  const windowSize = 3;
+  let start = current - 1;
+  let end = current + 1;
+
+  if (start < 1) {
+    start = 1;
+    end = Math.min(total, windowSize);
+  }
+  if (end > total) {
+    end = total;
+    start = Math.max(1, total - windowSize + 1);
   }
 
-  const delta = 2;
-  const left = Math.max(2, current - delta);
-  const right = Math.min(total - 1, current + delta);
-  const pages: Array<number | "ellipsis"> = [1];
-
-  if (left > 2) pages.push("ellipsis");
-  for (let pageNumber = left; pageNumber <= right; pageNumber += 1) pages.push(pageNumber);
-  if (right < total - 1) pages.push("ellipsis");
-
-  pages.push(total);
+  const pages: Array<number | "ellipsis"> = [];
+  for (let pageNumber = start; pageNumber <= end; pageNumber += 1) pages.push(pageNumber);
   return pages;
 }
 
