@@ -33,6 +33,7 @@ import type { OperationRepository } from "./operationRepository";
 import { getPrismaClient } from "./prisma";
 import { normalizeRoleAssigneeText } from "./roleAssignees";
 import { PrismaTeamMemberRepository } from "./prismaTeamMemberRepository";
+import type { TeamMemberRole, TeamMemberRoleRoster } from "./teamMemberRepository";
 
 const OPERATION_STATUS: Record<string, OperationStatus> = {
   ASSIGNMENT_NEEDED: "배정필요",
@@ -292,9 +293,9 @@ export class PrismaOperationRepository implements OperationRepository {
           instructorCost: input.instructorCost,
           instructorWikiLink: normalizeVisibleText(input.instructorWikiLink) || null,
           instructorsText: normalizeVisibleText(input.instructors) || null,
-          ldName: normalizeVisibleText(normalizeRoleAssigneeText(input.ld, "ld", roleRoster)) || null,
+          ldName: resolveAssigneeText(input.ld, "ld", roleRoster) || null,
           lectureManagementLink: normalizeVisibleText(input.lectureManagementLink) || null,
-          omName: normalizeVisibleText(normalizeRoleAssigneeText(input.om, "om", roleRoster)) || null,
+          omName: resolveAssigneeText(input.om, "om", roleRoster) || null,
           onsiteRequired: input.onsiteRequired as PrismaOnsiteRequired,
           onsiteText: onsiteRequiredLabel(input.onsiteRequired),
           operationChannel: PrismaOperationChannel.NEEDS_REVIEW,
@@ -479,6 +480,14 @@ function nullableText(value: string): string | null {
 
 function normalizeName(value: string): string {
   return normalizeVisibleText(value).toLowerCase();
+}
+
+function resolveAssigneeText(value: string, role: TeamMemberRole, roleRoster: TeamMemberRoleRoster): string {
+  const rawText = normalizeVisibleText(value);
+  if (!rawText) return "";
+
+  const matchedText = normalizeRoleAssigneeText(rawText, role, roleRoster);
+  return matchedText || rawText;
 }
 
 function parseDateInput(value: string, fieldName: string): Date {
