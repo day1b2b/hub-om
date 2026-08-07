@@ -42,6 +42,21 @@ export default function PublicHomePage() {
         </aside>
       </section>
 
+      <section className="public-home-section" aria-labelledby="data-title">
+        <h2 id="data-title">Google 사용자 데이터 사용 목적</h2>
+        <p>
+          hub-om은 허용된 회사 Google Workspace 계정인지 확인하고, 사용자가 승인한 범위에서 운영
+          업무에 필요한 Google 데이터를 읽기 전용으로 조회합니다. Gmail 데이터는 과정 관련 논의
+          후보를 찾기 위한 제목, 발신자, 날짜, 스니펫, 메타데이터 중심으로 사용되며 메일 본문 전체를
+          저장하지 않습니다.
+        </p>
+        <p>
+          Google Drive, Sheets, Calendar 데이터는 운영 자료와 일정 후보 확인 목적으로만 사용됩니다.
+          hub-om은 Google 사용자 데이터를 광고 목적으로 판매하거나 일반화된 AI 또는 머신러닝 모델
+          학습에 사용하지 않습니다.
+        </p>
+      </section>
+
       <footer className="public-home-footer">
         {/* 개인정보 미수집 사이트로 판단되어 개인정보처리방침 링크 숨김 처리 */}
         {/* <a href="/privacy">개인정보처리방침</a> */}

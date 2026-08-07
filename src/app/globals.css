@@ -562,6 +562,35 @@ button {
   font-weight: 700;
 }
 
+.public-home-section {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 16px;
+  margin: 0 auto;
+  max-width: 980px;
+  padding-bottom: 34px;
+  padding-left: 24px;
+  padding-right: 24px;
+  padding-top: 34px;
+  width: 100%;
+}
+
+.public-home-section h2 {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.public-home-section p {
+  color: var(--muted);
+  line-height: 1.75;
+  margin-bottom: 0;
+  max-width: 820px;
+}
+
 .public-home-footer {
   border-top: 1px solid var(--line);
   display: flex;
@@ -9998,6 +10027,7 @@ button.coach-doc-reserve-chip:disabled {
   }
 
   .public-hero,
+  .public-home-section,
   .public-home-footer {
     padding-left: 18px;
     padding-right: 18px;
