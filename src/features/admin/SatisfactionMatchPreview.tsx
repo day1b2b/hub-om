@@ -80,7 +80,11 @@ export function SatisfactionMatchPreview() {
   // 화면을 열면 서버 기본 시트(SATISFACTION_SHEET_URL)로 즉시 최신 매칭을 불러온다.
   // 기본값이 없으면 서버가 시트 주소 입력을 안내하는 오류를 돌려주고, 아래 입력칸으로 조회하면 된다.
   useEffect(() => {
-    void runPreview();
+    // setTimeout으로 한 틱 미뤄 effect 본문의 동기 setState(연쇄 렌더) 경고를 피한다
+    const timer = setTimeout(() => {
+      void runPreview();
+    }, 0);
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
