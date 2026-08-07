@@ -30,12 +30,18 @@ export async function POST(request: Request) {
       headerRowNumber?: number;
     };
 
-    const tabTitle = body.tabTitle?.trim();
-    if (!tabTitle) {
-      return NextResponse.json({ ok: false, error: "가져올 탭 이름을 입력해 주세요." }, { status: 400 });
+    // 시트 주소·탭은 서버 기본값(환경변수)을 먼저 쓰고, 화면에서 직접 입력하면 그 값을 우선한다.
+    // 기본값이 있으면 화면은 열리자마자 자동으로 최신 매칭을 보여줄 수 있다(상시 읽기 — DB에는 쓰지 않음).
+    const tabTitle = body.tabTitle?.trim() || process.env.SATISFACTION_SHEET_TAB?.trim() || "eduops_log";
+    const sheetUrl = body.spreadsheetUrl?.trim() || process.env.SATISFACTION_SHEET_URL?.trim() || "";
+    if (!sheetUrl) {
+      return NextResponse.json(
+        { ok: false, needsSheetUrl: true, error: "시트 주소가 없어요. 아래에 집계 시트 주소를 입력하거나, 서버 설정(SATISFACTION_SHEET_URL)에 기본 주소를 등록해 주세요." },
+        { status: 400 }
+      );
     }
 
-    const { spreadsheetId } = parseGoogleSpreadsheetUrl(body.spreadsheetUrl ?? "");
+    const { spreadsheetId } = parseGoogleSpreadsheetUrl(sheetUrl);
     const values = await readGoogleSheetRows(accessToken, spreadsheetId, tabTitle);
     const headerRowNumber =
       Number.isInteger(body.headerRowNumber) && (body.headerRowNumber ?? 0) > 0 ? Number(body.headerRowNumber) : 1;
