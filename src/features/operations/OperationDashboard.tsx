@@ -110,6 +110,15 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
   );
   const totalRevenue = sumRevenueByCourseId(filteredOperations);
 
+  function resetFilters() {
+    setCompanyFilter("전체 기업");
+    setFormatFilter("전체 교육형태");
+    setOmFilter("전체 OM");
+    setArchiveOnly(false);
+    setQuery("");
+    setRange(getMonthRange(today, 0));
+  }
+
   return (
     <main className="dashboard-shell">
       <AppSidebar label="Operations" teamScope={teamScope} />
@@ -194,6 +203,9 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
             <input checked={archiveOnly} onChange={(event) => setArchiveOnly(event.target.checked)} type="checkbox" />
             아카이빙 미완료
           </label>
+          <button className="secondary-action" type="button" onClick={resetFilters}>
+            필터 초기화
+          </button>
           <button className="secondary-action" onClick={() => downloadOperationsCsv(courseGroups, today)} type="button">
             엑셀 다운로드
           </button>
