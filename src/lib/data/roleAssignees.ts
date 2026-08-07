@@ -16,6 +16,29 @@ export function normalizeRoleAssigneeText(value: string, role: TeamMemberRole, r
   return normalizeAssigneeNames(value, roleNamesFromRoster(roster, role), ROLE_ALIASES[role]);
 }
 
+export function findUnknownRoleAssigneeNames(value: string, role: TeamMemberRole, roster: TeamMemberRoleRoster): string[] {
+  return findUnknownAssigneeNames(value, roleNamesFromRoster(roster, role), ROLE_ALIASES[role]);
+}
+
+export function findUnknownAssigneeNames(
+  value: string,
+  allowedNames: string[],
+  aliases: Record<string, string> = {}
+): string[] {
+  const allowedMap = buildAllowedNameMap(allowedNames, aliases);
+  const unknownNames: string[] = [];
+
+  for (const rawName of splitPersonNames(value, "")) {
+    if (!rawName) continue;
+
+    if (!allowedMap.has(normalizePersonKey(rawName))) {
+      unknownNames.push(rawName);
+    }
+  }
+
+  return unknownNames;
+}
+
 export function normalizeAssigneeNames(
   value: string,
   allowedNames: string[],
