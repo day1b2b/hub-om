@@ -1210,14 +1210,14 @@ h2 {
   flex-wrap: wrap;
   gap: 4px;
   justify-content: center;
-  margin-top: 14px;
+  margin: 12px 0;
 }
 
 .operations-pagination button {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: 7px;
-  color: #536273;
+  color: var(--muted);
   cursor: pointer;
   font-size: 12px;
   font-weight: 500;
@@ -1244,13 +1244,13 @@ h2 {
 }
 
 .operations-pagination .page-ellipsis {
-  color: #94a3b8;
+  color: var(--muted);
   padding: 0 4px;
 }
 
 .operations-pagination .page-jump {
   align-items: center;
-  color: #536273;
+  color: var(--muted);
   display: flex;
   font-size: 12px;
   gap: 4px;
@@ -1258,8 +1258,10 @@ h2 {
 }
 
 .operations-pagination .page-jump input {
-  border: 1px solid #e2e8f0;
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: 7px;
+  color: var(--text);
   font-size: 12px;
   min-height: 30px;
   padding: 0 6px;

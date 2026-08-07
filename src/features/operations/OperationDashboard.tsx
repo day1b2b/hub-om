@@ -117,6 +117,76 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
     setPageInput("");
   }
 
+  function renderPagination() {
+    if (totalPages <= 1) return null;
+    return (
+      <nav className="operations-pagination" aria-label="페이지 이동">
+        <button type="button" className="page-nav" disabled={currentPage <= 1} onClick={() => goToPage(1)}>
+          처음
+        </button>
+        <button
+          type="button"
+          className="page-nav"
+          disabled={currentPage <= 1}
+          onClick={() => goToPage(currentPage - 1)}
+        >
+          이전
+        </button>
+        {pageNumbers.map((pageNumber, index) =>
+          pageNumber === "ellipsis" ? (
+            <span key={`ellipsis-${index}`} className="page-ellipsis">
+              …
+            </span>
+          ) : (
+            <button
+              key={pageNumber}
+              type="button"
+              className={pageNumber === currentPage ? "page-number is-active" : "page-number"}
+              aria-current={pageNumber === currentPage ? "page" : undefined}
+              onClick={() => goToPage(pageNumber)}
+            >
+              {pageNumber}
+            </button>
+          )
+        )}
+        <button
+          type="button"
+          className="page-nav"
+          disabled={currentPage >= totalPages}
+          onClick={() => goToPage(currentPage + 1)}
+        >
+          다음
+        </button>
+        <button
+          type="button"
+          className="page-nav"
+          disabled={currentPage >= totalPages}
+          onClick={() => goToPage(totalPages)}
+        >
+          끝
+        </button>
+        <span className="page-jump">
+          <input
+            type="number"
+            min={1}
+            max={totalPages}
+            value={pageInput}
+            placeholder={String(currentPage)}
+            onChange={(event) => setPageInput(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") goToInputPage();
+            }}
+            aria-label="이동할 페이지 번호"
+          />
+          <button type="button" onClick={goToInputPage}>
+            이동
+          </button>
+          <span>/ {totalPages}</span>
+        </span>
+      </nav>
+    );
+  }
+
   const metricCounts = useMemo(() => {
     return {
       진행중: filteredOperations.filter((operation) => isOngoing(operation, today)).length,
@@ -243,6 +313,7 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
               <span>과정 기준</span>
             </div>
           </div>
+          {renderPagination()}
           <div className="table-wrap">
             <table className="operations-table">
               <thead>
@@ -308,72 +379,7 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
               </tbody>
             </table>
           </div>
-          {totalPages > 1 ? (
-            <nav className="operations-pagination" aria-label="페이지 이동">
-              <button type="button" className="page-nav" disabled={currentPage <= 1} onClick={() => goToPage(1)}>
-                처음
-              </button>
-              <button
-                type="button"
-                className="page-nav"
-                disabled={currentPage <= 1}
-                onClick={() => goToPage(currentPage - 1)}
-              >
-                이전
-              </button>
-              {pageNumbers.map((pageNumber, index) =>
-                pageNumber === "ellipsis" ? (
-                  <span key={`ellipsis-${index}`} className="page-ellipsis">
-                    …
-                  </span>
-                ) : (
-                  <button
-                    key={pageNumber}
-                    type="button"
-                    className={pageNumber === currentPage ? "page-number is-active" : "page-number"}
-                    aria-current={pageNumber === currentPage ? "page" : undefined}
-                    onClick={() => goToPage(pageNumber)}
-                  >
-                    {pageNumber}
-                  </button>
-                )
-              )}
-              <button
-                type="button"
-                className="page-nav"
-                disabled={currentPage >= totalPages}
-                onClick={() => goToPage(currentPage + 1)}
-              >
-                다음
-              </button>
-              <button
-                type="button"
-                className="page-nav"
-                disabled={currentPage >= totalPages}
-                onClick={() => goToPage(totalPages)}
-              >
-                끝
-              </button>
-              <span className="page-jump">
-                <input
-                  type="number"
-                  min={1}
-                  max={totalPages}
-                  value={pageInput}
-                  placeholder={String(currentPage)}
-                  onChange={(event) => setPageInput(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") goToInputPage();
-                  }}
-                  aria-label="이동할 페이지 번호"
-                />
-                <button type="button" onClick={goToInputPage}>
-                  이동
-                </button>
-                <span>/ {totalPages}</span>
-              </span>
-            </nav>
-          ) : null}
+          {renderPagination()}
         </section>
       </section>
     </main>
