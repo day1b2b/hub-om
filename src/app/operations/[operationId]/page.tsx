@@ -8,6 +8,7 @@ import { readOperationCollaboration } from "@/lib/data/operationCollaboration";
 import { hasNotionResourceConfig, listNotionResourceOperations } from "@/lib/data/notionResourceOperationRepository";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import type { OperationSession } from "@/lib/data/operationTypes";
+import { buildPersonOptions, buildRoleRosterFromOperations, mergeRoleRosters } from "@/lib/data/personOptions";
 import { getStoredTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFactory";
 import { filterOperationsByTeamScope, resolveTeamScope } from "@/lib/teamScope";
 
@@ -27,11 +28,13 @@ export default async function OperationDetailPage({ params, searchParams }: Oper
   const repository = getOperationRepository();
   const teamMemberRepository = getStoredTeamMemberRepository();
   const shouldReadExternalResources = hasNotionResourceConfig();
-  const [operations, ownerRoster, queryParams] = await Promise.all([
+  const [operations, ownerRoster, roleRoster, queryParams] = await Promise.all([
     repository.listOperations(),
     teamMemberRepository.listResourceOwners(),
+    teamMemberRepository.listRoleRosters(),
     searchParams
   ]);
+  const personOptions = buildPersonOptions(mergeRoleRosters(roleRoster, buildRoleRosterFromOperations(operations)));
   let operation = operations.find((candidate) => candidate.operationId === operationId);
   let allOperations = operations;
 
@@ -70,6 +73,7 @@ export default async function OperationDetailPage({ params, searchParams }: Oper
     <OperationDetail
       collaboration={collaboration}
       operation={operation}
+      personOptions={personOptions}
       relatedOperations={relatedOperations}
       sameCourseIdOperations={sameCourseIdOperations}
       teamScope={teamScope}
