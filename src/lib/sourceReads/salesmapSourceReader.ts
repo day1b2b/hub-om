@@ -32,6 +32,10 @@ import type {
 
 const DEFAULT_BASE_URL = "https://salesmap.kr/api";
 const DEFAULT_MAX_PAGES = 20;
+// 요청을 몰아치지 않도록 페이지 사이 간격(ms)과 429(요청 제한) 재시도 설정.
+const DEFAULT_PAGE_DELAY_MS = 300;
+const MAX_RATE_LIMIT_RETRIES = 6;
+const MAX_RETRY_WAIT_MS = 20000;
 
 const DEFAULT_FIELD_COURSE_ID = "코스ID";
 const DEFAULT_FIELD_COMPANY = "고객사";
@@ -43,6 +47,7 @@ interface SalesmapConfig {
   pipelineName: string;
   pipelineStageName: string;
   maxPages: number;
+  pageDelayMs: number;
   fieldCourseId: string;
   fieldCompany: string;
   fieldCourseName: string;
@@ -195,6 +200,7 @@ function readSalesmapConfig(): SalesmapConfig {
     pipelineName: process.env.SALESMAP_DEAL_PIPELINE_NAME?.trim() ?? "",
     pipelineStageName: process.env.SALESMAP_DEAL_STAGE_NAME?.trim() ?? "",
     maxPages: parsePositiveInteger(process.env.SALESMAP_MAX_PAGES, DEFAULT_MAX_PAGES),
+    pageDelayMs: parsePositiveInteger(process.env.SALESMAP_PAGE_DELAY_MS, DEFAULT_PAGE_DELAY_MS),
     fieldCourseId: process.env.SALESMAP_FIELD_COURSE_ID?.trim() || DEFAULT_FIELD_COURSE_ID,
     fieldCompany: process.env.SALESMAP_FIELD_COMPANY?.trim() || DEFAULT_FIELD_COMPANY,
     fieldCourseName: process.env.SALESMAP_FIELD_COURSE_NAME?.trim() || DEFAULT_FIELD_COURSE_NAME
@@ -219,6 +225,27 @@ interface FetchAllDealsResult {
   truncated: boolean;
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * 세일즈맵 GET 요청. 429(요청 제한)가 오면 잠시 쉬었다 재시도한다.
+ * Retry-After 헤더가 있으면 그 시간을, 없으면 점점 늘어나는 대기시간을 쓴다.
+ */
+async function fetchSalesmapWithRetry(url: URL, apiToken: string): Promise<Response> {
+  for (let attempt = 1; attempt <= MAX_RATE_LIMIT_RETRIES; attempt += 1) {
+    const response = await fetch(url, { headers: { authorization: `Bearer ${apiToken}` } });
+    if (response.status !== 429 || attempt >= MAX_RATE_LIMIT_RETRIES) return response;
+
+    const retryAfterSeconds = Number(response.headers.get("retry-after"));
+    const waitMs =
+      Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0 ? retryAfterSeconds * 1000 : attempt * 3000;
+    await sleep(Math.min(waitMs, MAX_RETRY_WAIT_MS));
+  }
+  return fetch(url, { headers: { authorization: `Bearer ${apiToken}` } });
+}
+
 async function fetchAllDeals(config: SalesmapConfig): Promise<FetchAllDealsResult> {
   const deals: SalesmapDeal[] = [];
   let cursor: string | null = null;
@@ -231,9 +258,7 @@ async function fetchAllDeals(config: SalesmapConfig): Promise<FetchAllDealsResul
     }
     if (cursor) url.searchParams.set("cursor", cursor);
 
-    const response = await fetch(url, {
-      headers: { authorization: `Bearer ${config.apiToken}` }
-    });
+    const response = await fetchSalesmapWithRetry(url, config.apiToken);
     if (!response.ok) {
       throw new Error(`Salesmap API가 HTTP ${response.status}로 응답했습니다.`);
     }
@@ -244,6 +269,9 @@ async function fetchAllDeals(config: SalesmapConfig): Promise<FetchAllDealsResul
 
     cursor = nextCursor;
     if (!cursor) break;
+
+    // 다음 페이지 요청 전 잠깐 간격을 둬 세일즈맵을 몰아치지 않는다.
+    await sleep(config.pageDelayMs);
   }
 
   // 루프를 다 돌고도 커서가 남아 있으면 = 페이지 상한에 잘렸다는 뜻(침묵 실패 방지).
