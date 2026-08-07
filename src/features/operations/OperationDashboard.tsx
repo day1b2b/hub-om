@@ -97,9 +97,9 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
 
   const metricCounts = useMemo(() => {
     return {
-      진행중: filteredOperations.filter((operation) => operation.operationStatus === "진행중").length,
+      진행중: filteredOperations.filter((operation) => isOngoing(operation, today)).length,
       예정: filteredOperations.filter((operation) => isUpcoming(operation, today)).length,
-      완료: filteredOperations.filter((operation) => isDone(operation)).length
+      완료: filteredOperations.filter((operation) => isPast(operation, today)).length
     };
   }, [filteredOperations, today]);
 
@@ -158,7 +158,6 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
           <Metric label="진행중" value={metricCounts.진행중} caption="표시 기준" />
           <Metric label="예정" value={metricCounts.예정} caption="표시 기준" />
           <Metric label="완료" value={metricCounts.완료} caption="표시 기준" />
-          <Metric label="표시 과정" value={filteredOperations.length} caption={`${teamOperations.length}개 전체`} />
           <Metric label="평균 만족도" value={satisfaction ?? "-"} caption="표시 기준" />
           <Metric label="총 매출" value={formatShortMoney(totalRevenue)} caption="표시 기준" />
         </section>
@@ -417,8 +416,17 @@ function isUpcoming(operation: OperationSession, today: Date) {
   return start ? start.getTime() > stripTime(today).getTime() : false;
 }
 
-function isDone(operation: OperationSession) {
-  return operation.operationStatus === "완료" || operation.operationStatus === "회고완료";
+function isOngoing(operation: OperationSession, today: Date) {
+  const start = parseDate(operation.startDate);
+  const end = parseDate(operation.endDate);
+  if (!start || !end) return false;
+  const todayTime = stripTime(today).getTime();
+  return start.getTime() <= todayTime && todayTime <= end.getTime();
+}
+
+function isPast(operation: OperationSession, today: Date) {
+  const end = parseDate(operation.endDate);
+  return end ? end.getTime() < stripTime(today).getTime() : false;
 }
 
 function overlapsRange(operation: OperationSession, startValue: string, endValue: string) {
