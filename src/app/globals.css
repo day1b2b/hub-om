@@ -1192,6 +1192,7 @@ h2 {
   gap: 4px;
   justify-content: flex-end;
   margin: 12px 0;
+  padding: 0 12px;
 }
 
 .operations-pagination button {
