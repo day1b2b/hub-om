@@ -884,6 +884,7 @@ h2 {
 
 .operations-metrics {
   gap: 8px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .operations-metrics .metric {
@@ -9863,6 +9864,10 @@ button.coach-doc-reserve-chip:disabled {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .operations-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .admin-database-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -10035,6 +10040,10 @@ button.coach-doc-reserve-chip:disabled {
   }
 
   .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .operations-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

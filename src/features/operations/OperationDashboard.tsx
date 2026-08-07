@@ -97,9 +97,9 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
 
   const metricCounts = useMemo(() => {
     return {
-      진행중: filteredOperations.filter((operation) => operation.operationStatus === "진행중").length,
+      진행중: filteredOperations.filter((operation) => isOngoing(operation, today)).length,
       예정: filteredOperations.filter((operation) => isUpcoming(operation, today)).length,
-      완료: filteredOperations.filter((operation) => isDone(operation)).length
+      완료: filteredOperations.filter((operation) => isPast(operation, today)).length
     };
   }, [filteredOperations, today]);
 
@@ -158,7 +158,6 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
           <Metric label="진행중" value={metricCounts.진행중} caption="표시 기준" />
           <Metric label="예정" value={metricCounts.예정} caption="표시 기준" />
           <Metric label="완료" value={metricCounts.완료} caption="표시 기준" />
-          <Metric label="표시 과정" value={filteredOperations.length} caption={`${teamOperations.length}개 전체`} />
           <Metric label="평균 만족도" value={satisfaction ?? "-"} caption="표시 기준" />
           <Metric label="총 매출" value={formatShortMoney(totalRevenue)} caption="표시 기준" />
         </section>
@@ -195,7 +194,9 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
             <input checked={archiveOnly} onChange={(event) => setArchiveOnly(event.target.checked)} type="checkbox" />
             아카이빙 미완료
           </label>
-          <button className="secondary-action" type="button">엑셀 다운로드</button>
+          <button className="secondary-action" onClick={() => downloadOperationsCsv(courseGroups, today)} type="button">
+            엑셀 다운로드
+          </button>
           <span className="filter-result-count">총 {courseGroups.length}건</span>
         </section>
 
@@ -280,6 +281,72 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
 
 function formatSatisfactionValue(value: string | null) {
   return value ?? "-";
+}
+
+const OPERATIONS_CSV_HEADERS = [
+  "#",
+  "교육형태",
+  "운영유형",
+  "코스ID",
+  "기업",
+  "과정명",
+  "총 회차",
+  "싱크업",
+  "OM",
+  "LD",
+  "시작일",
+  "종료일",
+  "강사",
+  "실습코치",
+  "만족도(전체)",
+  "만족도(강사)",
+  "매출",
+  "강사비",
+  "운영비"
+];
+
+function downloadOperationsCsv(courseGroups: CourseGroup[], today: Date) {
+  const rows = courseGroups.map((group, index) => [
+    `${index + 1}`,
+    summarizeText(group.operations, (operation) => operation.educationFormat),
+    summarizeText(group.operations, (operation) => operation.operationType),
+    group.courseId || "검토필요",
+    group.companyName,
+    group.courseName,
+    `${group.operations.length}`,
+    isSafeHttpUrl(group.operationDetail) ? group.operationDetail : "-",
+    summarizeText(group.operations, (operation) => operation.om, "배정필요"),
+    summarizeText(group.operations, (operation) => operation.ld, "미정"),
+    group.startDate,
+    group.endDate,
+    summarizeText(group.operations, (operation) => operation.instructors),
+    summarizeText(group.operations, (operation) => operation.coach),
+    formatSatisfactionValue(average(satisfactionValues(group.operations, (operation) => operation.avgSatisfaction))),
+    formatSatisfactionValue(
+      average(satisfactionValues(group.operations, (operation) => operation.instructorSatisfaction))
+    ),
+    formatMoney(sumRevenueByCourseId(group.operations)),
+    formatMoney(sumMoney(group.operations, (operation) => operation.instructorCost)),
+    formatMoney(sumMoney(group.operations, (operation) => operation.operationCost))
+  ]);
+
+  const csvBody = [OPERATIONS_CSV_HEADERS, ...rows]
+    .map((row) => row.map(escapeCsvField).join(","))
+    .join("\r\n");
+  const blob = new Blob(["﻿" + csvBody], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = `운영현황_${formatDate(today)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+function escapeCsvField(value: string): string {
+  return `"${value.replaceAll("\"", "\"\"")}"`;
 }
 
 function Metric({ caption, label, value }: { caption?: string; label: string; value: number | string }) {
@@ -417,8 +484,17 @@ function isUpcoming(operation: OperationSession, today: Date) {
   return start ? start.getTime() > stripTime(today).getTime() : false;
 }
 
-function isDone(operation: OperationSession) {
-  return operation.operationStatus === "완료" || operation.operationStatus === "회고완료";
+function isOngoing(operation: OperationSession, today: Date) {
+  const start = parseDate(operation.startDate);
+  const end = parseDate(operation.endDate);
+  if (!start || !end) return false;
+  const todayTime = stripTime(today).getTime();
+  return start.getTime() <= todayTime && todayTime <= end.getTime();
+}
+
+function isPast(operation: OperationSession, today: Date) {
+  const end = parseDate(operation.endDate);
+  return end ? end.getTime() < stripTime(today).getTime() : false;
 }
 
 function overlapsRange(operation: OperationSession, startValue: string, endValue: string) {
