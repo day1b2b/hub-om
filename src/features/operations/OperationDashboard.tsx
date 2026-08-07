@@ -8,12 +8,28 @@ import type {
   OperationSession
 } from "@/lib/data/operationTypes";
 import { splitPersonNames } from "@/lib/data/personNames";
+import { normalizePersonKey } from "@/lib/data/roleAssignees";
 import { satisfactionNumber } from "@/lib/data/satisfaction";
+import { TEAM_OPTIONS, type TeamOption } from "@/lib/data/teamUsers/teamUserTypes";
 import { teamScopeSearchParam, type TeamScope } from "@/lib/teamScope";
+
+const 전체_파트 = "전체 파트";
 
 interface OperationDashboardProps {
   operations: OperationSession[];
+  partByPersonKey: Record<string, string>;
   teamScope: TeamScope;
+}
+
+/** OM/LD 이름을 멤버관리 등록 파트(TeamUser.team)로 조회해, 이 운영건이 속한 파트 목록을 구한다. */
+function operationParts(operation: OperationSession, partByPersonKey: Record<string, string>): Set<string> {
+  const names = [...splitPersonNames(operation.om, ""), ...splitPersonNames(operation.ld, "")];
+  const parts = new Set<string>();
+  for (const name of names) {
+    const part = partByPersonKey[normalizePersonKey(name)];
+    if (part) parts.add(part);
+  }
+  return parts;
 }
 
 /**
@@ -34,12 +50,13 @@ function sumRevenueByCourseId(operations: ReadonlyArray<Pick<OperationSession, "
   return total;
 }
 
-export function OperationDashboard({ operations, teamScope }: OperationDashboardProps) {
+export function OperationDashboard({ operations, partByPersonKey, teamScope }: OperationDashboardProps) {
   const today = useMemo(() => new Date(), []);
   const teamQuery = teamScopeSearchParam(teamScope);
   const [companyFilter, setCompanyFilter] = useState("전체 기업");
   const [formatFilter, setFormatFilter] = useState<"전체 교육형태" | EducationFormat>("전체 교육형태");
   const [omFilter, setOmFilter] = useState("전체 OM");
+  const [partFilter, setPartFilter] = useState<typeof 전체_파트 | TeamOption>(전체_파트);
   const [archiveOnly, setArchiveOnly] = useState(false);
   const [query, setQuery] = useState("");
   // 기본 날짜 필터는 "전체"(빈 범위 = 전체 조회). 사용자가 필요할 때 좁힌다.
@@ -55,7 +72,8 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
       formats: ["전체 교육형태", ...unique(teamOperations.map((operation) => operation.educationFormat))] as Array<
         "전체 교육형태" | EducationFormat
       >,
-      oms: ["전체 OM", ...unique(teamOperations.flatMap((operation) => splitPersonNames(operation.om)))]
+      oms: ["전체 OM", ...unique(teamOperations.flatMap((operation) => splitPersonNames(operation.om)))],
+      parts: [전체_파트, ...TEAM_OPTIONS]
     };
   }, [teamOperations]);
 
@@ -80,6 +98,7 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
       const companyMatches = companyFilter === "전체 기업" || operation.companyName === companyFilter;
       const formatMatches = formatFilter === "전체 교육형태" || operation.educationFormat === formatFilter;
       const omMatches = omFilter === "전체 OM" || splitPersonNames(operation.om).includes(omFilter);
+      const partMatches = partFilter === 전체_파트 || operationParts(operation, partByPersonKey).has(partFilter);
       const archiveMatches = !archiveOnly || operation.archiveStatus === "아카이빙필요";
 
       return (
@@ -88,10 +107,11 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
         companyMatches &&
         formatMatches &&
         omMatches &&
+        partMatches &&
         archiveMatches
       );
     });
-  }, [archiveOnly, companyFilter, formatFilter, omFilter, query, range, teamOperations]);
+  }, [archiveOnly, companyFilter, formatFilter, omFilter, partByPersonKey, partFilter, query, range, teamOperations]);
 
   const filteredOperations = baseFilteredOperations;
 
@@ -206,6 +226,7 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
     setCompanyFilter("전체 기업");
     setFormatFilter("전체 교육형태");
     setOmFilter("전체 OM");
+    setPartFilter(전체_파트);
     setArchiveOnly(false);
     setQuery("");
     setRange({ start: "", end: "" });
@@ -281,6 +302,14 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
           <select value={omFilter} onChange={(event) => setOmFilter(event.target.value)}>
             {filterOptions.oms.map((om) => (
               <option key={om}>{om}</option>
+            ))}
+          </select>
+          <select
+            value={partFilter}
+            onChange={(event) => setPartFilter(event.target.value as typeof 전체_파트 | TeamOption)}
+          >
+            {filterOptions.parts.map((part) => (
+              <option key={part}>{part}</option>
             ))}
           </select>
           <label className="search">

@@ -13,7 +13,7 @@ import {
 import { getPrismaClient } from "./prisma";
 import { PrismaTeamMemberRepository } from "./prismaTeamMemberRepository";
 import { normalizeRoleAssigneeText } from "./roleAssignees";
-import type { TeamMemberRoleRoster } from "./teamMemberRepository";
+import type { TeamMemberRole, TeamMemberRoleRoster } from "./teamMemberRepository";
 
 interface PromotionCandidate {
   blockedReason: string | null;
@@ -305,9 +305,9 @@ function buildOperationSessionCreateData(input: {
     instructorSatisfaction: nullableText(input.fields.instructorSatisfaction),
     instructorWikiLink: nullableText(input.fields.instructorWikiLink),
     instructorsText: nullableText(input.fields.instructors),
-    ldName: nullableText(normalizeRoleAssigneeText(normalizeVisibleText(input.fields.ld), "ld", input.roleRoster)),
+    ldName: nullableText(resolveAssigneeText(input.fields.ld, "ld", input.roleRoster)),
     lectureManagementLink: nullableText(input.fields.lectureManagementLink),
-    omName: nullableText(normalizeRoleAssigneeText(normalizeVisibleText(input.fields.om), "om", input.roleRoster)),
+    omName: nullableText(resolveAssigneeText(input.fields.om, "om", input.roleRoster)),
     omUpdate: nullableText(input.fields.omUpdate),
     onsiteRequired: OnsiteRequired.UNKNOWN,
     onsiteText: nullableText(input.fields.onsiteText),
@@ -391,6 +391,14 @@ function nullableText(value: string | undefined): string | null {
 
 function normalizeName(value: string): string {
   return normalizeVisibleText(value).toLowerCase();
+}
+
+function resolveAssigneeText(value: string, role: TeamMemberRole, roleRoster: TeamMemberRoleRoster): string {
+  const rawText = normalizeVisibleText(value);
+  if (!rawText) return "";
+
+  const matchedText = normalizeRoleAssigneeText(rawText, role, roleRoster);
+  return matchedText || rawText;
 }
 
 function parseDateValue(value: string | undefined): Date | null {
