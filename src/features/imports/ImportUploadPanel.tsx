@@ -54,7 +54,7 @@ export function ImportUploadPanel() {
             <strong>운영 현황 일괄 등록</strong>
             <p>
               엑셀 파일을 올리면 먼저 검토 대기 상태로 저장됩니다. 아래 표에서 확인한 뒤 운영 현황(/operations)에
-              반영하세요. 양식을 내려받아 그대로 채워서 올리면 자동으로 값이 채워집니다.
+              반영하세요. 양식에는 (예시) 행이 들어 있으니, 그 행을 지우거나 실제 값으로 바꿔서 올려주세요.
             </p>
           </div>
           <a className="primary-link" download href="/api/admin/imports/template">

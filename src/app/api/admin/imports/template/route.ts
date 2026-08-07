@@ -56,10 +56,61 @@ const HEADER_ROW = [
   "업데이트사항"
 ];
 
+const EXAMPLE_ROWS = [
+  [
+    "(예시) 스킬플로",
+    "(예시) 생성형 AI 실무 활용 교육",
+    "(예시) 싱크업 시트 링크를 붙여넣으세요",
+    "123456",
+    "1",
+    "2026-01-05",
+    "2026-01-06",
+    "09:00~18:00",
+    "오프라인",
+    "(예시) 홍길동",
+    "(예시) 김철수",
+    "(예시) 이영희",
+    "",
+    "서울",
+    "Y",
+    "(예시) 구글드라이브 폴더 링크를 붙여넣으세요",
+    "",
+    "N",
+    "",
+    "",
+    "",
+    "(예시) 여기에 남기면 운영 상세의 메모란에 표시됩니다"
+  ],
+  [
+    "(예시) 스킬플로",
+    "(예시) 생성형 AI 실무 활용 교육",
+    "(예시) 싱크업 시트 링크를 붙여넣으세요",
+    "123456",
+    "2",
+    "2026-01-19",
+    "2026-01-20",
+    "09:00~18:00",
+    "오프라인",
+    "(예시) 홍길동",
+    "(예시) 김철수",
+    "(예시) 박민수",
+    "",
+    "서울",
+    "Y",
+    "(예시) 구글드라이브 폴더 링크를 붙여넣으세요",
+    "",
+    "N",
+    "",
+    "",
+    "",
+    ""
+  ]
+];
+
 export async function GET() {
   await requireWorkspaceSession();
 
-  const worksheet = XLSX.utils.aoa_to_sheet([GUIDE_ROW, HEADER_ROW]);
+  const worksheet = XLSX.utils.aoa_to_sheet([GUIDE_ROW, HEADER_ROW, ...EXAMPLE_ROWS]);
   worksheet["!cols"] = HEADER_ROW.map(() => ({ wch: 16 }));
 
   const workbook = XLSX.utils.book_new();
