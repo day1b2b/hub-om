@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import * as XLSX from "xlsx";
 
 export interface ParsedImportRow {
   mappedFields: Record<string, string>;
@@ -74,7 +75,31 @@ export function parseImportFile(fileName: string, content: string, options: Pars
     return parseCsvImport(content, options);
   }
 
-  throw new Error("CSV 또는 JSON 파일만 업로드할 수 있습니다.");
+  throw new Error("CSV, JSON, 엑셀(xlsx) 파일만 업로드할 수 있습니다.");
+}
+
+export function parseXlsxImport(buffer: ArrayBuffer, options: ParseImportOptions = {}): ParsedImportFile {
+  const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
+  const sheetName = workbook.SheetNames[0];
+  const sheet = sheetName ? workbook.Sheets[sheetName] : undefined;
+
+  if (!sheet) {
+    throw new Error("엑셀 파일에서 시트를 찾지 못했습니다.");
+  }
+
+  const rawTable = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", raw: true });
+  const table = rawTable.map((row) => row.map(xlsxCellToText));
+
+  return parseImportTable(table, 1, options);
+}
+
+function xlsxCellToText(cell: unknown): string {
+  if (cell instanceof Date) {
+    return `${cell.getFullYear()}-${String(cell.getMonth() + 1).padStart(2, "0")}-${String(cell.getDate()).padStart(2, "0")}`;
+  }
+
+  if (cell === null || cell === undefined) return "";
+  return String(cell).trim();
 }
 
 function parseJsonImport(content: string, options: ParseImportOptions): ParsedImportFile {
