@@ -45,6 +45,7 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
   // 기본 날짜 필터는 "전체"(빈 범위 = 전체 조회). 사용자가 필요할 때 좁힌다.
   const [range, setRange] = useState<{ start: string; end: string }>({ start: "", end: "" });
   const [page, setPage] = useState(1);
+  const [pageInput, setPageInput] = useState("");
   const pageSize = 50;
   const teamOperations = operations;
 
@@ -102,6 +103,19 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
   const totalPages = Math.max(1, Math.ceil(courseGroups.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const pagedGroups = courseGroups.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const pageNumbers = getPageNumbers(currentPage, totalPages);
+
+  function goToPage(target: number) {
+    setPage(Math.min(Math.max(1, target), totalPages));
+  }
+
+  function goToInputPage() {
+    const parsed = Number(pageInput);
+    if (Number.isFinite(parsed) && parsed >= 1) {
+      goToPage(Math.floor(parsed));
+    }
+    setPageInput("");
+  }
 
   const metricCounts = useMemo(() => {
     return {
@@ -295,17 +309,70 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
             </table>
           </div>
           {totalPages > 1 ? (
-            <div className="operations-pagination" role="group" aria-label="페이지 이동">
-              <button type="button" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}>
+            <nav className="operations-pagination" aria-label="페이지 이동">
+              <button type="button" className="page-nav" disabled={currentPage <= 1} onClick={() => goToPage(1)}>
+                처음
+              </button>
+              <button
+                type="button"
+                className="page-nav"
+                disabled={currentPage <= 1}
+                onClick={() => goToPage(currentPage - 1)}
+              >
                 이전
               </button>
-              <span>
-                {currentPage} / {totalPages} 페이지
-              </span>
-              <button type="button" disabled={currentPage >= totalPages} onClick={() => setPage(currentPage + 1)}>
+              {pageNumbers.map((pageNumber, index) =>
+                pageNumber === "ellipsis" ? (
+                  <span key={`ellipsis-${index}`} className="page-ellipsis">
+                    …
+                  </span>
+                ) : (
+                  <button
+                    key={pageNumber}
+                    type="button"
+                    className={pageNumber === currentPage ? "page-number is-active" : "page-number"}
+                    aria-current={pageNumber === currentPage ? "page" : undefined}
+                    onClick={() => goToPage(pageNumber)}
+                  >
+                    {pageNumber}
+                  </button>
+                )
+              )}
+              <button
+                type="button"
+                className="page-nav"
+                disabled={currentPage >= totalPages}
+                onClick={() => goToPage(currentPage + 1)}
+              >
                 다음
               </button>
-            </div>
+              <button
+                type="button"
+                className="page-nav"
+                disabled={currentPage >= totalPages}
+                onClick={() => goToPage(totalPages)}
+              >
+                끝
+              </button>
+              <span className="page-jump">
+                <input
+                  type="number"
+                  min={1}
+                  max={totalPages}
+                  value={pageInput}
+                  placeholder={String(currentPage)}
+                  onChange={(event) => setPageInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") goToInputPage();
+                  }}
+                  aria-label="이동할 페이지 번호"
+                />
+                <button type="button" onClick={goToInputPage}>
+                  이동
+                </button>
+                <span>/ {totalPages}</span>
+              </span>
+            </nav>
           ) : null}
         </section>
       </section>
@@ -315,6 +382,28 @@ export function OperationDashboard({ operations, teamScope }: OperationDashboard
 
 function formatSatisfactionValue(value: string | null) {
   return value ?? "-";
+}
+
+/**
+ * 페이지 번호 목록을 만든다. 페이지가 많으면 현재 페이지 주변만 보이고 나머지는 "…"로 접는다.
+ * 예) 현재 5 / 전체 10 → [1, "…", 3, 4, 5, 6, 7, "…", 10]
+ */
+function getPageNumbers(current: number, total: number): Array<number | "ellipsis"> {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, index) => index + 1);
+  }
+
+  const delta = 2;
+  const left = Math.max(2, current - delta);
+  const right = Math.min(total - 1, current + delta);
+  const pages: Array<number | "ellipsis"> = [1];
+
+  if (left > 2) pages.push("ellipsis");
+  for (let pageNumber = left; pageNumber <= right; pageNumber += 1) pages.push(pageNumber);
+  if (right < total - 1) pages.push("ellipsis");
+
+  pages.push(total);
+  return pages;
 }
 
 const OPERATIONS_CSV_HEADERS = [
