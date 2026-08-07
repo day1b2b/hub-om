@@ -402,8 +402,10 @@ export class PrismaOperationRepository implements OperationRepository {
     if (input.instructorSatisfaction !== undefined) data.instructorSatisfaction = nullableText(input.instructorSatisfaction);
     if (input.instructors !== undefined) data.instructorsText = nullableText(input.instructors);
     if (input.instructorWikiLink !== undefined) data.instructorWikiLink = nullableText(input.instructorWikiLink);
+    if (input.ld !== undefined) data.ldName = nullableText(input.ld);
     if (input.lectureManagementLink !== undefined) data.lectureManagementLink = nullableText(input.lectureManagementLink);
     if (input.lectureManagementNote !== undefined) data.lectureManagementNote = nullableText(input.lectureManagementNote);
+    if (input.om !== undefined) data.omName = nullableText(input.om);
     if (input.operationCost !== undefined) data.operationCost = input.operationCost;
     if (input.operationDetail !== undefined) data.operationDetail = nullableText(input.operationDetail);
     if (input.operationIssue !== undefined) data.operationIssue = nullableText(input.operationIssue);
