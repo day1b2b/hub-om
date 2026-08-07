@@ -26,6 +26,7 @@ import type {
   OperationDiscussionItem
 } from "@/lib/data/operationCollaboration";
 import { isSameCourse } from "@/lib/data/operationCalculations";
+import type { PersonOptions } from "@/lib/data/personOptions";
 import { displayRoleAssigneeText } from "@/lib/data/roleAssignees";
 import { isNavigableHref, toHref } from "@/lib/links";
 import { satisfactionNumber } from "@/lib/data/satisfaction";
@@ -62,6 +63,7 @@ const ONSITE_LABEL: Record<OnsiteRequired, string> = {
 interface OperationDetailProps {
   collaboration: OperationCollaboration;
   operation: OperationSession;
+  personOptions?: PersonOptions;
   relatedOperations?: OperationSession[];
   sameCourseIdOperations?: OperationSession[];
   teamScope: TeamScope;
@@ -70,6 +72,7 @@ interface OperationDetailProps {
 export function OperationDetail({
   collaboration,
   operation,
+  personOptions = { ld: [], om: [] },
   relatedOperations = [operation],
   sameCourseIdOperations = [],
   teamScope
@@ -164,13 +167,13 @@ export function OperationDetail({
             <div className="info-grid">
               <EditableInfoItem
                 displayValue={operation.om || "미정"}
-                fields={[{ name: "om", placeholder: "예: 이혜림", value: operation.om }]}
+                fields={[{ name: "om", options: personOptions.om, type: "name-select", value: operation.om }]}
                 label="OM"
                 operationId={operation.operationId}
               />
               <EditableInfoItem
                 displayValue={operation.ld || "미정"}
-                fields={[{ name: "ld", placeholder: "예: 강다현", value: operation.ld }]}
+                fields={[{ name: "ld", options: personOptions.ld, type: "name-select", value: operation.ld }]}
                 label="LD"
                 operationId={operation.operationId}
               />
