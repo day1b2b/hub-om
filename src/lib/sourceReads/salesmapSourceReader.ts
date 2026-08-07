@@ -136,7 +136,8 @@ export class SalesmapSourceReader implements OperationSourceReader {
       () => this.readFreshSalesRecords()
     );
 
-    cachedSalesRead = entry;
+    // 실패(429/에러)는 캐시하지 않는다 → 제한이 풀리면 다음 호출에서 곧바로 다시 읽는다.
+    cachedSalesRead = value.status === "failed" ? null : entry;
     return value;
   }
 
@@ -144,14 +145,22 @@ export class SalesmapSourceReader implements OperationSourceReader {
     const readAt = new Date().toISOString();
 
     try {
-      const { deals, truncated } = await fetchAllDeals(this.config);
-      const { byCourseId, skippedNoAmount } = aggregateByCourseId(deals, this.config);
+      const { deals, truncated, cursorLoopDetected } = await fetchAllDeals(this.config);
+      const { byCourseId, skippedNoAmount, skippedNonPositive } = aggregateByCourseId(deals, this.config);
       const issues: SourceReadIssue[] = [];
 
       if (skippedNoAmount > 0) {
         issues.push({
           code: "salesmap_deal_missing_amount",
           message: `금액이 없는 딜 ${skippedNoAmount}건을 건너뛰었습니다.`,
+          recoverable: true
+        });
+      }
+
+      if (skippedNonPositive > 0) {
+        issues.push({
+          code: "salesmap_deal_non_positive_amount",
+          message: `합산 금액이 0 이하인 코스ID ${skippedNonPositive}건을 제외했습니다(환불 등 확인 필요).`,
           recoverable: true
         });
       }
@@ -164,9 +173,17 @@ export class SalesmapSourceReader implements OperationSourceReader {
         });
       }
 
+      if (cursorLoopDetected) {
+        issues.push({
+          code: "salesmap_cursor_loop",
+          message: "세일즈맵 페이지 커서가 비정상 반복되어 중간에 멈췄습니다. 전체가 반영되지 않을 수 있습니다.",
+          recoverable: true
+        });
+      }
+
       return {
         source: "sales",
-        status: truncated ? "partial" : "ok",
+        status: truncated || cursorLoopDetected ? "partial" : "ok",
         readAt,
         items: [...byCourseId.values()].map(salesRecordFromAggregate),
         issues
@@ -223,6 +240,8 @@ interface FetchAllDealsResult {
   deals: SalesmapDeal[];
   /** maxPages에 도달했는데도 다음 커서가 남아 딜을 다 읽지 못한 경우 true. */
   truncated: boolean;
+  /** 커서가 진전 없이 반복돼(=API 이상) 도중에 멈춘 경우 true. */
+  cursorLoopDetected: boolean;
 }
 
 function sleep(ms: number): Promise<void> {
@@ -248,7 +267,10 @@ async function fetchSalesmapWithRetry(url: URL, apiToken: string): Promise<Respo
 
 async function fetchAllDeals(config: SalesmapConfig): Promise<FetchAllDealsResult> {
   const deals: SalesmapDeal[] = [];
+  const seenDealIds = new Set<string>();
+  const seenCursors = new Set<string>();
   let cursor: string | null = null;
+  let cursorLoopDetected = false;
 
   for (let page = 0; page < config.maxPages; page += 1) {
     const url = new URL(`${config.baseUrl}/v2/deal`);
@@ -265,17 +287,35 @@ async function fetchAllDeals(config: SalesmapConfig): Promise<FetchAllDealsResul
 
     const payload = (await response.json()) as SalesmapDealListResponse;
     const { pageDeals, nextCursor } = extractDealPage(payload);
-    deals.push(...pageDeals);
 
+    // 같은 딜이 중복으로 오면(커서 꼬임 등) 매출이 부풀지 않도록 id 기준으로 한 번만 담는다.
+    for (const deal of pageDeals) {
+      const dealId = String(deal.id ?? deal.RecordId ?? "");
+      if (dealId) {
+        if (seenDealIds.has(dealId)) continue;
+        seenDealIds.add(dealId);
+      }
+      deals.push(deal);
+    }
+
+    if (!nextCursor) {
+      cursor = null;
+      break;
+    }
+    // 커서가 진전 없이 반복되면(=API 이상) 무한/중복 페이지를 막기 위해 중단한다.
+    if (seenCursors.has(nextCursor)) {
+      cursorLoopDetected = true;
+      break;
+    }
+    seenCursors.add(nextCursor);
     cursor = nextCursor;
-    if (!cursor) break;
 
     // 다음 페이지 요청 전 잠깐 간격을 둬 세일즈맵을 몰아치지 않는다.
     await sleep(config.pageDelayMs);
   }
 
-  // 루프를 다 돌고도 커서가 남아 있으면 = 페이지 상한에 잘렸다는 뜻(침묵 실패 방지).
-  return { deals, truncated: Boolean(cursor) };
+  // 커서가 남아 있으면(페이지 상한 or 커서 반복) 다 못 읽었을 수 있다는 뜻(침묵 실패 방지).
+  return { deals, truncated: Boolean(cursor), cursorLoopDetected };
 }
 
 interface AggregatedSale {
@@ -290,6 +330,8 @@ interface AggregateResult {
   byCourseId: Map<string, AggregatedSale>;
   /** 코스ID는 있지만 금액이 비어 있어 합산에서 제외한 딜 수. */
   skippedNoAmount: number;
+  /** 합산 결과가 0 이하라 제외한 코스ID 수(환불/상계 등 → 기존 매출을 덮어쓰지 않음). */
+  skippedNonPositive: number;
 }
 
 /**
@@ -327,7 +369,16 @@ function aggregateByCourseId(deals: SalesmapDeal[], config: SalesmapConfig): Agg
     }
   }
 
-  return { byCourseId, skippedNoAmount };
+  // 합산 결과가 0 이하인 코스ID는 제외한다(환불/상계 등으로 기존 매출을 0/음수로 덮어쓰지 않도록).
+  let skippedNonPositive = 0;
+  for (const [courseId, sale] of byCourseId) {
+    if (sale.revenue <= 0) {
+      byCourseId.delete(courseId);
+      skippedNonPositive += 1;
+    }
+  }
+
+  return { byCourseId, skippedNoAmount, skippedNonPositive };
 }
 
 function salesRecordFromAggregate(sale: AggregatedSale): SalesRecord {
