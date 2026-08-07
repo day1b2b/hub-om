@@ -1,6 +1,6 @@
 "use client";
 
-import { type CSSProperties, useState } from "react";
+import { type CSSProperties, useEffect, useState } from "react";
 
 interface MatchedItem {
   course: string;
@@ -77,6 +77,17 @@ export function SatisfactionMatchPreview() {
     }
   }
 
+  // 화면을 열면 서버 기본 시트(SATISFACTION_SHEET_URL)로 즉시 최신 매칭을 불러온다.
+  // 기본값이 없으면 서버가 시트 주소 입력을 안내하는 오류를 돌려주고, 아래 입력칸으로 조회하면 된다.
+  useEffect(() => {
+    // setTimeout으로 한 틱 미뤄 effect 본문의 동기 setState(연쇄 렌더) 경고를 피한다
+    const timer = setTimeout(() => {
+      void runPreview();
+    }, 0);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const stats = data?.stats;
 
   return (
@@ -84,8 +95,9 @@ export function SatisfactionMatchPreview() {
       <header style={{ marginBottom: "16px" }}>
         <h1 style={{ margin: "0 0 8px" }}>만족도 매칭 미리보기</h1>
         <p style={{ color: "#555", margin: 0 }}>
-          만족도 집계 시트를 운영 데이터와 대조해 어떤 회차에 자동 연결될지 미리 확인합니다. 이 화면은
-          조회만 하며, 실제 데이터는 변경하지 않습니다.
+          화면을 열면 팀 집계 시트를 자동으로 읽어 최신 매칭 상태를 보여줍니다. 조회만 하며 실제
+          데이터는 변경하지 않습니다. 미매칭 건은 시트에서 코스ID·일정을 고치면 다음 조회 때 자동으로
+          매칭됩니다. (다른 시트를 볼 때만 아래 주소를 직접 입력)
         </p>
       </header>
 

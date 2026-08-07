@@ -146,8 +146,10 @@ export interface UpdateOperationInput {
   instructorSatisfaction?: string;
   instructors?: string;
   instructorWikiLink?: string;
+  ld?: string;
   lectureManagementLink?: string;
   lectureManagementNote?: string;
+  om?: string;
   operationCost?: number | null;
   operationDetail?: string;
   operationIssue?: string;

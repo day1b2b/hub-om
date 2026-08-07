@@ -162,8 +162,18 @@ export function OperationDetail({
               <h2>담당 / 투입</h2>
             </div>
             <div className="info-grid">
-              <InfoItem label="OM" value={operation.om || "미정"} />
-              <InfoItem label="LD" value={operation.ld || "미정"} />
+              <EditableInfoItem
+                displayValue={operation.om || "미정"}
+                fields={[{ name: "om", placeholder: "예: 이혜림", value: operation.om }]}
+                label="OM"
+                operationId={operation.operationId}
+              />
+              <EditableInfoItem
+                displayValue={operation.ld || "미정"}
+                fields={[{ name: "ld", placeholder: "예: 강다현", value: operation.ld }]}
+                label="LD"
+                operationId={operation.operationId}
+              />
               <InfoItem label="강사" value={operation.instructors || "미정"} />
               <InfoItem label="실습코치" value={operation.coach || "미정"} />
               <InfoItem label="교육장 (장소)" value={operation.region || "미정"} />
