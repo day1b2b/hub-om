@@ -54,10 +54,12 @@ export function ImportUploadPanel() {
             <strong>운영 현황 일괄 등록</strong>
             <p>
               엑셀 파일을 올리면 먼저 검토 대기 상태로 저장됩니다. 아래 표에서 확인한 뒤 운영 현황(/operations)에
-              반영하세요. 기존에 등록했던 파일과 같은 열 제목(고객사명, 과정명, 과정ID, 회차, 시작일, 종료일, 담당OM,
-              담당LD 등)을 그대로 쓰면 자동으로 값이 채워집니다.
+              반영하세요. 양식을 내려받아 그대로 채워서 올리면 자동으로 값이 채워집니다.
             </p>
           </div>
+          <a className="primary-link" download href="/api/admin/imports/template">
+            양식 다운로드
+          </a>
         </div>
 
         <form action={uploadImport} className="import-upload-panel">
