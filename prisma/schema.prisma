@@ -158,6 +158,7 @@ model OperationSession {
   region                String?
   onsiteRequired        OnsiteRequired     @default(UNKNOWN) @map("onsite_required")
   onsiteText            String?            @map("onsite_text")
+  onsiteOmName          String?            @map("onsite_om_name")
   specialNotes          String?            @map("special_notes")
   operationIssue        String?            @map("operation_issue")
   omUpdate              String?            @map("om_update")

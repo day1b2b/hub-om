@@ -26,6 +26,7 @@ const APPLYABLE_FIELDS = [
   "lectureManagementLink",
   "lectureManagementNote",
   "om",
+  "onsiteOm",
   "operationCost",
   "operationDetail",
   "operationIssue",
