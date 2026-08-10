@@ -63,19 +63,21 @@ export async function runSalesRevenueSync({
   }
 
   const prisma = getPrismaClient();
-  const courseIds = [...new Set(records.map((record) => record.courseId))];
-  const courses: CourseRow[] = courseIds.length
-    ? await prisma.course.findMany({
-        where: { courseId: { in: courseIds } },
-        select: { id: true, courseId: true, name: true, revenue: true, company: { select: { name: true } } }
-      })
-    : [];
+  // hub-om 코스ID에 눈에 안 보이는 문자(제로폭 공백 등)나 공백이 섞여 매칭이 안 되는 경우가 있어,
+  // 양쪽 코스ID를 정규화(보이지 않는 문자 제거 + trim)한 뒤 맞춘다.
+  const normalizedRecordIds = new Set(records.map((record) => normalizeCourseId(record.courseId)));
+  const courses: CourseRow[] = await prisma.course.findMany({
+    where: { courseId: { not: "" } },
+    select: { id: true, courseId: true, name: true, revenue: true, company: { select: { name: true } } }
+  });
 
   const coursesByCourseId = new Map<string, CourseRow[]>();
   for (const course of courses) {
-    const list = coursesByCourseId.get(course.courseId) ?? [];
+    const normalized = normalizeCourseId(course.courseId);
+    if (!normalized || !normalizedRecordIds.has(normalized)) continue;
+    const list = coursesByCourseId.get(normalized) ?? [];
     list.push(course);
-    coursesByCourseId.set(course.courseId, list);
+    coursesByCourseId.set(normalized, list);
   }
 
   const changes: SalesRevenueChange[] = [];
@@ -88,7 +90,7 @@ export async function runSalesRevenueSync({
   const pendingUpdates: Array<{ id: string; revenue: number }> = [];
 
   for (const record of records) {
-    const matched = coursesByCourseId.get(record.courseId);
+    const matched = coursesByCourseId.get(normalizeCourseId(record.courseId));
     if (!matched || matched.length === 0) {
       unmatchedCourseIds.push(record.courseId);
       continue;
@@ -197,6 +199,11 @@ export async function runSalesRevenueSync({
   }
 
   return result;
+}
+
+/** 코스ID 비교용 정규화: 제로폭 공백 등 보이지 않는 문자를 제거하고 앞뒤 공백을 없앤다. */
+function normalizeCourseId(value: string): string {
+  return value.replace(/[​-‍﻿ ]/g, "").trim();
 }
 
 function toNumber(value: unknown): number | null {
