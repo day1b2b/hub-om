@@ -363,7 +363,6 @@ export function OperationDashboard({ omRoster, operations, partByPersonKey, team
                 <tr>
                   <th>#</th>
                   <th>교육형태</th>
-                  <th>운영유형</th>
                   <th>코스ID</th>
                   <th>기업</th>
                   <th>과정명</th>
@@ -375,11 +374,8 @@ export function OperationDashboard({ omRoster, operations, partByPersonKey, team
                   <th>종료일</th>
                   <th>강사</th>
                   <th>실습코치</th>
-                  <th>만족도(전체)</th>
-                  <th>만족도(강사)</th>
+                  <th>만족도(평균)</th>
                   <th>코스매출</th>
-                  <th>강사비</th>
-                  <th>운영비</th>
                 </tr>
               </thead>
               <tbody>
@@ -388,7 +384,6 @@ export function OperationDashboard({ omRoster, operations, partByPersonKey, team
                     <tr key={group.key}>
                       <td>{(currentPage - 1) * pageSize + index + 1}</td>
                       <td>{summarizeText(group.operations, (operation) => operation.educationFormat)}</td>
-                      <td>{summarizeText(group.operations, (operation) => operation.operationType)}</td>
                       <td>{group.courseId || "검토필요"}</td>
                       <td><strong>{group.companyName}</strong></td>
                       <td>
@@ -405,15 +400,12 @@ export function OperationDashboard({ omRoster, operations, partByPersonKey, team
                       <td>{summarizeText(group.operations, (operation) => operation.instructors)}</td>
                       <td>{summarizeText(group.operations, (operation) => operation.coach)}</td>
                       <td>{formatSatisfactionValue(average(satisfactionValues(group.operations, (operation) => operation.avgSatisfaction)))}</td>
-                      <td>{formatSatisfactionValue(average(satisfactionValues(group.operations, (operation) => operation.instructorSatisfaction)))}</td>
                       <td>{formatMoney(sumRevenueByCourseId(group.operations))}</td>
-                      <td>{formatMoney(sumMoney(group.operations, (operation) => operation.instructorCost))}</td>
-                      <td>{formatMoney(sumMoney(group.operations, (operation) => operation.operationCost))}</td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td className="empty-state" colSpan={19}>
+                    <td className="empty-state" colSpan={15}>
                       <strong>표시할 운영 건이 없습니다.</strong>
                       <span>필터를 초기화하거나 연결된 운영 데이터 상태를 확인하세요.</span>
                     </td>
