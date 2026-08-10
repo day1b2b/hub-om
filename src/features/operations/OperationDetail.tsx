@@ -7,6 +7,7 @@ import { BulkSaveRoundsButton } from "./BulkSaveRoundsButton";
 import { DeleteRoundButton } from "./DeleteRoundButton";
 import { EditAllRoundsProvider } from "./EditAllRoundsProvider";
 import { EditableInfoItem } from "./EditableInfoItem";
+import { EditableOnsiteOmCell } from "./EditableOnsiteOmCell";
 import { EditableResourceRow } from "./EditableResourceRow";
 import { EditableRoundResourceCell } from "./EditableRoundResourceCell";
 import { EditableSessionRow } from "./EditableSessionRow";
@@ -232,7 +233,7 @@ export function OperationDetail({
                   <tr>
                     <th>회차</th>
                     <th>OM</th>
-                    <th>LD</th>
+                    <th>현장운영</th>
                     <th>일정 / 시간</th>
                     <th>강사</th>
                     <th>실습코치</th>
@@ -257,7 +258,13 @@ export function OperationDetail({
                         </Link>
                       </td>
                       <td>{displayRoleAssigneeText(courseOperation.om, "배정필요")}</td>
-                      <td>{displayRoleAssigneeText(courseOperation.ld, "미정")}</td>
+                      <EditableOnsiteOmCell
+                        om={courseOperation.om}
+                        onsiteOm={courseOperation.onsiteOm}
+                        onsiteRequired={courseOperation.onsiteRequired}
+                        operationId={courseOperation.operationId}
+                        options={personOptions.om}
+                      />
                       <EditableSessionRow
                         coach={courseOperation.coach}
                         endDate={courseOperation.endDate}
