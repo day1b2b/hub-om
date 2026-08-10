@@ -533,7 +533,8 @@ function groupOperationsByCourse(operations: OperationSession[], today: Date): C
 
   return [...groups.entries()]
     .map(([key, groupOperations]) => buildCourseGroup(key, groupOperations, today))
-    .sort((a, b) => a.startDate.localeCompare(b.startDate));
+    // 최신 과정이 위에 오도록 시작일 내림차순 정렬(오래된 빈 과정이 1페이지를 가리지 않게).
+    .sort((a, b) => b.startDate.localeCompare(a.startDate));
 }
 
 function courseGroupKey(operation: OperationSession): string {
