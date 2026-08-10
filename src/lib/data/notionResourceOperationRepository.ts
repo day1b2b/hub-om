@@ -134,6 +134,7 @@ function mapPageToOperation(page: NotionPage, config: NotionResourceSourceConfig
     courseName,
     om: owner,
     ld: getFirstTextProperty(properties, PROPERTY_NAMES.planner),
+    onsiteOm: "",
     operationStatus,
     archiveStatus: operationStatus === "완료" ? "완료" : "아카이빙전",
     educationFormat: channel === "onsite" ? "오프라인" : channel === "live_online" ? "비대면" : "검토필요",

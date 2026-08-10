@@ -50,6 +50,7 @@ export interface OperationSession {
   courseName: string;
   om: string;
   ld: string;
+  onsiteOm: string;
   operationStatus: OperationStatus;
   archiveStatus: ArchiveStatus;
   educationFormat: EducationFormat;
@@ -150,6 +151,7 @@ export interface UpdateOperationInput {
   lectureManagementLink?: string;
   lectureManagementNote?: string;
   om?: string;
+  onsiteOm?: string;
   operationCost?: number | null;
   operationDetail?: string;
   operationIssue?: string;

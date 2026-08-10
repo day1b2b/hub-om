@@ -165,6 +165,7 @@ export class PrismaOperationRepository implements OperationRepository {
         courseName: session.course.name,
         om: session.omName ?? "",
         ld: session.ldName ?? "",
+        onsiteOm: session.onsiteOmName ?? "",
         operationStatus: OPERATION_STATUS[session.operationStatus],
         archiveStatus: ARCHIVE_STATUS[session.archiveStatus],
         educationFormat: EDUCATION_FORMAT[session.educationFormat],
@@ -407,6 +408,7 @@ export class PrismaOperationRepository implements OperationRepository {
     if (input.lectureManagementLink !== undefined) data.lectureManagementLink = nullableText(input.lectureManagementLink);
     if (input.lectureManagementNote !== undefined) data.lectureManagementNote = nullableText(input.lectureManagementNote);
     if (input.om !== undefined) data.omName = nullableText(input.om);
+    if (input.onsiteOm !== undefined) data.onsiteOmName = nullableText(input.onsiteOm);
     if (input.operationCost !== undefined) data.operationCost = input.operationCost;
     if (input.operationDetail !== undefined) data.operationDetail = nullableText(input.operationDetail);
     if (input.operationIssue !== undefined) data.operationIssue = nullableText(input.operationIssue);

@@ -154,6 +154,7 @@ export const ADMIN_EDITABLE_FIELDS = {
     { field: "coachText", input: "text", label: "코치", nullable: true },
     { field: "region", input: "text", label: "지역", nullable: true },
     { field: "onsiteRequired", input: "enum", label: "출강", optionLabels: ADMIN_ENUM_LABELS.onsiteRequired, options: ["Y", "N", "PARTIAL", "UNKNOWN"] },
+    { field: "onsiteOmName", input: "text", label: "현장운영 OM", nullable: true },
     { field: "specialNotes", input: "textarea", label: "특이사항", nullable: true },
     { field: "operationIssue", input: "textarea", label: "운영이슈", nullable: true },
     { field: "omUpdate", input: "textarea", label: "OM 업데이트", nullable: true },
