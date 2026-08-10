@@ -63,7 +63,7 @@ export function OperationDashboard({ operations, partByPersonKey, teamScope }: O
   const [range, setRange] = useState<{ start: string; end: string }>({ start: "", end: "" });
   const [page, setPage] = useState(1);
   const [pageInput, setPageInput] = useState("");
-  const pageSize = 50;
+  const pageSize = 15;
   const teamOperations = operations;
 
   const filterOptions = useMemo(() => {
@@ -363,7 +363,7 @@ export function OperationDashboard({ operations, partByPersonKey, teamScope }: O
                   <th>실습코치</th>
                   <th>만족도(전체)</th>
                   <th>만족도(강사)</th>
-                  <th>매출</th>
+                  <th>코스매출</th>
                   <th>강사비</th>
                   <th>운영비</th>
                 </tr>
@@ -460,7 +460,7 @@ const OPERATIONS_CSV_HEADERS = [
   "실습코치",
   "만족도(전체)",
   "만족도(강사)",
-  "매출",
+  "코스매출",
   "강사비",
   "운영비"
 ];
