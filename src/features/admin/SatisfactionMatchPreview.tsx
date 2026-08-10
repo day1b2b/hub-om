@@ -29,6 +29,7 @@ interface UnmatchedItem {
   instructor: string;
   date: string;
   courseId: string;
+  reason?: string;
 }
 
 interface PreviewResponse {
@@ -249,7 +250,10 @@ export function SatisfactionMatchPreview() {
 
       {data?.unmatched && data.unmatched.length > 0 ? (
         <section style={{ marginTop: "16px" }}>
-          <h2 style={{ fontSize: "16px" }}>미매칭 (후보 없음)</h2>
+          <h2 style={{ fontSize: "16px" }}>미매칭 (연결할 운영을 찾지 못함)</h2>
+          <p style={{ color: "#555", margin: "0 0 8px", fontSize: "13px" }}>
+            시트에서 코스ID·일정을 고치면 다음 조회 때 자동으로 매칭됩니다. 테스트 행은 시트에서 삭제하세요.
+          </p>
           <div style={{ overflowX: "auto" }}>
             <table style={tableStyle}>
               <thead>
@@ -258,6 +262,7 @@ export function SatisfactionMatchPreview() {
                   <th style={thStyle}>강사</th>
                   <th style={thStyle}>일자</th>
                   <th style={thStyle}>courseId</th>
+                  <th style={thStyle}>이유 / 조치</th>
                 </tr>
               </thead>
               <tbody>
@@ -267,6 +272,7 @@ export function SatisfactionMatchPreview() {
                     <td style={tdStyle}>{item.instructor}</td>
                     <td style={tdStyle}>{item.date}</td>
                     <td style={tdStyle}>{item.courseId}</td>
+                    <td style={tdStyle}>{item.reason ?? ""}</td>
                   </tr>
                 ))}
               </tbody>

@@ -103,7 +103,8 @@ export async function POST(request: Request) {
         course: result.row.course,
         instructor: result.row.instructor,
         date: result.row.date,
-        courseId: result.row.courseId
+        courseId: result.row.courseId,
+        reason: result.reason ?? ""
       }));
 
     return NextResponse.json({

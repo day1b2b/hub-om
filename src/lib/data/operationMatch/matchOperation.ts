@@ -147,8 +147,18 @@ function scoreCandidate(
   };
 }
 
+/**
+ * 과정코드 비교용 정규화.
+ * 원천 데이터(운영 시트)의 과정코드에는 눈에 보이지 않는 문자(zero-width space 등)가 섞여 들어온다.
+ * 이걸 지우지 않으면 화면에는 같은 "255413"으로 보여도 문자열 비교가 어긋나 매칭이 전부 실패한다.
+ * 적재 경로의 normalizeCourseId(operationCalculations)와 같은 규칙을 쓴다.
+ */
 function normalizeCourseId(value: string | null | undefined): string {
-  return String(value ?? "").normalize("NFKC").trim();
+  return String(value ?? "")
+    .normalize("NFKC")
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .trim()
+    .replace(/\.0$/, "");
 }
 
 function scoreCourseName(engagement: EngagementKey, candidate: OperationCandidate): number {
