@@ -23,6 +23,8 @@ export interface OmRequest {
   trainingType: TrainingType;
   courseId: string;
   courseName: string;
+  courseCategory: string;
+  tools?: string;
   instructorName: string;
   syncupLink: string;
   driveLink: string;
@@ -36,3 +38,15 @@ export interface OmRequest {
 }
 
 export type OmRequestInput = Omit<OmRequest, "id" | "createdAt" | "status" | "assignedOm">;
+
+export function omRequestStatusLabel(status: OmRequest["status"]): string {
+  return status === "배정완료" ? "지정완료" : "요청중";
+}
+
+// 파트별 지정 권한자. 이 매핑은 OM 지정(배정) 액션의 파트 관리자 확인에 쓰인다.
+export function omRequestManagerName(team: string): string | null {
+  if (team.includes("1파트")) return "김정선";
+  if (team.includes("2파트")) return "조여경";
+  if (team.includes("3파트")) return "이혜림";
+  return null;
+}

@@ -4,6 +4,7 @@ import Script from "next/script";
 import { useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { parseToolsValue, TOOL_GROUPS, TOOL_META_OPTIONS } from "@/lib/data/omRequest/omToolOptions";
 import type { OmRequestInput, OmRequestSession, TrainingType, YN } from "@/lib/data/omRequest/omRequestTypes";
 
 declare global {
@@ -35,8 +36,29 @@ function AddressSearchButton({ onSelect }: { onSelect: (address: string) => void
   );
 }
 
-const TEAM_OPTIONS = ["1팀", "2팀"];
+const TEAM_OPTIONS = ["1파트", "2파트", "3파트"];
 const TRAINING_TYPE_OPTIONS: TrainingType[] = ["오프라인", "블렌디드", "비대면", "해커톤"];
+
+const COURSE_CATEGORY_OPTIONS = [
+  "AI 리터러시·트렌드",
+  "생성형 AI 업무 활용",
+  "AI 에이전트·업무자동화",
+  "AI 코딩·바이브코딩",
+  "데이터 분석·시각화",
+  "머신러닝·딥러닝",
+  "데이터베이스·SQL",
+  "Python·프로그래밍",
+  "OA·문서 생산성",
+  "콘텐츠·디자인",
+  "마케팅·영업",
+  "서비스기획·UX",
+  "리더십·변화관리",
+  "클라우드·개발환경",
+  "정보보안·컴플라이언스",
+  "연구·R&D",
+  "플랫폼·콘텐츠 운영",
+  "재무·비즈니스"
+];
 
 const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
   const h = String(Math.floor(i / 2)).padStart(2, "0");
@@ -129,18 +151,30 @@ function YNToggle({
   );
 }
 
-export function OmRequestForm({ ldName, initialData, requestId }: { ldName: string; initialData?: OmRequestInput; requestId?: string }) {
+export function OmRequestForm({
+  extraTools = [],
+  ldName,
+  initialData,
+  requestId
+}: {
+  extraTools?: string[];
+  ldName: string;
+  initialData?: OmRequestInput;
+  requestId?: string;
+}) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [form, setForm] = useState<OmRequestInput>(initialData ?? {
-    team: "1팀",
+    team: "1파트",
     ld: ldName,
     company: "",
     trainingType: "오프라인",
     courseId: "",
     courseName: "",
+    courseCategory: "",
+    tools: "",
     instructorName: "",
     driveLink: "",
     syncupLink: "",
@@ -153,8 +187,40 @@ export function OmRequestForm({ ldName, initialData, requestId }: { ldName: stri
     notes: ""
   });
 
+  const [{ custom: initialCustomTools, selected: initialSelectedTools }] = useState(() => parseToolsValue(initialData?.tools ?? "", extraTools));
+  const [selectedTools, setSelectedTools] = useState(initialSelectedTools);
+  const [customTools, setCustomTools] = useState(initialCustomTools);
+
   function setField<K extends keyof OmRequestInput>(key: K, value: OmRequestInput[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function syncToolsField(selected: Set<string>, custom: string) {
+    const combined = [...selected, ...(custom.trim() ? [custom.trim()] : [])].join(", ");
+    setField("tools", combined);
+  }
+
+  function toggleTool(tool: string) {
+    setSelectedTools((prev) => {
+      const next = new Set(prev);
+      const isMeta = TOOL_META_OPTIONS.includes(tool);
+      if (next.has(tool)) {
+        next.delete(tool);
+      } else if (isMeta) {
+        next.clear();
+        next.add(tool);
+      } else {
+        TOOL_META_OPTIONS.forEach((meta) => next.delete(meta));
+        next.add(tool);
+      }
+      syncToolsField(next, customTools);
+      return next;
+    });
+  }
+
+  function handleCustomToolsChange(value: string) {
+    setCustomTools(value);
+    syncToolsField(selectedTools, value);
   }
 
   function handleTotalSessionsChange(n: number) {
@@ -304,6 +370,14 @@ export function OmRequestForm({ ldName, initialData, requestId }: { ldName: stri
             />
           </label>
 
+          <label>
+            <span>과정 카테고리<RequiredMark /></span>
+            <select required value={form.courseCategory} onChange={(e) => setField("courseCategory", e.target.value)}>
+              <option value="">선택</option>
+              {COURSE_CATEGORY_OPTIONS.map((category) => <option key={category}>{category}</option>)}
+            </select>
+          </label>
+
           <label className="wide-field">
             <span>싱크업 링크<RequiredMark /></span>
             <input
@@ -325,6 +399,57 @@ export function OmRequestForm({ ldName, initialData, requestId }: { ldName: stri
             />
           </label>
 
+        </div>
+      </div>
+
+      {/* 사용 Tool */}
+      <div className="operation-form-section">
+        <div className="section-title"><h2>사용 Tool</h2></div>
+        <div className="om-tool-groups">
+          {TOOL_GROUPS.map((group) => (
+            <div className="om-tool-group" key={group.category}>
+              <span className="om-tool-group-title">{group.category}</span>
+              <div className="om-tool-group-options">
+                {group.tools.map((tool) => (
+                  <label className="inline-toggle" key={tool}>
+                    <input checked={selectedTools.has(tool)} onChange={() => toggleTool(tool)} type="checkbox" />
+                    <span>{tool}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          ))}
+          {extraTools.length > 0 && (
+            <div className="om-tool-group">
+              <span className="om-tool-group-title">추가된 도구</span>
+              <div className="om-tool-group-options">
+                {extraTools.map((tool) => (
+                  <label className="inline-toggle" key={tool}>
+                    <input checked={selectedTools.has(tool)} onChange={() => toggleTool(tool)} type="checkbox" />
+                    <span>{tool}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="om-tool-group">
+            <span className="om-tool-group-title">기타</span>
+            <div className="om-tool-group-options">
+              {TOOL_META_OPTIONS.map((meta) => (
+                <label className="inline-toggle" key={meta}>
+                  <input checked={selectedTools.has(meta)} onChange={() => toggleTool(meta)} type="checkbox" />
+                  <span>{meta}</span>
+                </label>
+              ))}
+            </div>
+            <input
+              className="om-tool-custom-input"
+              onChange={(e) => handleCustomToolsChange(e.target.value)}
+              placeholder="목록에 없는 도구는 직접 입력 (쉼표로 구분)"
+              type="text"
+              value={customTools}
+            />
+          </div>
         </div>
       </div>
 
@@ -354,7 +479,12 @@ export function OmRequestForm({ ldName, initialData, requestId }: { ldName: stri
               onChange={(e) => handleTotalSessionsChange(Number(e.target.value))}
             />
           </label>
+          <p className="om-field-hint">
+            회차 수를 늘리면 1회차의 시간·장소가 자동 복사돼요. 회차·일정이 아직 확정되지 않았다면 요청사항에 대략적인 내용을 적어주세요.
+          </p>
         </div>
+
+        <p className="om-field-hint">숫자만 입력해도 날짜가 자동 완성돼요 (예: 20260812 → 2026-08-12). 장소가 미정이면 「미정」이라고 입력해도 됩니다.</p>
 
         <div className="om-sessions-table">
           <div className="om-sessions-header">
@@ -425,7 +555,7 @@ export function OmRequestForm({ ldName, initialData, requestId }: { ldName: stri
               required
               rows={5}
               value={form.notes}
-              placeholder="예) 결과보고서 유무, 다과 유무, 이전 OM 배정 요청 등"
+              placeholder="예) 결과보고서 유무, 다과 유무, 이전 요청 사항 등"
               onChange={(e) => setField("notes", e.target.value)}
             />
           </label>

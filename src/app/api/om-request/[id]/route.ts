@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { addCustomTools, listCustomTools } from "@/lib/data/omRequest/omCustomToolsLocalRepository";
 import { deleteOmRequest, updateOmRequest } from "@/lib/data/omRequest/omRequestLocalRepository";
 import type { OmRequestInput } from "@/lib/data/omRequest/omRequestTypes";
+import { extractUnknownTools } from "@/lib/data/omRequest/omToolOptions";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -12,6 +14,7 @@ export async function PATCH(request: Request, { params }: Props) {
     const body = (await request.json()) as OmRequestInput;
     const updated = updateOmRequest(id, body);
     if (!updated) return NextResponse.json({ error: "요청 없음" }, { status: 404 });
+    addCustomTools(extractUnknownTools(updated.tools ?? "", listCustomTools()));
     return NextResponse.json(updated);
   } catch {
     return NextResponse.json({ error: "저장 실패" }, { status: 500 });

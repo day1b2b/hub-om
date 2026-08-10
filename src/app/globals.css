@@ -7662,6 +7662,12 @@ td span {
   border-color: #ead1d1;
 }
 
+.calendar-event.request-calendar-event {
+  background: #fffaf0;
+  border-color: #e8d9b5;
+  border-style: dashed;
+}
+
 .calendar-event.multi-day-start {
   border-radius: 5px 0 0 5px;
 }
@@ -7713,6 +7719,11 @@ td span {
 .calendar-event.absence-calendar-event:hover {
   background: #fff7f7;
   border-color: #ead1d1;
+}
+
+.calendar-event.request-calendar-event:hover {
+  background: #fdf3e2;
+  border-color: #dcc48f;
 }
 
 .calendar-event strong,
@@ -7781,6 +7792,29 @@ td span {
   min-width: 0;
   overflow-x: auto;
   padding: 10px 4px 12px;
+}
+
+.resource-part-filters {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.resource-part-group {
+  display: grid;
+  gap: 4px;
+}
+
+.resource-part-group + .resource-part-group {
+  margin-top: 8px;
+}
+
+.resource-part-heading {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0;
+  padding: 0 4px;
 }
 
 .inline-toggle {
@@ -7929,6 +7963,47 @@ td span {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
+}
+
+.quick-link-group {
+  display: grid;
+  gap: 8px;
+}
+
+.quick-link-group h2 {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.quick-link-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+.quick-link-card {
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  display: flex;
+  font-size: 13px;
+  font-weight: 600;
+  gap: 8px;
+  padding: 10px 12px;
+  text-decoration: none;
+}
+
+.quick-link-card::before {
+  content: attr(data-icon);
+  font-size: 14px;
+}
+
+.quick-link-card:hover {
+  background: var(--surface-strong);
 }
 
 .resource-empty-card {
@@ -10621,6 +10696,51 @@ button.coach-doc-reserve-chip:disabled {
   color: #fff;
 }
 
+.om-field-hint {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 0;
+}
+
+.om-tool-groups {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+.om-tool-group {
+  display: grid;
+  gap: 8px;
+}
+
+.om-tool-group-title {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.om-tool-group-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.om-tool-custom-input {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  font-size: 13px;
+  height: 34px;
+  margin-top: 4px;
+  padding: 0 10px;
+}
+
+.om-tool-custom-input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(36, 90, 159, 0.12);
+  outline: 0;
+}
+
 .om-sessions-table {
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -10699,6 +10819,12 @@ button.coach-doc-reserve-chip:disabled {
   color: var(--red);
   font-size: 13px;
   margin: 0 0 12px;
+}
+
+.om-assign-warning {
+  color: var(--amber);
+  font-size: 12px;
+  margin: -4px 0 0;
 }
 
 .page-subtitle {
@@ -10958,6 +11084,12 @@ button.coach-doc-reserve-chip:disabled {
 .om-manage-filters {
   display: flex;
   gap: 6px;
+}
+
+.om-manage-part-filters {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
 }
 
 .om-filter-btn {
@@ -11408,6 +11540,45 @@ button.coach-doc-reserve-chip:disabled {
   gap: 10px;
 }
 
+.om-recommend-list {
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 8px;
+  padding-bottom: 10px;
+}
+
+.om-recommend-tier {
+  display: grid;
+  gap: 4px;
+}
+
+.om-recommend-tier-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.om-recommend-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.om-recommend-chip {
+  background: var(--surface-strong);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
+.om-recommend-chip:hover {
+  background: var(--blue-bg);
+  border-color: var(--blue);
+  color: var(--blue);
+}
 
 .assign-form-input {
   border: 1px solid var(--line);
