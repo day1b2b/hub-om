@@ -1,6 +1,7 @@
 import { AppSidebar } from "@/components/AppSidebar";
 import { AdminDatabaseGrid } from "@/features/admin/AdminDatabaseGrid";
 import { DeletedOperationsPanel } from "@/features/admin/DeletedOperationsPanel";
+import { OnsiteRequiredBackfillPanel } from "@/features/admin/OnsiteRequiredBackfillPanel";
 import { requireAdminSession } from "@/lib/auth/requireAdminSession";
 import {
   readDatabaseDashboard,
@@ -48,7 +49,12 @@ export default async function AdminDatabasePage({ searchParams }: AdminDatabaseP
 
         <AdminDatabaseGrid columns={columns} selectedTable={selectedTable} tables={snapshot.tables} teamScope={teamScope} />
 
-        {selectedTable.key === "operation_sessions" ? <DeletedOperationsPanel /> : null}
+        {selectedTable.key === "operation_sessions" ? (
+          <>
+            <OnsiteRequiredBackfillPanel />
+            <DeletedOperationsPanel />
+          </>
+        ) : null}
       </section>
     </main>
   );

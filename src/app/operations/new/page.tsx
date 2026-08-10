@@ -2,6 +2,7 @@ import { OperationCreateForm } from "@/app/operations/new/OperationCreateForm";
 import { AppSidebar } from "@/components/AppSidebar";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
+import { getOmRequest } from "@/lib/data/omRequest/omRequestLocalRepository";
 import { buildPersonOptions, buildRoleRosterFromOperations, mergeRoleRosters } from "@/lib/data/personOptions";
 import { getStoredTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFactory";
 import { filterRoleRosterByTeamScope, resolveTeamScope } from "@/lib/teamScope";
@@ -28,6 +29,8 @@ export default async function NewOperationPage({ searchParams }: NewOperationPag
   const storageTarget = process.env.OPERATION_DATA_SOURCE === "local" || !process.env.DATABASE_URL ? "로컬 JSON" : "운영 DB";
   const today = formatDate(new Date());
   const personOptions = buildPersonOptions(scopedRoleRoster);
+  const fromRequestId = firstParamValue(params.fromRequestId);
+  const initialValues = fromRequestId ? buildInitialValuesFromOmRequest(fromRequestId) : undefined;
 
   return (
     <main className="dashboard-shell">
@@ -44,7 +47,7 @@ export default async function NewOperationPage({ searchParams }: NewOperationPag
           </div>
         </header>
 
-        <OperationCreateForm personOptions={personOptions} teamScope={teamScope} today={today} />
+        <OperationCreateForm initialValues={initialValues} personOptions={personOptions} teamScope={teamScope} today={today} />
       </section>
     </main>
   );
@@ -55,4 +58,30 @@ function formatDate(value: Date) {
   const month = String(value.getMonth() + 1).padStart(2, "0");
   const day = String(value.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function firstParamValue(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function buildInitialValuesFromOmRequest(requestId: string) {
+  const request = getOmRequest(requestId);
+  if (!request) return undefined;
+
+  const firstSession = request.sessions[0];
+
+  return {
+    companyName: request.company,
+    courseId: request.courseId,
+    courseName: request.courseName,
+    driveLink: request.driveLink,
+    educationDays: firstSession?.duration,
+    endDate: firstSession?.dateEnd || firstSession?.date,
+    instructors: request.instructorName,
+    onsiteRequired: request.onSiteOperation === "Y" ? "Y" : "N",
+    operationDetail: request.syncupLink,
+    region: firstSession?.location,
+    startDate: firstSession?.date,
+    timeText: firstSession?.timeStart && firstSession?.timeEnd ? `${firstSession.timeStart} ~ ${firstSession.timeEnd}` : undefined
+  };
 }
