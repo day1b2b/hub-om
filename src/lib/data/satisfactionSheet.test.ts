@@ -151,6 +151,54 @@ test("EngagementKey 변환: courseId도 전달한다", () => {
   assert.equal(key.courseId, "260759");
 });
 
+test("매칭: 운영 코스ID에 보이지 않는 문자(zero-width space)가 섞여 있어도 matched", () => {
+  // 원천 시트에서 적재된 courseId에는 U+200B가 붙어 오는 경우가 있다.
+  // 화면에는 "260759"로 보이지만 문자열 비교가 어긋나 전 건이 매칭 실패하던 실사고.
+  const candidates: OperationCandidate[] = [
+    {
+      id: "op-zwsp",
+      courseId: "260759​",
+      courseName: "표기가 다른 과정명",
+      startDate: "2026-07-24",
+      endDate: "2026-07-24"
+    }
+  ];
+  const result = matchSatisfactionRow(toSatisfactionSheetRow(ROW_KT_OPENCLASS), candidates);
+  assert.equal(result.status, "matched");
+  assert.equal(result.operationId, "op-zwsp");
+});
+
+test("매칭: 기준 미달(점수 0) 후보만 있으면 ambiguous가 아니라 unmatched + 사유", () => {
+  // 기간이 1년인 운영은 어떤 강의일도 품기 때문에 날짜 점수만으로 후보에 남는다.
+  // 과정도 코스ID도 다르므로 확인할 거리가 아니다 → 모호로 부풀리지 않는다.
+  const candidates: OperationCandidate[] = [
+    {
+      id: "op-long",
+      courseName: "26년도 디지털 분야 위탁 교육",
+      startDate: "2025-12-18",
+      endDate: "2026-12-30"
+    }
+  ];
+  const result = matchSatisfactionRow(toSatisfactionSheetRow(ROW_KT_OPENCLASS), candidates);
+  assert.equal(result.status, "unmatched");
+  assert.ok(result.reason && result.reason.includes("260759"), "사유에 코스ID가 안내돼야 한다");
+});
+
+test("미매칭 사유: 코스ID 운영은 있으나 일정이 어긋나면 일정 확인을 안내", () => {
+  const candidates: OperationCandidate[] = [
+    {
+      id: "op-date-off",
+      courseId: "260759",
+      courseName: "KT AX Openclass",
+      startDate: "2026-02-01",
+      endDate: "2026-02-02"
+    }
+  ];
+  const result = matchSatisfactionRow(toSatisfactionSheetRow(ROW_KT_OPENCLASS), candidates);
+  assert.equal(result.status, "unmatched");
+  assert.ok(result.reason && result.reason.includes("일정"), "일정 불일치를 알려야 한다");
+});
+
 test("매칭: 운영 등록명이 시트와 달라도 courseId가 같고 일정이 맞으면 matched", () => {
   const candidates: OperationCandidate[] = [
     {

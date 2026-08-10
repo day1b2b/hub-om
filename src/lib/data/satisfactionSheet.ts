@@ -1,5 +1,6 @@
 import { summarizeSatisfactionValue } from "@/lib/data/satisfaction";
 import {
+  DEFAULT_MATCH_OPTIONS,
   matchOperation,
   rankOperationCandidates,
   type EngagementKey,
@@ -163,25 +164,50 @@ export interface SatisfactionMatchResult {
   status: SatisfactionMatchStatus;
   operationId: string | null;
   ranked: RankedOperationCandidate[];
+  /** 매칭되지 않은 이유 (운영자가 무엇을 고쳐야 하는지 바로 알 수 있게) */
+  reason?: string;
+}
+
+/** 미매칭 사유를 운영자 언어로 설명한다. 시트에서 무엇을 고치면 되는지가 드러나야 한다. */
+function explainUnmatched(row: SatisfactionSheetRow, ranked: RankedOperationCandidate[]): string {
+  if (!row.courseId) return "시트에 코스ID가 비어 있어요. 시트에서 코스ID를 채워주세요.";
+  if (!row.date) return "시트의 강의일정을 읽지 못했어요. 날짜 형식을 확인해 주세요.";
+  if (ranked.length === 0) return `코스ID ${row.courseId}와 일정(${row.date})에 맞는 운영이 없어요.`;
+
+  const sameCourseId = ranked.some((entry) => entry.courseScore >= 100);
+  if (sameCourseId) {
+    return `코스ID ${row.courseId} 운영은 찾았지만 일정(${row.date})이 운영 기간과 맞지 않아요. 시트 일정 또는 운영 기간을 확인해 주세요.`;
+  }
+  return `코스ID ${row.courseId}와 같은 운영을 찾지 못했어요. 운영 현황의 코스ID가 비어 있거나 다른 번호일 수 있어요.`;
 }
 
 /**
  * 만족도 시트 한 행을 운영 후보들과 매칭한다.
  * 기존 matchOperation 엔진을 재사용하며, DB에 아무것도 쓰지 않는다(드라이런 안전).
+ *
+ * 상태 판정:
+ *   - matched   : 엔진이 1건으로 확정
+ *   - ambiguous : 기준 점수를 넘긴 후보가 2건 이상이라 사람이 골라야 함
+ *   - unmatched : 확정도 아니고, 기준을 넘긴 후보도 없음(점수 0짜리 후보만 남은 경우 포함)
+ * ★기준 미달(score 0) 후보는 "확인할 거리"가 아니다. 이걸 모호로 분류하면 기간이 긴 운영이
+ *   모든 행의 후보로 달라붙어 "모호 N건"이 실제보다 부풀고, 운영자는 고칠 게 없는 목록을 뒤지게 된다.
  */
 export function matchSatisfactionRow(
   row: SatisfactionSheetRow,
   candidates: OperationCandidate[]
 ): SatisfactionMatchResult {
-  const ranked = rankOperationCandidates(toEngagementKey(row), candidates);
-  const operationId = matchOperation(toEngagementKey(row), candidates);
+  const engagement = toEngagementKey(row);
+  const ranked = rankOperationCandidates(engagement, candidates);
+  const operationId = matchOperation(engagement, candidates);
+  const scoredCandidates = ranked.filter((entry) => entry.score >= DEFAULT_MATCH_OPTIONS.minMatchScore);
 
-  let status: SatisfactionMatchStatus;
-  if (operationId) status = "matched";
-  else if (ranked.length > 0) status = "ambiguous";
-  else status = "unmatched";
-
-  return { row, status, operationId, ranked };
+  if (operationId) {
+    return { row, status: "matched", operationId, ranked };
+  }
+  if (scoredCandidates.length > 0) {
+    return { row, status: "ambiguous", operationId: null, ranked: scoredCandidates };
+  }
+  return { row, status: "unmatched", operationId: null, ranked, reason: explainUnmatched(row, ranked) };
 }
 
 /** 최소 CSV 파서: 따옴표, 필드 내 쉼표/줄바꿈, CRLF, BOM 처리. */
