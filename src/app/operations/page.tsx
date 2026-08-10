@@ -1,4 +1,4 @@
-import { OperationDashboard } from "@/features/operations/OperationDashboard";
+import { OperationDashboard, type OmRosterEntry } from "@/features/operations/OperationDashboard";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { normalizePersonKey } from "@/lib/data/roleAssignees";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
@@ -26,9 +26,15 @@ export default async function OperationsPage({ searchParams }: OperationsPagePro
   const teamScope = resolveTeamScope(params, session, ownerRoster);
   const scopedOperations = filterOperationsByTeamScope(operations, teamScope, ownerRoster);
   const partByPersonKey = buildPartByPersonKey(teamUsers);
+  const omRoster = buildOmRoster(teamUsers);
 
   return (
-    <OperationDashboard operations={scopedOperations} partByPersonKey={partByPersonKey} teamScope={teamScope} />
+    <OperationDashboard
+      omRoster={omRoster}
+      operations={scopedOperations}
+      partByPersonKey={partByPersonKey}
+      teamScope={teamScope}
+    />
   );
 }
 
@@ -43,4 +49,11 @@ function buildPartByPersonKey(teamUsers: Awaited<ReturnType<typeof listTeamUsers
     map[normalizePersonKey(user.name)] = user.team;
   }
   return map;
+}
+
+/** 파트 필터/OM 필터 옵션은 운영 데이터가 아니라 멤버관리에 등록된 OM만 기준으로 삼는다. */
+function buildOmRoster(teamUsers: Awaited<ReturnType<typeof listTeamUsers>>): OmRosterEntry[] {
+  return teamUsers
+    .filter((user) => user.role === "om" && user.name)
+    .map((user) => ({ name: user.name, team: user.team ?? null }));
 }
