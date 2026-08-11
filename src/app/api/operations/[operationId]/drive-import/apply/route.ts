@@ -14,6 +14,7 @@ const APPLYABLE_FIELDS = [
   "companyWikiLink",
   "costRaw",
   "courseId",
+  "courseName",
   "driveLink",
   "educationDays",
   "endDate",
