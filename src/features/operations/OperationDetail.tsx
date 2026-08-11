@@ -17,7 +17,6 @@ import { OperationDiscussionPanel } from "./OperationDiscussionPanel";
 import { ResultReportConditionSelect } from "./ResultReportConditionSelect";
 import { ResultReportRequirementCell } from "./ResultReportRequirementCell";
 import type {
-  OperationChannel,
   OperationSession,
   OperationStatus,
   OnsiteRequired
@@ -44,14 +43,6 @@ const STATUS_CLASS: Record<OperationStatus, string> = {
   "완료": "done",
   "회고완료": "retrospective-done",
   "아카이빙필요": "archive-needed"
-};
-
-const OPERATION_CHANNEL_LABEL: Record<OperationChannel, string> = {
-  onsite: "현장",
-  live_online: "실시간 온라인",
-  online_platform: "온라인 플랫폼",
-  blended: "혼합",
-  needs_review: "확인 필요"
 };
 
 const ONSITE_LABEL: Record<OnsiteRequired, string> = {
@@ -132,26 +123,15 @@ export function OperationDetail({
                 label="코스ID"
                 operationId={operation.operationId}
               />
-              <InfoItem label="기간" value={formatCourseDateRange(courseOperations)} />
-              <InfoItem label="시간" value={aggregateUniqueValues(courseOperations, (candidate) => candidate.timeText)} />
-              <InfoItem
-                label="운영 유형"
-                value={aggregateUniqueValues(courseOperations, (candidate) => candidate.operationType)}
-              />
+              <InfoItem label="코스ID명" value={aggregateUniqueValues(courseOperations, (candidate) => candidate.courseName)} />
               <InfoItem
                 label="교육 형태"
                 value={aggregateUniqueValues(courseOperations, (candidate) => candidate.educationFormat)}
               />
-              <InfoItem
-                label="운영 채널"
-                value={aggregateUniqueValues(courseOperations, (candidate) => OPERATION_CHANNEL_LABEL[candidate.operationChannel])}
-              />
+              <InfoItem label="기간" value={formatCourseDateRange(courseOperations)} />
               <InfoItem label="회차" value={`총 ${courseOperations.length}회차`} />
               <InfoItem label="교육일수" value={formatTotalEducationDays(courseOperations)} />
-              <InfoItem
-                label="현장 투입"
-                value={aggregateUniqueValues(courseOperations, (candidate) => ONSITE_LABEL[candidate.onsiteRequired])}
-              />
+              <InfoItem label="교육장" value={operation.region || "미정"} />
               <ResultReportConditionSelect
                 rounds={courseOperations.map((candidate) => ({
                   hasResultReport: candidate.hasResultReport,
@@ -180,7 +160,10 @@ export function OperationDetail({
               />
               <InfoItem label="강사" value={operation.instructors || "미정"} />
               <InfoItem label="실습코치" value={operation.coach || "미정"} />
-              <InfoItem label="교육장 (장소)" value={operation.region || "미정"} />
+              <InfoItem
+                label="현장 투입"
+                value={aggregateUniqueValues(courseOperations, (candidate) => ONSITE_LABEL[candidate.onsiteRequired])}
+              />
               <InfoItem label="남은 회차" value={remainingRoundText(operation)} />
             </div>
           </section>
