@@ -174,30 +174,66 @@ export function OperationDetail({
                 value={aggregateUniqueValues(courseOperations, (candidate) => ONSITE_LABEL[candidate.onsiteRequired])}
               />
               <InfoItem label="남은 회차" value={remainingRoundText(operation)} />
+              <InfoItem label="매출" value={formatMoney(operation.revenue)} />
+              <InfoItem label="만족도(평균)" value={satisfactionSummary.totalAverage ?? "미입력"} />
             </div>
           </section>
 
-          <section className="detail-section resource-status-section required-items-section">
-            <div className="resource-summary-card">
-              <div className="resource-row-head">
-                <strong>필수 항목</strong>
-                <span>{completedArchiveItems.length}/{requiredArchiveItems.length}</span>
+          <section className="detail-section resource-status-section required-items-section" id="links">
+            <div className="resource-card-grid">
+              <div className="resource-summary-card">
+                <div className="resource-row-head">
+                  <strong>필수 항목</strong>
+                  <span>{completedArchiveItems.length}/{requiredArchiveItems.length}</span>
+                </div>
+                <div className="archive-item-list" aria-label="아카이브 필수 항목">
+                  {requiredArchiveItems.map((archiveItem) => (
+                    <EditableResourceRow
+                      done={archiveItem.done}
+                      doneText={archiveItem.doneText}
+                      field={archiveItem.field}
+                      isLink
+                      key={archiveItem.label}
+                      label={archiveItem.label}
+                      missingText={archiveItem.missingText}
+                      operationId={operation.operationId}
+                      placeholder="https://"
+                      value={archiveItem.value}
+                    />
+                  ))}
+                </div>
               </div>
-              <div className="archive-item-list" aria-label="아카이브 필수 항목">
-                {requiredArchiveItems.map((archiveItem) => (
-                  <EditableResourceRow
-                    done={archiveItem.done}
-                    doneText={archiveItem.doneText}
-                    field={archiveItem.field}
-                    isLink
-                    key={archiveItem.label}
-                    label={archiveItem.label}
-                    missingText={archiveItem.missingText}
-                    operationId={operation.operationId}
-                    placeholder="https://"
-                    value={archiveItem.value}
-                  />
-                ))}
+
+              <div className="resource-summary-card">
+                <div className="resource-row-head">
+                  <strong>참고 자료</strong>
+                  <span>{registeredReferenceLinks.length}/{referenceResourceLinks.length}</span>
+                </div>
+                <div className="archive-item-list" aria-label="아카이브 참고 자료">
+                  {referenceResourceLinks.map((resourceLink) => {
+                    const hasHref = isNavigableHref(resourceLink.href);
+
+                    return (
+                      <div className={`archive-item-row ${hasHref ? "done" : "missing"}`} key={resourceLink.label}>
+                        <strong>{resourceLink.label}</strong>
+                        <div className="archive-item-actions">
+                          {hasHref ? (
+                            <a
+                              className="archive-item-state"
+                              href={toHref(resourceLink.href) ?? resourceLink.href}
+                              rel="noreferrer"
+                              target="_blank"
+                            >
+                              바로가기
+                            </a>
+                          ) : (
+                            <span className="archive-item-state">링크 없음</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </section>
@@ -361,40 +397,8 @@ export function OperationDetail({
             </section>
           ) : null}
 
-          <section className="detail-section resource-status-section" id="links">
+          <section className="detail-section resource-status-section">
             <div className="resource-card-grid">
-              <div className="resource-summary-card">
-                <div className="resource-row-head">
-                  <strong>참고 자료</strong>
-                  <span>{registeredReferenceLinks.length}/{referenceResourceLinks.length}</span>
-                </div>
-                <div className="archive-item-list" aria-label="아카이브 참고 자료">
-                  {referenceResourceLinks.map((resourceLink) => {
-                    const hasHref = isNavigableHref(resourceLink.href);
-
-                    return (
-                      <div className={`archive-item-row ${hasHref ? "done" : "missing"}`} key={resourceLink.label}>
-                        <strong>{resourceLink.label}</strong>
-                        <div className="archive-item-actions">
-                          {hasHref ? (
-                            <a
-                              className="archive-item-state"
-                              href={toHref(resourceLink.href) ?? resourceLink.href}
-                              rel="noreferrer"
-                              target="_blank"
-                            >
-                              바로가기
-                            </a>
-                          ) : (
-                            <span className="archive-item-state">링크 없음</span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
               <div className="resource-summary-card">
                 <div className="resource-row-head">
                   <strong>만족도</strong>
