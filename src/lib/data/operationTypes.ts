@@ -139,6 +139,7 @@ export interface UpdateOperationInput {
   companyWikiLink?: string;
   costRaw?: string;
   courseId?: string;
+  courseName?: string;
   driveLink?: string;
   educationDays?: string;
   endDate?: string;

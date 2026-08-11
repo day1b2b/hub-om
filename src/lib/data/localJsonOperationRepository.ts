@@ -132,6 +132,7 @@ export class LocalJsonOperationRepository implements OperationRepository {
       companyWikiLink: normalizeOptionalText(input.companyWikiLink, operation.companyWikiLink),
       costRaw: normalizeOptionalText(input.costRaw, operation.costRaw),
       courseId: normalizeOptionalText(input.courseId, operation.courseId),
+      courseName: normalizeOptionalText(input.courseName, operation.courseName),
       driveLink: normalizeOptionalText(input.driveLink, operation.driveLink),
       educationDays: normalizeOptionalText(input.educationDays, operation.educationDays),
       endDate,
