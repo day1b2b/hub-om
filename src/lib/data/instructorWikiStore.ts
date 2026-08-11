@@ -8,6 +8,7 @@ const DATA_FILE = path.join(process.cwd(), ".local", "instructor-wiki.json");
 
 export interface InstructorNote {
   displayName?: string;  // 강사명 수정값
+  notionId?: string;     // 노션 강사 페이지 고유 ID(또는 전체 URL) — 연결값
   partnerId?: string;
   notes?: string;        // 강사 특이사항
   recruitAvoid?: boolean; // 섭외 지양
@@ -30,6 +31,15 @@ export function getInstructorNote(name: string): InstructorNote {
 // 목록 화면용: 전체 저장값(섭외지양 표시 등에 사용).
 export function getAllInstructorNotes(): Record<string, InstructorNote> {
   return readAll();
+}
+
+// 노션 고유 ID(또는 전체 URL) → 열 수 있는 노션 URL. 전체 URL이면 그대로, 아니면 id로 구성.
+export function notionHref(idOrUrl: string | undefined): string | null {
+  const value = (idOrUrl ?? "").trim();
+  if (!value) return null;
+  if (/^https?:\/\//i.test(value)) return value;
+  const id = value.replace(/-/g, "");
+  return `https://www.notion.so/${id}`;
 }
 
 // 부분 필드만 병합 저장(섭외지양 토글, 폼 저장이 각각 일부만 보낼 수 있음).

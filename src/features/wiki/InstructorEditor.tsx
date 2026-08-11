@@ -9,6 +9,7 @@ type FormState = Record<Field, string>;
 // 강사위키 OM 입력 폼. 평소엔 읽기 전용, "수정" 버튼을 눌러야 편집 가능. 저장 시 /api/instructor-wiki/save로 전송.
 export function InstructorEditor({ name, initial }: { name: string; initial: InstructorNote }) {
   const build = (): FormState => ({
+    notionId: initial.notionId ?? "",
     partnerId: initial.partnerId ?? "",
     notes: initial.notes ?? "",
     contact: initial.contact ?? "",
@@ -93,6 +94,7 @@ export function InstructorEditor({ name, initial }: { name: string; initial: Ins
       <div className="section-body">
         <dl className="field-preview-list">
           {field("파트너 ID", "partnerId", { placeholder: "예: PT-00123" })}
+          {field("노션 페이지 ID", "notionId", { placeholder: "노션 강사 페이지 고유 ID 또는 URL" })}
           {field("연락처", "contact", { placeholder: "예: 010-0000-0000" })}
           {field("이메일", "email", { placeholder: "이메일" })}
           {field("강사 특이사항", "notes", { textarea: true, placeholder: "강사 특이사항 (강의 스타일·주의사항·선호 등)" })}

@@ -15,12 +15,13 @@ import { RecruitAvoidToggle } from "./RecruitAvoidToggle";
 import { InstructorEditor } from "./InstructorEditor";
 import { ProfileAttachments } from "./ProfileAttachments";
 import { NameEditor } from "./NameEditor";
-import { getInstructorNote } from "@/lib/data/instructorWikiStore";
+import { getInstructorNote, notionHref } from "@/lib/data/instructorWikiStore";
 
 export function InstructorWikiDetail({ entry }: { entry: InstructorWikiEntry }) {
   const coach = entry.coach;
   const note = getInstructorNote(entry.name);
   const displayName = note.displayName?.trim() || entry.name;
+  const notionUrl = notionHref(note.notionId);
 
   return (
     <main className="dashboard-shell">
@@ -41,6 +42,9 @@ export function InstructorWikiDetail({ entry }: { entry: InstructorWikiEntry }) 
             ))}
             {coach ? (
               <span className={`status ${STATUS_CLASS[coach.status]}`}>coach-db · {STATUS_LABEL[coach.status]}</span>
+            ) : null}
+            {notionUrl ? (
+              <a className="notion-link" href={notionUrl} target="_blank" rel="noreferrer">노션에서 보기 ↗</a>
             ) : null}
           </div>
         </div>
