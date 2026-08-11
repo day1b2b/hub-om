@@ -6,6 +6,7 @@ import { BulkEditRoundsButton } from "./BulkEditRoundsButton";
 import { BulkSaveRoundsButton } from "./BulkSaveRoundsButton";
 import { DeleteRoundButton } from "./DeleteRoundButton";
 import { EditAllRoundsProvider } from "./EditAllRoundsProvider";
+import { EditableCourseNameItem } from "./EditableCourseNameItem";
 import { EditableInfoItem } from "./EditableInfoItem";
 import { EditableOnsiteOmCell } from "./EditableOnsiteOmCell";
 import { EditableResourceRow } from "./EditableResourceRow";
@@ -81,6 +82,10 @@ export function OperationDetail({
   const nextRoundNo = String(Math.max(0, ...courseOperations.map((candidate) => Number(candidate.roundNo) || 0)) + 1);
   const fallbackOperationId =
     courseOperations.find((candidate) => candidate.operationId !== operation.operationId)?.operationId ?? null;
+  const sameCourseIdOperationIds =
+    sameCourseIdOperations.length > 0
+      ? sameCourseIdOperations.map((candidate) => candidate.operationId)
+      : [operation.operationId];
 
   return (
     <main className="dashboard-shell">
@@ -123,11 +128,10 @@ export function OperationDetail({
                 label="코스ID"
                 operationId={operation.operationId}
               />
-              <EditableInfoItem
+              <EditableCourseNameItem
                 displayValue={operation.courseName || "미정"}
-                fields={[{ name: "courseName", placeholder: "예: AX 교육 실무2", value: operation.courseName }]}
-                label="코스ID명"
-                operationId={operation.operationId}
+                operationIds={sameCourseIdOperationIds}
+                value={operation.courseName}
               />
               <InfoItem
                 label="교육 형태"
