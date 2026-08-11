@@ -17,9 +17,9 @@ import { ProfileAttachments } from "./ProfileAttachments";
 import { NameEditor } from "./NameEditor";
 import { getInstructorNote, notionHref } from "@/lib/data/instructorWikiStore";
 
-export function InstructorWikiDetail({ entry }: { entry: InstructorWikiEntry }) {
+export async function InstructorWikiDetail({ entry }: { entry: InstructorWikiEntry }) {
   const coach = entry.coach;
-  const note = getInstructorNote(entry.name);
+  const note = await getInstructorNote(entry.name);
   const displayName = note.displayName?.trim() || entry.name;
   const notionUrl = notionHref(note.notionId);
 

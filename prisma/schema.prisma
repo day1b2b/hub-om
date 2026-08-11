@@ -721,3 +721,27 @@ model CoachdbArchiveRow {
   @@index([rowData(ops: JsonbOps)], map: "coachdb_archive_rows_data_gin_idx", type: Gin)
   @@map("coachdb_archive_rows")
 }
+
+// 강사위키에서 OM이 입력하는 값과 노션 강사 DB 스냅샷을 강사명 기준으로 보관한다.
+// 로컬(dev)에서는 .local/instructor-wiki.json, 배포에서는 이 테이블을 쓴다
+// (instructorNoteRepositoryFactory가 OPERATION_DATA_SOURCE로 분기).
+// notionProfile은 노션에서 가져온 읽기 전용 스냅샷이라 OM 입력 컬럼과 분리해 둔다.
+// 같은 컬럼에 섞으면 재수집 때 OM 수정분이 덮이거나 노션 값이 OM 값으로 굳는다.
+model InstructorNote {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  instructorName String    @unique @map("instructor_name")
+  displayName    String?   @map("display_name")
+  notionId       String?   @map("notion_id")
+  partnerId      String?   @map("partner_id")
+  notes          String?
+  recruitAvoid   Boolean   @default(false) @map("recruit_avoid")
+  contact        String?
+  email          String?
+  notionProfile  Json?     @map("notion_profile")
+  notionSyncedAt DateTime? @map("notion_synced_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  @@index([recruitAvoid], map: "instructor_notes_recruit_avoid_idx")
+  @@map("instructor_notes")
+}
