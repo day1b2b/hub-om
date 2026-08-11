@@ -7,7 +7,7 @@ import {
 } from "@/features/wiki/instructorWikiModel";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getCoachRepository } from "@/lib/data/coachRepositoryFactory";
-import { getAllInstructorNotes, notionHref } from "@/lib/data/instructorWikiStore";
+import { getAllInstructorNotes } from "@/lib/data/instructorWikiStore";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 
 export const dynamic = "force-dynamic";
@@ -40,12 +40,6 @@ export default async function InstructorWikiPage() {
   // OM이 "섭외 지양"으로 저장한 강사명 목록(목록 화면 표시용).
   const notes = getAllInstructorNotes();
   const recruitAvoidNames = Object.keys(notes).filter((name) => notes[name]?.recruitAvoid);
-  // 강사명 → 노션 링크(고유 ID 기반). 저장된 강사만 포함.
-  const notionLinks: Record<string, string> = {};
-  for (const [instructorName, note] of Object.entries(notes)) {
-    const href = notionHref(note.notionId);
-    if (href) notionLinks[instructorName] = href;
-  }
 
   return (
     <InstructorWiki
@@ -53,7 +47,6 @@ export default async function InstructorWikiPage() {
       loadFailed={loadFailed}
       provenance={provenance}
       recruitAvoidNames={recruitAvoidNames}
-      notionLinks={notionLinks}
     />
   );
 }

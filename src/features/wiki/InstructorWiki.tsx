@@ -26,10 +26,9 @@ interface InstructorWikiProps {
   loadFailed: boolean;
   provenance: InstructorWikiProvenance;
   recruitAvoidNames?: string[];
-  notionLinks?: Record<string, string>;
 }
 
-export function InstructorWiki({ entries, loadFailed, provenance, recruitAvoidNames = [], notionLinks = {} }: InstructorWikiProps) {
+export function InstructorWiki({ entries, loadFailed, provenance, recruitAvoidNames = [] }: InstructorWikiProps) {
   const [query, setQuery] = useState("");
   const [statusTab, setStatusTab] = useState<StatusTabKey>("all");
   const [companyFilter, setCompanyFilter] = useState("전체 기업");
@@ -127,9 +126,9 @@ export function InstructorWiki({ entries, loadFailed, provenance, recruitAvoidNa
             ) : filtered.length > 0 ? (
               filtered.map((entry) => {
                 const recent = entry.courses[0];
-                const notionUrl = notionLinks[entry.name];
-                const inner = (
-                  <>
+                // 목록에서는 항상 상세로 간다. 노션 이동은 상세 헤더의 강사명 메뉴에서 한다.
+                return (
+                  <Link className="wiki-card" href={`/instructor-wiki/${encodeURIComponent(entry.name)}`} key={entry.id}>
                     <span className="wiki-card-head">
                       <WikiAvatar name={entry.name} />
                       <span className="wiki-card-name">{entry.name}</span>
@@ -141,12 +140,7 @@ export function InstructorWiki({ entries, loadFailed, provenance, recruitAvoidNa
                     {recent ? (
                       <span className="wiki-card-course">{recent.companyName} · {cleanCourseName(recent.courseName)}</span>
                     ) : null}
-                  </>
-                );
-                return notionUrl ? (
-                  <a className="wiki-card" href={notionUrl} target="_blank" rel="noreferrer" key={entry.id}>{inner}</a>
-                ) : (
-                  <Link className="wiki-card" href={`/instructor-wiki/${encodeURIComponent(entry.name)}`} key={entry.id}>{inner}</Link>
+                  </Link>
                 );
               })
             ) : (
@@ -188,19 +182,11 @@ export function InstructorWiki({ entries, loadFailed, provenance, recruitAvoidNa
                         <tr key={entry.id}>
                           <td>{index + 1}</td>
                           <td>
-                            {notionLinks[entry.name] ? (
-                              <a className="row-link row-link--logo" href={notionLinks[entry.name]} target="_blank" rel="noreferrer">
-                                <WikiAvatar name={entry.name} size="sm" />
-                                <strong>{entry.name}</strong>
-                                {avoidSet.has(entry.name) ? <span className="recruit-avoid-tag">⛔ 섭외지양</span> : null}
-                              </a>
-                            ) : (
-                              <Link className="row-link row-link--logo" href={`/instructor-wiki/${encodeURIComponent(entry.name)}`}>
-                                <WikiAvatar name={entry.name} size="sm" />
-                                <strong>{entry.name}</strong>
-                                {avoidSet.has(entry.name) ? <span className="recruit-avoid-tag">⛔ 섭외지양</span> : null}
-                              </Link>
-                            )}
+                            <Link className="row-link row-link--logo" href={`/instructor-wiki/${encodeURIComponent(entry.name)}`}>
+                              <WikiAvatar name={entry.name} size="sm" />
+                              <strong>{entry.name}</strong>
+                              {avoidSet.has(entry.name) ? <span className="recruit-avoid-tag">⛔ 섭외지양</span> : null}
+                            </Link>
                           </td>
                           <td>
                             {roleSummary(entry).map((role) => (

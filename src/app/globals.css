@@ -9416,15 +9416,36 @@ button.coach-doc-reserve-chip:disabled {
   order: 10;
 }
 
-.notion-link {
+/* 노션 강사 페이지 이동 칩. 섭외 지양 버튼과 같은 모양이라 누르는 것임이 바로 보인다. */
+.notion-chip {
+  background: transparent;
+  border: 1px solid var(--blue);
+  border-radius: 6px;
   color: var(--blue);
-  font-size: 12px;
+  cursor: pointer;
+  font-size: 11px;
   font-weight: 700;
+  padding: 3px 8px;
   text-decoration: none;
+  white-space: nowrap;
 }
 
-.notion-link:hover {
-  text-decoration: underline;
+.notion-chip:hover {
+  background: var(--blue);
+  color: #ffffff;
+}
+
+/* 노션 페이지가 연결되지 않은 강사: 눌러도 갈 곳이 없으므로 비활성 모양 */
+.notion-chip.is-off {
+  border-color: var(--line);
+  color: var(--muted);
+  cursor: default;
+  font-weight: 400;
+}
+
+.notion-chip.is-off:hover {
+  background: transparent;
+  color: var(--muted);
 }
 
 .wiki-view {

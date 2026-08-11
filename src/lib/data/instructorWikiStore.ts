@@ -6,6 +6,26 @@ import path from "path";
 // 배포(DB 모드) 저장은 별도 Prisma 모델/마이그레이션 + 권한·보안 검토가 필요하다.
 const DATA_FILE = path.join(process.cwd(), ".local", "instructor-wiki.json");
 
+// 노션 강사 DB에서 긁어온 스냅샷. 자동 채움 값이라 OM이 직접 입력한 값과 섞지 않고 따로 둔다.
+// (섞으면 다음 번 가져오기 때 OM이 고친 내용이 덮인다.) 화면에서는 OM 입력값이 우선.
+// 계좌·사업자등록증·신분증은 가져오지 않는다. 생년월일만 계약 날인용으로 포함.
+export interface InstructorNotionProfile {
+  syncedAt?: string;      // 가져온 시각(ISO) — 화면에 "언제 기준 값인지" 표시용
+  contact?: string;       // 연락처
+  contact2?: string;      // 연락처2
+  email?: string;
+  email2?: string;
+  affiliation?: string;   // 소속정보
+  categories?: string[];  // 카테고리 → 전문분야
+  lectureTopics?: string[]; // 담당 강의 정보
+  baseFee?: number;       // 기본 강사료
+  feeNote?: string;       // 강사료 특이사항
+  memo?: string;          // 메모
+  recruitAvoid?: boolean; // 섭외지양 여부
+  birthDate?: string;     // 생년월일
+  demoCheckUrl?: string;  // 시범강의 점검표
+}
+
 export interface InstructorNote {
   displayName?: string;  // 강사명 수정값
   notionId?: string;     // 노션 강사 페이지 고유 ID(또는 전체 URL) — 연결값
@@ -14,6 +34,7 @@ export interface InstructorNote {
   recruitAvoid?: boolean; // 섭외 지양
   contact?: string;      // 연락처
   email?: string;
+  notion?: InstructorNotionProfile; // 노션 자동 채움값(읽기 전용)
 }
 
 function readAll(): Record<string, InstructorNote> {

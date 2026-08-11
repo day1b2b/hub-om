@@ -78,6 +78,10 @@ const ACTIVE_OPERATION_STATUSES: OperationStatus[] = ["배정필요", "배정예
 
 // ---- 파싱 / 집계 -----------------------------------------------------------
 
+// 시트 instructors 칸에 강사명 대신 들어오는 표기. 강사가 아니므로 위키 목록에서 제외한다.
+// 현재 운영 현황에 실제로 있는 값은 "없음", "(VOD)" 두 가지다. 나머지는 같은 뜻의 표기 대비.
+const NON_INSTRUCTOR_TOKENS = new Set(["없음", "해당없음", "미정", "tbd", "-", "x", "vod", "(vod)"]);
+
 // 운영 현황 instructors 필드는 자유 텍스트다. 구분자로만 분리하고 이름은 원문 유지한다.
 // (예: "박강사", "홍길동, 김철수", "홍길동/이영희")
 export function parseInstructorNames(raw: string): string[] {
@@ -85,7 +89,8 @@ export function parseInstructorNames(raw: string): string[] {
   return (raw ?? "")
     .split(/[\s,/·;、，]+/)
     .map((name) => name.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter((name) => !NON_INSTRUCTOR_TOKENS.has(name.toLowerCase()));
 }
 
 export function aggregateInstructors(operations: OperationSession[]): InstructorWikiEntry[] {
@@ -128,7 +133,8 @@ export function aggregateInstructors(operations: OperationSession[]): Instructor
     entry.courseCount = entry.courses.length;
   }
 
-  return entries.sort((a, b) => b.courseCount - a.courseCount || a.name.localeCompare(b.name, "ko"));
+  // 목록 기본 정렬은 강사명 ㄱㄴㄷ순(기업위키와 동일). 운영 건수는 행마다 따로 표시된다.
+  return entries.sort((a, b) => a.name.localeCompare(b.name, "ko"));
 }
 
 export function hasActiveCourse(entry: InstructorWikiEntry): boolean {

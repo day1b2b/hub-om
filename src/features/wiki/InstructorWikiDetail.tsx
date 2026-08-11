@@ -23,6 +23,17 @@ export function InstructorWikiDetail({ entry }: { entry: InstructorWikiEntry }) 
   const displayName = note.displayName?.trim() || entry.name;
   const notionUrl = notionHref(note.notionId);
 
+  // 강사 프로필은 coach-db가 우선이고, 없으면 노션 강사 DB 스냅샷으로 채운다.
+  const np = note.notion;
+  const fields = coach && coach.fields.length > 0 ? coach.fields : np?.categories ?? [];
+  const curriculums = coach && coach.curriculums.length > 0 ? coach.curriculums : np?.lectureTopics ?? [];
+  const profileSource = coach
+    ? "강사 DB 매칭됨"
+    : np?.syncedAt
+      ? `노션 강사 DB · ${np.syncedAt.slice(0, 10)} 기준`
+      : "미연결 · 미매칭";
+  const baseFeeText = typeof np?.baseFee === "number" ? `${np.baseFee.toLocaleString("ko-KR")}원` : "";
+
   return (
     <main className="dashboard-shell">
       <AppSidebar label="Instructor Wiki" teamScope="both" />
@@ -35,7 +46,17 @@ export function InstructorWikiDetail({ entry }: { entry: InstructorWikiEntry }) 
             <WikiAvatar name={entry.name} size="lg" />
             <span className="title-company">강사위키</span>
             <NameEditor name={entry.name} initialName={displayName} />
+            {/* 노션 강사 페이지 이동. 목록에서 바로 넘어가지 않고 여기서만 연다. */}
+            {notionUrl ? (
+              <a className="notion-chip" href={notionUrl} target="_blank" rel="noreferrer">🔗 노션 강사 페이지 ↗</a>
+            ) : (
+              <span className="notion-chip is-off">노션 미연결</span>
+            )}
             <RecruitAvoidToggle name={entry.name} initialAvoid={note.recruitAvoid ?? false} />
+            {/* 노션 쪽에만 섭외지양이 걸린 경우. OM 토글을 덮지 않고 별도로 알려준다. */}
+            {np?.recruitAvoid && !note.recruitAvoid ? (
+              <span className="recruit-avoid-badge">⛔ 노션: 섭외지양</span>
+            ) : null}
             <span className="coach-plan-badge">운영 현황 연동</span>
             {roleSummary(entry).map((role) => (
               <span className={`status ${ROLE_CLASS[role]}`} key={role}>{role}</span>
@@ -43,34 +64,58 @@ export function InstructorWikiDetail({ entry }: { entry: InstructorWikiEntry }) 
             {coach ? (
               <span className={`status ${STATUS_CLASS[coach.status]}`}>coach-db · {STATUS_LABEL[coach.status]}</span>
             ) : null}
-            {notionUrl ? (
-              <a className="notion-link" href={notionUrl} target="_blank" rel="noreferrer">노션에서 보기 ↗</a>
-            ) : null}
           </div>
         </div>
 
-        <InstructorEditor name={entry.name} initial={note} />
+        <InstructorEditor name={entry.name} initial={note} notion={np} />
 
         <div className="detail-section">
           <div className="section-title">
             <h2>강사 프로필</h2>
-            <span>{coach ? "강사 DB 매칭됨" : "미연결 · 미매칭"}</span>
+            <span>{profileSource}</span>
           </div>
           <div className="section-body">
             <dl className="field-preview-list">
               <div>
+                <dt>소속</dt>
+                <dd>{np?.affiliation ? np.affiliation : <span className="td-muted">-</span>}</dd>
+              </div>
+              <div>
                 <dt>전문분야</dt>
-                <dd>{coach && coach.fields.length > 0 ? coach.fields.join(" · ") : <span className="td-muted">-</span>}</dd>
+                <dd>{fields.length > 0 ? fields.join(" · ") : <span className="td-muted">-</span>}</dd>
               </div>
               <div>
                 <dt>가능 커리큘럼</dt>
                 <dd>
-                  {coach && coach.curriculums.length > 0 ? (
+                  {curriculums.length > 0 ? (
                     <ul>
-                      {coach.curriculums.map((curriculum) => (
+                      {curriculums.map((curriculum) => (
                         <li key={curriculum}>{curriculum}</li>
                       ))}
                     </ul>
+                  ) : (
+                    <span className="td-muted">-</span>
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt>기본 강사료</dt>
+                <dd>{baseFeeText ? baseFeeText : <span className="td-muted">-</span>}</dd>
+              </div>
+              <div>
+                <dt>강사료 특이사항</dt>
+                <dd>{np?.feeNote ? <span className="wiki-view">{np.feeNote}</span> : <span className="td-muted">-</span>}</dd>
+              </div>
+              <div>
+                <dt>생년월일</dt>
+                <dd>{np?.birthDate ? np.birthDate : <span className="td-muted">-</span>}</dd>
+              </div>
+              {/* 노션 메모는 위 「강사 정보 · 강사 특이사항」에서 보여주므로 여기서는 중복 표시하지 않는다. */}
+              <div>
+                <dt>시범강의 점검표</dt>
+                <dd>
+                  {np?.demoCheckUrl ? (
+                    <a className="notion-chip" href={np.demoCheckUrl} target="_blank" rel="noreferrer">점검표 열기 ↗</a>
                   ) : (
                     <span className="td-muted">-</span>
                   )}
@@ -81,6 +126,9 @@ export function InstructorWikiDetail({ entry }: { entry: InstructorWikiEntry }) 
                 <dd><ProfileAttachments /></dd>
               </div>
             </dl>
+            <p className="field-hint">
+              소속·전문분야·강사료·생년월일은 노션 강사 DB에서 자동으로 가져온 값이에요. 여기서 고쳐도 노션에는 반영되지 않으니 원본은 노션에서 수정해 주세요.
+            </p>
           </div>
         </div>
 
