@@ -4,10 +4,11 @@ import type {
   InstructorNoteRepository,
   InstructorNotionProfile
 } from "./instructorNoteRepository";
+import { stripPiiFromNote } from "./instructorNotePii";
 import { getPrismaClient } from "./prisma";
 
 // instructor_notes 한 행 → 화면이 쓰는 InstructorNote.
-// notion_profile은 노션에서 가져온 JSON 스냅샷이라 그대로 통과시킨다.
+// 연락처·이메일·생년월일 컬럼은 없다(개인정보 미보관). 화면에서는 해당 칸이 "—"로 보인다.
 type Row = {
   instructorName: string;
   displayName: string | null;
@@ -15,8 +16,6 @@ type Row = {
   partnerId: string | null;
   notes: string | null;
   recruitAvoid: boolean;
-  contact: string | null;
-  email: string | null;
   notionProfile: Prisma.JsonValue | null;
 };
 
@@ -26,8 +25,6 @@ function toNote(row: Row): InstructorNote {
   if (row.notionId) note.notionId = row.notionId;
   if (row.partnerId) note.partnerId = row.partnerId;
   if (row.notes) note.notes = row.notes;
-  if (row.contact) note.contact = row.contact;
-  if (row.email) note.email = row.email;
   if (row.notionProfile && typeof row.notionProfile === "object" && !Array.isArray(row.notionProfile)) {
     note.notion = row.notionProfile as InstructorNotionProfile;
   }
@@ -42,8 +39,6 @@ function toUpdateData(patch: InstructorNote): Prisma.InstructorNoteUpdateInput {
   if (patch.partnerId !== undefined) data.partnerId = patch.partnerId || null;
   if (patch.notes !== undefined) data.notes = patch.notes || null;
   if (patch.recruitAvoid !== undefined) data.recruitAvoid = patch.recruitAvoid;
-  if (patch.contact !== undefined) data.contact = patch.contact || null;
-  if (patch.email !== undefined) data.email = patch.email || null;
   if (patch.notion !== undefined) {
     data.notionProfile = (patch.notion ?? null) as Prisma.InputJsonValue;
     data.notionSyncedAt = patch.notion?.syncedAt ? new Date(patch.notion.syncedAt) : null;
@@ -58,8 +53,6 @@ const SELECT = {
   partnerId: true,
   notes: true,
   recruitAvoid: true,
-  contact: true,
-  email: true,
   notionProfile: true
 } as const;
 
@@ -80,21 +73,20 @@ export class PrismaInstructorNoteRepository implements InstructorNoteRepository 
   }
 
   async saveNote(name: string, patch: InstructorNote): Promise<InstructorNote> {
-    const update = toUpdateData(patch);
+    // 화면 폼이 연락처·이메일을 보내와도 DB에는 남기지 않는다(마지막 방어선).
+    const safe = stripPiiFromNote(patch);
     const row = await getPrismaClient().instructorNote.upsert({
       where: { instructorName: name },
-      update,
+      update: toUpdateData(safe),
       create: {
         instructorName: name,
-        displayName: patch.displayName || null,
-        notionId: patch.notionId || null,
-        partnerId: patch.partnerId || null,
-        notes: patch.notes || null,
-        recruitAvoid: patch.recruitAvoid ?? false,
-        contact: patch.contact || null,
-        email: patch.email || null,
-        notionProfile: (patch.notion ?? null) as Prisma.InputJsonValue,
-        notionSyncedAt: patch.notion?.syncedAt ? new Date(patch.notion.syncedAt) : null
+        displayName: safe.displayName || null,
+        notionId: safe.notionId || null,
+        partnerId: safe.partnerId || null,
+        notes: safe.notes || null,
+        recruitAvoid: safe.recruitAvoid ?? false,
+        notionProfile: (safe.notion ?? null) as Prisma.InputJsonValue,
+        notionSyncedAt: safe.notion?.syncedAt ? new Date(safe.notion.syncedAt) : null
       },
       select: SELECT
     });

@@ -735,8 +735,8 @@ model InstructorNote {
   partnerId      String?   @map("partner_id")
   notes          String?
   recruitAvoid   Boolean   @default(false) @map("recruit_avoid")
-  contact        String?
-  email          String?
+  // 연락처·이메일·생년월일은 개인정보라 DB에 두지 않는다. 로컬(.local) 파일에만 남긴다.
+  // notionProfile에도 넣지 않는다 (instructorNotePii.ts에서 걷어냄).
   notionProfile  Json?     @map("notion_profile")
   notionSyncedAt DateTime? @map("notion_synced_at")
   createdAt      DateTime  @default(now()) @map("created_at")
