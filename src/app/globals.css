@@ -9416,6 +9416,17 @@ button.coach-doc-reserve-chip:disabled {
   order: 10;
 }
 
+.notion-link {
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.notion-link:hover {
+  text-decoration: underline;
+}
+
 .wiki-view {
   white-space: pre-wrap;
 }
