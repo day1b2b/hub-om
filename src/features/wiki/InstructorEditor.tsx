@@ -1,16 +1,46 @@
 "use client";
 
 import { useState, type ChangeEvent } from "react";
-import type { InstructorNote } from "@/lib/data/instructorWikiStore";
+import type { InstructorNote, InstructorNotionProfile } from "@/lib/data/instructorWikiStore";
 
-type Field = Exclude<keyof InstructorNote, "recruitAvoid" | "displayName">;
+// 노션 페이지 ID·파트너 ID는 화면에서 다루지 않는다.
+// 노션 ID는 연결 스크립트가 채우고 이동은 헤더의 노션 칩으로 한다. 저장은 부분 병합이라 값은 그대로 보존된다.
+type Field = Exclude<keyof InstructorNote, "recruitAvoid" | "displayName" | "notionId" | "partnerId" | "notion">;
 type FormState = Record<Field, string>;
 
+// 연락처·이메일은 PII라 읽기 모드에서 가운데를 가린다. "✏ 수정"을 누르면 원본이 보인다.
+function maskPhone(value: string): string {
+  return value.replace(/(\d{2,3})[-. ]?(\d{3,4})[-. ]?(\d{4})/g, (_, head, mid, tail) => `${head}-${"*".repeat(mid.length)}-${tail}`);
+}
+
+function maskEmail(value: string): string {
+  return value.replace(/([^\s@/]+)@([^\s@/]+)/g, (_, local: string, domain: string) => {
+    const head = local.slice(0, Math.min(3, local.length));
+    return `${head}${"*".repeat(Math.max(local.length - head.length, 1))}@${domain}`;
+  });
+}
+
+const MASK: Partial<Record<Field, (value: string) => string>> = { contact: maskPhone, email: maskEmail };
+
 // 강사위키 OM 입력 폼. 평소엔 읽기 전용, "수정" 버튼을 눌러야 편집 가능. 저장 시 /api/instructor-wiki/save로 전송.
-export function InstructorEditor({ name, initial }: { name: string; initial: InstructorNote }) {
+export function InstructorEditor({
+  name,
+  initial,
+  notion
+}: {
+  name: string;
+  initial: InstructorNote;
+  notion?: InstructorNotionProfile;
+}) {
+  // OM이 입력한 값이 없을 때만 노션 값을 대신 보여준다. 노션 값을 폼에 넣지는 않는다
+  // (넣으면 저장 시 노션 값이 OM 입력값으로 굳어져서 다음 가져오기 때 갱신되지 않는다).
+  const notionFallback: Partial<Record<Field, string>> = {
+    contact: [notion?.contact, notion?.contact2].filter(Boolean).join(" / "),
+    email: [notion?.email, notion?.email2].filter(Boolean).join(" / "),
+    notes: notion?.memo ?? ""
+  };
+
   const build = (): FormState => ({
-    notionId: initial.notionId ?? "",
-    partnerId: initial.partnerId ?? "",
     notes: initial.notes ?? "",
     contact: initial.contact ?? "",
     email: initial.email ?? ""
@@ -71,6 +101,13 @@ export function InstructorEditor({ name, initial }: { name: string; initial: Ins
     </span>
   );
 
+  // 읽기 모드 표시값: OM 입력값이 우선, 없으면 노션 값. 연락처·이메일은 마스킹해서 보여준다.
+  const shown = (key: Field) => {
+    const raw = form[key] || notionFallback[key] || "";
+    const mask = MASK[key];
+    return raw && mask ? mask(raw) : raw;
+  };
+
   const field = (label: string, key: Field, opts: { textarea?: boolean; placeholder?: string } = {}) => (
     <div key={key}>
       <dt>{label}</dt>
@@ -81,8 +118,10 @@ export function InstructorEditor({ name, initial }: { name: string; initial: Ins
           ) : (
             <input className="wiki-input" value={form[key]} onChange={set(key)} placeholder={opts.placeholder} aria-label={label} />
           )
+        ) : shown(key) ? (
+          <span className="wiki-view">{shown(key)}</span>
         ) : (
-          <span className={form[key] ? "wiki-view" : "td-muted"}>{form[key] || "—"}</span>
+          <span className="td-muted">—</span>
         )}
       </dd>
     </div>
@@ -93,8 +132,6 @@ export function InstructorEditor({ name, initial }: { name: string; initial: Ins
       <div className="section-title"><h2>강사 정보</h2>{controls}</div>
       <div className="section-body">
         <dl className="field-preview-list">
-          {field("파트너 ID", "partnerId", { placeholder: "예: PT-00123" })}
-          {field("노션 페이지 ID", "notionId", { placeholder: "노션 강사 페이지 고유 ID 또는 URL" })}
           {field("연락처", "contact", { placeholder: "예: 010-0000-0000" })}
           {field("이메일", "email", { placeholder: "이메일" })}
           {field("강사 특이사항", "notes", { textarea: true, placeholder: "강사 특이사항 (강의 스타일·주의사항·선호 등)" })}
