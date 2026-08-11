@@ -397,7 +397,7 @@ export function OperationDashboard({ omRoster, operations, partByPersonKey, team
                       <td>{summarizeText(group.operations, (operation) => operation.ld, "미정")}</td>
                       <td>{group.startDate}</td>
                       <td>{group.endDate}</td>
-                      <td>{summarizeText(group.operations, (operation) => operation.instructors)}</td>
+                      <td>{summarizeInstructors(group.operations)}</td>
                       <td>{summarizeText(group.operations, (operation) => operation.coach)}</td>
                       <td>{formatSatisfactionValue(average(satisfactionValues(group.operations, (operation) => operation.avgSatisfaction)))}</td>
                       <td>{formatMoney(sumRevenueByCourseId(group.operations))}</td>
@@ -485,7 +485,7 @@ function downloadOperationsCsv(courseGroups: CourseGroup[], today: Date) {
     summarizeText(group.operations, (operation) => operation.ld, "미정"),
     group.startDate,
     group.endDate,
-    summarizeText(group.operations, (operation) => operation.instructors),
+    summarizeInstructors(group.operations),
     summarizeText(group.operations, (operation) => operation.coach),
     formatSatisfactionValue(average(satisfactionValues(group.operations, (operation) => operation.avgSatisfaction))),
     formatSatisfactionValue(
@@ -626,6 +626,25 @@ function summarizeText(
   if (values.length === 0) return emptyFallback;
   if (values.length === 1) return values[0];
   return "상이";
+}
+
+function summarizeInstructors(operations: OperationSession[]): string {
+  const names = unique(operations.flatMap((operation) => splitPersonNames(operation.instructors, "")));
+
+  if (names.length === 0) return "-";
+  if (names.length === 1) return names[0];
+
+  const firstRoundOperation = pickEarliestOperation(operations);
+  const firstRoundNames = splitPersonNames(firstRoundOperation.instructors, "").filter(Boolean);
+  const primaryName = firstRoundNames[0] ?? names[0];
+
+  return `${primaryName} 외 ${names.length - 1}명`;
+}
+
+function pickEarliestOperation(operations: OperationSession[]): OperationSession {
+  const withDates = operations.filter((operation) => parseDate(operation.startDate));
+  if (withDates.length === 0) return operations[0];
+  return withDates.slice().sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
 }
 
 function satisfactionValues(
