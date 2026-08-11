@@ -9,7 +9,7 @@ export async function POST(request: Request) {
     if (!name || typeof name !== "string") {
       return NextResponse.json({ error: "name 필요" }, { status: 400 });
     }
-    const saved = saveInstructorNote(name, patch);
+    const saved = await saveInstructorNote(name, patch);
     return NextResponse.json({ ok: true, saved });
   } catch {
     return NextResponse.json({ error: "저장 실패" }, { status: 500 });
