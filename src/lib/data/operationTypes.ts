@@ -11,7 +11,7 @@ export type ArchiveStatus = "아카이빙전" | "아카이빙필요" | "완료";
 export type EducationFormat =
   | "오프라인"
   | "비대면"
-  | "블랜디드"
+  | "블렌디드"
   | "플립러닝"
   | "검토필요";
 
@@ -50,6 +50,7 @@ export interface OperationSession {
   courseName: string;
   om: string;
   ld: string;
+  onsiteOm: string;
   operationStatus: OperationStatus;
   archiveStatus: ArchiveStatus;
   educationFormat: EducationFormat;
@@ -138,6 +139,7 @@ export interface UpdateOperationInput {
   companyWikiLink?: string;
   costRaw?: string;
   courseId?: string;
+  courseName?: string;
   driveLink?: string;
   educationDays?: string;
   endDate?: string;
@@ -146,8 +148,11 @@ export interface UpdateOperationInput {
   instructorSatisfaction?: string;
   instructors?: string;
   instructorWikiLink?: string;
+  ld?: string;
   lectureManagementLink?: string;
   lectureManagementNote?: string;
+  om?: string;
+  onsiteOm?: string;
   operationCost?: number | null;
   operationDetail?: string;
   operationIssue?: string;

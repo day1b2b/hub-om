@@ -5,7 +5,23 @@ import { useMemo, useState } from "react";
 import { createOperationAction } from "@/app/operations/new/actions";
 import { teamScopeSearchParam, type TeamScope } from "@/lib/teamScope";
 
+interface OperationCreateFormInitialValues {
+  companyName?: string;
+  courseId?: string;
+  courseName?: string;
+  driveLink?: string;
+  educationDays?: string;
+  endDate?: string;
+  instructors?: string;
+  onsiteRequired?: string;
+  operationDetail?: string;
+  region?: string;
+  startDate?: string;
+  timeText?: string;
+}
+
 interface OperationCreateFormProps {
+  initialValues?: OperationCreateFormInitialValues;
   personOptions: {
     ld: string[];
     om: string[];
@@ -14,7 +30,7 @@ interface OperationCreateFormProps {
   today: string;
 }
 
-export function OperationCreateForm({ personOptions, teamScope, today }: OperationCreateFormProps) {
+export function OperationCreateForm({ initialValues = {}, personOptions, teamScope, today }: OperationCreateFormProps) {
   const ldOptions = useMemo(() => unique(personOptions.ld), [personOptions.ld]);
   const omOptions = useMemo(() => unique(personOptions.om), [personOptions.om]);
   const teamQuery = teamScopeSearchParam(teamScope);
@@ -29,15 +45,15 @@ export function OperationCreateForm({ personOptions, teamScope, today }: Operati
         <div className="operation-form-grid">
           <label>
             <span>기업명</span>
-            <input name="companyName" required />
+            <input defaultValue={initialValues.companyName} name="companyName" required />
           </label>
           <label>
             <span>과정명</span>
-            <input name="courseName" required />
+            <input defaultValue={initialValues.courseName} name="courseName" required />
           </label>
           <label>
             <span>코스ID</span>
-            <input name="courseId" placeholder="없으면 비워둠" />
+            <input defaultValue={initialValues.courseId} name="courseId" placeholder="없으면 비워둠" />
           </label>
           <label>
             <span>회차</span>
@@ -45,19 +61,19 @@ export function OperationCreateForm({ personOptions, teamScope, today }: Operati
           </label>
           <label>
             <span>시작일</span>
-            <input defaultValue={today} name="startDate" required type="date" />
+            <input defaultValue={initialValues.startDate || today} name="startDate" required type="date" />
           </label>
           <label>
             <span>종료일</span>
-            <input defaultValue={today} name="endDate" required type="date" />
+            <input defaultValue={initialValues.endDate || initialValues.startDate || today} name="endDate" required type="date" />
           </label>
           <label>
             <span>시간</span>
-            <input name="timeText" placeholder="예: 09:00~18:00" />
+            <input defaultValue={initialValues.timeText} name="timeText" placeholder="예: 09:00~18:00" />
           </label>
           <label>
             <span>교육일수</span>
-            <input name="educationDays" placeholder="예: 3일" />
+            <input defaultValue={initialValues.educationDays} name="educationDays" placeholder="예: 3일" />
           </label>
         </div>
       </section>
@@ -86,7 +102,7 @@ export function OperationCreateForm({ personOptions, teamScope, today }: Operati
           <label>
             <span>교육형태</span>
             <select defaultValue="검토필요" name="educationFormat">
-              {["오프라인", "비대면", "블랜디드", "플립러닝", "검토필요"].map((format) => (
+              {["오프라인", "비대면", "블렌디드", "플립러닝", "검토필요"].map((format) => (
                 <option key={format}>{format}</option>
               ))}
             </select>
@@ -101,7 +117,7 @@ export function OperationCreateForm({ personOptions, teamScope, today }: Operati
           </label>
           <label>
             <span>오프라인 여부</span>
-            <select defaultValue="UNKNOWN" name="onsiteRequired">
+            <select defaultValue={initialValues.onsiteRequired || "UNKNOWN"} name="onsiteRequired">
               <option value="UNKNOWN">검토필요</option>
               <option value="Y">오프라인</option>
               <option value="N">온라인</option>
@@ -110,7 +126,7 @@ export function OperationCreateForm({ personOptions, teamScope, today }: Operati
           </label>
           <label>
             <span>지역</span>
-            <input name="region" placeholder="예: 서울" />
+            <input defaultValue={initialValues.region} name="region" placeholder="예: 서울" />
           </label>
         </div>
       </section>
@@ -124,7 +140,7 @@ export function OperationCreateForm({ personOptions, teamScope, today }: Operati
           <NameSelectList fieldName="ld" label="LD" nameOptions={ldOptions} />
           <label>
             <span>강사</span>
-            <input name="instructors" placeholder="자유 입력" />
+            <input defaultValue={initialValues.instructors} name="instructors" placeholder="자유 입력" />
           </label>
           <label>
             <span>실습코치</span>
@@ -168,11 +184,11 @@ export function OperationCreateForm({ personOptions, teamScope, today }: Operati
         <div className="operation-form-grid compact">
           <label>
             <span>싱크업</span>
-            <input name="operationDetail" placeholder="https://..." required type="url" />
+            <input defaultValue={initialValues.operationDetail} name="operationDetail" placeholder="https://..." required type="url" />
           </label>
           <label>
             <span>드라이브</span>
-            <input name="driveLink" placeholder="https://..." />
+            <input defaultValue={initialValues.driveLink} name="driveLink" placeholder="https://..." />
           </label>
           <label>
             <span>강의관리</span>

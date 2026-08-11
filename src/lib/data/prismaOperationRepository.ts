@@ -33,6 +33,7 @@ import type { OperationRepository } from "./operationRepository";
 import { getPrismaClient } from "./prisma";
 import { normalizeRoleAssigneeText } from "./roleAssignees";
 import { PrismaTeamMemberRepository } from "./prismaTeamMemberRepository";
+import type { TeamMemberRole, TeamMemberRoleRoster } from "./teamMemberRepository";
 
 const OPERATION_STATUS: Record<string, OperationStatus> = {
   ASSIGNMENT_NEEDED: "배정필요",
@@ -52,7 +53,7 @@ const ARCHIVE_STATUS: Record<string, ArchiveStatus> = {
 const EDUCATION_FORMAT: Record<string, EducationFormat> = {
   OFFLINE: "오프라인",
   REMOTE: "비대면",
-  BLENDED: "블랜디드",
+  BLENDED: "블렌디드",
   FLIPPED: "플립러닝",
   NEEDS_REVIEW: "검토필요"
 };
@@ -115,7 +116,7 @@ const PRISMA_RESULT_REPORT_STATUS: Record<ResultReportStatus, PrismaResultReport
 const PRISMA_EDUCATION_FORMAT: Record<EducationFormat, PrismaEducationFormat> = {
   "오프라인": PrismaEducationFormat.OFFLINE,
   "비대면": PrismaEducationFormat.REMOTE,
-  "블랜디드": PrismaEducationFormat.BLENDED,
+  "블렌디드": PrismaEducationFormat.BLENDED,
   "플립러닝": PrismaEducationFormat.FLIPPED,
   "검토필요": PrismaEducationFormat.NEEDS_REVIEW
 };
@@ -164,6 +165,7 @@ export class PrismaOperationRepository implements OperationRepository {
         courseName: session.course.name,
         om: session.omName ?? "",
         ld: session.ldName ?? "",
+        onsiteOm: session.onsiteOmName ?? "",
         operationStatus: OPERATION_STATUS[session.operationStatus],
         archiveStatus: ARCHIVE_STATUS[session.archiveStatus],
         educationFormat: EDUCATION_FORMAT[session.educationFormat],
@@ -292,9 +294,9 @@ export class PrismaOperationRepository implements OperationRepository {
           instructorCost: input.instructorCost,
           instructorWikiLink: normalizeVisibleText(input.instructorWikiLink) || null,
           instructorsText: normalizeVisibleText(input.instructors) || null,
-          ldName: normalizeVisibleText(normalizeRoleAssigneeText(input.ld, "ld", roleRoster)) || null,
+          ldName: resolveAssigneeText(input.ld, "ld", roleRoster) || null,
           lectureManagementLink: normalizeVisibleText(input.lectureManagementLink) || null,
-          omName: normalizeVisibleText(normalizeRoleAssigneeText(input.om, "om", roleRoster)) || null,
+          omName: resolveAssigneeText(input.om, "om", roleRoster) || null,
           onsiteRequired: input.onsiteRequired as PrismaOnsiteRequired,
           onsiteText: onsiteRequiredLabel(input.onsiteRequired),
           operationChannel: PrismaOperationChannel.NEEDS_REVIEW,
@@ -376,6 +378,44 @@ export class PrismaOperationRepository implements OperationRepository {
       data.courseRecordId = course.id;
     }
 
+    if (input.courseName !== undefined) {
+      const nextCourseName = normalizeVisibleText(input.courseName);
+
+      if (!nextCourseName) {
+        throw new Error("Course name is required.");
+      }
+
+      const session = await prisma.operationSession.findUnique({
+        include: { course: true },
+        where: { operationId }
+      });
+
+      if (!session) {
+        throw new Error("Operation not found.");
+      }
+
+      const course = await prisma.course.upsert({
+        create: {
+          companyId: session.course.companyId,
+          courseId: session.course.courseId,
+          name: nextCourseName,
+          operationType: session.course.operationType,
+          revenue: session.course.revenue,
+          revenueRaw: session.course.revenueRaw
+        },
+        update: {},
+        where: {
+          companyId_courseId_name: {
+            companyId: session.course.companyId,
+            courseId: session.course.courseId,
+            name: nextCourseName
+          }
+        }
+      });
+
+      data.courseRecordId = course.id;
+    }
+
     if (input.driveLink !== undefined) data.driveLink = nullableText(input.driveLink);
     if (input.educationDays !== undefined) data.educationDays = nullableText(input.educationDays);
     if (input.hasResultReport !== undefined) data.hasResultReport = PRISMA_RESULT_REPORT_STATUS[input.hasResultReport];
@@ -402,8 +442,11 @@ export class PrismaOperationRepository implements OperationRepository {
     if (input.instructorSatisfaction !== undefined) data.instructorSatisfaction = nullableText(input.instructorSatisfaction);
     if (input.instructors !== undefined) data.instructorsText = nullableText(input.instructors);
     if (input.instructorWikiLink !== undefined) data.instructorWikiLink = nullableText(input.instructorWikiLink);
+    if (input.ld !== undefined) data.ldName = nullableText(input.ld);
     if (input.lectureManagementLink !== undefined) data.lectureManagementLink = nullableText(input.lectureManagementLink);
     if (input.lectureManagementNote !== undefined) data.lectureManagementNote = nullableText(input.lectureManagementNote);
+    if (input.om !== undefined) data.omName = nullableText(input.om);
+    if (input.onsiteOm !== undefined) data.onsiteOmName = nullableText(input.onsiteOm);
     if (input.operationCost !== undefined) data.operationCost = input.operationCost;
     if (input.operationDetail !== undefined) data.operationDetail = nullableText(input.operationDetail);
     if (input.operationIssue !== undefined) data.operationIssue = nullableText(input.operationIssue);
@@ -477,6 +520,14 @@ function nullableText(value: string): string | null {
 
 function normalizeName(value: string): string {
   return normalizeVisibleText(value).toLowerCase();
+}
+
+function resolveAssigneeText(value: string, role: TeamMemberRole, roleRoster: TeamMemberRoleRoster): string {
+  const rawText = normalizeVisibleText(value);
+  if (!rawText) return "";
+
+  const matchedText = normalizeRoleAssigneeText(rawText, role, roleRoster);
+  return matchedText || rawText;
 }
 
 function parseDateInput(value: string, fieldName: string): Date {

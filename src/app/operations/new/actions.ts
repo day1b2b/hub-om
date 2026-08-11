@@ -17,7 +17,7 @@ import { parseTeamScope, teamScopeSearchParam } from "@/lib/teamScope";
 
 const OPERATION_STATUSES: OperationStatus[] = ["배정필요", "배정예정", "진행중", "완료", "회고완료", "아카이빙필요"];
 const ARCHIVE_STATUSES: ArchiveStatus[] = ["아카이빙전", "아카이빙필요", "완료"];
-const EDUCATION_FORMATS: EducationFormat[] = ["오프라인", "비대면", "블랜디드", "플립러닝", "검토필요"];
+const EDUCATION_FORMATS: EducationFormat[] = ["오프라인", "비대면", "블렌디드", "플립러닝", "검토필요"];
 const OPERATION_TYPES: OperationType[] = ["특강", "단기", "중기", "중장기", "준장기", "장기", "연간", "상시형", "검토필요"];
 const ONSITE_REQUIRED: OnsiteRequired[] = ["UNKNOWN", "Y", "N", "PARTIAL"];
 

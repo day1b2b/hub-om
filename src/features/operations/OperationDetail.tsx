@@ -6,7 +6,9 @@ import { BulkEditRoundsButton } from "./BulkEditRoundsButton";
 import { BulkSaveRoundsButton } from "./BulkSaveRoundsButton";
 import { DeleteRoundButton } from "./DeleteRoundButton";
 import { EditAllRoundsProvider } from "./EditAllRoundsProvider";
+import { EditableCourseNameItem } from "./EditableCourseNameItem";
 import { EditableInfoItem } from "./EditableInfoItem";
+import { EditableOnsiteOmCell } from "./EditableOnsiteOmCell";
 import { EditableResourceRow } from "./EditableResourceRow";
 import { EditableRoundResourceCell } from "./EditableRoundResourceCell";
 import { EditableSessionRow } from "./EditableSessionRow";
@@ -16,7 +18,6 @@ import { OperationDiscussionPanel } from "./OperationDiscussionPanel";
 import { ResultReportConditionSelect } from "./ResultReportConditionSelect";
 import { ResultReportRequirementCell } from "./ResultReportRequirementCell";
 import type {
-  OperationChannel,
   OperationSession,
   OperationStatus,
   OnsiteRequired
@@ -26,12 +27,15 @@ import type {
   OperationDiscussionItem
 } from "@/lib/data/operationCollaboration";
 import { isSameCourse } from "@/lib/data/operationCalculations";
+import type { PersonOptions } from "@/lib/data/personOptions";
 import { displayRoleAssigneeText } from "@/lib/data/roleAssignees";
 import { isNavigableHref, toHref } from "@/lib/links";
 import { satisfactionNumber } from "@/lib/data/satisfaction";
 import { teamScopeSearchParam, type TeamScope } from "@/lib/teamScope";
 
 const SHOW_OPERATION_DISCUSSION = false;
+const SHOW_LECTURE_REPORTS = false;
+const SHOW_READINESS_SUMMARY = false;
 
 const STATUS_CLASS: Record<OperationStatus, string> = {
   "배정필요": "needs-assignment",
@@ -40,14 +44,6 @@ const STATUS_CLASS: Record<OperationStatus, string> = {
   "완료": "done",
   "회고완료": "retrospective-done",
   "아카이빙필요": "archive-needed"
-};
-
-const OPERATION_CHANNEL_LABEL: Record<OperationChannel, string> = {
-  onsite: "현장",
-  live_online: "실시간 온라인",
-  online_platform: "온라인 플랫폼",
-  blended: "혼합",
-  needs_review: "확인 필요"
 };
 
 const ONSITE_LABEL: Record<OnsiteRequired, string> = {
@@ -60,6 +56,7 @@ const ONSITE_LABEL: Record<OnsiteRequired, string> = {
 interface OperationDetailProps {
   collaboration: OperationCollaboration;
   operation: OperationSession;
+  personOptions?: PersonOptions;
   relatedOperations?: OperationSession[];
   sameCourseIdOperations?: OperationSession[];
   teamScope: TeamScope;
@@ -68,12 +65,13 @@ interface OperationDetailProps {
 export function OperationDetail({
   collaboration,
   operation,
+  personOptions = { ld: [], om: [] },
   relatedOperations = [operation],
   sameCourseIdOperations = [],
   teamScope
 }: OperationDetailProps) {
   const courseOperations = getCourseOperations(operation, relatedOperations);
-  const otherCourseGroups = getOtherCourseGroups(operation, sameCourseIdOperations);
+  const courseGroups = getCourseGroups(operation, sameCourseIdOperations);
   const showOperationStatus = !(operation.operationStatus === "배정필요" && Boolean(operation.om));
   const requiredArchiveItems = getRequiredArchiveItems(operation);
   const completedArchiveItems = requiredArchiveItems.filter((archiveItem) => archiveItem.done);
@@ -84,6 +82,10 @@ export function OperationDetail({
   const nextRoundNo = String(Math.max(0, ...courseOperations.map((candidate) => Number(candidate.roundNo) || 0)) + 1);
   const fallbackOperationId =
     courseOperations.find((candidate) => candidate.operationId !== operation.operationId)?.operationId ?? null;
+  const sameCourseIdOperationIds =
+    sameCourseIdOperations.length > 0
+      ? sameCourseIdOperations.map((candidate) => candidate.operationId)
+      : [operation.operationId];
 
   return (
     <main className="dashboard-shell">
@@ -98,12 +100,14 @@ export function OperationDetail({
             {operation.courseId ? null : <span className="title-course-id">코스ID 검토 필요</span>}
           </div>
           <div className="detail-header-actions">
-            <span>준비도 {completedArchiveItems.length}/{requiredArchiveItems.length}</span>
+            {SHOW_READINESS_SUMMARY ? (
+              <span>준비도 {completedArchiveItems.length}/{requiredArchiveItems.length}</span>
+            ) : null}
             <button aria-label="상세 메뉴" type="button">•••</button>
           </div>
         </header>
 
-        {collaboration.lectureReports.length > 0 ? (
+        {SHOW_LECTURE_REPORTS && collaboration.lectureReports.length > 0 ? (
           <LectureReportsByRound
             courseOperations={courseOperations}
             currentOperation={operation}
@@ -124,26 +128,19 @@ export function OperationDetail({
                 label="코스ID"
                 operationId={operation.operationId}
               />
-              <InfoItem label="기간" value={formatCourseDateRange(courseOperations)} />
-              <InfoItem label="시간" value={aggregateUniqueValues(courseOperations, (candidate) => candidate.timeText)} />
-              <InfoItem
-                label="운영 유형"
-                value={aggregateUniqueValues(courseOperations, (candidate) => candidate.operationType)}
+              <EditableCourseNameItem
+                displayValue={operation.courseName || "미정"}
+                operationIds={sameCourseIdOperationIds}
+                value={operation.courseName}
               />
               <InfoItem
                 label="교육 형태"
                 value={aggregateUniqueValues(courseOperations, (candidate) => candidate.educationFormat)}
               />
-              <InfoItem
-                label="운영 채널"
-                value={aggregateUniqueValues(courseOperations, (candidate) => OPERATION_CHANNEL_LABEL[candidate.operationChannel])}
-              />
+              <InfoItem label="기간" value={formatCourseDateRange(courseOperations)} />
               <InfoItem label="회차" value={`총 ${courseOperations.length}회차`} />
               <InfoItem label="교육일수" value={formatTotalEducationDays(courseOperations)} />
-              <InfoItem
-                label="현장 투입"
-                value={aggregateUniqueValues(courseOperations, (candidate) => ONSITE_LABEL[candidate.onsiteRequired])}
-              />
+              <InfoItem label="교육장" value={operation.region || "미정"} />
               <ResultReportConditionSelect
                 rounds={courseOperations.map((candidate) => ({
                   hasResultReport: candidate.hasResultReport,
@@ -158,158 +155,31 @@ export function OperationDetail({
               <h2>담당 / 투입</h2>
             </div>
             <div className="info-grid">
-              <InfoItem label="OM" value={operation.om || "미정"} />
-              <InfoItem label="LD" value={operation.ld || "미정"} />
+              <EditableInfoItem
+                displayValue={operation.om || "미정"}
+                fields={[{ name: "om", options: personOptions.om, type: "name-select", value: operation.om }]}
+                label="OM"
+                operationId={operation.operationId}
+              />
+              <EditableInfoItem
+                displayValue={operation.ld || "미정"}
+                fields={[{ name: "ld", options: personOptions.ld, type: "name-select", value: operation.ld }]}
+                label="LD"
+                operationId={operation.operationId}
+              />
               <InfoItem label="강사" value={operation.instructors || "미정"} />
               <InfoItem label="실습코치" value={operation.coach || "미정"} />
-              <InfoItem label="교육장 (장소)" value={operation.region || "미정"} />
+              <InfoItem
+                label="현장 투입"
+                value={aggregateUniqueValues(courseOperations, (candidate) => ONSITE_LABEL[candidate.onsiteRequired])}
+              />
               <InfoItem label="남은 회차" value={remainingRoundText(operation)} />
+              <InfoItem label="매출" value={formatMoney(operation.revenue)} />
+              <InfoItem label="만족도(평균)" value={satisfactionSummary.totalAverage ?? "미입력"} />
             </div>
           </section>
 
-          <section className="detail-section course-sessions-section">
-            <EditAllRoundsProvider>
-            <div className="section-title">
-              <h2>동일 과정 운영 차수</h2>
-              <div className="course-sessions-header-actions">
-                <span>코스ID {operation.courseId} · {operation.courseName} 기준 · {courseOperations.length}건</span>
-                <AddRoundButton
-                  baseCoach={operation.coach}
-                  baseInstructors={operation.instructors}
-                  baseOperationId={operation.operationId}
-                  baseTimeText={operation.timeText}
-                  nextRoundNo={nextRoundNo}
-                />
-                <BulkAddRoundsButton baseOperationId={operation.operationId} />
-                {courseOperations.length > 1 ? <BulkEditRoundsButton /> : null}
-              </div>
-            </div>
-            <div className="session-table-wrap">
-              <table className="session-table">
-                <thead>
-                  <tr>
-                    <th>회차</th>
-                    <th>OM</th>
-                    <th>LD</th>
-                    <th>일정 / 시간</th>
-                    <th>강사</th>
-                    <th>실습코치</th>
-                    <th>관리</th>
-                    <th>만족도</th>
-                    <th>결과보고서 여부</th>
-                    <th>결과보고서</th>
-                    <th>패들렛</th>
-                    <th>강의관리</th>
-                    <th>삭제</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {courseOperations.map((courseOperation, index) => (
-                    <tr
-                      className={courseOperation.operationId === operation.operationId ? "current-session" : undefined}
-                      key={courseOperation.operationId}
-                    >
-                      <td>
-                        <Link className="session-link" href={`/operations/${courseOperation.operationId}${teamQuery}`}>
-                          {roundLabel(courseOperation, index)}
-                        </Link>
-                      </td>
-                      <td>{displayRoleAssigneeText(courseOperation.om, "배정필요")}</td>
-                      <td>{displayRoleAssigneeText(courseOperation.ld, "미정")}</td>
-                      <EditableSessionRow
-                        coach={courseOperation.coach}
-                        endDate={courseOperation.endDate}
-                        instructors={courseOperation.instructors}
-                        operationId={courseOperation.operationId}
-                        startDate={courseOperation.startDate}
-                        timeText={courseOperation.timeText}
-                      />
-                      <td>
-                        <SessionMetricPill
-                          doneText={courseOperation.avgSatisfaction}
-                          missingText="미입력"
-                        />
-                      </td>
-                      <ResultReportRequirementCell
-                        hasResultReport={courseOperation.hasResultReport}
-                        operationId={courseOperation.operationId}
-                      />
-                      {courseOperation.hasResultReport === "불필요" ? (
-                        <td className="round-resource-cell" />
-                      ) : (
-                        <EditableRoundResourceCell
-                          companionDoneValue="유"
-                          companionField="hasResultReport"
-                          companionMissingValue="무"
-                          done={courseOperation.hasResultReport === "유"}
-                          field="resultReportLink"
-                          operationId={courseOperation.operationId}
-                          value={courseOperation.resultReportLink}
-                        />
-                      )}
-                      <EditableRoundResourceCell
-                        done={isNavigableHref(courseOperation.padletLink)}
-                        field="padletLink"
-                        operationId={courseOperation.operationId}
-                        value={courseOperation.padletLink}
-                      />
-                      <td>
-                        <LectureManagementNoteRow
-                          done={Boolean(courseOperation.lectureManagementNote.trim())}
-                          operationId={courseOperation.operationId}
-                          startDate={courseOperation.startDate}
-                          value={courseOperation.lectureManagementNote}
-                        />
-                      </td>
-                      <td>
-                        <DeleteRoundButton
-                          fallbackOperationId={fallbackOperationId}
-                          isCurrent={courseOperation.operationId === operation.operationId}
-                          isLastRound={courseOperations.length === 1}
-                          operationId={courseOperation.operationId}
-                          roundLabel={roundLabel(courseOperation, index)}
-                          teamQuery={teamQuery}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <BulkSaveRoundsButton />
-            </EditAllRoundsProvider>
-          </section>
-
-          {otherCourseGroups.length > 0 ? (
-            <section className="detail-section course-groups-section">
-              <div className="section-title">
-                <h2>코스ID {operation.courseId} 내 다른 과정</h2>
-                <span>{otherCourseGroups.length}개 과정</span>
-              </div>
-              <div className="course-group-list">
-                {otherCourseGroups.map((group) => (
-                  <details className="course-group-item" key={group.key}>
-                    <summary>
-                      <span>{group.courseName}</span>
-                      <span>{group.operations.length}개 회차</span>
-                    </summary>
-                    <ul className="course-group-rounds">
-                      {group.operations.map((groupOperation, index) => (
-                        <li key={groupOperation.operationId}>
-                          <Link href={`/operations/${groupOperation.operationId}${teamQuery}`}>
-                            <span>{roundLabel(groupOperation, index)}</span>
-                            <span>{groupOperation.startDate || "일정 미정"}</span>
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </details>
-                ))}
-              </div>
-            </section>
-          ) : null}
-
-          <section className="detail-section resource-status-section" id="links">
+          <section className="detail-section resource-status-section required-items-section" id="links">
             <div className="resource-card-grid">
               <div className="resource-summary-card">
                 <div className="resource-row-head">
@@ -365,7 +235,170 @@ export function OperationDetail({
                   })}
                 </div>
               </div>
+            </div>
+          </section>
 
+          <section className="detail-section course-sessions-section">
+            <EditAllRoundsProvider>
+            <div className="section-title">
+              <h2>동일 과정 운영 차수</h2>
+              <div className="course-sessions-header-actions">
+                <span>코스ID {operation.courseId} · {operation.courseName} 기준 · {courseOperations.length}건</span>
+                <AddRoundButton
+                  baseCoach={operation.coach}
+                  baseInstructors={operation.instructors}
+                  baseOperationId={operation.operationId}
+                  baseTimeText={operation.timeText}
+                  nextRoundNo={nextRoundNo}
+                />
+                <BulkAddRoundsButton baseOperationId={operation.operationId} />
+                {courseOperations.length > 1 ? <BulkEditRoundsButton /> : null}
+              </div>
+            </div>
+            <div className="session-table-wrap">
+              <table className="session-table">
+                <thead>
+                  <tr>
+                    <th>회차</th>
+                    <th>OM</th>
+                    <th>현장운영</th>
+                    <th>일정 / 시간</th>
+                    <th>강사</th>
+                    <th>실습코치</th>
+                    <th>만족도</th>
+                    <th>결과보고서 여부</th>
+                    <th>결과보고서</th>
+                    <th>패들렛</th>
+                    <th>강의관리</th>
+                    <th>관리</th>
+                    <th>삭제</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {courseOperations.map((courseOperation, index) => (
+                    <tr
+                      className={courseOperation.operationId === operation.operationId ? "current-session" : undefined}
+                      key={courseOperation.operationId}
+                    >
+                      <td>
+                        <Link className="session-link" href={`/operations/${courseOperation.operationId}${teamQuery}`}>
+                          {roundLabel(courseOperation, index)}
+                        </Link>
+                      </td>
+                      <td>{displayRoleAssigneeText(courseOperation.om, "배정필요")}</td>
+                      <EditableOnsiteOmCell
+                        om={courseOperation.om}
+                        onsiteOm={courseOperation.onsiteOm}
+                        onsiteRequired={courseOperation.onsiteRequired}
+                        operationId={courseOperation.operationId}
+                        options={personOptions.om}
+                      />
+                      <EditableSessionRow
+                        coach={courseOperation.coach}
+                        endDate={courseOperation.endDate}
+                        instructors={courseOperation.instructors}
+                        operationId={courseOperation.operationId}
+                        startDate={courseOperation.startDate}
+                        timeText={courseOperation.timeText}
+                      >
+                        <td>
+                          <SessionMetricPill
+                            doneText={courseOperation.avgSatisfaction}
+                            missingText="미입력"
+                          />
+                        </td>
+                        <ResultReportRequirementCell
+                          hasResultReport={courseOperation.hasResultReport}
+                          operationId={courseOperation.operationId}
+                        />
+                        {courseOperation.hasResultReport === "불필요" ? (
+                          <td className="round-resource-cell" />
+                        ) : (
+                          <EditableRoundResourceCell
+                            companionDoneValue="유"
+                            companionField="hasResultReport"
+                            companionMissingValue="무"
+                            done={courseOperation.hasResultReport === "유"}
+                            field="resultReportLink"
+                            operationId={courseOperation.operationId}
+                            value={courseOperation.resultReportLink}
+                          />
+                        )}
+                        <EditableRoundResourceCell
+                          done={isNavigableHref(courseOperation.padletLink)}
+                          field="padletLink"
+                          operationId={courseOperation.operationId}
+                          value={courseOperation.padletLink}
+                        />
+                        <td>
+                          <LectureManagementNoteRow
+                            done={Boolean(courseOperation.lectureManagementNote.trim())}
+                            operationId={courseOperation.operationId}
+                            startDate={courseOperation.startDate}
+                            value={courseOperation.lectureManagementNote}
+                          />
+                        </td>
+                      </EditableSessionRow>
+                      <td>
+                        <DeleteRoundButton
+                          fallbackOperationId={fallbackOperationId}
+                          isCurrent={courseOperation.operationId === operation.operationId}
+                          isLastRound={courseOperations.length === 1}
+                          operationId={courseOperation.operationId}
+                          roundLabel={roundLabel(courseOperation, index)}
+                          teamQuery={teamQuery}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <BulkSaveRoundsButton />
+            </EditAllRoundsProvider>
+          </section>
+
+          {courseGroups.length > 0 ? (
+            <section className="detail-section course-groups-section">
+              <div className="section-title">
+                <h2>코스ID {operation.courseId} 내 과정</h2>
+                <span>{courseGroups.length}개 과정</span>
+              </div>
+              <div className="course-group-list">
+                {courseGroups.map((group) => (
+                  <details
+                    className={group.isCurrent ? "course-group-item current-course-group" : "course-group-item"}
+                    key={group.key}
+                    open={group.isCurrent}
+                  >
+                    <summary>
+                      <span>
+                        {group.courseName}
+                        {group.isCurrent ? <span className="current-course-tag">현재 보고 있는 과정</span> : null}
+                      </span>
+                      <span>{group.operations.length}개 회차</span>
+                    </summary>
+                    <ul className="course-group-rounds">
+                      {group.operations.map((groupOperation, index) => (
+                        <li
+                          className={groupOperation.operationId === operation.operationId ? "current-session" : undefined}
+                          key={groupOperation.operationId}
+                        >
+                          <Link href={`/operations/${groupOperation.operationId}${teamQuery}`}>
+                            <span>{roundLabel(groupOperation, index)}</span>
+                            <span>{groupOperation.startDate || "일정 미정"}</span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          <section className="detail-section resource-status-section">
+            <div className="resource-card-grid">
               <div className="resource-summary-card">
                 <div className="resource-row-head">
                   <strong>만족도</strong>
@@ -678,19 +711,18 @@ function getCourseOperations(operation: OperationSession, relatedOperations: Ope
 
 interface CourseGroup {
   courseName: string;
+  isCurrent: boolean;
   key: string;
   operations: OperationSession[];
 }
 
-function getOtherCourseGroups(operation: OperationSession, sameCourseIdOperations: OperationSession[]): CourseGroup[] {
+function getCourseGroups(operation: OperationSession, sameCourseIdOperations: OperationSession[]): CourseGroup[] {
   const currentGroupKey = courseGroupKey(operation);
   const groups = new Map<string, CourseGroup>();
 
   for (const candidate of sameCourseIdOperations) {
     const key = courseGroupKey(candidate);
-    if (key === currentGroupKey) continue;
-
-    const group = groups.get(key) ?? { courseName: candidate.courseName, key, operations: [] };
+    const group = groups.get(key) ?? { courseName: candidate.courseName, isCurrent: key === currentGroupKey, key, operations: [] };
     group.operations.push(candidate);
     groups.set(key, group);
   }

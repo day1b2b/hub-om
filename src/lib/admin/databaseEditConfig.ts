@@ -17,7 +17,7 @@ export const ADMIN_ENUM_LABELS: Record<string, Record<string, string>> = {
     NOT_READY: "아카이빙전"
   },
   educationFormat: {
-    BLENDED: "블랜디드",
+    BLENDED: "블렌디드",
     FLIPPED: "플립러닝",
     NEEDS_REVIEW: "검토필요",
     OFFLINE: "오프라인",
@@ -49,7 +49,7 @@ export const ADMIN_ENUM_LABELS: Record<string, Record<string, string>> = {
     true: "활성"
   },
   operationChannel: {
-    BLENDED: "블랜디드",
+    BLENDED: "블렌디드",
     LIVE_ONLINE: "실시간 비대면",
     NEEDS_REVIEW: "검토필요",
     ONLINE_PLATFORM: "온라인 플랫폼",
@@ -154,6 +154,7 @@ export const ADMIN_EDITABLE_FIELDS = {
     { field: "coachText", input: "text", label: "코치", nullable: true },
     { field: "region", input: "text", label: "지역", nullable: true },
     { field: "onsiteRequired", input: "enum", label: "출강", optionLabels: ADMIN_ENUM_LABELS.onsiteRequired, options: ["Y", "N", "PARTIAL", "UNKNOWN"] },
+    { field: "onsiteOmName", input: "text", label: "현장운영 OM", nullable: true },
     { field: "specialNotes", input: "textarea", label: "특이사항", nullable: true },
     { field: "operationIssue", input: "textarea", label: "운영이슈", nullable: true },
     { field: "omUpdate", input: "textarea", label: "OM 업데이트", nullable: true },

@@ -34,6 +34,7 @@ const EDUCATION_FORMAT = {
   "오프라인": "offline",
   "비대면": "remote",
   "온라인": "remote",
+  "블렌디드": "blended",
   "블랜디드": "blended",
   "플립러닝": "flipped",
   "검토필요": "needs_review"

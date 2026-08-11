@@ -138,6 +138,31 @@ export default function PrivacyPage() {
           </p>
         </section>
 
+        <section>
+          <h2>10. 개인정보보호책임자 및 관련 부서</h2>
+          <p>
+            회사는 개인정보 처리에 관한 업무를 총괄해서 책임지고, 개인정보 처리와 관련한 지원자의
+            불만처리 및 피해구제 등을 위하여 아래와 같이 개인정보보호책임자를 지정하고 있습니다.
+            회사의 서비스(또는 사업)을 이용하면서 발생한 모든 개인정보 보호 관련 문의, 불만처리,
+            피해구제 등에 관한 사항을 개인정보보호책임자 및 담당부서로 문의하실 수 있습니다. 회사는
+            지원자의 문의에 대해 지체 없이 답변 및 처리해드릴 것입니다.
+          </p>
+          <p>
+            <strong>1. 개인정보보호책임자</strong>
+          </p>
+          <ul>
+            <li>성명: 김동혁</li>
+            <li>연락처: 02-501-9396 / help@fastcampus.co.kr</li>
+          </ul>
+          <p>
+            <strong>2. 개인정보 열람청구 접수·처리 부서</strong>
+          </p>
+          <ul>
+            <li>부서명: 고객센터</li>
+            <li>연락처: 02-501-9396 / tm@day1company.co.kr</li>
+          </ul>
+        </section>
+
         <footer className="legal-footer">
           <a href="/terms">서비스 약관</a>
           <Link href="/">홈으로 돌아가기</Link>

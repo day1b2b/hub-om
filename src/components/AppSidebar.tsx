@@ -20,6 +20,7 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
   const isImportAdminPage = pathname?.startsWith("/admin/imports") ?? false;
   const isSyncAdminPage = pathname?.startsWith("/admin/sync") ?? false;
   const isUsersAdminPage = pathname?.startsWith("/admin/users") ?? false;
+  const isSatisfactionPreviewPage = pathname?.startsWith("/admin/satisfaction-preview") ?? false;
   const isMyDashboardPage = pathname === "/me";
   const isInstructorWikiPage = pathname === "/instructor-wiki";
   const isCompanyWikiPage = pathname === "/company-wiki";
@@ -65,6 +66,13 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
         </div>
 
         <div className="nav-section">
+          <div className="nav-section-title">운영현황/위키</div>
+          <Link className={isOperationsPage ? "active" : ""} data-icon="🔒" href="/operations">운영 현황</Link>
+          <Link className={isCompanyWikiPage ? "active" : ""} data-icon="🔒" href="/company-wiki">기업 위키</Link>
+          <Link className={isInstructorWikiPage ? "active" : ""} data-icon="🔒" href="/instructor-wiki">강사 위키</Link>
+        </div>
+
+        <div className="nav-section">
           <div className="nav-section-title">코치</div>
           <Link className={isCoachSchedulePage ? "active" : ""} data-icon="◷" href="/coaches/schedule">코치 일정</Link>
           <Link className={isCoachListPage ? "active" : ""} data-icon="☰" href="/coaches">코치 목록</Link>
@@ -72,18 +80,24 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
           <Link className={isCoachAdminPage ? "active" : ""} data-icon="🛠" href="/coaches/admin">관리자페이지</Link>
         </div>
 
+        <div className="nav-section">
+          <div className="nav-section-title">공지/운영TOOL</div>
+          <Link className={isAnnouncementsPage ? "active" : ""} data-icon="🔒" href="/announcements">공지사항</Link>
+        </div>
+
+        <div className="nav-section nav-section-locked">
+          <div className="nav-section-title">데이터 관리</div>
+          <Link className={isImportAdminPage ? "active" : ""} data-icon="🔒" href="/admin/imports">데이터 일괄 등록</Link>
+          <Link className={isSyncAdminPage ? "active" : ""} data-icon="🔒" href="/admin/sync">데이터 동기화</Link>
+          <Link className={isSatisfactionPreviewPage ? "active" : ""} data-icon="🔒" href="/admin/satisfaction-preview">만족도 매칭</Link>
+        </div>
+
         <div className="nav-section nav-section-locked">
           <div className="nav-section-title">관리자 전용</div>
           <Link className={pathname === "/dashboard" ? "active" : ""} data-icon="🔒" href="/dashboard">대시보드</Link>
-          <Link className={isOperationsPage ? "active" : ""} data-icon="🔒" href="/operations">운영 현황</Link>
           <Link className={isResourcesPage ? "active" : ""} data-icon="🔒" href="/resources">리소스</Link>
-          <Link className={isInstructorWikiPage ? "active" : ""} data-icon="🔒" href="/instructor-wiki">강사 위키</Link>
-          <Link className={isCompanyWikiPage ? "active" : ""} data-icon="🔒" href="/company-wiki">기업 위키</Link>
-          <Link className={isAnnouncementsPage ? "active" : ""} data-icon="🔒" href="/announcements">공지사항</Link>
           <Link className={isDatabaseAdminPage ? "active" : ""} data-icon="🔒" href="/admin/database">DB 조회</Link>
-          <Link className={isImportAdminPage ? "active" : ""} data-icon="🔒" href="/admin/imports">데이터 검수</Link>
-          <Link className={isSyncAdminPage ? "active" : ""} data-icon="🔒" href="/admin/sync">데이터 동기화</Link>
-          <Link className={isUsersAdminPage ? "active" : ""} data-icon="🔒" href="/admin/users">사용자 관리</Link>
+          <Link className={isUsersAdminPage ? "active" : ""} data-icon="🔒" href="/admin/users">멤버 관리</Link>
         </div>
       </nav>
     </aside>

@@ -20,9 +20,6 @@ export default function PublicHomePage() {
             <a className="primary-link" href="/sign-in?callbackUrl=/dashboard">
               회사 계정으로 로그인
             </a>
-            <a className="secondary-link" href="/privacy">
-              개인정보처리방침
-            </a>
           </div>
         </div>
 
@@ -46,9 +43,9 @@ export default function PublicHomePage() {
       </section>
 
       <footer className="public-home-footer">
-        <a href="/privacy">개인정보처리방침</a>
+        {/* 개인정보 미수집 사이트로 판단되어 개인정보처리방침 링크 숨김 처리 */}
+        {/* <a href="/privacy">개인정보처리방침</a> */}
         <a href="/terms">서비스 약관</a>
-        <a href="mailto:d1.b2b.ax.3@gmail.com">문의</a>
       </footer>
     </main>
   );

@@ -2,9 +2,8 @@ import { OperationCreateForm } from "@/app/operations/new/OperationCreateForm";
 import { AppSidebar } from "@/components/AppSidebar";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
-import type { OperationSession, SourceTeam } from "@/lib/data/operationTypes";
-import { splitPersonNames } from "@/lib/data/personNames";
-import type { ResourceOwnerRoster, TeamMemberRoleRoster } from "@/lib/data/teamMemberRepository";
+import { getOmRequest } from "@/lib/data/omRequest/omRequestLocalRepository";
+import { buildPersonOptions, buildRoleRosterFromOperations, mergeRoleRosters } from "@/lib/data/personOptions";
 import { getStoredTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFactory";
 import { filterRoleRosterByTeamScope, resolveTeamScope } from "@/lib/teamScope";
 
@@ -30,6 +29,8 @@ export default async function NewOperationPage({ searchParams }: NewOperationPag
   const storageTarget = process.env.OPERATION_DATA_SOURCE === "local" || !process.env.DATABASE_URL ? "로컬 JSON" : "운영 DB";
   const today = formatDate(new Date());
   const personOptions = buildPersonOptions(scopedRoleRoster);
+  const fromRequestId = firstParamValue(params.fromRequestId);
+  const initialValues = fromRequestId ? buildInitialValuesFromOmRequest(fromRequestId) : undefined;
 
   return (
     <main className="dashboard-shell">
@@ -46,7 +47,7 @@ export default async function NewOperationPage({ searchParams }: NewOperationPag
           </div>
         </header>
 
-        <OperationCreateForm personOptions={personOptions} teamScope={teamScope} today={today} />
+        <OperationCreateForm initialValues={initialValues} personOptions={personOptions} teamScope={teamScope} today={today} />
       </section>
     </main>
   );
@@ -59,42 +60,28 @@ function formatDate(value: Date) {
   return `${year}-${month}-${day}`;
 }
 
-function buildPersonOptions(roleRoster: TeamMemberRoleRoster) {
+function firstParamValue(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function buildInitialValuesFromOmRequest(requestId: string) {
+  const request = getOmRequest(requestId);
+  if (!request) return undefined;
+
+  const firstSession = request.sessions[0];
+
   return {
-    ld: unique(Object.values(roleRoster.ld).flatMap((owners) => owners ?? [])),
-    om: unique(Object.values(roleRoster.om).flatMap((owners) => owners ?? []))
+    companyName: request.company,
+    courseId: request.courseId,
+    courseName: request.courseName,
+    driveLink: request.driveLink,
+    educationDays: firstSession?.duration,
+    endDate: firstSession?.dateEnd || firstSession?.date,
+    instructors: request.instructorName,
+    onsiteRequired: request.onSiteOperation === "Y" ? "Y" : "N",
+    operationDetail: request.syncupLink,
+    region: firstSession?.location,
+    startDate: firstSession?.date,
+    timeText: firstSession?.timeStart && firstSession?.timeEnd ? `${firstSession.timeStart} ~ ${firstSession.timeEnd}` : undefined
   };
-}
-
-function buildRoleRosterFromOperations(operations: OperationSession[]): TeamMemberRoleRoster {
-  return operations.reduce<TeamMemberRoleRoster>(
-    (roster, operation) => {
-      const sourceTeam = operation.sourceTeam;
-      if (!isKnownSourceTeam(sourceTeam)) return roster;
-
-      roster.om[sourceTeam] = unique([...(roster.om[sourceTeam] ?? []), ...splitPersonNames(operation.om, "")]);
-      roster.ld[sourceTeam] = unique([...(roster.ld[sourceTeam] ?? []), ...splitPersonNames(operation.ld, "")]);
-      return roster;
-    },
-    { ld: {}, om: {} }
-  );
-}
-
-function mergeRoleRosters(primary: TeamMemberRoleRoster, fallback: TeamMemberRoleRoster): TeamMemberRoleRoster {
-  return {
-    ld: hasRosterMembers(primary.ld) ? primary.ld : fallback.ld,
-    om: hasRosterMembers(primary.om) ? primary.om : fallback.om
-  };
-}
-
-function hasRosterMembers(roster: ResourceOwnerRoster) {
-  return Object.values(roster).some((owners) => (owners ?? []).length > 0);
-}
-
-function isKnownSourceTeam(sourceTeam: SourceTeam | undefined): sourceTeam is "1팀" | "2팀" {
-  return sourceTeam === "1팀" || sourceTeam === "2팀";
-}
-
-function unique(values: string[]) {
-  return [...new Set(values.map((value) => value.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ko-KR"));
 }

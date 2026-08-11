@@ -195,3 +195,74 @@ test("coach_text가 있으면 동률 후보를 가르는 보조 기준으로 사
 
   assert.equal(result, "op-2");
 });
+
+test("courseId가 양쪽에 있고 일치하면 과정명이 달라도 매칭한다", () => {
+  const candidates: OperationCandidate[] = [
+    {
+      id: "op-1",
+      courseId: "260759",
+      courseName: "케이티 임직원 대상 특별 교육", // 운영 등록명 표기가 시트와 전혀 다름
+      startDate: "2026-07-24",
+      endDate: "2026-07-24"
+    }
+  ];
+
+  const result = matchOperation(
+    { courseName: "KT AX Openclass", courseId: "260759", startDate: "2026-07-24", endDate: "2026-07-24" },
+    candidates
+  );
+
+  assert.equal(result, "op-1");
+});
+
+test("courseId가 같아도 일정이 맞지 않으면 매칭하지 않는다(날짜 게이트 유지)", () => {
+  const candidates: OperationCandidate[] = [
+    { id: "op-1", courseId: "260759", courseName: "KT AX Openclass", startDate: "2026-01-10", endDate: "2026-01-10" }
+  ];
+
+  const result = matchOperation(
+    { courseName: "KT AX Openclass", courseId: "260759", startDate: "2026-07-24", endDate: "2026-07-24" },
+    candidates
+  );
+
+  assert.equal(result, null);
+});
+
+test("같은 courseId를 가진 여러 세션은 일정으로 구분한다", () => {
+  const candidates: OperationCandidate[] = [
+    { id: "op-jul", courseId: "260759", courseName: "AX 교육", startDate: "2026-07-24", endDate: "2026-07-24" },
+    { id: "op-jun", courseId: "260759", courseName: "AX 교육", startDate: "2026-06-19", endDate: "2026-06-19" }
+  ];
+
+  const jul = matchOperation(
+    { courseName: "AX 교육", courseId: "260759", startDate: "2026-07-24", endDate: "2026-07-24" },
+    candidates
+  );
+  const jun = matchOperation(
+    { courseName: "AX 교육", courseId: "260759", startDate: "2026-06-19", endDate: "2026-06-19" },
+    candidates
+  );
+
+  assert.equal(jul, "op-jul");
+  assert.equal(jun, "op-jun");
+});
+
+test("courseId가 한쪽에만 있으면 기존 과정명 매칭으로 폴백한다", () => {
+  const candidates: OperationCandidate[] = [
+    {
+      id: "op-1",
+      courseId: "260759",
+      courseName: "데이터 분석 부트캠프",
+      startDate: "2026-03-01",
+      endDate: "2026-03-31"
+    }
+  ];
+
+  // engagement에는 courseId가 없다 → 과정명으로 매칭되어야 한다
+  const result = matchOperation(
+    { courseName: "데이터 분석 부트캠프", startDate: "2026-03-01", endDate: "2026-03-31" },
+    candidates
+  );
+
+  assert.equal(result, "op-1");
+});

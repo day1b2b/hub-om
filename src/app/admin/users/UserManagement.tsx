@@ -1,15 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { TEAM_OPTIONS } from "@/lib/data/teamUsers/teamUserTypes";
 import type { TeamUser, TeamUserInput, TeamUserRole } from "@/lib/data/teamUsers/teamUserTypes";
 
-const TEAM_OPTIONS = ["1팀", "2팀"] as const;
 const ROLE_OPTIONS: { value: TeamUserRole; label: string }[] = [
-  { value: "ld", label: "LD" },
-  { value: "om", label: "OM" }
+  { value: "om", label: "OM" },
+  { value: "ld", label: "LD" }
 ];
 const ROLE_LABEL: Record<TeamUserRole, string> = { ld: "LD", om: "OM" };
-type TeamFilter = "전체" | "1팀" | "2팀";
+type TeamFilter = "전체" | "AX 1파트" | "AX 2파트" | "AX 3파트";
 
 export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
   const [users, setUsers] = useState<TeamUser[]>(initialUsers);
@@ -28,6 +28,10 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
   const [bulkError, setBulkError] = useState<string | null>(null);
   const [assignRole, setAssignRole] = useState<TeamUserRole>("om");
   const [assigning, setAssigning] = useState(false);
+  const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
+  const [editingTeamValue, setEditingTeamValue] = useState("");
+  const [savingTeamId, setSavingTeamId] = useState<string | null>(null);
+  const [teamEditError, setTeamEditError] = useState<string | null>(null);
 
   const filteredUsers =
     teamFilter === "전체" ? users : users.filter((u) => u.team === teamFilter);
@@ -136,6 +140,42 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
     }
   }
 
+  function startEditTeam(u: TeamUser) {
+    setTeamEditError(null);
+    setEditingTeamId(u.id);
+    setEditingTeamValue(u.team ?? "");
+  }
+
+  function cancelEditTeam() {
+    setEditingTeamId(null);
+    setEditingTeamValue("");
+    setTeamEditError(null);
+  }
+
+  async function handleSaveTeam(id: string) {
+    setSavingTeamId(id);
+    setTeamEditError(null);
+    try {
+      const res = await fetch("/api/admin/users/team", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, team: editingTeamValue || null }),
+      });
+      if (!res.ok) {
+        const data = await res.json() as { error?: string };
+        throw new Error(data.error ?? "저장 실패");
+      }
+      const updated = await res.json() as TeamUser;
+      setUsers((prev) => prev.map((u) => (u.id === id ? updated : u)));
+      setEditingTeamId(null);
+      setEditingTeamValue("");
+    } catch (err) {
+      setTeamEditError(err instanceof Error ? err.message : "오류가 발생했습니다.");
+    } finally {
+      setSavingTeamId(null);
+    }
+  }
+
   function toggleSelect(id: string) {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -214,7 +254,7 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
       {error && <p className="om-request-error">{error}</p>}
 
       <div className="om-manage-filters">
-        {(["전체", "1팀", "2팀"] as TeamFilter[]).map((f) => {
+        {(["전체", "AX 1파트", "AX 2파트", "AX 3파트"] as TeamFilter[]).map((f) => {
           const count = f === "전체" ? users.length : users.filter((u) => u.team === f).length;
           return (
             <button
@@ -256,6 +296,7 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
               </div>
             )}
           </div>
+          {teamEditError && <p className="om-request-error">{teamEditError}</p>}
           <table className="user-table">
             <thead>
               <tr>
@@ -283,7 +324,37 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
                       onChange={() => toggleSelect(u.id)}
                     />
                   </td>
-                  <td>{u.team || "-"}</td>
+                  <td onClick={(e) => e.stopPropagation()}>
+                    {editingTeamId === u.id ? (
+                      <div className="user-team-edit">
+                        <select
+                          className="user-input"
+                          value={editingTeamValue}
+                          onChange={(e) => setEditingTeamValue(e.target.value)}
+                        >
+                          <option value="">미지정</option>
+                          {TEAM_OPTIONS.map((t) => (
+                            <option key={t} value={t}>{t}</option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          className="user-add-btn"
+                          disabled={savingTeamId === u.id}
+                          onClick={() => handleSaveTeam(u.id)}
+                        >
+                          {savingTeamId === u.id ? "저장 중..." : "저장"}
+                        </button>
+                        <button type="button" className="user-delete-btn" onClick={cancelEditTeam}>
+                          취소
+                        </button>
+                      </div>
+                    ) : (
+                      <button type="button" className="user-team-cell" onClick={() => startEditTeam(u)}>
+                        {u.team || "-"}
+                      </button>
+                    )}
+                  </td>
                   <td>{u.role ? ROLE_LABEL[u.role] : "-"}</td>
                   <td>{u.name}</td>
                   <td>{u.email}</td>
@@ -302,11 +373,11 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
       )}
 
       <div className="user-bulk-add">
-        <p className="user-bulk-add-label">여러 명 한 번에 추가 (엑셀에서 팀, 구분(LD/OM), 이름, 이메일, Slack ID 순서로 복사해서 붙여넣기)</p>
+        <p className="user-bulk-add-label">여러 명 한 번에 추가 (엑셀에서 팀, 구분(OM/LD), 이름, 이메일, Slack ID 순서로 복사해서 붙여넣기)</p>
         <textarea
           className="user-bulk-textarea"
           onChange={(e) => setBulkText(e.target.value)}
-          placeholder={"1팀\tOM\t김정선\tjungsun.kim@day1company.co.kr\tjungsun.kim"}
+          placeholder={"AX 1파트\tOM\t김정선\tjungsun.kim@day1company.co.kr\tjungsun.kim"}
           rows={6}
           value={bulkText}
         />
