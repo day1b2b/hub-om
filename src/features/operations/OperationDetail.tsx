@@ -123,7 +123,12 @@ export function OperationDetail({
                 label="코스ID"
                 operationId={operation.operationId}
               />
-              <InfoItem label="코스ID명" value={aggregateUniqueValues(courseOperations, (candidate) => candidate.courseName)} />
+              <EditableInfoItem
+                displayValue={operation.courseName || "미정"}
+                fields={[{ name: "courseName", placeholder: "예: AX 교육 실무2", value: operation.courseName }]}
+                label="코스ID명"
+                operationId={operation.operationId}
+              />
               <InfoItem
                 label="교육 형태"
                 value={aggregateUniqueValues(courseOperations, (candidate) => candidate.educationFormat)}
