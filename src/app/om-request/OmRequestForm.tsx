@@ -494,8 +494,9 @@ export function OmRequestForm({
       <div className="operation-form-section">
         <div className="section-title"><h2>교육 일정</h2></div>
         <p className="om-field-hint">
-          1회차를 적으시고 총 회차 수를 늘리시면 아래 자동 복사가 되니, 일정이 확정되지 않았다면 대략적으로 넣어주시고
-          요청사항에 내용을 자세하게 작성해주세요. 장소가 미정이면 미정이라고 입력해도 됩니다.
+          1회차를 적으시고 총 회차 수를 늘리시면 아래 자동 복사가 되니 참고 바랍니다. 회차만 확정되고 일정이 확정되지
+          않았다면 대략적으로 넣어주시고 요청사항에 내용을 자세하게 작성해주세요. 장소가 미정이면 미정이라고 입력해도
+          됩니다.
         </p>
 
         <div className="om-session-sheet-actions">
