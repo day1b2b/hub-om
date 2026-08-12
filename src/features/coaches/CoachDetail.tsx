@@ -139,6 +139,24 @@ function ProfilePane({ coach }: { coach: CoachDetail }) {
         <CoachInputLinkActions url={coach.coachInputUrl} />
       </section>
 
+      <section className="coach-origin-card">
+        <div className="coach-origin-section-title">
+          <span>노션 페이지</span>
+        </div>
+        {coach.notionPageId ? (
+          <a
+            className="notion-chip"
+            href={`https://www.notion.so/${coach.notionPageId.replaceAll("-", "")}`}
+            rel="noreferrer"
+            target="_blank"
+          >
+            🔗 노션 코치 페이지 ↗
+          </a>
+        ) : (
+          <span className="notion-chip is-off">노션 미연결</span>
+        )}
+      </section>
+
       <section className="coach-origin-card coach-origin-wide-card">
         <div className="coach-origin-section-title">
           <span>가능 분야</span>
