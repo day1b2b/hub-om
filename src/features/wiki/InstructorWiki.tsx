@@ -126,6 +126,7 @@ export function InstructorWiki({ entries, loadFailed, provenance, recruitAvoidNa
             ) : filtered.length > 0 ? (
               filtered.map((entry) => {
                 const recent = entry.courses[0];
+                // 목록에서는 항상 상세로 간다. 노션 이동은 상세 헤더의 강사명 메뉴에서 한다.
                 return (
                   <Link className="wiki-card" href={`/instructor-wiki/${encodeURIComponent(entry.name)}`} key={entry.id}>
                     <span className="wiki-card-head">

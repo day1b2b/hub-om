@@ -38,7 +38,7 @@ export default async function InstructorWikiPage() {
   const provenance: InstructorWikiProvenance = entries.length > 0 ? "operations" : "empty";
 
   // OM이 "섭외 지양"으로 저장한 강사명 목록(목록 화면 표시용).
-  const notes = getAllInstructorNotes();
+  const notes = await getAllInstructorNotes();
   const recruitAvoidNames = Object.keys(notes).filter((name) => notes[name]?.recruitAvoid);
 
   return (

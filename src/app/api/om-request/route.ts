@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { addCustomTools, listCustomTools } from "@/lib/data/omRequest/omCustomToolsLocalRepository";
 import { createOmRequest } from "@/lib/data/omRequest/omRequestLocalRepository";
 import type { OmRequestInput } from "@/lib/data/omRequest/omRequestTypes";
+import { extractUnknownTools } from "@/lib/data/omRequest/omToolOptions";
 import { notifyOmRequestCreated } from "@/lib/slack/notifySlack";
 
 export async function POST(request: Request) {
@@ -15,6 +17,7 @@ export async function POST(request: Request) {
     }
     const body = (await request.json()) as OmRequestInput;
     const created = createOmRequest(body);
+    addCustomTools(extractUnknownTools(created.tools ?? "", listCustomTools()));
     await notifyOmRequestCreated({
       team: created.team,
       ld: created.ld,

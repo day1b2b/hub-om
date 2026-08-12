@@ -1,43 +1,30 @@
-import fs from "fs";
-import path from "path";
+// 강사위키 강사별 값 읽기/저장 진입점.
+// 실제 저장소는 instructorNoteRepositoryFactory가 고른다(로컬 dev = .local 파일, 배포 = PostgreSQL).
+// 화면·API는 이 모듈만 import하면 되고 어느 저장소인지 알 필요가 없다.
+import { getInstructorNoteRepository } from "./instructorNoteRepositoryFactory";
 
-// 강사위키에서 OM이 입력하는 항목(강사명 수정·파트너ID·특이사항·섭외지양·계약/정산)을
-// 강사명 기준으로 로컬 파일에 저장한다. .local/ 은 gitignore → 로컬(dev) 전용, 배포 무영향.
-// 배포(DB 모드) 저장은 별도 Prisma 모델/마이그레이션 + 권한·보안 검토가 필요하다.
-const DATA_FILE = path.join(process.cwd(), ".local", "instructor-wiki.json");
+export type { InstructorNote, InstructorNotionProfile } from "./instructorNoteRepository";
+import type { InstructorNote } from "./instructorNoteRepository";
 
-export interface InstructorNote {
-  displayName?: string;  // 강사명 수정값
-  partnerId?: string;
-  notes?: string;        // 강사 특이사항
-  recruitAvoid?: boolean; // 섭외 지양
-  contact?: string;      // 연락처
-  email?: string;
-}
-
-function readAll(): Record<string, InstructorNote> {
-  try {
-    return JSON.parse(fs.readFileSync(DATA_FILE, "utf-8")) as Record<string, InstructorNote>;
-  } catch {
-    return {};
-  }
-}
-
-export function getInstructorNote(name: string): InstructorNote {
-  return readAll()[name] ?? {};
+export function getInstructorNote(name: string): Promise<InstructorNote> {
+  return getInstructorNoteRepository().getNote(name);
 }
 
 // 목록 화면용: 전체 저장값(섭외지양 표시 등에 사용).
-export function getAllInstructorNotes(): Record<string, InstructorNote> {
-  return readAll();
+export function getAllInstructorNotes(): Promise<Record<string, InstructorNote>> {
+  return getInstructorNoteRepository().getAllNotes();
 }
 
 // 부분 필드만 병합 저장(섭외지양 토글, 폼 저장이 각각 일부만 보낼 수 있음).
-export function saveInstructorNote(name: string, patch: InstructorNote): InstructorNote {
-  const all = readAll();
-  const merged = { ...all[name], ...patch };
-  all[name] = merged;
-  fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
-  fs.writeFileSync(DATA_FILE, JSON.stringify(all, null, 2), "utf-8");
-  return merged;
+export function saveInstructorNote(name: string, patch: InstructorNote): Promise<InstructorNote> {
+  return getInstructorNoteRepository().saveNote(name, patch);
+}
+
+// 노션 고유 ID(또는 전체 URL) → 열 수 있는 노션 URL. 전체 URL이면 그대로, 아니면 id로 구성.
+export function notionHref(idOrUrl: string | undefined): string | null {
+  const value = (idOrUrl ?? "").trim();
+  if (!value) return null;
+  if (/^https?:\/\//i.test(value)) return value;
+  const id = value.replace(/-/g, "");
+  return `https://www.notion.so/${id}`;
 }

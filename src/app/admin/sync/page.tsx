@@ -36,6 +36,16 @@ export default async function AdminSyncPage({ searchParams }: AdminSyncPageProps
           </div>
         </header>
 
+        <header className="page-header">
+          <div>
+            <p className="eyebrow">코치 동기화</p>
+            <h2>코치</h2>
+            <p className="lede">
+              구글시트 계약 내역과 노션 코치 DB에서 코치 정보를 가져옵니다.
+            </p>
+          </div>
+        </header>
+
         <CoachSyncDashboard />
 
         <header className="page-header">

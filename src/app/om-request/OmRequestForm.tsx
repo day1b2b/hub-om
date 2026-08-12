@@ -4,7 +4,10 @@ import Script from "next/script";
 import { useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import type { OmRequestInput, OmRequestSession, TrainingType, YN } from "@/lib/data/omRequest/omRequestTypes";
+import { parseToolsValue, TOOL_GROUPS, TOOL_META_OPTIONS } from "@/lib/data/omRequest/omToolOptions";
+import { calcSessionDuration, type OmRequestInput, type OmRequestSession, type TrainingType, type YN } from "@/lib/data/omRequest/omRequestTypes";
+import { COURSE_CATEGORY_GROUPS, getCourseCategoryMajor, getCourseCategoryMinors } from "@/lib/data/omRequest/omCourseCategoryOptions";
+import { parseSessionSheet } from "@/lib/data/omRequest/omSessionSheet";
 
 declare global {
   interface Window {
@@ -35,7 +38,7 @@ function AddressSearchButton({ onSelect }: { onSelect: (address: string) => void
   );
 }
 
-const TEAM_OPTIONS = ["1팀", "2팀"];
+const TEAM_OPTIONS = ["1파트", "2파트", "3파트"];
 const TRAINING_TYPE_OPTIONS: TrainingType[] = ["오프라인", "블렌디드", "비대면", "해커톤"];
 
 const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
@@ -46,18 +49,6 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
 
 function emptySession(): OmRequestSession {
   return { date: "", dateEnd: "", timeStart: "", timeEnd: "", duration: "", location: "" };
-}
-
-function calcDuration(timeStart: string, timeEnd: string): string {
-  if (!timeStart || !timeEnd) return "";
-  const [sh, sm] = timeStart.split(":").map(Number);
-  const [eh, em] = timeEnd.split(":").map(Number);
-  const startMinutes = sh * 60 + sm;
-  const endMinutes = eh * 60 + em;
-  if (endMinutes <= startMinutes) return "";
-  const totalHours = (endMinutes - startMinutes) / 60;
-  const adjusted = totalHours >= 7 ? totalHours - 1 : totalHours;
-  return adjusted % 1 === 0 ? String(adjusted) : String(adjusted);
 }
 
 function formatDateInput(raw: string): string {
@@ -129,32 +120,81 @@ function YNToggle({
   );
 }
 
-export function OmRequestForm({ ldName, initialData, requestId }: { ldName: string; initialData?: OmRequestInput; requestId?: string }) {
+export function OmRequestForm({
+  extraTools = [],
+  ldName,
+  initialData,
+  requestId
+}: {
+  extraTools?: string[];
+  ldName: string;
+  initialData?: OmRequestInput;
+  requestId?: string;
+}) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sheetError, setSheetError] = useState<string | null>(null);
 
-  const [form, setForm] = useState<OmRequestInput>(initialData ?? {
-    team: "1팀",
-    ld: ldName,
-    company: "",
-    trainingType: "오프라인",
-    courseId: "",
-    courseName: "",
-    instructorName: "",
-    driveLink: "",
-    syncupLink: "",
-    skillfloSetup: "N",
-    skillmatchSetup: "N",
-    onSiteOperation: "N",
-    coachRequest: "N",
-    totalSessions: 1,
-    sessions: [emptySession()],
-    notes: ""
+  const [form, setForm] = useState<OmRequestInput>(() => {
+    const base: OmRequestInput = initialData ?? {
+      team: "1파트",
+      ld: ldName,
+      company: "",
+      trainingType: "오프라인",
+      courseId: "",
+      courseName: "",
+      courseCategoryMajor: "",
+      courseCategory: "",
+      tools: "",
+      instructorName: "",
+      driveLink: "",
+      syncupLink: "",
+      skillfloSetup: "N",
+      skillmatchSetup: "N",
+      onSiteOperation: "N",
+      coachRequest: "N",
+      totalSessions: 1,
+      sessions: [emptySession()],
+      notes: ""
+    };
+    return { ...base, courseCategoryMajor: base.courseCategoryMajor || getCourseCategoryMajor(base.courseCategory) || "" };
   });
+
+  const [{ custom: initialCustomTools, selected: initialSelectedTools }] = useState(() => parseToolsValue(initialData?.tools ?? "", extraTools));
+  const [selectedTools, setSelectedTools] = useState(initialSelectedTools);
+  const [customTools, setCustomTools] = useState(initialCustomTools);
 
   function setField<K extends keyof OmRequestInput>(key: K, value: OmRequestInput[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function syncToolsField(selected: Set<string>, custom: string) {
+    const combined = [...selected, ...(custom.trim() ? [custom.trim()] : [])].join(", ");
+    setField("tools", combined);
+  }
+
+  function toggleTool(tool: string) {
+    setSelectedTools((prev) => {
+      const next = new Set(prev);
+      const isMeta = TOOL_META_OPTIONS.includes(tool);
+      if (next.has(tool)) {
+        next.delete(tool);
+      } else if (isMeta) {
+        next.clear();
+        next.add(tool);
+      } else {
+        TOOL_META_OPTIONS.forEach((meta) => next.delete(meta));
+        next.add(tool);
+      }
+      syncToolsField(next, customTools);
+      return next;
+    });
+  }
+
+  function handleCustomToolsChange(value: string) {
+    setCustomTools(value);
+    syncToolsField(selectedTools, value);
   }
 
   function handleTotalSessionsChange(n: number) {
@@ -174,6 +214,36 @@ export function OmRequestForm({ ldName, initialData, requestId }: { ldName: stri
     });
   }
 
+  async function handleSessionSheetUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setSheetError(null);
+    const buffer = await file.arrayBuffer();
+    const { rows, fatalError } = parseSessionSheet(buffer);
+
+    if (fatalError) {
+      setSheetError(fatalError);
+      return;
+    }
+    if (rows.length === 0) {
+      setSheetError("시트에 입력된 회차가 없습니다.");
+      return;
+    }
+    if (rows.length > 30) {
+      setSheetError("회차는 최대 30개까지 입력할 수 있습니다.");
+      return;
+    }
+    const rowErrors = rows.filter((row) => row.errors.length > 0);
+    if (rowErrors.length > 0) {
+      setSheetError(rowErrors.map((row) => `${row.rowNumber}행: ${row.errors.join(" ")}`).join(" / "));
+      return;
+    }
+
+    setForm((prev) => ({ ...prev, totalSessions: rows.length, sessions: rows.map((row) => row.session) }));
+  }
+
   function updateSession(idx: number, key: keyof OmRequestSession, value: string) {
     setForm((prev) => {
       const sessions = prev.sessions.map((s, i) => {
@@ -182,7 +252,7 @@ export function OmRequestForm({ ldName, initialData, requestId }: { ldName: stri
         if (key === "timeStart" || key === "timeEnd") {
           const start = key === "timeStart" ? value : s.timeStart;
           const end = key === "timeEnd" ? value : s.timeEnd;
-          updated.duration = calcDuration(start, end);
+          updated.duration = calcSessionDuration(start, end);
         }
         return updated;
       });
@@ -192,6 +262,10 @@ export function OmRequestForm({ ldName, initialData, requestId }: { ldName: stri
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (selectedTools.size === 0 && !customTools.trim()) {
+      setError("사용 Tool을 1개 이상 선택하거나 입력해주세요.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -304,6 +378,31 @@ export function OmRequestForm({ ldName, initialData, requestId }: { ldName: stri
             />
           </label>
 
+          <label>
+            <span>과정 카테고리 대분류<RequiredMark /></span>
+            <select
+              required
+              value={form.courseCategoryMajor ?? ""}
+              onChange={(e) => setForm((prev) => ({ ...prev, courseCategoryMajor: e.target.value, courseCategory: "" }))}
+            >
+              <option value="">선택</option>
+              {COURSE_CATEGORY_GROUPS.map((group) => <option key={group.major}>{group.major}</option>)}
+            </select>
+          </label>
+
+          <label>
+            <span>과정 카테고리 소분류<RequiredMark /></span>
+            <select
+              required
+              disabled={!form.courseCategoryMajor}
+              value={form.courseCategory}
+              onChange={(e) => setField("courseCategory", e.target.value)}
+            >
+              <option value="">{form.courseCategoryMajor ? "선택" : "대분류를 먼저 선택하세요"}</option>
+              {getCourseCategoryMinors(form.courseCategoryMajor ?? "").map((minor) => <option key={minor}>{minor}</option>)}
+            </select>
+          </label>
+
           <label className="wide-field">
             <span>싱크업 링크<RequiredMark /></span>
             <input
@@ -328,6 +427,58 @@ export function OmRequestForm({ ldName, initialData, requestId }: { ldName: stri
         </div>
       </div>
 
+      {/* 사용 Tool */}
+      <div className="operation-form-section">
+        <div className="section-title"><h2>사용 Tool<RequiredMark /></h2></div>
+        <p className="om-field-hint">아직 tool이 정해지지 않았을 시 미확인으로 체크바랍니다.</p>
+        <div className="om-tool-groups">
+          {TOOL_GROUPS.map((group) => (
+            <div className="om-tool-group" key={group.category}>
+              <span className="om-tool-group-title">{group.category}</span>
+              <div className="om-tool-group-options">
+                {group.tools.map((tool) => (
+                  <label className="inline-toggle" key={tool}>
+                    <input checked={selectedTools.has(tool)} onChange={() => toggleTool(tool)} type="checkbox" />
+                    <span>{tool}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          ))}
+          {extraTools.length > 0 && (
+            <div className="om-tool-group">
+              <span className="om-tool-group-title">추가된 도구</span>
+              <div className="om-tool-group-options">
+                {extraTools.map((tool) => (
+                  <label className="inline-toggle" key={tool}>
+                    <input checked={selectedTools.has(tool)} onChange={() => toggleTool(tool)} type="checkbox" />
+                    <span>{tool}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="om-tool-group">
+            <span className="om-tool-group-title">기타</span>
+            <div className="om-tool-group-options">
+              {TOOL_META_OPTIONS.map((meta) => (
+                <label className="inline-toggle" key={meta}>
+                  <input checked={selectedTools.has(meta)} onChange={() => toggleTool(meta)} type="checkbox" />
+                  <span>{meta}</span>
+                </label>
+              ))}
+            </div>
+            <input
+              className="om-tool-custom-input"
+              onChange={(e) => handleCustomToolsChange(e.target.value)}
+              placeholder="목록에 없는 도구는 직접 입력 (쉼표로 구분)"
+              type="text"
+              value={customTools}
+            />
+          </div>
+        </div>
+      </div>
+
       {/* 세팅 및 운영 */}
       <div className="operation-form-section">
         <div className="section-title"><h2>세팅 및 운영</h2></div>
@@ -342,6 +493,28 @@ export function OmRequestForm({ ldName, initialData, requestId }: { ldName: stri
       {/* 교육 일정 */}
       <div className="operation-form-section">
         <div className="section-title"><h2>교육 일정</h2></div>
+        <div className="om-field-hint-list">
+          <p className="om-field-hint">1회차를 적으시고 총 회차 수를 늘리시면 아래 자동 복사가 되니 참고 바랍니다.</p>
+          <p className="om-field-hint">회차만 확정되고 일정이 확정되지 않았다면 대략적으로 넣어주시고 요청사항에 내용을 자세하게 작성해주세요.</p>
+          <p className="om-field-hint">숫자만 입력해도 날짜가 자동 완성돼요 (예: 20260812 → 2026-08-12).</p>
+          <p className="om-field-hint">장소가 미정이면 미정이라고 입력해도 됩니다.</p>
+        </div>
+
+        <div className="om-session-sheet-actions">
+          <a className="secondary-action" download href="/api/om-request/session-template">샘플 시트 다운로드</a>
+          <label className="secondary-action om-session-upload-label">
+            엑셀로 일괄 입력(선택)
+            <input
+              accept=".xlsx"
+              className="om-session-upload-input"
+              onChange={handleSessionSheetUpload}
+              type="file"
+            />
+          </label>
+          <span className="om-field-hint">칼럼: {"회차, 시작일, 종료일, 시작시간, 종료시간, 장소"}</span>
+        </div>
+        {sheetError && <p className="om-request-error">{sheetError}</p>}
+
         <div className="operation-form-grid compact">
           <label className="om-session-count-field">
             <span>총 회차<RequiredMark /></span>
@@ -419,13 +592,14 @@ export function OmRequestForm({ ldName, initialData, requestId }: { ldName: stri
       {/* 요청사항 */}
       <div className="operation-form-section">
         <div className="section-title"><h2>요청사항<RequiredMark /></h2></div>
+        <p className="om-field-hint">과정 관련하여 최대한 자세하게 작성바랍니다.</p>
         <div className="operation-form-grid">
           <label className="full-row-field">
             <textarea
               required
               rows={5}
               value={form.notes}
-              placeholder="예) 결과보고서 유무, 다과 유무, 이전 OM 배정 요청 등"
+              placeholder="예) 결과보고서 유무, 다과 유무, 이전 요청 사항 등"
               onChange={(e) => setField("notes", e.target.value)}
             />
           </label>

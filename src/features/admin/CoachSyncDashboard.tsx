@@ -29,18 +29,6 @@ const SYNC_SOURCES: SyncSource[] = [
     name: "노션 코치 동기화",
     endpoint: "/api/admin/sync-notion",
     description: "노션 2026 DB에서 코치 정보(연락처, 이메일, 유형, 분야, 커리큘럼 등)를 가져옵니다."
-  },
-  {
-    id: "samsung",
-    name: "삼성 일정",
-    endpoint: "/api/sync/samsung-schedule",
-    description: "삼성 일정 시트에서 코치 일정을 동기화합니다."
-  },
-  {
-    id: "all",
-    name: "전체 한 번에",
-    endpoint: "/api/sync/all",
-    description: "위 세 소스를 순서대로 모두 동기화합니다."
   }
 ];
 

@@ -1,7 +1,9 @@
 import { ResourceJudgmentPage } from "@/features/resources/ResourceJudgmentPage";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { mergeExternalResourceOperations } from "@/lib/data/externalResourceMerge";
+import { getOmAvailabilityRoster } from "@/lib/data/omAvailability/omAvailabilityLocalRepository";
 import { hasNotionResourceConfig, listNotionResourceOperations } from "@/lib/data/notionResourceOperationRepository";
+import { listOmRequests } from "@/lib/data/omRequest/omRequestLocalRepository";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { getTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFactory";
 import type { ResourceOwnerRoster } from "@/lib/data/teamMemberRepository";
@@ -34,12 +36,25 @@ export default async function ResourcesPage({ searchParams }: ResourcesPageProps
   const scopedOperations = filterOperationsByTeamScope(resourceOperations, teamScope, resourceOwnerRoster);
   const scopedOwnerRoster = filterOwnerRosterByTeamScope(resourceOwnerRoster, teamScope);
   const scopedCalendarEvents = filterCalendarEventsByOwnerRoster(calendarEvents, scopedOwnerRoster);
+  // 아직 operation으로 승격되지 않은 배정 건도 캘린더에 보이도록, courseId가 겹치지 않는 om-request만 추린다.
+  const operationCourseIds = new Set(resourceOperations.map((operation) => operation.courseId).filter(Boolean));
+  const pendingOmRequests = listOmRequests().filter(
+    (request) => !!request.assignedOm && !operationCourseIds.has(request.courseId)
+  );
+  const teamLabel = teamScope === "team_1" ? "1팀" : teamScope === "team_2" ? "2팀" : null;
+  const scopedPendingOmRequests = teamLabel
+    ? pendingOmRequests.filter((request) => request.team === teamLabel)
+    : pendingOmRequests;
+
+  const partRoster = getOmAvailabilityRoster();
 
   return (
     <ResourceJudgmentPage
       calendarEvents={scopedCalendarEvents}
       operations={scopedOperations}
       ownerRoster={scopedOwnerRoster}
+      partRoster={partRoster}
+      pendingOmRequests={scopedPendingOmRequests}
       teamScope={teamScope}
     />
   );
