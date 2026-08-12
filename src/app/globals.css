@@ -7867,34 +7867,10 @@ td span {
   color: var(--blue);
 }
 
-.resource-owner-list {
-  border-top: 1px solid #e6e4e0;
-  display: grid;
-  gap: 20px;
-  padding: 10px 4px 12px;
-}
-
 .resource-part-filters {
   display: flex;
   gap: 6px;
   margin-bottom: 12px;
-}
-
-.resource-part-group {
-  display: grid;
-  gap: 4px;
-}
-
-.resource-part-group + .resource-part-group {
-  margin-top: 8px;
-}
-
-.resource-part-heading {
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 700;
-  margin: 0;
-  padding: 0 4px;
 }
 
 .inline-toggle {
@@ -7913,48 +7889,28 @@ td span {
   width: 14px;
 }
 
-.resource-unmatched-section {
-  border-top: 1px solid #e6e4e0;
-  margin-top: 14px;
-  padding-top: 12px;
-}
-
-.resource-owner-panel {
-  background: #ffffff;
-  border: 0;
-  border-radius: 0;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.resource-owner-header {
-  align-items: center;
-  background: #ffffff;
-  border-bottom: 0;
-  display: flex;
-  justify-content: space-between;
-  min-height: 38px;
-  padding: 0 2px 8px;
-}
-
-.resource-owner-header h3 {
-  color: #2f2f2e;
-  font-size: 14px;
-  font-weight: 700;
-  margin: 0;
-}
-
-.resource-owner-header span {
-  color: #8b8985;
-  font-size: 11px;
-}
-
 .resource-owner-table {
   min-width: 0;
 }
 
 .resource-owner-table td {
   vertical-align: middle;
+}
+
+.resource-list-search {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  font-size: 13px;
+  height: 34px;
+  padding: 0 10px;
+  width: 240px;
+}
+
+.resource-list-search:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(36, 90, 159, 0.12);
+  outline: 0;
 }
 
 .status-dot {
@@ -8020,23 +7976,6 @@ td span {
 
 .quick-link-card:hover {
   background: var(--surface-strong);
-}
-
-.resource-empty-board {
-  border: 1px dashed #d6d2cb;
-  border-radius: 8px;
-  color: #8b8985;
-  display: grid;
-  gap: 4px;
-  grid-column: 1 / -1;
-  min-height: 96px;
-  place-content: center;
-  text-align: center;
-}
-
-.resource-empty-board strong {
-  color: #4d4a45;
-  font-size: 14px;
 }
 
 .resource-tag {
