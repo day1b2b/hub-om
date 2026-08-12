@@ -592,6 +592,7 @@ export function OmRequestForm({
       {/* 요청사항 */}
       <div className="operation-form-section">
         <div className="section-title"><h2>요청사항<RequiredMark /></h2></div>
+        <p className="om-field-hint">과정 관련하여 최대한 자세하게 작성바랍니다.</p>
         <div className="operation-form-grid">
           <label className="full-row-field">
             <textarea
