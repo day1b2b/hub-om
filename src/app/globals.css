@@ -10671,6 +10671,12 @@ button.coach-doc-reserve-chip:disabled {
   margin: 0;
 }
 
+.om-field-hint-list {
+  display: grid;
+  gap: 3px;
+  margin-bottom: 4px;
+}
+
 .om-tool-groups {
   display: grid;
   gap: 14px;
