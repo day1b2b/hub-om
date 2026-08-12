@@ -496,8 +496,8 @@ export function OmRequestForm({
         <div className="om-field-hint-list">
           <p className="om-field-hint">1회차를 적으시고 총 회차 수를 늘리시면 아래 자동 복사가 되니 참고 바랍니다.</p>
           <p className="om-field-hint">회차만 확정되고 일정이 확정되지 않았다면 대략적으로 넣어주시고 요청사항에 내용을 자세하게 작성해주세요.</p>
-          <p className="om-field-hint">장소가 미정이면 미정이라고 입력해도 됩니다.</p>
           <p className="om-field-hint">숫자만 입력해도 날짜가 자동 완성돼요 (예: 20260812 → 2026-08-12).</p>
+          <p className="om-field-hint">장소가 미정이면 미정이라고 입력해도 됩니다.</p>
         </div>
 
         <div className="om-session-sheet-actions">
