@@ -10819,6 +10819,38 @@ button.coach-doc-reserve-chip:disabled {
   color: var(--red);
   font-size: 13px;
   margin: 0 0 12px;
+  white-space: pre-line;
+}
+
+.om-session-sheet-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 12px;
+}
+
+.om-session-sheet-actions .secondary-action {
+  align-items: center;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.om-session-upload-label {
+  cursor: pointer;
+  position: relative;
+}
+
+.om-session-upload-input {
+  bottom: 0;
+  cursor: pointer;
+  height: 100%;
+  left: 0;
+  opacity: 0;
+  position: absolute;
+  width: 100%;
 }
 
 .om-assign-warning {

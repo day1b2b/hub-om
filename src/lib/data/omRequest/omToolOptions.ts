@@ -12,7 +12,7 @@ export const TOOL_GROUPS: ToolGroup[] = [
   { category: "제작 (실제 확인 후 선택)", tools: ["Canva", "Midjourney", "Adobe Firefly", "Runway"] }
 ];
 
-export const TOOL_META_OPTIONS = ["미확인", "해당 없음"];
+export const TOOL_META_OPTIONS = ["미확인"];
 
 function builtinToolSet(): Set<string> {
   return new Set([...TOOL_GROUPS.flatMap((group) => group.tools), ...TOOL_META_OPTIONS]);

@@ -5,8 +5,9 @@ import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getOmNamesForPart } from "@/lib/data/omAvailability/omAvailabilityLocalRepository";
 import { buildOmBusyDates } from "@/lib/data/omAvailability/omBusyDates";
 import { recommendOms } from "@/lib/data/omAvailability/recommendOms";
+import { getCourseCategoryMajor } from "@/lib/data/omRequest/omCourseCategoryOptions";
 import { getOmRequest, listOmRequests } from "@/lib/data/omRequest/omRequestLocalRepository";
-import { omRequestManagerName, omRequestStatusLabel } from "@/lib/data/omRequest/omRequestTypes";
+import { canManageOmRequestAssignment, omRequestManagerName, omRequestStatusLabel } from "@/lib/data/omRequest/omRequestTypes";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { getTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFactory";
 import { AssignForm } from "./AssignForm";
@@ -53,7 +54,7 @@ export default async function OmRequestDetailPage({ params }: Props) {
 
   const currentUserName = session.user?.name ?? session.user?.email?.split("@")[0] ?? "";
   const partManagerName = omRequestManagerName(request.team);
-  const canAssign = partManagerName === null || currentUserName.trim() === partManagerName.trim();
+  const canAssign = canManageOmRequestAssignment(request.team, currentUserName, session.user?.email);
 
   const createdAt = new Date(request.createdAt).toLocaleString("ko-KR", {
     year: "numeric", month: "2-digit", day: "2-digit",
@@ -92,7 +93,8 @@ export default async function OmRequestDetailPage({ params }: Props) {
                 <Field label="코스 ID" value={request.courseId} />
                 <Field label="과정명" value={request.courseName} />
                 <Field label="강사명" value={request.instructorName} />
-                <Field label="과정 카테고리" value={request.courseCategory} />
+                <Field label="과정 카테고리 대분류" value={request.courseCategoryMajor || getCourseCategoryMajor(request.courseCategory)} />
+                <Field label="과정 카테고리 소분류" value={request.courseCategory} />
                 <Field label="사용 tool" value={request.tools} />
                 <Field wide label="싱크업 링크" value={request.syncupLink} />
                 <Field wide label="드라이브 링크" value={request.driveLink} />
