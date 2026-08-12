@@ -21,6 +21,20 @@ const STATUS_CLASS: Record<OperationStatus, string> = {
   "아카이빙필요": "archive-needed"
 };
 
+// 운영 목록 화면에서는 6개 세부 상태를 예정/진행중/종료 3단으로만 보여준다.
+const SIMPLE_STATUS_LABEL: Record<OperationStatus, string> = {
+  "배정필요": "예정",
+  "배정예정": "예정",
+  "진행중": "진행중",
+  "완료": "종료",
+  "회고완료": "종료",
+  "아카이빙필요": "종료"
+};
+
+function isEndedStatus(status: OperationStatus) {
+  return SIMPLE_STATUS_LABEL[status] === "종료";
+}
+
 const UNMATCHED_OWNER = "매칭 필요";
 const PART_ORDER = ["1파트", "2파트", "3파트"];
 const UNCLASSIFIED_PART = "미분류";
@@ -176,7 +190,10 @@ export function ResourceJudgmentPage({
   const listOperations = boardOperations
     .filter((operation) => operation.operationStatus !== "배정필요")
     .filter((operation) => matchesResourceSearch(operation, searchQuery));
-  const listItems = buildBoardItems(listOperations, filteredOperations);
+  const listItems = [...buildBoardItems(listOperations, filteredOperations)].sort((a, b) => {
+    const endedDiff = Number(isEndedStatus(a.representative.operationStatus)) - Number(isEndedStatus(b.representative.operationStatus));
+    return endedDiff !== 0 ? endedDiff : compareStableText(a.startDate, b.startDate);
+  });
 
   return (
     <main className="dashboard-shell">
@@ -397,7 +414,7 @@ export function ResourceJudgmentPage({
 }
 
 function StatusBadge({ status }: { status: OperationStatus }) {
-  return <span className={`status ${STATUS_CLASS[status]}`}>{status}</span>;
+  return <span className={`status ${STATUS_CLASS[status]}`}>{SIMPLE_STATUS_LABEL[status]}</span>;
 }
 
 function Tag({ children, tone }: { children: string; tone: string }) {
@@ -803,8 +820,6 @@ function isCalendarEventInWindow(event: CalendarResourceEvent, viewDate: Date) {
 }
 
 function isInBoardWindow(operation: OperationSession, viewDate: Date) {
-  if (operation.operationStatus === "완료" || operation.operationStatus === "회고완료") return false;
-
   const start = parseDate(operation.startDate);
   const end = parseDate(operation.endDate);
   if (!start || !end) return false;
