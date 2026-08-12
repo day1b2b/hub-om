@@ -503,7 +503,7 @@ export function OmRequestForm({
         <div className="om-session-sheet-actions">
           <a className="secondary-action" download href="/api/om-request/session-template">샘플 시트 다운로드</a>
           <label className="secondary-action om-session-upload-label">
-            엑셀로 일괄 입력
+            엑셀로 일괄 입력(선택)
             <input
               accept=".xlsx"
               className="om-session-upload-input"
