@@ -173,8 +173,10 @@ export function ResourceJudgmentPage({
     month: "long",
     year: "numeric"
   }).format(viewDate);
-  const searchedBoardOperations = boardOperations.filter((operation) => matchesResourceSearch(operation, searchQuery));
-  const listItems = buildBoardItems(searchedBoardOperations, filteredOperations);
+  const listOperations = boardOperations
+    .filter((operation) => operation.operationStatus !== "배정필요")
+    .filter((operation) => matchesResourceSearch(operation, searchQuery));
+  const listItems = buildBoardItems(listOperations, filteredOperations);
 
   return (
     <main className="dashboard-shell">
@@ -307,14 +309,29 @@ export function ResourceJudgmentPage({
         <section className="resource-section compact-resource-section">
           <div className="section-title resource-section-title">
             <h2>운영 목록</h2>
-            <input
-              aria-label="운영 목록 검색"
-              className="resource-list-search"
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="과정명, 기업, 담당자 검색"
-              type="search"
-              value={searchQuery}
-            />
+            <div className="resource-list-filters">
+              <select
+                aria-label="담당 OM 필터"
+                className="owner-filter-select"
+                onChange={(event) => {
+                  setOwnerFilter(event.target.value);
+                  collapseExpandedItems();
+                }}
+                value={effectiveOwnerFilter}
+              >
+                {ownerOptions.map((owner) => (
+                  <option key={owner}>{owner}</option>
+                ))}
+              </select>
+              <input
+                aria-label="운영 목록 검색"
+                className="resource-list-search"
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="과정명, 기업 검색"
+                type="search"
+                value={searchQuery}
+              />
+            </div>
           </div>
           <div className="table-wrap">
             <table className="resource-owner-table">

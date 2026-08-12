@@ -7897,6 +7897,12 @@ td span {
   vertical-align: middle;
 }
 
+.resource-list-filters {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
 .resource-list-search {
   background: #ffffff;
   border: 1px solid var(--line);
