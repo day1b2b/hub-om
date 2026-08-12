@@ -69,6 +69,7 @@ interface CalendarItem {
   eventKind?: CalendarResourceEvent["eventKind"];
   href?: string;
   key: string;
+  onsiteOwnerName?: string;
   ownerName: string;
   startDate: Date;
   title: string;
@@ -119,7 +120,7 @@ export function ResourceJudgmentPage({
   const filteredOperations = useMemo(
     () =>
       teamOperations.filter((operation) =>
-        ownerNamesInScope(getResourceOwners(operation.om, resourceOwnerMap), effectiveOwnerFilter, partFilter, ownerPartMap)
+        ownerNamesInScope(getOperationResourceOwners(operation, resourceOwnerMap), effectiveOwnerFilter, partFilter, ownerPartMap)
       ),
     [effectiveOwnerFilter, ownerPartMap, partFilter, resourceOwnerMap, teamOperations]
   );
@@ -475,6 +476,9 @@ function CalendarEventCard({ segment }: { segment: CalendarEventSegment }) {
     <>
       <span>
         {segment.item.ownerName ? <Tag tone={ownerTone(segment.item.ownerName)}>{segment.item.ownerName}</Tag> : null}
+        {segment.item.onsiteOwnerName ? (
+          <Tag tone={ownerTone(segment.item.onsiteOwnerName)}>{`${segment.item.onsiteOwnerName}·현장`}</Tag>
+        ) : null}
         {segment.item.type === "source" ? (
           <Tag tone={segment.item.eventKind === "absence" ? "pink" : "gray"}>{sourceEventLabel(segment.item)}</Tag>
         ) : null}
@@ -616,11 +620,15 @@ function operationToCalendarItem(operation: OperationSession, teamQuery: string,
 
   if (!startDate || !endDate) return null;
 
+  const ownerName = getCalendarOperationOwner(operation.om, ownerMap);
+  const onsiteOwnerName = getCalendarOperationOwner(operation.onsiteOm, ownerMap);
+
   return {
     endDate,
     href: `/operations/${operation.operationId}${teamQuery}`,
     key: `operation-${operation.operationId}`,
-    ownerName: getCalendarOperationOwner(operation.om, ownerMap),
+    onsiteOwnerName: onsiteOwnerName && onsiteOwnerName !== ownerName ? onsiteOwnerName : undefined,
+    ownerName,
     startDate,
     title: operation.courseName,
     type: "operation"
@@ -736,7 +744,7 @@ function groupByOwner(operations: OperationSession[], owners: string[], allowedO
   }
 
   for (const operation of sorted) {
-    for (const owner of getResourceOwners(operation.om, allowedOwners)) {
+    for (const owner of getOperationResourceOwners(operation, allowedOwners)) {
       if (!groups.has(owner)) continue;
 
       groups.set(owner, [...(groups.get(owner) ?? []), operation]);
@@ -1012,6 +1020,15 @@ function getResourceOwners(value: string, allowedOwners: Map<string, string>) {
 
   const uniqueOwners = unique(owners);
   return uniqueOwners.includes(UNMATCHED_OWNER) ? [UNMATCHED_OWNER] : uniqueOwners;
+}
+
+// 과정 담당 OM(om)과 실제 현장 강의관리자(onsiteOm) 둘 다의 리소스 화면 담당자를 합친다.
+// 현장운영으로만 지정된 사람도 자신의 캘린더/목록에서 해당 운영을 볼 수 있어야 한다.
+function getOperationResourceOwners(operation: OperationSession, allowedOwners: Map<string, string>) {
+  return unique([
+    ...getResourceOwners(operation.om, allowedOwners),
+    ...getResourceOwners(operation.onsiteOm, allowedOwners)
+  ]);
 }
 
 function getCalendarOperationOwner(value: string, allowedOwners: Map<string, string>) {
