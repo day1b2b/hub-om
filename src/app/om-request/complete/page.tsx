@@ -40,7 +40,7 @@ export default async function OmRequestCompletePage({ searchParams }: Props) {
             <div className="om-complete-icon">✓</div>
             <div>
               <h1>요청이 접수되었습니다</h1>
-              <p className="page-subtitle">담당자가 확인 후 OM을 배정해드립니다.</p>
+              <p className="page-subtitle">담당자가 확인 후 요청을 처리해드립니다.</p>
             </div>
           </div>
         </header>

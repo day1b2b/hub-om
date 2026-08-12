@@ -8,11 +8,8 @@ import type {
   CoachScheduleView,
   CoachStatusValue
 } from "@/lib/data/coachTypes";
-import { CoachDeleteButton } from "./CoachDeleteButton";
 import { CoachInputLinkActions } from "./CoachInputLinkActions";
 import { CoachNotesPanel } from "./CoachNotesPanel";
-import { CoachProfileEditForm } from "./CoachProfileEditForm";
-import { CoachStatusToggle } from "./CoachStatusToggle";
 
 export type CoachDetailTab = "profile" | "schedule" | "engagements";
 
@@ -72,8 +69,6 @@ export function CoachDetailView({
             {!coach.isActive ? <span className="coach-origin-muted-pill">비노출</span> : null}
             {coach.deletedAt ? <span className="coach-origin-muted-pill deleted">삭제됨</span> : null}
             {coach.statusNote ? <span className="coach-origin-note">+ {coach.statusNote}</span> : null}
-            {!coach.deletedAt ? <CoachStatusToggle coachId={coach.id} status={coach.status} /> : null}
-            {!coach.deletedAt ? <CoachDeleteButton coachId={coach.id} coachName={coach.name} /> : null}
           </div>
           <div className="coach-origin-tags">
             {splitWorkTypes(coach.workType).map((workType) => (
@@ -135,7 +130,6 @@ function ProfilePane({ coach }: { coach: CoachDetail }) {
           <InfoItem label="노출 상태" value={coach.isActive ? "노출" : "비노출"} />
           <InfoItem label="삭제 상태" value={coach.deletedAt ? "삭제됨" : "정상"} />
         </div>
-        {!coach.deletedAt ? <CoachProfileEditForm coach={coach} /> : null}
       </section>
 
       <section className="coach-origin-card">
@@ -143,6 +137,24 @@ function ProfilePane({ coach }: { coach: CoachDetail }) {
           <span>코치 입력 링크</span>
         </div>
         <CoachInputLinkActions url={coach.coachInputUrl} />
+      </section>
+
+      <section className="coach-origin-card">
+        <div className="coach-origin-section-title">
+          <span>노션 페이지</span>
+        </div>
+        {coach.notionPageId ? (
+          <a
+            className="notion-chip"
+            href={`https://www.notion.so/${coach.notionPageId.replaceAll("-", "")}`}
+            rel="noreferrer"
+            target="_blank"
+          >
+            🔗 노션 코치 페이지 ↗
+          </a>
+        ) : (
+          <span className="notion-chip is-off">노션 미연결</span>
+        )}
       </section>
 
       <section className="coach-origin-card coach-origin-wide-card">

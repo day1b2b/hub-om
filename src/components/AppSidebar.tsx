@@ -25,6 +25,7 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
   const isInstructorWikiPage = pathname === "/instructor-wiki";
   const isCompanyWikiPage = pathname === "/company-wiki";
   const isAnnouncementsPage = pathname?.startsWith("/announcements") ?? false;
+  const isQuickLinksPage = pathname?.startsWith("/quick-links") ?? false;
   const isCreatePage = pathname === "/operations/new";
   const isOperationsPage = pathname === "/operations" || (pathname?.startsWith("/operations/") && !isCreatePage);
   const isCoachSchedulePage = pathname === "/coaches/schedule";
@@ -63,6 +64,7 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
           <div className="nav-section-title">OM 운영 요청</div>
           <Link className={isOmRequestPage ? "active" : ""} data-icon="📋" href="/om-request">업무 요청</Link>
           <Link className={isOmManagePage ? "active" : ""} data-icon="☑" href="/om-request/manage">담당 관리</Link>
+          <Link className={isResourcesPage ? "active" : ""} data-icon="📁" href="/resources">리소스</Link>
         </div>
 
         <div className="nav-section">
@@ -77,12 +79,12 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
           <Link className={isCoachSchedulePage ? "active" : ""} data-icon="◷" href="/coaches/schedule">코치 일정</Link>
           <Link className={isCoachListPage ? "active" : ""} data-icon="☰" href="/coaches">코치 목록</Link>
           <Link className={isCoachMyPage ? "active" : ""} data-icon="🙋" href="/coaches/my-page">마이페이지</Link>
-          <Link className={isCoachAdminPage ? "active" : ""} data-icon="🛠" href="/coaches/admin">관리자페이지</Link>
         </div>
 
         <div className="nav-section">
           <div className="nav-section-title">공지/운영TOOL</div>
           <Link className={isAnnouncementsPage ? "active" : ""} data-icon="🔒" href="/announcements">공지사항</Link>
+          <Link className={isQuickLinksPage ? "active" : ""} data-icon="🔗" href="/quick-links">주요링크모음</Link>
         </div>
 
         <div className="nav-section nav-section-locked">
@@ -95,7 +97,6 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
         <div className="nav-section nav-section-locked">
           <div className="nav-section-title">관리자 전용</div>
           <Link className={pathname === "/dashboard" ? "active" : ""} data-icon="🔒" href="/dashboard">대시보드</Link>
-          <Link className={isResourcesPage ? "active" : ""} data-icon="🔒" href="/resources">리소스</Link>
           <Link className={isDatabaseAdminPage ? "active" : ""} data-icon="🔒" href="/admin/database">DB 조회</Link>
           <Link className={isUsersAdminPage ? "active" : ""} data-icon="🔒" href="/admin/users">멤버 관리</Link>
         </div>
