@@ -3972,6 +3972,13 @@ td span {
   margin: 8px 0 20px;
 }
 
+.coach-panel-hint {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 4px 0 12px;
+}
+
 .coach-origin-list-toolbar {
   align-items: center;
   display: flex;
