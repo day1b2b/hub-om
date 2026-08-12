@@ -1509,6 +1509,67 @@ select {
   min-width: 142px;
 }
 
+.operations-filter-panel .searchable-select {
+  flex: 0 0 180px;
+  min-width: 180px;
+}
+
+.searchable-select {
+  position: relative;
+}
+
+.searchable-select input {
+  background: #fbfcfe;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--text);
+  font-size: 12px;
+  min-height: 30px;
+  padding: 0 10px;
+  width: 100%;
+}
+
+.searchable-select-options {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+  list-style: none;
+  margin: 4px 0 0;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 4px;
+  position: fixed;
+  z-index: 1000;
+}
+
+.searchable-select-options li {
+  display: block;
+}
+
+.searchable-select-options button {
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  color: var(--text);
+  display: block;
+  font-size: 12px;
+  padding: 6px 8px;
+  text-align: left;
+  width: 100%;
+}
+
+.searchable-select-options button:hover,
+.searchable-select-options button[aria-selected="true"] {
+  background: var(--surface-strong);
+}
+
+.searchable-select-empty {
+  color: var(--muted);
+  font-size: 12px;
+  padding: 6px 8px;
+}
+
 .operations-list-panel {
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
@@ -1705,30 +1766,28 @@ select {
   font-weight: 700;
 }
 
-.operations-table td:nth-child(5) {
+.operations-table td:nth-child(4) {
   font-weight: 700;
   min-width: 120px;
 }
 
-.operations-table td:nth-child(6) {
+.operations-table td:nth-child(5) {
   max-width: 280px;
   min-width: 260px;
 }
 
-.operations-table td:nth-child(7) {
+.operations-table td:nth-child(6) {
   text-align: center;
   width: 64px;
 }
 
-.operations-table td:nth-child(8) {
+.operations-table td:nth-child(7) {
   text-align: center;
   width: 56px;
 }
 
-.operations-table td:nth-child(16),
-.operations-table td:nth-child(17),
-.operations-table td:nth-child(18),
-.operations-table td:nth-child(19) {
+.operations-table td:nth-child(14),
+.operations-table td:nth-child(15) {
   text-align: right;
 }
 
@@ -9363,6 +9422,38 @@ button.coach-doc-reserve-chip:disabled {
 .name-edit-toggle {
   margin-left: auto;
   order: 10;
+}
+
+/* 노션 강사 페이지 이동 칩. 섭외 지양 버튼과 같은 모양이라 누르는 것임이 바로 보인다. */
+.notion-chip {
+  background: transparent;
+  border: 1px solid var(--blue);
+  border-radius: 6px;
+  color: var(--blue);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.notion-chip:hover {
+  background: var(--blue);
+  color: #ffffff;
+}
+
+/* 노션 페이지가 연결되지 않은 강사: 눌러도 갈 곳이 없으므로 비활성 모양 */
+.notion-chip.is-off {
+  border-color: var(--line);
+  color: var(--muted);
+  cursor: default;
+  font-weight: 400;
+}
+
+.notion-chip.is-off:hover {
+  background: transparent;
+  color: var(--muted);
 }
 
 .wiki-view {

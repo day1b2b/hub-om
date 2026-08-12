@@ -165,6 +165,7 @@ export class PrismaOperationRepository implements OperationRepository {
         courseName: session.course.name,
         om: session.omName ?? "",
         ld: session.ldName ?? "",
+        onsiteOm: session.onsiteOmName ?? "",
         operationStatus: OPERATION_STATUS[session.operationStatus],
         archiveStatus: ARCHIVE_STATUS[session.archiveStatus],
         educationFormat: EDUCATION_FORMAT[session.educationFormat],
@@ -377,6 +378,44 @@ export class PrismaOperationRepository implements OperationRepository {
       data.courseRecordId = course.id;
     }
 
+    if (input.courseName !== undefined) {
+      const nextCourseName = normalizeVisibleText(input.courseName);
+
+      if (!nextCourseName) {
+        throw new Error("Course name is required.");
+      }
+
+      const session = await prisma.operationSession.findUnique({
+        include: { course: true },
+        where: { operationId }
+      });
+
+      if (!session) {
+        throw new Error("Operation not found.");
+      }
+
+      const course = await prisma.course.upsert({
+        create: {
+          companyId: session.course.companyId,
+          courseId: session.course.courseId,
+          name: nextCourseName,
+          operationType: session.course.operationType,
+          revenue: session.course.revenue,
+          revenueRaw: session.course.revenueRaw
+        },
+        update: {},
+        where: {
+          companyId_courseId_name: {
+            companyId: session.course.companyId,
+            courseId: session.course.courseId,
+            name: nextCourseName
+          }
+        }
+      });
+
+      data.courseRecordId = course.id;
+    }
+
     if (input.driveLink !== undefined) data.driveLink = nullableText(input.driveLink);
     if (input.educationDays !== undefined) data.educationDays = nullableText(input.educationDays);
     if (input.hasResultReport !== undefined) data.hasResultReport = PRISMA_RESULT_REPORT_STATUS[input.hasResultReport];
@@ -407,6 +446,7 @@ export class PrismaOperationRepository implements OperationRepository {
     if (input.lectureManagementLink !== undefined) data.lectureManagementLink = nullableText(input.lectureManagementLink);
     if (input.lectureManagementNote !== undefined) data.lectureManagementNote = nullableText(input.lectureManagementNote);
     if (input.om !== undefined) data.omName = nullableText(input.om);
+    if (input.onsiteOm !== undefined) data.onsiteOmName = nullableText(input.onsiteOm);
     if (input.operationCost !== undefined) data.operationCost = input.operationCost;
     if (input.operationDetail !== undefined) data.operationDetail = nullableText(input.operationDetail);
     if (input.operationIssue !== undefined) data.operationIssue = nullableText(input.operationIssue);

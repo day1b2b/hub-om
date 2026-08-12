@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
+import { SearchableSelect } from "@/components/SearchableSelect";
 import type {
   EducationFormat,
   OperationSession
@@ -10,12 +11,18 @@ import type {
 import { splitPersonNames } from "@/lib/data/personNames";
 import { normalizePersonKey } from "@/lib/data/roleAssignees";
 import { satisfactionNumber } from "@/lib/data/satisfaction";
-import { TEAM_OPTIONS, type TeamOption } from "@/lib/data/teamUsers/teamUserTypes";
 import { teamScopeSearchParam, type TeamScope } from "@/lib/teamScope";
 
 const 전체_파트 = "전체 파트";
+const 전체_OM = "전체 OM";
+
+export interface OmRosterEntry {
+  name: string;
+  team: string | null;
+}
 
 interface OperationDashboardProps {
+  omRoster: OmRosterEntry[];
   operations: OperationSession[];
   partByPersonKey: Record<string, string>;
   teamScope: TeamScope;
@@ -50,32 +57,40 @@ function sumRevenueByCourseId(operations: ReadonlyArray<Pick<OperationSession, "
   return total;
 }
 
-export function OperationDashboard({ operations, partByPersonKey, teamScope }: OperationDashboardProps) {
+export function OperationDashboard({ omRoster, operations, partByPersonKey, teamScope }: OperationDashboardProps) {
   const today = useMemo(() => new Date(), []);
   const teamQuery = teamScopeSearchParam(teamScope);
   const [companyFilter, setCompanyFilter] = useState("전체 기업");
   const [formatFilter, setFormatFilter] = useState<"전체 교육형태" | EducationFormat>("전체 교육형태");
-  const [omFilter, setOmFilter] = useState("전체 OM");
-  const [partFilter, setPartFilter] = useState<typeof 전체_파트 | TeamOption>(전체_파트);
+  const [omFilter, setOmFilter] = useState(전체_OM);
+  const [partFilter, setPartFilter] = useState(전체_파트);
   const [archiveOnly, setArchiveOnly] = useState(false);
   const [query, setQuery] = useState("");
   // 기본 날짜 필터는 "전체"(빈 범위 = 전체 조회). 사용자가 필요할 때 좁힌다.
   const [range, setRange] = useState<{ start: string; end: string }>({ start: "", end: "" });
   const [page, setPage] = useState(1);
   const [pageInput, setPageInput] = useState("");
-  const pageSize = 50;
+  const pageSize = 15;
   const teamOperations = operations;
 
   const filterOptions = useMemo(() => {
+    const omsInPart = partFilter === 전체_파트 ? omRoster : omRoster.filter((om) => om.team === partFilter);
+
     return {
       companies: ["전체 기업", ...unique(teamOperations.map((operation) => operation.companyName))],
       formats: ["전체 교육형태", ...unique(teamOperations.map((operation) => operation.educationFormat))] as Array<
         "전체 교육형태" | EducationFormat
       >,
-      oms: ["전체 OM", ...unique(teamOperations.flatMap((operation) => splitPersonNames(operation.om)))],
-      parts: [전체_파트, ...TEAM_OPTIONS]
+      oms: [전체_OM, ...unique(omsInPart.map((om) => om.name))],
+      parts: [전체_파트, ...unique(omRoster.map((om) => om.team ?? ""))]
     };
-  }, [teamOperations]);
+  }, [omRoster, partFilter, teamOperations]);
+
+  function handlePartFilterChange(nextPart: string) {
+    setPartFilter(nextPart);
+    // 파트가 바뀌면 그 파트에 없는 OM이 선택된 채로 남지 않도록 되돌린다.
+    setOmFilter(전체_OM);
+  }
 
   const baseFilteredOperations = useMemo(() => {
     return teamOperations.filter((operation) => {
@@ -97,7 +112,7 @@ export function OperationDashboard({ operations, partByPersonKey, teamScope }: O
       const rangeMatches = overlapsRange(operation, range.start, range.end);
       const companyMatches = companyFilter === "전체 기업" || operation.companyName === companyFilter;
       const formatMatches = formatFilter === "전체 교육형태" || operation.educationFormat === formatFilter;
-      const omMatches = omFilter === "전체 OM" || splitPersonNames(operation.om).includes(omFilter);
+      const omMatches = omFilter === 전체_OM || splitPersonNames(operation.om).includes(omFilter);
       const partMatches = partFilter === 전체_파트 || operationParts(operation, partByPersonKey).has(partFilter);
       const archiveMatches = !archiveOnly || operation.archiveStatus === "아카이빙필요";
 
@@ -225,7 +240,7 @@ export function OperationDashboard({ operations, partByPersonKey, teamScope }: O
   function resetFilters() {
     setCompanyFilter("전체 기업");
     setFormatFilter("전체 교육형태");
-    setOmFilter("전체 OM");
+    setOmFilter(전체_OM);
     setPartFilter(전체_파트);
     setArchiveOnly(false);
     setQuery("");
@@ -286,11 +301,13 @@ export function OperationDashboard({ operations, partByPersonKey, teamScope }: O
         </section>
 
         <section className="filter-panel operations-filter-panel" aria-label="상세 필터">
-          <select value={companyFilter} onChange={(event) => setCompanyFilter(event.target.value)}>
-            {filterOptions.companies.map((company) => (
-              <option key={company}>{company}</option>
-            ))}
-          </select>
+          <SearchableSelect
+            ariaLabel="전체 기업"
+            onChange={setCompanyFilter}
+            options={filterOptions.companies}
+            placeholder="기업 검색"
+            value={companyFilter}
+          />
           <select
             value={formatFilter}
             onChange={(event) => setFormatFilter(event.target.value as "전체 교육형태" | EducationFormat)}
@@ -299,17 +316,14 @@ export function OperationDashboard({ operations, partByPersonKey, teamScope }: O
               <option key={format}>{format}</option>
             ))}
           </select>
+          <select value={partFilter} onChange={(event) => handlePartFilterChange(event.target.value)}>
+            {filterOptions.parts.map((part) => (
+              <option key={part}>{part}</option>
+            ))}
+          </select>
           <select value={omFilter} onChange={(event) => setOmFilter(event.target.value)}>
             {filterOptions.oms.map((om) => (
               <option key={om}>{om}</option>
-            ))}
-          </select>
-          <select
-            value={partFilter}
-            onChange={(event) => setPartFilter(event.target.value as typeof 전체_파트 | TeamOption)}
-          >
-            {filterOptions.parts.map((part) => (
-              <option key={part}>{part}</option>
             ))}
           </select>
           <label className="search">
@@ -349,7 +363,6 @@ export function OperationDashboard({ operations, partByPersonKey, teamScope }: O
                 <tr>
                   <th>#</th>
                   <th>교육형태</th>
-                  <th>운영유형</th>
                   <th>코스ID</th>
                   <th>기업</th>
                   <th>과정명</th>
@@ -361,11 +374,8 @@ export function OperationDashboard({ operations, partByPersonKey, teamScope }: O
                   <th>종료일</th>
                   <th>강사</th>
                   <th>실습코치</th>
-                  <th>만족도(전체)</th>
-                  <th>만족도(강사)</th>
-                  <th>매출</th>
-                  <th>강사비</th>
-                  <th>운영비</th>
+                  <th>만족도(평균)</th>
+                  <th>코스매출</th>
                 </tr>
               </thead>
               <tbody>
@@ -374,7 +384,6 @@ export function OperationDashboard({ operations, partByPersonKey, teamScope }: O
                     <tr key={group.key}>
                       <td>{(currentPage - 1) * pageSize + index + 1}</td>
                       <td>{summarizeText(group.operations, (operation) => operation.educationFormat)}</td>
-                      <td>{summarizeText(group.operations, (operation) => operation.operationType)}</td>
                       <td>{group.courseId || "검토필요"}</td>
                       <td><strong>{group.companyName}</strong></td>
                       <td>
@@ -388,18 +397,15 @@ export function OperationDashboard({ operations, partByPersonKey, teamScope }: O
                       <td>{summarizeText(group.operations, (operation) => operation.ld, "미정")}</td>
                       <td>{group.startDate}</td>
                       <td>{group.endDate}</td>
-                      <td>{summarizeText(group.operations, (operation) => operation.instructors)}</td>
+                      <td>{summarizeInstructors(group.operations)}</td>
                       <td>{summarizeText(group.operations, (operation) => operation.coach)}</td>
                       <td>{formatSatisfactionValue(average(satisfactionValues(group.operations, (operation) => operation.avgSatisfaction)))}</td>
-                      <td>{formatSatisfactionValue(average(satisfactionValues(group.operations, (operation) => operation.instructorSatisfaction)))}</td>
                       <td>{formatMoney(sumRevenueByCourseId(group.operations))}</td>
-                      <td>{formatMoney(sumMoney(group.operations, (operation) => operation.instructorCost))}</td>
-                      <td>{formatMoney(sumMoney(group.operations, (operation) => operation.operationCost))}</td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td className="empty-state" colSpan={19}>
+                    <td className="empty-state" colSpan={15}>
                       <strong>표시할 운영 건이 없습니다.</strong>
                       <span>필터를 초기화하거나 연결된 운영 데이터 상태를 확인하세요.</span>
                     </td>
@@ -460,7 +466,7 @@ const OPERATIONS_CSV_HEADERS = [
   "실습코치",
   "만족도(전체)",
   "만족도(강사)",
-  "매출",
+  "코스매출",
   "강사비",
   "운영비"
 ];
@@ -479,7 +485,7 @@ function downloadOperationsCsv(courseGroups: CourseGroup[], today: Date) {
     summarizeText(group.operations, (operation) => operation.ld, "미정"),
     group.startDate,
     group.endDate,
-    summarizeText(group.operations, (operation) => operation.instructors),
+    summarizeInstructors(group.operations),
     summarizeText(group.operations, (operation) => operation.coach),
     formatSatisfactionValue(average(satisfactionValues(group.operations, (operation) => operation.avgSatisfaction))),
     formatSatisfactionValue(
@@ -562,7 +568,8 @@ function groupOperationsByCourse(operations: OperationSession[], today: Date): C
 
   return [...groups.entries()]
     .map(([key, groupOperations]) => buildCourseGroup(key, groupOperations, today))
-    .sort((a, b) => a.startDate.localeCompare(b.startDate));
+    // 최신 과정이 위에 오도록 시작일 내림차순 정렬(오래된 빈 과정이 1페이지를 가리지 않게).
+    .sort((a, b) => b.startDate.localeCompare(a.startDate));
 }
 
 function courseGroupKey(operation: OperationSession): string {
@@ -619,6 +626,25 @@ function summarizeText(
   if (values.length === 0) return emptyFallback;
   if (values.length === 1) return values[0];
   return "상이";
+}
+
+function summarizeInstructors(operations: OperationSession[]): string {
+  const names = unique(operations.flatMap((operation) => splitPersonNames(operation.instructors, "")));
+
+  if (names.length === 0) return "-";
+  if (names.length === 1) return names[0];
+
+  const firstRoundOperation = pickEarliestOperation(operations);
+  const firstRoundNames = splitPersonNames(firstRoundOperation.instructors, "").filter(Boolean);
+  const primaryName = firstRoundNames[0] ?? names[0];
+
+  return `${primaryName} 외 ${names.length - 1}명`;
+}
+
+function pickEarliestOperation(operations: OperationSession[]): OperationSession {
+  const withDates = operations.filter((operation) => parseDate(operation.startDate));
+  if (withDates.length === 0) return operations[0];
+  return withDates.slice().sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
 }
 
 function satisfactionValues(

@@ -149,7 +149,7 @@ interface NameSelectEditorProps {
   value: string;
 }
 
-function NameSelectEditor({ fieldName, label, onChange, options, value }: NameSelectEditorProps) {
+export function NameSelectEditor({ fieldName, label, onChange, options, value }: NameSelectEditorProps) {
   const [names, setNames] = useState(() => splitNames(value));
 
   return (

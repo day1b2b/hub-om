@@ -6,7 +6,9 @@ import { BulkEditRoundsButton } from "./BulkEditRoundsButton";
 import { BulkSaveRoundsButton } from "./BulkSaveRoundsButton";
 import { DeleteRoundButton } from "./DeleteRoundButton";
 import { EditAllRoundsProvider } from "./EditAllRoundsProvider";
+import { EditableCourseNameItem } from "./EditableCourseNameItem";
 import { EditableInfoItem } from "./EditableInfoItem";
+import { EditableOnsiteOmCell } from "./EditableOnsiteOmCell";
 import { EditableResourceRow } from "./EditableResourceRow";
 import { EditableRoundResourceCell } from "./EditableRoundResourceCell";
 import { EditableSessionRow } from "./EditableSessionRow";
@@ -16,7 +18,6 @@ import { OperationDiscussionPanel } from "./OperationDiscussionPanel";
 import { ResultReportConditionSelect } from "./ResultReportConditionSelect";
 import { ResultReportRequirementCell } from "./ResultReportRequirementCell";
 import type {
-  OperationChannel,
   OperationSession,
   OperationStatus,
   OnsiteRequired
@@ -43,14 +44,6 @@ const STATUS_CLASS: Record<OperationStatus, string> = {
   "완료": "done",
   "회고완료": "retrospective-done",
   "아카이빙필요": "archive-needed"
-};
-
-const OPERATION_CHANNEL_LABEL: Record<OperationChannel, string> = {
-  onsite: "현장",
-  live_online: "실시간 온라인",
-  online_platform: "온라인 플랫폼",
-  blended: "혼합",
-  needs_review: "확인 필요"
 };
 
 const ONSITE_LABEL: Record<OnsiteRequired, string> = {
@@ -89,6 +82,10 @@ export function OperationDetail({
   const nextRoundNo = String(Math.max(0, ...courseOperations.map((candidate) => Number(candidate.roundNo) || 0)) + 1);
   const fallbackOperationId =
     courseOperations.find((candidate) => candidate.operationId !== operation.operationId)?.operationId ?? null;
+  const sameCourseIdOperationIds =
+    sameCourseIdOperations.length > 0
+      ? sameCourseIdOperations.map((candidate) => candidate.operationId)
+      : [operation.operationId];
 
   return (
     <main className="dashboard-shell">
@@ -131,26 +128,19 @@ export function OperationDetail({
                 label="코스ID"
                 operationId={operation.operationId}
               />
-              <InfoItem label="기간" value={formatCourseDateRange(courseOperations)} />
-              <InfoItem label="시간" value={aggregateUniqueValues(courseOperations, (candidate) => candidate.timeText)} />
-              <InfoItem
-                label="운영 유형"
-                value={aggregateUniqueValues(courseOperations, (candidate) => candidate.operationType)}
+              <EditableCourseNameItem
+                displayValue={operation.courseName || "미정"}
+                operationIds={sameCourseIdOperationIds}
+                value={operation.courseName}
               />
               <InfoItem
                 label="교육 형태"
                 value={aggregateUniqueValues(courseOperations, (candidate) => candidate.educationFormat)}
               />
-              <InfoItem
-                label="운영 채널"
-                value={aggregateUniqueValues(courseOperations, (candidate) => OPERATION_CHANNEL_LABEL[candidate.operationChannel])}
-              />
+              <InfoItem label="기간" value={formatCourseDateRange(courseOperations)} />
               <InfoItem label="회차" value={`총 ${courseOperations.length}회차`} />
               <InfoItem label="교육일수" value={formatTotalEducationDays(courseOperations)} />
-              <InfoItem
-                label="현장 투입"
-                value={aggregateUniqueValues(courseOperations, (candidate) => ONSITE_LABEL[candidate.onsiteRequired])}
-              />
+              <InfoItem label="교육장" value={operation.region || "미정"} />
               <ResultReportConditionSelect
                 rounds={courseOperations.map((candidate) => ({
                   hasResultReport: candidate.hasResultReport,
@@ -179,32 +169,71 @@ export function OperationDetail({
               />
               <InfoItem label="강사" value={operation.instructors || "미정"} />
               <InfoItem label="실습코치" value={operation.coach || "미정"} />
-              <InfoItem label="교육장 (장소)" value={operation.region || "미정"} />
+              <InfoItem
+                label="현장 투입"
+                value={aggregateUniqueValues(courseOperations, (candidate) => ONSITE_LABEL[candidate.onsiteRequired])}
+              />
               <InfoItem label="남은 회차" value={remainingRoundText(operation)} />
+              <InfoItem label="매출" value={formatMoney(operation.revenue)} />
+              <InfoItem label="만족도(평균)" value={satisfactionSummary.totalAverage ?? "미입력"} />
             </div>
           </section>
 
-          <section className="detail-section resource-status-section required-items-section">
-            <div className="resource-summary-card">
-              <div className="resource-row-head">
-                <strong>필수 항목</strong>
-                <span>{completedArchiveItems.length}/{requiredArchiveItems.length}</span>
+          <section className="detail-section resource-status-section required-items-section" id="links">
+            <div className="resource-card-grid">
+              <div className="resource-summary-card">
+                <div className="resource-row-head">
+                  <strong>필수 항목</strong>
+                  <span>{completedArchiveItems.length}/{requiredArchiveItems.length}</span>
+                </div>
+                <div className="archive-item-list" aria-label="아카이브 필수 항목">
+                  {requiredArchiveItems.map((archiveItem) => (
+                    <EditableResourceRow
+                      done={archiveItem.done}
+                      doneText={archiveItem.doneText}
+                      field={archiveItem.field}
+                      isLink
+                      key={archiveItem.label}
+                      label={archiveItem.label}
+                      missingText={archiveItem.missingText}
+                      operationId={operation.operationId}
+                      placeholder="https://"
+                      value={archiveItem.value}
+                    />
+                  ))}
+                </div>
               </div>
-              <div className="archive-item-list" aria-label="아카이브 필수 항목">
-                {requiredArchiveItems.map((archiveItem) => (
-                  <EditableResourceRow
-                    done={archiveItem.done}
-                    doneText={archiveItem.doneText}
-                    field={archiveItem.field}
-                    isLink
-                    key={archiveItem.label}
-                    label={archiveItem.label}
-                    missingText={archiveItem.missingText}
-                    operationId={operation.operationId}
-                    placeholder="https://"
-                    value={archiveItem.value}
-                  />
-                ))}
+
+              <div className="resource-summary-card">
+                <div className="resource-row-head">
+                  <strong>참고 자료</strong>
+                  <span>{registeredReferenceLinks.length}/{referenceResourceLinks.length}</span>
+                </div>
+                <div className="archive-item-list" aria-label="아카이브 참고 자료">
+                  {referenceResourceLinks.map((resourceLink) => {
+                    const hasHref = isNavigableHref(resourceLink.href);
+
+                    return (
+                      <div className={`archive-item-row ${hasHref ? "done" : "missing"}`} key={resourceLink.label}>
+                        <strong>{resourceLink.label}</strong>
+                        <div className="archive-item-actions">
+                          {hasHref ? (
+                            <a
+                              className="archive-item-state"
+                              href={toHref(resourceLink.href) ?? resourceLink.href}
+                              rel="noreferrer"
+                              target="_blank"
+                            >
+                              바로가기
+                            </a>
+                          ) : (
+                            <span className="archive-item-state">링크 없음</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </section>
@@ -232,7 +261,7 @@ export function OperationDetail({
                   <tr>
                     <th>회차</th>
                     <th>OM</th>
-                    <th>LD</th>
+                    <th>현장운영</th>
                     <th>일정 / 시간</th>
                     <th>강사</th>
                     <th>실습코치</th>
@@ -257,7 +286,13 @@ export function OperationDetail({
                         </Link>
                       </td>
                       <td>{displayRoleAssigneeText(courseOperation.om, "배정필요")}</td>
-                      <td>{displayRoleAssigneeText(courseOperation.ld, "미정")}</td>
+                      <EditableOnsiteOmCell
+                        om={courseOperation.om}
+                        onsiteOm={courseOperation.onsiteOm}
+                        onsiteRequired={courseOperation.onsiteRequired}
+                        operationId={courseOperation.operationId}
+                        options={personOptions.om}
+                      />
                       <EditableSessionRow
                         coach={courseOperation.coach}
                         endDate={courseOperation.endDate}
@@ -362,40 +397,8 @@ export function OperationDetail({
             </section>
           ) : null}
 
-          <section className="detail-section resource-status-section" id="links">
+          <section className="detail-section resource-status-section">
             <div className="resource-card-grid">
-              <div className="resource-summary-card">
-                <div className="resource-row-head">
-                  <strong>참고 자료</strong>
-                  <span>{registeredReferenceLinks.length}/{referenceResourceLinks.length}</span>
-                </div>
-                <div className="archive-item-list" aria-label="아카이브 참고 자료">
-                  {referenceResourceLinks.map((resourceLink) => {
-                    const hasHref = isNavigableHref(resourceLink.href);
-
-                    return (
-                      <div className={`archive-item-row ${hasHref ? "done" : "missing"}`} key={resourceLink.label}>
-                        <strong>{resourceLink.label}</strong>
-                        <div className="archive-item-actions">
-                          {hasHref ? (
-                            <a
-                              className="archive-item-state"
-                              href={toHref(resourceLink.href) ?? resourceLink.href}
-                              rel="noreferrer"
-                              target="_blank"
-                            >
-                              바로가기
-                            </a>
-                          ) : (
-                            <span className="archive-item-state">링크 없음</span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
               <div className="resource-summary-card">
                 <div className="resource-row-head">
                   <strong>만족도</strong>

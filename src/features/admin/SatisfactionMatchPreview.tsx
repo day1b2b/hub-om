@@ -29,6 +29,7 @@ interface UnmatchedItem {
   instructor: string;
   date: string;
   courseId: string;
+  reason?: string;
 }
 
 interface PreviewResponse {
@@ -41,6 +42,15 @@ interface PreviewResponse {
   unmatched?: UnmatchedItem[];
 }
 
+interface ApplyResponse {
+  ok: boolean;
+  error?: string;
+  stats?: { applied: number; skipped: number; failed: number };
+  applied?: Array<{ course: string; date: string; overall: string; operation: string }>;
+  skipped?: Array<{ course: string; date: string; reason: string }>;
+  failed?: Array<{ course: string; date: string; error: string }>;
+}
+
 export function SatisfactionMatchPreview() {
   const [spreadsheetUrl, setSpreadsheetUrl] = useState("");
   const [tabTitle, setTabTitle] = useState("eduops_log");
@@ -49,6 +59,39 @@ export function SatisfactionMatchPreview() {
   const [error, setError] = useState("");
   const [reauthRequired, setReauthRequired] = useState(false);
   const [data, setData] = useState<PreviewResponse | null>(null);
+  const [applying, setApplying] = useState(false);
+  const [applyResult, setApplyResult] = useState<ApplyResponse | null>(null);
+
+  /** 자동연결 건을 운영 회차 만족도에 기록한다. 이미 값이 있는 회차는 서버가 건너뛴다. */
+  async function runApply() {
+    const count = data?.stats?.matched ?? 0;
+    if (count === 0) return;
+    if (!window.confirm(`자동연결 ${count}건을 운영 회차 만족도에 반영할까요?\n이미 값이 있는 회차는 그대로 둡니다.`)) {
+      return;
+    }
+
+    setApplying(true);
+    setError("");
+    setApplyResult(null);
+    try {
+      const response = await fetch("/api/admin/satisfaction/apply", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ spreadsheetUrl, tabTitle, headerRowNumber })
+      });
+      const payload = (await response.json()) as ApplyResponse;
+      if (!response.ok || !payload.ok) {
+        setError(payload.error ?? "반영에 실패했습니다.");
+        return;
+      }
+      setApplyResult(payload);
+      await runPreview(); // 반영 후 현재값이 바뀌므로 최신 상태로 다시 읽는다
+    } catch {
+      setError("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      setApplying(false);
+    }
+  }
 
   async function runPreview() {
     setLoading(true);
@@ -175,10 +218,76 @@ export function SatisfactionMatchPreview() {
         </p>
       ) : null}
 
+      {applyResult?.stats ? (
+        <section
+          style={{
+            marginTop: "16px",
+            padding: "12px 16px",
+            border: "1px solid #bbf7d0",
+            background: "#f0fdf4",
+            borderRadius: "8px"
+          }}
+        >
+          <strong style={{ color: "#166534" }}>
+            반영 완료 — 기록 {applyResult.stats.applied}건 · 건너뜀 {applyResult.stats.skipped}건
+            {applyResult.stats.failed > 0 ? ` · 실패 ${applyResult.stats.failed}건` : ""}
+          </strong>
+          {applyResult.applied && applyResult.applied.length > 0 ? (
+            <ul style={{ margin: "8px 0 0", paddingLeft: "20px", fontSize: "13px", color: "#166534" }}>
+              {applyResult.applied.map((item, index) => (
+                <li key={`a-${index}`}>
+                  {item.operation} ← {item.overall}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {applyResult.skipped && applyResult.skipped.length > 0 ? (
+            <ul style={{ margin: "8px 0 0", paddingLeft: "20px", fontSize: "13px", color: "#555" }}>
+              {applyResult.skipped.map((item, index) => (
+                <li key={`s-${index}`}>
+                  {item.course} ({item.date}) — {item.reason}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {applyResult.failed && applyResult.failed.length > 0 ? (
+            <ul style={{ margin: "8px 0 0", paddingLeft: "20px", fontSize: "13px", color: "#b91c1c" }}>
+              {applyResult.failed.map((item, index) => (
+                <li key={`f-${index}`}>
+                  {item.course} ({item.date}) — {item.error}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
+      ) : null}
+
       {data?.matched && data.matched.length > 0 ? (
         <section style={{ marginTop: "16px" }}>
-          <h2 style={{ fontSize: "16px" }}>자동 연결 가능</h2>
-          <div style={{ overflowX: "auto" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+            <h2 style={{ fontSize: "16px", margin: 0 }}>자동 연결 가능</h2>
+            <button
+              type="button"
+              onClick={runApply}
+              disabled={applying || loading}
+              style={{
+                padding: "8px 16px",
+                borderRadius: "6px",
+                border: "none",
+                background: applying || loading ? "#9ca3af" : "#15803d",
+                color: "#fff",
+                cursor: applying || loading ? "default" : "pointer",
+                fontWeight: 600
+              }}
+            >
+              {applying ? "반영 중..." : `운영 회차에 반영 (${data.matched.length}건)`}
+            </button>
+            <span style={{ color: "#555", fontSize: "13px" }}>
+              아래 표의 만족도를 운영 회차에 기록합니다. 이미 값이 있는 회차(현재값이 &quot;미입력&quot;이 아닌 행)는
+              그대로 둡니다.
+            </span>
+          </div>
+          <div style={{ overflowX: "auto", marginTop: "8px" }}>
             <table style={tableStyle}>
               <thead>
                 <tr>
@@ -249,7 +358,10 @@ export function SatisfactionMatchPreview() {
 
       {data?.unmatched && data.unmatched.length > 0 ? (
         <section style={{ marginTop: "16px" }}>
-          <h2 style={{ fontSize: "16px" }}>미매칭 (후보 없음)</h2>
+          <h2 style={{ fontSize: "16px" }}>미매칭 (연결할 운영을 찾지 못함)</h2>
+          <p style={{ color: "#555", margin: "0 0 8px", fontSize: "13px" }}>
+            시트에서 코스ID·일정을 고치면 다음 조회 때 자동으로 매칭됩니다. 테스트 행은 시트에서 삭제하세요.
+          </p>
           <div style={{ overflowX: "auto" }}>
             <table style={tableStyle}>
               <thead>
@@ -258,6 +370,7 @@ export function SatisfactionMatchPreview() {
                   <th style={thStyle}>강사</th>
                   <th style={thStyle}>일자</th>
                   <th style={thStyle}>courseId</th>
+                  <th style={thStyle}>이유 / 조치</th>
                 </tr>
               </thead>
               <tbody>
@@ -267,6 +380,7 @@ export function SatisfactionMatchPreview() {
                     <td style={tdStyle}>{item.instructor}</td>
                     <td style={tdStyle}>{item.date}</td>
                     <td style={tdStyle}>{item.courseId}</td>
+                    <td style={tdStyle}>{item.reason ?? ""}</td>
                   </tr>
                 ))}
               </tbody>
