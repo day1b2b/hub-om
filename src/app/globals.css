@@ -7592,6 +7592,33 @@ td span {
   margin-bottom: 8px;
 }
 
+.calendar-date-main {
+  align-items: center;
+  display: inline-flex;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* 토요일 파랑 · 일요일/공휴일 빨강 (내 대시보드 캘린더와 동일한 표시 규칙) */
+.calendar-weekday.is-sat,
+.calendar-date-num.is-sat {
+  color: #2f6bff;
+}
+
+.calendar-weekday.is-sun,
+.calendar-date-num.is-sun {
+  color: #e5484d;
+}
+
+.calendar-holiday-name {
+  color: #e5484d;
+  font-size: 10px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .calendar-date strong {
   align-items: center;
   background: #e85f5c;
@@ -7691,8 +7718,7 @@ td span {
   color: #2f2f2e;
 }
 
-.calendar-event:hover,
-.resource-card:hover {
+.calendar-event:hover {
   background: #f7f7f5;
   border-color: #c9c5bf;
   color: inherit;
@@ -7782,15 +7808,10 @@ td span {
   color: var(--blue);
 }
 
-.resource-owner-board {
+.resource-owner-list {
   border-top: 1px solid #e6e4e0;
   display: grid;
   gap: 20px;
-  grid-auto-columns: 262px;
-  grid-auto-flow: column;
-  max-width: 100%;
-  min-width: 0;
-  overflow-x: auto;
   padding: 10px 4px 12px;
 }
 
@@ -7839,12 +7860,6 @@ td span {
   padding-top: 12px;
 }
 
-.unmatched-board {
-  border-top: 0;
-  grid-auto-columns: 320px;
-  padding-top: 4px;
-}
-
 .resource-owner-panel {
   background: #ffffff;
   border: 0;
@@ -7875,36 +7890,12 @@ td span {
   font-size: 11px;
 }
 
-.resource-owner-status {
-  border-bottom: 0;
-  margin-bottom: 10px;
-  padding: 0;
+.resource-owner-table {
+  min-width: 0;
 }
 
-.resource-owner-status:last-child {
-  border-bottom: 0;
-}
-
-.resource-status-heading {
-  align-items: center;
-  background: transparent;
-  color: #6f6b66;
-  display: flex;
-  font-size: 12px;
-  gap: 10px;
-  justify-content: space-between;
-  min-height: 24px;
-  padding: 0 0 6px;
-}
-
-.resource-status-heading span {
-  font-weight: 700;
-}
-
-.group-label {
-  align-items: center;
-  display: inline-flex;
-  gap: 6px;
+.resource-owner-table td {
+  vertical-align: middle;
 }
 
 .status-dot {
@@ -7929,40 +7920,6 @@ td span {
 .resource-card-list {
   display: grid;
   gap: 6px;
-}
-
-.resource-card {
-  background: var(--surface);
-  border: 1px solid #dedbd6;
-  border-radius: 5px;
-  box-shadow: 0 1px 2px rgba(15, 15, 15, 0.04);
-  display: grid;
-  gap: 5px;
-  min-height: 78px;
-  padding: 8px 9px;
-}
-
-.resource-card strong {
-  color: #2f2f2e;
-  display: -webkit-box;
-  font-size: 13px;
-  line-height: 1.35;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-.resource-card span {
-  color: #6f6b66;
-  font-size: 12px;
-  line-height: 1.35;
-}
-
-.resource-card-tags {
-  align-items: center;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
 }
 
 .quick-link-group {
@@ -8004,30 +7961,6 @@ td span {
 
 .quick-link-card:hover {
   background: var(--surface-strong);
-}
-
-.resource-empty-card {
-  align-items: center;
-  background: transparent;
-  border: 1px solid #e8e5df;
-  border-radius: 5px;
-  color: #a5a19b;
-  display: flex;
-  font-size: 13px;
-  min-height: 42px;
-  padding: 9px 10px;
-}
-
-.resource-more-button {
-  cursor: pointer;
-  justify-content: flex-start;
-  text-align: left;
-  width: 100%;
-}
-
-.resource-more-button:hover {
-  border-color: var(--blue);
-  color: var(--blue);
 }
 
 .resource-empty-board {
