@@ -397,34 +397,6 @@ export function OperationDetail({
             </section>
           ) : null}
 
-          <section className="detail-section resource-status-section">
-            <div className="resource-card-grid">
-              <div className="resource-summary-card">
-                <div className="resource-row-head">
-                  <strong>만족도</strong>
-                  <span>{satisfactionSummary.totalCount}개 회차</span>
-                </div>
-                <div className="resource-metric-grid">
-                  <CompactValue label="전체 평균" value={satisfactionSummary.totalAverage ?? "미입력"} />
-                  <CompactValue label="강사 평균" value={satisfactionSummary.instructorAverage ?? "미입력"} />
-                </div>
-              </div>
-
-              <div className="resource-summary-card">
-                <div className="resource-row-head">
-                  <strong>비용</strong>
-                  <span>선택 입력</span>
-                </div>
-                <div className="resource-metric-grid">
-                  <CompactValue label="매출" value={formatMoney(operation.revenue)} />
-                  <CompactValue label="비용 합계" value={formatMoney(operation.totalCost)} />
-                  <CompactValue label="수익" value={formatMoney(operation.profit)} />
-                  <CompactValue label="강사비" value={formatMoney(operation.instructorCost)} />
-                </div>
-              </div>
-            </div>
-          </section>
-
           <section className="detail-section wide-detail-section">
             <div className="section-title">
               <h2>이슈 / 회고</h2>
@@ -457,15 +429,6 @@ export function OperationDetail({
 function InfoItem({ label, value }: { label: string; value: string }) {
   return (
     <div className="info-item">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
-}
-
-function CompactValue({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="compact-value">
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
