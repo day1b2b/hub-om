@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { HubBot } from "@/components/HubBot";
 import { Providers } from "@/components/Providers";
 import "./globals.css";
 
@@ -14,7 +13,6 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
     <html lang="ko">
       <body>
         <Providers>{children}</Providers>
-        <HubBot />
       </body>
     </html>
   );
