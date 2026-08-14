@@ -7,6 +7,13 @@ interface RichTextEditorProps {
   onChange: (html: string) => void;
 }
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 const TEXT_COLORS = [
   { label: "기본", value: "#111827" },
   { label: "빨강", value: "#dc2626" },
@@ -49,6 +56,18 @@ export function RichTextEditor({ value, onChange }: RichTextEditorProps) {
     applyCommand("foreColor", color);
   }
 
+  function handlePaste(e: React.ClipboardEvent<HTMLDivElement>) {
+    const text = e.clipboardData.getData("text/plain");
+    if (!text) return;
+    e.preventDefault();
+    const html = text
+      .split(/\r\n|\r|\n/)
+      .map((line) => escapeHtml(line))
+      .join("<br>");
+    document.execCommand("insertHTML", false, html);
+    emitChange();
+  }
+
   return (
     <div className="rich-text-editor">
       <div className="rich-text-toolbar" role="toolbar" aria-label="텍스트 서식">
@@ -78,6 +97,7 @@ export function RichTextEditor({ value, onChange }: RichTextEditorProps) {
         className="rich-text-editable"
         contentEditable
         onInput={emitChange}
+        onPaste={handlePaste}
         suppressContentEditableWarning
       />
     </div>
