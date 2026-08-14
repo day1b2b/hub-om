@@ -141,7 +141,8 @@ export async function notifyOmRequestCreated(params: {
   const ldMention = mentionByEmail(users, params.ldEmail, params.ld);
   const managerName = omRequestManagerName(params.team);
   const managerMention = managerName ? mentionByName(users, managerName, managerName) : "";
-  const headerTags = [managerMention, ldMention].filter(Boolean).join(" ");
+  // LD가 OM장을 겸하는 경우 태그 중복 제거.
+  const headerTags = [...new Set([managerMention, ldMention].filter(Boolean))].join(" ");
 
   const text =
     `:clipboard: *운영 요청이 접수되었습니다.*${headerTags ? ` ${headerTags}` : ""}\n` +
@@ -181,7 +182,8 @@ export async function notifyOmAssigned(params: {
   const users = await loadDirectory();
   const omMention = mentionByName(users, params.assignedOm, params.assignedOm);
   const ldMention = mentionByEmail(users, params.ldEmail, params.ld ?? "");
-  const tags = [omMention, ldMention].filter(Boolean).join(" ");
+  // OM과 LD가 같은 사람이면 태그가 두 번 보이지 않도록 중복 제거.
+  const tags = [...new Set([omMention, ldMention].filter(Boolean))].join(" ");
 
   const text =
     `:white_check_mark: *OM이 배정됐습니다.*${tags ? ` ${tags}` : ""}\n` +
