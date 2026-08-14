@@ -41,6 +41,11 @@ function AddressSearchButton({ onSelect }: { onSelect: (address: string) => void
 const TEAM_OPTIONS = ["1파트", "2파트", "3파트"];
 const TRAINING_TYPE_OPTIONS: TrainingType[] = ["오프라인", "블렌디드", "비대면", "해커톤"];
 
+function resolveTeamOption(memberTeam?: string): string | undefined {
+  if (!memberTeam) return undefined;
+  return TEAM_OPTIONS.find((option) => memberTeam.includes(option));
+}
+
 const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
   const h = String(Math.floor(i / 2)).padStart(2, "0");
   const m = i % 2 === 0 ? "00" : "30";
@@ -123,11 +128,13 @@ function YNToggle({
 export function OmRequestForm({
   extraTools = [],
   ldName,
+  defaultTeam,
   initialData,
   requestId
 }: {
   extraTools?: string[];
   ldName: string;
+  defaultTeam?: string;
   initialData?: OmRequestInput;
   requestId?: string;
 }) {
@@ -138,7 +145,7 @@ export function OmRequestForm({
 
   const [form, setForm] = useState<OmRequestInput>(() => {
     const base: OmRequestInput = initialData ?? {
-      team: "1파트",
+      team: resolveTeamOption(defaultTeam) ?? "1파트",
       ld: ldName,
       company: "",
       trainingType: "오프라인",
