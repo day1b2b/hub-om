@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { addCustomTools, listCustomTools } from "@/lib/data/omRequest/omCustomToolsLocalRepository";
-import { createOmRequest, setOmRequestSlackMeta } from "@/lib/data/omRequest/omRequestLocalRepository";
+import { createOmRequest, setOmRequestOperationId, setOmRequestSlackMeta } from "@/lib/data/omRequest/omRequestLocalRepository";
+import { createLinkedOperationForOmRequest } from "@/lib/data/omRequest/omRequestOperationLink";
 import type { OmRequestInput } from "@/lib/data/omRequest/omRequestTypes";
 import { extractUnknownTools } from "@/lib/data/omRequest/omToolOptions";
 import { notifyOmRequestCreated } from "@/lib/slack/notifySlack";
@@ -19,9 +20,19 @@ export async function POST(request: Request) {
     // 핵심: 요청 저장. 이 단계가 실패하면 진짜 실패다.
     const created = await createOmRequest(body);
 
-    // 이하는 부수 작업(커스텀 툴 적재·Slack 알림·스레드 저장). 하나라도 실패해도
-    // 이미 저장된 요청까지 실패로 되돌리면 안 되므로 각각 방어적으로 처리한다.
+    // 이하는 부수 작업(운영현황 자동 연결·커스텀 툴 적재·Slack 알림·스레드 저장). 하나라도
+    // 실패해도 이미 저장된 요청까지 실패로 되돌리면 안 되므로 각각 방어적으로 처리한다.
     // (예: 컨테이너 파일시스템 쓰기 불가 시 addCustomTools가 던지던 문제)
+    try {
+      const operationId = await createLinkedOperationForOmRequest(created);
+      if (operationId) {
+        const withOperationId = await setOmRequestOperationId(created.id, operationId);
+        if (withOperationId) created.operationId = withOperationId.operationId;
+      }
+    } catch (err) {
+      console.error("[om-request] 운영현황 자동 연결 실패(무시):", err);
+    }
+
     try {
       addCustomTools(extractUnknownTools(created.tools ?? "", listCustomTools()));
     } catch (err) {

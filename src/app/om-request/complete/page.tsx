@@ -115,6 +115,11 @@ export default async function OmRequestCompletePage({ searchParams }: Props) {
         )}
 
         <div className="om-complete-actions">
+          {request?.operationId && (
+            <Link className="secondary-link" href={`/operations/${request.operationId}`}>
+              운영현황에서 보기
+            </Link>
+          )}
           <Link className="primary-link" href="/om-request">새 요청 제출</Link>
           <Link className="secondary-link" href="/dashboard">대시보드로 이동</Link>
         </div>

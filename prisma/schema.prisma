@@ -666,6 +666,9 @@ model OmRequest {
   ldEmail             String?  @map("ld_email")
   slackChannel        String?  @map("slack_channel")
   slackThreadTs       String?  @map("slack_thread_ts")
+  // 접수 시점에 courseId 없이 자동 생성한 운영현황 회차(첫 차수)의 operationId.
+  // FK는 걸지 않는다 — 앱 전체가 courseId/operationId를 느슨한 join key로 다루는 방식과 동일.
+  operationId         String?  @map("operation_id")
   team                String
   ld                  String
   company             String
@@ -689,6 +692,7 @@ model OmRequest {
   createdAt           DateTime @default(now()) @map("created_at")
 
   @@index([createdAt])
+  @@index([operationId])
   @@map("om_requests")
 }
 

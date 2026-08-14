@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { getOmRequest, updateOmRequestAssignment } from "@/lib/data/omRequest/omRequestLocalRepository";
+import { syncAssignedOmToLinkedOperation } from "@/lib/data/omRequest/omRequestOperationLink";
 import { canManageOmRequestAssignment } from "@/lib/data/omRequest/omRequestTypes";
 import { notifyOmAssigned } from "@/lib/slack/notifySlack";
 
@@ -36,6 +37,14 @@ export async function PATCH(request: Request) {
 
     const updated = await updateOmRequestAssignment(id, assignedOm);
     if (!updated) return NextResponse.json({ error: "요청 없음" }, { status: 404 });
+    if (nextOm && assignmentChanged && updated.operationId) {
+      // 자동 연결된 운영현황 회차의 OM 값도 함께 맞춘다. 실패해도 배정 저장은 되돌리지 않는다.
+      try {
+        await syncAssignedOmToLinkedOperation(updated.operationId, nextOm);
+      } catch (err) {
+        console.error("[om-request] 운영현황 OM 동기화 실패(무시):", err);
+      }
+    }
     if (nextOm && assignmentChanged) {
       // 요청 접수 알림 스레드에 댓글로 OM·LD를 태깅한다(스레드 정보가 있을 때).
       // Slack 알림 실패가 배정 저장까지 되돌리지 않도록 방어적으로 처리한다.
