@@ -16,6 +16,10 @@ export interface OmRequest {
   status: "배정필요" | "배정완료";
   assignedOm?: string;
 
+  // 접수 시점에 courseId 없이 자동 생성한 운영현황 회차(첫 차수)의 operationId.
+  // 생성 자체가 실패하면 비어 있을 수 있다(omRequestOperationLink.ts 참고).
+  operationId?: string;
+
   // Slack 알림 연동. 요청 생성 시 발송한 알림 메시지의 채널/스레드를 저장해
   // 배정 시 같은 스레드에 댓글로 태깅한다. LD 이메일은 세션에서만 얻을 수 있어
   // 배정 시점 태깅을 위해 생성 시점에 함께 저장한다. (모두 선택 필드 · 미설정 시 알림 skip)
@@ -47,7 +51,7 @@ export interface OmRequest {
 
 export type OmRequestInput = Omit<
   OmRequest,
-  "id" | "createdAt" | "status" | "assignedOm" | "ldEmail" | "slackChannel" | "slackThreadTs"
+  "id" | "createdAt" | "status" | "assignedOm" | "operationId" | "ldEmail" | "slackChannel" | "slackThreadTs"
 >;
 
 export function calcSessionDuration(timeStart: string, timeEnd: string): string {
