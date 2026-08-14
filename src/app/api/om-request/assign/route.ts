@@ -28,14 +28,20 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "이 파트의 담당 관리자만 지정할 수 있습니다." }, { status: 403 });
     }
 
+    // 배정이 실제로 바뀔 때만 알림한다. 같은 OM으로 재저장(중복 클릭 등) 시에는
+    // 스레드에 같은 댓글이 여러 번 달리지 않도록 이전 값과 비교한다.
+    const prevOm = existing.assignedOm?.trim() || null;
+    const nextOm = assignedOm?.trim() || null;
+    const assignmentChanged = prevOm !== nextOm;
+
     const updated = updateOmRequestAssignment(id, assignedOm);
     if (!updated) return NextResponse.json({ error: "요청 없음" }, { status: 404 });
-    if (assignedOm) {
+    if (nextOm && assignmentChanged) {
       // 요청 접수 알림 스레드에 댓글로 OM·LD를 태깅한다(스레드 정보가 있을 때).
       await notifyOmAssigned({
         company: updated.company,
         courseName: updated.courseName,
-        assignedOm,
+        assignedOm: nextOm,
         ld: updated.ld,
         ldEmail: updated.ldEmail,
         channel: updated.slackChannel,
