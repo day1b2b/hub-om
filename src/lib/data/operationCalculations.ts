@@ -35,6 +35,11 @@ export function isSameCourse(a: OperationSession, b: OperationSession): boolean 
   return a.courseId === b.courseId && a.courseName === b.courseName && a.companyName === b.companyName;
 }
 
+/** Course.processSeq(DB 채번)를 화면에 보이는 "과정ID" 코드로 바꾼다. */
+export function formatProcessId(processSeq: number): string {
+  return `PRC-${String(processSeq).padStart(6, "0")}`;
+}
+
 export function normalizeCourseId(value: unknown): string {
   return String(value ?? "")
     .replace(/[\u200B-\u200D\uFEFF]/g, "")
