@@ -16,7 +16,7 @@ export async function POST(request: Request) {
       ldEmail = session?.user?.email ?? undefined;
     }
     const body = (await request.json()) as OmRequestInput;
-    const created = createOmRequest(body);
+    const created = await createOmRequest(body);
     addCustomTools(extractUnknownTools(created.tools ?? "", listCustomTools()));
     const slackThread = await notifyOmRequestCreated({
       team: created.team,
@@ -35,11 +35,11 @@ export async function POST(request: Request) {
     });
     // 배정 시 같은 스레드에 댓글·LD 태깅을 하기 위해 스레드/이메일 저장
     const withMeta =
-      setOmRequestSlackMeta(created.id, {
+      (await setOmRequestSlackMeta(created.id, {
         ldEmail,
         slackChannel: slackThread?.channel,
         slackThreadTs: slackThread?.ts,
-      }) ?? created;
+      })) ?? created;
     return NextResponse.json(withMeta, { status: 201 });
   } catch {
     return NextResponse.json({ error: "저장 실패" }, { status: 500 });

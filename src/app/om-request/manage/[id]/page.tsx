@@ -40,14 +40,15 @@ function YNField({ label, value }: { label: string; value: string }) {
 export default async function OmRequestDetailPage({ params }: Props) {
   const session = await requireWorkspaceSession();
   const { id } = await params;
-  const request = getOmRequest(id);
+  const request = await getOmRequest(id);
   if (!request) notFound();
 
-  const [operations, roleRoster] = await Promise.all([
+  const [operations, roleRoster, allRequests] = await Promise.all([
     getOperationRepository().listOperations(),
-    getTeamMemberRepository().listRoleRosters()
+    getTeamMemberRepository().listRoleRosters(),
+    listOmRequests()
   ]);
-  const busyDatesByOm = buildOmBusyDates(operations, listOmRequests(), request.id);
+  const busyDatesByOm = buildOmBusyDates(operations, allRequests, request.id);
   const partOmNames = getOmNamesForPart(request.team);
   const recommendations = recommendOms(request.sessions, partOmNames, busyDatesByOm);
   const omRoster = Array.from(new Set(Object.values(roleRoster.om).flatMap((names) => names ?? [])));

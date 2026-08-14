@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export default async function OmRequestManagePage() {
   await requireWorkspaceSession();
-  const requests = listOmRequests().sort(
+  const requests = (await listOmRequests()).sort(
     (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
   );
 
