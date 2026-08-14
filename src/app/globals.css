@@ -12592,3 +12592,37 @@ button.coach-doc-reserve-chip:disabled {
   outline: none;
   border-color: var(--blue);
 }
+
+.satisfaction-match .satisfaction-link-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.satisfaction-match .satisfaction-link-cell select {
+  min-height: 32px;
+  max-width: 420px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fbfcfe;
+  font: inherit;
+  color: inherit;
+}
+
+.satisfaction-match .satisfaction-link-cell select:focus {
+  outline: none;
+  border-color: var(--blue);
+}
+
+.satisfaction-match .satisfaction-link-cell .sync-btn {
+  white-space: nowrap;
+}
+
+.satisfaction-match .satisfaction-link-note {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--amber);
+}
