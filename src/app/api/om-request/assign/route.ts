@@ -41,7 +41,7 @@ export async function PATCH(request: Request) {
       await notifyOmAssigned({
         company: updated.company,
         courseName: updated.courseName,
-        assignedOm,
+        assignedOm: nextOm,
         ld: updated.ld,
         ldEmail: updated.ldEmail,
         channel: updated.slackChannel,
