@@ -11,7 +11,9 @@ import { omRequestManagerName } from "@/lib/data/omRequest/omRequestTypes";
 //   - 봇 환경을 붙이기 전까지 기존 동작(2팀 등)을 깨지 않기 위한 안전망.
 
 function botToken(): string {
-  return process.env.SLACK_BOT_TOKEN?.trim() ?? "";
+  // 알림 전용 봇 토큰을 우선 사용한다. 미설정 시 기존 SLACK_BOT_TOKEN(논의 읽기와 공용)으로 폴백.
+  // 알림 봇과 읽기 봇이 다른 앱일 때 서로 간섭하지 않도록 분리 가능하게 둔다.
+  return (process.env.SLACK_OM_REQUEST_BOT_TOKEN?.trim() || process.env.SLACK_BOT_TOKEN?.trim()) ?? "";
 }
 
 // SLACK_OM_REQUEST_CHANNELS="1파트:C0AAA,2파트:C0BBB,3파트:C0CCC"
