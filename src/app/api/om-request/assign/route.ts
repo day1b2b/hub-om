@@ -38,18 +38,24 @@ export async function PATCH(request: Request) {
     if (!updated) return NextResponse.json({ error: "요청 없음" }, { status: 404 });
     if (nextOm && assignmentChanged) {
       // 요청 접수 알림 스레드에 댓글로 OM·LD를 태깅한다(스레드 정보가 있을 때).
-      await notifyOmAssigned({
-        company: updated.company,
-        courseName: updated.courseName,
-        assignedOm: nextOm,
-        ld: updated.ld,
-        ldEmail: updated.ldEmail,
-        channel: updated.slackChannel,
-        threadTs: updated.slackThreadTs,
-      });
+      // Slack 알림 실패가 배정 저장까지 되돌리지 않도록 방어적으로 처리한다.
+      try {
+        await notifyOmAssigned({
+          company: updated.company,
+          courseName: updated.courseName,
+          assignedOm: nextOm,
+          ld: updated.ld,
+          ldEmail: updated.ldEmail,
+          channel: updated.slackChannel,
+          threadTs: updated.slackThreadTs,
+        });
+      } catch (err) {
+        console.error("[om-request] Slack 배정 알림 실패(무시):", err);
+      }
     }
     return NextResponse.json(updated);
-  } catch {
+  } catch (err) {
+    console.error("[om-request] 배정 저장 실패:", err);
     return NextResponse.json({ error: "저장 실패" }, { status: 500 });
   }
 }
