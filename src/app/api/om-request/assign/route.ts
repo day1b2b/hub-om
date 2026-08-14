@@ -31,10 +31,15 @@ export async function PATCH(request: Request) {
     const updated = updateOmRequestAssignment(id, assignedOm);
     if (!updated) return NextResponse.json({ error: "요청 없음" }, { status: 404 });
     if (assignedOm) {
+      // 요청 접수 알림 스레드에 댓글로 OM·LD를 태깅한다(스레드 정보가 있을 때).
       await notifyOmAssigned({
         company: updated.company,
         courseName: updated.courseName,
         assignedOm,
+        ld: updated.ld,
+        ldEmail: updated.ldEmail,
+        channel: updated.slackChannel,
+        threadTs: updated.slackThreadTs,
       });
     }
     return NextResponse.json(updated);
