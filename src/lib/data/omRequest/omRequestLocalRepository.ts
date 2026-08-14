@@ -54,6 +54,25 @@ export function deleteOmRequest(id: string): boolean {
   return true;
 }
 
+// 요청 생성 직후, 발송한 Slack 알림의 채널/스레드ts와 LD 이메일을 기록한다.
+// 배정 시점에 같은 스레드로 댓글을 달고 LD를 태깅하기 위한 값이다.
+export function setOmRequestSlackMeta(
+  id: string,
+  meta: { ldEmail?: string; slackChannel?: string; slackThreadTs?: string }
+): OmRequest | null {
+  const requests = readAll();
+  const idx = requests.findIndex((r) => r.id === id);
+  if (idx === -1) return null;
+  requests[idx] = {
+    ...requests[idx],
+    ...(meta.ldEmail ? { ldEmail: meta.ldEmail } : {}),
+    ...(meta.slackChannel ? { slackChannel: meta.slackChannel } : {}),
+    ...(meta.slackThreadTs ? { slackThreadTs: meta.slackThreadTs } : {}),
+  };
+  writeAll(requests);
+  return requests[idx];
+}
+
 export function updateOmRequestAssignment(id: string, assignedOm: string | null): OmRequest | null {
   const requests = readAll();
   const idx = requests.findIndex((r) => r.id === id);
