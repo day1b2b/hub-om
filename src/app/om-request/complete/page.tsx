@@ -29,7 +29,7 @@ function Badge({ value }: { value: string }) {
 export default async function OmRequestCompletePage({ searchParams }: Props) {
   const params = await searchParams;
   const id = typeof params.id === "string" ? params.id : null;
-  const request = id ? getOmRequest(id) : null;
+  const request = id ? await getOmRequest(id) : null;
 
   return (
     <main className="dashboard-shell">

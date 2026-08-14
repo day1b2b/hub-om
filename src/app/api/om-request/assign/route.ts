@@ -20,7 +20,7 @@ export async function PATCH(request: Request) {
     const { id, assignedOm } = (await request.json()) as { id: string; assignedOm: string | null };
     if (!id) return NextResponse.json({ error: "id 필요" }, { status: 400 });
 
-    const existing = getOmRequest(id);
+    const existing = await getOmRequest(id);
     if (!existing) return NextResponse.json({ error: "요청 없음" }, { status: 404 });
 
     const currentUser = await resolveCurrentUser();
@@ -34,7 +34,7 @@ export async function PATCH(request: Request) {
     const nextOm = assignedOm?.trim() || null;
     const assignmentChanged = prevOm !== nextOm;
 
-    const updated = updateOmRequestAssignment(id, assignedOm);
+    const updated = await updateOmRequestAssignment(id, assignedOm);
     if (!updated) return NextResponse.json({ error: "요청 없음" }, { status: 404 });
     if (nextOm && assignmentChanged) {
       // 요청 접수 알림 스레드에 댓글로 OM·LD를 태깅한다(스레드 정보가 있을 때).
