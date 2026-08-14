@@ -595,6 +595,7 @@ button {
 
 .announcement-body {
   line-height: 1.7;
+  white-space: pre-wrap;
 }
 
 .announcement-body a {
