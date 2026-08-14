@@ -15,7 +15,7 @@ interface Props {
 export default async function OmRequestEditPage({ params }: Props) {
   const session = await requireWorkspaceSession();
   const { id } = await params;
-  const request = getOmRequest(id);
+  const request = await getOmRequest(id);
   if (!request) notFound();
 
   const ldName = session.user?.name ?? session.user?.email?.split("@")[0] ?? "";

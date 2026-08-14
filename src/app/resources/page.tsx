@@ -38,7 +38,7 @@ export default async function ResourcesPage({ searchParams }: ResourcesPageProps
   const scopedCalendarEvents = filterCalendarEventsByOwnerRoster(calendarEvents, scopedOwnerRoster);
   // 아직 operation으로 승격되지 않은 배정 건도 캘린더에 보이도록, courseId가 겹치지 않는 om-request만 추린다.
   const operationCourseIds = new Set(resourceOperations.map((operation) => operation.courseId).filter(Boolean));
-  const pendingOmRequests = listOmRequests().filter(
+  const pendingOmRequests = (await listOmRequests()).filter(
     (request) => !!request.assignedOm && !operationCourseIds.has(request.courseId)
   );
   const teamLabel = teamScope === "team_1" ? "1팀" : teamScope === "team_2" ? "2팀" : null;

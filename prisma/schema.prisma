@@ -653,6 +653,41 @@ model TeamUser {
   @@map("team_users")
 }
 
+// OM 업무 요청. 과거 로컬 JSON 파일(om-requests.json) 저장에서 Postgres로 이관.
+// 문자열 상태/구분값(배정필요 등)과 세션 배열은 앱 표준 타입 그대로 저장한다.
+model OmRequest {
+  id                  String   @id @default(uuid()) @db.Uuid
+  status              String
+  assignedOm          String?  @map("assigned_om")
+  ldEmail             String?  @map("ld_email")
+  slackChannel        String?  @map("slack_channel")
+  slackThreadTs       String?  @map("slack_thread_ts")
+  team                String
+  ld                  String
+  company             String
+  businessNumber      String?  @map("business_number")
+  trainingType        String   @map("training_type")
+  courseId            String   @map("course_id")
+  courseName          String   @map("course_name")
+  courseCategoryMajor String?  @map("course_category_major")
+  courseCategory      String   @map("course_category")
+  tools               String?
+  instructorName      String   @map("instructor_name")
+  syncupLink          String   @map("syncup_link")
+  driveLink           String   @map("drive_link")
+  skillfloSetup       String   @map("skillflo_setup")
+  skillmatchSetup     String   @map("skillmatch_setup")
+  onSiteOperation     String   @map("onsite_operation")
+  coachRequest        String   @map("coach_request")
+  totalSessions       Int      @map("total_sessions")
+  sessions            Json
+  notes               String
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("om_requests")
+}
+
 model Announcement {
   id          String    @id @default(uuid()) @db.Uuid
   title       String
