@@ -18,10 +18,21 @@ interface MatchedItem {
 }
 
 interface AmbiguousItem {
+  recordId: string;
   course: string;
   instructor: string;
   date: string;
-  candidates: Array<{ courseName: string; company: string; dates: string; score: number }>;
+  overall: string;
+  posPct: number | null;
+  candidates: Array<{ operationId: string; courseName: string; company: string; dates: string; score: number }>;
+}
+
+interface LinkResponse {
+  ok: boolean;
+  error?: string;
+  applied?: Array<{ operation: string; value: string }>;
+  skipped?: Array<{ course: string; date: string; reason: string }>;
+  failed?: Array<{ error: string }>;
 }
 
 interface UnmatchedItem {
@@ -62,6 +73,39 @@ export function SatisfactionMatchPreview() {
   const [applying, setApplying] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [applyResult, setApplyResult] = useState<ApplyResponse | null>(null);
+  const [linking, setLinking] = useState("");
+  const [linkChoice, setLinkChoice] = useState<Record<string, string>>({});
+  const [linkNote, setLinkNote] = useState<Record<string, string>>({});
+
+  /** 모호 건을 사람이 고른 운영에 수동 연결한다. 자동 반영과 같은 안전 규칙(빈 회차만)을 서버가 적용한다. */
+  async function runLink(recordId: string, operationId: string) {
+    if (!recordId || !operationId || linking) return;
+
+    setLinking(recordId);
+    setLinkNote((prev) => ({ ...prev, [recordId]: "" }));
+    try {
+      const response = await fetch("/api/admin/satisfaction/link", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ recordId, operationId, spreadsheetUrl, tabTitle, headerRowNumber })
+      });
+      const payload = (await response.json()) as LinkResponse;
+      if (!response.ok || !payload.ok) {
+        setLinkNote((prev) => ({ ...prev, [recordId]: payload.error ?? "연결에 실패했습니다." }));
+        return;
+      }
+      if (payload.applied && payload.applied.length > 0) {
+        await runPreview(); // 연결되면 matched로 이동하므로 최신 상태로 다시 읽는다
+        return;
+      }
+      const reason = payload.skipped?.[0]?.reason ?? payload.failed?.[0]?.error ?? "반영되지 않았어요.";
+      setLinkNote((prev) => ({ ...prev, [recordId]: reason }));
+    } catch {
+      setLinkNote((prev) => ({ ...prev, [recordId]: "네트워크 오류가 발생했습니다." }));
+    } finally {
+      setLinking("");
+    }
+  }
 
   /** 자동연결 건을 운영 회차 만족도에 기록한다. 이미 값이 있는 회차는 서버가 건너뛴다. */
   async function runApply() {
@@ -273,9 +317,12 @@ export function SatisfactionMatchPreview() {
       {ambiguous.length > 0 ? (
         <section className="table-section">
           <div className="table-header">
-            <h2>모호 · 수동 확인 필요</h2>
+            <h2>모호 · 후보 중에서 연결</h2>
             <span>{ambiguous.length}건</span>
           </div>
+          <p className="satisfaction-section-note">
+            후보가 여럿이라 자동 연결하지 않았어요. 맞는 운영을 골라 연결하세요. 이미 값이 있는 회차는 덮어쓰지 않습니다.
+          </p>
           <div className="table-wrap">
             <table>
               <thead>
@@ -283,22 +330,57 @@ export function SatisfactionMatchPreview() {
                   <th>시트 과정</th>
                   <th>강사</th>
                   <th>일자</th>
-                  <th>후보들</th>
+                  <th>만족도</th>
+                  <th>연결할 운영 선택</th>
                 </tr>
               </thead>
               <tbody>
-                {ambiguous.map((item, index) => (
-                  <tr key={`a-${index}`}>
-                    <td>{item.course}</td>
-                    <td>{item.instructor}</td>
-                    <td>{item.date}</td>
-                    <td>
-                      {item.candidates
-                        .map((candidate) => `${candidate.courseName} (${candidate.dates}, ${candidate.score})`)
-                        .join(" · ")}
-                    </td>
-                  </tr>
-                ))}
+                {ambiguous.map((item, index) => {
+                  const chosen = linkChoice[item.recordId] ?? item.candidates[0]?.operationId ?? "";
+                  return (
+                    <tr key={item.recordId || `a-${index}`}>
+                      <td>{item.course}</td>
+                      <td>{item.instructor}</td>
+                      <td>{item.date}</td>
+                      <td>
+                        <strong>{item.overall}</strong>
+                        {item.posPct != null ? <span>긍정 {item.posPct}%</span> : null}
+                      </td>
+                      <td>
+                        {item.recordId ? (
+                          <div className="satisfaction-link-cell">
+                            <select
+                              value={chosen}
+                              onChange={(event) =>
+                                setLinkChoice((prev) => ({ ...prev, [item.recordId]: event.target.value }))
+                              }
+                            >
+                              {item.candidates.map((candidate) => (
+                                <option key={candidate.operationId} value={candidate.operationId}>
+                                  {candidate.company ? `${candidate.company} / ` : ""}
+                                  {candidate.courseName} ({candidate.dates}) · 점수 {candidate.score}
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              className="sync-btn sync-btn-apply"
+                              type="button"
+                              disabled={linking === item.recordId || !chosen}
+                              onClick={() => runLink(item.recordId, chosen)}
+                            >
+                              {linking === item.recordId ? "연결 중…" : "이 운영에 연결"}
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="satisfaction-apply-note">record_id 없음 — 시트에서 확인하세요</span>
+                        )}
+                        {linkNote[item.recordId] ? (
+                          <span className="satisfaction-link-note">{linkNote[item.recordId]}</span>
+                        ) : null}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
