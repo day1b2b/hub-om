@@ -1,7 +1,7 @@
 import { MyDashboard } from "@/features/dashboard/MyDashboard";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { filterOmRequestsByAssignee, filterOperationsByOm, resolveOmNameByEmail } from "@/lib/data/myOperations";
-import { listOmRequests } from "@/lib/data/omRequest/omRequestLocalRepository";
+import { getOmRequestRepository } from "@/lib/data/omRequest/omRequestRepositoryFactory";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +17,8 @@ export default async function MyDashboardPage() {
   const repository = getOperationRepository();
   const operations = await repository.listOperations();
   const myOperations = filterOperationsByOm(operations, omName);
-  const assignedRequests = filterOmRequestsByAssignee(listOmRequests(), omName);
+  const omRequests = await getOmRequestRepository().listOmRequests();
+  const assignedRequests = filterOmRequestsByAssignee(omRequests, omName);
 
   return <MyDashboard assignedRequests={assignedRequests} omName={omName} operations={myOperations} />;
 }

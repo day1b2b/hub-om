@@ -8,7 +8,6 @@ dist/
 tsconfig.tsbuildinfo
 .env
 .env.local
-om-requests.json
 om-availability.json
 om-custom-tools.json
 .env.*.local

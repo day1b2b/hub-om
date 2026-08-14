@@ -2,7 +2,7 @@ import { OperationCreateForm } from "@/app/operations/new/OperationCreateForm";
 import { AppSidebar } from "@/components/AppSidebar";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
-import { getOmRequest } from "@/lib/data/omRequest/omRequestLocalRepository";
+import { getOmRequestRepository } from "@/lib/data/omRequest/omRequestRepositoryFactory";
 import { buildPersonOptions, buildRoleRosterFromOperations, mergeRoleRosters } from "@/lib/data/personOptions";
 import { getStoredTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFactory";
 import { filterRoleRosterByTeamScope, resolveTeamScope } from "@/lib/teamScope";
@@ -30,7 +30,7 @@ export default async function NewOperationPage({ searchParams }: NewOperationPag
   const today = formatDate(new Date());
   const personOptions = buildPersonOptions(scopedRoleRoster);
   const fromRequestId = firstParamValue(params.fromRequestId);
-  const initialValues = fromRequestId ? buildInitialValuesFromOmRequest(fromRequestId) : undefined;
+  const initialValues = fromRequestId ? await buildInitialValuesFromOmRequest(fromRequestId) : undefined;
 
   return (
     <main className="dashboard-shell">
@@ -64,8 +64,8 @@ function firstParamValue(value: string | string[] | undefined): string | undefin
   return Array.isArray(value) ? value[0] : value;
 }
 
-function buildInitialValuesFromOmRequest(requestId: string) {
-  const request = getOmRequest(requestId);
+async function buildInitialValuesFromOmRequest(requestId: string) {
+  const request = await getOmRequestRepository().getOmRequest(requestId);
   if (!request) return undefined;
 
   const firstSession = request.sessions[0];

@@ -15,6 +15,8 @@ export interface OmRequest {
   createdAt: string;
   status: "배정필요" | "배정완료";
   assignedOm?: string;
+  /** 이 요청으로 자동 생성된 운영현황 건의 operationId. 생성 실패 시 비어 있을 수 있다. */
+  operationId?: string;
 
   team: string;
   ld: string;
@@ -38,7 +40,7 @@ export interface OmRequest {
   notes: string;
 }
 
-export type OmRequestInput = Omit<OmRequest, "id" | "createdAt" | "status" | "assignedOm">;
+export type OmRequestInput = Omit<OmRequest, "id" | "createdAt" | "status" | "assignedOm" | "operationId">;
 
 export function calcSessionDuration(timeStart: string, timeEnd: string): string {
   if (!timeStart || !timeEnd) return "";

@@ -6,7 +6,7 @@ import { getOmNamesForPart } from "@/lib/data/omAvailability/omAvailabilityLocal
 import { buildOmBusyDates } from "@/lib/data/omAvailability/omBusyDates";
 import { recommendOms } from "@/lib/data/omAvailability/recommendOms";
 import { getCourseCategoryMajor } from "@/lib/data/omRequest/omCourseCategoryOptions";
-import { getOmRequest, listOmRequests } from "@/lib/data/omRequest/omRequestLocalRepository";
+import { getOmRequestRepository } from "@/lib/data/omRequest/omRequestRepositoryFactory";
 import { canManageOmRequestAssignment, omRequestManagerName, omRequestStatusLabel } from "@/lib/data/omRequest/omRequestTypes";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { getTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFactory";
@@ -40,14 +40,16 @@ function YNField({ label, value }: { label: string; value: string }) {
 export default async function OmRequestDetailPage({ params }: Props) {
   const session = await requireWorkspaceSession();
   const { id } = await params;
-  const request = getOmRequest(id);
+  const omRequestRepository = getOmRequestRepository();
+  const request = await omRequestRepository.getOmRequest(id);
   if (!request) notFound();
 
-  const [operations, roleRoster] = await Promise.all([
+  const [operations, allOmRequests, roleRoster] = await Promise.all([
     getOperationRepository().listOperations(),
+    omRequestRepository.listOmRequests(),
     getTeamMemberRepository().listRoleRosters()
   ]);
-  const busyDatesByOm = buildOmBusyDates(operations, listOmRequests(), request.id);
+  const busyDatesByOm = buildOmBusyDates(operations, allOmRequests, request.id);
   const partOmNames = getOmNamesForPart(request.team);
   const recommendations = recommendOms(request.sessions, partOmNames, busyDatesByOm);
   const omRoster = Array.from(new Set(Object.values(roleRoster.om).flatMap((names) => names ?? [])));
@@ -77,9 +79,15 @@ export default async function OmRequestDetailPage({ params }: Props) {
             <p className="page-subtitle">{request.company} · {request.team} · 접수 {createdAt}</p>
           </div>
           <div className="detail-header-actions">
-            <Link className="secondary-action" href={`/operations/new?fromRequestId=${request.id}`}>
-              이 요청으로 운영 등록
-            </Link>
+            {request.operationId ? (
+              <Link className="secondary-action" href={`/operations/${request.operationId}`}>
+                운영현황에서 보기
+              </Link>
+            ) : (
+              <Link className="secondary-action" href={`/operations/new?fromRequestId=${request.id}`}>
+                이 요청으로 운영 등록
+              </Link>
+            )}
             <RequestActions id={request.id} />
           </div>
         </header>

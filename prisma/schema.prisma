@@ -201,6 +201,43 @@ model OperationSession {
   @@map("operation_sessions")
 }
 
+// 업무 요청(om-request) 접수 창구. 접수 시점에 courseId 없이 Course/OperationSession을
+// 자동 생성하고 그 operationId를 여기 저장한다(참조는 문자열 키만 두고 FK는 걸지 않음 —
+// 이 앱 전체가 courseId/operationId를 느슨한 join key로 다루는 방식과 동일하게 맞춤).
+// 생성 이후 운영현황 쪽 값이 최종본이며, 이 테이블 수정이 운영현황에 자동 반영되지는 않는다
+// (배정된 OM만 예외적으로 동기화한다. omRequestOperationLink.ts 참고).
+model OmRequest {
+  id                  String   @id @default(cuid())
+  assignedOm          String?  @map("assigned_om")
+  operationId         String?  @map("operation_id")
+  team                String
+  ld                  String
+  company             String
+  businessNumber      String?  @map("business_number")
+  trainingType        String   @map("training_type")
+  courseId            String   @map("course_id")
+  courseName          String   @map("course_name")
+  courseCategoryMajor String?  @map("course_category_major")
+  courseCategory      String   @map("course_category")
+  tools               String?
+  instructorName      String   @map("instructor_name")
+  syncupLink          String   @map("syncup_link")
+  driveLink           String   @map("drive_link")
+  skillfloSetup       String   @map("skillflo_setup")
+  skillmatchSetup     String   @map("skillmatch_setup")
+  onSiteOperation     String   @map("on_site_operation")
+  coachRequest        String   @map("coach_request")
+  totalSessions       Int      @map("total_sessions")
+  sessions            Json
+  notes               String?
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@index([operationId])
+  @@index([assignedOm])
+  @@map("om_requests")
+}
+
 model DriveImportRun {
   id                           String       @id @default(uuid()) @db.Uuid
   mode                         String       @default("dry_run")

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { AppSidebar } from "@/components/AppSidebar";
-import { getOmRequest } from "@/lib/data/omRequest/omRequestLocalRepository";
+import { getOmRequestRepository } from "@/lib/data/omRequest/omRequestRepositoryFactory";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +29,7 @@ function Badge({ value }: { value: string }) {
 export default async function OmRequestCompletePage({ searchParams }: Props) {
   const params = await searchParams;
   const id = typeof params.id === "string" ? params.id : null;
-  const request = id ? getOmRequest(id) : null;
+  const request = id ? await getOmRequestRepository().getOmRequest(id) : null;
 
   return (
     <main className="dashboard-shell">
@@ -115,6 +115,11 @@ export default async function OmRequestCompletePage({ searchParams }: Props) {
         )}
 
         <div className="om-complete-actions">
+          {request?.operationId && (
+            <Link className="secondary-link" href={`/operations/${request.operationId}`}>
+              운영현황에서 보기
+            </Link>
+          )}
           <Link className="primary-link" href="/om-request">새 요청 제출</Link>
           <Link className="secondary-link" href="/dashboard">대시보드로 이동</Link>
         </div>

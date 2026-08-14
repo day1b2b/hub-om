@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { getOmRequest, updateOmRequestAssignment } from "@/lib/data/omRequest/omRequestLocalRepository";
+import { syncAssignedOmToLinkedOperation } from "@/lib/data/omRequest/omRequestOperationLink";
+import { getOmRequestRepository } from "@/lib/data/omRequest/omRequestRepositoryFactory";
 import { canManageOmRequestAssignment } from "@/lib/data/omRequest/omRequestTypes";
 import { notifyOmAssigned } from "@/lib/slack/notifySlack";
 
@@ -20,7 +21,8 @@ export async function PATCH(request: Request) {
     const { id, assignedOm } = (await request.json()) as { id: string; assignedOm: string | null };
     if (!id) return NextResponse.json({ error: "id 필요" }, { status: 400 });
 
-    const existing = getOmRequest(id);
+    const omRequestRepository = getOmRequestRepository();
+    const existing = await omRequestRepository.getOmRequest(id);
     if (!existing) return NextResponse.json({ error: "요청 없음" }, { status: 404 });
 
     const currentUser = await resolveCurrentUser();
@@ -28,8 +30,17 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "이 파트의 담당 관리자만 지정할 수 있습니다." }, { status: 403 });
     }
 
-    const updated = updateOmRequestAssignment(id, assignedOm);
+    const updated = await omRequestRepository.updateOmRequestAssignment(id, assignedOm);
     if (!updated) return NextResponse.json({ error: "요청 없음" }, { status: 404 });
+
+    if (assignedOm && updated.operationId) {
+      try {
+        await syncAssignedOmToLinkedOperation(updated.operationId, assignedOm);
+      } catch (syncError) {
+        console.error("배정된 OM을 운영현황에 동기화하지 못함", syncError);
+      }
+    }
+
     if (assignedOm) {
       await notifyOmAssigned({
         company: updated.company,

@@ -14,6 +14,7 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:archive:coach-db": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/archive-coach-db.ts",
     "db:import:operations": "node scripts/import-operations-from-local-json.mjs",
+    "db:import:om-requests": "node scripts/import-om-requests-from-local-json.mjs",
     "db:import:coach": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/import-coach-db.ts",
     "db:seed:coach-sample": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/seed-coach-sample-data.ts",
     "db:seed:my-page-sample": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/seed-my-page-sample-data.ts",

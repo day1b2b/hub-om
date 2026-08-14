@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { addCustomTools, listCustomTools } from "@/lib/data/omRequest/omCustomToolsLocalRepository";
-import { createOmRequest } from "@/lib/data/omRequest/omRequestLocalRepository";
+import { createLinkedOperationForOmRequest } from "@/lib/data/omRequest/omRequestOperationLink";
+import { getOmRequestRepository } from "@/lib/data/omRequest/omRequestRepositoryFactory";
 import type { OmRequestInput } from "@/lib/data/omRequest/omRequestTypes";
 import { extractUnknownTools } from "@/lib/data/omRequest/omToolOptions";
 import { notifyOmRequestCreated } from "@/lib/slack/notifySlack";
@@ -16,8 +17,21 @@ export async function POST(request: Request) {
       ldEmail = session?.user?.email ?? undefined;
     }
     const body = (await request.json()) as OmRequestInput;
-    const created = createOmRequest(body);
+    const omRequestRepository = getOmRequestRepository();
+    const created = await omRequestRepository.createOmRequest(body);
     addCustomTools(extractUnknownTools(created.tools ?? "", listCustomTools()));
+
+    // 운영현황에서 바로 확인/수정할 수 있도록 연결한다. 실패해도 요청 접수 자체는 막지 않는다.
+    try {
+      const operationId = await createLinkedOperationForOmRequest(created);
+      if (operationId) {
+        await omRequestRepository.setOmRequestOperationId(created.id, operationId);
+        created.operationId = operationId;
+      }
+    } catch (linkError) {
+      console.error("om-request → 운영현황 자동 연결 실패", linkError);
+    }
+
     await notifyOmRequestCreated({
       team: created.team,
       ld: created.ld,

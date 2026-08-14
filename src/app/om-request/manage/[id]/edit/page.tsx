@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { AppSidebar } from "@/components/AppSidebar";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { listCustomTools } from "@/lib/data/omRequest/omCustomToolsLocalRepository";
-import { getOmRequest } from "@/lib/data/omRequest/omRequestLocalRepository";
+import { getOmRequestRepository } from "@/lib/data/omRequest/omRequestRepositoryFactory";
 import { OmRequestForm } from "@/app/om-request/OmRequestForm";
 
 export const dynamic = "force-dynamic";
@@ -15,13 +15,20 @@ interface Props {
 export default async function OmRequestEditPage({ params }: Props) {
   const session = await requireWorkspaceSession();
   const { id } = await params;
-  const request = getOmRequest(id);
+  const request = await getOmRequestRepository().getOmRequest(id);
   if (!request) notFound();
 
   const ldName = session.user?.name ?? session.user?.email?.split("@")[0] ?? "";
   const extraTools = listCustomTools();
 
-  const { id: _id, createdAt: _createdAt, status: _status, assignedOm: _assignedOm, ...initialData } = request;
+  const {
+    id: _id,
+    createdAt: _createdAt,
+    status: _status,
+    assignedOm: _assignedOm,
+    operationId: _operationId,
+    ...initialData
+  } = request;
 
   return (
     <main className="dashboard-shell">
