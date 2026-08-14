@@ -14,7 +14,11 @@ export async function PATCH(request: Request, { params }: Props) {
     const body = (await request.json()) as OmRequestInput;
     const updated = await updateOmRequest(id, body);
     if (!updated) return NextResponse.json({ error: "요청 없음" }, { status: 404 });
-    addCustomTools(extractUnknownTools(updated.tools ?? "", listCustomTools()));
+    try {
+      addCustomTools(extractUnknownTools(updated.tools ?? "", listCustomTools()));
+    } catch (err) {
+      console.error("[om-request] 커스텀 툴 저장 실패(무시):", err);
+    }
     return NextResponse.json(updated);
   } catch {
     return NextResponse.json({ error: "저장 실패" }, { status: 500 });
