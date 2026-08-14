@@ -16,6 +16,13 @@ export interface OmRequest {
   status: "배정필요" | "배정완료";
   assignedOm?: string;
 
+  // Slack 알림 연동. 요청 생성 시 발송한 알림 메시지의 채널/스레드를 저장해
+  // 배정 시 같은 스레드에 댓글로 태깅한다. LD 이메일은 세션에서만 얻을 수 있어
+  // 배정 시점 태깅을 위해 생성 시점에 함께 저장한다. (모두 선택 필드 · 미설정 시 알림 skip)
+  ldEmail?: string;
+  slackChannel?: string;
+  slackThreadTs?: string;
+
   team: string;
   ld: string;
   company: string;
@@ -38,7 +45,10 @@ export interface OmRequest {
   notes: string;
 }
 
-export type OmRequestInput = Omit<OmRequest, "id" | "createdAt" | "status" | "assignedOm">;
+export type OmRequestInput = Omit<
+  OmRequest,
+  "id" | "createdAt" | "status" | "assignedOm" | "ldEmail" | "slackChannel" | "slackThreadTs"
+>;
 
 export function calcSessionDuration(timeStart: string, timeEnd: string): string {
   if (!timeStart || !timeEnd) return "";

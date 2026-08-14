@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { addCustomTools, listCustomTools } from "@/lib/data/omRequest/omCustomToolsLocalRepository";
-import { createOmRequest } from "@/lib/data/omRequest/omRequestLocalRepository";
+import { createOmRequest, setOmRequestSlackMeta } from "@/lib/data/omRequest/omRequestLocalRepository";
 import type { OmRequestInput } from "@/lib/data/omRequest/omRequestTypes";
 import { extractUnknownTools } from "@/lib/data/omRequest/omToolOptions";
 import { notifyOmRequestCreated } from "@/lib/slack/notifySlack";
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     const body = (await request.json()) as OmRequestInput;
     const created = createOmRequest(body);
     addCustomTools(extractUnknownTools(created.tools ?? "", listCustomTools()));
-    await notifyOmRequestCreated({
+    const slackThread = await notifyOmRequestCreated({
       team: created.team,
       ld: created.ld,
       ldEmail,
@@ -33,7 +33,14 @@ export async function POST(request: Request) {
       sessions: created.sessions,
       notes: created.notes,
     });
-    return NextResponse.json(created, { status: 201 });
+    // 배정 시 같은 스레드에 댓글·LD 태깅을 하기 위해 스레드/이메일 저장
+    const withMeta =
+      setOmRequestSlackMeta(created.id, {
+        ldEmail,
+        slackChannel: slackThread?.channel,
+        slackThreadTs: slackThread?.ts,
+      }) ?? created;
+    return NextResponse.json(withMeta, { status: 201 });
   } catch {
     return NextResponse.json({ error: "저장 실패" }, { status: 500 });
   }
