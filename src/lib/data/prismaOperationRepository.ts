@@ -27,6 +27,7 @@ import {
   deriveProfit,
   deriveSessionDurationDays,
   deriveSessionDurationType,
+  formatProcessId,
   summarizeOperations
 } from "./operationCalculations";
 import type { OperationRepository } from "./operationRepository";
@@ -160,6 +161,7 @@ export class PrismaOperationRepository implements OperationRepository {
         id: session.id,
         operationId: session.operationId,
         sourceTeam: session.sourceRecords[0]?.sourceTeam ? SOURCE_TEAM[session.sourceRecords[0].sourceTeam] : "미분류",
+        processId: formatProcessId(session.course.processSeq),
         courseId: session.course.courseId,
         companyName: session.course.company.name,
         courseName: session.course.name,

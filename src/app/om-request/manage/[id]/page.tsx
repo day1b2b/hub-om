@@ -78,9 +78,15 @@ export default async function OmRequestDetailPage({ params }: Props) {
             <p className="page-subtitle">{request.company} · {request.team} · 접수 {createdAt}</p>
           </div>
           <div className="detail-header-actions">
-            <Link className="secondary-action" href={`/operations/new?fromRequestId=${request.id}`}>
-              이 요청으로 운영 등록
-            </Link>
+            {request.operationId ? (
+              <Link className="secondary-action" href={`/operations/${request.operationId}`}>
+                운영현황에서 보기
+              </Link>
+            ) : (
+              <Link className="secondary-action" href={`/operations/new?fromRequestId=${request.id}`}>
+                이 요청으로 운영 등록
+              </Link>
+            )}
             <RequestActions id={request.id} />
           </div>
         </header>

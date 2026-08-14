@@ -115,6 +115,10 @@ model Company {
 
 model Course {
   id            String        @id @default(uuid()) @db.Uuid
+  // hub-om이 직접 채번하는 "과정ID"(화면에는 PRC-000123처럼 노출, formatProcessId 참고).
+  // 코스ID(courseId)는 사내 다른 시스템이 나중에 채워 넣는 값이라 요청 시점엔 비어있을 수
+  // 있지만, processSeq는 과정(Course) 행이 생기는 즉시 DB가 채번하므로 항상 존재한다.
+  processSeq    Int           @unique @default(autoincrement()) @map("process_seq")
   companyId     String        @map("company_id") @db.Uuid
   courseId      String        @map("course_id")
   name          String        @map("course_name")
@@ -662,6 +666,9 @@ model OmRequest {
   ldEmail             String?  @map("ld_email")
   slackChannel        String?  @map("slack_channel")
   slackThreadTs       String?  @map("slack_thread_ts")
+  // 접수 시점에 courseId 없이 자동 생성한 운영현황 회차(첫 차수)의 operationId.
+  // FK는 걸지 않는다 — 앱 전체가 courseId/operationId를 느슨한 join key로 다루는 방식과 동일.
+  operationId         String?  @map("operation_id")
   team                String
   ld                  String
   company             String
@@ -685,6 +692,7 @@ model OmRequest {
   createdAt           DateTime @default(now()) @map("created_at")
 
   @@index([createdAt])
+  @@index([operationId])
   @@map("om_requests")
 }
 

@@ -36,10 +36,10 @@ export default async function ResourcesPage({ searchParams }: ResourcesPageProps
   const scopedOperations = filterOperationsByTeamScope(resourceOperations, teamScope, resourceOwnerRoster);
   const scopedOwnerRoster = filterOwnerRosterByTeamScope(resourceOwnerRoster, teamScope);
   const scopedCalendarEvents = filterCalendarEventsByOwnerRoster(calendarEvents, scopedOwnerRoster);
-  // 아직 operation으로 승격되지 않은 배정 건도 캘린더에 보이도록, courseId가 겹치지 않는 om-request만 추린다.
-  const operationCourseIds = new Set(resourceOperations.map((operation) => operation.courseId).filter(Boolean));
+  // om-request는 접수 시점에 바로 operation이 생성되므로(omRequestOperationLink), 정상적으로 연결된
+  // 건은 이미 resourceOperations에 들어 있다. 연결이 실패한 예외 건만 캘린더에 별도로 보여준다.
   const pendingOmRequests = (await listOmRequests()).filter(
-    (request) => !!request.assignedOm && !operationCourseIds.has(request.courseId)
+    (request) => !!request.assignedOm && !request.operationId
   );
   const teamLabel = teamScope === "team_1" ? "1팀" : teamScope === "team_2" ? "2팀" : null;
   const scopedPendingOmRequests = teamLabel

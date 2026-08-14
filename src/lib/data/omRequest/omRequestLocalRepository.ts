@@ -32,6 +32,7 @@ interface OmRequestRow {
   id: string;
   status: string;
   assignedOm: string | null;
+  operationId: string | null;
   ldEmail: string | null;
   slackChannel: string | null;
   slackThreadTs: string | null;
@@ -64,6 +65,7 @@ function toOmRequest(row: OmRequestRow): OmRequest {
     createdAt: row.createdAt.toISOString(),
     status: row.status === "배정완료" ? "배정완료" : "배정필요",
     assignedOm: row.assignedOm ?? undefined,
+    operationId: row.operationId ?? undefined,
     ldEmail: row.ldEmail ?? undefined,
     slackChannel: row.slackChannel ?? undefined,
     slackThreadTs: row.slackThreadTs ?? undefined,
@@ -179,6 +181,24 @@ export async function deleteOmRequest(id: string): Promise<boolean> {
   if (!existing) return false;
   await prisma.omRequest.delete({ where: { id } });
   return true;
+}
+
+// 접수 직후, 자동 생성한 운영현황 회차(첫 차수)의 operationId를 기록한다.
+// 생성 자체가 best-effort라 실패하면 호출되지 않을 수 있다(omRequestOperationLink.ts 참고).
+export async function setOmRequestOperationId(id: string, operationId: string): Promise<OmRequest | null> {
+  if (!hasDatabaseUrl()) {
+    const requests = readAll();
+    const idx = requests.findIndex((r) => r.id === id);
+    if (idx === -1) return null;
+    requests[idx] = { ...requests[idx], operationId };
+    writeAll(requests);
+    return requests[idx];
+  }
+  const prisma = getPrismaClient();
+  const existing = await prisma.omRequest.findUnique({ where: { id } });
+  if (!existing) return null;
+  const row = await prisma.omRequest.update({ where: { id }, data: { operationId } });
+  return toOmRequest(row as OmRequestRow);
 }
 
 // 요청 생성 직후, 발송한 Slack 알림의 채널/스레드ts와 LD 이메일을 기록한다.

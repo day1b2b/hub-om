@@ -122,6 +122,7 @@ export function OperationDetail({
               <h2>일정 / 운영 조건</h2>
             </div>
             <div className="info-grid">
+              <InfoItem label="과정ID" value={operation.processId || "-"} />
               <EditableInfoItem
                 displayValue={operation.courseId || "미정"}
                 fields={[{ name: "courseId", placeholder: "예: 261326", value: operation.courseId }]}

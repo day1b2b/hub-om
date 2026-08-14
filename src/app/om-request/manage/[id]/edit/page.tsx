@@ -21,7 +21,14 @@ export default async function OmRequestEditPage({ params }: Props) {
   const ldName = session.user?.name ?? session.user?.email?.split("@")[0] ?? "";
   const extraTools = listCustomTools();
 
-  const { id: _id, createdAt: _createdAt, status: _status, assignedOm: _assignedOm, ...initialData } = request;
+  const {
+    id: _id,
+    createdAt: _createdAt,
+    status: _status,
+    assignedOm: _assignedOm,
+    operationId: _operationId,
+    ...initialData
+  } = request;
 
   return (
     <main className="dashboard-shell">
