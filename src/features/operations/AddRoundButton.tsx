@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { isValidTimeRangeText } from "./parsePastedRounds";
 
 type SaveState = "idle" | "saving" | "failed";
 
@@ -153,6 +154,11 @@ export function AddRoundButton({
   async function save() {
     if (!draft.roundNo.trim() || !draft.startDate.trim() || !draft.endDate.trim()) {
       setError("회차, 시작일, 종료일은 필수입니다.");
+      return;
+    }
+
+    if (draft.timeText.trim() && !isValidTimeRangeText(draft.timeText)) {
+      setError("시간 형식을 확인해주세요 (예: 09:30 ~ 17:30).");
       return;
     }
 
