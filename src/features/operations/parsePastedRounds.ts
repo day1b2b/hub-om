@@ -11,6 +11,12 @@ export interface ParsedRound {
   timeText: string;
 }
 
+const TIME_RANGE_PATTERN = /^([01]?\d|2[0-3]):([0-5]\d)\s*~\s*([01]?\d|2[0-3]):([0-5]\d)$/;
+
+export function isValidTimeRangeText(value: string): boolean {
+  return TIME_RANGE_PATTERN.test(value.trim());
+}
+
 export function parsePastedRounds(value: string): ParsedRound[] {
   return value
     .split("\n")
@@ -27,11 +33,13 @@ function toParsedRound(line: string): ParsedRound {
   const roundNo = roundNoCell.trim();
   const startDate = normalizeDateCell(startDateCell);
   const endDate = normalizeDateCell(endDateCell);
+  const timeText = timeTextCell.trim();
   const errors: string[] = [];
 
   if (!roundNo) errors.push("회차 필요");
   if (!startDate) errors.push("시작일 확인 필요");
   if (!endDate) errors.push("종료일 확인 필요");
+  if (timeText && !isValidTimeRangeText(timeText)) errors.push("시간 형식 확인 필요 (예: 09:30 ~ 17:30)");
 
   return {
     coach: coachCell.trim(),
@@ -43,7 +51,7 @@ function toParsedRound(line: string): ParsedRound {
     startDate,
     status: "idle",
     statusMessage: "",
-    timeText: timeTextCell.trim()
+    timeText
   };
 }
 
