@@ -28,7 +28,6 @@ interface OperationCreateFormProps {
     om: string[];
   };
   teamScope: TeamScope;
-  today: string;
 }
 
 const TEMPLATE_HEADER = ["회차", "시작일", "종료일", "시간", "강사", "실습코치"];
@@ -36,7 +35,7 @@ const TEMPLATE_SAMPLE_ROW = ["1", "2026-03-09", "2026-03-09", "09:30 ~ 17:30", "
 
 type SubmitState = "idle" | "saving" | "failed";
 
-export function OperationCreateForm({ initialValues = {}, personOptions, teamScope, today }: OperationCreateFormProps) {
+export function OperationCreateForm({ initialValues = {}, personOptions, teamScope }: OperationCreateFormProps) {
   const router = useRouter();
   const ldOptions = useMemo(() => unique(personOptions.ld), [personOptions.ld]);
   const omOptions = useMemo(() => unique(personOptions.om), [personOptions.om]);
@@ -50,7 +49,7 @@ export function OperationCreateForm({ initialValues = {}, personOptions, teamSco
   const [onsiteRequired, setOnsiteRequired] = useState((initialValues.onsiteRequired as string) || "UNKNOWN");
   const [hasResultReport, setHasResultReport] = useState<"Y" | "N">("Y");
 
-  const seedLine = useMemo(() => buildSeedLine(initialValues, today), [initialValues, today]);
+  const seedLine = useMemo(() => buildSeedLine(initialValues), [initialValues]);
   const [pasteText, setPasteText] = useState(seedLine);
   const [rows, setRows] = useState<ParsedRound[]>(() => parsePastedRounds(seedLine));
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
@@ -302,8 +301,8 @@ export function OperationCreateForm({ initialValues = {}, personOptions, teamSco
   }
 }
 
-function buildSeedLine(initialValues: OperationCreateFormInitialValues, today: string): string {
-  const startDate = initialValues.startDate || (initialValues.endDate ? "" : today);
+function buildSeedLine(initialValues: OperationCreateFormInitialValues): string {
+  const startDate = initialValues.startDate ?? "";
   const endDate = initialValues.endDate || startDate;
 
   if (!startDate && !endDate) return "";
