@@ -656,9 +656,7 @@ function formatTotalEducationDays(operations: OperationSession[]): string {
 }
 
 function getCourseOperations(operation: OperationSession, relatedOperations: OperationSession[]): OperationSession[] {
-  const baseOperations = operation.courseId
-    ? relatedOperations.filter((candidate) => isSameCourse(candidate, operation))
-    : [operation];
+  const baseOperations = relatedOperations.filter((candidate) => isSameCourse(candidate, operation));
 
   const uniqueOperations = new Map<string, OperationSession>();
 
