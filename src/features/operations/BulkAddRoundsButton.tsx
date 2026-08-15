@@ -19,6 +19,7 @@ export function BulkAddRoundsButton({ baseOperationId }: BulkAddRoundsButtonProp
   const [pasteText, setPasteText] = useState("");
   const [rows, setRows] = useState<ParsedRound[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const validCount = useMemo(() => rows.filter((row) => row.errors.length === 0).length, [rows]);
   const pendingCount = useMemo(
@@ -100,6 +101,7 @@ export function BulkAddRoundsButton({ baseOperationId }: BulkAddRoundsButtonProp
             </div>
 
             <div className="lecture-note-footer">
+              {error ? <span className="lecture-note-save-error">{error}</span> : null}
               <span>
                 총 {rows.length}행 · 정상 {validCount}행 · 오류 {rows.length - validCount}행
               </span>
@@ -107,7 +109,7 @@ export function BulkAddRoundsButton({ baseOperationId }: BulkAddRoundsButtonProp
                 <button disabled={isSaving} onClick={closeDialog} type="button">
                   취소
                 </button>
-                <button disabled={isSaving || pendingCount === 0} onClick={saveAll} type="button">
+                <button disabled={isSaving || rows.length === 0} onClick={saveAll} type="button">
                   {isSaving ? "등록 중" : `일괄 등록 (${pendingCount}건)`}
                 </button>
               </div>
@@ -122,6 +124,7 @@ export function BulkAddRoundsButton({ baseOperationId }: BulkAddRoundsButtonProp
     setPasteText("");
     setRows([]);
     setIsSaving(false);
+    setError(null);
     setIsOpen(true);
   }
 
@@ -133,6 +136,7 @@ export function BulkAddRoundsButton({ baseOperationId }: BulkAddRoundsButtonProp
   function handlePasteChange(value: string) {
     setPasteText(value);
     setRows(parsePastedRounds(value));
+    setError(null);
   }
 
   function downloadTemplate() {
@@ -150,6 +154,13 @@ export function BulkAddRoundsButton({ baseOperationId }: BulkAddRoundsButtonProp
   }
 
   async function saveAll() {
+    setError(null);
+
+    if (rows.some((row) => row.errors.length > 0)) {
+      setError("오류가 있는 행을 확인해주세요.");
+      return;
+    }
+
     setIsSaving(true);
 
     let hasFailure = false;
