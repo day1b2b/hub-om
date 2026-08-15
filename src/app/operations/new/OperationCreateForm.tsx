@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { parsePastedRounds, type ParsedRound } from "@/features/operations/parsePastedRounds";
+import type { TrainingType } from "@/lib/data/omRequest/omRequestTypes";
 import { teamScopeSearchParam, type TeamScope } from "@/lib/teamScope";
 
 interface OperationCreateFormInitialValues {
@@ -19,6 +20,7 @@ interface OperationCreateFormInitialValues {
   region?: string;
   startDate?: string;
   timeText?: string;
+  trainingType?: TrainingType;
 }
 
 interface OperationCreateFormProps {
@@ -28,15 +30,16 @@ interface OperationCreateFormProps {
     om: string[];
   };
   teamScope: TeamScope;
-  today: string;
 }
+
+const TRAINING_TYPE_OPTIONS: TrainingType[] = ["오프라인", "블렌디드", "비대면", "해커톤"];
 
 const TEMPLATE_HEADER = ["회차", "시작일", "종료일", "시간", "강사", "실습코치"];
 const TEMPLATE_SAMPLE_ROW = ["1", "2026-03-09", "2026-03-09", "09:30 ~ 17:30", "강사A", "코치A"];
 
 type SubmitState = "idle" | "saving" | "failed";
 
-export function OperationCreateForm({ initialValues = {}, personOptions, teamScope, today }: OperationCreateFormProps) {
+export function OperationCreateForm({ initialValues = {}, personOptions, teamScope }: OperationCreateFormProps) {
   const router = useRouter();
   const ldOptions = useMemo(() => unique(personOptions.ld), [personOptions.ld]);
   const omOptions = useMemo(() => unique(personOptions.om), [personOptions.om]);
@@ -47,10 +50,11 @@ export function OperationCreateForm({ initialValues = {}, personOptions, teamSco
   const [courseId, setCourseId] = useState(initialValues.courseId ?? "");
   const [omNames, setOmNames] = useState<string[]>([""]);
   const [ldNames, setLdNames] = useState<string[]>([""]);
-  const [onsiteRequired, setOnsiteRequired] = useState((initialValues.onsiteRequired as string) || "UNKNOWN");
+  const [trainingType, setTrainingType] = useState<TrainingType>(initialValues.trainingType ?? "오프라인");
+  const [onsiteRequired, setOnsiteRequired] = useState((initialValues.onsiteRequired as string) || "N");
   const [hasResultReport, setHasResultReport] = useState<"Y" | "N">("Y");
 
-  const seedLine = useMemo(() => buildSeedLine(initialValues, today), [initialValues, today]);
+  const seedLine = useMemo(() => buildSeedLine(initialValues), [initialValues]);
   const [pasteText, setPasteText] = useState(seedLine);
   const [rows, setRows] = useState<ParsedRound[]>(() => parsePastedRounds(seedLine));
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
@@ -74,16 +78,24 @@ export function OperationCreateForm({ initialValues = {}, personOptions, teamSco
             <input onChange={(event) => setCourseId(event.target.value)} placeholder="없으면 비워둠" value={courseId} />
           </label>
           <label>
-            <span>코스ID명</span>
+            <span>과정명</span>
             <input onChange={(event) => setCourseName(event.target.value)} value={courseName} />
+          </label>
+          <label>
+            <span>교육형태</span>
+            <select onChange={(event) => setTrainingType(event.target.value as TrainingType)} value={trainingType}>
+              {TRAINING_TYPE_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
           </label>
           <label>
             <span>현장 투입</span>
             <select onChange={(event) => setOnsiteRequired(event.target.value)} value={onsiteRequired}>
-              <option value="UNKNOWN">확인 필요</option>
               <option value="Y">Y</option>
               <option value="N">N</option>
-              <option value="PARTIAL">일부 필요</option>
             </select>
           </label>
           <label>
@@ -232,7 +244,8 @@ export function OperationCreateForm({ initialValues = {}, personOptions, teamSco
           region: initialValues.region,
           roundNo: firstRound.roundNo,
           startDate: firstRound.startDate,
-          timeText: firstRound.timeText
+          timeText: firstRound.timeText,
+          trainingType
         })
       });
     } catch {
@@ -302,8 +315,8 @@ export function OperationCreateForm({ initialValues = {}, personOptions, teamSco
   }
 }
 
-function buildSeedLine(initialValues: OperationCreateFormInitialValues, today: string): string {
-  const startDate = initialValues.startDate || (initialValues.endDate ? "" : today);
+function buildSeedLine(initialValues: OperationCreateFormInitialValues): string {
+  const startDate = initialValues.startDate ?? "";
   const endDate = initialValues.endDate || startDate;
 
   if (!startDate && !endDate) return "";
