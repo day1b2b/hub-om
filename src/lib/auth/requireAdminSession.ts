@@ -36,7 +36,20 @@ export async function assertAdminSession(): Promise<Session> {
 }
 
 export function getAdminAccessMode() {
-  return getConfiguredAdminEmails().length > 0 ? "ADMIN_EMAILS" : "workspace";
+  return getConfiguredAdminEmails().length > 0 ? "ADMIN_EMAILS" : "unconfigured";
+}
+
+/**
+ * 현재 세션(또는 로컬 개발용 DEV_AUTH_BYPASS)의 관리자 여부.
+ * 사이드바 등 클라이언트 컴포넌트에 role을 내려주기 위한 서버 전용 헬퍼.
+ */
+export async function resolveSessionIsAdmin(): Promise<boolean> {
+  if (process.env.DEV_AUTH_BYPASS === "true" && process.env.NODE_ENV !== "production") {
+    return isAdminEmail(process.env.DEV_AUTH_EMAIL ?? "dev@day1company.co.kr");
+  }
+
+  const session = await auth();
+  return isAdminEmail(session?.user?.email);
 }
 
 /**
@@ -55,14 +68,15 @@ export async function assertCoachPiiAccess(): Promise<Session> {
 }
 
 /**
- * 일반 admin 판별. ADMIN_EMAILS 미설정 시 워크스페이스 전체를 admin으로 간주(fail-open).
- * 기존 hub-om admin 페이지의 동작이며, PII에는 이 함수를 쓰지 말고 isCoachPiiViewer를 쓴다.
+ * 일반 admin 판별. **fail-closed**: ADMIN_EMAILS가 비어있으면 아무도 admin이 아니다.
+ * (일반/관리자 메뉴 분리 도입 전에는 ADMIN_EMAILS 미설정 시 fail-open이었으나,
+ * 역할 분리가 실제로 의미를 가지려면 미설정 상태의 안전한 기본값은 "전원 admin"이 아니라 "전원 일반"이어야 한다.)
  */
 export function isAdminEmail(email?: string | null): boolean {
   if (!email) return false;
 
   const configuredEmails = getConfiguredAdminEmails();
-  if (configuredEmails.length === 0) return true;
+  if (configuredEmails.length === 0) return false;
 
   return configuredEmails.includes(email.toLowerCase());
 }

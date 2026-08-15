@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { CoachEngagementList } from "@/features/coaches/CoachEngagementList";
-import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
+import { requireAdminSession } from "@/lib/auth/requireAdminSession";
 import { getCoachRepository } from "@/lib/data/coachRepositoryFactory";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +10,7 @@ interface CoachEngagementsPageProps {
 }
 
 export default async function CoachEngagementsPage({ params }: CoachEngagementsPageProps) {
-  await requireWorkspaceSession();
+  await requireAdminSession();
   const { id } = await params;
 
   const repository = getCoachRepository();

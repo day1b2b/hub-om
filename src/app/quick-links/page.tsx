@@ -1,8 +1,8 @@
 import { QuickLinksPage } from "@/features/quickLinks/QuickLinksPage";
-import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
+import { requireAdminSession } from "@/lib/auth/requireAdminSession";
 
 export default async function Page() {
-  await requireWorkspaceSession();
+  await requireAdminSession();
 
   return <QuickLinksPage teamScope="both" />;
 }

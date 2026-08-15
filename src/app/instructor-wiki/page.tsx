@@ -5,7 +5,7 @@ import {
   type InstructorWikiEntry,
   type InstructorWikiProvenance
 } from "@/features/wiki/instructorWikiModel";
-import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
+import { requireAdminSession } from "@/lib/auth/requireAdminSession";
 import { getCoachRepository } from "@/lib/data/coachRepositoryFactory";
 import { getAllInstructorNotes } from "@/lib/data/instructorWikiStore";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
@@ -13,7 +13,7 @@ import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 export const dynamic = "force-dynamic";
 
 export default async function InstructorWikiPage() {
-  await requireWorkspaceSession();
+  await requireAdminSession();
 
   let entries: InstructorWikiEntry[] = [];
   let loadFailed = false;

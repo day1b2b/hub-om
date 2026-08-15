@@ -1,10 +1,10 @@
 import { CompanyWiki } from "@/features/wiki/CompanyWiki";
-import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
+import { requireAdminSession } from "@/lib/auth/requireAdminSession";
 
 export const dynamic = "force-dynamic";
 
 export default async function CompanyWikiPage() {
-  await requireWorkspaceSession();
+  await requireAdminSession();
 
   return <CompanyWiki />;
 }

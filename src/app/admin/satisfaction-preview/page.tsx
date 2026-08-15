@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SatisfactionMatchPreview } from "@/features/admin/SatisfactionMatchPreview";
-import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
+import { requireAdminSession } from "@/lib/auth/requireAdminSession";
 
 export const dynamic = "force-dynamic";
 
 export default async function SatisfactionPreviewPage() {
-  await requireWorkspaceSession();
+  await requireAdminSession();
 
   return (
     <main className="dashboard-shell">

@@ -1,12 +1,12 @@
 import { CoachList } from "@/features/coaches/CoachList";
-import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
+import { requireAdminSession } from "@/lib/auth/requireAdminSession";
 import { getCoachRepository } from "@/lib/data/coachRepositoryFactory";
 import type { CoachSummary } from "@/lib/data/coachTypes";
 
 export const dynamic = "force-dynamic";
 
 export default async function CoachesPage() {
-  await requireWorkspaceSession();
+  await requireAdminSession();
 
   let coaches: CoachSummary[] = [];
   let loadFailed = false;
