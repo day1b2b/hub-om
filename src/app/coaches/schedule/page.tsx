@@ -1,5 +1,5 @@
 import { CoachScheduleBoard } from "@/features/coaches/CoachScheduleBoard";
-import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
+import { requireAdminSession } from "@/lib/auth/requireAdminSession";
 import { getCoachRepository } from "@/lib/data/coachRepositoryFactory";
 import { fetchKoreanHolidays } from "@/lib/holidayApi";
 import type { CoachScheduleDashboard } from "@/lib/data/coachTypes";
@@ -11,7 +11,7 @@ interface CoachSchedulePageProps {
 }
 
 export default async function CoachSchedulePage({ searchParams }: CoachSchedulePageProps) {
-  const session = await requireWorkspaceSession();
+  const session = await requireAdminSession();
   const currentUserEmail = session.user?.email ?? "";
 
   const params = await searchParams;

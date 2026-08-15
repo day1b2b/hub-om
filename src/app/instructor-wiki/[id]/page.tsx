@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { InstructorWikiDetail } from "@/features/wiki/InstructorWikiDetail";
 import { aggregateInstructors, type InstructorWikiEntry } from "@/features/wiki/instructorWikiModel";
-import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
+import { requireAdminSession } from "@/lib/auth/requireAdminSession";
 import { getCoachRepository } from "@/lib/data/coachRepositoryFactory";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 
@@ -12,7 +12,7 @@ interface InstructorWikiDetailPageProps {
 }
 
 export default async function InstructorWikiDetailPage({ params }: InstructorWikiDetailPageProps) {
-  await requireWorkspaceSession();
+  await requireAdminSession();
   const { id } = await params;
   const name = safeDecode(id);
 

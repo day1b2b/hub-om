@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { AppSidebar } from "@/components/AppSidebar";
-import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
+import { requireAdminSession } from "@/lib/auth/requireAdminSession";
 import { listTeamUsers } from "@/lib/data/teamUsers/teamUserRepository";
 import { UserManagement } from "./UserManagement";
 import { InstructorMemberPanel } from "./InstructorMemberPanel";
@@ -21,7 +21,7 @@ interface AdminUsersPageProps {
 }
 
 export default async function AdminUsersPage({ searchParams }: AdminUsersPageProps) {
-  await requireWorkspaceSession();
+  await requireAdminSession();
   const params = await searchParams;
   const selectedTab = resolveTab(firstParam(params.tab));
   const users = selectedTab === "ld-om" ? await listTeamUsers() : [];
