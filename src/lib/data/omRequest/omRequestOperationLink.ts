@@ -2,7 +2,7 @@ import { getOperationRepository } from "../operationRepositoryFactory";
 import type { CreateOperationInput } from "../operationTypes";
 import type { OmRequest } from "./omRequestTypes";
 
-const EDUCATION_FORMAT_BY_TRAINING_TYPE: Record<OmRequest["trainingType"], CreateOperationInput["educationFormat"]> = {
+export const EDUCATION_FORMAT_BY_TRAINING_TYPE: Record<OmRequest["trainingType"], CreateOperationInput["educationFormat"]> = {
   "오프라인": "오프라인",
   "블렌디드": "블렌디드",
   "비대면": "비대면",

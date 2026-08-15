@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
-import type { CreateOperationInput, OnsiteRequired } from "@/lib/data/operationTypes";
+import { EDUCATION_FORMAT_BY_TRAINING_TYPE } from "@/lib/data/omRequest/omRequestOperationLink";
+import type { TrainingType } from "@/lib/data/omRequest/omRequestTypes";
+import type { CreateOperationInput, EducationFormat, OnsiteRequired } from "@/lib/data/operationTypes";
 
 export const dynamic = "force-dynamic";
 
-const ONSITE_REQUIRED: OnsiteRequired[] = ["UNKNOWN", "Y", "N", "PARTIAL"];
+const ONSITE_REQUIRED: OnsiteRequired[] = ["Y", "N"];
 
 interface CreateCourseBody {
   coach?: unknown;
@@ -24,6 +26,7 @@ interface CreateCourseBody {
   roundNo?: unknown;
   startDate?: unknown;
   timeText?: unknown;
+  trainingType?: unknown;
 }
 
 export async function POST(request: Request) {
@@ -36,6 +39,7 @@ export async function POST(request: Request) {
   const roundNo = textValue(body.roundNo);
   const startDate = textValue(body.startDate);
   const endDate = textValue(body.endDate);
+  const educationFormat = educationFormatOf(body.trainingType);
 
   if (!companyName || !courseName) {
     return NextResponse.json({ ok: false, error: "기업명과 과정명은 필수입니다." }, { status: 400 });
@@ -57,7 +61,7 @@ export async function POST(request: Request) {
       createdBy: session.user?.email ?? undefined,
       driveLink: textValue(body.driveLink),
       educationDays: textValue(body.educationDays),
-      educationFormat: "검토필요",
+      educationFormat,
       endDate,
       instructorCost: null,
       instructorWikiLink: "",
@@ -65,7 +69,7 @@ export async function POST(request: Request) {
       ld: textValue(body.ld),
       lectureManagementLink: "",
       om: textValue(body.om),
-      onsiteRequired: enumValue(body.onsiteRequired, ONSITE_REQUIRED, "UNKNOWN"),
+      onsiteRequired: enumValue(body.onsiteRequired, ONSITE_REQUIRED, "N"),
       operationCost: null,
       operationDetail: textValue(body.operationDetail),
       operationIssue: "",
@@ -95,4 +99,11 @@ function textValue(value: unknown): string {
 
 function enumValue<T extends string>(value: unknown, allowedValues: T[], fallback: T): T {
   return typeof value === "string" && allowedValues.includes(value as T) ? (value as T) : fallback;
+}
+
+function educationFormatOf(value: unknown): EducationFormat {
+  if (typeof value === "string" && value in EDUCATION_FORMAT_BY_TRAINING_TYPE) {
+    return EDUCATION_FORMAT_BY_TRAINING_TYPE[value as TrainingType];
+  }
+  return "검토필요";
 }

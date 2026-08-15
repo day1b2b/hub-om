@@ -74,6 +74,7 @@ async function buildInitialValuesFromOmRequest(requestId: string) {
     operationDetail: request.syncupLink,
     region: firstSession?.location,
     startDate: firstSession?.date,
-    timeText: firstSession?.timeStart && firstSession?.timeEnd ? `${firstSession.timeStart} ~ ${firstSession.timeEnd}` : undefined
+    timeText: firstSession?.timeStart && firstSession?.timeEnd ? `${firstSession.timeStart} ~ ${firstSession.timeEnd}` : undefined,
+    trainingType: request.trainingType
   };
 }
