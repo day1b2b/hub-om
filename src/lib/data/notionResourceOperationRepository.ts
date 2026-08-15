@@ -132,6 +132,8 @@ function mapPageToOperation(page: NotionPage, config: NotionResourceSourceConfig
     courseId: "",
     companyName,
     courseName,
+    courseCategory: "",
+    tools: "",
     om: owner,
     ld: getFirstTextProperty(properties, PROPERTY_NAMES.planner),
     onsiteOm: "",

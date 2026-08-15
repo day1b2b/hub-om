@@ -119,7 +119,7 @@ export function OperationDetail({
         <section className="operation-detail-layout">
           <section className="detail-section compact-info-section">
             <div className="section-title">
-              <h2>일정 / 운영 조건</h2>
+              <h2>과정 정보</h2>
             </div>
             <div className="info-grid">
               <InfoItem label="과정ID" value={operation.processId || "-"} />
@@ -134,6 +134,24 @@ export function OperationDetail({
                 operationIds={sameCourseIdOperationIds}
                 value={operation.courseName}
               />
+              <EditableInfoItem
+                displayValue={operation.courseCategory || "미정"}
+                fields={[{ name: "courseCategory", placeholder: "예: 생성형 AI", value: operation.courseCategory }]}
+                label="과정 카테고리 소분류"
+                operationId={operation.operationId}
+              />
+              <EditableInfoItem
+                displayValue={operation.tools || "미정"}
+                fields={[{ name: "tools", placeholder: "예: ChatGPT, Claude", value: operation.tools }]}
+                label="사용 Tool"
+                operationId={operation.operationId}
+              />
+              <ResultReportConditionSelect
+                rounds={courseOperations.map((candidate) => ({
+                  hasResultReport: candidate.hasResultReport,
+                  operationId: candidate.operationId
+                }))}
+              />
               <InfoItem
                 label="교육 형태"
                 value={aggregateUniqueValues(courseOperations, (candidate) => candidate.educationFormat)}
@@ -142,18 +160,12 @@ export function OperationDetail({
               <InfoItem label="회차" value={`총 ${courseOperations.length}회차`} />
               <InfoItem label="교육일수" value={formatTotalEducationDays(courseOperations)} />
               <InfoItem label="교육장" value={operation.region || "미정"} />
-              <ResultReportConditionSelect
-                rounds={courseOperations.map((candidate) => ({
-                  hasResultReport: candidate.hasResultReport,
-                  operationId: candidate.operationId
-                }))}
-              />
             </div>
           </section>
 
           <section className="detail-section compact-info-section">
             <div className="section-title">
-              <h2>담당 / 투입</h2>
+              <h2>담당자</h2>
             </div>
             <div className="info-grid">
               <EditableInfoItem
@@ -174,9 +186,17 @@ export function OperationDetail({
                 label="현장 투입"
                 value={aggregateUniqueValues(courseOperations, (candidate) => ONSITE_LABEL[candidate.onsiteRequired])}
               />
+            </div>
+          </section>
+
+          <section className="detail-section compact-info-section">
+            <div className="section-title">
+              <h2>지표</h2>
+            </div>
+            <div className="info-grid">
               <InfoItem label="남은 회차" value={remainingRoundText(operation)} />
-              <InfoItem label="매출" value={formatMoney(operation.revenue)} />
               <InfoItem label="만족도(평균)" value={satisfactionSummary.totalAverage ?? "미입력"} />
+              <InfoItem label="매출" value={formatMoney(operation.revenue)} />
             </div>
           </section>
 

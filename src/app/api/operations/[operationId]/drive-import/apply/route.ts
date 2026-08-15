@@ -13,6 +13,7 @@ const APPLYABLE_FIELDS = [
   "coach",
   "companyWikiLink",
   "costRaw",
+  "courseCategory",
   "courseId",
   "courseName",
   "driveLink",
@@ -38,6 +39,7 @@ const APPLYABLE_FIELDS = [
   "specialNotes",
   "startDate",
   "timeText",
+  "tools",
   "totalCost"
 ] as const satisfies Array<keyof UpdateOperationInput>;
 
