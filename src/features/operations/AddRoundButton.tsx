@@ -162,6 +162,14 @@ export function AddRoundButton({
       return;
     }
 
+    const expectedRoundNo = Number(nextRoundNo);
+    const enteredRoundNo = Number(draft.roundNo);
+
+    if (Number.isFinite(expectedRoundNo) && Number.isFinite(enteredRoundNo) && enteredRoundNo !== expectedRoundNo) {
+      setError(`회차가 연속되지 않습니다 (예상 회차: ${nextRoundNo}).`);
+      return;
+    }
+
     setSaveState("saving");
     setError(null);
 

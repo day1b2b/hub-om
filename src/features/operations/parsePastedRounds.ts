@@ -29,11 +29,36 @@ export function normalizeTimeRangeText(value: string): string {
 }
 
 export function parsePastedRounds(value: string): ParsedRound[] {
-  return value
+  const rows = value
     .split("\n")
     .map((line) => line.replace(/\r$/, ""))
     .filter((line) => line.trim().length > 0)
     .map((line) => toParsedRound(line));
+
+  return applyRoundSequenceValidation(rows);
+}
+
+/** 붙여넣은 순서대로 회차 번호가 1씩 증가하는지 확인하고, 끊긴 지점에만 오류를 추가한다. */
+function applyRoundSequenceValidation(rows: ParsedRound[]): ParsedRound[] {
+  let previousRoundNo: number | null = null;
+
+  return rows.map((row) => {
+    const currentRoundNo = row.roundNo === "" ? NaN : Number(row.roundNo);
+
+    if (!Number.isFinite(currentRoundNo)) return row;
+
+    const expectedRoundNo = previousRoundNo === null ? null : previousRoundNo + 1;
+    const isSequential = expectedRoundNo === null || currentRoundNo === expectedRoundNo;
+
+    previousRoundNo = currentRoundNo;
+
+    if (isSequential) return row;
+
+    return {
+      ...row,
+      errors: [...row.errors, `회차가 연속되지 않음 (${expectedRoundNo}회차여야 함)`]
+    };
+  });
 }
 
 function toParsedRound(line: string): ParsedRound {
