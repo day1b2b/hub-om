@@ -6,6 +6,7 @@ import { parsePastedRounds, type ParsedRound } from "./parsePastedRounds";
 
 interface BulkAddRoundsButtonProps {
   baseOperationId: string;
+  existingRoundNumbers: number[];
 }
 
 const PLACEHOLDER_TEXT = "1\t2026-03-09\t2026-03-09\t09:30 ~ 17:30\t강사A\t코치A\n2\t2026-03-16\t2026-03-16\t09:30 ~ 17:30\t강사A\t코치A";
@@ -13,12 +14,13 @@ const PLACEHOLDER_TEXT = "1\t2026-03-09\t2026-03-09\t09:30 ~ 17:30\t강사A\t코
 const TEMPLATE_HEADER = ["회차", "시작일", "종료일", "시간", "강사", "실습코치"];
 const TEMPLATE_SAMPLE_ROW = ["1", "2026-03-09", "2026-03-09", "09:30 ~ 17:30", "강사A", "코치A"];
 
-export function BulkAddRoundsButton({ baseOperationId }: BulkAddRoundsButtonProps) {
+export function BulkAddRoundsButton({ baseOperationId, existingRoundNumbers }: BulkAddRoundsButtonProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [pasteText, setPasteText] = useState("");
   const [rows, setRows] = useState<ParsedRound[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const validCount = useMemo(() => rows.filter((row) => row.errors.length === 0).length, [rows]);
   const pendingCount = useMemo(
@@ -100,6 +102,7 @@ export function BulkAddRoundsButton({ baseOperationId }: BulkAddRoundsButtonProp
             </div>
 
             <div className="lecture-note-footer">
+              {error ? <span className="lecture-note-save-error">{error}</span> : null}
               <span>
                 총 {rows.length}행 · 정상 {validCount}행 · 오류 {rows.length - validCount}행
               </span>
@@ -107,7 +110,7 @@ export function BulkAddRoundsButton({ baseOperationId }: BulkAddRoundsButtonProp
                 <button disabled={isSaving} onClick={closeDialog} type="button">
                   취소
                 </button>
-                <button disabled={isSaving || pendingCount === 0} onClick={saveAll} type="button">
+                <button disabled={isSaving || rows.length === 0} onClick={saveAll} type="button">
                   {isSaving ? "등록 중" : `일괄 등록 (${pendingCount}건)`}
                 </button>
               </div>
@@ -122,6 +125,7 @@ export function BulkAddRoundsButton({ baseOperationId }: BulkAddRoundsButtonProp
     setPasteText("");
     setRows([]);
     setIsSaving(false);
+    setError(null);
     setIsOpen(true);
   }
 
@@ -132,7 +136,8 @@ export function BulkAddRoundsButton({ baseOperationId }: BulkAddRoundsButtonProp
 
   function handlePasteChange(value: string) {
     setPasteText(value);
-    setRows(parsePastedRounds(value));
+    setRows(parsePastedRounds(value, existingRoundNumbers));
+    setError(null);
   }
 
   function downloadTemplate() {
@@ -150,6 +155,13 @@ export function BulkAddRoundsButton({ baseOperationId }: BulkAddRoundsButtonProp
   }
 
   async function saveAll() {
+    setError(null);
+
+    if (rows.some((row) => row.errors.length > 0)) {
+      setError("오류가 있는 행을 확인해주세요.");
+      return;
+    }
+
     setIsSaving(true);
 
     let hasFailure = false;

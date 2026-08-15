@@ -79,7 +79,10 @@ export function OperationDetail({
   const registeredReferenceLinks = referenceResourceLinks.filter((resourceLink) => isNavigableHref(resourceLink.href));
   const satisfactionSummary = getSatisfactionSummary(courseOperations);
   const teamQuery = teamScopeSearchParam(teamScope);
-  const nextRoundNo = String(Math.max(0, ...courseOperations.map((candidate) => Number(candidate.roundNo) || 0)) + 1);
+  const existingRoundNumbers = courseOperations
+    .map((candidate) => Number(candidate.roundNo))
+    .filter((roundNo) => Number.isFinite(roundNo));
+  const nextRoundNo = String(Math.max(0, ...existingRoundNumbers) + 1);
   const fallbackOperationId =
     courseOperations.find((candidate) => candidate.operationId !== operation.operationId)?.operationId ?? null;
   const sameCourseIdOperationIds =
@@ -270,9 +273,10 @@ export function OperationDetail({
                   baseInstructors={operation.instructors}
                   baseOperationId={operation.operationId}
                   baseTimeText={operation.timeText}
+                  existingRoundNumbers={existingRoundNumbers}
                   nextRoundNo={nextRoundNo}
                 />
-                <BulkAddRoundsButton baseOperationId={operation.operationId} />
+                <BulkAddRoundsButton baseOperationId={operation.operationId} existingRoundNumbers={existingRoundNumbers} />
                 {courseOperations.length > 1 ? <BulkEditRoundsButton /> : null}
               </div>
             </div>
