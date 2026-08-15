@@ -17,6 +17,17 @@ export function isValidTimeRangeText(value: string): boolean {
   return TIME_RANGE_PATTERN.test(value.trim());
 }
 
+/** 유효한 시간 범위 문자열을 "HH:MM ~ HH:MM" 형식으로 통일한다. 유효하지 않으면 원본 그대로 반환한다. */
+export function normalizeTimeRangeText(value: string): string {
+  const trimmed = value.trim();
+  const match = TIME_RANGE_PATTERN.exec(trimmed);
+
+  if (!match) return trimmed;
+
+  const [, startHour, startMinute, endHour, endMinute] = match;
+  return `${startHour.padStart(2, "0")}:${startMinute} ~ ${endHour.padStart(2, "0")}:${endMinute}`;
+}
+
 export function parsePastedRounds(value: string): ParsedRound[] {
   return value
     .split("\n")
@@ -51,7 +62,7 @@ function toParsedRound(line: string): ParsedRound {
     startDate,
     status: "idle",
     statusMessage: "",
-    timeText
+    timeText: isValidTimeRangeText(timeText) ? normalizeTimeRangeText(timeText) : timeText
   };
 }
 

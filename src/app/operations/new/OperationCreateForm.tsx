@@ -209,10 +209,13 @@ export function OperationCreateForm({ initialValues = {}, personOptions, teamSco
       return;
     }
 
-    const validRows = rows.filter((row) => row.errors.length === 0);
-
-    if (validRows.length === 0) {
+    if (rows.length === 0) {
       setError("회차를 최소 1건 이상 입력해주세요.");
+      return;
+    }
+
+    if (rows.some((row) => row.errors.length > 0)) {
+      setError("오류가 있는 행을 확인해주세요.");
       return;
     }
 
@@ -220,7 +223,7 @@ export function OperationCreateForm({ initialValues = {}, personOptions, teamSco
 
     const om = omNames.filter(Boolean).join(", ");
     const ld = ldNames.filter(Boolean).join(", ");
-    const [firstRound, ...restRounds] = validRows;
+    const [firstRound, ...restRounds] = rows;
 
     let response: Response;
 

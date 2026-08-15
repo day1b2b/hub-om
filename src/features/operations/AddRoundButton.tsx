@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { isValidTimeRangeText } from "./parsePastedRounds";
+import { isValidTimeRangeText, normalizeTimeRangeText } from "./parsePastedRounds";
 
 type SaveState = "idle" | "saving" | "failed";
 
@@ -165,6 +165,11 @@ export function AddRoundButton({
     setSaveState("saving");
     setError(null);
 
+    const normalizedDraft = {
+      ...draft,
+      timeText: draft.timeText.trim() ? normalizeTimeRangeText(draft.timeText) : draft.timeText
+    };
+
     let response: Response;
 
     try {
@@ -173,7 +178,7 @@ export function AddRoundButton({
         headers: {
           "content-type": "application/json"
         },
-        body: JSON.stringify(draft)
+        body: JSON.stringify(normalizedDraft)
       });
     } catch {
       setSaveState("failed");
