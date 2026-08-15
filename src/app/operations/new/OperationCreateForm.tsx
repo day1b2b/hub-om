@@ -70,12 +70,12 @@ export function OperationCreateForm({ initialValues = {}, personOptions, teamSco
             <input onChange={(event) => setCompanyName(event.target.value)} value={companyName} />
           </label>
           <label>
-            <span>과정명</span>
-            <input onChange={(event) => setCourseName(event.target.value)} value={courseName} />
-          </label>
-          <label>
             <span>코스ID</span>
             <input onChange={(event) => setCourseId(event.target.value)} placeholder="없으면 비워둠" value={courseId} />
+          </label>
+          <label>
+            <span>코스ID명</span>
+            <input onChange={(event) => setCourseName(event.target.value)} value={courseName} />
           </label>
           <label>
             <span>현장 투입</span>
