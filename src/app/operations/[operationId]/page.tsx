@@ -6,6 +6,7 @@ import { LocalJsonOperationRepository } from "@/lib/data/localJsonOperationRepos
 import { isSameCourse, normalizeCourseId } from "@/lib/data/operationCalculations";
 import { readOperationCollaboration } from "@/lib/data/operationCollaboration";
 import { hasNotionResourceConfig, listNotionResourceOperations } from "@/lib/data/notionResourceOperationRepository";
+import { listCustomTools } from "@/lib/data/omRequest/omCustomToolsLocalRepository";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import type { OperationSession } from "@/lib/data/operationTypes";
 import { buildPersonOptions, buildRoleRosterFromOperations, mergeRoleRosters } from "@/lib/data/personOptions";
@@ -70,6 +71,7 @@ export default async function OperationDetailPage({ params, searchParams }: Oper
   return (
     <OperationDetail
       collaboration={collaboration}
+      extraTools={listCustomTools()}
       operation={operation}
       personOptions={personOptions}
       relatedOperations={relatedOperations}
