@@ -6,6 +6,7 @@ import { parsePastedRounds, type ParsedRound } from "./parsePastedRounds";
 
 interface BulkAddRoundsButtonProps {
   baseOperationId: string;
+  nextRoundNo: string;
 }
 
 const PLACEHOLDER_TEXT = "1\t2026-03-09\t2026-03-09\t09:30 ~ 17:30\t강사A\t코치A\n2\t2026-03-16\t2026-03-16\t09:30 ~ 17:30\t강사A\t코치A";
@@ -13,11 +14,12 @@ const PLACEHOLDER_TEXT = "1\t2026-03-09\t2026-03-09\t09:30 ~ 17:30\t강사A\t코
 const TEMPLATE_HEADER = ["회차", "시작일", "종료일", "시간", "강사", "실습코치"];
 const TEMPLATE_SAMPLE_ROW = ["1", "2026-03-09", "2026-03-09", "09:30 ~ 17:30", "강사A", "코치A"];
 
-export function BulkAddRoundsButton({ baseOperationId }: BulkAddRoundsButtonProps) {
+export function BulkAddRoundsButton({ baseOperationId, nextRoundNo }: BulkAddRoundsButtonProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [pasteText, setPasteText] = useState("");
   const [rows, setRows] = useState<ParsedRound[]>([]);
+  const baselineRoundNo = Number(nextRoundNo) - 1;
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -135,7 +137,7 @@ export function BulkAddRoundsButton({ baseOperationId }: BulkAddRoundsButtonProp
 
   function handlePasteChange(value: string) {
     setPasteText(value);
-    setRows(parsePastedRounds(value));
+    setRows(parsePastedRounds(value, baselineRoundNo));
     setError(null);
   }
 

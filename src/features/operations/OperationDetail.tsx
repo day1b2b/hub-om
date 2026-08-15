@@ -252,7 +252,7 @@ export function OperationDetail({
                   baseTimeText={operation.timeText}
                   nextRoundNo={nextRoundNo}
                 />
-                <BulkAddRoundsButton baseOperationId={operation.operationId} />
+                <BulkAddRoundsButton baseOperationId={operation.operationId} nextRoundNo={nextRoundNo} />
                 {courseOperations.length > 1 ? <BulkEditRoundsButton /> : null}
               </div>
             </div>

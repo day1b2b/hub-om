@@ -28,19 +28,22 @@ export function normalizeTimeRangeText(value: string): string {
   return `${startHour.padStart(2, "0")}:${startMinute} ~ ${endHour.padStart(2, "0")}:${endMinute}`;
 }
 
-export function parsePastedRounds(value: string): ParsedRound[] {
+export function parsePastedRounds(value: string, baselineRoundNo?: number): ParsedRound[] {
   const rows = value
     .split("\n")
     .map((line) => line.replace(/\r$/, ""))
     .filter((line) => line.trim().length > 0)
     .map((line) => toParsedRound(line));
 
-  return applyRoundSequenceValidation(rows);
+  return applyRoundSequenceValidation(rows, baselineRoundNo);
 }
 
-/** 붙여넣은 순서대로 회차 번호가 1씩 증가하는지 확인하고, 끊긴 지점에만 오류를 추가한다. */
-function applyRoundSequenceValidation(rows: ParsedRound[]): ParsedRound[] {
-  let previousRoundNo: number | null = null;
+/**
+ * 붙여넣은 순서대로 회차 번호가 1씩 증가하는지 확인하고, 끊긴 지점에만 오류를 추가한다.
+ * baselineRoundNo가 있으면(예: 과정에 이미 등록된 마지막 회차) 첫 행부터 그 다음 번호로 이어지는지도 확인한다.
+ */
+function applyRoundSequenceValidation(rows: ParsedRound[], baselineRoundNo?: number): ParsedRound[] {
+  let previousRoundNo: number | null = Number.isFinite(baselineRoundNo) ? (baselineRoundNo as number) : null;
 
   return rows.map((row) => {
     const currentRoundNo = row.roundNo === "" ? NaN : Number(row.roundNo);
