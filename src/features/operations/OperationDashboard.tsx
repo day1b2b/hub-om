@@ -264,6 +264,9 @@ export function OperationDashboard({ omRoster, operations, partByPersonKey, team
             <span>행 기준</span>
             <strong>운영 차수 1개</strong>
           </div>
+          <Link className="primary-action" href={`/operations/new${teamQuery}`}>
+            + 새 과정 등록
+          </Link>
         </header>
 
         <section className="range-panel operations-range-panel" aria-label="기간 선택">

@@ -1121,6 +1121,11 @@ h2 {
   display: none;
 }
 
+.operations-page .page-header .primary-action {
+  flex-shrink: 0;
+  width: auto;
+}
+
 .operations-range-panel,
 .operations-filter-panel {
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);

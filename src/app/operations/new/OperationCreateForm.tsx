@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { createOperationAction } from "@/app/operations/new/actions";
+import { useRouter } from "next/navigation";
+import { parsePastedRounds, type ParsedRound } from "@/features/operations/parsePastedRounds";
 import { teamScopeSearchParam, type TeamScope } from "@/lib/teamScope";
 
 interface OperationCreateFormInitialValues {
@@ -30,14 +31,35 @@ interface OperationCreateFormProps {
   today: string;
 }
 
+const TEMPLATE_HEADER = ["회차", "시작일", "종료일", "시간", "강사", "실습코치"];
+const TEMPLATE_SAMPLE_ROW = ["1", "2026-03-09", "2026-03-09", "09:30 ~ 17:30", "강사A", "코치A"];
+
+type SubmitState = "idle" | "saving" | "failed";
+
 export function OperationCreateForm({ initialValues = {}, personOptions, teamScope, today }: OperationCreateFormProps) {
+  const router = useRouter();
   const ldOptions = useMemo(() => unique(personOptions.ld), [personOptions.ld]);
   const omOptions = useMemo(() => unique(personOptions.om), [personOptions.om]);
   const teamQuery = teamScopeSearchParam(teamScope);
 
+  const [companyName, setCompanyName] = useState(initialValues.companyName ?? "");
+  const [courseName, setCourseName] = useState(initialValues.courseName ?? "");
+  const [courseId, setCourseId] = useState(initialValues.courseId ?? "");
+  const [omNames, setOmNames] = useState<string[]>([""]);
+  const [ldNames, setLdNames] = useState<string[]>([""]);
+  const [onsiteRequired, setOnsiteRequired] = useState((initialValues.onsiteRequired as string) || "UNKNOWN");
+  const [hasResultReport, setHasResultReport] = useState<"Y" | "N">("Y");
+
+  const seedLine = useMemo(() => buildSeedLine(initialValues, today), [initialValues, today]);
+  const [pasteText, setPasteText] = useState(seedLine);
+  const [rows, setRows] = useState<ParsedRound[]>(() => parsePastedRounds(seedLine));
+  const [submitState, setSubmitState] = useState<SubmitState>("idle");
+  const [error, setError] = useState<string | null>(null);
+
+  const validCount = rows.filter((row) => row.errors.length === 0).length;
+
   return (
-    <form action={createOperationAction} className="operation-form">
-      <input name="teamScope" type="hidden" value={teamScope} />
+    <div className="operation-form">
       <section className="dashboard-panel operation-form-section">
         <div className="section-title">
           <h2>기본 정보</h2>
@@ -45,202 +67,269 @@ export function OperationCreateForm({ initialValues = {}, personOptions, teamSco
         <div className="operation-form-grid">
           <label>
             <span>기업명</span>
-            <input defaultValue={initialValues.companyName} name="companyName" required />
-          </label>
-          <label>
-            <span>과정명</span>
-            <input defaultValue={initialValues.courseName} name="courseName" required />
+            <input onChange={(event) => setCompanyName(event.target.value)} value={companyName} />
           </label>
           <label>
             <span>코스ID</span>
-            <input defaultValue={initialValues.courseId} name="courseId" placeholder="없으면 비워둠" />
+            <input onChange={(event) => setCourseId(event.target.value)} placeholder="없으면 비워둠" value={courseId} />
           </label>
           <label>
-            <span>회차</span>
-            <input name="roundNo" placeholder="예: 1" />
+            <span>코스ID명</span>
+            <input onChange={(event) => setCourseName(event.target.value)} value={courseName} />
           </label>
           <label>
-            <span>시작일</span>
-            <input defaultValue={initialValues.startDate || today} name="startDate" required type="date" />
+            <span>현장 투입</span>
+            <select onChange={(event) => setOnsiteRequired(event.target.value)} value={onsiteRequired}>
+              <option value="UNKNOWN">확인 필요</option>
+              <option value="Y">Y</option>
+              <option value="N">N</option>
+              <option value="PARTIAL">일부 필요</option>
+            </select>
           </label>
           <label>
-            <span>종료일</span>
-            <input defaultValue={initialValues.endDate || initialValues.startDate || today} name="endDate" required type="date" />
+            <span>결과보고서 여부</span>
+            <select onChange={(event) => setHasResultReport(event.target.value as "Y" | "N")} value={hasResultReport}>
+              <option value="Y">Y</option>
+              <option value="N">N</option>
+            </select>
           </label>
-          <label>
-            <span>시간</span>
-            <input defaultValue={initialValues.timeText} name="timeText" placeholder="예: 09:00~18:00" />
-          </label>
-          <label>
-            <span>교육일수</span>
-            <input defaultValue={initialValues.educationDays} name="educationDays" placeholder="예: 3일" />
-          </label>
+        </div>
+        <div className="operation-form-grid compact">
+          <NameSelectList label="OM" nameOptions={omOptions} onChange={setOmNames} values={omNames} />
+          <NameSelectList label="LD" nameOptions={ldOptions} onChange={setLdNames} values={ldNames} />
         </div>
       </section>
 
       <section className="dashboard-panel operation-form-section">
         <div className="section-title">
-          <h2>운영 상태</h2>
+          <h2>회차 등록</h2>
         </div>
-        <div className="operation-form-grid compact">
-          <label>
-            <span>상태</span>
-            <select defaultValue="배정필요" name="operationStatus">
-              {["배정필요", "배정예정", "진행중", "완료", "회고완료", "아카이빙필요"].map((status) => (
-                <option key={status}>{status}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>아카이빙</span>
-            <select defaultValue="아카이빙전" name="archiveStatus">
-              {["아카이빙전", "아카이빙필요", "완료"].map((status) => (
-                <option key={status}>{status}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>교육형태</span>
-            <select defaultValue="검토필요" name="educationFormat">
-              {["오프라인", "비대면", "블렌디드", "플립러닝", "검토필요"].map((format) => (
-                <option key={format}>{format}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>운영유형</span>
-            <select defaultValue="검토필요" name="operationType">
-              {["특강", "단기", "중기", "중장기", "준장기", "장기", "연간", "상시형", "검토필요"].map((type) => (
-                <option key={type}>{type}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>오프라인 여부</span>
-            <select defaultValue={initialValues.onsiteRequired || "UNKNOWN"} name="onsiteRequired">
-              <option value="UNKNOWN">검토필요</option>
-              <option value="Y">오프라인</option>
-              <option value="N">온라인</option>
-              <option value="PARTIAL">일부 오프라인</option>
-            </select>
-          </label>
-          <label>
-            <span>지역</span>
-            <input defaultValue={initialValues.region} name="region" placeholder="예: 서울" />
-          </label>
-        </div>
-      </section>
 
-      <section className="dashboard-panel operation-form-section">
-        <div className="section-title">
-          <h2>담당자 / 강사</h2>
-        </div>
-        <div className="operation-form-grid compact">
-          <NameSelectList fieldName="om" label="OM" nameOptions={omOptions} />
-          <NameSelectList fieldName="ld" label="LD" nameOptions={ldOptions} />
-          <label>
-            <span>강사</span>
-            <input defaultValue={initialValues.instructors} name="instructors" placeholder="자유 입력" />
-          </label>
-          <label>
-            <span>실습코치</span>
-            <input name="coach" placeholder="자유 입력" />
-          </label>
-        </div>
-      </section>
+        <div className="bulk-add-rounds-body">
+          <div className="bulk-add-rounds-template-row">
+            <button className="secondary-action" onClick={downloadTemplate} type="button">
+              양식 다운로드 (엑셀)
+            </button>
+            <span>양식을 채운 뒤 회차~실습코치 6개 열을 복사해 아래에 붙여넣으세요.</span>
+          </div>
 
-      <section className="dashboard-panel operation-form-section">
-        <div className="section-title">
-          <h2>금액</h2>
-        </div>
-        <div className="operation-form-grid compact">
-          <label>
-            <span>매출</span>
-            <input inputMode="numeric" name="revenue" placeholder="숫자만 입력" />
+          <label className="bulk-add-rounds-field">
+            <span>붙여넣기 (회차 / 시작일 / 종료일 / 시간 / 강사 / 실습코치)</span>
+            <textarea
+              className="bulk-add-rounds-textarea"
+              onChange={(event) => handlePasteChange(event.target.value)}
+              rows={6}
+              value={pasteText}
+            />
           </label>
-          <label>
-            <span>총 비용</span>
-            <input inputMode="numeric" name="totalCost" />
-          </label>
-          <label>
-            <span>강사비</span>
-            <input inputMode="numeric" name="instructorCost" />
-          </label>
-          <label>
-            <span>운영비</span>
-            <input inputMode="numeric" name="operationCost" />
-          </label>
-          <label className="wide-field">
-            <span>비용 메모</span>
-            <input name="costRaw" />
-          </label>
-        </div>
-      </section>
 
-      <section className="dashboard-panel operation-form-section">
-        <div className="section-title">
-          <h2>링크 / 메모</h2>
-        </div>
-        <div className="operation-form-grid compact">
-          <label>
-            <span>싱크업</span>
-            <input defaultValue={initialValues.operationDetail} name="operationDetail" placeholder="https://..." required type="url" />
-          </label>
-          <label>
-            <span>드라이브</span>
-            <input defaultValue={initialValues.driveLink} name="driveLink" placeholder="https://..." />
-          </label>
-          <label>
-            <span>강의관리</span>
-            <input name="lectureManagementLink" placeholder="https://..." />
-          </label>
-          <label>
-            <span>결과보고서</span>
-            <input name="resultReportLink" placeholder="https://..." />
-          </label>
-          <label>
-            <span>기업 Wiki</span>
-            <input name="companyWikiLink" placeholder="https://..." />
-          </label>
-          <label>
-            <span>강사 Wiki</span>
-            <input name="instructorWikiLink" placeholder="https://..." />
-          </label>
-          <label className="full-row-field">
-            <span>패들렛</span>
-            <input name="padletLink" placeholder="https://..." />
-          </label>
-          <label className="full-row-field">
-            <span>특이사항</span>
-            <textarea name="specialNotes" rows={3} />
-          </label>
-          <label className="full-row-field">
-            <span>운영 이슈</span>
-            <textarea name="operationIssue" rows={3} />
-          </label>
+          {rows.length > 0 ? (
+            <div className="bulk-add-rounds-preview-wrap">
+              <table className="bulk-add-rounds-preview-table">
+                <thead>
+                  <tr>
+                    <th>회차</th>
+                    <th>시작일</th>
+                    <th>종료일</th>
+                    <th>시간</th>
+                    <th>강사</th>
+                    <th>실습코치</th>
+                    <th>상태</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row, index) => (
+                    <tr className={row.errors.length > 0 ? "invalid" : undefined} key={`${row.raw}-${index}`}>
+                      <td>{row.roundNo || "-"}</td>
+                      <td>{row.startDate || "-"}</td>
+                      <td>{row.endDate || "-"}</td>
+                      <td>{row.timeText || "-"}</td>
+                      <td>{row.instructors || "-"}</td>
+                      <td>{row.coach || "-"}</td>
+                      <td className="bulk-add-rounds-row-status">
+                        {row.errors.length > 0 ? row.errors.join(", ") : "등록 대기"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+
+          <span>총 {rows.length}행 · 정상 {validCount}행 · 오류 {rows.length - validCount}행</span>
         </div>
       </section>
 
       <div className="operation-form-actions">
+        {error ? <span className="lecture-note-save-error">{error}</span> : null}
         <Link className="secondary-action" href={`/operations${teamQuery}`}>취소</Link>
-        <button className="primary-action" type="submit">저장</button>
+        <button className="primary-action" disabled={submitState === "saving"} onClick={submit} type="button">
+          {submitState === "saving" ? "등록 중" : "저장"}
+        </button>
       </div>
-    </form>
+    </div>
   );
+
+  function handlePasteChange(value: string) {
+    setPasteText(value);
+    setRows(parsePastedRounds(value));
+  }
+
+  function downloadTemplate() {
+    const csvBody = [TEMPLATE_HEADER, TEMPLATE_SAMPLE_ROW].map((row) => row.join(",")).join("\r\n");
+    const blob = new Blob(["﻿" + csvBody], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = "차수_일괄등록_양식.csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  async function submit() {
+    setError(null);
+
+    if (!companyName.trim() || !courseName.trim()) {
+      setError("기업명과 과정명은 필수입니다.");
+      return;
+    }
+
+    const validRows = rows.filter((row) => row.errors.length === 0);
+
+    if (validRows.length === 0) {
+      setError("회차를 최소 1건 이상 입력해주세요.");
+      return;
+    }
+
+    setSubmitState("saving");
+
+    const om = omNames.filter(Boolean).join(", ");
+    const ld = ldNames.filter(Boolean).join(", ");
+    const [firstRound, ...restRounds] = validRows;
+
+    let response: Response;
+
+    try {
+      response = await fetch("/api/operations", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          coach: firstRound.coach,
+          companyName: companyName.trim(),
+          courseId: courseId.trim(),
+          courseName: courseName.trim(),
+          driveLink: initialValues.driveLink,
+          educationDays: initialValues.educationDays,
+          endDate: firstRound.endDate,
+          instructors: firstRound.instructors,
+          ld,
+          om,
+          onsiteRequired,
+          operationDetail: initialValues.operationDetail,
+          region: initialValues.region,
+          roundNo: firstRound.roundNo,
+          startDate: firstRound.startDate,
+          timeText: firstRound.timeText
+        })
+      });
+    } catch {
+      setSubmitState("failed");
+      setError("과정을 등록하지 못했습니다.");
+      return;
+    }
+
+    const payload = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string; operation?: { operationId: string } };
+
+    if (!response.ok || !payload.ok || !payload.operation) {
+      setSubmitState("failed");
+      setError(payload.error ?? "과정을 등록하지 못했습니다.");
+      return;
+    }
+
+    const createdOperationIds = [payload.operation.operationId];
+
+    for (const round of restRounds) {
+      let roundResponse: Response;
+
+      try {
+        roundResponse = await fetch(`/api/operations/${encodeURIComponent(payload.operation.operationId)}/rounds`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            coach: round.coach,
+            endDate: round.endDate,
+            instructors: round.instructors,
+            roundNo: round.roundNo,
+            startDate: round.startDate,
+            timeText: round.timeText
+          })
+        });
+      } catch {
+        setSubmitState("failed");
+        setError(`${round.roundNo}회차를 등록하지 못했습니다.`);
+        return;
+      }
+
+      const roundPayload = (await roundResponse.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+        operation?: { operationId: string };
+      };
+
+      if (!roundResponse.ok || !roundPayload.ok || !roundPayload.operation) {
+        setSubmitState("failed");
+        setError(roundPayload.error ?? `${round.roundNo}회차를 등록하지 못했습니다.`);
+        return;
+      }
+
+      createdOperationIds.push(roundPayload.operation.operationId);
+    }
+
+    if (hasResultReport === "N") {
+      for (const operationId of createdOperationIds) {
+        await fetch(`/api/operations/${encodeURIComponent(operationId)}/drive-import/apply`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ patches: [{ field: "hasResultReport", action: "replace", value: "불필요" }] })
+        }).catch(() => null);
+      }
+    }
+
+    router.push(`/operations/${payload.operation.operationId}${teamQuery}`);
+  }
 }
 
-function NameSelectList({ fieldName, label, nameOptions }: { fieldName: string; label: string; nameOptions: string[] }) {
-  const [values, setValues] = useState([""]);
+function buildSeedLine(initialValues: OperationCreateFormInitialValues, today: string): string {
+  const startDate = initialValues.startDate || (initialValues.endDate ? "" : today);
+  const endDate = initialValues.endDate || startDate;
+
+  if (!startDate && !endDate) return "";
+
+  return ["1", startDate, endDate, initialValues.timeText ?? "", initialValues.instructors ?? "", ""].join("\t");
+}
+
+function NameSelectList({
+  label,
+  nameOptions,
+  onChange,
+  values
+}: {
+  label: string;
+  nameOptions: string[];
+  onChange: (values: string[]) => void;
+  values: string[];
+}) {
   const selectedNames = values.filter(Boolean);
-  const hiddenValue = selectedNames.join(", ");
 
   return (
     <div className="name-select-field">
       <span className="name-select-label">{label}</span>
-      <input name={fieldName} type="hidden" value={hiddenValue} />
       <div className="name-select-list">
         {values.map((value, index) => (
-          <div className="name-select-row" key={`${fieldName}-${index}`}>
+          <div className="name-select-row" key={`${label}-${index}`}>
             <select
               aria-label={`${label} ${index + 1}`}
               disabled={nameOptions.length === 0}
@@ -271,15 +360,15 @@ function NameSelectList({ fieldName, label, nameOptions }: { fieldName: string; 
   );
 
   function addValue() {
-    setValues((current) => [...current, ""]);
+    onChange([...values, ""]);
   }
 
   function removeValue(index: number) {
-    setValues((current) => current.filter((_, currentIndex) => currentIndex !== index));
+    onChange(values.filter((_, currentIndex) => currentIndex !== index));
   }
 
   function updateValue(index: number, value: string) {
-    setValues((current) => current.map((currentValue, currentIndex) => (currentIndex === index ? value : currentValue)));
+    onChange(values.map((currentValue, currentIndex) => (currentIndex === index ? value : currentValue)));
   }
 }
 
