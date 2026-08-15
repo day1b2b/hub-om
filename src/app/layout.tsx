@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Providers } from "@/components/Providers";
+import { resolveSessionIsAdmin } from "@/lib/auth/requireAdminSession";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -8,11 +9,13 @@ export const metadata: Metadata = {
   description: "OM 운영 현황을 관리하는 hub-om"
 };
 
-export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
+  const isAdmin = await resolveSessionIsAdmin();
+
   return (
     <html lang="ko">
       <body>
-        <Providers>{children}</Providers>
+        <Providers isAdmin={isAdmin}>{children}</Providers>
       </body>
     </html>
   );

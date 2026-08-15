@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { isValidTimeRangeText, normalizeTimeRangeText } from "./parsePastedRounds";
 
 type SaveState = "idle" | "saving" | "failed";
 
@@ -10,6 +11,7 @@ interface AddRoundButtonProps {
   baseInstructors: string;
   baseOperationId: string;
   baseTimeText: string;
+  existingRoundNumbers: number[];
   nextRoundNo: string;
 }
 
@@ -27,6 +29,7 @@ export function AddRoundButton({
   baseInstructors,
   baseOperationId,
   baseTimeText,
+  existingRoundNumbers,
   nextRoundNo
 }: AddRoundButtonProps) {
   const router = useRouter();
@@ -156,8 +159,32 @@ export function AddRoundButton({
       return;
     }
 
+    if (draft.timeText.trim() && !isValidTimeRangeText(draft.timeText)) {
+      setError("시간 형식을 확인해주세요 (예: 09:30 ~ 17:30).");
+      return;
+    }
+
+    const enteredRoundNo = Number(draft.roundNo);
+
+    if (Number.isFinite(enteredRoundNo) && existingRoundNumbers.includes(enteredRoundNo)) {
+      setError(`이미 ${enteredRoundNo}회차 정보가 등록되어 있습니다.`);
+      return;
+    }
+
+    const expectedRoundNo = Number(nextRoundNo);
+
+    if (Number.isFinite(expectedRoundNo) && Number.isFinite(enteredRoundNo) && enteredRoundNo !== expectedRoundNo) {
+      setError(`회차가 연속되지 않습니다 (예상 회차: ${nextRoundNo}).`);
+      return;
+    }
+
     setSaveState("saving");
     setError(null);
+
+    const normalizedDraft = {
+      ...draft,
+      timeText: draft.timeText.trim() ? normalizeTimeRangeText(draft.timeText) : draft.timeText
+    };
 
     let response: Response;
 
@@ -167,7 +194,7 @@ export function AddRoundButton({
         headers: {
           "content-type": "application/json"
         },
-        body: JSON.stringify(draft)
+        body: JSON.stringify(normalizedDraft)
       });
     } catch {
       setSaveState("failed");

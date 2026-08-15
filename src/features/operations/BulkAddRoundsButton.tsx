@@ -2,22 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { parsePastedRounds, type ParsedRound } from "./parsePastedRounds";
 
 interface BulkAddRoundsButtonProps {
   baseOperationId: string;
-}
-
-interface ParsedRound {
-  coach: string;
-  endDate: string;
-  errors: string[];
-  instructors: string;
-  raw: string;
-  roundNo: string;
-  startDate: string;
-  status: "idle" | "saving" | "done" | "failed";
-  statusMessage: string;
-  timeText: string;
+  existingRoundNumbers: number[];
 }
 
 const PLACEHOLDER_TEXT = "1\t2026-03-09\t2026-03-09\t09:30 ~ 17:30\t강사A\t코치A\n2\t2026-03-16\t2026-03-16\t09:30 ~ 17:30\t강사A\t코치A";
@@ -25,12 +14,13 @@ const PLACEHOLDER_TEXT = "1\t2026-03-09\t2026-03-09\t09:30 ~ 17:30\t강사A\t코
 const TEMPLATE_HEADER = ["회차", "시작일", "종료일", "시간", "강사", "실습코치"];
 const TEMPLATE_SAMPLE_ROW = ["1", "2026-03-09", "2026-03-09", "09:30 ~ 17:30", "강사A", "코치A"];
 
-export function BulkAddRoundsButton({ baseOperationId }: BulkAddRoundsButtonProps) {
+export function BulkAddRoundsButton({ baseOperationId, existingRoundNumbers }: BulkAddRoundsButtonProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [pasteText, setPasteText] = useState("");
   const [rows, setRows] = useState<ParsedRound[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const validCount = useMemo(() => rows.filter((row) => row.errors.length === 0).length, [rows]);
   const pendingCount = useMemo(
@@ -112,6 +102,7 @@ export function BulkAddRoundsButton({ baseOperationId }: BulkAddRoundsButtonProp
             </div>
 
             <div className="lecture-note-footer">
+              {error ? <span className="lecture-note-save-error">{error}</span> : null}
               <span>
                 총 {rows.length}행 · 정상 {validCount}행 · 오류 {rows.length - validCount}행
               </span>
@@ -119,7 +110,7 @@ export function BulkAddRoundsButton({ baseOperationId }: BulkAddRoundsButtonProp
                 <button disabled={isSaving} onClick={closeDialog} type="button">
                   취소
                 </button>
-                <button disabled={isSaving || pendingCount === 0} onClick={saveAll} type="button">
+                <button disabled={isSaving || rows.length === 0} onClick={saveAll} type="button">
                   {isSaving ? "등록 중" : `일괄 등록 (${pendingCount}건)`}
                 </button>
               </div>
@@ -134,6 +125,7 @@ export function BulkAddRoundsButton({ baseOperationId }: BulkAddRoundsButtonProp
     setPasteText("");
     setRows([]);
     setIsSaving(false);
+    setError(null);
     setIsOpen(true);
   }
 
@@ -144,7 +136,8 @@ export function BulkAddRoundsButton({ baseOperationId }: BulkAddRoundsButtonProp
 
   function handlePasteChange(value: string) {
     setPasteText(value);
-    setRows(parsePastedRounds(value));
+    setRows(parsePastedRounds(value, existingRoundNumbers));
+    setError(null);
   }
 
   function downloadTemplate() {
@@ -162,6 +155,13 @@ export function BulkAddRoundsButton({ baseOperationId }: BulkAddRoundsButtonProp
   }
 
   async function saveAll() {
+    setError(null);
+
+    if (rows.some((row) => row.errors.length > 0)) {
+      setError("오류가 있는 행을 확인해주세요.");
+      return;
+    }
+
     setIsSaving(true);
 
     let hasFailure = false;
@@ -214,50 +214,4 @@ export function BulkAddRoundsButton({ baseOperationId }: BulkAddRoundsButtonProp
 
 function updateRow(rows: ParsedRound[], index: number, patch: Partial<ParsedRound>): ParsedRound[] {
   return rows.map((row, rowIndex) => (rowIndex === index ? { ...row, ...patch } : row));
-}
-
-function parsePastedRounds(value: string): ParsedRound[] {
-  return value
-    .split("\n")
-    .map((line) => line.replace(/\r$/, ""))
-    .filter((line) => line.trim().length > 0)
-    .map((line) => toParsedRound(line));
-}
-
-function toParsedRound(line: string): ParsedRound {
-  const cells = (line.includes("\t") ? line.split("\t") : line.split(",")).map((cell) => cell.trim());
-  const [roundNoCell = "", startDateCell = "", endDateCell = "", timeTextCell = "", instructorsCell = "", coachCell = ""] =
-    cells;
-
-  const roundNo = roundNoCell.trim();
-  const startDate = normalizeDateCell(startDateCell);
-  const endDate = normalizeDateCell(endDateCell);
-  const errors: string[] = [];
-
-  if (!roundNo) errors.push("회차 필요");
-  if (!startDate) errors.push("시작일 확인 필요");
-  if (!endDate) errors.push("종료일 확인 필요");
-
-  return {
-    coach: coachCell.trim(),
-    endDate,
-    errors,
-    instructors: instructorsCell.trim(),
-    raw: line,
-    roundNo,
-    startDate,
-    status: "idle",
-    statusMessage: "",
-    timeText: timeTextCell.trim()
-  };
-}
-
-function normalizeDateCell(value: string): string {
-  const trimmed = value.trim();
-  const match = /^(\d{4})[.\-/]\s*(\d{1,2})[.\-/]\s*(\d{1,2})\.?$/.exec(trimmed);
-
-  if (!match) return "";
-
-  const [, year, month, day] = match;
-  return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
 }

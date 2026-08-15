@@ -57,9 +57,7 @@ export default async function OperationDetailPage({ params, searchParams }: Oper
   }
 
   const scopedOperations = filterOperationsByTeamScope(allOperations, teamScope, ownerRoster);
-  const relatedOperations = operation.courseId
-    ? scopedOperations.filter((candidate) => isSameCourse(candidate, operation))
-    : [operation];
+  const relatedOperations = scopedOperations.filter((candidate) => isSameCourse(candidate, operation));
   const sameCourseIdOperations = operation.courseId
     ? scopedOperations.filter(
         (candidate) => normalizeCourseId(candidate.courseId) === normalizeCourseId(operation.courseId)

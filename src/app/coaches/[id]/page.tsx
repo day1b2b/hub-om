@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { CoachDetailView } from "@/features/coaches/CoachDetail";
-import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
+import { requireAdminSession } from "@/lib/auth/requireAdminSession";
 import { getCoachRepository } from "@/lib/data/coachRepositoryFactory";
 import type { CoachDetailTab } from "@/features/coaches/CoachDetail";
 
@@ -12,7 +12,7 @@ interface CoachDetailPageProps {
 }
 
 export default async function CoachDetailPage({ params, searchParams }: CoachDetailPageProps) {
-  await requireWorkspaceSession();
+  await requireAdminSession();
   const { id } = await params;
   const query = await searchParams;
   const selectedTab = resolveTab(firstParam(query.tab));

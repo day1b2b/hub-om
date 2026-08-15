@@ -58,6 +58,7 @@ export class LocalJsonOperationRepository implements OperationRepository {
       companyName: normalizeVisibleText(input.companyName),
       companyWikiLink: normalizeVisibleText(input.companyWikiLink),
       costRaw: normalizeVisibleText(input.costRaw),
+      courseCategory: normalizeVisibleText(input.courseCategory ?? ""),
       courseId: normalizeVisibleText(input.courseId),
       courseName: normalizeVisibleText(input.courseName),
       driveLink: normalizeVisibleText(input.driveLink),
@@ -100,6 +101,7 @@ export class LocalJsonOperationRepository implements OperationRepository {
       specialNotes: normalizeVisibleText(input.specialNotes),
       startDate,
       timeText: normalizeVisibleText(input.timeText),
+      tools: normalizeVisibleText(input.tools ?? ""),
       totalCost,
       validationErrors: [],
       validationStatus: "정상"
@@ -131,6 +133,7 @@ export class LocalJsonOperationRepository implements OperationRepository {
       coach: normalizeOptionalText(input.coach, operation.coach),
       companyWikiLink: normalizeOptionalText(input.companyWikiLink, operation.companyWikiLink),
       costRaw: normalizeOptionalText(input.costRaw, operation.costRaw),
+      courseCategory: normalizeOptionalText(input.courseCategory, operation.courseCategory),
       courseId: normalizeOptionalText(input.courseId, operation.courseId),
       courseName: normalizeOptionalText(input.courseName, operation.courseName),
       driveLink: normalizeOptionalText(input.driveLink, operation.driveLink),
@@ -160,6 +163,7 @@ export class LocalJsonOperationRepository implements OperationRepository {
       specialNotes: normalizeOptionalText(input.specialNotes, operation.specialNotes),
       startDate,
       timeText: normalizeOptionalText(input.timeText, operation.timeText),
+      tools: normalizeOptionalText(input.tools, operation.tools),
       totalCost
     };
     const nextOperations = operations.map((candidate) =>

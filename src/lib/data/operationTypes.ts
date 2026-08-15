@@ -50,6 +50,8 @@ export interface OperationSession {
   courseId: string;
   companyName: string;
   courseName: string;
+  courseCategory: string;
+  tools: string;
   om: string;
   ld: string;
   onsiteOm: string;
@@ -104,6 +106,7 @@ export interface CreateOperationInput {
   companyName: string;
   companyWikiLink: string;
   costRaw: string;
+  courseCategory?: string;
   courseId: string;
   courseName: string;
   createdBy?: string;
@@ -131,6 +134,7 @@ export interface CreateOperationInput {
   specialNotes: string;
   startDate: string;
   timeText: string;
+  tools?: string;
   totalCost: number | null;
 }
 
@@ -140,6 +144,7 @@ export interface UpdateOperationInput {
   coach?: string;
   companyWikiLink?: string;
   costRaw?: string;
+  courseCategory?: string;
   courseId?: string;
   courseName?: string;
   driveLink?: string;
@@ -165,6 +170,7 @@ export interface UpdateOperationInput {
   specialNotes?: string;
   startDate?: string;
   timeText?: string;
+  tools?: string;
   totalCost?: number | null;
 }
 

@@ -1,5 +1,5 @@
 import { CoachAdminPage } from "@/features/coaches/CoachAdminPage";
-import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
+import { requireAdminSession } from "@/lib/auth/requireAdminSession";
 import { getPrismaClient } from "@/lib/data/prisma";
 import type { CoachAdminTab } from "@/features/coaches/CoachAdminPage";
 
@@ -10,7 +10,7 @@ interface CoachAdminPageRouteProps {
 }
 
 export default async function CoachAdminPageRoute({ searchParams }: CoachAdminPageRouteProps) {
-  await requireWorkspaceSession();
+  await requireAdminSession();
 
   const params = await searchParams;
   const selectedTab = resolveTab(firstParam(params.tab));
