@@ -142,6 +142,18 @@ export function OperationDetail({
               <InfoItem label="회차" value={`총 ${courseOperations.length}회차`} />
               <InfoItem label="교육일수" value={formatTotalEducationDays(courseOperations)} />
               <InfoItem label="교육장" value={operation.region || "미정"} />
+              <EditableInfoItem
+                displayValue={operation.courseCategory || "미정"}
+                fields={[{ name: "courseCategory", placeholder: "예: 생성형 AI", value: operation.courseCategory }]}
+                label="과정 카테고리 소분류"
+                operationId={operation.operationId}
+              />
+              <EditableInfoItem
+                displayValue={operation.tools || "미정"}
+                fields={[{ name: "tools", placeholder: "예: ChatGPT, Claude", value: operation.tools }]}
+                label="사용 Tool"
+                operationId={operation.operationId}
+              />
               <ResultReportConditionSelect
                 rounds={courseOperations.map((candidate) => ({
                   hasResultReport: candidate.hasResultReport,

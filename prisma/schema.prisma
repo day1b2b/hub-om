@@ -123,6 +123,10 @@ model Course {
   courseId      String        @map("course_id")
   name          String        @map("course_name")
   operationType OperationType @default(NEEDS_REVIEW) @map("operation_type")
+  // om-request 접수 시 함께 받는 과정 카테고리 소분류/사용 Tool. 회차마다 다르지 않고
+  // 과정(Course) 공통 속성이라 courseId/courseName과 같은 레벨에 둔다.
+  courseCategory String?      @map("course_category")
+  tools          String?
   revenue       Decimal?      @db.Decimal(14, 2)
   revenueRaw    String?       @map("revenue_raw")
   createdAt     DateTime      @default(now()) @map("created_at")

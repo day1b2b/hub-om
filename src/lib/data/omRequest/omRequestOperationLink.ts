@@ -40,6 +40,7 @@ export async function createLinkedOperationForOmRequest(request: OmRequest): Pro
       companyName: request.company,
       companyWikiLink: "",
       costRaw: "",
+      courseCategory: request.courseCategory,
       courseId: request.courseId,
       courseName: request.courseName,
       createdBy: request.ld,
@@ -67,6 +68,7 @@ export async function createLinkedOperationForOmRequest(request: OmRequest): Pro
       specialNotes: "",
       startDate: session.date,
       timeText: timeTextOf(session),
+      tools: request.tools ?? "",
       totalCost: null
     };
 
