@@ -273,7 +273,6 @@ export function OperationDetail({
                   baseInstructors={operation.instructors}
                   baseOperationId={operation.operationId}
                   baseTimeText={operation.timeText}
-                  existingRoundNumbers={existingRoundNumbers}
                   nextRoundNo={nextRoundNo}
                 />
                 <BulkAddRoundsButton baseOperationId={operation.operationId} existingRoundNumbers={existingRoundNumbers} />
