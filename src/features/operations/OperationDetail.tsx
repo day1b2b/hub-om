@@ -12,6 +12,7 @@ import { EditableOnsiteOmCell } from "./EditableOnsiteOmCell";
 import { EditableResourceRow } from "./EditableResourceRow";
 import { EditableRoundResourceCell } from "./EditableRoundResourceCell";
 import { EditableSessionRow } from "./EditableSessionRow";
+import { EditableToolsItem } from "./EditableToolsItem";
 import { IssueReviewEditor } from "./IssueReviewEditor";
 import { LectureManagementNoteRow } from "./LectureManagementNoteRow";
 import { OperationDiscussionPanel } from "./OperationDiscussionPanel";
@@ -27,6 +28,7 @@ import type {
   OperationDiscussionItem
 } from "@/lib/data/operationCollaboration";
 import { isSameCourse } from "@/lib/data/operationCalculations";
+import { COURSE_CATEGORY_GROUPS } from "@/lib/data/omRequest/omCourseCategoryOptions";
 import type { PersonOptions } from "@/lib/data/personOptions";
 import { displayRoleAssigneeText } from "@/lib/data/roleAssignees";
 import { isNavigableHref, toHref } from "@/lib/links";
@@ -55,6 +57,7 @@ const ONSITE_LABEL: Record<OnsiteRequired, string> = {
 
 interface OperationDetailProps {
   collaboration: OperationCollaboration;
+  extraTools?: string[];
   operation: OperationSession;
   personOptions?: PersonOptions;
   relatedOperations?: OperationSession[];
@@ -64,6 +67,7 @@ interface OperationDetailProps {
 
 export function OperationDetail({
   collaboration,
+  extraTools = [],
   operation,
   personOptions = { ld: [], om: [] },
   relatedOperations = [operation],
@@ -139,15 +143,22 @@ export function OperationDetail({
               />
               <EditableInfoItem
                 displayValue={operation.courseCategory || "미정"}
-                fields={[{ name: "courseCategory", placeholder: "예: 생성형 AI", value: operation.courseCategory }]}
+                fields={[
+                  {
+                    name: "courseCategory",
+                    optionGroups: COURSE_CATEGORY_GROUPS.map((group) => ({ label: group.major, options: group.minors })),
+                    type: "select",
+                    value: operation.courseCategory
+                  }
+                ]}
                 label="과정 카테고리 소분류"
                 operationId={operation.operationId}
               />
-              <EditableInfoItem
+              <EditableToolsItem
                 displayValue={operation.tools || "미정"}
-                fields={[{ name: "tools", placeholder: "예: ChatGPT, Claude", value: operation.tools }]}
-                label="사용 Tool"
+                extraTools={extraTools}
                 operationId={operation.operationId}
+                value={operation.tools}
               />
               <ResultReportConditionSelect
                 rounds={courseOperations.map((candidate) => ({
@@ -166,42 +177,44 @@ export function OperationDetail({
             </div>
           </section>
 
-          <section className="detail-section compact-info-section">
-            <div className="section-title">
-              <h2>담당자</h2>
-            </div>
-            <div className="info-grid">
-              <EditableInfoItem
-                displayValue={operation.om || "미정"}
-                fields={[{ name: "om", options: personOptions.om, type: "name-select", value: operation.om }]}
-                label="OM"
-                operationId={operation.operationId}
-              />
-              <EditableInfoItem
-                displayValue={operation.ld || "미정"}
-                fields={[{ name: "ld", options: personOptions.ld, type: "name-select", value: operation.ld }]}
-                label="LD"
-                operationId={operation.operationId}
-              />
-              <InfoItem label="강사" value={operation.instructors || "미정"} />
-              <InfoItem label="실습코치" value={operation.coach || "미정"} />
-              <InfoItem
-                label="현장 투입"
-                value={aggregateUniqueValues(courseOperations, (candidate) => ONSITE_LABEL[candidate.onsiteRequired])}
-              />
-            </div>
-          </section>
+          <div className="detail-side-stack">
+            <section className="detail-section compact-info-section">
+              <div className="section-title">
+                <h2>담당자</h2>
+              </div>
+              <div className="info-grid">
+                <EditableInfoItem
+                  displayValue={operation.om || "미정"}
+                  fields={[{ name: "om", options: personOptions.om, type: "name-select", value: operation.om }]}
+                  label="OM"
+                  operationId={operation.operationId}
+                />
+                <EditableInfoItem
+                  displayValue={operation.ld || "미정"}
+                  fields={[{ name: "ld", options: personOptions.ld, type: "name-select", value: operation.ld }]}
+                  label="LD"
+                  operationId={operation.operationId}
+                />
+                <InfoItem label="강사" value={operation.instructors || "미정"} />
+                <InfoItem label="실습코치" value={operation.coach || "미정"} />
+                <InfoItem
+                  label="현장 투입"
+                  value={aggregateUniqueValues(courseOperations, (candidate) => ONSITE_LABEL[candidate.onsiteRequired])}
+                />
+              </div>
+            </section>
 
-          <section className="detail-section compact-info-section">
-            <div className="section-title">
-              <h2>지표</h2>
-            </div>
-            <div className="info-grid">
-              <InfoItem label="남은 회차" value={remainingRoundText(operation)} />
-              <InfoItem label="만족도(평균)" value={satisfactionSummary.totalAverage ?? "미입력"} />
-              <InfoItem label="매출" value={formatMoney(operation.revenue)} />
-            </div>
-          </section>
+            <section className="detail-section compact-info-section">
+              <div className="section-title">
+                <h2>지표</h2>
+              </div>
+              <div className="info-grid">
+                <InfoItem label="남은 회차" value={remainingRoundText(operation)} />
+                <InfoItem label="만족도(평균)" value={satisfactionSummary.totalAverage ?? "미입력"} />
+                <InfoItem label="매출" value={formatMoney(operation.revenue)} />
+              </div>
+            </section>
+          </div>
 
           <section className="detail-section resource-status-section required-items-section" id="links">
             <div className="resource-card-grid">

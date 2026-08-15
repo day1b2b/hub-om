@@ -2862,6 +2862,12 @@ td span {
   display: grid;
 }
 
+.detail-side-stack {
+  align-content: start;
+  display: grid;
+  gap: 12px;
+}
+
 .wide-detail-section,
 .course-sessions-section,
 .course-groups-section,

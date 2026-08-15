@@ -8,8 +8,9 @@ type SaveState = "idle" | "saving" | "failed";
 interface EditableInfoItemField {
   name: string;
   options?: string[];
+  optionGroups?: { label: string; options: string[] }[];
   placeholder?: string;
-  type?: "date" | "text" | "name-select";
+  type?: "date" | "text" | "name-select" | "select";
   value: string;
 }
 
@@ -59,6 +60,35 @@ export function EditableInfoItem({ displayValue, fields, label, operationId }: E
               options={field.options ?? []}
               value={drafts[field.name] ?? ""}
             />
+          ) : field.type === "select" ? (
+            <select
+              aria-label={field.name}
+              key={field.name}
+              onChange={(event) =>
+                setDrafts((current) => ({
+                  ...current,
+                  [field.name]: event.target.value
+                }))
+              }
+              value={drafts[field.name] ?? ""}
+            >
+              <option value="">미정</option>
+              {field.optionGroups
+                ? field.optionGroups.map((group) => (
+                    <optgroup key={group.label} label={group.label}>
+                      {group.options.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))
+                : (field.options ?? []).map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+            </select>
           ) : (
             <input
               aria-label={field.name}
