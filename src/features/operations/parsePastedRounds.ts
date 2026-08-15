@@ -28,27 +28,35 @@ export function normalizeTimeRangeText(value: string): string {
   return `${startHour.padStart(2, "0")}:${startMinute} ~ ${endHour.padStart(2, "0")}:${endMinute}`;
 }
 
-export function parsePastedRounds(value: string, baselineRoundNo?: number): ParsedRound[] {
+export function parsePastedRounds(value: string, existingRoundNumbers: number[] = []): ParsedRound[] {
   const rows = value
     .split("\n")
     .map((line) => line.replace(/\r$/, ""))
     .filter((line) => line.trim().length > 0)
     .map((line) => toParsedRound(line));
 
-  return applyRoundSequenceValidation(rows, baselineRoundNo);
+  return applyRoundSequenceValidation(rows, existingRoundNumbers);
 }
 
 /**
  * 붙여넣은 순서대로 회차 번호가 1씩 증가하는지 확인하고, 끊긴 지점에만 오류를 추가한다.
- * baselineRoundNo가 있으면(예: 과정에 이미 등록된 마지막 회차) 첫 행부터 그 다음 번호로 이어지는지도 확인한다.
+ * existingRoundNumbers(과정에 이미 등록된 회차 번호)가 있으면, 이미 등록된 번호와 겹치는지를
+ * 먼저 확인하고(중복이 연속성 오류보다 더 명확한 원인이므로 우선함), 그 마지막 번호를 기준으로
+ * 첫 행부터 이어지는지도 함께 확인한다.
  */
-function applyRoundSequenceValidation(rows: ParsedRound[], baselineRoundNo?: number): ParsedRound[] {
-  let previousRoundNo: number | null = Number.isFinite(baselineRoundNo) ? (baselineRoundNo as number) : null;
+function applyRoundSequenceValidation(rows: ParsedRound[], existingRoundNumbers: number[]): ParsedRound[] {
+  const existingRoundNoSet = new Set(existingRoundNumbers);
+  let previousRoundNo: number | null = existingRoundNumbers.length > 0 ? Math.max(...existingRoundNumbers) : null;
 
   return rows.map((row) => {
     const currentRoundNo = row.roundNo === "" ? NaN : Number(row.roundNo);
 
     if (!Number.isFinite(currentRoundNo)) return row;
+
+    if (existingRoundNoSet.has(currentRoundNo)) {
+      previousRoundNo = currentRoundNo;
+      return { ...row, errors: [...row.errors, `이미 ${currentRoundNo}회차 정보가 등록되어 있음`] };
+    }
 
     const expectedRoundNo = previousRoundNo === null ? null : previousRoundNo + 1;
     const isSequential = expectedRoundNo === null || currentRoundNo === expectedRoundNo;
