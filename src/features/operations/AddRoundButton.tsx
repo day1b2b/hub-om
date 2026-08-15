@@ -11,7 +11,6 @@ interface AddRoundButtonProps {
   baseInstructors: string;
   baseOperationId: string;
   baseTimeText: string;
-  existingRoundNumbers: number[];
   nextRoundNo: string;
 }
 
@@ -29,7 +28,6 @@ export function AddRoundButton({
   baseInstructors,
   baseOperationId,
   baseTimeText,
-  existingRoundNumbers,
   nextRoundNo
 }: AddRoundButtonProps) {
   const router = useRouter();
@@ -61,12 +59,7 @@ export function AddRoundButton({
             <div className="lecture-note-body">
               <label className="lecture-note-field">
                 <span>회차</span>
-                <input
-                  onChange={(event) => setDraft((current) => ({ ...current, roundNo: event.target.value }))}
-                  placeholder="예: 5"
-                  type="text"
-                  value={draft.roundNo}
-                />
+                <input readOnly type="text" value={draft.roundNo} />
               </label>
 
               <div className="add-round-date-row">
@@ -161,20 +154,6 @@ export function AddRoundButton({
 
     if (draft.timeText.trim() && !isValidTimeRangeText(draft.timeText)) {
       setError("시간 형식을 확인해주세요 (예: 09:30 ~ 17:30).");
-      return;
-    }
-
-    const enteredRoundNo = Number(draft.roundNo);
-
-    if (Number.isFinite(enteredRoundNo) && existingRoundNumbers.includes(enteredRoundNo)) {
-      setError(`이미 ${enteredRoundNo}회차 정보가 등록되어 있습니다.`);
-      return;
-    }
-
-    const expectedRoundNo = Number(nextRoundNo);
-
-    if (Number.isFinite(expectedRoundNo) && Number.isFinite(enteredRoundNo) && enteredRoundNo !== expectedRoundNo) {
-      setError(`회차가 연속되지 않습니다 (예상 회차: ${nextRoundNo}).`);
       return;
     }
 
