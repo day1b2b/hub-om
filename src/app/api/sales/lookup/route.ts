@@ -80,11 +80,43 @@ export async function GET(request: Request) {
     });
   }
 
+  const { company, courseName } = deriveCompanyAndCourse(match.companyName, match.courseName);
+
   return NextResponse.json({
     ok: true,
     found: true,
     courseId,
-    company: match.companyName ?? "",
-    courseName: match.courseName ?? ""
+    company,
+    courseName
   });
+}
+
+/**
+ * 고객사·과정명을 정리한다.
+ *
+ * 세일즈맵 딜에 '고객사'가 별도 필드로 채워져 있지 않고 딜 이름이 "고객사_과정명" 형식인 경우가 있어
+ * (예: "KT(대외교육협력팀)_AI 활용역량 향상 교육"), 고객사 필드가 비어 있으면 딜 이름 앞부분에서
+ * 고객사를, 뒷부분에서 과정명을 유추한다. survey_analysis 자동 채움용 폴백이며, 채워진 값은 사용자가
+ * 항상 수정할 수 있다. 고객사 필드가 이미 있으면 그대로 존중하고 아무것도 바꾸지 않는다.
+ */
+function deriveCompanyAndCourse(
+  companyName: string | undefined,
+  courseName: string | undefined
+): { company: string; courseName: string } {
+  const company = companyName?.trim() ?? "";
+  const rawCourseName = courseName?.trim() ?? "";
+
+  if (company || !rawCourseName.includes("_")) {
+    return { company, courseName: rawCourseName };
+  }
+
+  const separatorIndex = rawCourseName.indexOf("_");
+  // 괄호 안 부서/설명은 떼어낸다: "KT(대외교육협력팀)" → "KT".
+  const derivedCompany = rawCourseName.slice(0, separatorIndex).replace(/\(.*?\)/g, "").trim();
+  const derivedCourse = rawCourseName.slice(separatorIndex + 1).trim();
+
+  return {
+    company: derivedCompany || company,
+    courseName: derivedCourse || rawCourseName
+  };
 }
