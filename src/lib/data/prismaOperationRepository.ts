@@ -162,6 +162,7 @@ export class PrismaOperationRepository implements OperationRepository {
         operationId: session.operationId,
         sourceTeam: session.sourceRecords[0]?.sourceTeam ? SOURCE_TEAM[session.sourceRecords[0].sourceTeam] : "미분류",
         processId: formatProcessId(session.course.processSeq),
+        courseRecordId: session.course.id,
         courseId: session.course.courseId,
         companyName: session.course.company.name,
         courseName: session.course.name,
