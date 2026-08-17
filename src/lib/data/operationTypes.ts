@@ -47,6 +47,8 @@ export interface OperationSession {
   sourceTeam?: SourceTeam;
   /** hub-om이 채번하는 과정ID(PRC-000123). Notion 등 외부 원천 병합 항목은 없을 수 있다. */
   processId?: string;
+  /** Course.id (내부 UUID PK). 같은 과정의 여러 회차(OperationSession)가 이 값을 공유한다. */
+  courseRecordId?: string;
   courseId: string;
   companyName: string;
   courseName: string;
