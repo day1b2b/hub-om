@@ -8059,6 +8059,16 @@ td span {
   overflow: hidden;
 }
 
+.dashboard-panel-wide {
+  grid-column: span 2;
+}
+
+.dashboard-empty-note {
+  color: var(--muted);
+  font-size: 12px;
+  padding: 16px 18px;
+}
+
 .coach-schedule-shell {
   background: #fbfbfa;
 }
@@ -8964,8 +8974,7 @@ button.coach-doc-reserve-chip:disabled {
   font-weight: 700;
 }
 
-.bar-list,
-.compact-list {
+.bar-list {
   display: grid;
   gap: 12px;
   padding: 16px 18px;
@@ -8978,8 +8987,7 @@ button.coach-doc-reserve-chip:disabled {
   grid-template-columns: minmax(92px, 132px) minmax(0, 1fr) 32px;
 }
 
-.bar-row span,
-.compact-row span {
+.bar-row span {
   color: var(--muted);
   font-size: 12px;
   font-weight: 500;
@@ -9001,25 +9009,10 @@ button.coach-doc-reserve-chip:disabled {
   height: 100%;
 }
 
-.bar-row strong,
-.compact-row strong {
+.bar-row strong {
   font-size: 12px;
   font-weight: 700;
   text-align: right;
-}
-
-.compact-row {
-  align-items: center;
-  border-bottom: 1px solid var(--line);
-  display: flex;
-  gap: 12px;
-  justify-content: space-between;
-  padding-bottom: 12px;
-}
-
-.compact-row:last-child {
-  border-bottom: 0;
-  padding-bottom: 0;
 }
 
 .donut-wrap {

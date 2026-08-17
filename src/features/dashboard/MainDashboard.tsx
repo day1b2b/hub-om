@@ -5,31 +5,64 @@ import { useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import type { OperationSession } from "@/lib/data/operationTypes";
 import { splitPersonNames } from "@/lib/data/personNames";
+import { TEAM_OPTIONS, type TeamUser } from "@/lib/data/teamUsers/teamUserTypes";
 import { teamScopeSearchParam, type TeamScope } from "@/lib/teamScope";
 
 type DashboardScope = "이번달" | "연간";
 
+const OM_PART_ALL = "전체";
+type OmPartFilter = typeof OM_PART_ALL | (typeof TEAM_OPTIONS)[number];
+
 interface MainDashboardProps {
   operations: OperationSession[];
   teamScope: TeamScope;
+  teamUsers: TeamUser[];
 }
 
-export function MainDashboard({ operations, teamScope }: MainDashboardProps) {
+export function MainDashboard({ operations, teamScope, teamUsers }: MainDashboardProps) {
   const today = useMemo(() => new Date(), []);
   const [scope, setScope] = useState<DashboardScope>("이번달");
+  const [omPart, setOmPart] = useState<OmPartFilter>(OM_PART_ALL);
   const teamQuery = teamScopeSearchParam(teamScope);
+
+  const omPartByName = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const user of teamUsers) {
+      if (user.role === "om" && user.team) {
+        map.set(user.name.trim(), user.team);
+      }
+    }
+    return map;
+  }, [teamUsers]);
+
+  const omPartOperations = useMemo(() => {
+    if (omPart === OM_PART_ALL) return operations;
+    return operations.filter((operation) => resolveOperationOmPart(operation, omPartByName) === omPart);
+  }, [operations, omPart, omPartByName]);
+
   const scopedOperations = useMemo(() => {
-    return operations.filter((operation) => (scope === "이번달" ? isSameMonth(operation, today) : isSameYear(operation, today)));
-  }, [scope, operations, today]);
+    return omPartOperations.filter((operation) =>
+      scope === "이번달" ? isSameMonth(operation, today) : isSameYear(operation, today)
+    );
+  }, [scope, omPartOperations, today]);
+
   const activeOrUpcoming = scopedOperations
     .filter((operation) => !isEnded(operation, today))
     .sort((a, b) => compareStableText(a.startDate, b.startDate));
-  const companyCounts = topCounts(scopedOperations.map((operation) => operation.companyName), 5);
   const omCounts = topCounts(scopedOperations.flatMap((operation) => splitPersonNames(operation.om)), 5);
-  const typeCounts = topCounts(scopedOperations.map((operation) => operation.operationType), 5);
   const formatCounts = topCounts(scopedOperations.map((operation) => operation.educationFormat), 5);
-  const monthlyCounts = monthlySeries(operations, today.getFullYear());
-  const maxCompanyCount = Math.max(1, ...companyCounts.map((item) => item.count));
+  const monthlyCounts = monthlySeries(omPartOperations, today.getFullYear());
+
+  // 과정(Course.id) 기준 카운트: 회차가 여러 건인 과정을 중복 집계하지 않기 위해 과정당 1건으로 축약한다.
+  const scopedCourses = dedupeByCourse(scopedOperations);
+  const courseCount = scopedCourses.length;
+  const companyCounts = topCounts(scopedCourses.map((operation) => operation.companyName), 5);
+  const categoryCounts = topCounts(scopedCourses.map((operation) => operation.courseCategory), 5);
+  const uncategorizedCount = scopedCourses.filter((operation) => !operation.courseCategory).length;
+  const toolCounts = topCounts(
+    scopedCourses.flatMap((operation) => splitToolsList(operation.tools ?? "")),
+    8
+  );
 
   return (
     <main className="dashboard-shell">
@@ -63,6 +96,19 @@ export function MainDashboard({ operations, teamScope }: MainDashboardProps) {
             ))}
           </div>
 
+          <div className="dashboard-team-tabs team-tabs" role="group" aria-label="OM 파트 범위">
+            {([OM_PART_ALL, ...TEAM_OPTIONS] as OmPartFilter[]).map((option) => (
+              <button
+                aria-pressed={omPart === option}
+                className={omPart === option ? "selected" : ""}
+                key={option}
+                onClick={() => setOmPart(option)}
+                type="button"
+              >
+                {option}
+              </button>
+            ))}
+          </div>
         </div>
 
         <section className="metrics" aria-label="운영 요약">
@@ -71,7 +117,7 @@ export function MainDashboard({ operations, teamScope }: MainDashboardProps) {
           <Metric label="완료" value={scopedOperations.filter(isDone).length} />
           <Metric label="총 매출" value={formatShortMoney(scopedOperations.reduce((sum, operation) => sum + (operation.revenue ?? 0), 0))} />
           <Metric label="참여 기업" value={new Set(scopedOperations.map((operation) => operation.companyName)).size} />
-          <Metric label="전체 과정" value={scopedOperations.length} />
+          <Metric label="전체 과정" value={courseCount} />
         </section>
 
         <section className="dashboard-grid">
@@ -80,33 +126,7 @@ export function MainDashboard({ operations, teamScope }: MainDashboardProps) {
               <h2>기업별 과정 수</h2>
               <span>막대 클릭 시 과정 표시 예정</span>
             </div>
-            <div className="bar-list">
-              {companyCounts.map((item) => (
-                <div className="bar-row" key={item.label}>
-                  <span>{item.label}</span>
-                  <div className="bar-track">
-                    <div className="bar-fill" style={{ width: `${(item.count / maxCompanyCount) * 100}%` }} />
-                  </div>
-                  <strong>{item.count}</strong>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="dashboard-panel">
-            <div className="section-title">
-              <h2>OM별 현황</h2>
-              <span>담당 운영 수</span>
-            </div>
-            <CompactList items={omCounts} />
-          </section>
-
-          <section className="dashboard-panel">
-            <div className="section-title">
-              <h2>운영 유형</h2>
-              <span>과정 성격 분포</span>
-            </div>
-            <DonutChart items={typeCounts} />
+            <BarList items={companyCounts} />
           </section>
 
           <section className="dashboard-panel">
@@ -115,6 +135,38 @@ export function MainDashboard({ operations, teamScope }: MainDashboardProps) {
               <span>오프라인/비대면/혼합</span>
             </div>
             <DonutChart items={formatCounts} />
+          </section>
+
+          <section className="dashboard-panel">
+            <div className="section-title">
+              <h2>과정 카테고리 소분류</h2>
+              <span>{uncategorizedCount > 0 ? `소분류 미입력 ${uncategorizedCount}건 제외` : "소분류 기준 분포"}</span>
+            </div>
+            <DonutChart items={categoryCounts} />
+          </section>
+
+          <section className="dashboard-panel">
+            <div className="section-title">
+              <h2>OM별 현황</h2>
+              <span>담당 운영 수</span>
+            </div>
+            <BarList items={omCounts} />
+          </section>
+
+          <section className="dashboard-panel dashboard-panel-wide">
+            <div className="section-title">
+              <h2>사용 Tool 분포</h2>
+              <span>과정당 다중 선택 합산 (표기가 다를 수 있음)</span>
+            </div>
+            <BarList items={toolCounts} />
+          </section>
+
+          <section className="dashboard-panel dashboard-panel-wide">
+            <div className="section-title">
+              <h2>월별 과정 현황</h2>
+              <span>연간 추이</span>
+            </div>
+            <MonthlyTrendChart items={monthlyCounts} />
           </section>
         </section>
 
@@ -162,14 +214,6 @@ export function MainDashboard({ operations, teamScope }: MainDashboardProps) {
             </table>
           </div>
         </section>
-
-        <section className="dashboard-panel">
-          <div className="section-title">
-            <h2>월별 과정 현황</h2>
-            <span>연간 추이</span>
-          </div>
-          <MonthlyTrendChart items={monthlyCounts} />
-        </section>
       </section>
     </main>
   );
@@ -184,13 +228,22 @@ function Metric({ label, value }: { label: string; value: number | string }) {
   );
 }
 
-function CompactList({ items }: { items: Array<{ count: number; label: string }> }) {
+function BarList({ items }: { items: Array<{ count: number; label: string }> }) {
+  if (items.length === 0) {
+    return <p className="dashboard-empty-note">표시할 데이터가 없습니다.</p>;
+  }
+
+  const max = Math.max(1, ...items.map((item) => item.count));
+
   return (
-    <div className="compact-list">
+    <div className="bar-list">
       {items.map((item) => (
-        <div className="compact-row" key={item.label}>
+        <div className="bar-row" key={item.label}>
           <span>{item.label}</span>
-          <strong>{item.count}건</strong>
+          <div className="bar-track">
+            <div className="bar-fill" style={{ width: `${(item.count / max) * 100}%` }} />
+          </div>
+          <strong>{item.count}</strong>
         </div>
       ))}
     </div>
@@ -198,6 +251,10 @@ function CompactList({ items }: { items: Array<{ count: number; label: string }>
 }
 
 function DonutChart({ items }: { items: Array<{ count: number; label: string }> }) {
+  if (items.length === 0) {
+    return <p className="dashboard-empty-note">표시할 데이터가 없습니다.</p>;
+  }
+
   const total = items.reduce((sum, item) => sum + item.count, 0) || 1;
   const colors = ["#9fb58d", "#d9caa7", "#aab7bd", "#c8b6a5", "#d7b5aa"];
   const gradient = items
@@ -290,6 +347,33 @@ function stripTime(value: Date) {
   return new Date(value.getFullYear(), value.getMonth(), value.getDate());
 }
 
+function splitToolsList(value: string): string[] {
+  return value.split(",").map((item) => item.trim()).filter(Boolean);
+}
+
+function resolveOperationOmPart(operation: OperationSession, omPartByName: Map<string, string>): string | undefined {
+  const names = splitPersonNames(operation.om, "");
+  for (const name of names) {
+    const part = omPartByName.get(name.trim());
+    if (part) return part;
+  }
+  return undefined;
+}
+
+function dedupeByCourse(operations: OperationSession[]): OperationSession[] {
+  const seen = new Set<string>();
+  const courses: OperationSession[] = [];
+
+  for (const operation of operations) {
+    const key = operation.courseRecordId ?? operation.id;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    courses.push(operation);
+  }
+
+  return courses;
+}
+
 function topCounts(values: string[], limit: number) {
   const counts = new Map<string, number>();
 
@@ -311,12 +395,12 @@ function compareStableText(a: string, b: string) {
 function monthlySeries(operations: OperationSession[], year: number) {
   return Array.from({ length: 12 }, (_, index) => {
     const label = `${index + 1}월`;
-    const count = operations.filter((operation) => {
+    const monthOperations = operations.filter((operation) => {
       const date = parseDate(operation.startDate);
       return date ? date.getFullYear() === year && date.getMonth() === index : false;
-    }).length;
+    });
 
-    return { count, label };
+    return { count: dedupeByCourse(monthOperations).length, label };
   });
 }
 
