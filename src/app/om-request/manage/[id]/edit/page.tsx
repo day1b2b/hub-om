@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppSidebar } from "@/components/AppSidebar";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
+import { listCustomTools } from "@/lib/data/omRequest/omCustomToolsLocalRepository";
 import { getOmRequest } from "@/lib/data/omRequest/omRequestLocalRepository";
 import { OmRequestForm } from "@/app/om-request/OmRequestForm";
 
@@ -14,12 +15,20 @@ interface Props {
 export default async function OmRequestEditPage({ params }: Props) {
   const session = await requireWorkspaceSession();
   const { id } = await params;
-  const request = getOmRequest(id);
+  const request = await getOmRequest(id);
   if (!request) notFound();
 
   const ldName = session.user?.name ?? session.user?.email?.split("@")[0] ?? "";
+  const extraTools = listCustomTools();
 
-  const { id: _id, createdAt: _createdAt, status: _status, assignedOm: _assignedOm, ...initialData } = request;
+  const {
+    id: _id,
+    createdAt: _createdAt,
+    status: _status,
+    assignedOm: _assignedOm,
+    operationId: _operationId,
+    ...initialData
+  } = request;
 
   return (
     <main className="dashboard-shell">
@@ -37,7 +46,7 @@ export default async function OmRequestEditPage({ params }: Props) {
             <h1>업무 요청 수정</h1>
           </div>
         </header>
-        <OmRequestForm ldName={ldName} initialData={initialData} requestId={id} />
+        <OmRequestForm extraTools={extraTools} ldName={ldName} initialData={initialData} requestId={id} />
       </section>
     </main>
   );

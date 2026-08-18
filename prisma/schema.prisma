@@ -115,10 +115,18 @@ model Company {
 
 model Course {
   id            String        @id @default(uuid()) @db.Uuid
+  // hub-om이 직접 채번하는 "과정ID"(화면에는 PRC-000123처럼 노출, formatProcessId 참고).
+  // 코스ID(courseId)는 사내 다른 시스템이 나중에 채워 넣는 값이라 요청 시점엔 비어있을 수
+  // 있지만, processSeq는 과정(Course) 행이 생기는 즉시 DB가 채번하므로 항상 존재한다.
+  processSeq    Int           @unique @default(autoincrement()) @map("process_seq")
   companyId     String        @map("company_id") @db.Uuid
   courseId      String        @map("course_id")
   name          String        @map("course_name")
   operationType OperationType @default(NEEDS_REVIEW) @map("operation_type")
+  // om-request 접수 시 함께 받는 과정 카테고리 소분류/사용 Tool. 회차마다 다르지 않고
+  // 과정(Course) 공통 속성이라 courseId/courseName과 같은 레벨에 둔다.
+  courseCategory String?      @map("course_category")
+  tools          String?
   revenue       Decimal?      @db.Decimal(14, 2)
   revenueRaw    String?       @map("revenue_raw")
   createdAt     DateTime      @default(now()) @map("created_at")
@@ -651,6 +659,45 @@ model TeamUser {
   createdAt DateTime    @default(now()) @map("created_at")
 
   @@map("team_users")
+}
+
+// OM 업무 요청. 과거 로컬 JSON 파일(om-requests.json) 저장에서 Postgres로 이관.
+// 문자열 상태/구분값(배정필요 등)과 세션 배열은 앱 표준 타입 그대로 저장한다.
+model OmRequest {
+  id                  String   @id @default(uuid()) @db.Uuid
+  status              String
+  assignedOm          String?  @map("assigned_om")
+  ldEmail             String?  @map("ld_email")
+  slackChannel        String?  @map("slack_channel")
+  slackThreadTs       String?  @map("slack_thread_ts")
+  // 접수 시점에 courseId 없이 자동 생성한 운영현황 회차(첫 차수)의 operationId.
+  // FK는 걸지 않는다 — 앱 전체가 courseId/operationId를 느슨한 join key로 다루는 방식과 동일.
+  operationId         String?  @map("operation_id")
+  team                String
+  ld                  String
+  company             String
+  businessNumber      String?  @map("business_number")
+  trainingType        String   @map("training_type")
+  courseId            String   @map("course_id")
+  courseName          String   @map("course_name")
+  courseCategoryMajor String?  @map("course_category_major")
+  courseCategory      String   @map("course_category")
+  tools               String?
+  instructorName      String   @map("instructor_name")
+  syncupLink          String   @map("syncup_link")
+  driveLink           String   @map("drive_link")
+  skillfloSetup       String   @map("skillflo_setup")
+  skillmatchSetup     String   @map("skillmatch_setup")
+  onSiteOperation     String   @map("onsite_operation")
+  coachRequest        String   @map("coach_request")
+  totalSessions       Int      @map("total_sessions")
+  sessions            Json
+  notes               String
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([operationId])
+  @@map("om_requests")
 }
 
 model Announcement {

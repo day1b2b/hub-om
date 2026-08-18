@@ -3,6 +3,7 @@ import { OperationDetail } from "@/features/operations/OperationDetail";
 import { LocalJsonOperationRepository } from "@/lib/data/localJsonOperationRepository";
 import { readOperationCollaboration } from "@/lib/data/operationCollaboration";
 import { isSameCourse, normalizeCourseId } from "@/lib/data/operationCalculations";
+import { listCustomTools } from "@/lib/data/omRequest/omCustomToolsLocalRepository";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,7 @@ export default async function PreviewOperationDetailPage() {
   return (
     <OperationDetail
       collaboration={collaboration}
+      extraTools={listCustomTools()}
       operation={operation}
       relatedOperations={relatedOperations}
       sameCourseIdOperations={sameCourseIdOperations}

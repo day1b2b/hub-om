@@ -3,31 +3,56 @@
 import Link from "next/link";
 import { useMemo, useState, type CSSProperties } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
+import { holidayName } from "@/features/dashboard/holidays";
+import type { OmAvailabilityRoster } from "@/lib/data/omAvailability/omAvailabilityTypes";
+import type { OmRequest } from "@/lib/data/omRequest/omRequestTypes";
 import type { OperationSession, OperationStatus } from "@/lib/data/operationTypes";
 import { splitPersonNames } from "@/lib/data/personNames";
 import type { ResourceOwnerRoster } from "@/lib/data/teamMemberRepository";
 import type { CalendarResourceEvent } from "@/lib/sourceReads";
 import { teamScopeSearchParam, type TeamScope } from "@/lib/teamScope";
 
-const BOARD_GROUPS: Array<{ label: string; statuses: OperationStatus[] }> = [
-  { label: "시작 전", statuses: ["배정필요", "배정예정"] },
-  { label: "진행 중", statuses: ["진행중"] },
-  { label: "완료", statuses: ["완료", "회고완료", "아카이빙필요"] }
-];
+const STATUS_CLASS: Record<OperationStatus, string> = {
+  "배정필요": "needs-assignment",
+  "배정예정": "planned-assignment",
+  "진행중": "active",
+  "완료": "done",
+  "회고완료": "retrospective-done",
+  "아카이빙필요": "archive-needed"
+};
+
+// 운영 목록 화면에서는 6개 세부 상태를 예정/진행중/종료 3단으로만 보여준다.
+const SIMPLE_STATUS_LABEL: Record<OperationStatus, string> = {
+  "배정필요": "예정",
+  "배정예정": "예정",
+  "진행중": "진행중",
+  "완료": "종료",
+  "회고완료": "종료",
+  "아카이빙필요": "종료"
+};
+
+function isEndedStatus(status: OperationStatus) {
+  return SIMPLE_STATUS_LABEL[status] === "종료";
+}
 
 const UNMATCHED_OWNER = "매칭 필요";
+const PART_ORDER = ["1파트", "2파트", "3파트"];
+const UNCLASSIFIED_PART = "미분류";
+const ALL_PARTS_FILTER = "전체담당자";
 const OWNER_ALIASES: Record<string, string> = {
   "이유진": "이유진C"
 };
 const OWNER_TONES = ["green", "amber", "pink", "purple", "blue", "gray"] as const;
 const MAX_CALENDAR_CONTINUOUS_DAYS = 31;
 const MAX_CALENDAR_EVENT_LANES = 3;
-const MAX_BOARD_CARDS_PER_LANE = 4;
+const CALENDAR_WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
 interface ResourceJudgmentPageProps {
   calendarEvents?: CalendarResourceEvent[];
   operations: OperationSession[];
   ownerRoster?: ResourceOwnerRoster;
+  partRoster?: OmAvailabilityRoster;
+  pendingOmRequests?: OmRequest[];
   teamScope: TeamScope;
 }
 
@@ -58,10 +83,11 @@ interface CalendarItem {
   eventKind?: CalendarResourceEvent["eventKind"];
   href?: string;
   key: string;
+  onsiteOwnerName?: string;
   ownerName: string;
   startDate: Date;
   title: string;
-  type: "operation" | "source";
+  type: "operation" | "request" | "source";
 }
 
 interface ResourceBoardItem {
@@ -73,30 +99,44 @@ interface ResourceBoardItem {
   totalOperations: OperationSession[];
 }
 
-export function ResourceJudgmentPage({ calendarEvents = [], operations, ownerRoster = {}, teamScope }: ResourceJudgmentPageProps) {
+export function ResourceJudgmentPage({
+  calendarEvents = [],
+  operations,
+  ownerRoster = {},
+  partRoster = {},
+  pendingOmRequests = [],
+  teamScope
+}: ResourceJudgmentPageProps) {
   const [viewDate, setViewDate] = useState(new Date());
   const teamQuery = teamScopeSearchParam(teamScope);
   const [ownerFilter, setOwnerFilter] = useState("전체 담당자");
-  const [showUnmatched, setShowUnmatched] = useState(false);
+  const [partFilter, setPartFilter] = useState(ALL_PARTS_FILTER);
+  const [searchQuery, setSearchQuery] = useState("");
   const [expandedCalendarDays, setExpandedCalendarDays] = useState<Set<string>>(() => new Set());
-  const [expandedBoardLanes, setExpandedBoardLanes] = useState<Set<string>>(() => new Set());
   const teamOperations = operations;
   const rosterOwners = useMemo(() => getRosterOwners(ownerRoster), [ownerRoster]);
-  const ownerOptions = useMemo(
+  const ownerPartMap = useMemo(() => buildOwnerPartMap(partRoster), [partRoster]);
+  const allOwnerOptions = useMemo(
     () => ["전체 담당자", ...rosterOwners],
     [rosterOwners]
   );
-  const boardOwnerOptions = useMemo(() => ownerOptions.filter((owner) => owner !== UNMATCHED_OWNER), [ownerOptions]);
+  const boardOwnerOptions = useMemo(() => allOwnerOptions.filter((owner) => owner !== UNMATCHED_OWNER), [allOwnerOptions]);
   const resourceOwnerMap = useMemo(() => buildOwnerDisplayMap([...boardOwnerOptions.slice(1), UNMATCHED_OWNER]), [boardOwnerOptions]);
+  const partScopedOwners = useMemo(
+    () =>
+      partFilter === ALL_PARTS_FILTER
+        ? boardOwnerOptions.slice(1)
+        : boardOwnerOptions.slice(1).filter((owner) => getOwnerPart(owner, ownerPartMap) === partFilter),
+    [boardOwnerOptions, ownerPartMap, partFilter]
+  );
+  const ownerOptions = useMemo(() => ["전체 담당자", ...partScopedOwners], [partScopedOwners]);
   const effectiveOwnerFilter = ownerOptions.includes(ownerFilter) ? ownerFilter : "전체 담당자";
   const filteredOperations = useMemo(
     () =>
-      teamOperations.filter(
-        (operation) =>
-          effectiveOwnerFilter === "전체 담당자" ||
-          getResourceOwners(operation.om, resourceOwnerMap).includes(effectiveOwnerFilter)
+      teamOperations.filter((operation) =>
+        ownerNamesInScope(getOperationResourceOwners(operation, resourceOwnerMap), effectiveOwnerFilter, partFilter, ownerPartMap)
       ),
-    [effectiveOwnerFilter, resourceOwnerMap, teamOperations]
+    [effectiveOwnerFilter, ownerPartMap, partFilter, resourceOwnerMap, teamOperations]
   );
   const calendarOperations = useMemo(
     () => filteredOperations.filter((operation) => isInCalendarWindow(operation, viewDate)),
@@ -106,30 +146,54 @@ export function ResourceJudgmentPage({ calendarEvents = [], operations, ownerRos
     () =>
       calendarEvents.filter((event) => {
         if (!isCalendarEventInWindow(event, viewDate)) return false;
-        if (effectiveOwnerFilter === "전체 담당자") return true;
 
-        return resolveOwnerDisplayName(event.ownerName, resourceOwnerMap) === effectiveOwnerFilter;
+        const ownerName = resolveOwnerDisplayName(event.ownerName, resourceOwnerMap) ?? "";
+        return ownerNamesInScope([ownerName], effectiveOwnerFilter, partFilter, ownerPartMap);
       }),
-    [calendarEvents, effectiveOwnerFilter, resourceOwnerMap, viewDate]
+    [calendarEvents, effectiveOwnerFilter, ownerPartMap, partFilter, resourceOwnerMap, viewDate]
+  );
+  const filteredPendingRequests = useMemo(
+    () =>
+      pendingOmRequests.filter((request) =>
+        ownerNamesInScope(
+          [getCalendarOperationOwner(request.assignedOm ?? "", resourceOwnerMap)],
+          effectiveOwnerFilter,
+          partFilter,
+          ownerPartMap
+        )
+      ),
+    [effectiveOwnerFilter, ownerPartMap, partFilter, pendingOmRequests, resourceOwnerMap]
+  );
+  const calendarPendingRequestItems = useMemo(
+    () =>
+      filteredPendingRequests
+        .flatMap((request) => omRequestToCalendarItems(request, teamQuery, resourceOwnerMap))
+        .filter((item) => isCalendarItemInWindow(item, viewDate)),
+    [filteredPendingRequests, resourceOwnerMap, teamQuery, viewDate]
   );
   const boardOperations = useMemo(
     () => filteredOperations.filter((operation) => isInBoardWindow(operation, viewDate)),
     [filteredOperations, viewDate]
   );
-  const calendarWeeks = buildCalendarWeeks(viewDate, calendarOperations, filteredCalendarEvents, teamQuery, resourceOwnerMap);
+  const calendarWeeks = buildCalendarWeeks(
+    viewDate,
+    calendarOperations,
+    filteredCalendarEvents,
+    calendarPendingRequestItems,
+    teamQuery,
+    resourceOwnerMap
+  );
   const monthLabel = new Intl.DateTimeFormat("ko-KR", {
     month: "long",
     year: "numeric"
   }).format(viewDate);
-  const boardOwners = effectiveOwnerFilter === "전체 담당자" ? boardOwnerOptions.slice(1) : [effectiveOwnerFilter];
-  const omGroups = groupByOwner(boardOperations, boardOwners, resourceOwnerMap);
-  const allOmGroups = groupByOwner(filteredOperations, boardOwners, resourceOwnerMap);
-  const allOperationsByOwner = new Map(allOmGroups.map((group) => [group.owner, group.operations]));
-  const unmatchedBoardGroup = groupByOwner(boardOperations, [UNMATCHED_OWNER], resourceOwnerMap)[0] ?? {
-    operations: [],
-    owner: UNMATCHED_OWNER
-  };
-  const allUnmatchedOperations = groupByOwner(filteredOperations, [UNMATCHED_OWNER], resourceOwnerMap)[0]?.operations ?? [];
+  const listOperations = boardOperations
+    .filter((operation) => operation.operationStatus !== "배정필요")
+    .filter((operation) => matchesResourceSearch(operation, searchQuery));
+  const listItems = [...buildBoardItems(listOperations, filteredOperations)].sort((a, b) => {
+    const endedDiff = Number(isEndedStatus(a.representative.operationStatus)) - Number(isEndedStatus(b.representative.operationStatus));
+    return endedDiff !== 0 ? endedDiff : compareStableText(a.startDate, b.startDate);
+  });
 
   return (
     <main className="dashboard-shell">
@@ -140,10 +204,27 @@ export function ResourceJudgmentPage({ calendarEvents = [], operations, ownerRos
           <div>
             <h1>리소스</h1>
             <p className="lede">
-              달력과 OM별 운영 보드를 함께 보며 실제 추가 배정 가능 여부를 확인합니다.
+              달력과 OM별 운영 목록을 함께 보며 실제로 추가 요청을 받을 수 있는지 확인합니다.
             </p>
           </div>
         </header>
+
+        <div className="resource-part-filters">
+          {[ALL_PARTS_FILTER, ...PART_ORDER].map((part) => (
+            <button
+              className={`om-filter-btn${partFilter === part ? " selected" : ""}`}
+              key={part}
+              onClick={() => {
+                setPartFilter(part);
+                setOwnerFilter("전체 담당자");
+                collapseExpandedItems();
+              }}
+              type="button"
+            >
+              {part}
+            </button>
+          ))}
+        </div>
 
         <section className="resource-section compact-resource-section">
           <div className="section-title resource-section-title">
@@ -172,8 +253,13 @@ export function ResourceJudgmentPage({ calendarEvents = [], operations, ownerRos
             </div>
           </div>
           <div className="calendar-grid" aria-label={`${monthLabel} 운영 달력`}>
-            {["월", "화", "수", "목", "금", "토", "일"].map((day) => (
-              <div className="calendar-weekday" key={day}>{day}</div>
+            {CALENDAR_WEEKDAYS.map((day, index) => (
+              <div
+                className={["calendar-weekday", index === 0 ? "is-sun" : "", index === 6 ? "is-sat" : ""].filter(Boolean).join(" ")}
+                key={day}
+              >
+                {day}
+              </div>
             ))}
             {calendarWeeks.map((week) => {
               const isExpanded = expandedCalendarDays.has(week.key);
@@ -187,14 +273,25 @@ export function ResourceJudgmentPage({ calendarEvents = [], operations, ownerRos
 
               return (
                 <div className="calendar-week-row" key={week.key} style={weekStyle}>
-                  {week.days.map((day) => (
-                    <div className={`calendar-day ${day.inMonth ? "" : "muted-day"}`} key={day.date.toISOString()}>
-                      <span className="calendar-date">
-                        {day.date.getDate()}
-                        {isToday(day.date) ? <strong>오늘</strong> : null}
-                      </span>
-                    </div>
-                  ))}
+                  {week.days.map((day) => {
+                    const dow = day.date.getDay();
+                    const holiday = day.inMonth ? holidayName(day.date) : null;
+                    const isSun = dow === 0 || Boolean(holiday);
+                    const isSat = dow === 6 && !isSun;
+                    return (
+                      <div className={`calendar-day ${day.inMonth ? "" : "muted-day"}`} key={day.date.toISOString()}>
+                        <span className="calendar-date">
+                          <span className="calendar-date-main">
+                            <span className={["calendar-date-num", isSun ? "is-sun" : "", isSat ? "is-sat" : ""].filter(Boolean).join(" ")}>
+                              {day.date.getDate()}
+                            </span>
+                            {holiday ? <span className="calendar-holiday-name" title={holiday}>{holiday}</span> : null}
+                          </span>
+                          {isToday(day.date) ? <strong>오늘</strong> : null}
+                        </span>
+                      </div>
+                    );
+                  })}
                   <div className="calendar-week-events">
                     {visibleSegments.map((segment) => (
                       <CalendarEventCard key={segment.key} segment={segment} />
@@ -228,54 +325,75 @@ export function ResourceJudgmentPage({ calendarEvents = [], operations, ownerRos
 
         <section className="resource-section compact-resource-section">
           <div className="section-title resource-section-title">
-            <h2>운영 현황 보드</h2>
-            {unmatchedBoardGroup.operations.length > 0 ? (
-              <label className="inline-toggle">
-                <input
-                  checked={showUnmatched}
-                  onChange={(event) => setShowUnmatched(event.target.checked)}
-                  type="checkbox"
-                />
-                <span>매칭 필요 보기</span>
-              </label>
-            ) : null}
-          </div>
-          <div className="resource-owner-board">
-            {omGroups.length > 0 ? (
-              omGroups.map((group) => (
-                <OwnerBoard
-                  group={group}
-                  isExpanded={(label) => expandedBoardLanes.has(boardLaneKey(group.owner, label))}
-                  key={group.owner}
-                  totalOperations={allOperationsByOwner.get(group.owner) ?? group.operations}
-                  teamQuery={teamQuery}
-                  toggleExpandedBoardLane={toggleExpandedBoardLane}
-                />
-              ))
-            ) : (
-              <div className="resource-empty-board">
-                <strong>표시할 리소스가 없습니다.</strong>
-                <span>팀 또는 월을 바꿔 확인하세요.</span>
-              </div>
-            )}
-          </div>
-          {showUnmatched && unmatchedBoardGroup.operations.length > 0 ? (
-            <div className="resource-unmatched-section">
-              <div className="section-title resource-section-title">
-                <h3>매칭 필요</h3>
-                <span>{unmatchedBoardGroup.operations.length}건</span>
-              </div>
-              <div className="resource-owner-board unmatched-board">
-                <OwnerBoard
-                  group={unmatchedBoardGroup}
-                  isExpanded={(label) => expandedBoardLanes.has(boardLaneKey(UNMATCHED_OWNER, label))}
-                  totalOperations={allUnmatchedOperations}
-                  teamQuery={teamQuery}
-                  toggleExpandedBoardLane={toggleExpandedBoardLane}
-                />
-              </div>
+            <h2>운영 목록</h2>
+            <div className="resource-list-filters">
+              <select
+                aria-label="담당 OM 필터"
+                className="owner-filter-select"
+                onChange={(event) => {
+                  setOwnerFilter(event.target.value);
+                  collapseExpandedItems();
+                }}
+                value={effectiveOwnerFilter}
+              >
+                {ownerOptions.map((owner) => (
+                  <option key={owner}>{owner}</option>
+                ))}
+              </select>
+              <input
+                aria-label="운영 목록 검색"
+                className="resource-list-search"
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="과정명, 기업 검색"
+                type="search"
+                value={searchQuery}
+              />
             </div>
-          ) : null}
+          </div>
+          <div className="table-wrap">
+            <table className="resource-owner-table">
+              <thead>
+                <tr>
+                  <th>담당 OM</th>
+                  <th>현장운영</th>
+                  <th>상태</th>
+                  <th>과정명</th>
+                  <th>기업</th>
+                  <th>기간</th>
+                  <th>회차</th>
+                </tr>
+              </thead>
+              <tbody>
+                {listItems.length > 0 ? (
+                  listItems.map((item) => (
+                    <tr key={item.key}>
+                      <td>
+                        {item.representative.om || "배정필요"}
+                        {isUnmatchedOwnerValue(item.representative.om, resourceOwnerMap) ? <Tag tone="pink">매칭 필요</Tag> : null}
+                      </td>
+                      <td>{item.representative.onsiteOm || "-"}</td>
+                      <td><StatusBadge status={item.representative.operationStatus} /></td>
+                      <td>
+                        <Link className="course-link" href={`/operations/${item.representative.operationId}${teamQuery}`}>
+                          <strong>{item.representative.courseName}</strong>
+                        </Link>
+                      </td>
+                      <td>{item.representative.companyName}</td>
+                      <td>{formatBoardItemDateRange(item)}</td>
+                      <td>{courseRoundLabel(item) || "-"}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td className="empty-state" colSpan={7}>
+                      <strong>표시할 운영 건이 없습니다.</strong>
+                      <span>필터 또는 검색어를 바꿔 확인하세요.</span>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </section>
       </section>
     </main>
@@ -283,15 +401,10 @@ export function ResourceJudgmentPage({ calendarEvents = [], operations, ownerRos
 
   function collapseExpandedItems() {
     setExpandedCalendarDays(new Set());
-    setExpandedBoardLanes(new Set());
   }
 
   function toggleExpandedCalendarDay(dayKey: string) {
     setExpandedCalendarDays((current) => toggleSetValue(current, dayKey));
-  }
-
-  function toggleExpandedBoardLane(laneKey: string) {
-    setExpandedBoardLanes((current) => toggleSetValue(current, laneKey));
   }
 
   function updateViewDate(date: Date) {
@@ -300,76 +413,8 @@ export function ResourceJudgmentPage({ calendarEvents = [], operations, ownerRos
   }
 }
 
-function OwnerBoard({
-  group,
-  isExpanded,
-  totalOperations,
-  teamQuery,
-  toggleExpandedBoardLane
-}: {
-  group: { operations: OperationSession[]; owner: string };
-  isExpanded: (label: string) => boolean;
-  totalOperations: OperationSession[];
-  teamQuery: string;
-  toggleExpandedBoardLane: (laneKey: string) => void;
-}) {
-  const boardItems = buildBoardItems(group.operations, group.owner, totalOperations);
-
-  return (
-    <section className="resource-owner-panel">
-      <div className="resource-owner-header">
-        <h3>{group.owner}</h3>
-        <span>{boardItems.length}건</span>
-      </div>
-      {BOARD_GROUPS.map((boardGroup) => {
-        const groupItems = boardItems.filter((item) =>
-          boardGroup.statuses.includes(item.representative.operationStatus)
-        );
-        const laneKey = boardLaneKey(group.owner, boardGroup.label);
-        const expanded = isExpanded(boardGroup.label);
-
-        return (
-          <section className="resource-owner-status" key={`${group.owner}-${boardGroup.label}`}>
-            <div className="resource-status-heading">
-              <span className="group-label">
-                <span className={`status-dot ${statusGroupTone(boardGroup.label)}`} aria-hidden="true" />
-                {boardGroup.label}
-              </span>
-              <strong>{groupItems.length}건</strong>
-            </div>
-            <div className="resource-card-list">
-              {getVisibleBoardItems(groupItems, expanded).map((item) => (
-                <Link
-                  className="resource-card"
-                  href={`/operations/${item.representative.operationId}${teamQuery}`}
-                  key={item.key}
-                >
-                  <strong>{item.representative.courseName}</strong>
-                  <span className="resource-card-tags">
-                    <Tag tone="gray">{formatBoardItemDateRange(item)}</Tag>
-                    {shouldShowStatusCount(item) ? <Tag tone="blue">{statusCountLabel(item, boardGroup.label)}</Tag> : null}
-                    {courseRoundLabel(item) ? <Tag tone="gray">{courseRoundLabel(item)}</Tag> : null}
-                    {group.owner === UNMATCHED_OWNER ? <Tag tone="pink">OM 매칭 필요</Tag> : null}
-                  </span>
-                </Link>
-              ))}
-              {groupItems.length > MAX_BOARD_CARDS_PER_LANE && !expanded ? (
-                <button className="resource-empty-card resource-more-button" onClick={() => toggleExpandedBoardLane(laneKey)} type="button">
-                  +{groupItems.length - MAX_BOARD_CARDS_PER_LANE}건 더 보기
-                </button>
-              ) : null}
-              {groupItems.length > MAX_BOARD_CARDS_PER_LANE && expanded ? (
-                <button className="resource-empty-card resource-more-button" onClick={() => toggleExpandedBoardLane(laneKey)} type="button">
-                  접기
-                </button>
-              ) : null}
-              {groupItems.length === 0 ? <span className="resource-empty-card">비어 있음</span> : null}
-            </div>
-          </section>
-        );
-      })}
-    </section>
-  );
+function StatusBadge({ status }: { status: OperationStatus }) {
+  return <span className={`status ${STATUS_CLASS[status]}`}>{SIMPLE_STATUS_LABEL[status]}</span>;
 }
 
 function Tag({ children, tone }: { children: string; tone: string }) {
@@ -381,18 +426,23 @@ function CalendarEventCard({ segment }: { segment: CalendarEventSegment }) {
     "calendar-event",
     calendarSegmentPositionClass(segment),
     segment.item.type === "source" ? "source-calendar-event" : "",
+    segment.item.type === "request" ? "request-calendar-event" : "",
     segment.item.eventKind === "absence" ? "absence-calendar-event" : ""
   ].filter(Boolean).join(" ");
   const style = { gridColumn: `${segment.startColumn} / span ${segment.span}`, gridRow: segment.lane + 1 };
   const content = (
     <>
-      <strong>{segment.item.title}</strong>
       <span>
         {segment.item.ownerName ? <Tag tone={ownerTone(segment.item.ownerName)}>{segment.item.ownerName}</Tag> : null}
+        {segment.item.onsiteOwnerName ? (
+          <Tag tone={ownerTone(segment.item.onsiteOwnerName)}>{`${segment.item.onsiteOwnerName}·현장`}</Tag>
+        ) : null}
         {segment.item.type === "source" ? (
           <Tag tone={segment.item.eventKind === "absence" ? "pink" : "gray"}>{sourceEventLabel(segment.item)}</Tag>
         ) : null}
+        {segment.item.type === "request" ? <Tag tone="amber">요청</Tag> : null}
       </span>
+      <strong>{segment.item.title}</strong>
     </>
   );
 
@@ -415,6 +465,7 @@ function buildCalendarWeeks(
   anchorDate: Date,
   operations: OperationSession[],
   calendarEvents: CalendarResourceEvent[],
+  pendingRequestItems: CalendarItem[],
   teamQuery: string,
   ownerMap: Map<string, string>
 ): CalendarWeek[] {
@@ -425,7 +476,8 @@ function buildCalendarWeeks(
       .filter((item): item is CalendarItem => item !== null),
     ...calendarEvents
       .map((event) => sourceEventToCalendarItem(event, ownerMap))
-      .filter((item): item is CalendarItem => item !== null)
+      .filter((item): item is CalendarItem => item !== null),
+    ...pendingRequestItems
   ];
 
   return Array.from({ length: Math.ceil(days.length / 7) }, (_, index) => {
@@ -444,8 +496,8 @@ function buildCalendarDays(anchorDate: Date): CalendarDay[] {
   const month = anchorDate.getMonth();
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
-  const startOffset = (firstDay.getDay() + 6) % 7;
-  const endOffset = 6 - ((lastDay.getDay() + 6) % 7);
+  const startOffset = firstDay.getDay();
+  const endOffset = 6 - lastDay.getDay();
   const start = new Date(year, month, 1 - startOffset);
   const totalDays = startOffset + lastDay.getDate() + endOffset;
 
@@ -526,11 +578,15 @@ function operationToCalendarItem(operation: OperationSession, teamQuery: string,
 
   if (!startDate || !endDate) return null;
 
+  const ownerName = getCalendarOperationOwner(operation.om, ownerMap);
+  const onsiteOwnerName = getCalendarOperationOwner(operation.onsiteOm, ownerMap);
+
   return {
     endDate,
     href: `/operations/${operation.operationId}${teamQuery}`,
     key: `operation-${operation.operationId}`,
-    ownerName: getCalendarOperationOwner(operation.om, ownerMap),
+    onsiteOwnerName: onsiteOwnerName && onsiteOwnerName !== ownerName ? onsiteOwnerName : undefined,
+    ownerName,
     startDate,
     title: operation.courseName,
     type: "operation"
@@ -552,6 +608,34 @@ function sourceEventToCalendarItem(event: CalendarResourceEvent, ownerMap: Map<s
     title: event.title,
     type: "source"
   };
+}
+
+// 아직 operation으로 승격되지 않은 om-request도 회차(세션) 단위로 캘린더에 막대를 그린다.
+function omRequestToCalendarItems(request: OmRequest, teamQuery: string, ownerMap: Map<string, string>): CalendarItem[] {
+  const ownerName = getCalendarOperationOwner(request.assignedOm ?? "", ownerMap);
+
+  return request.sessions.flatMap((session, index) => {
+    const startDate = parseDate(session.date);
+    const endDate = parseDate(session.dateEnd ?? session.date) ?? startDate;
+    if (!startDate || !endDate) return [];
+
+    return [{
+      endDate,
+      href: `/om-request/manage/${request.id}${teamQuery}`,
+      key: `request-${request.id}-${index}`,
+      ownerName,
+      startDate,
+      title: request.courseName,
+      type: "request" as const
+    }];
+  });
+}
+
+function isCalendarItemInWindow(item: CalendarItem, viewDate: Date) {
+  const windowStart = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
+  const windowEnd = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0);
+
+  return item.startDate.getTime() <= windowEnd.getTime() && windowStart.getTime() <= item.endDate.getTime();
 }
 
 function findCalendarLane(laneEnds: number[], startColumn: number) {
@@ -609,44 +693,22 @@ function isToday(date: Date) {
   );
 }
 
-function groupByOwner(operations: OperationSession[], owners: string[], allowedOwners: Map<string, string>) {
-  const sorted = [...operations].sort((a, b) => compareStableText(a.startDate, b.startDate));
-  const groups = new Map<string, OperationSession[]>();
-
-  for (const owner of owners) {
-    groups.set(owner, []);
-  }
-
-  for (const operation of sorted) {
-    for (const owner of getResourceOwners(operation.om, allowedOwners)) {
-      if (!groups.has(owner)) continue;
-
-      groups.set(owner, [...(groups.get(owner) ?? []), operation]);
-    }
-  }
-
-  return Array.from(groups.entries()).map(([owner, ownerOperations]) => ({
-    owner,
-    operations: ownerOperations
-  }));
-}
-
-function buildBoardItems(operations: OperationSession[], owner: string, totalOperations: OperationSession[]): ResourceBoardItem[] {
+function buildBoardItems(operations: OperationSession[], totalOperations: OperationSession[]): ResourceBoardItem[] {
   const grouped = new Map<string, OperationSession[]>();
   const totalGrouped = new Map<string, OperationSession[]>();
 
   for (const operation of totalOperations) {
-    const key = boardTotalKey(operation, owner);
+    const key = boardTotalKey(operation);
     totalGrouped.set(key, [...(totalGrouped.get(key) ?? []), operation]);
   }
 
   for (const operation of operations) {
-    const key = boardMergeKey(operation, owner);
+    const key = boardMergeKey(operation);
     grouped.set(key, [...(grouped.get(key) ?? []), operation]);
   }
 
   return Array.from(grouped.entries())
-    .map(([key, groupedOperations]) => buildBoardItem(key, groupedOperations, totalGrouped.get(boardTotalKey(groupedOperations[0], owner)) ?? groupedOperations))
+    .map(([key, groupedOperations]) => buildBoardItem(key, groupedOperations, totalGrouped.get(boardTotalKey(groupedOperations[0])) ?? groupedOperations))
     .sort((a, b) => compareStableText(a.startDate, b.startDate));
 }
 
@@ -667,9 +729,8 @@ function buildBoardItem(key: string, operations: OperationSession[], totalOperat
   };
 }
 
-function boardMergeKey(operation: OperationSession, owner: string) {
+function boardMergeKey(operation: OperationSession) {
   return [
-    owner,
     operation.courseId,
     operation.companyName,
     operation.courseName,
@@ -679,9 +740,8 @@ function boardMergeKey(operation: OperationSession, owner: string) {
   ].map(normalizeBoardKeyPart).join("|");
 }
 
-function boardTotalKey(operation: OperationSession, owner: string) {
+function boardTotalKey(operation: OperationSession) {
   return [
-    owner,
     operation.courseId,
     operation.companyName,
     operation.courseName,
@@ -709,6 +769,34 @@ function getRosterOwners(ownerRoster: ResourceOwnerRoster) {
   return unique(Object.values(ownerRoster).flatMap((owners) => owners ?? []));
 }
 
+function buildOwnerPartMap(partRoster: OmAvailabilityRoster) {
+  const map = new Map<string, string>();
+
+  for (const [part, names] of Object.entries(partRoster)) {
+    for (const name of names ?? []) {
+      map.set(normalizeOwnerName(name), part);
+    }
+  }
+
+  return map;
+}
+
+function getOwnerPart(owner: string, ownerPartMap: Map<string, string>) {
+  return ownerPartMap.get(normalizeOwnerName(owner)) ?? UNCLASSIFIED_PART;
+}
+
+function ownerNamesInScope(
+  ownerNames: string[],
+  effectiveOwnerFilter: string,
+  partFilter: string,
+  ownerPartMap: Map<string, string>
+) {
+  if (effectiveOwnerFilter !== "전체 담당자") return ownerNames.includes(effectiveOwnerFilter);
+  if (partFilter === ALL_PARTS_FILTER) return true;
+
+  return ownerNames.some((name) => getOwnerPart(name, ownerPartMap) === partFilter);
+}
+
 function isInCalendarWindow(operation: OperationSession, viewDate: Date) {
   const start = parseDate(operation.startDate);
   const end = parseDate(operation.endDate);
@@ -732,8 +820,6 @@ function isCalendarEventInWindow(event: CalendarResourceEvent, viewDate: Date) {
 }
 
 function isInBoardWindow(operation: OperationSession, viewDate: Date) {
-  if (operation.operationStatus === "완료" || operation.operationStatus === "회고완료") return false;
-
   const start = parseDate(operation.startDate);
   const end = parseDate(operation.endDate);
   if (!start || !end) return false;
@@ -786,24 +872,10 @@ function ownerTone(owner: string) {
   return OWNER_TONES[index % OWNER_TONES.length];
 }
 
-function statusGroupTone(label: string) {
-  if (label === "시작 전") return "amber";
-  if (label === "진행 중") return "blue";
-  return "gray";
-}
-
 function sourceEventLabel(item: CalendarItem) {
   if (item.eventKind === "absence") return "부재";
   if (item.eventKind === "nearby_workload") return "주변 일정";
   return "캘린더";
-}
-
-function boardLaneKey(owner: string, label: string) {
-  return `${owner}:${label}`;
-}
-
-function getVisibleBoardItems(items: ResourceBoardItem[], isExpanded: boolean) {
-  return isExpanded ? items : items.slice(0, MAX_BOARD_CARDS_PER_LANE);
 }
 
 function getVisibleCalendarSegments(segments: CalendarEventSegment[], isExpanded: boolean) {
@@ -882,6 +954,27 @@ function getResourceOwners(value: string, allowedOwners: Map<string, string>) {
   return uniqueOwners.includes(UNMATCHED_OWNER) ? [UNMATCHED_OWNER] : uniqueOwners;
 }
 
+// 과정 담당 OM(om)과 실제 현장 강의관리자(onsiteOm) 둘 다의 리소스 화면 담당자를 합친다.
+// 현장운영으로만 지정된 사람도 자신의 캘린더/목록에서 해당 운영을 볼 수 있어야 한다.
+function getOperationResourceOwners(operation: OperationSession, allowedOwners: Map<string, string>) {
+  return unique([
+    ...getResourceOwners(operation.om, allowedOwners),
+    ...getResourceOwners(operation.onsiteOm, allowedOwners)
+  ]);
+}
+
+function isUnmatchedOwnerValue(value: string, allowedOwners: Map<string, string>) {
+  return getResourceOwners(value, allowedOwners).includes(UNMATCHED_OWNER);
+}
+
+function matchesResourceSearch(operation: OperationSession, query: string) {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) return true;
+
+  return [operation.courseName, operation.companyName, operation.om, operation.onsiteOm]
+    .some((field) => field.toLowerCase().includes(normalizedQuery));
+}
+
 function getCalendarOperationOwner(value: string, allowedOwners: Map<string, string>) {
   return (
     splitPersonNames(value, "")
@@ -909,12 +1002,4 @@ function normalizeOwnerName(value: string) {
     .replace(/\[[^\]]*\]/g, "")
     .replace(/\s+/g, "")
     .toLowerCase();
-}
-
-function statusCountLabel(item: ResourceBoardItem, statusLabel: string) {
-  return `${item.operations.length}회 ${statusLabel}`;
-}
-
-function shouldShowStatusCount(item: ResourceBoardItem) {
-  return item.operations.length > 1 || getRoundCount(item.totalOperations) > 1;
 }

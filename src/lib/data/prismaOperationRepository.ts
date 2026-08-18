@@ -27,6 +27,7 @@ import {
   deriveProfit,
   deriveSessionDurationDays,
   deriveSessionDurationType,
+  formatProcessId,
   summarizeOperations
 } from "./operationCalculations";
 import type { OperationRepository } from "./operationRepository";
@@ -160,9 +161,13 @@ export class PrismaOperationRepository implements OperationRepository {
         id: session.id,
         operationId: session.operationId,
         sourceTeam: session.sourceRecords[0]?.sourceTeam ? SOURCE_TEAM[session.sourceRecords[0].sourceTeam] : "미분류",
+        processId: formatProcessId(session.course.processSeq),
+        courseRecordId: session.course.id,
         courseId: session.course.courseId,
         companyName: session.course.company.name,
         courseName: session.course.name,
+        courseCategory: session.course.courseCategory ?? "",
+        tools: session.course.tools ?? "",
         om: session.omName ?? "",
         ld: session.ldName ?? "",
         onsiteOm: session.onsiteOmName ?? "",
@@ -265,7 +270,11 @@ export class PrismaOperationRepository implements OperationRepository {
         update: {
           operationType,
           revenue: input.revenue,
-          revenueRaw: input.revenue === null ? null : String(input.revenue)
+          revenueRaw: input.revenue === null ? null : String(input.revenue),
+          ...(input.courseCategory !== undefined
+            ? { courseCategory: normalizeVisibleText(input.courseCategory) || null }
+            : {}),
+          ...(input.tools !== undefined ? { tools: normalizeVisibleText(input.tools) || null } : {})
         },
         create: {
           companyId: company.id,
@@ -273,7 +282,9 @@ export class PrismaOperationRepository implements OperationRepository {
           name: courseName,
           operationType,
           revenue: input.revenue,
-          revenueRaw: input.revenue === null ? null : String(input.revenue)
+          revenueRaw: input.revenue === null ? null : String(input.revenue),
+          courseCategory: input.courseCategory ? normalizeVisibleText(input.courseCategory) || null : null,
+          tools: input.tools ? normalizeVisibleText(input.tools) || null : null
         }
       });
 
@@ -414,6 +425,25 @@ export class PrismaOperationRepository implements OperationRepository {
       });
 
       data.courseRecordId = course.id;
+    }
+
+    if (input.courseCategory !== undefined || input.tools !== undefined) {
+      const session = await prisma.operationSession.findUnique({
+        select: { courseRecordId: true },
+        where: { operationId }
+      });
+
+      if (!session) {
+        throw new Error("Operation not found.");
+      }
+
+      await prisma.course.update({
+        data: {
+          ...(input.courseCategory !== undefined ? { courseCategory: nullableText(input.courseCategory) } : {}),
+          ...(input.tools !== undefined ? { tools: nullableText(input.tools) } : {})
+        },
+        where: { id: session.courseRecordId }
+      });
     }
 
     if (input.driveLink !== undefined) data.driveLink = nullableText(input.driveLink);

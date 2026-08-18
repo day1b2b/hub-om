@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { isValidTimeRangeText, normalizeTimeRangeText } from "./parsePastedRounds";
 
 type SaveState = "idle" | "saving" | "failed";
 
@@ -58,12 +59,7 @@ export function AddRoundButton({
             <div className="lecture-note-body">
               <label className="lecture-note-field">
                 <span>회차</span>
-                <input
-                  onChange={(event) => setDraft((current) => ({ ...current, roundNo: event.target.value }))}
-                  placeholder="예: 5"
-                  type="text"
-                  value={draft.roundNo}
-                />
+                <input readOnly type="text" value={draft.roundNo} />
               </label>
 
               <div className="add-round-date-row">
@@ -156,8 +152,18 @@ export function AddRoundButton({
       return;
     }
 
+    if (draft.timeText.trim() && !isValidTimeRangeText(draft.timeText)) {
+      setError("시간 형식을 확인해주세요 (예: 09:30 ~ 17:30).");
+      return;
+    }
+
     setSaveState("saving");
     setError(null);
+
+    const normalizedDraft = {
+      ...draft,
+      timeText: draft.timeText.trim() ? normalizeTimeRangeText(draft.timeText) : draft.timeText
+    };
 
     let response: Response;
 
@@ -167,7 +173,7 @@ export function AddRoundButton({
         headers: {
           "content-type": "application/json"
         },
-        body: JSON.stringify(draft)
+        body: JSON.stringify(normalizedDraft)
       });
     } catch {
       setSaveState("failed");

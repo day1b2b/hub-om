@@ -1,0 +1,90 @@
+import { NextResponse } from "next/server";
+import { hasSalesmapConfig, SalesmapSourceReader } from "@/lib/sourceReads/salesmapSourceReader";
+
+/**
+ * 코스ID → {고객사, 과정명} 읽기 전용 조회.
+ *
+ * 만족도 분석기(survey_analysis) 같은 외부 로컬 도구가 코스ID를 입력할 때 고객사·과정명을
+ * 자동 채우도록 돕는 가벼운 조회 엔드포인트다. 세일즈맵 딜을 새로 긁지 않고, 관리자 매출
+ * 동기화와 같은 `SalesmapSourceReader`의 캐시된 결과를 재사용한다(코스ID로 필터만).
+ *
+ * 보안:
+ *   - 공유 토큰(`COURSE_LOOKUP_TOKEN`)이 있어야만 응답한다. 토큰은 저장소에 두지 않고
+ *     배포 환경변수로만 주입한다(세일즈맵 토큰과 동일 원칙).
+ *   - 매출(revenue)은 반환하지 않는다 — 자동 채움에 필요한 고객사·과정명만 노출한다.
+ *   - 설정/토큰이 없으면 survey는 기존 로컬 학습으로 폴백하므로, 실패해도 조용히 넘어갈 수 있게
+ *     명확한 코드로 응답한다.
+ */
+
+export const dynamic = "force-dynamic";
+
+/** 코스ID 비교용 정규화: 제로폭 공백 등 보이지 않는 문자를 제거하고 앞뒤 공백을 없앤다. */
+function normalizeCourseId(value: string): string {
+  return value.replace(/[​-‍﻿ ]/g, "").trim();
+}
+
+/** 요청에서 공유 토큰을 꺼낸다: `Authorization: Bearer` → `x-lookup-token` → `?token=` 순. */
+function readRequestToken(request: Request, url: URL): string {
+  const auth = request.headers.get("authorization") ?? "";
+  const bearer = auth.startsWith("Bearer ") ? auth.slice("Bearer ".length).trim() : "";
+  return bearer || (request.headers.get("x-lookup-token") ?? "").trim() || (url.searchParams.get("token") ?? "").trim();
+}
+
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+
+  const expectedToken = process.env.COURSE_LOOKUP_TOKEN?.trim() ?? "";
+  if (!expectedToken) {
+    // 서버에 조회 토큰이 설정되지 않음 → 기능 자체가 꺼진 상태.
+    return NextResponse.json(
+      { ok: false, configured: false, error: "코스ID 조회가 설정되지 않았습니다(COURSE_LOOKUP_TOKEN)." },
+      { status: 503 }
+    );
+  }
+
+  const providedToken = readRequestToken(request, url);
+  if (providedToken !== expectedToken) {
+    return NextResponse.json({ ok: false, error: "인증 토큰이 올바르지 않습니다." }, { status: 401 });
+  }
+
+  const courseId = (url.searchParams.get("courseId") ?? "").trim();
+  if (!courseId) {
+    return NextResponse.json({ ok: false, error: "courseId가 필요합니다." }, { status: 400 });
+  }
+
+  if (!hasSalesmapConfig()) {
+    return NextResponse.json(
+      { ok: false, configured: false, error: "세일즈맵이 설정되지 않았습니다." },
+      { status: 200 }
+    );
+  }
+
+  const read = await new SalesmapSourceReader().readSalesRecords();
+  if (read.status === "failed") {
+    return NextResponse.json(
+      { ok: false, error: read.issues[0]?.message ?? "세일즈맵 딜을 읽지 못했습니다." },
+      { status: 502 }
+    );
+  }
+
+  const target = normalizeCourseId(courseId);
+  const match = read.items.find((record) => record.courseId != null && normalizeCourseId(record.courseId) === target);
+
+  if (!match) {
+    // 부분 조회(partial)면 아직 못 읽은 딜에 있을 수 있으므로 그 사실을 알려준다.
+    return NextResponse.json({
+      ok: true,
+      found: false,
+      courseId,
+      partial: read.status === "partial"
+    });
+  }
+
+  return NextResponse.json({
+    ok: true,
+    found: true,
+    courseId,
+    company: match.companyName ?? "",
+    courseName: match.courseName ?? ""
+  });
+}

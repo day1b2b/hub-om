@@ -12,6 +12,7 @@ import { EditableOnsiteOmCell } from "./EditableOnsiteOmCell";
 import { EditableResourceRow } from "./EditableResourceRow";
 import { EditableRoundResourceCell } from "./EditableRoundResourceCell";
 import { EditableSessionRow } from "./EditableSessionRow";
+import { EditableToolsItem } from "./EditableToolsItem";
 import { IssueReviewEditor } from "./IssueReviewEditor";
 import { LectureManagementNoteRow } from "./LectureManagementNoteRow";
 import { OperationDiscussionPanel } from "./OperationDiscussionPanel";
@@ -27,6 +28,7 @@ import type {
   OperationDiscussionItem
 } from "@/lib/data/operationCollaboration";
 import { isSameCourse } from "@/lib/data/operationCalculations";
+import { COURSE_CATEGORY_GROUPS } from "@/lib/data/omRequest/omCourseCategoryOptions";
 import type { PersonOptions } from "@/lib/data/personOptions";
 import { displayRoleAssigneeText } from "@/lib/data/roleAssignees";
 import { isNavigableHref, toHref } from "@/lib/links";
@@ -55,6 +57,7 @@ const ONSITE_LABEL: Record<OnsiteRequired, string> = {
 
 interface OperationDetailProps {
   collaboration: OperationCollaboration;
+  extraTools?: string[];
   operation: OperationSession;
   personOptions?: PersonOptions;
   relatedOperations?: OperationSession[];
@@ -64,6 +67,7 @@ interface OperationDetailProps {
 
 export function OperationDetail({
   collaboration,
+  extraTools = [],
   operation,
   personOptions = { ld: [], om: [] },
   relatedOperations = [operation],
@@ -79,7 +83,10 @@ export function OperationDetail({
   const registeredReferenceLinks = referenceResourceLinks.filter((resourceLink) => isNavigableHref(resourceLink.href));
   const satisfactionSummary = getSatisfactionSummary(courseOperations);
   const teamQuery = teamScopeSearchParam(teamScope);
-  const nextRoundNo = String(Math.max(0, ...courseOperations.map((candidate) => Number(candidate.roundNo) || 0)) + 1);
+  const existingRoundNumbers = courseOperations
+    .map((candidate) => Number(candidate.roundNo))
+    .filter((roundNo) => Number.isFinite(roundNo));
+  const nextRoundNo = String(Math.max(0, ...existingRoundNumbers) + 1);
   const fallbackOperationId =
     courseOperations.find((candidate) => candidate.operationId !== operation.operationId)?.operationId ?? null;
   const sameCourseIdOperationIds =
@@ -119,9 +126,10 @@ export function OperationDetail({
         <section className="operation-detail-layout">
           <section className="detail-section compact-info-section">
             <div className="section-title">
-              <h2>일정 / 운영 조건</h2>
+              <h2>과정 정보</h2>
             </div>
             <div className="info-grid">
+              <InfoItem label="과정ID" value={operation.processId || "-"} />
               <EditableInfoItem
                 displayValue={operation.courseId || "미정"}
                 fields={[{ name: "courseId", placeholder: "예: 261326", value: operation.courseId }]}
@@ -133,6 +141,31 @@ export function OperationDetail({
                 operationIds={sameCourseIdOperationIds}
                 value={operation.courseName}
               />
+              <EditableInfoItem
+                displayValue={operation.courseCategory || "미정"}
+                fields={[
+                  {
+                    name: "courseCategory",
+                    optionGroups: COURSE_CATEGORY_GROUPS.map((group) => ({ label: group.major, options: group.minors })),
+                    type: "select",
+                    value: operation.courseCategory
+                  }
+                ]}
+                label="과정 카테고리 소분류"
+                operationId={operation.operationId}
+              />
+              <EditableToolsItem
+                displayValue={operation.tools || "미정"}
+                extraTools={extraTools}
+                operationId={operation.operationId}
+                value={operation.tools}
+              />
+              <ResultReportConditionSelect
+                rounds={courseOperations.map((candidate) => ({
+                  hasResultReport: candidate.hasResultReport,
+                  operationId: candidate.operationId
+                }))}
+              />
               <InfoItem
                 label="교육 형태"
                 value={aggregateUniqueValues(courseOperations, (candidate) => candidate.educationFormat)}
@@ -141,43 +174,47 @@ export function OperationDetail({
               <InfoItem label="회차" value={`총 ${courseOperations.length}회차`} />
               <InfoItem label="교육일수" value={formatTotalEducationDays(courseOperations)} />
               <InfoItem label="교육장" value={operation.region || "미정"} />
-              <ResultReportConditionSelect
-                rounds={courseOperations.map((candidate) => ({
-                  hasResultReport: candidate.hasResultReport,
-                  operationId: candidate.operationId
-                }))}
-              />
             </div>
           </section>
 
-          <section className="detail-section compact-info-section">
-            <div className="section-title">
-              <h2>담당 / 투입</h2>
-            </div>
-            <div className="info-grid">
-              <EditableInfoItem
-                displayValue={operation.om || "미정"}
-                fields={[{ name: "om", options: personOptions.om, type: "name-select", value: operation.om }]}
-                label="OM"
-                operationId={operation.operationId}
-              />
-              <EditableInfoItem
-                displayValue={operation.ld || "미정"}
-                fields={[{ name: "ld", options: personOptions.ld, type: "name-select", value: operation.ld }]}
-                label="LD"
-                operationId={operation.operationId}
-              />
-              <InfoItem label="강사" value={operation.instructors || "미정"} />
-              <InfoItem label="실습코치" value={operation.coach || "미정"} />
-              <InfoItem
-                label="현장 투입"
-                value={aggregateUniqueValues(courseOperations, (candidate) => ONSITE_LABEL[candidate.onsiteRequired])}
-              />
-              <InfoItem label="남은 회차" value={remainingRoundText(operation)} />
-              <InfoItem label="매출" value={formatMoney(operation.revenue)} />
-              <InfoItem label="만족도(평균)" value={satisfactionSummary.totalAverage ?? "미입력"} />
-            </div>
-          </section>
+          <div className="detail-side-stack">
+            <section className="detail-section compact-info-section">
+              <div className="section-title">
+                <h2>담당자</h2>
+              </div>
+              <div className="info-grid">
+                <EditableInfoItem
+                  displayValue={operation.om || "미정"}
+                  fields={[{ name: "om", options: personOptions.om, type: "name-select", value: operation.om }]}
+                  label="OM"
+                  operationId={operation.operationId}
+                />
+                <EditableInfoItem
+                  displayValue={operation.ld || "미정"}
+                  fields={[{ name: "ld", options: personOptions.ld, type: "name-select", value: operation.ld }]}
+                  label="LD"
+                  operationId={operation.operationId}
+                />
+                <InfoItem label="강사" value={operation.instructors || "미정"} />
+                <InfoItem label="실습코치" value={operation.coach || "미정"} />
+                <InfoItem
+                  label="현장 투입"
+                  value={aggregateUniqueValues(courseOperations, (candidate) => ONSITE_LABEL[candidate.onsiteRequired])}
+                />
+              </div>
+            </section>
+
+            <section className="detail-section compact-info-section">
+              <div className="section-title">
+                <h2>지표</h2>
+              </div>
+              <div className="info-grid">
+                <InfoItem label="남은 회차" value={remainingRoundText(operation)} />
+                <InfoItem label="만족도(평균)" value={satisfactionSummary.totalAverage ?? "미입력"} />
+                <InfoItem label="매출" value={formatMoney(operation.revenue)} />
+              </div>
+            </section>
+          </div>
 
           <section className="detail-section resource-status-section required-items-section" id="links">
             <div className="resource-card-grid">
@@ -251,7 +288,7 @@ export function OperationDetail({
                   baseTimeText={operation.timeText}
                   nextRoundNo={nextRoundNo}
                 />
-                <BulkAddRoundsButton baseOperationId={operation.operationId} />
+                <BulkAddRoundsButton baseOperationId={operation.operationId} existingRoundNumbers={existingRoundNumbers} />
                 {courseOperations.length > 1 ? <BulkEditRoundsButton /> : null}
               </div>
             </div>
@@ -397,34 +434,6 @@ export function OperationDetail({
             </section>
           ) : null}
 
-          <section className="detail-section resource-status-section">
-            <div className="resource-card-grid">
-              <div className="resource-summary-card">
-                <div className="resource-row-head">
-                  <strong>만족도</strong>
-                  <span>{satisfactionSummary.totalCount}개 회차</span>
-                </div>
-                <div className="resource-metric-grid">
-                  <CompactValue label="전체 평균" value={satisfactionSummary.totalAverage ?? "미입력"} />
-                  <CompactValue label="강사 평균" value={satisfactionSummary.instructorAverage ?? "미입력"} />
-                </div>
-              </div>
-
-              <div className="resource-summary-card">
-                <div className="resource-row-head">
-                  <strong>비용</strong>
-                  <span>선택 입력</span>
-                </div>
-                <div className="resource-metric-grid">
-                  <CompactValue label="매출" value={formatMoney(operation.revenue)} />
-                  <CompactValue label="비용 합계" value={formatMoney(operation.totalCost)} />
-                  <CompactValue label="수익" value={formatMoney(operation.profit)} />
-                  <CompactValue label="강사비" value={formatMoney(operation.instructorCost)} />
-                </div>
-              </div>
-            </div>
-          </section>
-
           <section className="detail-section wide-detail-section">
             <div className="section-title">
               <h2>이슈 / 회고</h2>
@@ -457,15 +466,6 @@ export function OperationDetail({
 function InfoItem({ label, value }: { label: string; value: string }) {
   return (
     <div className="info-item">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
-}
-
-function CompactValue({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="compact-value">
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
@@ -692,9 +692,7 @@ function formatTotalEducationDays(operations: OperationSession[]): string {
 }
 
 function getCourseOperations(operation: OperationSession, relatedOperations: OperationSession[]): OperationSession[] {
-  const baseOperations = operation.courseId
-    ? relatedOperations.filter((candidate) => isSameCourse(candidate, operation))
-    : [operation];
+  const baseOperations = relatedOperations.filter((candidate) => isSameCourse(candidate, operation));
 
   const uniqueOperations = new Map<string, OperationSession>();
 

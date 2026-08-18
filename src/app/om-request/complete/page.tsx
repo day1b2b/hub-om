@@ -29,7 +29,7 @@ function Badge({ value }: { value: string }) {
 export default async function OmRequestCompletePage({ searchParams }: Props) {
   const params = await searchParams;
   const id = typeof params.id === "string" ? params.id : null;
-  const request = id ? getOmRequest(id) : null;
+  const request = id ? await getOmRequest(id) : null;
 
   return (
     <main className="dashboard-shell">
@@ -40,7 +40,7 @@ export default async function OmRequestCompletePage({ searchParams }: Props) {
             <div className="om-complete-icon">✓</div>
             <div>
               <h1>요청이 접수되었습니다</h1>
-              <p className="page-subtitle">담당자가 확인 후 OM을 배정해드립니다.</p>
+              <p className="page-subtitle">담당자가 확인 후 요청을 처리해드립니다.</p>
             </div>
           </div>
         </header>
@@ -115,6 +115,11 @@ export default async function OmRequestCompletePage({ searchParams }: Props) {
         )}
 
         <div className="om-complete-actions">
+          {request?.operationId && (
+            <Link className="secondary-link" href={`/operations/${request.operationId}`}>
+              운영현황에서 보기
+            </Link>
+          )}
           <Link className="primary-link" href="/om-request">새 요청 제출</Link>
           <Link className="secondary-link" href="/dashboard">대시보드로 이동</Link>
         </div>

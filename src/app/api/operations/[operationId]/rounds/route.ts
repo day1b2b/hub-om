@@ -41,14 +41,29 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
 
   const allOperations = await repository.listOperations();
-  const duplicateRound = allOperations.some(
-    (candidate) => isSameCourse(candidate, baseOperation) && candidate.roundNo === roundNo
-  );
+  const sameCourseOperations = allOperations.filter((candidate) => isSameCourse(candidate, baseOperation));
+  const duplicateRound = sameCourseOperations.some((candidate) => candidate.roundNo === roundNo);
 
   if (duplicateRound) {
     return NextResponse.json(
       { ok: false, error: `이미 등록된 회차입니다 (${roundNo}회차). 엑셀 내용을 확인한 뒤 다시 시도해주세요.` },
       { status: 409 }
+    );
+  }
+
+  const existingRoundNumbers = sameCourseOperations
+    .map((candidate) => Number(candidate.roundNo))
+    .filter((value) => Number.isFinite(value));
+  const nextRoundNo = existingRoundNumbers.length > 0 ? Math.max(...existingRoundNumbers) + 1 : 1;
+  const parsedRoundNo = Number(roundNo);
+
+  if (!Number.isFinite(parsedRoundNo) || parsedRoundNo !== nextRoundNo) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: `회차는 같은 과정 안에서 순차적으로 입력해야 합니다. 다음 회차는 ${nextRoundNo}입니다 (입력값: ${roundNo}).`
+      },
+      { status: 400 }
     );
   }
 

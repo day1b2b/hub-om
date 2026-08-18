@@ -45,9 +45,15 @@ export interface OperationSession {
   id: string;
   operationId: string;
   sourceTeam?: SourceTeam;
+  /** hub-om이 채번하는 과정ID(PRC-000123). Notion 등 외부 원천 병합 항목은 없을 수 있다. */
+  processId?: string;
+  /** Course.id (내부 UUID PK). 같은 과정의 여러 회차(OperationSession)가 이 값을 공유한다. */
+  courseRecordId?: string;
   courseId: string;
   companyName: string;
   courseName: string;
+  courseCategory: string;
+  tools: string;
   om: string;
   ld: string;
   onsiteOm: string;
@@ -102,6 +108,7 @@ export interface CreateOperationInput {
   companyName: string;
   companyWikiLink: string;
   costRaw: string;
+  courseCategory?: string;
   courseId: string;
   courseName: string;
   createdBy?: string;
@@ -129,6 +136,7 @@ export interface CreateOperationInput {
   specialNotes: string;
   startDate: string;
   timeText: string;
+  tools?: string;
   totalCost: number | null;
 }
 
@@ -138,6 +146,7 @@ export interface UpdateOperationInput {
   coach?: string;
   companyWikiLink?: string;
   costRaw?: string;
+  courseCategory?: string;
   courseId?: string;
   courseName?: string;
   driveLink?: string;
@@ -163,6 +172,7 @@ export interface UpdateOperationInput {
   specialNotes?: string;
   startDate?: string;
   timeText?: string;
+  tools?: string;
   totalCost?: number | null;
 }
 

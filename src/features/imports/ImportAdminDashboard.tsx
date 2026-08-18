@@ -55,6 +55,7 @@ export function ImportAdminDashboard({ runs }: ImportAdminDashboardProps) {
                   <tr>
                     <th>상태</th>
                     <th>등록 데이터</th>
+                    <th>올린 사람</th>
                     <th>등록 시각</th>
                     <th>행 수</th>
                     <th>확인 결과</th>
@@ -72,8 +73,9 @@ export function ImportAdminDashboard({ runs }: ImportAdminDashboardProps) {
                         <span>
                           {run.sourceTeam} · {run.sourceType}
                         </span>
-                        <span>{run.notes || "검토 후 운영 데이터에 반영"}</span>
+                        <span title={run.fileName || undefined}>{run.fileName || "파일명 기록 없음"}</span>
                       </td>
+                      <td>{run.importedBy || "기록 없음"}</td>
                       <td>
                         <strong>{run.startedAt}</strong>
                         <span>{run.finishedAt || "종료 전"}</span>
@@ -124,7 +126,10 @@ export function ImportRunDetailView({ run }: ImportRunDetailViewProps) {
           <div>
             <p className="eyebrow">검토 화면</p>
             <h1>{getSourceTypeLabel(run.sourceType)} 확인하기</h1>
-            <p className="lede">읽어낸 값이 어느 과정과 연결될지 확인합니다. 아직 운영 데이터는 바뀌지 않습니다.</p>
+            <p className="lede">
+              읽어낸 값이 어느 과정과 연결될지 확인합니다. 아직 운영 데이터는 바뀌지 않습니다.
+              {run.fileName ? <> · 파일명: <strong>{run.fileName}</strong></> : null}
+            </p>
           </div>
           <Link className="primary-link" href="/admin/imports">
             목록으로
@@ -168,7 +173,14 @@ export function ImportRunDetailView({ run }: ImportRunDetailViewProps) {
             <span>최대 200건 표시</span>
           </div>
           {run.records.length === 0 ? (
-            <EmptyState title="저장된 행이 없습니다" description="파일을 다시 올리거나 등록 설정을 확인해 주세요." />
+            run.rowCount > 0 ? (
+              <EmptyState
+                title="새로 저장된 행이 없습니다 — 전부 이미 등록된 내용과 똑같습니다"
+                description="이 파일의 모든 행이 이전에 올린 등록 건과 완전히 같아서 중복으로 판단해 다시 저장하지 않았습니다. 같은 파일명으로 먼저 올린 등록 이력을 찾아 그쪽에서 검토·반영해 주세요."
+              />
+            ) : (
+              <EmptyState title="저장된 행이 없습니다" description="파일을 다시 올리거나 등록 설정을 확인해 주세요." />
+            )
           ) : (
             <ImportReviewTable canPromoteRecords={!isNotionRun} records={run.records} />
           )}

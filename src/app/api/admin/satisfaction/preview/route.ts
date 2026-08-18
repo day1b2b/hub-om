@@ -86,10 +86,14 @@ export async function POST(request: Request) {
     const ambiguous = results
       .filter((result) => result.status === "ambiguous")
       .map((result) => ({
+        recordId: result.row.recordId,
         course: result.row.course,
         instructor: result.row.instructor,
         date: result.row.date,
+        overall: result.row.overall,
+        posPct: result.row.posPct,
         candidates: result.ranked.slice(0, 3).map((entry) => ({
+          operationId: entry.candidate.id,
           courseName: entry.candidate.courseName,
           company: entry.candidate.companyName ?? "",
           dates: `${entry.candidate.startDate}~${entry.candidate.endDate}`,

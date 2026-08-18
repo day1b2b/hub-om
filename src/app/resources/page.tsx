@@ -1,7 +1,9 @@
 import { ResourceJudgmentPage } from "@/features/resources/ResourceJudgmentPage";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { mergeExternalResourceOperations } from "@/lib/data/externalResourceMerge";
+import { getOmAvailabilityRoster } from "@/lib/data/omAvailability/omAvailabilityLocalRepository";
 import { hasNotionResourceConfig, listNotionResourceOperations } from "@/lib/data/notionResourceOperationRepository";
+import { listOmRequests } from "@/lib/data/omRequest/omRequestLocalRepository";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { getTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFactory";
 import type { ResourceOwnerRoster } from "@/lib/data/teamMemberRepository";
@@ -34,12 +36,25 @@ export default async function ResourcesPage({ searchParams }: ResourcesPageProps
   const scopedOperations = filterOperationsByTeamScope(resourceOperations, teamScope, resourceOwnerRoster);
   const scopedOwnerRoster = filterOwnerRosterByTeamScope(resourceOwnerRoster, teamScope);
   const scopedCalendarEvents = filterCalendarEventsByOwnerRoster(calendarEvents, scopedOwnerRoster);
+  // om-request는 접수 시점에 바로 operation이 생성되므로(omRequestOperationLink), 정상적으로 연결된
+  // 건은 이미 resourceOperations에 들어 있다. 연결이 실패한 예외 건만 캘린더에 별도로 보여준다.
+  const pendingOmRequests = (await listOmRequests()).filter(
+    (request) => !!request.assignedOm && !request.operationId
+  );
+  const teamLabel = teamScope === "team_1" ? "1팀" : teamScope === "team_2" ? "2팀" : null;
+  const scopedPendingOmRequests = teamLabel
+    ? pendingOmRequests.filter((request) => request.team === teamLabel)
+    : pendingOmRequests;
+
+  const partRoster = getOmAvailabilityRoster();
 
   return (
     <ResourceJudgmentPage
       calendarEvents={scopedCalendarEvents}
       operations={scopedOperations}
       ownerRoster={scopedOwnerRoster}
+      partRoster={partRoster}
+      pendingOmRequests={scopedPendingOmRequests}
       teamScope={teamScope}
     />
   );

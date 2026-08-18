@@ -2,9 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import type { OmRequest } from "@/lib/data/omRequest/omRequestTypes";
+import { omRequestManagerName, omRequestStatusLabel, type OmRequest } from "@/lib/data/omRequest/omRequestTypes";
 
 type StatusFilter = "전체" | "배정필요" | "배정완료";
+type PartFilter = "전체" | "1파트" | "2파트" | "3파트";
 type SortDir = "asc" | "desc";
 type SortKey = "createdAt" | "team" | "ld" | "manager" | "company" | "courseName" | "start" | "end" | "status" | "assignedOm";
 
@@ -15,9 +16,7 @@ function formatDate(iso: string) {
 }
 
 function getManager(team: string): string {
-  if (team.includes("1팀")) return "이현정";
-  if (team.includes("2팀")) return "김오틸리아";
-  return "-";
+  return omRequestManagerName(team) ?? "-";
 }
 
 function getDateRange(r: OmRequest): { start: string; end: string } {
@@ -55,6 +54,7 @@ function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
 export function OmRequestTable({ initialRequests }: { initialRequests: OmRequest[] }) {
   const router = useRouter();
   const [filter, setFilter] = useState<StatusFilter>("전체");
+  const [partFilter, setPartFilter] = useState<PartFilter>("전체");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [sortKey, setSortKey] = useState<SortKey>("createdAt");
@@ -64,6 +64,7 @@ export function OmRequestTable({ initialRequests }: { initialRequests: OmRequest
 
   const filtered = requests.filter((r) => {
     if (filter !== "전체" && r.status !== filter) return false;
+    if (partFilter !== "전체" && !r.team.includes(partFilter)) return false;
     if (!query.trim()) return true;
     const q = query.trim().toLowerCase();
     return (
@@ -94,8 +95,20 @@ export function OmRequestTable({ initialRequests }: { initialRequests: OmRequest
     배정완료: requests.filter((r) => r.status === "배정완료").length
   };
 
+  const partCounts: Record<PartFilter, number> = {
+    전체: requests.length,
+    "1파트": requests.filter((r) => r.team.includes("1파트")).length,
+    "2파트": requests.filter((r) => r.team.includes("2파트")).length,
+    "3파트": requests.filter((r) => r.team.includes("3파트")).length
+  };
+
   function changeFilter(f: StatusFilter) {
     setFilter(f);
+    setPage(1);
+  }
+
+  function changePartFilter(p: PartFilter) {
+    setPartFilter(p);
     setPage(1);
   }
 
@@ -124,6 +137,17 @@ export function OmRequestTable({ initialRequests }: { initialRequests: OmRequest
 
   return (
     <div className="om-manage-wrap">
+      <div className="om-manage-part-filters">
+        {(["전체", "1파트", "2파트", "3파트"] as PartFilter[]).map((p) => (
+          <button
+            key={p}
+            className={`om-filter-btn${partFilter === p ? " selected" : ""}`}
+            onClick={() => changePartFilter(p)}
+          >
+            {p} <span className="om-filter-count">{partCounts[p]}</span>
+          </button>
+        ))}
+      </div>
       <div className="om-manage-toolbar">
         <div className="om-manage-filters">
           {(["전체", "배정필요", "배정완료"] as StatusFilter[]).map((s) => (
@@ -132,7 +156,7 @@ export function OmRequestTable({ initialRequests }: { initialRequests: OmRequest
               className={`om-filter-btn${filter === s ? " selected" : ""}`}
               onClick={() => changeFilter(s)}
             >
-              {s} <span className="om-filter-count">{counts[s]}</span>
+              {s === "전체" ? s : omRequestStatusLabel(s)} <span className="om-filter-count">{counts[s]}</span>
             </button>
           ))}
         </div>
@@ -200,7 +224,7 @@ export function OmRequestTable({ initialRequests }: { initialRequests: OmRequest
                       <td>{end}</td>
                       <td>
                         <span className={`om-status-badge ${r.status === "배정필요" ? "need" : "done"}`}>
-                          {r.status}
+                          {omRequestStatusLabel(r.status)}
                         </span>
                       </td>
                       <td>{r.assignedOm || <span className="td-muted">-</span>}</td>

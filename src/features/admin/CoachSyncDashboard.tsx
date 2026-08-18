@@ -36,18 +36,6 @@ const SYNC_SOURCES: SyncSource[] = [
     endpoint: "/api/admin/sync-notion-instructors",
     description:
       "노션 강사 DB에서 강사 정보(소속, 전문분야, 담당 강의, 기본 강사료, 섭외지양 등)를 가져와 강사위키에 반영합니다. 연락처·이메일·생년월일은 저장하지 않습니다."
-  },
-  {
-    id: "samsung",
-    name: "삼성 일정",
-    endpoint: "/api/sync/samsung-schedule",
-    description: "삼성 일정 시트에서 코치 일정을 동기화합니다."
-  },
-  {
-    id: "all",
-    name: "전체 한 번에",
-    endpoint: "/api/sync/all",
-    description: "위 세 소스를 순서대로 모두 동기화합니다."
   }
 ];
 

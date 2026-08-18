@@ -1,6 +1,6 @@
 "use client";
 
-import { type CSSProperties, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 interface MatchedItem {
   course: string;
@@ -18,10 +18,21 @@ interface MatchedItem {
 }
 
 interface AmbiguousItem {
+  recordId: string;
   course: string;
   instructor: string;
   date: string;
-  candidates: Array<{ courseName: string; company: string; dates: string; score: number }>;
+  overall: string;
+  posPct: number | null;
+  candidates: Array<{ operationId: string; courseName: string; company: string; dates: string; score: number }>;
+}
+
+interface LinkResponse {
+  ok: boolean;
+  error?: string;
+  applied?: Array<{ operation: string; value: string }>;
+  skipped?: Array<{ course: string; date: string; reason: string }>;
+  failed?: Array<{ error: string }>;
 }
 
 interface UnmatchedItem {
@@ -60,16 +71,48 @@ export function SatisfactionMatchPreview() {
   const [reauthRequired, setReauthRequired] = useState(false);
   const [data, setData] = useState<PreviewResponse | null>(null);
   const [applying, setApplying] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [applyResult, setApplyResult] = useState<ApplyResponse | null>(null);
+  const [linking, setLinking] = useState("");
+  const [linkChoice, setLinkChoice] = useState<Record<string, string>>({});
+  const [linkNote, setLinkNote] = useState<Record<string, string>>({});
+
+  /** 모호 건을 사람이 고른 운영에 수동 연결한다. 자동 반영과 같은 안전 규칙(빈 회차만)을 서버가 적용한다. */
+  async function runLink(recordId: string, operationId: string) {
+    if (!recordId || !operationId || linking) return;
+
+    setLinking(recordId);
+    setLinkNote((prev) => ({ ...prev, [recordId]: "" }));
+    try {
+      const response = await fetch("/api/admin/satisfaction/link", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ recordId, operationId, spreadsheetUrl, tabTitle, headerRowNumber })
+      });
+      const payload = (await response.json()) as LinkResponse;
+      if (!response.ok || !payload.ok) {
+        setLinkNote((prev) => ({ ...prev, [recordId]: payload.error ?? "연결에 실패했습니다." }));
+        return;
+      }
+      if (payload.applied && payload.applied.length > 0) {
+        await runPreview(); // 연결되면 matched로 이동하므로 최신 상태로 다시 읽는다
+        return;
+      }
+      const reason = payload.skipped?.[0]?.reason ?? payload.failed?.[0]?.error ?? "반영되지 않았어요.";
+      setLinkNote((prev) => ({ ...prev, [recordId]: reason }));
+    } catch {
+      setLinkNote((prev) => ({ ...prev, [recordId]: "네트워크 오류가 발생했습니다." }));
+    } finally {
+      setLinking("");
+    }
+  }
 
   /** 자동연결 건을 운영 회차 만족도에 기록한다. 이미 값이 있는 회차는 서버가 건너뛴다. */
   async function runApply() {
     const count = data?.stats?.matched ?? 0;
     if (count === 0) return;
-    if (!window.confirm(`자동연결 ${count}건을 운영 회차 만족도에 반영할까요?\n이미 값이 있는 회차는 그대로 둡니다.`)) {
-      return;
-    }
 
+    setConfirming(false);
     setApplying(true);
     setError("");
     setApplyResult(null);
@@ -97,6 +140,7 @@ export function SatisfactionMatchPreview() {
     setLoading(true);
     setError("");
     setReauthRequired(false);
+    setConfirming(false);
     setData(null);
 
     try {
@@ -132,73 +176,14 @@ export function SatisfactionMatchPreview() {
   }, []);
 
   const stats = data?.stats;
+  const matched = data?.matched ?? [];
+  const ambiguous = data?.ambiguous ?? [];
+  const unmatched = data?.unmatched ?? [];
 
   return (
-    <main className="preview-shell" style={{ padding: "24px", maxWidth: "1100px", margin: "0 auto" }}>
-      <header style={{ marginBottom: "16px" }}>
-        <h1 style={{ margin: "0 0 8px" }}>만족도 매칭 미리보기</h1>
-        <p style={{ color: "#555", margin: 0 }}>
-          화면을 열면 팀 집계 시트를 자동으로 읽어 최신 매칭 상태를 보여줍니다. 조회만 하며 실제
-          데이터는 변경하지 않습니다. 미매칭 건은 시트에서 코스ID·일정을 고치면 다음 조회 때 자동으로
-          매칭됩니다. (다른 시트를 볼 때만 아래 주소를 직접 입력)
-        </p>
-      </header>
-
-      <section
-        style={{ display: "grid", gap: "12px", padding: "16px", border: "1px solid #e5e7eb", borderRadius: "8px" }}
-      >
-        <label style={{ display: "grid", gap: "4px" }}>
-          <span>구글 스프레드시트 URL</span>
-          <input
-            type="text"
-            value={spreadsheetUrl}
-            onChange={(event) => setSpreadsheetUrl(event.target.value)}
-            placeholder="https://docs.google.com/spreadsheets/d/..."
-            style={{ padding: "8px", border: "1px solid #d1d5db", borderRadius: "6px" }}
-          />
-        </label>
-        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-          <label style={{ display: "grid", gap: "4px" }}>
-            <span>탭 이름</span>
-            <input
-              type="text"
-              value={tabTitle}
-              onChange={(event) => setTabTitle(event.target.value)}
-              style={{ padding: "8px", border: "1px solid #d1d5db", borderRadius: "6px" }}
-            />
-          </label>
-          <label style={{ display: "grid", gap: "4px" }}>
-            <span>헤더 행 번호</span>
-            <input
-              type="number"
-              min={1}
-              value={headerRowNumber}
-              onChange={(event) => setHeaderRowNumber(Math.max(1, Number(event.target.value) || 1))}
-              style={{ padding: "8px", width: "120px", border: "1px solid #d1d5db", borderRadius: "6px" }}
-            />
-          </label>
-        </div>
-        <div>
-          <button
-            type="button"
-            onClick={runPreview}
-            disabled={loading || spreadsheetUrl.trim() === ""}
-            style={{
-              padding: "10px 18px",
-              borderRadius: "6px",
-              border: "none",
-              background: loading ? "#9ca3af" : "#2563eb",
-              color: "#fff",
-              cursor: loading ? "default" : "pointer"
-            }}
-          >
-            {loading ? "매칭 중..." : "미리보기 실행"}
-          </button>
-        </div>
-      </section>
-
+    <>
       {error ? (
-        <p style={{ color: "#b91c1c", marginTop: "16px" }}>
+        <p className="sync-error">
           {error}
           {reauthRequired ? (
             <>
@@ -209,49 +194,35 @@ export function SatisfactionMatchPreview() {
         </p>
       ) : null}
 
+      {loading && !data ? <p className="satisfaction-loading">최신 매칭 상태를 불러오는 중…</p> : null}
+
       {stats ? (
-        <p style={{ marginTop: "20px", fontWeight: 600 }}>
-          시트 {stats.total}행 · 운영 {stats.operations}건 →{" "}
-          <span style={{ color: "#15803d" }}>자동연결 {stats.matched}</span> ·{" "}
-          <span style={{ color: "#b45309" }}>모호 {stats.ambiguous}</span> ·{" "}
-          <span style={{ color: "#b91c1c" }}>미매칭 {stats.unmatched}</span>
-        </p>
+        <dl className="sync-stats satisfaction-summary">
+          <Stat label="시트 행" value={stats.total} />
+          <Stat label="운영" value={stats.operations} />
+          <Stat label="자동연결" value={stats.matched} tone="create" />
+          <Stat label="모호" value={stats.ambiguous} />
+          <Stat label="미매칭" value={stats.unmatched} tone={stats.unmatched > 0 ? "error" : undefined} />
+        </dl>
       ) : null}
 
       {applyResult?.stats ? (
-        <section
-          style={{
-            marginTop: "16px",
-            padding: "12px 16px",
-            border: "1px solid #bbf7d0",
-            background: "#f0fdf4",
-            borderRadius: "8px"
-          }}
-        >
-          <strong style={{ color: "#166534" }}>
-            반영 완료 — 기록 {applyResult.stats.applied}건 · 건너뜀 {applyResult.stats.skipped}건
+        <div className="sync-result satisfaction-apply-result">
+          <div className="sync-result-banner applied">
+            ✅ 반영 완료 — 기록 {applyResult.stats.applied}건 · 건너뜀 {applyResult.stats.skipped}건
             {applyResult.stats.failed > 0 ? ` · 실패 ${applyResult.stats.failed}건` : ""}
-          </strong>
+          </div>
           {applyResult.applied && applyResult.applied.length > 0 ? (
-            <ul style={{ margin: "8px 0 0", paddingLeft: "20px", fontSize: "13px", color: "#166534" }}>
+            <ul className="satisfaction-apply-list">
               {applyResult.applied.map((item, index) => (
                 <li key={`a-${index}`}>
-                  {item.operation} ← {item.overall}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-          {applyResult.skipped && applyResult.skipped.length > 0 ? (
-            <ul style={{ margin: "8px 0 0", paddingLeft: "20px", fontSize: "13px", color: "#555" }}>
-              {applyResult.skipped.map((item, index) => (
-                <li key={`s-${index}`}>
-                  {item.course} ({item.date}) — {item.reason}
+                  {item.operation} ← <strong>{item.overall}</strong>
                 </li>
               ))}
             </ul>
           ) : null}
           {applyResult.failed && applyResult.failed.length > 0 ? (
-            <ul style={{ margin: "8px 0 0", paddingLeft: "20px", fontSize: "13px", color: "#b91c1c" }}>
+            <ul className="satisfaction-apply-list is-failed">
               {applyResult.failed.map((item, index) => (
                 <li key={`f-${index}`}>
                   {item.course} ({item.date}) — {item.error}
@@ -259,63 +230,82 @@ export function SatisfactionMatchPreview() {
               ))}
             </ul>
           ) : null}
-        </section>
+        </div>
       ) : null}
 
-      {data?.matched && data.matched.length > 0 ? (
-        <section style={{ marginTop: "16px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-            <h2 style={{ fontSize: "16px", margin: 0 }}>자동 연결 가능</h2>
+      {matched.length > 0 ? (
+        <section className="table-section">
+          <div className="table-header">
+            <h2>자동 연결 가능</h2>
+            <span>{matched.length}건</span>
+          </div>
+
+          <div className="satisfaction-apply-bar">
             <button
+              className="sync-btn sync-btn-apply"
               type="button"
-              onClick={runApply}
+              onClick={() => setConfirming(true)}
               disabled={applying || loading}
-              style={{
-                padding: "8px 16px",
-                borderRadius: "6px",
-                border: "none",
-                background: applying || loading ? "#9ca3af" : "#15803d",
-                color: "#fff",
-                cursor: applying || loading ? "default" : "pointer",
-                fontWeight: 600
-              }}
             >
-              {applying ? "반영 중..." : `운영 회차에 반영 (${data.matched.length}건)`}
+              {applying ? "반영 중…" : `운영 회차에 반영 (${matched.length}건)`}
             </button>
-            <span style={{ color: "#555", fontSize: "13px" }}>
-              아래 표의 만족도를 운영 회차에 기록합니다. 이미 값이 있는 회차(현재값이 &quot;미입력&quot;이 아닌 행)는
-              그대로 둡니다.
+            <span className="satisfaction-apply-note">
+              아래 표의 만족도를 운영 회차에 기록합니다. 이미 값이 있는 회차(현재값이 “미입력”이 아닌 행)는 그대로 둡니다.
             </span>
           </div>
-          <div style={{ overflowX: "auto", marginTop: "8px" }}>
-            <table style={tableStyle}>
+
+          {confirming ? (
+            <div className="sync-confirm" role="alertdialog" aria-label="만족도 반영 확인">
+              <p>
+                <strong>자동연결 {matched.length}건</strong>을 운영 회차 만족도에 반영합니다. 이미 값이 있는 회차는
+                그대로 둡니다. 진행할까요?
+              </p>
+              <div className="sync-confirm-actions">
+                <button className="sync-btn sync-btn-danger" type="button" onClick={runApply}>
+                  반영 실행
+                </button>
+                <button className="sync-btn sync-btn-ghost" type="button" onClick={() => setConfirming(false)}>
+                  취소
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="table-wrap">
+            <table>
               <thead>
                 <tr>
-                  <th style={thStyle}>시트 과정</th>
-                  <th style={thStyle}>강사</th>
-                  <th style={thStyle}>일자</th>
-                  <th style={thStyle}>만족도</th>
-                  <th style={thStyle}>연결될 운영</th>
-                  <th style={thStyle}>운영 일정</th>
-                  <th style={thStyle}>현재값</th>
+                  <th>시트 과정</th>
+                  <th>강사</th>
+                  <th>일자</th>
+                  <th>만족도</th>
+                  <th>연결될 운영</th>
+                  <th>운영 일정</th>
+                  <th>현재값 → 반영</th>
                 </tr>
               </thead>
               <tbody>
-                {data.matched.map((item, index) => (
+                {matched.map((item, index) => (
                   <tr key={`m-${index}`}>
-                    <td style={tdStyle}>{item.course}</td>
-                    <td style={tdStyle}>{item.instructor}</td>
-                    <td style={tdStyle}>{item.date}</td>
-                    <td style={tdStyle}>
-                      {item.overall}
-                      {item.posPct != null ? ` (긍정 ${item.posPct}%)` : ""}
+                    <td>{item.course}</td>
+                    <td>{item.instructor}</td>
+                    <td>{item.date}</td>
+                    <td>
+                      <strong>{item.overall}</strong>
+                      {item.posPct != null ? <span>긍정 {item.posPct}%</span> : null}
                     </td>
-                    <td style={tdStyle}>
-                      {item.operationCompany ? `${item.operationCompany} / ` : ""}
-                      {item.operationCourse}
+                    <td>
+                      <strong>{item.operationCourse}</strong>
+                      {item.operationCompany ? <span>{item.operationCompany}</span> : null}
                     </td>
-                    <td style={tdStyle}>{item.operationDates}</td>
-                    <td style={tdStyle}>{item.currentSatisfaction || "미입력"}</td>
+                    <td>{item.operationDates}</td>
+                    <td>
+                      {item.currentSatisfaction ? (
+                        item.currentSatisfaction
+                      ) : (
+                        <span className="satisfaction-will-fill">미입력 → {item.overall}</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -324,63 +314,107 @@ export function SatisfactionMatchPreview() {
         </section>
       ) : null}
 
-      {data?.ambiguous && data.ambiguous.length > 0 ? (
-        <section style={{ marginTop: "16px" }}>
-          <h2 style={{ fontSize: "16px" }}>모호 (수동 확인 필요)</h2>
-          <div style={{ overflowX: "auto" }}>
-            <table style={tableStyle}>
+      {ambiguous.length > 0 ? (
+        <section className="table-section">
+          <div className="table-header">
+            <h2>모호 · 후보 중에서 연결</h2>
+            <span>{ambiguous.length}건</span>
+          </div>
+          <p className="satisfaction-section-note">
+            후보가 여럿이라 자동 연결하지 않았어요. 맞는 운영을 골라 연결하세요. 이미 값이 있는 회차는 덮어쓰지 않습니다.
+          </p>
+          <div className="table-wrap">
+            <table>
               <thead>
                 <tr>
-                  <th style={thStyle}>시트 과정</th>
-                  <th style={thStyle}>강사</th>
-                  <th style={thStyle}>일자</th>
-                  <th style={thStyle}>후보들</th>
+                  <th>시트 과정</th>
+                  <th>강사</th>
+                  <th>일자</th>
+                  <th>만족도</th>
+                  <th>연결할 운영 선택</th>
                 </tr>
               </thead>
               <tbody>
-                {data.ambiguous.map((item, index) => (
-                  <tr key={`a-${index}`}>
-                    <td style={tdStyle}>{item.course}</td>
-                    <td style={tdStyle}>{item.instructor}</td>
-                    <td style={tdStyle}>{item.date}</td>
-                    <td style={tdStyle}>
-                      {item.candidates
-                        .map((candidate) => `${candidate.courseName} (${candidate.dates}, ${candidate.score})`)
-                        .join(" · ")}
-                    </td>
-                  </tr>
-                ))}
+                {ambiguous.map((item, index) => {
+                  const chosen = linkChoice[item.recordId] ?? item.candidates[0]?.operationId ?? "";
+                  return (
+                    <tr key={item.recordId || `a-${index}`}>
+                      <td>{item.course}</td>
+                      <td>{item.instructor}</td>
+                      <td>{item.date}</td>
+                      <td>
+                        <strong>{item.overall}</strong>
+                        {item.posPct != null ? <span>긍정 {item.posPct}%</span> : null}
+                      </td>
+                      <td>
+                        {item.recordId ? (
+                          <div className="satisfaction-link-cell">
+                            <select
+                              value={chosen}
+                              onChange={(event) =>
+                                setLinkChoice((prev) => ({ ...prev, [item.recordId]: event.target.value }))
+                              }
+                            >
+                              {item.candidates.map((candidate) => (
+                                <option key={candidate.operationId} value={candidate.operationId}>
+                                  {candidate.company ? `${candidate.company} / ` : ""}
+                                  {candidate.courseName} ({candidate.dates}) · 점수 {candidate.score}
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              className="sync-btn sync-btn-apply"
+                              type="button"
+                              disabled={linking === item.recordId || !chosen}
+                              onClick={() => runLink(item.recordId, chosen)}
+                            >
+                              {linking === item.recordId ? "연결 중…" : "이 운영에 연결"}
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="satisfaction-apply-note">record_id 없음 — 시트에서 확인하세요</span>
+                        )}
+                        {linkNote[item.recordId] ? (
+                          <span className="satisfaction-link-note">{linkNote[item.recordId]}</span>
+                        ) : null}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </section>
       ) : null}
 
-      {data?.unmatched && data.unmatched.length > 0 ? (
-        <section style={{ marginTop: "16px" }}>
-          <h2 style={{ fontSize: "16px" }}>미매칭 (연결할 운영을 찾지 못함)</h2>
-          <p style={{ color: "#555", margin: "0 0 8px", fontSize: "13px" }}>
+      {unmatched.length > 0 ? (
+        <section className="table-section">
+          <div className="table-header">
+            <h2>미매칭 · 연결할 운영을 찾지 못함</h2>
+            <span>{unmatched.length}건</span>
+          </div>
+          <p className="satisfaction-section-note">
             시트에서 코스ID·일정을 고치면 다음 조회 때 자동으로 매칭됩니다. 테스트 행은 시트에서 삭제하세요.
           </p>
-          <div style={{ overflowX: "auto" }}>
-            <table style={tableStyle}>
+          <div className="table-wrap">
+            <table>
               <thead>
                 <tr>
-                  <th style={thStyle}>시트 과정</th>
-                  <th style={thStyle}>강사</th>
-                  <th style={thStyle}>일자</th>
-                  <th style={thStyle}>courseId</th>
-                  <th style={thStyle}>이유 / 조치</th>
+                  <th>시트 과정</th>
+                  <th>강사</th>
+                  <th>일자</th>
+                  <th>courseId</th>
+                  <th>이유 / 조치</th>
                 </tr>
               </thead>
               <tbody>
-                {data.unmatched.map((item, index) => (
+                {unmatched.map((item, index) => (
                   <tr key={`u-${index}`}>
-                    <td style={tdStyle}>{item.course}</td>
-                    <td style={tdStyle}>{item.instructor}</td>
-                    <td style={tdStyle}>{item.date}</td>
-                    <td style={tdStyle}>{item.courseId}</td>
-                    <td style={tdStyle}>{item.reason ?? ""}</td>
+                    <td>{item.course}</td>
+                    <td>{item.instructor}</td>
+                    <td>{item.date}</td>
+                    <td>{item.courseId}</td>
+                    <td>{item.reason ?? ""}</td>
                   </tr>
                 ))}
               </tbody>
@@ -388,15 +422,62 @@ export function SatisfactionMatchPreview() {
           </div>
         </section>
       ) : null}
-    </main>
+
+      {stats && stats.total === 0 && !loading ? (
+        <div className="empty-state">
+          <strong>시트에서 읽을 데이터가 없어요</strong>
+          <p>탭 이름·헤더 행 번호가 맞는지 확인하거나, 아래에서 다른 시트를 불러와 주세요.</p>
+        </div>
+      ) : null}
+
+      <details className="sheet-lookup">
+        <summary>다른 시트에서 불러오기</summary>
+        <div className="sheet-lookup-body">
+          <label>
+            <span>구글 스프레드시트 URL</span>
+            <input
+              type="text"
+              value={spreadsheetUrl}
+              onChange={(event) => setSpreadsheetUrl(event.target.value)}
+              placeholder="https://docs.google.com/spreadsheets/d/..."
+            />
+          </label>
+          <div className="sheet-lookup-row">
+            <label>
+              <span>탭 이름</span>
+              <input type="text" value={tabTitle} onChange={(event) => setTabTitle(event.target.value)} />
+            </label>
+            <label>
+              <span>헤더 행 번호</span>
+              <input
+                type="number"
+                min={1}
+                value={headerRowNumber}
+                onChange={(event) => setHeaderRowNumber(Math.max(1, Number(event.target.value) || 1))}
+              />
+            </label>
+          </div>
+          <div>
+            <button
+              className="sync-btn sync-btn-preview"
+              type="button"
+              onClick={runPreview}
+              disabled={loading || spreadsheetUrl.trim() === ""}
+            >
+              {loading ? "매칭 중…" : "이 시트로 미리보기"}
+            </button>
+          </div>
+        </div>
+      </details>
+    </>
   );
 }
 
-const tableStyle: CSSProperties = { borderCollapse: "collapse", width: "100%", fontSize: "13px" };
-const thStyle: CSSProperties = {
-  textAlign: "left",
-  borderBottom: "2px solid #e5e7eb",
-  padding: "6px 8px",
-  whiteSpace: "nowrap"
-};
-const tdStyle: CSSProperties = { borderBottom: "1px solid #f1f5f9", padding: "6px 8px" };
+function Stat({ label, value, tone }: { label: string; value: number; tone?: "create" | "update" | "error" }) {
+  return (
+    <div className={`sync-stat ${tone ?? ""}`}>
+      <dt>{label}</dt>
+      <dd>{value.toLocaleString("ko-KR")}</dd>
+    </div>
+  );
+}

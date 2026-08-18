@@ -2,7 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppSidebar } from "@/components/AppSidebar";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
-import { getOmRequest } from "@/lib/data/omRequest/omRequestLocalRepository";
+import { getOmNamesForPart } from "@/lib/data/omAvailability/omAvailabilityLocalRepository";
+import { buildOmBusyDates } from "@/lib/data/omAvailability/omBusyDates";
+import { recommendOms } from "@/lib/data/omAvailability/recommendOms";
+import { getCourseCategoryMajor } from "@/lib/data/omRequest/omCourseCategoryOptions";
+import { getOmRequest, listOmRequests } from "@/lib/data/omRequest/omRequestLocalRepository";
+import { canManageOmRequestAssignment, omRequestManagerName, omRequestStatusLabel } from "@/lib/data/omRequest/omRequestTypes";
+import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
+import { getTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFactory";
 import { AssignForm } from "./AssignForm";
 import { RequestActions } from "./RequestActions";
 
@@ -31,10 +38,24 @@ function YNField({ label, value }: { label: string; value: string }) {
 }
 
 export default async function OmRequestDetailPage({ params }: Props) {
-  await requireWorkspaceSession();
+  const session = await requireWorkspaceSession();
   const { id } = await params;
-  const request = getOmRequest(id);
+  const request = await getOmRequest(id);
   if (!request) notFound();
+
+  const [operations, roleRoster, allRequests] = await Promise.all([
+    getOperationRepository().listOperations(),
+    getTeamMemberRepository().listRoleRosters(),
+    listOmRequests()
+  ]);
+  const busyDatesByOm = buildOmBusyDates(operations, allRequests, request.id);
+  const partOmNames = getOmNamesForPart(request.team);
+  const recommendations = recommendOms(request.sessions, partOmNames, busyDatesByOm);
+  const omRoster = Array.from(new Set(Object.values(roleRoster.om).flatMap((names) => names ?? [])));
+
+  const currentUserName = session.user?.name ?? session.user?.email?.split("@")[0] ?? "";
+  const partManagerName = omRequestManagerName(request.team);
+  const canAssign = canManageOmRequestAssignment(request.team, currentUserName, session.user?.email);
 
   const createdAt = new Date(request.createdAt).toLocaleString("ko-KR", {
     year: "numeric", month: "2-digit", day: "2-digit",
@@ -57,9 +78,15 @@ export default async function OmRequestDetailPage({ params }: Props) {
             <p className="page-subtitle">{request.company} · {request.team} · 접수 {createdAt}</p>
           </div>
           <div className="detail-header-actions">
-            <Link className="secondary-action" href={`/operations/new?fromRequestId=${request.id}`}>
-              이 요청으로 운영 등록
-            </Link>
+            {request.operationId ? (
+              <Link className="secondary-action" href={`/operations/${request.operationId}`}>
+                운영현황에서 보기
+              </Link>
+            ) : (
+              <Link className="secondary-action" href={`/operations/new?fromRequestId=${request.id}`}>
+                이 요청으로 운영 등록
+              </Link>
+            )}
             <RequestActions id={request.id} />
           </div>
         </header>
@@ -78,6 +105,9 @@ export default async function OmRequestDetailPage({ params }: Props) {
                 <Field label="코스 ID" value={request.courseId} />
                 <Field label="과정명" value={request.courseName} />
                 <Field label="강사명" value={request.instructorName} />
+                <Field label="과정 카테고리 대분류" value={request.courseCategoryMajor || getCourseCategoryMajor(request.courseCategory)} />
+                <Field label="과정 카테고리 소분류" value={request.courseCategory} />
+                <Field label="사용 tool" value={request.tools} />
                 <Field wide label="싱크업 링크" value={request.syncupLink} />
                 <Field wide label="드라이브 링크" value={request.driveLink} />
               </div>
@@ -135,12 +165,18 @@ export default async function OmRequestDetailPage({ params }: Props) {
           <aside className="detail-sidebar">
             <div className="detail-card">
               <h2>
-                OM 배정
+                OM 지정
                 <span className={`om-status-badge ${request.status === "배정필요" ? "need" : "done"}`} style={{ fontSize: 11 }}>
-                  {request.status}
+                  {omRequestStatusLabel(request.status)}
                 </span>
               </h2>
-              <AssignForm request={request} />
+              <AssignForm
+                canAssign={canAssign}
+                managerName={partManagerName}
+                omRoster={omRoster}
+                recommendations={recommendations}
+                request={request}
+              />
             </div>
           </aside>
         </div>

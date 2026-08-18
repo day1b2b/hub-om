@@ -27,10 +27,9 @@ export default async function NewOperationPage({ searchParams }: NewOperationPag
   const effectiveRoleRoster = mergeRoleRosters(roleRoster, buildRoleRosterFromOperations(operations));
   const scopedRoleRoster = filterRoleRosterByTeamScope(effectiveRoleRoster, teamScope);
   const storageTarget = process.env.OPERATION_DATA_SOURCE === "local" || !process.env.DATABASE_URL ? "로컬 JSON" : "운영 DB";
-  const today = formatDate(new Date());
   const personOptions = buildPersonOptions(scopedRoleRoster);
   const fromRequestId = firstParamValue(params.fromRequestId);
-  const initialValues = fromRequestId ? buildInitialValuesFromOmRequest(fromRequestId) : undefined;
+  const initialValues = fromRequestId ? await buildInitialValuesFromOmRequest(fromRequestId) : undefined;
 
   return (
     <main className="dashboard-shell">
@@ -47,25 +46,18 @@ export default async function NewOperationPage({ searchParams }: NewOperationPag
           </div>
         </header>
 
-        <OperationCreateForm initialValues={initialValues} personOptions={personOptions} teamScope={teamScope} today={today} />
+        <OperationCreateForm initialValues={initialValues} personOptions={personOptions} teamScope={teamScope} />
       </section>
     </main>
   );
-}
-
-function formatDate(value: Date) {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  const day = String(value.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
 }
 
 function firstParamValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
-function buildInitialValuesFromOmRequest(requestId: string) {
-  const request = getOmRequest(requestId);
+async function buildInitialValuesFromOmRequest(requestId: string) {
+  const request = await getOmRequest(requestId);
   if (!request) return undefined;
 
   const firstSession = request.sessions[0];
@@ -82,6 +74,7 @@ function buildInitialValuesFromOmRequest(requestId: string) {
     operationDetail: request.syncupLink,
     region: firstSession?.location,
     startDate: firstSession?.date,
-    timeText: firstSession?.timeStart && firstSession?.timeEnd ? `${firstSession.timeStart} ~ ${firstSession.timeEnd}` : undefined
+    timeText: firstSession?.timeStart && firstSession?.timeEnd ? `${firstSession.timeStart} ~ ${firstSession.timeEnd}` : undefined,
+    trainingType: request.trainingType
   };
 }

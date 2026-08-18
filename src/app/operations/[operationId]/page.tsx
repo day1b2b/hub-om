@@ -6,6 +6,7 @@ import { LocalJsonOperationRepository } from "@/lib/data/localJsonOperationRepos
 import { isSameCourse, normalizeCourseId } from "@/lib/data/operationCalculations";
 import { readOperationCollaboration } from "@/lib/data/operationCollaboration";
 import { hasNotionResourceConfig, listNotionResourceOperations } from "@/lib/data/notionResourceOperationRepository";
+import { listCustomTools } from "@/lib/data/omRequest/omCustomToolsLocalRepository";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import type { OperationSession } from "@/lib/data/operationTypes";
 import { buildPersonOptions, buildRoleRosterFromOperations, mergeRoleRosters } from "@/lib/data/personOptions";
@@ -57,9 +58,7 @@ export default async function OperationDetailPage({ params, searchParams }: Oper
   }
 
   const scopedOperations = filterOperationsByTeamScope(allOperations, teamScope, ownerRoster);
-  const relatedOperations = operation.courseId
-    ? scopedOperations.filter((candidate) => isSameCourse(candidate, operation))
-    : [operation];
+  const relatedOperations = scopedOperations.filter((candidate) => isSameCourse(candidate, operation));
   const sameCourseIdOperations = operation.courseId
     ? scopedOperations.filter(
         (candidate) => normalizeCourseId(candidate.courseId) === normalizeCourseId(operation.courseId)
@@ -72,6 +71,7 @@ export default async function OperationDetailPage({ params, searchParams }: Oper
   return (
     <OperationDetail
       collaboration={collaboration}
+      extraTools={listCustomTools()}
       operation={operation}
       personOptions={personOptions}
       relatedOperations={relatedOperations}

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { ImportRunDetailView } from "@/features/imports/ImportAdminDashboard";
-import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
+import { requireAdminSession } from "@/lib/auth/requireAdminSession";
 import { PrismaImportRepository } from "@/lib/data/prismaImportRepository";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +12,7 @@ interface ImportRunPageProps {
 }
 
 export default async function ImportRunPage({ params }: ImportRunPageProps) {
-  await requireWorkspaceSession();
+  await requireAdminSession();
 
   const { id } = await params;
   const repository = new PrismaImportRepository();

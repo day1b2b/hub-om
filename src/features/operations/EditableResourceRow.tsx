@@ -60,7 +60,7 @@ export function EditableResourceRow({
             <span className="archive-item-state">{done ? doneText : missingText}</span>
           )}
           <button className="archive-item-edit-trigger" onClick={startEditing} type="button">
-            수정
+            {done ? "수정" : "등록"}
           </button>
         </div>
       </div>

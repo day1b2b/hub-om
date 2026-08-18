@@ -59,6 +59,10 @@ export function CoachMyPage({ reservations, inProgressCourses, pastCourses, toda
                 <span>{activeReservations.length}건</span>
               </div>
             </div>
+            <p className="coach-panel-hint">
+              코치와 계약이 완료되면 계약 시트에 계약 내용을 작성해 주세요. 계약 시트 작성 후 코치 상태가 &lsquo;예약&rsquo;에서
+              &lsquo;확정&rsquo;으로 자동 변경되며, 해당 코치는 &lsquo;진행 중 과정&rsquo;에서 확인할 수 있습니다.
+            </p>
             {activeReservations.length === 0 ? (
               <div className="coach-doc-empty">
                 <strong>예약 중인 일정이 없습니다.</strong>
