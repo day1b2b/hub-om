@@ -32,9 +32,13 @@ export async function PATCH(request: Request) {
     if (!updated) return NextResponse.json({ error: "요청 없음" }, { status: 404 });
     if (assignedOm) {
       await notifyOmAssigned({
+        team: updated.team,
         company: updated.company,
         courseName: updated.courseName,
         assignedOm,
+        ldEmail: updated.ldEmail,
+        slackChannel: updated.slackChannel,
+        slackThreadTs: updated.slackThreadTs,
       });
     }
     return NextResponse.json(updated);

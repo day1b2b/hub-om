@@ -54,6 +54,16 @@ export function deleteOmRequest(id: string): boolean {
   return true;
 }
 
+// 슬랙 알림 스레드 정보 저장(생성 알림 발송 직후). 배정 시 같은 스레드에 댓글을 달기 위함.
+export function setOmRequestSlackThread(id: string, channel: string, threadTs: string): OmRequest | null {
+  const requests = readAll();
+  const idx = requests.findIndex((r) => r.id === id);
+  if (idx === -1) return null;
+  requests[idx] = { ...requests[idx], slackChannel: channel, slackThreadTs: threadTs };
+  writeAll(requests);
+  return requests[idx];
+}
+
 export function updateOmRequestAssignment(id: string, assignedOm: string | null): OmRequest | null {
   const requests = readAll();
   const idx = requests.findIndex((r) => r.id === id);

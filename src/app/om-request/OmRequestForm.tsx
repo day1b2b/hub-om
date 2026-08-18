@@ -123,11 +123,13 @@ function YNToggle({
 export function OmRequestForm({
   extraTools = [],
   ldName,
+  ldLocked = false,
   initialData,
   requestId
 }: {
   extraTools?: string[];
   ldName: string;
+  ldLocked?: boolean;
   initialData?: OmRequestInput;
   requestId?: string;
 }) {
@@ -317,7 +319,13 @@ export function OmRequestForm({
               required
               type="text"
               value={form.ld}
-              onChange={(e) => setField("ld", e.target.value)}
+              readOnly={ldLocked}
+              className={ldLocked ? "readonly-field" : undefined}
+              title={ldLocked ? "멤버관리 기준으로 자동 입력됩니다." : undefined}
+              onChange={(e) => {
+                if (ldLocked) return;
+                setField("ld", e.target.value);
+              }}
             />
           </label>
 

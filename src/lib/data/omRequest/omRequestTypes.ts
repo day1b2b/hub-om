@@ -18,6 +18,7 @@ export interface OmRequest {
 
   team: string;
   ld: string;
+  ldEmail?: string;
   company: string;
   businessNumber?: string;
   trainingType: TrainingType;
@@ -36,9 +37,16 @@ export interface OmRequest {
   totalSessions: number;
   sessions: OmRequestSession[];
   notes: string;
+
+  // 슬랙 알림 스레드 추적(서버가 생성 후 채움). 배정 시 같은 스레드에 댓글을 달기 위해 저장한다.
+  slackChannel?: string;
+  slackThreadTs?: string;
 }
 
-export type OmRequestInput = Omit<OmRequest, "id" | "createdAt" | "status" | "assignedOm">;
+export type OmRequestInput = Omit<
+  OmRequest,
+  "id" | "createdAt" | "status" | "assignedOm" | "slackChannel" | "slackThreadTs"
+>;
 
 export function calcSessionDuration(timeStart: string, timeEnd: string): string {
   if (!timeStart || !timeEnd) return "";
