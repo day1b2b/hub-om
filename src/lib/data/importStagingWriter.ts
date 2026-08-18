@@ -119,6 +119,15 @@ export async function storeParsedImport(input: StoreImportInput): Promise<StoreI
 
 function validateAssigneeFields(fields: Record<string, string>, roleRoster: Awaited<ReturnType<PrismaTeamMemberRepository["listRoleRosters"]>>) {
   const errors: string[] = [];
+
+  if (!fields.om?.trim()) {
+    errors.push("담당OM 정보가 없습니다.");
+  }
+
+  if (!fields.ld?.trim()) {
+    errors.push("담당LD 정보가 없습니다.");
+  }
+
   const unknownOm = findUnknownRoleAssigneeNames(fields.om ?? "", "om", roleRoster);
   const unknownLd = findUnknownRoleAssigneeNames(fields.ld ?? "", "ld", roleRoster);
 
