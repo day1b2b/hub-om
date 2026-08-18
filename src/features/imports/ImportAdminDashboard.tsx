@@ -55,6 +55,7 @@ export function ImportAdminDashboard({ runs }: ImportAdminDashboardProps) {
                   <tr>
                     <th>상태</th>
                     <th>등록 데이터</th>
+                    <th>올린 사람</th>
                     <th>등록 시각</th>
                     <th>행 수</th>
                     <th>확인 결과</th>
@@ -74,6 +75,7 @@ export function ImportAdminDashboard({ runs }: ImportAdminDashboardProps) {
                         </span>
                         <span>{run.notes || "검토 후 운영 데이터에 반영"}</span>
                       </td>
+                      <td>{run.importedBy || "기록 없음"}</td>
                       <td>
                         <strong>{run.startedAt}</strong>
                         <span>{run.finishedAt || "종료 전"}</span>
