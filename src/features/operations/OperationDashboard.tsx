@@ -353,7 +353,7 @@ export function OperationDashboard({ omRoster, operations, partByPersonKey, team
 
         <section className="dashboard-panel operations-list-panel">
           <div className="section-title">
-            <h2>운영 목록</h2>
+            <h2>운영 목록 (과정 기준)</h2>
             <div className="dashboard-table-meta">
               <span>{courseGroups.length}건</span>
               <span>과정 기준</span>
@@ -378,7 +378,7 @@ export function OperationDashboard({ omRoster, operations, partByPersonKey, team
                   <th>강사</th>
                   <th>실습코치</th>
                   <th>만족도(평균)</th>
-                  <th>코스매출</th>
+                  <th>매출(코스ID기준)</th>
                 </tr>
               </thead>
               <tbody>
@@ -469,7 +469,7 @@ const OPERATIONS_CSV_HEADERS = [
   "실습코치",
   "만족도(전체)",
   "만족도(강사)",
-  "코스매출",
+  "매출(코스ID기준)",
   "강사비",
   "운영비"
 ];
