@@ -207,6 +207,14 @@ function buildPromotionCandidate(mappedFields: Prisma.JsonValue | null, validati
     return { blockedReason: errors.join(" / "), companyName, courseName, endDate, fields, startDate };
   }
 
+  if (!fields.om?.trim()) {
+    return { blockedReason: "담당OM 정보가 없습니다.", companyName, courseName, endDate, fields, startDate };
+  }
+
+  if (!fields.ld?.trim()) {
+    return { blockedReason: "담당LD 정보가 없습니다.", companyName, courseName, endDate, fields, startDate };
+  }
+
   if (!companyName) {
     return { blockedReason: "기업명 누락", companyName, courseName, endDate, fields, startDate };
   }
