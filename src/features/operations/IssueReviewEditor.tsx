@@ -60,7 +60,7 @@ export function IssueReviewEditor({ operation }: IssueReviewEditorProps) {
       if (draft) {
         setValues(draft.values);
         setDraftSavedAt(draft.updatedAt);
-        setMessage("임시저장 불러옴");
+        setMessage("저장하지 않은 이전 내용을 불러왔습니다");
       } else {
         setValues(baseValues);
         setDraftSavedAt(null);
@@ -102,6 +102,18 @@ export function IssueReviewEditor({ operation }: IssueReviewEditorProps) {
     return () => window.clearTimeout(timeout);
   }, [draftReady, hasChanges, operation.operationId, saveState, values]);
 
+  useEffect(() => {
+    if (!hasChanges) return;
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasChanges]);
+
   return (
     <div className="issue-editor">
       <div className="issue-editor-grid">
@@ -132,15 +144,17 @@ export function IssueReviewEditor({ operation }: IssueReviewEditorProps) {
         <div className="issue-review-summary">
           <span>{hasReadableChanges ? "작성 상태" : "검토 필요"}</span>
           <strong>{operation.validationErrors.length > 0 ? operation.validationErrors.join(", ") : "없음"}</strong>
-          {draftSavedAt ? <small>임시저장 {formatDraftTime(draftSavedAt)}</small> : null}
+          {draftSavedAt ? (
+            <small>{formatDraftTime(draftSavedAt)} 임시 저장됨 · 나만 보임, 아직 반영 안 됨</small>
+          ) : null}
         </div>
         <div className="issue-editor-actions">
           {message ? <span className={`issue-save-message ${saveState}`}>{message}</span> : null}
           <button disabled={!hasChanges || saveState === "saving"} onClick={resetDraft} type="button">
-            되돌리기
+            작성 취소
           </button>
           <button disabled={!hasChanges || saveState === "saving"} onClick={saveNotes} type="button">
-            {saveState === "saving" ? "DB 저장 중" : "DB 저장"}
+            {saveState === "saving" ? "저장 중" : "저장하기"}
           </button>
         </div>
       </div>
@@ -148,11 +162,17 @@ export function IssueReviewEditor({ operation }: IssueReviewEditorProps) {
   );
 
   function resetDraft() {
+    const confirmed = window.confirm(
+      "작성 중인 내용이 사라집니다. 마지막으로 저장한 내용으로 되돌릴까요?"
+    );
+
+    if (!confirmed) return;
+
     window.localStorage.removeItem(draftStorageKey(operation.operationId));
     setValues(operationValues(operation));
     setDraftSavedAt(null);
     setSaveState("idle");
-    setMessage("서버 저장값으로 되돌림");
+    setMessage("마지막 저장 내용으로 되돌림");
   }
 
   async function saveNotes() {
@@ -177,7 +197,7 @@ export function IssueReviewEditor({ operation }: IssueReviewEditorProps) {
       });
     } catch {
       setSaveState("failed");
-      setMessage("DB 저장 요청 실패");
+      setMessage("저장 요청 실패 · 잠시 후 다시 시도해 주세요");
       return;
     }
 
@@ -192,7 +212,7 @@ export function IssueReviewEditor({ operation }: IssueReviewEditorProps) {
     window.localStorage.removeItem(draftStorageKey(operation.operationId));
     setDraftSavedAt(null);
     setSaveState("saved");
-    setMessage("DB 저장됨");
+    setMessage("저장 완료 · 모두에게 반영됨");
     router.refresh();
   }
 }
