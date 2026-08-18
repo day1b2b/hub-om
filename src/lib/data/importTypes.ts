@@ -14,6 +14,7 @@ export interface ImportRunSummary {
   startedAt: string;
   finishedAt: string;
   notes: string;
+  fileName: string;
   validationLogCount: number;
 }
 
