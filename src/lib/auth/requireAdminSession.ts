@@ -10,6 +10,16 @@ export { isCoachPiiViewer } from "@/lib/auth/coachPiiViewer";
  * 페이지용 admin 가드. 비-admin이면 /dashboard로 redirect한다.
  */
 export async function requireAdminSession() {
+  if (process.env.DEV_AUTH_BYPASS === "true" && process.env.NODE_ENV !== "production") {
+    const email = process.env.DEV_AUTH_EMAIL ?? "dev@day1company.co.kr";
+
+    if (!isAdminEmail(email)) {
+      redirect("/dashboard");
+    }
+
+    return { user: { email, name: "Dev User", image: null }, expires: "" } as Session;
+  }
+
   const session = await auth();
   const email = session?.user?.email;
 
@@ -25,6 +35,16 @@ export async function requireAdminSession() {
  * 페이지가 아닌 곳(데이터 서비스 등)에서 권한을 강제할 때 쓴다.
  */
 export async function assertAdminSession(): Promise<Session> {
+  if (process.env.DEV_AUTH_BYPASS === "true" && process.env.NODE_ENV !== "production") {
+    const email = process.env.DEV_AUTH_EMAIL ?? "dev@day1company.co.kr";
+
+    if (!isAdminEmail(email)) {
+      throw new Error("admin 권한이 필요합니다.");
+    }
+
+    return { user: { email, name: "Dev User", image: null }, expires: "" } as Session;
+  }
+
   const session = await auth();
   const email = session?.user?.email;
 
