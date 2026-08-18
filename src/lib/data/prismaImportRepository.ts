@@ -51,6 +51,7 @@ export class PrismaImportRepository implements ImportRepository {
       startedAt: toDateTimeString(run.startedAt),
       finishedAt: run.finishedAt ? toDateTimeString(run.finishedAt) : "",
       notes: run.notes ?? "",
+      fileName: run.fileName ?? run.sourceName ?? "",
       validationLogCount: countJsonItems(run.validationLogs)
     }));
   }
@@ -98,6 +99,7 @@ export class PrismaImportRepository implements ImportRepository {
       startedAt: toDateTimeString(run.startedAt),
       finishedAt: run.finishedAt ? toDateTimeString(run.finishedAt) : "",
       notes: run.notes ?? "",
+      fileName: run.fileName ?? run.sourceName ?? "",
       validationLogCount: countJsonItems(run.validationLogs),
       records: run.sourceRecords.map(toSourceRecordPreview)
     };
