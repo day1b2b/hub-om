@@ -66,7 +66,7 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
           <div className="nav-section-title">OM 운영 요청</div>
           <Link className={isOmRequestPage ? "active" : ""} data-icon="📋" href="/om-request">업무 요청</Link>
           <Link className={isOmManagePage ? "active" : ""} data-icon="☑" href="/om-request/manage">담당 관리</Link>
-          <Link className={isResourcesPage ? "active" : ""} data-icon="📁" href="/resources">리소스</Link>
+          <Link className={isResourcesPage ? "active" : ""} data-icon="📁" href="/resources">과정 캘린더</Link>
         </div>
 
         <div className="nav-section">
