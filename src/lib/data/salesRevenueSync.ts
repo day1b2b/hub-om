@@ -17,6 +17,29 @@ export interface SalesRevenueChange {
   action: "fill" | "change" | "same";
 }
 
+/** 금액이 다른 다중 딜의 처리 방식. 합산/최대/최소/제외 중 관리자가 선택(기본 합산). */
+export type MultiDealMode = "sum" | "max" | "min" | "exclude";
+
+/**
+ * 한 코스ID에 세일즈맵 딜이 여러 개인데 **금액이 서로 다른** 건(처리 방식 선택 대상).
+ * 금액이 모두 같은 건(복붙 중복)은 1건 금액만 자동 반영하므로 이 목록엔 넣지 않는다.
+ */
+export interface MultiDealCourseInfo {
+  courseId: string;
+  dealCount: number;
+  /** 합산액(딜 금액 합). */
+  sum: number;
+  /** 딜 중 최대/최소 금액. */
+  max: number;
+  min: number;
+  /** 현재 선택된 처리 방식(기본 sum). */
+  mode: MultiDealMode;
+  /** 위 mode로 실제 반영되는 금액(exclude면 반영 안 함). */
+  appliedAmount: number;
+  companyName?: string;
+  courseName?: string;
+}
+
 export interface SalesRevenueSyncResult {
   configured: boolean;
   readStatus: string;
@@ -28,6 +51,12 @@ export interface SalesRevenueSyncResult {
   updatedRows: number;
   unmatchedCourseIds: string[];
   multiCourseIds: string[];
+  /** 금액이 다른 다중 딜 목록(합산/최대/최소/제외 중 선택 대상). */
+  multiDealCourseIds: MultiDealCourseInfo[];
+  /** 이번 반영에서 제외한 코스ID(mode=exclude, 반영 안 됨·기존 매출 유지). */
+  excludedCourseIds: string[];
+  /** 금액 동일 중복으로 보고 합산 대신 1건 금액만 자동 반영한 코스ID(안내용, 선택 불필요). */
+  dedupedCourseIds: string[];
   applied: boolean;
   changes: SalesRevenueChange[];
   issues: string[];
@@ -43,10 +72,16 @@ interface CourseRow {
 
 export async function runSalesRevenueSync({
   apply,
-  actorEmail
+  actorEmail,
+  multiDealResolutions = {}
 }: {
   apply: boolean;
   actorEmail: string;
+  /**
+   * 금액이 다른 다중 딜의 코스ID별 처리 방식(코스ID → 합산/최대/최소/제외).
+   * 지정 안 하면 기본 '합산'. 금액이 같은 중복 딜은 이 설정과 무관하게 1건 금액만 자동 반영한다.
+   */
+  multiDealResolutions?: Record<string, MultiDealMode>;
 }): Promise<SalesRevenueSyncResult> {
   if (!hasSalesmapConfig()) {
     return emptyResult("disabled", ["세일즈맵 토큰(SALESMAP_API_TOKEN)이 설정되지 않았습니다."], false);
@@ -57,6 +92,12 @@ export async function runSalesRevenueSync({
     (record): record is typeof record & { courseId: string; revenue: number } =>
       Boolean(record.courseId) && record.revenue != null
   );
+
+  // 처리 방식을 정규화된 코스ID 기준으로 조회 가능하게 변환.
+  const resolutionByNormalizedId = new Map<string, MultiDealMode>();
+  for (const [rawId, mode] of Object.entries(multiDealResolutions)) {
+    resolutionByNormalizedId.set(normalizeCourseId(rawId), mode);
+  }
 
   if (read.status === "failed") {
     return emptyResult(read.status, read.issues.map((issue) => issue.message), true);
@@ -83,6 +124,9 @@ export async function runSalesRevenueSync({
   const changes: SalesRevenueChange[] = [];
   const unmatchedCourseIds: string[] = [];
   const multiCourseIds: string[] = [];
+  const multiDealCourseIds: MultiDealCourseInfo[] = [];
+  const excludedCourseIds: string[] = [];
+  const dedupedCourseIds: string[] = [];
   let matchedCourseIds = 0;
   let filled = 0;
   let changed = 0;
@@ -98,14 +142,54 @@ export async function runSalesRevenueSync({
     matchedCourseIds += 1;
 
     // 같은 코스ID가 여러 과정 행에 걸리면 과정별로 모두 채운다(화면 표시용).
-    // 총 매출 합계는 대시보드에서 코스ID당 1번만 집계하므로 중복 집계되지 않는다.
+    // 대시보드 총 매출은 과정(Course.id)당 1번만 집계하므로 같은 과정 안 회차 중복은 없지만,
+    // 이 경우처럼 코스ID 하나가 과정 여러 건에 걸치면 그만큼 여러 번 집계된다 -> multiCourseIds로 별도 표시.
     if (matched.length > 1) {
       multiCourseIds.push(record.courseId);
     }
 
+    const dealCount = record.dealCount ?? 1;
+    const sum = record.revenue;
+    const max = record.maxAmount ?? record.revenue;
+    const min = record.minAmount ?? record.revenue;
+    const sameAmount = record.dealsSameAmount ?? true;
+
+    // 다중 딜의 실제 반영 금액을 정한다.
+    //  - 단일 딜: 그대로.
+    //  - 금액 동일 다중 딜(복붙 중복): 1건 금액만 자동 반영(합산 뻥튀기 방지). 선택 UI에 안 띄운다.
+    //  - 금액 다른 다중 딜: 관리자 선택(기본 합산). exclude면 반영 건너뜀.
+    let effectiveRevenue = sum;
+    let excludedHere = false;
+
+    if (dealCount > 1 && sameAmount) {
+      effectiveRevenue = max; // = min = 1건 금액
+      dedupedCourseIds.push(record.courseId);
+    } else if (dealCount > 1) {
+      const mode = resolutionByNormalizedId.get(normalizeCourseId(record.courseId)) ?? "sum";
+      effectiveRevenue = mode === "max" ? max : mode === "min" ? min : sum;
+      excludedHere = mode === "exclude";
+      multiDealCourseIds.push({
+        courseId: record.courseId,
+        dealCount,
+        sum,
+        max,
+        min,
+        mode,
+        appliedAmount: excludedHere ? 0 : effectiveRevenue,
+        companyName: matched[0]?.company?.name,
+        courseName: matched[0]?.name
+      });
+    }
+
+    // 제외 선택 시 반영하지 않는다(기존 매출 그대로 유지).
+    if (excludedHere) {
+      excludedCourseIds.push(record.courseId);
+      continue;
+    }
+
     for (const course of matched) {
       const before = toNumber(course.revenue);
-      const after = record.revenue;
+      const after = effectiveRevenue;
       const action: SalesRevenueChange["action"] =
         before === null ? "fill" : before !== after ? "change" : "same";
 
@@ -165,6 +249,9 @@ export async function runSalesRevenueSync({
     updatedRows,
     unmatchedCourseIds,
     multiCourseIds,
+    multiDealCourseIds,
+    excludedCourseIds,
+    dedupedCourseIds,
     applied: apply && !blockedByPartial,
     changes,
     issues
@@ -189,6 +276,9 @@ export async function runSalesRevenueSync({
           detail: {
             unmatchedCourseIds: result.unmatchedCourseIds.slice(0, 500),
             multiCourseIds: result.multiCourseIds.slice(0, 500),
+            multiDealCourseIds: result.multiDealCourseIds.slice(0, 500).map((m) => m.courseId),
+            excludedCourseIds: result.excludedCourseIds.slice(0, 500),
+            dedupedCourseIds: result.dedupedCourseIds.slice(0, 500),
             issues: result.issues
           }
         }
@@ -224,6 +314,9 @@ function emptyResult(readStatus: string, issues: string[], configured: boolean):
     updatedRows: 0,
     unmatchedCourseIds: [],
     multiCourseIds: [],
+    multiDealCourseIds: [],
+    excludedCourseIds: [],
+    dedupedCourseIds: [],
     applied: false,
     changes: [],
     issues

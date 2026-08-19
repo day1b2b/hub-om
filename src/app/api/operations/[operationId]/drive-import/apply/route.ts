@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
-import type { ArchiveStatus, OperationSession, ResultReportStatus, UpdateOperationInput } from "@/lib/data/operationTypes";
+import type {
+  ArchiveStatus,
+  OperationSession,
+  ResultReportStatus,
+  SatisfactionSurveyStatus,
+  UpdateOperationInput
+} from "@/lib/data/operationTypes";
 import { summarizeSatisfactionValue } from "@/lib/data/satisfaction";
 import type { DriveImportCandidateAction, DriveImportCandidateField } from "@/lib/driveImports/driveImportTypes";
 
@@ -20,6 +26,7 @@ const APPLYABLE_FIELDS = [
   "educationDays",
   "endDate",
   "hasResultReport",
+  "hasSatisfactionSurvey",
   "instructorCost",
   "instructorSatisfaction",
   "instructors",
@@ -112,6 +119,11 @@ function assignUpdateValue(update: UpdateOperationInput, field: ApplyableField, 
     return;
   }
 
+  if (field === "hasSatisfactionSurvey") {
+    if (isSatisfactionSurveyStatus(value)) update.hasSatisfactionSurvey = value;
+    return;
+  }
+
   if (field === "startDate" || field === "endDate") {
     if (isDateText(value)) update[field] = value;
     return;
@@ -136,6 +148,10 @@ function isArchiveStatus(value: string): value is ArchiveStatus {
 
 function isResultReportStatus(value: string): value is ResultReportStatus {
   return value === "유" || value === "무" || value === "불필요" || value === "확인필요";
+}
+
+function isSatisfactionSurveyStatus(value: string): value is SatisfactionSurveyStatus {
+  return value === "불필요" || value === "확인필요";
 }
 
 function isDateText(value: string): boolean {

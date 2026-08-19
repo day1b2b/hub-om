@@ -67,6 +67,13 @@ export interface SalesRecord {
   revenue?: number;
   probability?: string;
   sourceUrl?: string;
+  /** 이 코스ID로 합산된 세일즈맵 딜 개수(1이면 단일). 2 이상이면 처리 방식 확인 대상. */
+  dealCount?: number;
+  /** 합산된 딜들의 금액이 모두 동일한지(같으면 복붙 중복 → 1건 금액만 자동 반영). */
+  dealsSameAmount?: boolean;
+  /** 합산된 딜들 중 최대/최소 금액(금액 다른 다중 딜의 대안 처리: 합산/최대/최소). */
+  maxAmount?: number;
+  minAmount?: number;
 }
 
 export interface OperationSourceReader {

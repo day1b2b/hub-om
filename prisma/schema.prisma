@@ -77,6 +77,13 @@ enum ResultReportStatus {
   @@map("result_report_status")
 }
 
+enum SatisfactionSurveyStatus {
+  NOT_REQUIRED  @map("not_required")
+  NEEDS_REVIEW  @map("needs_review")
+
+  @@map("satisfaction_survey_status")
+}
+
 enum ImportStatus {
   PENDING               @map("pending")
   COMPLETED             @map("completed")
@@ -181,6 +188,7 @@ model OperationSession {
   operationCost         Decimal?           @map("operation_cost") @db.Decimal(14, 2)
   avgSatisfaction       String?            @map("avg_satisfaction")
   instructorSatisfaction String?           @map("instructor_satisfaction")
+  hasSatisfactionSurvey SatisfactionSurveyStatus @default(NEEDS_REVIEW) @map("has_satisfaction_survey")
   hasResultReport       ResultReportStatus @default(NEEDS_REVIEW) @map("has_result_report")
   resultReportLink      String?            @map("result_report_link")
   lectureManagementLink String?            @map("lecture_management_link")

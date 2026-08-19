@@ -29,6 +29,13 @@ const SYNC_SOURCES: SyncSource[] = [
     name: "노션 코치 동기화",
     endpoint: "/api/admin/sync-notion",
     description: "노션 2026 DB에서 코치 정보(연락처, 이메일, 유형, 분야, 커리큘럼 등)를 가져옵니다."
+  },
+  {
+    id: "notion-instructors",
+    name: "노션 강사 동기화",
+    endpoint: "/api/admin/sync-notion-instructors",
+    description:
+      "노션 강사 DB에서 강사 정보(소속, 전문분야, 담당 강의, 기본 강사료, 섭외지양 등)를 가져와 강사위키에 반영합니다. 연락처·이메일·생년월일은 저장하지 않습니다."
   }
 ];
 

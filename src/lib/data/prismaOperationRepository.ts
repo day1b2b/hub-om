@@ -7,6 +7,7 @@ import {
   OperationStatus as PrismaOperationStatus,
   OperationType as PrismaOperationType,
   ResultReportStatus as PrismaResultReportStatus,
+  SatisfactionSurveyStatus as PrismaSatisfactionSurveyStatus,
   SourceTeam as PrismaSourceTeam
 } from "@prisma/client";
 import type {
@@ -19,6 +20,7 @@ import type {
   OperationStatus,
   OperationType,
   ResultReportStatus,
+  SatisfactionSurveyStatus,
   SourceTeam,
   UpdateOperationInput
 } from "./operationTypes";
@@ -81,6 +83,11 @@ const RESULT_REPORT_STATUS: Record<string, ResultReportStatus> = {
   NEEDS_REVIEW: "확인필요"
 };
 
+const SATISFACTION_SURVEY_STATUS: Record<string, SatisfactionSurveyStatus> = {
+  NOT_REQUIRED: "불필요",
+  NEEDS_REVIEW: "확인필요"
+};
+
 const SOURCE_TEAM: Record<PrismaSourceTeam, SourceTeam> = {
   TEAM_1: "1팀",
   TEAM_2: "2팀",
@@ -107,6 +114,11 @@ const PRISMA_RESULT_REPORT_STATUS: Record<ResultReportStatus, PrismaResultReport
   "무": PrismaResultReportStatus.NO,
   "불필요": PrismaResultReportStatus.NOT_REQUIRED,
   "확인필요": PrismaResultReportStatus.NEEDS_REVIEW
+};
+
+const PRISMA_SATISFACTION_SURVEY_STATUS: Record<SatisfactionSurveyStatus, PrismaSatisfactionSurveyStatus> = {
+  "불필요": PrismaSatisfactionSurveyStatus.NOT_REQUIRED,
+  "확인필요": PrismaSatisfactionSurveyStatus.NEEDS_REVIEW
 };
 
 const PRISMA_EDUCATION_FORMAT: Record<EducationFormat, PrismaEducationFormat> = {
@@ -208,6 +220,7 @@ export class PrismaOperationRepository implements OperationRepository {
         profit: deriveProfit(revenue, totalCost),
         avgSatisfaction: session.avgSatisfaction ?? "",
         instructorSatisfaction: session.instructorSatisfaction ?? "",
+        hasSatisfactionSurvey: SATISFACTION_SURVEY_STATUS[session.hasSatisfactionSurvey],
         hasResultReport: RESULT_REPORT_STATUS[session.hasResultReport],
         resultReportLink: session.resultReportLink ?? "",
         lectureManagementLink: session.lectureManagementLink ?? "",
@@ -303,6 +316,7 @@ export class PrismaOperationRepository implements OperationRepository {
           educationFormatRaw: input.educationFormat,
           endDate,
           hasResultReport: PrismaResultReportStatus.NEEDS_REVIEW,
+          hasSatisfactionSurvey: PrismaSatisfactionSurveyStatus.NEEDS_REVIEW,
           instructorCost: input.instructorCost,
           instructorWikiLink: normalizeVisibleText(input.instructorWikiLink) || null,
           instructorsText: normalizeVisibleText(input.instructors) || null,
@@ -450,6 +464,9 @@ export class PrismaOperationRepository implements OperationRepository {
     if (input.driveLink !== undefined) data.driveLink = nullableText(input.driveLink);
     if (input.educationDays !== undefined) data.educationDays = nullableText(input.educationDays);
     if (input.hasResultReport !== undefined) data.hasResultReport = PRISMA_RESULT_REPORT_STATUS[input.hasResultReport];
+    if (input.hasSatisfactionSurvey !== undefined) {
+      data.hasSatisfactionSurvey = PRISMA_SATISFACTION_SURVEY_STATUS[input.hasSatisfactionSurvey];
+    }
 
     if (input.startDate !== undefined || input.endDate !== undefined) {
       const current = await this.getOperationById(operationId);
