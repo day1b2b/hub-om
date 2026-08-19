@@ -9,10 +9,10 @@ import { kstDateString, shiftDateString } from "./reminderDates";
 import { appendSentKeys, readSentKeys } from "./reminderSentLog";
 
 // 회차 종료 후 담당 OM에게 개인 DM으로 보내는 마무리 알림.
-// D+1: 강의관리 시트·만족도 등록 안내. D+7: 아직 안 된 등록 + 운영 회고 작성 안내.
+// D+1: 코스ID·강의관리 시트·만족도 등록 안내. D+7: 아직 안 된 등록 + 운영 회고 작성 안내.
 // "등록됨" 판정은 아카이빙 완료 조건(operationCalculations.isArchiveComplete)과 같은
-// "값이 비어 있지 않으면 등록됨" 규칙을 쓰되, OM이 직접 채우는 항목만 본다.
-// (코스ID·결과보고서는 이 알림 범위 밖이다.)
+// "값이 비어 있지 않으면 등록됨" 규칙을 쓴다.
+// (결과보고서는 필요 여부가 회차마다 달라 이 알림 범위 밖이다.)
 
 export type ReminderStage = "d1" | "d7";
 
@@ -215,10 +215,11 @@ function resolveStage(endDate: string, targetDates: Record<ReminderStage, string
   return null;
 }
 
-/** 아직 안 된 일만 남긴다. 비면 알림을 보내지 않는다. */
+/** 아직 안 된 일만 남긴다. 비면 알림을 보내지 않는다. 순서는 운영 상세 입력 순서를 따른다. */
 function buildTodo(operation: OperationSession, stage: ReminderStage): string[] {
   const todo: string[] = [];
 
+  if (!operation.courseId.trim()) todo.push("코스ID 등록");
   if (!operation.lectureManagementNote.trim()) todo.push("강의관리 등록");
   if (!operation.avgSatisfaction.trim()) todo.push("만족도 등록");
   if (stage === "d7" && needsRetrospective(operation)) todo.push("운영 회고 작성");
