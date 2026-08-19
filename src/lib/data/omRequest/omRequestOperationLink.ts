@@ -79,7 +79,22 @@ export async function createLinkedOperationForOmRequest(request: OmRequest): Pro
   return firstOperationId;
 }
 
-/** 배정 완료 시 운영현황의 OM 값을 동기화한다. 실패해도 배정 자체는 막지 않는다. */
+/**
+ * 배정 완료 시 운영현황의 OM 값을 동기화한다. 실패해도 배정 자체는 막지 않는다.
+ *
+ * operationStatus는 om-request 자동 생성 시점(createLinkedOperationForOmRequest)에
+ * "배정필요"로 고정되고 이후 어디서도 재계산되지 않아서, OM을 나중에 배정해도
+ * 대시보드 등 화면에는 계속 "배정필요"로 남아있던 문제(2026-08-19 제보)가 있었다.
+ * 아직 "배정필요" 단계인 건에 한해서만 "배정예정"으로 한 단계 진행시키고,
+ * 다른 경로(관리자 DB 편집 등)로 이미 상태가 더 진행된 건은 되돌리지 않는다.
+ */
 export async function syncAssignedOmToLinkedOperation(operationId: string, assignedOm: string): Promise<void> {
-  await getOperationRepository().updateOperation(operationId, { om: assignedOm });
+  const repository = getOperationRepository();
+  const operation = await repository.getOperationById(operationId);
+  const nextStatus = operation?.operationStatus === "배정필요" ? "배정예정" : undefined;
+
+  await repository.updateOperation(operationId, {
+    om: assignedOm,
+    ...(nextStatus ? { operationStatus: nextStatus } : {})
+  });
 }

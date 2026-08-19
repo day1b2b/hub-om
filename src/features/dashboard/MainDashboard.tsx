@@ -195,7 +195,7 @@ export function MainDashboard({ operations, teamScope, teamUsers }: MainDashboar
               <tbody>
                 {activeOrUpcoming.slice(0, 10).map((operation) => (
                   <tr key={operation.operationId}>
-                    <td>{operation.operationStatus}</td>
+                    <td>{displayOperationStatus(operation)}</td>
                     <td>
                       <Link className="course-link" href={`/operations/${operation.operationId}${teamQuery}`}>
                         <strong>{operation.companyName}</strong>
@@ -311,6 +311,14 @@ function MonthlyTrendChart({ items }: { items: Array<{ count: number; label: str
       </svg>
     </div>
   );
+}
+
+// OM 배정 완료 시점(syncAssignedOmToLinkedOperation)에서 상태를 갱신하지 않았던 과거 건은
+// operationStatus가 "배정필요"에 그대로 멈춰있는데도 OM은 이미 채워져 있을 수 있다.
+// OM이 있으면 실제로는 "배정예정" 단계로 넘어간 것이므로 화면에서 표시만 보정한다.
+function displayOperationStatus(operation: OperationSession) {
+  if (operation.operationStatus === "배정필요" && Boolean(operation.om)) return "배정예정";
+  return operation.operationStatus;
 }
 
 function isUpcoming(operation: OperationSession, today: Date) {
