@@ -23,8 +23,10 @@ export interface MultiDealCourseInfo {
   dealCount: number;
   /** 합산된 매출(딜 금액 합). */
   revenue: number;
-  /** 합산된 딜들의 금액이 모두 동일한지(같으면 복붙 중복 의심). */
+  /** 합산된 딜들의 금액이 모두 동일한지(같으면 복붙 중복 의심 → 1건 금액만 자동 반영). */
   sameAmount: boolean;
+  /** 실제로 반영되는 금액. 금액 동일(중복)이면 1건 금액, 다르면 합산액. */
+  appliedAmount: number;
   companyName?: string;
   courseName?: string;
 }
@@ -44,6 +46,8 @@ export interface SalesRevenueSyncResult {
   multiDealCourseIds: MultiDealCourseInfo[];
   /** 이번 반영에서 관리자가 제외한 코스ID(반영 안 됨, 기존 매출 유지). */
   excludedCourseIds: string[];
+  /** 금액 동일 중복으로 보고 합산 대신 1건 금액만 자동 반영한 코스ID. */
+  dedupedCourseIds: string[];
   applied: boolean;
   changes: SalesRevenueChange[];
   issues: string[];
@@ -106,6 +110,7 @@ export async function runSalesRevenueSync({
   const multiCourseIds: string[] = [];
   const multiDealCourseIds: MultiDealCourseInfo[] = [];
   const excludedCourseIds: string[] = [];
+  const dedupedCourseIds: string[] = [];
   let matchedCourseIds = 0;
   let filled = 0;
   let changed = 0;
@@ -126,13 +131,21 @@ export async function runSalesRevenueSync({
       multiCourseIds.push(record.courseId);
     }
 
-    // 한 코스ID에 세일즈맵 딜이 여러 개라 금액이 합산된 건 → 관리자가 제외 판단하도록 목록에 남긴다.
-    if ((record.dealCount ?? 1) > 1) {
+    const dealCount = record.dealCount ?? 1;
+    const isDuplicate = dealCount > 1 && (record.dealsSameAmount ?? false);
+    // 금액이 모두 같은 다중 딜은 복붙 중복으로 보고 1건 금액만 반영한다(합산하면 뻥튀기).
+    // 금액이 다르면 실제 분할일 수 있어 합산액을 그대로 쓴다.
+    const effectiveRevenue = isDuplicate ? Math.round(record.revenue / dealCount) : record.revenue;
+
+    // 한 코스ID에 세일즈맵 딜이 여러 개라 금액이 합산된 건 → 어떻게 처리했는지 화면에 남긴다.
+    if (dealCount > 1) {
+      if (isDuplicate) dedupedCourseIds.push(record.courseId);
       multiDealCourseIds.push({
         courseId: record.courseId,
-        dealCount: record.dealCount ?? 1,
+        dealCount,
         revenue: record.revenue,
         sameAmount: record.dealsSameAmount ?? false,
+        appliedAmount: effectiveRevenue,
         companyName: matched[0]?.company?.name,
         courseName: matched[0]?.name
       });
@@ -146,7 +159,7 @@ export async function runSalesRevenueSync({
 
     for (const course of matched) {
       const before = toNumber(course.revenue);
-      const after = record.revenue;
+      const after = effectiveRevenue;
       const action: SalesRevenueChange["action"] =
         before === null ? "fill" : before !== after ? "change" : "same";
 
@@ -208,6 +221,7 @@ export async function runSalesRevenueSync({
     multiCourseIds,
     multiDealCourseIds,
     excludedCourseIds,
+    dedupedCourseIds,
     applied: apply && !blockedByPartial,
     changes,
     issues
@@ -234,6 +248,7 @@ export async function runSalesRevenueSync({
             multiCourseIds: result.multiCourseIds.slice(0, 500),
             multiDealCourseIds: result.multiDealCourseIds.slice(0, 500).map((m) => m.courseId),
             excludedCourseIds: result.excludedCourseIds.slice(0, 500),
+            dedupedCourseIds: result.dedupedCourseIds.slice(0, 500),
             issues: result.issues
           }
         }
@@ -271,6 +286,7 @@ function emptyResult(readStatus: string, issues: string[], configured: boolean):
     multiCourseIds: [],
     multiDealCourseIds: [],
     excludedCourseIds: [],
+    dedupedCourseIds: [],
     applied: false,
     changes: [],
     issues

@@ -156,12 +156,11 @@ function MultiDealWarning({
       style={{ border: "1px solid #e6c200", background: "#fff9e0", borderRadius: 8, padding: 12 }}
     >
       <p style={{ fontWeight: 600, margin: 0 }}>
-        ⚠️ 확인 필요 — 한 코스ID에 딜이 여러 개라 금액이 합산됐어요 ({items.length}건)
+        ⚠️ 한 코스ID에 세일즈맵 딜이 여러 개예요 ({items.length}건) — 아래처럼 처리됩니다
       </p>
       <p style={{ fontSize: 13, color: "#8a6d00", margin: "4px 0 10px" }}>
-        {applied
-          ? "제외 표시한 항목은 반영에서 빠졌습니다(기존 매출 유지)."
-          : "중복 생성/버전 실수라면 합산이 틀릴 수 있어요. 제외할 항목을 체크하면 반영에서 빠집니다(기존 매출 유지)."}
+        🔴 금액이 같은 건 <strong>중복으로 보고 1건 금액만 자동 반영</strong>해요. 🟡 금액이 다른 건 <strong>합산</strong>합니다.
+        {applied ? " 제외 표시한 항목은 반영에서 빠졌습니다." : " 이상하면 '제외'를 체크하면 반영에서 빠집니다(기존 매출 유지)."}
       </p>
       <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 6 }}>
         {items.map((m) => {
@@ -188,7 +187,7 @@ function MultiDealWarning({
                 </label>
               )}
               <span style={{ fontWeight: 600 }}>
-                {m.sameAmount ? "🔴 금액 동일(중복 의심)" : "🟡 금액 다름(분할일 수도)"}
+                {m.sameAmount ? "🔴 금액 동일 → 1건만 반영" : "🟡 금액 다름 → 합산"}
               </span>
               <span>코스 {m.courseId}</span>
               <span style={{ color: "#555" }}>
@@ -196,7 +195,9 @@ function MultiDealWarning({
                 {m.courseName ?? ""}
               </span>
               <span style={{ marginLeft: "auto", fontVariantNumeric: "tabular-nums" }}>
-                딜 {m.dealCount}개 합산 → {m.revenue.toLocaleString("ko-KR")}
+                {m.sameAmount
+                  ? `딜 ${m.dealCount}개 → ${m.appliedAmount.toLocaleString("ko-KR")} (합계 ${m.revenue.toLocaleString("ko-KR")})`
+                  : `딜 ${m.dealCount}개 합산 → ${m.appliedAmount.toLocaleString("ko-KR")}`}
               </span>
             </li>
           );
