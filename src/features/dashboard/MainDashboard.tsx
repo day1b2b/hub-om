@@ -182,7 +182,6 @@ export function MainDashboard({ operations, teamScope, teamUsers }: MainDashboar
             <table>
               <thead>
                 <tr>
-                  <th>상태</th>
                   <th>기업 / 과정</th>
                   <th>교육형태</th>
                   <th>OM</th>
@@ -195,7 +194,6 @@ export function MainDashboard({ operations, teamScope, teamUsers }: MainDashboar
               <tbody>
                 {activeOrUpcoming.slice(0, 10).map((operation) => (
                   <tr key={operation.operationId}>
-                    <td>{operation.operationStatus}</td>
                     <td>
                       <Link className="course-link" href={`/operations/${operation.operationId}${teamQuery}`}>
                         <strong>{operation.companyName}</strong>
