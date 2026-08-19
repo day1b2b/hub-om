@@ -18,6 +18,7 @@ const PUBLIC_PATHS = new Set([
 
 const SYNC_API_PATHS = new Set([
   "/api/admin/sync-notion",
+  "/api/reminders/lecture-followup",
   "/api/sync/all",
   "/api/sync/engagements",
   "/api/sync/samsung-schedule"
