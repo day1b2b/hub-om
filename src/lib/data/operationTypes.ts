@@ -165,6 +165,7 @@ export interface UpdateOperationInput {
   operationCost?: number | null;
   operationDetail?: string;
   operationIssue?: string;
+  operationStatus?: OperationStatus;
   omUpdate?: string;
   padletLink?: string;
   region?: string;

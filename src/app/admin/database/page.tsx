@@ -1,6 +1,7 @@
 import { AppSidebar } from "@/components/AppSidebar";
 import { AdminDatabaseGrid } from "@/features/admin/AdminDatabaseGrid";
 import { DeletedOperationsPanel } from "@/features/admin/DeletedOperationsPanel";
+import { OmAssignmentStatusBackfillPanel } from "@/features/admin/OmAssignmentStatusBackfillPanel";
 import { OnsiteRequiredBackfillPanel } from "@/features/admin/OnsiteRequiredBackfillPanel";
 import { requireAdminSession } from "@/lib/auth/requireAdminSession";
 import {
@@ -51,6 +52,7 @@ export default async function AdminDatabasePage({ searchParams }: AdminDatabaseP
 
         {selectedTable.key === "operation_sessions" ? (
           <>
+            <OmAssignmentStatusBackfillPanel />
             <OnsiteRequiredBackfillPanel />
             <DeletedOperationsPanel />
           </>
