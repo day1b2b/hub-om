@@ -49,12 +49,12 @@ export default async function OmRequestDetailPage({ params }: Props) {
     listOmRequests()
   ]);
   const busyDatesByOm = buildOmBusyDates(operations, allRequests, request.id);
-  const partOmNames = await getOmNamesForPart(request.team);
+  const partManagerName = omRequestManagerName(request.team);
+  const partOmNames = (await getOmNamesForPart(request.team)).filter((name) => name !== partManagerName);
   const recommendations = recommendOms(request.sessions, partOmNames, busyDatesByOm);
   const omRoster = Array.from(new Set(Object.values(roleRoster.om).flatMap((names) => names ?? [])));
 
   const currentUserName = session.user?.name ?? session.user?.email?.split("@")[0] ?? "";
-  const partManagerName = omRequestManagerName(request.team);
   const canAssign = canManageOmRequestAssignment(request.team, currentUserName, session.user?.email);
 
   const createdAt = new Date(request.createdAt).toLocaleString("ko-KR", {
