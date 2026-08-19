@@ -152,6 +152,7 @@ export class LocalJsonOperationRepository implements OperationRepository {
       operationCost: input.operationCost === undefined ? operation.operationCost : input.operationCost,
       operationDetail: normalizeOptionalText(input.operationDetail, operation.operationDetail),
       operationIssue: normalizeOptionalText(input.operationIssue, operation.operationIssue),
+      operationStatus: input.operationStatus ?? operation.operationStatus,
       operationMonth: buildOperationMonth(startDate),
       omUpdate: normalizeOptionalText(input.omUpdate, operation.omUpdate),
       padletLink: normalizeOptionalText(input.padletLink, operation.padletLink),
