@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { AppSidebar } from "@/components/AppSidebar";
-import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
+import { requireAdminSession } from "@/lib/auth/requireAdminSession";
 import { AnnouncementForm } from "@/features/announcements/AnnouncementForm";
 
 export const dynamic = "force-dynamic";
 
 export default async function AnnouncementCreatePage() {
-  await requireWorkspaceSession();
+  await requireAdminSession();
 
   return (
     <main className="dashboard-shell">

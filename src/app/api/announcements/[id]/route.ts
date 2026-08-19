@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
+import { assertAdminSession } from "@/lib/auth/requireAdminSession";
 import { getPrismaClient } from "@/lib/data/prisma";
 import { MAX_ATTACHMENT_BYTES, MAX_ATTACHMENT_COUNT } from "@/lib/data/announcements/announcementAttachmentLimits";
 import { announcementContentToPlainText, sanitizeAnnouncementContent } from "@/lib/data/announcements/sanitizeAnnouncementContent";
@@ -13,7 +13,7 @@ interface RouteContext {
 }
 
 export async function GET(_request: Request, { params }: RouteContext) {
-  await requireWorkspaceSession();
+  await assertAdminSession();
 
   const { id } = await params;
   const prisma = getPrismaClient();
@@ -49,7 +49,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
 }
 
 export async function PUT(request: Request, { params }: RouteContext) {
-  await requireWorkspaceSession();
+  await assertAdminSession();
 
   const { id } = await params;
   const formData = await request.formData();
@@ -125,7 +125,7 @@ export async function PUT(request: Request, { params }: RouteContext) {
 }
 
 export async function DELETE(_request: Request, { params }: RouteContext) {
-  const session = await requireWorkspaceSession();
+  const session = await assertAdminSession();
   const { id } = await params;
   const prisma = getPrismaClient();
 

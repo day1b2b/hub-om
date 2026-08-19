@@ -444,7 +444,7 @@ export function OperationDetail({
 
           <section className="detail-section wide-detail-section">
             <div className="section-title">
-              <h2>이슈 / 회고</h2>
+              <h2>특이사항</h2>
               <span>기록하고 저장</span>
             </div>
             <IssueReviewEditor key={operation.operationId} operation={operation} />
