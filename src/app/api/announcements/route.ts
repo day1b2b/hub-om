@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
+import { assertAdminSession } from "@/lib/auth/requireAdminSession";
 import { getPrismaClient } from "@/lib/data/prisma";
 import type { AnnouncementSummary } from "@/lib/data/announcements/announcementTypes";
 import { MAX_ATTACHMENT_BYTES, MAX_ATTACHMENT_COUNT } from "@/lib/data/announcements/announcementAttachmentLimits";
@@ -8,7 +8,7 @@ import { announcementContentToPlainText, sanitizeAnnouncementContent } from "@/l
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  await requireWorkspaceSession();
+  await assertAdminSession();
 
   const prisma = getPrismaClient();
   const rows = await prisma.announcement.findMany({
@@ -37,7 +37,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const session = await requireWorkspaceSession();
+  const session = await assertAdminSession();
 
   const formData = await request.formData();
   const title = stringValue(formData.get("title"));

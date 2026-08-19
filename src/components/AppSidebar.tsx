@@ -89,13 +89,13 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
           </div>
         ) : null}
 
-        <div className="nav-section">
-          <div className="nav-section-title">공지/운영TOOL</div>
-          <Link className={isAnnouncementsPage ? "active" : ""} data-icon="🔒" href="/announcements">공지사항</Link>
-          {isAdmin ? (
+        {isAdmin ? (
+          <div className="nav-section">
+            <div className="nav-section-title">공지/운영TOOL</div>
+            <Link className={isAnnouncementsPage ? "active" : ""} data-icon="🔒" href="/announcements">공지사항</Link>
             <Link className={isQuickLinksPage ? "active" : ""} data-icon="🔗" href="/quick-links">주요링크모음</Link>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
 
         {isAdmin ? (
           <div className="nav-section nav-section-locked">
