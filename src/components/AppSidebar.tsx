@@ -58,27 +58,30 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
       ) : null}
       <nav className="nav-list">
         <div className="nav-section">
-          <div className="nav-section-title">개인</div>
+          <div className="nav-section-title">대시보드</div>
           <Link className={isMyDashboardPage ? "active" : ""} data-icon="👤" href="/me">내 대시보드</Link>
+          <Link className={pathname === "/dashboard" ? "active" : ""} data-icon="🔒" href="/dashboard">대시보드(전체)</Link>
         </div>
 
         <div className="nav-section">
-          <div className="nav-section-title">OM 운영 요청</div>
+          <div className="nav-section-title">운영 요청</div>
           <Link className={isOmRequestPage ? "active" : ""} data-icon="📋" href="/om-request">업무 요청</Link>
           <Link className={isOmManagePage ? "active" : ""} data-icon="☑" href="/om-request/manage">담당 관리</Link>
           <Link className={isResourcesPage ? "active" : ""} data-icon="📁" href="/resources">과정 캘린더</Link>
         </div>
 
         <div className="nav-section">
-          <div className="nav-section-title">운영현황/위키</div>
+          <div className="nav-section-title">운영 현황</div>
           <Link className={isOperationsPage ? "active" : ""} data-icon="🔒" href="/operations">운영 현황</Link>
-          {isAdmin ? (
-            <>
-              <Link className={isCompanyWikiPage ? "active" : ""} data-icon="🔒" href="/company-wiki">기업 위키</Link>
-              <Link className={isInstructorWikiPage ? "active" : ""} data-icon="🔒" href="/instructor-wiki">강사 위키</Link>
-            </>
-          ) : null}
         </div>
+
+        {isAdmin ? (
+          <div className="nav-section">
+            <div className="nav-section-title">위키</div>
+            <Link className={isCompanyWikiPage ? "active" : ""} data-icon="🔒" href="/company-wiki">기업 위키</Link>
+            <Link className={isInstructorWikiPage ? "active" : ""} data-icon="🔒" href="/instructor-wiki">강사 위키</Link>
+          </div>
+        ) : null}
 
         {isAdmin ? (
           <div className="nav-section">
@@ -100,22 +103,13 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
         {isAdmin ? (
           <div className="nav-section nav-section-locked">
             <div className="nav-section-title">데이터 관리</div>
-            <Link className={isImportAdminPage ? "active" : ""} data-icon="🔒" href="/admin/imports">데이터 일괄 등록</Link>
             <Link className={isSyncAdminPage ? "active" : ""} data-icon="🔒" href="/admin/sync">데이터 동기화</Link>
             <Link className={isSatisfactionPreviewPage ? "active" : ""} data-icon="🔒" href="/admin/satisfaction-preview">만족도 매칭</Link>
+            <Link className={isImportAdminPage ? "active" : ""} data-icon="🔒" href="/admin/imports">데이터 일괄 등록</Link>
+            <Link className={isUsersAdminPage ? "active" : ""} data-icon="🔒" href="/admin/users">멤버 관리</Link>
+            <Link className={isDatabaseAdminPage ? "active" : ""} data-icon="🔒" href="/admin/database">DB 조회</Link>
           </div>
         ) : null}
-
-        <div className="nav-section nav-section-locked">
-          <div className="nav-section-title">관리자 전용</div>
-          <Link className={pathname === "/dashboard" ? "active" : ""} data-icon="🔒" href="/dashboard">대시보드</Link>
-          {isAdmin ? (
-            <>
-              <Link className={isDatabaseAdminPage ? "active" : ""} data-icon="🔒" href="/admin/database">DB 조회</Link>
-              <Link className={isUsersAdminPage ? "active" : ""} data-icon="🔒" href="/admin/users">멤버 관리</Link>
-            </>
-          ) : null}
-        </div>
       </nav>
     </aside>
   );
