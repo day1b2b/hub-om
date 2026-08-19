@@ -22,15 +22,17 @@ export default async function ResourcesPage({ searchParams }: ResourcesPageProps
   const repository = getOperationRepository();
   const teamMemberRepository = getTeamMemberRepository();
   const shouldReadNotionResources = hasNotionResourceConfig();
-  const [operations, memberRoster, roleRoster, externalResourceOperations, calendarEvents, params, partRoster] = await Promise.all([
-    repository.listOperations(),
-    teamMemberRepository.listResourceOwners(),
-    teamMemberRepository.listRoleRosters(),
-    shouldReadNotionResources ? listNotionResourceOperations() : Promise.resolve([]),
-    listCalendarResourceEvents(),
-    searchParams,
-    getOmAvailabilityRoster()
-  ]);
+  const [operations, memberRoster, roleRoster, externalResourceOperations, calendarEvents, omRequests, params, partRoster] =
+    await Promise.all([
+      repository.listOperations(),
+      teamMemberRepository.listResourceOwners(),
+      teamMemberRepository.listRoleRosters(),
+      shouldReadNotionResources ? listNotionResourceOperations() : Promise.resolve([]),
+      listCalendarResourceEvents(),
+      listOmRequests(),
+      searchParams,
+      getOmAvailabilityRoster()
+    ]);
   const resourceOperations = mergeExternalResourceOperations(operations, externalResourceOperations);
   const resourceOwnerRoster = roleRoster.om;
   const teamScope = resolveTeamScope(params, session, hasRosterMembers(memberRoster) ? memberRoster : resourceOwnerRoster);
@@ -39,9 +41,7 @@ export default async function ResourcesPage({ searchParams }: ResourcesPageProps
   const scopedCalendarEvents = filterCalendarEventsByOwnerRoster(calendarEvents, scopedOwnerRoster);
   // om-request는 접수 시점에 바로 operation이 생성되므로(omRequestOperationLink), 정상적으로 연결된
   // 건은 이미 resourceOperations에 들어 있다. 연결이 실패한 예외 건만 캘린더에 별도로 보여준다.
-  const pendingOmRequests = (await listOmRequests()).filter(
-    (request) => !!request.assignedOm && !request.operationId
-  );
+  const pendingOmRequests = omRequests.filter((request) => !!request.assignedOm && !request.operationId);
   const teamLabel = teamScope === "team_1" ? "1팀" : teamScope === "team_2" ? "2팀" : null;
   const scopedPendingOmRequests = teamLabel
     ? pendingOmRequests.filter((request) => request.team === teamLabel)
