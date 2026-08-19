@@ -22,7 +22,7 @@ export default async function ResourcesPage({ searchParams }: ResourcesPageProps
   const repository = getOperationRepository();
   const teamMemberRepository = getTeamMemberRepository();
   const shouldReadNotionResources = hasNotionResourceConfig();
-  const [operations, memberRoster, roleRoster, externalResourceOperations, calendarEvents, omRequests, params] =
+  const [operations, memberRoster, roleRoster, externalResourceOperations, calendarEvents, omRequests, params, partRoster] =
     await Promise.all([
       repository.listOperations(),
       teamMemberRepository.listResourceOwners(),
@@ -30,7 +30,8 @@ export default async function ResourcesPage({ searchParams }: ResourcesPageProps
       shouldReadNotionResources ? listNotionResourceOperations() : Promise.resolve([]),
       listCalendarResourceEvents(),
       listOmRequests(),
-      searchParams
+      searchParams,
+      getOmAvailabilityRoster()
     ]);
   const resourceOperations = mergeExternalResourceOperations(operations, externalResourceOperations);
   const resourceOwnerRoster = roleRoster.om;
@@ -45,8 +46,6 @@ export default async function ResourcesPage({ searchParams }: ResourcesPageProps
   const scopedPendingOmRequests = teamLabel
     ? pendingOmRequests.filter((request) => request.team === teamLabel)
     : pendingOmRequests;
-
-  const partRoster = getOmAvailabilityRoster();
 
   return (
     <ResourceJudgmentPage

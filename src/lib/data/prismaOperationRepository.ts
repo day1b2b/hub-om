@@ -24,6 +24,7 @@ import type {
 } from "./operationTypes";
 import {
   buildOperationMonth,
+  deriveArchiveStatus,
   deriveProfit,
   deriveSessionDurationDays,
   deriveSessionDurationType,
@@ -43,12 +44,6 @@ const OPERATION_STATUS: Record<string, OperationStatus> = {
   DONE: "완료",
   RETROSPECTIVE_DONE: "회고완료",
   ARCHIVE_NEEDED: "아카이빙필요"
-};
-
-const ARCHIVE_STATUS: Record<string, ArchiveStatus> = {
-  NOT_READY: "아카이빙전",
-  NEEDED: "아카이빙필요",
-  DONE: "완료"
 };
 
 const EDUCATION_FORMAT: Record<string, EducationFormat> = {
@@ -172,7 +167,13 @@ export class PrismaOperationRepository implements OperationRepository {
         ld: session.ldName ?? "",
         onsiteOm: session.onsiteOmName ?? "",
         operationStatus: OPERATION_STATUS[session.operationStatus],
-        archiveStatus: ARCHIVE_STATUS[session.archiveStatus],
+        archiveStatus: deriveArchiveStatus(toDateString(session.endDate), {
+          courseId: session.course.courseId ?? "",
+          lectureManagementNote: session.lectureManagementNote ?? "",
+          avgSatisfaction: session.avgSatisfaction ?? "",
+          hasResultReport: RESULT_REPORT_STATUS[session.hasResultReport],
+          resultReportLink: session.resultReportLink ?? ""
+        }),
         educationFormat: EDUCATION_FORMAT[session.educationFormat],
         educationFormatRaw: session.educationFormatRaw ?? "",
         operationChannel: OPERATION_CHANNEL[session.operationChannel],
