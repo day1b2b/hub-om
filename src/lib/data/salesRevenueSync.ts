@@ -98,7 +98,8 @@ export async function runSalesRevenueSync({
     matchedCourseIds += 1;
 
     // 같은 코스ID가 여러 과정 행에 걸리면 과정별로 모두 채운다(화면 표시용).
-    // 총 매출 합계는 대시보드에서 코스ID당 1번만 집계하므로 중복 집계되지 않는다.
+    // 대시보드 총 매출은 과정(Course.id)당 1번만 집계하므로 같은 과정 안 회차 중복은 없지만,
+    // 이 경우처럼 코스ID 하나가 과정 여러 건에 걸치면 그만큼 여러 번 집계된다 -> multiCourseIds로 별도 표시.
     if (matched.length > 1) {
       multiCourseIds.push(record.courseId);
     }
