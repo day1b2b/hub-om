@@ -115,7 +115,7 @@ export function MainDashboard({ operations, teamScope, teamUsers }: MainDashboar
           <Metric label="진행중" value={scopedOperations.filter((operation) => operation.operationStatus === "진행중").length} />
           <Metric label="예정" value={scopedOperations.filter((operation) => isUpcoming(operation, today)).length} />
           <Metric label="완료" value={scopedOperations.filter(isDone).length} />
-          <Metric label="총 매출" value={formatShortMoney(scopedOperations.reduce((sum, operation) => sum + (operation.revenue ?? 0), 0))} />
+          <Metric label="총 매출" value={formatShortMoney(scopedCourses.reduce((sum, operation) => sum + (operation.revenue ?? 0), 0))} />
           <Metric label="참여 기업" value={new Set(scopedOperations.map((operation) => operation.companyName)).size} />
           <Metric label="전체 과정" value={courseCount} />
         </section>
