@@ -173,6 +173,7 @@ function mapPageToOperation(page: NotionPage, config: NotionResourceSourceConfig
     profit: null,
     avgSatisfaction: "",
     instructorSatisfaction: "",
+    hasSatisfactionSurvey: "확인필요",
     hasResultReport: "확인필요",
     resultReportLink: "",
     lectureManagementLink: "",

@@ -18,6 +18,7 @@ import { LectureManagementNoteRow } from "./LectureManagementNoteRow";
 import { OperationDiscussionPanel } from "./OperationDiscussionPanel";
 import { ResultReportConditionSelect } from "./ResultReportConditionSelect";
 import { ResultReportRequirementCell } from "./ResultReportRequirementCell";
+import { SatisfactionSurveyConditionSelect } from "./SatisfactionSurveyConditionSelect";
 import type {
   OperationSession,
   OperationStatus,
@@ -163,6 +164,12 @@ export function OperationDetail({
               <ResultReportConditionSelect
                 rounds={courseOperations.map((candidate) => ({
                   hasResultReport: candidate.hasResultReport,
+                  operationId: candidate.operationId
+                }))}
+              />
+              <SatisfactionSurveyConditionSelect
+                rounds={courseOperations.map((candidate) => ({
+                  hasSatisfactionSurvey: candidate.hasSatisfactionSurvey,
                   operationId: candidate.operationId
                 }))}
               />
@@ -341,7 +348,8 @@ export function OperationDetail({
                         <td>
                           <SessionMetricPill
                             doneText={courseOperation.avgSatisfaction}
-                            missingText="미입력"
+                            missingText={courseOperation.hasSatisfactionSurvey === "불필요" ? "없음" : "미입력"}
+                            muted={courseOperation.hasSatisfactionSurvey === "불필요"}
                           />
                         </td>
                         <ResultReportRequirementCell
@@ -573,10 +581,19 @@ function StatusBadge({ status }: { status: OperationStatus }) {
   return <span className={`status ${STATUS_CLASS[status]}`}>{status}</span>;
 }
 
-function SessionMetricPill({ doneText, missingText }: { doneText: string; missingText: string }) {
+function SessionMetricPill({
+  doneText,
+  missingText,
+  muted = false
+}: {
+  doneText: string;
+  missingText: string;
+  muted?: boolean;
+}) {
   const isDone = Boolean(doneText.trim());
+  const variant = isDone ? "done" : muted ? "muted" : "needed";
 
-  return <span className={`archive-pill ${isDone ? "done" : "needed"}`}>{isDone ? doneText : missingText}</span>;
+  return <span className={`archive-pill ${variant}`}>{isDone ? doneText : missingText}</span>;
 }
 
 function formatMoney(value: number | null): string {

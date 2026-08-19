@@ -37,6 +37,8 @@ export type OnsiteRequired = "Y" | "N" | "PARTIAL" | "UNKNOWN";
 
 export type ResultReportStatus = "유" | "무" | "불필요" | "확인필요";
 
+export type SatisfactionSurveyStatus = "불필요" | "확인필요";
+
 export type ValidationStatus = "정상" | "검토필요";
 
 export type SourceTeam = "1팀" | "2팀" | "미분류";
@@ -93,6 +95,7 @@ export interface OperationSession {
   profit: number | null;
   avgSatisfaction: string;
   instructorSatisfaction: string;
+  hasSatisfactionSurvey: SatisfactionSurveyStatus;
   hasResultReport: ResultReportStatus;
   resultReportLink: string;
   lectureManagementLink: string;
@@ -153,6 +156,7 @@ export interface UpdateOperationInput {
   educationDays?: string;
   endDate?: string;
   hasResultReport?: ResultReportStatus;
+  hasSatisfactionSurvey?: SatisfactionSurveyStatus;
   instructorCost?: number | null;
   instructorSatisfaction?: string;
   instructors?: string;
