@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppSidebar } from "@/components/AppSidebar";
-import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
+import { requireAdminSession } from "@/lib/auth/requireAdminSession";
 import { getPrismaClient } from "@/lib/data/prisma";
 import { AnnouncementForm } from "@/features/announcements/AnnouncementForm";
 
@@ -12,7 +12,7 @@ interface Props {
 }
 
 export default async function AnnouncementEditPage({ params }: Props) {
-  await requireWorkspaceSession();
+  await requireAdminSession();
   const { id } = await params;
 
   const prisma = getPrismaClient();

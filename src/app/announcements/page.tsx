@@ -1,12 +1,12 @@
 import { AnnouncementList } from "@/features/announcements/AnnouncementList";
-import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
+import { requireAdminSession } from "@/lib/auth/requireAdminSession";
 import { getPrismaClient } from "@/lib/data/prisma";
 import type { AnnouncementSummary } from "@/lib/data/announcements/announcementTypes";
 
 export const dynamic = "force-dynamic";
 
 export default async function AnnouncementsPage() {
-  await requireWorkspaceSession();
+  await requireAdminSession();
 
   let announcements: AnnouncementSummary[] = [];
   let loadFailed = false;

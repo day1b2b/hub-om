@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
+import { assertAdminSession } from "@/lib/auth/requireAdminSession";
 import { getPrismaClient } from "@/lib/data/prisma";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +12,7 @@ interface RouteContext {
 }
 
 export async function GET(_request: Request, { params }: RouteContext) {
-  await requireWorkspaceSession();
+  await assertAdminSession();
 
   const { id, attachmentId } = await params;
   const prisma = getPrismaClient();
