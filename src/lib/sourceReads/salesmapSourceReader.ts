@@ -324,6 +324,9 @@ interface AggregatedSale {
   courseName?: string;
   revenue: number;
   dealCount: number;
+  /** 합산된 딜들 중 가장 큰/작은 금액(금액 다른 다중 딜의 처리 대안: 합산/최대/최소). */
+  maxDealAmount: number;
+  minDealAmount: number;
 }
 
 interface AggregateResult {
@@ -356,6 +359,8 @@ function aggregateByCourseId(deals: SalesmapDeal[], config: SalesmapConfig): Agg
     if (existing) {
       existing.revenue += revenue;
       existing.dealCount += 1;
+      if (revenue > existing.maxDealAmount) existing.maxDealAmount = revenue;
+      if (revenue < existing.minDealAmount) existing.minDealAmount = revenue;
       existing.companyName ??= readCompanyName(deal, config);
       existing.courseName ??= readCourseName(deal, config);
     } else {
@@ -364,7 +369,9 @@ function aggregateByCourseId(deals: SalesmapDeal[], config: SalesmapConfig): Agg
         companyName: readCompanyName(deal, config),
         courseName: readCourseName(deal, config),
         revenue,
-        dealCount: 1
+        dealCount: 1,
+        maxDealAmount: revenue,
+        minDealAmount: revenue
       });
     }
   }
@@ -389,7 +396,11 @@ function salesRecordFromAggregate(sale: AggregatedSale): SalesRecord {
     courseName: sale.courseName,
     revenue: sale.revenue,
     probability: undefined,
-    sourceUrl: undefined
+    sourceUrl: undefined,
+    dealCount: sale.dealCount,
+    dealsSameAmount: sale.maxDealAmount === sale.minDealAmount,
+    maxAmount: sale.maxDealAmount,
+    minAmount: sale.minDealAmount
   };
 }
 

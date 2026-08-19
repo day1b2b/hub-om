@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { SalesRevenueSyncResult } from "@/lib/data/salesRevenueSync";
+import type { MultiDealCourseInfo, MultiDealMode, SalesRevenueSyncResult } from "@/lib/data/salesRevenueSync";
 
 const ENDPOINT = "/api/admin/sales-revenue";
 
@@ -21,15 +21,42 @@ interface ApiResponse {
   error?: string;
 }
 
+const MODE_LABEL: Record<MultiDealMode, string> = {
+  sum: "합산",
+  max: "큰 값",
+  min: "작은 값",
+  exclude: "제외(반영 안 함)"
+};
+
 export function SalesRevenueSyncPanel() {
   const [state, setState] = useState<PanelState>({ phase: "idle" });
+  // 금액이 다른 다중 딜의 코스ID별 처리 방식(미리보기에서 선택 → 반영 시 전달). 없으면 기본 '합산'.
+  const [resolutions, setResolutions] = useState<Map<string, MultiDealMode>>(new Map());
   const busy = state.phase === "previewing" || state.phase === "applying";
 
+  function setResolution(courseId: string, mode: MultiDealMode) {
+    setResolutions((prev) => {
+      const next = new Map(prev);
+      next.set(courseId, mode);
+      return next;
+    });
+  }
+
   async function call(apply: boolean) {
+    // 새 미리보기는 이전 선택을 초기화(데이터가 바뀌었을 수 있음).
+    if (!apply) setResolutions(new Map());
     setState({ phase: apply ? "applying" : "previewing" });
 
     try {
-      const response = await fetch(ENDPOINT, { method: apply ? "POST" : "GET" });
+      const response = await fetch(ENDPOINT, {
+        method: apply ? "POST" : "GET",
+        ...(apply
+          ? {
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ multiDealResolutions: Object.fromEntries(resolutions) })
+            }
+          : {})
+      });
       const payload = (await response
         .json()
         .catch(() => ({ ok: false, error: "응답을 읽지 못했습니다." }))) as ApiResponse;
@@ -98,13 +125,106 @@ export function SalesRevenueSyncPanel() {
 
         {state.phase === "failed" ? <p className="sync-error">오류: {state.error}</p> : null}
 
-        {state.result ? <ResultView applied={state.applied ?? false} result={state.result} /> : null}
+        {state.result ? (
+          <ResultView
+            applied={state.applied ?? false}
+            result={state.result}
+            resolutions={resolutions}
+            onSetResolution={setResolution}
+          />
+        ) : null}
       </article>
     </div>
   );
 }
 
-function ResultView({ applied, result }: { applied: boolean; result: SalesRevenueSyncResult }) {
+function MultiDealDecision({
+  applied,
+  items,
+  resolutions,
+  onSetResolution
+}: {
+  applied: boolean;
+  items: MultiDealCourseInfo[];
+  resolutions: Map<string, MultiDealMode>;
+  onSetResolution: (courseId: string, mode: MultiDealMode) => void;
+}) {
+  if (items.length === 0) return null;
+
+  return (
+    <div
+      className="sync-detail"
+      style={{ border: "1px solid #e6c200", background: "#fff9e0", borderRadius: 8, padding: 12 }}
+    >
+      <p style={{ fontWeight: 600, margin: 0 }}>
+        🟡 금액이 서로 다른 딜이 여러 개인 코스ID ({items.length}건) — 어떻게 반영할지 고르세요
+      </p>
+      <p style={{ fontSize: 13, color: "#8a6d00", margin: "4px 0 10px" }}>
+        분할 계약이면 <strong>합산</strong>, 최신/최종만 반영하려면 <strong>큰 값·작은 값</strong>, 반영하지 않으려면{" "}
+        <strong>제외</strong>를 고르세요. (기본: 합산)
+      </p>
+      <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+        {items.map((m) => {
+          const selected = resolutions.get(m.courseId) ?? m.mode;
+          return (
+            <li
+              key={m.courseId}
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "center",
+                gap: 8,
+                opacity: (applied ? m.mode : selected) === "exclude" ? 0.55 : 1
+              }}
+            >
+              <span style={{ fontWeight: 600 }}>코스 {m.courseId}</span>
+              <span style={{ color: "#555" }}>
+                {m.companyName ? `${m.companyName} ` : ""}
+                {m.courseName ?? ""}
+              </span>
+              <span style={{ fontSize: 12, color: "#777", fontVariantNumeric: "tabular-nums" }}>
+                딜 {m.dealCount}개 · 합계 {m.sum.toLocaleString("ko-KR")} · 최대 {m.max.toLocaleString("ko-KR")} · 최소{" "}
+                {m.min.toLocaleString("ko-KR")}
+              </span>
+              {applied ? (
+                <span style={{ marginLeft: "auto", fontWeight: 600 }}>
+                  {MODE_LABEL[m.mode]}
+                  {m.mode === "exclude" ? "" : ` → ${m.appliedAmount.toLocaleString("ko-KR")}`}
+                </span>
+              ) : (
+                <label style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 12, color: "#777" }}>처리</span>
+                  <select
+                    value={selected}
+                    onChange={(e) => onSetResolution(m.courseId, e.target.value as MultiDealMode)}
+                  >
+                    {(Object.keys(MODE_LABEL) as MultiDealMode[]).map((mode) => (
+                      <option key={mode} value={mode}>
+                        {MODE_LABEL[mode]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function ResultView({
+  applied,
+  result,
+  resolutions,
+  onSetResolution
+}: {
+  applied: boolean;
+  result: SalesRevenueSyncResult;
+  resolutions: Map<string, MultiDealMode>;
+  onSetResolution: (courseId: string, mode: MultiDealMode) => void;
+}) {
   const [showChanges, setShowChanges] = useState(false);
   const realChanges = result.changes.filter((change) => change.action !== "same");
 
@@ -117,8 +237,31 @@ function ResultView({ applied, result }: { applied: boolean; result: SalesRevenu
       <p className="sync-summary-line">
         세일즈맵 {result.readCount}건 · 매칭 {result.matchedCourseIds} · 새로채움 {result.filled} · 변경 {result.changed} ·
         동일 {result.unchanged} · 미매칭 {result.unmatchedCourseIds.length} · 여러과정 {result.multiCourseIds.length}
+        {result.dedupedCourseIds.length > 0 ? ` · 중복자동 ${result.dedupedCourseIds.length}` : ""}
+        {result.multiDealCourseIds.length > 0 ? ` · 금액다른딜 ${result.multiDealCourseIds.length}` : ""}
       </p>
       {applied ? <p className="sync-summary-line">실제 갱신된 과정 행: {result.updatedRows.toLocaleString("ko-KR")}</p> : null}
+
+      <MultiDealDecision
+        applied={applied}
+        items={result.multiDealCourseIds}
+        resolutions={resolutions}
+        onSetResolution={onSetResolution}
+      />
+
+      {result.dedupedCourseIds.length > 0 ? (
+        <details className="sync-detail">
+          <summary>금액이 같은 중복 딜 {result.dedupedCourseIds.length}건 → 1건 값으로 자동 반영</summary>
+          <ul>
+            {result.dedupedCourseIds.slice(0, 100).map((courseId) => (
+              <li key={courseId}>{courseId}</li>
+            ))}
+          </ul>
+          {result.dedupedCourseIds.length > 100 ? (
+            <p className="sync-more">…외 {result.dedupedCourseIds.length - 100}건</p>
+          ) : null}
+        </details>
+      ) : null}
 
       <dl className="sync-stats">
         <Stat label="세일즈맵 읽음" value={result.readCount} />
