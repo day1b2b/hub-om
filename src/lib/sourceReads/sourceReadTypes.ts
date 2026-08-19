@@ -67,6 +67,10 @@ export interface SalesRecord {
   revenue?: number;
   probability?: string;
   sourceUrl?: string;
+  /** 이 코스ID로 합산된 세일즈맵 딜 개수(1이면 단일). 2 이상이면 중복 실수 가능성 확인 대상. */
+  dealCount?: number;
+  /** 합산된 딜들의 금액이 모두 동일한지(같으면 복붙 중복 의심). 딜이 1개면 의미 없음. */
+  dealsSameAmount?: boolean;
 }
 
 export interface OperationSourceReader {

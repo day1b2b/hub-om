@@ -9,11 +9,23 @@ export async function GET() {
   return handle(false);
 }
 
-export async function POST() {
-  return handle(true);
+export async function POST(request: Request) {
+  return handle(true, request);
 }
 
-async function handle(apply: boolean) {
+/** 반영(POST) 본문에서 제외할 코스ID 목록을 안전하게 꺼낸다(미리보기 GET엔 없음). */
+async function readExcludeCourseIds(request?: Request): Promise<string[]> {
+  if (!request) return [];
+  try {
+    const body = (await request.json()) as { excludeCourseIds?: unknown };
+    if (!Array.isArray(body?.excludeCourseIds)) return [];
+    return body.excludeCourseIds.filter((v): v is string => typeof v === "string");
+  } catch {
+    return [];
+  }
+}
+
+async function handle(apply: boolean, request?: Request) {
   let actorEmail: string;
   try {
     const session = await assertAdminSession();
@@ -23,7 +35,8 @@ async function handle(apply: boolean) {
   }
 
   try {
-    const result = await runSalesRevenueSync({ apply, actorEmail });
+    const excludeCourseIds = apply ? await readExcludeCourseIds(request) : [];
+    const result = await runSalesRevenueSync({ apply, actorEmail, excludeCourseIds });
 
     if (!result.configured) {
       return NextResponse.json(

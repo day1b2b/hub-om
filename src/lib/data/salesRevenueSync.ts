@@ -17,6 +17,18 @@ export interface SalesRevenueChange {
   action: "fill" | "change" | "same";
 }
 
+/** 한 코스ID에 세일즈맵 딜이 여러 개 걸려 금액이 합산된 건(중복 실수 가능성 확인 대상). */
+export interface MultiDealCourseInfo {
+  courseId: string;
+  dealCount: number;
+  /** 합산된 매출(딜 금액 합). */
+  revenue: number;
+  /** 합산된 딜들의 금액이 모두 동일한지(같으면 복붙 중복 의심). */
+  sameAmount: boolean;
+  companyName?: string;
+  courseName?: string;
+}
+
 export interface SalesRevenueSyncResult {
   configured: boolean;
   readStatus: string;
@@ -28,6 +40,10 @@ export interface SalesRevenueSyncResult {
   updatedRows: number;
   unmatchedCourseIds: string[];
   multiCourseIds: string[];
+  /** 딜 여러 개가 합산된 코스ID 목록(관리자가 반영 제외를 판단하는 근거). */
+  multiDealCourseIds: MultiDealCourseInfo[];
+  /** 이번 반영에서 관리자가 제외한 코스ID(반영 안 됨, 기존 매출 유지). */
+  excludedCourseIds: string[];
   applied: boolean;
   changes: SalesRevenueChange[];
   issues: string[];
@@ -43,10 +59,13 @@ interface CourseRow {
 
 export async function runSalesRevenueSync({
   apply,
-  actorEmail
+  actorEmail,
+  excludeCourseIds = []
 }: {
   apply: boolean;
   actorEmail: string;
+  /** 반영에서 제외할 코스ID(딜 중복 의심 등). 반영 시 이 코스ID들은 건너뛰고 기존 매출을 유지한다. */
+  excludeCourseIds?: string[];
 }): Promise<SalesRevenueSyncResult> {
   if (!hasSalesmapConfig()) {
     return emptyResult("disabled", ["세일즈맵 토큰(SALESMAP_API_TOKEN)이 설정되지 않았습니다."], false);
@@ -57,6 +76,8 @@ export async function runSalesRevenueSync({
     (record): record is typeof record & { courseId: string; revenue: number } =>
       Boolean(record.courseId) && record.revenue != null
   );
+
+  const excludeSet = new Set(excludeCourseIds.map(normalizeCourseId));
 
   if (read.status === "failed") {
     return emptyResult(read.status, read.issues.map((issue) => issue.message), true);
@@ -83,6 +104,8 @@ export async function runSalesRevenueSync({
   const changes: SalesRevenueChange[] = [];
   const unmatchedCourseIds: string[] = [];
   const multiCourseIds: string[] = [];
+  const multiDealCourseIds: MultiDealCourseInfo[] = [];
+  const excludedCourseIds: string[] = [];
   let matchedCourseIds = 0;
   let filled = 0;
   let changed = 0;
@@ -101,6 +124,24 @@ export async function runSalesRevenueSync({
     // 총 매출 합계는 대시보드에서 코스ID당 1번만 집계하므로 중복 집계되지 않는다.
     if (matched.length > 1) {
       multiCourseIds.push(record.courseId);
+    }
+
+    // 한 코스ID에 세일즈맵 딜이 여러 개라 금액이 합산된 건 → 관리자가 제외 판단하도록 목록에 남긴다.
+    if ((record.dealCount ?? 1) > 1) {
+      multiDealCourseIds.push({
+        courseId: record.courseId,
+        dealCount: record.dealCount ?? 1,
+        revenue: record.revenue,
+        sameAmount: record.dealsSameAmount ?? false,
+        companyName: matched[0]?.company?.name,
+        courseName: matched[0]?.name
+      });
+    }
+
+    // 관리자가 제외한 코스ID는 반영하지 않는다(기존 매출 그대로 유지).
+    if (excludeSet.has(normalizeCourseId(record.courseId))) {
+      excludedCourseIds.push(record.courseId);
+      continue;
     }
 
     for (const course of matched) {
@@ -165,6 +206,8 @@ export async function runSalesRevenueSync({
     updatedRows,
     unmatchedCourseIds,
     multiCourseIds,
+    multiDealCourseIds,
+    excludedCourseIds,
     applied: apply && !blockedByPartial,
     changes,
     issues
@@ -189,6 +232,8 @@ export async function runSalesRevenueSync({
           detail: {
             unmatchedCourseIds: result.unmatchedCourseIds.slice(0, 500),
             multiCourseIds: result.multiCourseIds.slice(0, 500),
+            multiDealCourseIds: result.multiDealCourseIds.slice(0, 500).map((m) => m.courseId),
+            excludedCourseIds: result.excludedCourseIds.slice(0, 500),
             issues: result.issues
           }
         }
@@ -224,6 +269,8 @@ function emptyResult(readStatus: string, issues: string[], configured: boolean):
     updatedRows: 0,
     unmatchedCourseIds: [],
     multiCourseIds: [],
+    multiDealCourseIds: [],
+    excludedCourseIds: [],
     applied: false,
     changes: [],
     issues
