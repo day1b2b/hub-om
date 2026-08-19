@@ -200,3 +200,48 @@ export async function notifyOmAssigned(params: {
   // 폴백: 스레드 정보가 없으면 기존 웹훅으로 단독 메시지
   await webhookPost(text);
 }
+
+// ── 개인 DM 발송 ──────────────────────────────────────────────────
+/** 봇 토큰으로 DM 채널을 열고 그 채널에 발송한다. im:write 스코프가 없으면 null. */
+async function openDirectMessageChannel(slackId: string): Promise<string | null> {
+  const token = botToken();
+  if (!token) return null;
+
+  try {
+    const res = await fetch("https://slack.com/api/conversations.open", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ users: slackId }),
+    });
+    const data = (await res.json()) as { ok: boolean; channel?: { id?: string }; error?: string };
+    if (!data.ok) {
+      console.error("[notifySlack] conversations.open 실패:", data.error);
+      return null;
+    }
+    return data.channel?.id ?? null;
+  } catch (err) {
+    console.error("[notifySlack] conversations.open 예외:", err);
+    return null;
+  }
+}
+
+/**
+ * 팀원 1명에게 DM을 보낸다. 성공하면 true.
+ * 대개 chat.postMessage에 사용자 ID를 그대로 넣으면 Slack이 DM으로 보내주고,
+ * 그게 막힌 워크스페이스에서는 conversations.open으로 DM 채널을 먼저 연다.
+ * 웹훅 폴백은 쓰지 않는다(웹훅은 지정된 공개 채널로만 가므로 개인 알림이 새어 나간다).
+ */
+export async function sendSlackDirectMessage(slackId: string, text: string): Promise<boolean> {
+  const target = slackId.trim();
+  if (!target || !botToken()) return false;
+
+  if (await botPost(target, text)) return true;
+
+  const channel = await openDirectMessageChannel(target);
+  if (!channel) return false;
+
+  return Boolean(await botPost(channel, text));
+}
