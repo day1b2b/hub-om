@@ -17,9 +17,12 @@ import { appendSentKeys, readSentKeys } from "./reminderSentLog";
 export type ReminderStage = "d1" | "d7";
 
 const STAGE_OFFSET_DAYS: Record<ReminderStage, number> = { d1: 1, d7: 7 };
-const STAGE_HEADING: Record<ReminderStage, string> = {
-  d1: "어제 종료된 회차",
-  d7: "종료 1주일 지난 회차"
+
+// Slack 이모지 이름은 영문만 되고, 줄 시작의 "*"는 목록이 아니라 굵게 표시 기호로 읽힌다.
+// 그래서 하위 항목은 "◦"로 쓴다.
+const STAGE_HEADING: Record<ReminderStage, { emoji: string; label: string; suffix: string }> = {
+  d1: { emoji: ":pushpin:", label: "어제 종료된 회차", suffix: "(D+1)" },
+  d7: { emoji: ":warning:", label: "종료 1주일 경과 회차", suffix: "(D+7 / 확인 필요!)" }
 };
 const STAGE_ORDER: ReminderStage[] = ["d1", "d7"];
 const DEFAULT_MAX_DM_PER_RUN = 50;
@@ -216,7 +219,7 @@ function resolveStage(endDate: string, targetDates: Record<ReminderStage, string
 function buildTodo(operation: OperationSession, stage: ReminderStage): string[] {
   const todo: string[] = [];
 
-  if (!operation.lectureManagementNote.trim()) todo.push("강의관리 시트 등록");
+  if (!operation.lectureManagementNote.trim()) todo.push("강의관리 등록");
   if (!operation.avgSatisfaction.trim()) todo.push("만족도 등록");
   if (stage === "d7" && needsRetrospective(operation)) todo.push("운영 회고 작성");
 
@@ -280,7 +283,7 @@ function buildRecipient(
     slackId: slackId || null,
     blocked: resolveBlockedReason(user, slackId, email, allowlist),
     tasks,
-    message: buildMessage(tasks, today),
+    message: buildMessage(omName, tasks, today),
     sent: false
   };
 }
@@ -299,26 +302,37 @@ function resolveBlockedReason(
   return "시범 대상 아님";
 }
 
-function buildMessage(tasks: ReminderTask[], today: string): string {
-  const lines = [`:bell: *운영 마무리 알림* (${today})`];
+function buildMessage(omName: string, tasks: ReminderTask[], today: string): string {
+  const lines = [
+    `:bell: *운영 마무리 알림* (${shortDate(today)})`,
+    `${omName}님, 담당하신 과정 중 *아직 미입력된 항목*이 있어 안내드립니다!`,
+    "아래의 링크에서 확인 후 데이터를 입력해주세요."
+  ];
 
   for (const stage of STAGE_ORDER) {
     const stageTasks = tasks.filter((task) => task.stage === stage);
     if (stageTasks.length === 0) continue;
 
-    lines.push("", `*${STAGE_HEADING[stage]}*`);
+    const heading = STAGE_HEADING[stage];
+    lines.push("", "", `*${heading.emoji} ${heading.label}* ${heading.suffix}`);
 
     for (const task of stageTasks) {
       const courseLabel = [task.courseName, task.roundLabel].filter(Boolean).join(" ");
       const title = [task.companyName, courseLabel].filter(Boolean).join(" / ");
-      lines.push(`• ${title} · 종료 ${task.endDate}`);
-      lines.push(`   남은 것: ${task.todo.join(", ")} · <${task.detailUrl}|회차 열기>`);
+      lines.push(`• *${title}* (종료 ${shortDate(task.endDate)})`);
+      lines.push(`   ◦ 미입력 : ${task.todo.join(", ")}`);
+      lines.push(`   ◦ :point_right: <${task.detailUrl}|사이트로 이동하기>`);
     }
   }
 
-  lines.push("", "확인 부탁드립니다 :)");
+  lines.push("", "", "확인 후 작성을 부탁드립니다.");
 
   return lines.join("\n");
+}
+
+/** 2026-08-19 → 26-08-19 */
+function shortDate(dateString: string): string {
+  return dateString.trim().replace(/^\d{2}(\d{2}-\d{2}-\d{2})$/, "$1");
 }
 
 async function loadTeamUsers(): Promise<TeamUser[]> {
