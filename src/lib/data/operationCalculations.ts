@@ -98,12 +98,31 @@ export function deriveOperationStatus(om: string, endDate: string, hasArchiveDat
   return "진행중";
 }
 
-export function deriveArchiveStatus(endDate: string, hasArchiveData: boolean): ArchiveStatus {
+export interface ArchiveCompletionInput {
+  courseId: string;
+  lectureManagementNote: string;
+  avgSatisfaction: string;
+  hasResultReport: ResultReportStatus;
+  resultReportLink: string;
+}
+
+export function deriveArchiveStatus(endDate: string, input: ArchiveCompletionInput): ArchiveStatus {
   if (!isPastDate(endDate)) {
     return "아카이빙전";
   }
 
-  return hasArchiveData ? "완료" : "아카이빙필요";
+  return isArchiveComplete(input) ? "완료" : "아카이빙필요";
+}
+
+/** 아카이빙 완료 조건: 코스ID, 강의관리 시트, 만족도 등록 + (결과보고서 필요 시) 결과보고서 링크 등록. */
+export function isArchiveComplete(input: ArchiveCompletionInput): boolean {
+  const hasCourseId = Boolean(input.courseId.trim());
+  const hasLectureManagementNote = Boolean(input.lectureManagementNote.trim());
+  const hasSatisfaction = Boolean(input.avgSatisfaction.trim());
+  const hasRequiredResultReportLink =
+    input.hasResultReport !== "유" || Boolean(input.resultReportLink.trim());
+
+  return hasCourseId && hasLectureManagementNote && hasSatisfaction && hasRequiredResultReportLink;
 }
 
 export function deriveSessionDurationDays(startDate: string, endDate: string): number | null {
