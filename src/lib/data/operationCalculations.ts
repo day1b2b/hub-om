@@ -12,7 +12,7 @@ import type {
 } from "./operationTypes";
 import { satisfactionNumber } from "./satisfaction";
 
-const ASSIGNMENT_NEEDED_VALUES = new Set(["★배정필요", "배정필요"]);
+export const ASSIGNMENT_NEEDED_VALUES = new Set(["★배정필요", "배정필요"]);
 const ASSIGNMENT_PLANNED_VALUES = new Set(["★배정 예정", "배정 예정", "배정예정"]);
 const EDUCATION_FORMATS = new Set<EducationFormat>([
   "오프라인",
