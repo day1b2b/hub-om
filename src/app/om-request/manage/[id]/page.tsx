@@ -49,7 +49,7 @@ export default async function OmRequestDetailPage({ params }: Props) {
     listOmRequests()
   ]);
   const busyDatesByOm = buildOmBusyDates(operations, allRequests, request.id);
-  const partOmNames = getOmNamesForPart(request.team);
+  const partOmNames = await getOmNamesForPart(request.team);
   const recommendations = recommendOms(request.sessions, partOmNames, busyDatesByOm);
   const omRoster = Array.from(new Set(Object.values(roleRoster.om).flatMap((names) => names ?? [])));
 
