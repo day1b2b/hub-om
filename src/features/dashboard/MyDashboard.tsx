@@ -107,7 +107,8 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
         course: operation.courseName,
         start: stripTime(start),
         end: stripTime(end),
-        href: `/operations/${operation.operationId}`
+        href: `/operations/${operation.operationId}`,
+        onsite: operation.onsiteRequired === "Y"
       }];
     }),
     ...assignedRequests.flatMap((request) => {
@@ -124,7 +125,8 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
           course: request.courseName,
           start: stripTime(start),
           end: stripTime(end),
-          href: `/om-request/manage/${request.id}`
+          href: `/om-request/manage/${request.id}`,
+          onsite: request.onSiteOperation === "Y"
         }];
       });
     })
@@ -443,6 +445,8 @@ interface CalendarEvent {
   start: Date;
   end: Date;
   href: string;
+  /** 현장운영지원 과정. 막대 색은 기업 구분에 쓰이므로 색 대신 표식으로 구별한다. */
+  onsite: boolean;
 }
 
 // 기업별로 캘린더 막대 색을 다르게. 같은 기업은 항상 같은 색(이름 해시 기반).
@@ -483,6 +487,9 @@ function MonthlyCalendar({ events, today }: { events: CalendarEvent[]; today: Da
     <section className="dashboard-panel">
       <div className="section-title">
         <h2>내 과정 일정</h2>
+        <span className="me-cal-legend">
+          <span aria-hidden="true" className="me-cal-bar-onsite">●</span> 현장운영지원
+        </span>
         <div className="me-cal-nav">
           <button aria-label="이전 달" onClick={() => moveMonth(-1)} type="button">‹</button>
           <strong>{view.year}년 {view.month + 1}월</strong>
@@ -548,12 +555,22 @@ function MonthlyCalendar({ events, today }: { events: CalendarEvent[]; today: Da
               <div className="me-cal-week-bars">
                 {bars.map((bar) => (
                   <a
-                    className={["me-cal-bar", bar.isStart ? "is-start" : "", bar.isEnd ? "is-end" : ""].filter(Boolean).join(" ")}
+                    className={[
+                      "me-cal-bar",
+                      bar.isStart ? "is-start" : "",
+                      bar.isEnd ? "is-end" : "",
+                      bar.event.onsite ? "is-onsite" : ""
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
                     href={bar.event.href}
                     key={bar.event.id}
                     style={{ gridColumn: `${bar.startCol + 1} / ${bar.endCol + 2}`, gridRow: bar.lane + 1, background: colorForCompany(bar.event.company) }}
-                    title={`${bar.event.label} · ${bar.event.course}`}
+                    title={`${bar.event.label} · ${bar.event.course}${bar.event.onsite ? " · 현장운영지원" : ""}`}
                   >
+                    {/* 막대 색은 기업 구분용이라, 현장운영지원은 색이 아닌 표식과 테두리로 구별한다. */}
+                    {bar.event.onsite ? <span aria-hidden="true" className="me-cal-bar-onsite">●</span> : null}
+                    {bar.event.onsite ? <span className="sr-only">현장운영지원 </span> : null}
                     {bar.event.label}
                   </a>
                 ))}
