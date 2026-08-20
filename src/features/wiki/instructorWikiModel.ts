@@ -193,6 +193,51 @@ export function mergeNotionInstructors(
   return merged.sort((a, b) => a.name.localeCompare(b.name, "ko"));
 }
 
+/**
+ * OM이 수동 연결한 노션 강사로 항목을 합친다.
+ *
+ * 운영 현황은 강사 식별자 없이 이름 텍스트만 갖고 있어서, `디노랩스_김진태`처럼 표기가 다르면
+ * 노션의 `김진태`와 별개 사람으로 갈린다. 자동 정규화는 동명이인(김성재A/김성재B)을 합칠 위험이
+ * 있어 쓸 수 없으므로, OM이 상세 화면에서 "이 사람은 노션의 이 강사"라고 한 번 지정한 값
+ * (instructor_notes.notionId)을 조인 키로 쓴다.
+ *
+ * linkTargets: 운영 현황 표기 → 노션 강사명. 연결된 항목의 코스 이력을 노션 강사명 항목으로 옮긴다.
+ */
+export function applyNotionLinks(
+  entries: InstructorWikiEntry[],
+  linkTargets: Record<string, string>
+): InstructorWikiEntry[] {
+  if (Object.keys(linkTargets).length === 0) return entries;
+
+  const byName = new Map<string, InstructorWikiEntry>();
+  for (const entry of entries) byName.set(entry.name, entry);
+
+  const removed = new Set<string>();
+
+  for (const entry of entries) {
+    const target = linkTargets[entry.name];
+    if (!target || target === entry.name) continue;
+
+    let host = byName.get(target);
+    if (!host) {
+      // 노션 강사 항목이 아직 목록에 없으면(동기화 전 등) 빈 항목을 만들어 이력을 붙인다.
+      host = { id: target, name: target, companies: [], courseCount: 0, courses: [], coach: null, categories: [] };
+      byName.set(target, host);
+    }
+    host.courses.push(...entry.courses);
+    removed.add(entry.name);
+  }
+
+  const merged = [...byName.values()].filter((entry) => !removed.has(entry.name));
+  for (const entry of merged) {
+    entry.courses.sort((a, b) => (b.startDate ?? "").localeCompare(a.startDate ?? ""));
+    entry.companies = Array.from(new Set(entry.courses.map((course) => course.companyName).filter(Boolean)));
+    entry.courseCount = entry.courses.length;
+  }
+
+  return merged.sort((a, b) => a.name.localeCompare(b.name, "ko"));
+}
+
 // 노션 카테고리를 강사명 완전일치로 붙인다(coach-db 보강과 같은 방식).
 export function attachNotionCategories(
   entries: InstructorWikiEntry[],

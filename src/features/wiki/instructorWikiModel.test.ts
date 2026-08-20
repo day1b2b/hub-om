@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
+  applyNotionLinks,
   groupEntriesByCategory,
   mergeNotionInstructors,
   parseInstructorNames,
@@ -48,4 +49,65 @@ test("카테고리별로 묶고 미지정은 맨 뒤에 둔다", () => {
   assert.equal(groups[0].entries.length, 2);
   assert.equal(groups[1].entries.length, 1);
   assert.equal(groups[2].entries.length, 1);
+});
+
+function withCourse(name: string, company: string, startDate: string): InstructorWikiEntry {
+  return {
+    id: name,
+    name,
+    companies: [company],
+    courseCount: 1,
+    courses: [
+      {
+        operationId: `${name}-1`,
+        companyName: company,
+        courseName: "과정",
+        roundNo: "1",
+        role: "강사",
+        status: "진행중",
+        startDate,
+        endDate: startDate,
+        om: "OM",
+        educationFormat: "",
+        region: "",
+        instructorSatisfaction: "",
+        instructorWikiLink: ""
+      }
+    ],
+    coach: null,
+    categories: []
+  };
+}
+
+test("연결된 표기의 코스 이력을 노션 강사 항목으로 합친다", () => {
+  const merged = applyNotionLinks(
+    [withCourse("디노랩스_김진태", "A사", "2026-01-01"), withCourse("김진태", "B사", "2026-03-01")],
+    { "디노랩스_김진태": "김진태" }
+  );
+
+  assert.deepEqual(merged.map((entry) => entry.name), ["김진태"]);
+  assert.equal(merged[0].courseCount, 2);
+  // 최근 순 정렬 유지 + 기업 목록 재계산
+  assert.equal(merged[0].courses[0].startDate, "2026-03-01");
+  assert.deepEqual([...merged[0].companies].sort(), ["A사", "B사"]);
+});
+
+test("연결 대상이 목록에 없으면 빈 항목을 만들어 이력을 옮긴다", () => {
+  const merged = applyNotionLinks([withCourse("파이퀀트_유종훈", "C사", "2026-02-01")], {
+    "파이퀀트_유종훈": "유종훈"
+  });
+  assert.deepEqual(merged.map((entry) => entry.name), ["유종훈"]);
+  assert.equal(merged[0].courseCount, 1);
+});
+
+test("자기 자신을 가리키는 연결은 무시한다", () => {
+  const entries = [withCourse("김진태", "A사", "2026-01-01")];
+  const merged = applyNotionLinks(entries, { 김진태: "김진태" });
+  assert.deepEqual(merged.map((entry) => entry.name), ["김진태"]);
+  assert.equal(merged[0].courseCount, 1);
+});
+
+test("연결이 없으면 목록을 그대로 둔다", () => {
+  const entries = [withCourse("김진태", "A사", "2026-01-01")];
+  assert.equal(applyNotionLinks(entries, {}), entries);
 });

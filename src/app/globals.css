@@ -9532,6 +9532,50 @@ button.coach-doc-reserve-chip:disabled {
   gap: 10px;
 }
 
+/* 강사위키 — 노션 강사 수동 연결 */
+.notion-chip.is-link {
+  background: transparent;
+  border: 1px dashed var(--line);
+  cursor: pointer;
+}
+
+.notion-link-editor {
+  align-items: center;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.notion-link-alias {
+  align-items: center;
+  background: var(--panel-2, rgba(127, 127, 127, 0.12));
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 11px;
+  gap: 2px;
+  padding: 2px 4px 2px 8px;
+}
+
+.notion-link-alias button {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 10px;
+  line-height: 1;
+  padding: 2px 4px;
+}
+
+.notion-link-alias button:hover {
+  color: #e5484d;
+}
+
+.notion-link-editor .wiki-input {
+  font-size: 12px;
+  min-width: 160px;
+  padding: 3px 6px;
+}
+
 /* 강사위키 — 카테고리 트리 + 결과 2단 레이아웃 */
 .wiki-body {
   align-items: start;

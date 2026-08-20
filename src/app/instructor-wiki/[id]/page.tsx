@@ -1,9 +1,17 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { InstructorWikiDetail } from "@/features/wiki/InstructorWikiDetail";
-import { aggregateInstructors, type InstructorWikiEntry } from "@/features/wiki/instructorWikiModel";
+import {
+  aggregateInstructors,
+  applyNotionLinks,
+  type InstructorWikiEntry
+} from "@/features/wiki/instructorWikiModel";
 import { requireAdminSession } from "@/lib/auth/requireAdminSession";
 import { getCoachRepository } from "@/lib/data/coachRepositoryFactory";
-import { getInstructorNote } from "@/lib/data/instructorWikiStore";
+import {
+  getAllInstructorNotes,
+  getInstructorNote,
+  resolveNotionLinkTargets
+} from "@/lib/data/instructorWikiStore";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 
 export const dynamic = "force-dynamic";
@@ -17,10 +25,19 @@ export default async function InstructorWikiDetailPage({ params }: InstructorWik
   const { id } = await params;
   const name = safeDecode(id);
 
+  const notes = await getAllInstructorNotes();
+  const linkTargets = resolveNotionLinkTargets(notes);
+
+  // 이 표기가 노션 강사에 연결돼 있으면 정본(노션 강사명) 주소로 보낸다.
+  const linkedTo = linkTargets[name];
+  if (linkedTo && linkedTo !== name) {
+    redirect(`/instructor-wiki/${encodeURIComponent(linkedTo)}`);
+  }
+
   let entry: InstructorWikiEntry | undefined;
   try {
     const operations = await getOperationRepository().listOperations();
-    entry = aggregateInstructors(operations).find((item) => item.name === name);
+    entry = applyNotionLinks(aggregateInstructors(operations), linkTargets).find((item) => item.name === name);
   } catch {
     entry = undefined;
   }
