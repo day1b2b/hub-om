@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
-import { ExternalTableLink } from "@/components/ExternalTableLink";
 import { holidayName } from "./holidays";
 import type { OmRequest } from "@/lib/data/omRequest/omRequestTypes";
 import type { OperationSession, OperationStatus } from "@/lib/data/operationTypes";
@@ -254,18 +253,16 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
           </div>
           {coursesOpen ? (
           <div className="table-wrap">
-            {/* 컬럼 구성은 운영현황(OperationDashboard) 표와 같게 맞춘다.
-                실습코치·만족도·매출은 운영 집계값이라 요청(OmRequest)에는 없어 제외한다. */}
+            {/* 컬럼 순서·라벨은 운영현황(OperationDashboard) 표를 따른다. 다만 표가 너무 길어져
+                교육형태·싱크업은 뺐고, 실습코치·만족도·매출은 운영 집계값이라 요청에 없어 제외한다. */}
             <table className="operations-table">
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>교육형태</th>
                   <th>코스ID</th>
                   <th>기업</th>
                   <th>과정명</th>
                   <th>총 회차</th>
-                  <th>싱크업</th>
                   <th>OM</th>
                   <th>LD</th>
                   <th>시작일</th>
@@ -280,7 +277,6 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
                     return (
                       <tr className={focusRequestIds.has(request.id) ? "me-focus-row" : ""} key={request.id}>
                         <td>{index + 1}</td>
-                        <td>{request.trainingType}</td>
                         <td>{request.courseId || "검토필요"}</td>
                         <td><strong>{request.company}</strong></td>
                         <td>
@@ -289,7 +285,6 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
                           </Link>
                         </td>
                         <td>{request.totalSessions}</td>
-                        <td><ExternalTableLink href={request.syncupLink} /></td>
                         <td>{request.assignedOm || "배정필요"}</td>
                         <td>{request.ld || "미정"}</td>
                         <td>{schedule.start}</td>
@@ -300,7 +295,7 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
                   })
                 ) : (
                   <tr>
-                    <td className="empty-state" colSpan={12}>
+                    <td className="empty-state" colSpan={10}>
                       <strong>배정된 담당 과정이 없습니다.</strong>
                       <span>업무 요청 후 담당으로 배정되면 여기에 표시됩니다.</span>
                     </td>
