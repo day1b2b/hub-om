@@ -32,13 +32,14 @@ import { isSameCourse } from "@/lib/data/operationCalculations";
 import { COURSE_CATEGORY_GROUPS } from "@/lib/data/omRequest/omCourseCategoryOptions";
 import type { PersonOptions } from "@/lib/data/personOptions";
 import { displayRoleAssigneeText } from "@/lib/data/roleAssignees";
-import { isNavigableHref, toHref } from "@/lib/links";
+import { isNavigableHref } from "@/lib/links";
 import { satisfactionNumber } from "@/lib/data/satisfaction";
 import { teamScopeSearchParam, type TeamScope } from "@/lib/teamScope";
 
 const SHOW_OPERATION_DISCUSSION = false;
 const SHOW_LECTURE_REPORTS = false;
 const SHOW_READINESS_SUMMARY = false;
+const SHOW_BULK_EDIT_ROUNDS = false;
 
 const STATUS_CLASS: Record<OperationStatus, string> = {
   "배정필요": "needs-assignment",
@@ -81,8 +82,6 @@ export function OperationDetail({
   const showOperationStatus = !(operation.operationStatus === "배정필요" && Boolean(operation.om));
   const requiredArchiveItems = getRequiredArchiveItems(operation);
   const completedArchiveItems = requiredArchiveItems.filter((archiveItem) => archiveItem.done);
-  const referenceResourceLinks = getReferenceResourceLinks(operation);
-  const registeredReferenceLinks = referenceResourceLinks.filter((resourceLink) => isNavigableHref(resourceLink.href));
   const satisfactionSummary = getSatisfactionSummary(courseOperations);
   const teamQuery = teamScopeSearchParam(teamScope);
   const existingRoundNumbers = courseOperations
@@ -212,7 +211,6 @@ export function OperationDetail({
                 <h2>지표</h2>
               </div>
               <div className="info-grid">
-                <InfoItem label="남은 회차" value={remainingRoundText(operation)} />
                 <InfoItem label="만족도(평균)" value={satisfactionSummary.totalAverage ?? "미입력"} />
                 <InfoItem label="매출" value={formatMoney(operation.revenue)} />
               </div>
@@ -243,45 +241,13 @@ export function OperationDetail({
                   ))}
                 </div>
               </div>
-
-              <div className="resource-summary-card">
-                <div className="resource-row-head">
-                  <strong>참고 자료</strong>
-                  <span>{registeredReferenceLinks.length}/{referenceResourceLinks.length}</span>
-                </div>
-                <div className="archive-item-list" aria-label="아카이브 참고 자료">
-                  {referenceResourceLinks.map((resourceLink) => {
-                    const hasHref = isNavigableHref(resourceLink.href);
-
-                    return (
-                      <div className={`archive-item-row ${hasHref ? "done" : "missing"}`} key={resourceLink.label}>
-                        <strong>{resourceLink.label}</strong>
-                        <div className="archive-item-actions">
-                          {hasHref ? (
-                            <a
-                              className="archive-item-state"
-                              href={toHref(resourceLink.href) ?? resourceLink.href}
-                              rel="noreferrer"
-                              target="_blank"
-                            >
-                              바로가기
-                            </a>
-                          ) : (
-                            <span className="archive-item-state">링크 없음</span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
             </div>
           </section>
 
           <section className="detail-section course-sessions-section">
             <EditAllRoundsProvider>
             <div className="section-title">
-              <h2>동일 과정 운영 차수</h2>
+              <h2>회차 목록</h2>
               <div className="course-sessions-header-actions">
                 <span>코스ID {operation.courseId} · {operation.courseName} 기준 · {courseOperations.length}건</span>
                 <AddRoundButton
@@ -292,7 +258,7 @@ export function OperationDetail({
                   nextRoundNo={nextRoundNo}
                 />
                 <BulkAddRoundsButton baseOperationId={operation.operationId} existingRoundNumbers={existingRoundNumbers} />
-                {courseOperations.length > 1 ? <BulkEditRoundsButton /> : null}
+                {SHOW_BULK_EDIT_ROUNDS && courseOperations.length > 1 ? <BulkEditRoundsButton /> : null}
               </div>
             </div>
             <div className="session-table-wrap">
@@ -310,7 +276,7 @@ export function OperationDetail({
                     <th>결과보고서</th>
                     <th>패들렛</th>
                     <th>강의관리</th>
-                    <th>관리</th>
+                    <th>수정</th>
                     <th>삭제</th>
                   </tr>
                 </thead>
@@ -395,7 +361,7 @@ export function OperationDetail({
                 </tbody>
               </table>
             </div>
-            <BulkSaveRoundsButton />
+            {SHOW_BULK_EDIT_ROUNDS ? <BulkSaveRoundsButton /> : null}
             </EditAllRoundsProvider>
           </section>
 
@@ -541,13 +507,6 @@ function LectureReportsByRound({
       </div>
     </section>
   );
-}
-
-function getReferenceResourceLinks(operation: OperationSession) {
-  return [
-    { label: "기업위키", href: operation.companyWikiLink, field: "companyWikiLink" as const },
-    { label: "강사위키", href: operation.instructorWikiLink, field: "instructorWikiLink" as const }
-  ];
 }
 
 function getRequiredArchiveItems(operation: OperationSession): ArchiveReadinessItem[] {
@@ -792,8 +751,3 @@ function isNumber(value: number | null): value is number {
   return value !== null;
 }
 
-function remainingRoundText(operation: OperationSession) {
-  if (operation.operationStatus === "완료" || operation.operationStatus === "회고완료") return "0회차";
-  if (!operation.roundNo) return "확인 필요";
-  return `${operation.roundNo}회차 기준 확인`;
-}
