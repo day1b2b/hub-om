@@ -9532,6 +9532,67 @@ button.coach-doc-reserve-chip:disabled {
   gap: 10px;
 }
 
+/* 내 대시보드 "나의 담당 과정" 표.
+   운영현황 표(.operations-table)의 글자 크기는 따르되, 그 클래스는 쓰지 않는다.
+   거기엔 min-width 1740px과 운영현황 컬럼 순서에 맞춘 폭 규칙(nth-child 4~7,14,15)이 있어
+   컬럼을 줄인 이 표에서는 넓고 헐겁게 늘어난다. 행 간격도 더 촘촘하게 잡는다. */
+.me-course-table {
+  width: 100%;
+}
+
+.me-course-table th,
+.me-course-table td {
+  padding: 4px 10px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.me-course-table th {
+  color: #445160;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.me-course-table td {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.me-course-table td strong {
+  font-weight: 700;
+}
+
+/* # */
+.me-course-table th:first-child,
+.me-course-table td:first-child {
+  text-align: center;
+  width: 32px;
+}
+
+/* 과정명 — 길어도 행을 밀지 않게 잘라 준다. */
+.me-course-table td:nth-child(3) {
+  max-width: 340px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 총 회차 */
+.me-course-table th:nth-child(4),
+.me-course-table td:nth-child(4) {
+  text-align: center;
+  width: 60px;
+}
+
+.me-course-table .course-link {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+  white-space: nowrap;
+}
+
 /* 대시보드 패널 제목 접기/펼치기 버튼 (제목 스타일은 h2가 그대로 가짐) */
 .panel-toggle {
   align-items: center;
