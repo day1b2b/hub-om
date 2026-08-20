@@ -10082,38 +10082,10 @@ button.coach-doc-reserve-chip:disabled {
   position: absolute;
 }
 
-/* 스크린리더 전용 텍스트(화면에는 안 보임) */
-.sr-only {
-  border: 0;
-  clip-path: inset(50%);
-  height: 1px;
-  overflow: hidden;
-  padding: 0;
-  position: absolute;
-  white-space: nowrap;
-  width: 1px;
-}
-
-/* 현장운영지원 표식. 막대 배경색은 기업 구분에 쓰이므로 색을 바꾸지 않고
-   흰 점 + 안쪽 테두리로만 구별한다. */
+/* 현장운영지원 막대. 이름에 "_현장운영지원"이 붙지만 막대가 좁으면 글자가 잘리므로,
+   눈으로 훑을 때도 구분되게 안쪽 테두리를 준다. 배경색은 기업 구분용이라 건드리지 않는다. */
 .me-cal-bar.is-onsite {
   box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.85);
-}
-
-.me-cal-bar-onsite {
-  font-size: 9px;
-  margin-right: 3px;
-  vertical-align: 1px;
-}
-
-.me-cal-legend {
-  align-items: center;
-  color: var(--muted);
-  display: inline-flex;
-  font-size: 11px;
-  gap: 2px;
-  margin-left: 8px;
-  margin-right: auto;
 }
 
 .me-cal-bar {

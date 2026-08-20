@@ -100,33 +100,38 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
       const start = parseDate(operation.startDate);
       const end = parseDate(operation.endDate) ?? start;
       if (!start || !end) return [];
+      const onsite = operation.onsiteRequired === "Y";
       return [{
         id: `op-${operation.operationId}`,
-        label: operation.companyName,
+        // 현장운영지원은 이름에 붙여 캘린더에서 바로 알아보게 한다.
+        label: onsite ? `${operation.companyName}_현장운영지원` : operation.companyName,
         company: operation.companyName,
         course: operation.courseName,
         start: stripTime(start),
         end: stripTime(end),
         href: `/operations/${operation.operationId}`,
-        onsite: operation.onsiteRequired === "Y"
+        onsite
       }];
     }),
     ...assignedRequests.flatMap((request) => {
       // 교육 일정 차수(세션)를 각 날짜에 개별 표시한다. 세션에 dateEnd가 있으면 그 기간만큼 막대로.
       const multiSession = request.sessions.length > 1;
+      const onsite = request.onSiteOperation === "Y";
+      // 기업명 뒤에 바로 붙여, 막대가 좁아 잘려도 앞부분이 먼저 보이게 한다.
+      const baseLabel = onsite ? `${request.company}_현장운영지원` : request.company;
       return request.sessions.flatMap((session, index) => {
         const start = parseDate(session.date);
         const end = parseDate(session.dateEnd ?? session.date) ?? start;
         if (!start || !end) return [];
         return [{
           id: `req-${request.id}-${index}`,
-          label: multiSession ? `${request.company} ${index + 1}차` : request.company,
+          label: multiSession ? `${baseLabel} ${index + 1}차` : baseLabel,
           company: request.company,
           course: request.courseName,
           start: stripTime(start),
           end: stripTime(end),
           href: `/om-request/manage/${request.id}`,
-          onsite: request.onSiteOperation === "Y"
+          onsite
         }];
       });
     })
@@ -445,7 +450,7 @@ interface CalendarEvent {
   start: Date;
   end: Date;
   href: string;
-  /** 현장운영지원 과정. 막대 색은 기업 구분에 쓰이므로 색 대신 표식으로 구별한다. */
+  /** 현장운영지원 과정. label에 "_현장운영지원"이 붙고, 막대에 테두리도 준다. */
   onsite: boolean;
 }
 
@@ -487,9 +492,6 @@ function MonthlyCalendar({ events, today }: { events: CalendarEvent[]; today: Da
     <section className="dashboard-panel">
       <div className="section-title">
         <h2>내 과정 일정</h2>
-        <span className="me-cal-legend">
-          <span aria-hidden="true" className="me-cal-bar-onsite">●</span> 현장운영지원
-        </span>
         <div className="me-cal-nav">
           <button aria-label="이전 달" onClick={() => moveMonth(-1)} type="button">‹</button>
           <strong>{view.year}년 {view.month + 1}월</strong>
@@ -566,11 +568,10 @@ function MonthlyCalendar({ events, today }: { events: CalendarEvent[]; today: Da
                     href={bar.event.href}
                     key={bar.event.id}
                     style={{ gridColumn: `${bar.startCol + 1} / ${bar.endCol + 2}`, gridRow: bar.lane + 1, background: colorForCompany(bar.event.company) }}
-                    title={`${bar.event.label} · ${bar.event.course}${bar.event.onsite ? " · 현장운영지원" : ""}`}
+                    title={`${bar.event.label} · ${bar.event.course}`}
                   >
-                    {/* 막대 색은 기업 구분용이라, 현장운영지원은 색이 아닌 표식과 테두리로 구별한다. */}
-                    {bar.event.onsite ? <span aria-hidden="true" className="me-cal-bar-onsite">●</span> : null}
-                    {bar.event.onsite ? <span className="sr-only">현장운영지원 </span> : null}
+                    {/* 현장운영지원 표기는 label에 들어있다. 막대가 좁아 글자가 잘릴 때를 위해
+                        is-onsite 클래스로 테두리도 함께 준다. */}
                     {bar.event.label}
                   </a>
                 ))}
