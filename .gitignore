@@ -18,3 +18,8 @@ pnpm-debug.log*
 data/excel/*
 !data/excel/.gitkeep
 team-users.json
+
+# 배포 env를 내려받은 파일. 실수로 커밋되면 운영 비밀키가 그대로 올라간다.
+env
+env.download
+env.*
