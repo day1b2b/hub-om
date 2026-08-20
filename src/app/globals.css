@@ -9299,13 +9299,7 @@ button.coach-doc-reserve-chip:disabled {
   color: #e5484d;
 }
 
-/* 강사위키 — 섭외 지양 토글/배지 */
-.recruit-avoid {
-  align-items: center;
-  display: inline-flex;
-  gap: 6px;
-}
-
+/* 강사위키 — 섭외지양 배지(노션 값 기준 자동 표기). 수동 토글은 제거됨. */
 .recruit-avoid-badge {
   background: #e5484d;
   border-radius: 999px;
@@ -9314,22 +9308,6 @@ button.coach-doc-reserve-chip:disabled {
   font-weight: 700;
   padding: 2px 8px;
   white-space: nowrap;
-}
-
-.recruit-avoid-btn {
-  background: transparent;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 11px;
-  padding: 3px 8px;
-  white-space: nowrap;
-}
-
-.recruit-avoid-btn.is-on {
-  border-color: #e5484d;
-  color: #e5484d;
 }
 
 .recruit-avoid-tag {

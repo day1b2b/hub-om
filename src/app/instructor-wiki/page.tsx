@@ -37,9 +37,10 @@ export default async function InstructorWikiPage() {
 
   const provenance: InstructorWikiProvenance = entries.length > 0 ? "operations" : "empty";
 
-  // OM이 "섭외 지양"으로 저장한 강사명 목록(목록 화면 표시용).
+  // 섭외지양 표기 대상. 노션 강사 DB의 "섭외지양 여부"만 본다(수동 토글 없음).
+  // 노션 동기화를 돌려야 채워지므로, 동기화 전에는 아무도 표기되지 않는 것이 정상이다.
   const notes = await getAllInstructorNotes();
-  const recruitAvoidNames = Object.keys(notes).filter((name) => notes[name]?.recruitAvoid);
+  const recruitAvoidNames = Object.keys(notes).filter((name) => notes[name]?.notion?.recruitAvoid);
 
   return (
     <InstructorWiki
