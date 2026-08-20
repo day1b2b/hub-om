@@ -144,33 +144,52 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
   };
   // 클릭 시 운영 현황 상세로 보내기 위한 courseId → 운영 id 매핑.
   const operationIdByCourse = new Map(operations.map((operation) => [operation.courseId, operation.operationId]));
-  // 사전세팅 = 과정 시작 D-7 ~ D-2(시작 2~7일 전) 창에 든 과정만.
+  // 사전세팅 = 강의 시작 전 단계 전체(아직 시작하지 않은 과정). 이전에는 D-7~D-2 창만 봤는데,
+  // 그러면 그 창에 든 과정이 없을 때 단계가 비어 보여 실제 준비 상황과 어긋났다.
+  // 임박한 순으로 정렬해 위쪽이 먼저 챙길 것이 되게 한다.
+  const preRequests = assignedRequests
+    .map((request) => ({ request, days: daysToStart(scheduleRange(request).start) }))
+    .filter((entry): entry is { request: OmRequest; days: number } => entry.days !== null && entry.days >= 0);
+  const preOperations = operations
+    // 담당 과정(요청) 항목이 대표 → 같은 courseId의 운영은 중복 제거.
+    .filter((operation) => !requestCourseIds.has(operation.courseId))
+    .map((operation) => ({ operation, days: daysToStart(operation.startDate) }))
+    .filter((entry): entry is { operation: OperationSession; days: number } => entry.days !== null && entry.days >= 0);
+
   const preItems: StageItem[] = [
-    ...assignedRequests.flatMap((request) => {
-      const days = daysToStart(scheduleRange(request).start);
-      if (days === null || days < 2 || days > 7) return [];
+    ...preRequests.map(({ request, days }) => {
       const matchedOperationId = operationIdByCourse.get(request.courseId);
-      return [{
+      return {
         id: `r-${request.id}`,
         company: request.company,
         course: request.courseName,
         task: `D-${days} · ${requiredSetupText(request)}`,
+        days,
         // 매칭 운영이 있으면 운영 상세, 없으면 그 과정(배정)의 상세로 — 항상 상세 한 단계 안으로.
         href: matchedOperationId ? `/operations/${matchedOperationId}` : `/om-request/manage/${request.id}`
-      }];
+      };
     }),
-    ...operations.flatMap((operation) => {
-      if (requestCourseIds.has(operation.courseId)) return []; // 담당 과정(요청) 항목이 대표 → 중복 방지
-      const days = daysToStart(operation.startDate);
-      if (days === null || days < 2 || days > 7) return [];
-      return [{
-        id: `o-${operation.operationId}`,
-        company: operation.companyName,
-        course: operation.courseName,
-        task: `D-${days} · 운영 세팅 준비`,
-        href: `/operations/${operation.operationId}`
-      }];
-    })
+    ...preOperations.map(({ operation, days }) => ({
+      id: `o-${operation.operationId}`,
+      company: operation.companyName,
+      course: operation.courseName,
+      task: `D-${days} · 운영 세팅 준비`,
+      days,
+      href: `/operations/${operation.operationId}`
+    }))
+  ].sort((a, b) => (a.days ?? 0) - (b.days ?? 0));
+
+  // 사전세팅 요약 칩. 예전에는 tasks가 빈 배열이라 과정이 있어도 "챙길 항목 없음"으로만 보였다.
+  // 항목마다 이미 세팅 종류를 갖고 있으니 그걸 종류별로 세어 접힌 상태에서도 보이게 한다.
+  const countSetup = (predicate: (request: OmRequest) => boolean) =>
+    preRequests.filter(({ request }) => predicate(request)).length;
+  const preSetupTasks = [
+    { name: "스킬플로", value: countSetup((request) => request.skillfloSetup === "Y") },
+    { name: "스킬매치", value: countSetup((request) => request.skillmatchSetup === "Y") },
+    { name: "현장운영", value: countSetup((request) => request.onSiteOperation === "Y") },
+    { name: "코치", value: countSetup((request) => request.coachRequest === "Y") },
+    // 요청 없이 운영만 있는 건은 세팅 종류를 알 수 없어 따로 센다.
+    { name: "세팅 확인", value: preOperations.length }
   ];
   const fieldItems: StageItem[] = phaseOperations("현장 운영").map((operation) => ({
     id: `o-${operation.operationId}`,
@@ -187,7 +206,7 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
     href: `/operations/${operation.operationId}`
   }));
   const stages = [
-    { label: "사전세팅", items: preItems, tasks: [] as Array<{ name: string; value: number }> },
+    { label: "사전세팅", items: preItems, tasks: preSetupTasks },
     { label: "현장 운영", items: fieldItems, tasks: [{ name: "운영이슈", value: hasIssue }] },
     {
       label: "결과",
@@ -402,6 +421,8 @@ interface StageItem {
   course: string;
   task: string;
   href: string;
+  /** 시작까지 남은 일수. 사전세팅 정렬용이라 그 단계에만 있다. */
+  days?: number;
 }
 
 // 사전세팅 단계에서 배정 요청이 준비해야 할 업무(Y로 표시된 세팅). 없으면 기본 준비 문구.
