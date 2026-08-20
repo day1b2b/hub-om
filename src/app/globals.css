@@ -9840,7 +9840,9 @@ button.coach-doc-reserve-chip:disabled {
 
 .stage-toggle {
   color: var(--muted);
-  font-size: 11px;
+  /* 담당 과정 접기 화살표(.panel-toggle-caret)와 같은 크기로 맞춘다. */
+  font-size: 15px;
+  line-height: 1;
   margin-left: auto;
 }
 
