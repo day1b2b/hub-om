@@ -20,6 +20,8 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
   const today = useMemo(() => new Date(), []);
   const [monthView, setMonthView] = useState(() => ({ year: today.getFullYear(), month: today.getMonth() }));
   const [openStage, setOpenStage] = useState<null | string>(null);
+  // 담당 과정 표 접기/펼치기. 과정이 많으면 화면이 길어져 아래 패널이 멀어진다.
+  const [coursesOpen, setCoursesOpen] = useState(true);
 
   if (!omName) {
     return (
@@ -217,16 +219,30 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
 
         <section className="dashboard-panel">
           <div className="section-title">
-            <h2>나의 담당 과정</h2>
+            <h2>
+              <button
+                aria-expanded={coursesOpen}
+                className="panel-toggle"
+                onClick={() => setCoursesOpen((open) => !open)}
+                type="button"
+              >
+                나의 담당 과정
+                <span aria-hidden="true" className="panel-toggle-caret">{coursesOpen ? "▲" : "▾"}</span>
+              </button>
+            </h2>
             <div className="dashboard-table-meta">
               <span>전체 {sortedAssignedRequests.length}건 · {monthView.month + 1}월 {focusRequestIds.size}건</span>
-              <div className="me-cal-nav" aria-label="월 이동">
-                <button aria-label="이전 달" onClick={() => moveMonth(-1)} type="button">‹</button>
-                <strong>{monthView.year}년 {monthView.month + 1}월</strong>
-                <button aria-label="다음 달" onClick={() => moveMonth(1)} type="button">›</button>
-              </div>
+              {/* 월 이동은 표의 강조 대상을 바꾸는 것이라 접혀 있을 때는 숨긴다. */}
+              {coursesOpen ? (
+                <div className="me-cal-nav" aria-label="월 이동">
+                  <button aria-label="이전 달" onClick={() => moveMonth(-1)} type="button">‹</button>
+                  <strong>{monthView.year}년 {monthView.month + 1}월</strong>
+                  <button aria-label="다음 달" onClick={() => moveMonth(1)} type="button">›</button>
+                </div>
+              ) : null}
             </div>
           </div>
+          {coursesOpen ? (
           <div className="table-wrap">
             <table>
               <thead>
@@ -270,6 +286,7 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
               </tbody>
             </table>
           </div>
+          ) : null}
         </section>
 
         <section className="dashboard-grid" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>

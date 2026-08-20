@@ -9532,6 +9532,29 @@ button.coach-doc-reserve-chip:disabled {
   gap: 10px;
 }
 
+/* 대시보드 패널 제목 접기/펼치기 버튼 (제목 스타일은 h2가 그대로 가짐) */
+.panel-toggle {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  gap: 6px;
+  padding: 0;
+}
+
+.panel-toggle:hover .panel-toggle-caret {
+  color: inherit;
+}
+
+/* .section-title span 규칙(12px)보다 우선하도록 선택자를 한 단계 올린다. */
+.section-title .panel-toggle-caret {
+  color: var(--muted);
+  font-size: 9px;
+}
+
 /* 강사위키 — 카테고리 트리 + 결과 2단 레이아웃 */
 .wiki-body {
   align-items: start;
