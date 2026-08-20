@@ -212,7 +212,6 @@ export function OperationDetail({
                 <h2>지표</h2>
               </div>
               <div className="info-grid">
-                <InfoItem label="남은 회차" value={remainingRoundText(operation)} />
                 <InfoItem label="만족도(평균)" value={satisfactionSummary.totalAverage ?? "미입력"} />
                 <InfoItem label="매출" value={formatMoney(operation.revenue)} />
               </div>
@@ -281,7 +280,7 @@ export function OperationDetail({
           <section className="detail-section course-sessions-section">
             <EditAllRoundsProvider>
             <div className="section-title">
-              <h2>동일 과정 운영 차수</h2>
+              <h2>회차 목록</h2>
               <div className="course-sessions-header-actions">
                 <span>코스ID {operation.courseId} · {operation.courseName} 기준 · {courseOperations.length}건</span>
                 <AddRoundButton
@@ -310,7 +309,7 @@ export function OperationDetail({
                     <th>결과보고서</th>
                     <th>패들렛</th>
                     <th>강의관리</th>
-                    <th>관리</th>
+                    <th>수정</th>
                     <th>삭제</th>
                   </tr>
                 </thead>
@@ -792,8 +791,3 @@ function isNumber(value: number | null): value is number {
   return value !== null;
 }
 
-function remainingRoundText(operation: OperationSession) {
-  if (operation.operationStatus === "완료" || operation.operationStatus === "회고완료") return "0회차";
-  if (!operation.roundNo) return "확인 필요";
-  return `${operation.roundNo}회차 기준 확인`;
-}
