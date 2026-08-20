@@ -9549,10 +9549,12 @@ button.coach-doc-reserve-chip:disabled {
   color: inherit;
 }
 
-/* .section-title span 규칙(12px)보다 우선하도록 선택자를 한 단계 올린다. */
+/* .section-title span 규칙(12px)보다 우선하도록 선택자를 한 단계 올린다.
+   제목(13px)보다 살짝 크게 잡아 눌러야 하는 곳이 바로 보이게 한다. */
 .section-title .panel-toggle-caret {
   color: var(--muted);
-  font-size: 9px;
+  font-size: 15px;
+  line-height: 1;
 }
 
 /* 강사위키 — 카테고리 트리 + 결과 2단 레이아웃 */
