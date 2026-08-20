@@ -77,6 +77,7 @@ export function OperationDetail({
 }: OperationDetailProps) {
   const courseOperations = getCourseOperations(operation, relatedOperations);
   const courseGroups = getCourseGroups(operation, sameCourseIdOperations);
+  const educationFormatText = aggregateUniqueValues(courseOperations, (candidate) => candidate.educationFormat);
   const showOperationStatus = !(operation.operationStatus === "배정필요" && Boolean(operation.om));
   const requiredArchiveItems = getRequiredArchiveItems(operation);
   const completedArchiveItems = requiredArchiveItems.filter((archiveItem) => archiveItem.done);
@@ -106,6 +107,8 @@ export function OperationDetail({
             <h1>{operation.courseName}</h1>
             {showOperationStatus ? <StatusBadge status={operation.operationStatus} /> : null}
             {operation.courseId ? null : <span className="title-course-id">코스ID 검토 필요</span>}
+            {operation.processId ? <span className="title-tag">{operation.processId}</span> : null}
+            {educationFormatText !== "확인 필요" ? <span className="title-tag">{educationFormatText}</span> : null}
           </div>
           <div className="detail-header-actions">
             {SHOW_READINESS_SUMMARY ? (
@@ -130,7 +133,6 @@ export function OperationDetail({
               <h2>과정 정보</h2>
             </div>
             <div className="info-grid">
-              <InfoItem label="과정ID" value={operation.processId || "-"} />
               <EditableInfoItem
                 displayValue={operation.courseId || "미정"}
                 fields={[{ name: "courseId", placeholder: "예: 261326", value: operation.courseId }]}
@@ -173,12 +175,7 @@ export function OperationDetail({
                   operationId: candidate.operationId
                 }))}
               />
-              <InfoItem
-                label="교육 형태"
-                value={aggregateUniqueValues(courseOperations, (candidate) => candidate.educationFormat)}
-              />
               <InfoItem label="기간" value={formatCourseDateRange(courseOperations)} />
-              <InfoItem label="회차" value={`총 ${courseOperations.length}회차`} />
               <InfoItem label="교육일수" value={formatTotalEducationDays(courseOperations)} />
               <InfoItem label="교육장" value={operation.region || "미정"} />
             </div>
@@ -203,7 +200,6 @@ export function OperationDetail({
                   operationId={operation.operationId}
                 />
                 <InfoItem label="강사" value={operation.instructors || "미정"} />
-                <InfoItem label="실습코치" value={operation.coach || "미정"} />
                 <InfoItem
                   label="현장 투입"
                   value={aggregateUniqueValues(courseOperations, (candidate) => ONSITE_LABEL[candidate.onsiteRequired])}
