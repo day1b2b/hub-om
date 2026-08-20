@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
+import { ExternalTableLink } from "@/components/ExternalTableLink";
 import { holidayName } from "./holidays";
 import type { OmRequest } from "@/lib/data/omRequest/omRequestTypes";
 import type { OperationSession, OperationStatus } from "@/lib/data/operationTypes";
@@ -246,40 +247,53 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
           </div>
           {coursesOpen ? (
           <div className="table-wrap">
-            <table>
+            {/* 컬럼 구성은 운영현황(OperationDashboard) 표와 같게 맞춘다.
+                실습코치·만족도·매출은 운영 집계값이라 요청(OmRequest)에는 없어 제외한다. */}
+            <table className="operations-table">
               <thead>
                 <tr>
-                  <th>기업 / 과정</th>
+                  <th>#</th>
                   <th>교육형태</th>
+                  <th>코스ID</th>
+                  <th>기업</th>
+                  <th>과정명</th>
+                  <th>총 회차</th>
+                  <th>싱크업</th>
+                  <th>OM</th>
+                  <th>LD</th>
                   <th>시작일</th>
                   <th>종료일</th>
-                  <th>총 회차</th>
-                  <th>LD</th>
+                  <th>강사</th>
                 </tr>
               </thead>
               <tbody>
                 {sortedAssignedRequests.length > 0 ? (
-                  sortedAssignedRequests.map((request) => {
+                  sortedAssignedRequests.map((request, index) => {
                     const schedule = scheduleRange(request);
                     return (
                       <tr className={focusRequestIds.has(request.id) ? "me-focus-row" : ""} key={request.id}>
+                        <td>{index + 1}</td>
+                        <td>{request.trainingType}</td>
+                        <td>{request.courseId || "검토필요"}</td>
+                        <td><strong>{request.company}</strong></td>
                         <td>
                           <Link className="course-link" href={`/om-request/manage/${request.id}`}>
-                            <strong>{request.company}</strong>
-                            <span>{request.courseName}</span>
+                            <strong>{request.courseName}</strong>
                           </Link>
                         </td>
-                        <td>{request.trainingType}</td>
+                        <td>{request.totalSessions}</td>
+                        <td><ExternalTableLink href={request.syncupLink} /></td>
+                        <td>{request.assignedOm || "배정필요"}</td>
+                        <td>{request.ld || "미정"}</td>
                         <td>{schedule.start}</td>
                         <td>{schedule.end}</td>
-                        <td>{request.totalSessions}회</td>
-                        <td>{request.ld || "-"}</td>
+                        <td>{request.instructorName || "-"}</td>
                       </tr>
                     );
                   })
                 ) : (
                   <tr>
-                    <td className="empty-state" colSpan={6}>
+                    <td className="empty-state" colSpan={12}>
                       <strong>배정된 담당 과정이 없습니다.</strong>
                       <span>업무 요청 후 담당으로 배정되면 여기에 표시됩니다.</span>
                     </td>

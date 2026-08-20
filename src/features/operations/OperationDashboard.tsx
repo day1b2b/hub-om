@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
+import { ExternalTableLink, isSafeHttpUrl } from "@/components/ExternalTableLink";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import type {
   EducationFormat,
@@ -526,25 +527,6 @@ function Metric({ caption, label, value }: { caption?: string; label: string; va
       {caption ? <small>{caption}</small> : null}
     </div>
   );
-}
-
-function ExternalTableLink({ href }: { href: string }) {
-  if (!isSafeHttpUrl(href)) return <span className="muted-inline">-</span>;
-
-  return (
-    <a aria-label="싱크업 열기" className="table-link-icon" href={href} rel="noreferrer" target="_blank">
-      ↗
-    </a>
-  );
-}
-
-function isSafeHttpUrl(value: string) {
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
 }
 
 interface CourseGroup {
