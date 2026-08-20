@@ -3,6 +3,7 @@ import { InstructorWikiDetail } from "@/features/wiki/InstructorWikiDetail";
 import { aggregateInstructors, type InstructorWikiEntry } from "@/features/wiki/instructorWikiModel";
 import { requireAdminSession } from "@/lib/auth/requireAdminSession";
 import { getCoachRepository } from "@/lib/data/coachRepositoryFactory";
+import { getInstructorNote } from "@/lib/data/instructorWikiStore";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +23,15 @@ export default async function InstructorWikiDetailPage({ params }: InstructorWik
     entry = aggregateInstructors(operations).find((item) => item.name === name);
   } catch {
     entry = undefined;
+  }
+
+  // 운영 배정 이력이 없어도 노션 강사 DB에 있으면 상세를 연다(코스는 빈 상태로).
+  // 목록이 노션 명단 기준이라, 여기서 막으면 목록에서 클릭해도 404가 난다.
+  if (!entry) {
+    const note = await getInstructorNote(name);
+    if (note?.notion) {
+      entry = { id: name, name, companies: [], courseCount: 0, courses: [], coach: null };
+    }
   }
 
   if (!entry) {

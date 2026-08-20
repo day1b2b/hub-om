@@ -8,7 +8,7 @@ import type { OperationSession, OperationStatus } from "@/lib/data/operationType
 // - 연락처/계좌/소속(affiliation) 등 PII는 다루지 않는다(별도 PII 권한 계층 전용).
 // =============================================================================
 
-export type InstructorWikiProvenance = "operations" | "empty";
+export type InstructorWikiProvenance = "operations" | "notion" | "empty";
 
 // 운영 현황에서 이 사람이 맡은 역할. instructors=강사, coach=실습코치.
 export type InstructorRole = "강사" | "실습코치";
@@ -139,6 +139,38 @@ export function aggregateInstructors(operations: OperationSession[]): Instructor
 
 export function hasActiveCourse(entry: InstructorWikiEntry): boolean {
   return entry.courses.some((course) => ACTIVE_OPERATION_STATUSES.includes(course.status));
+}
+
+// 운영 현황에 배정 이력이 있는지. 노션에만 있는 강사는 false.
+export function hasOperationHistory(entry: InstructorWikiEntry): boolean {
+  return entry.courses.length > 0;
+}
+
+/**
+ * 강사 명단의 기준을 노션 강사 DB로 넓힌다.
+ *
+ * 강사 정보(소속·카테고리·강사료)는 노션에서 오고, 담당 코스·과정은 운영 현황에서 온다.
+ * 그래서 운영 현황 기반 entry는 그대로 두고(코스 이력 보존), 노션에만 있는 이름은
+ * 코스가 빈 entry로 추가한다. 이름이 겹치면 운영 현황 쪽 entry를 유지한다.
+ *
+ * 이름은 완전일치로만 합친다. 운영 현황의 "디노랩스_김진태"처럼 표기가 다르면 별개 강사로
+ * 남는데, 자동 정규화는 동명이인(예: 노션의 김성재A/김성재B)을 합쳐버릴 위험이 있어 하지 않는다.
+ */
+export function mergeNotionInstructors(
+  entries: InstructorWikiEntry[],
+  notionNames: string[]
+): InstructorWikiEntry[] {
+  const seen = new Set(entries.map((entry) => entry.name.trim()));
+  const merged = [...entries];
+
+  for (const rawName of notionNames) {
+    const name = rawName.trim();
+    if (!name || seen.has(name)) continue;
+    seen.add(name);
+    merged.push({ id: name, name, companies: [], courseCount: 0, courses: [], coach: null });
+  }
+
+  return merged.sort((a, b) => a.name.localeCompare(b.name, "ko"));
 }
 
 // 이 강사가 운영 현황에서 맡은 역할 목록(강사 · 실습코치)
