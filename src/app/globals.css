@@ -9553,7 +9553,7 @@ button.coach-doc-reserve-chip:disabled {
    제목(13px)보다 살짝 크게 잡아 눌러야 하는 곳이 바로 보이게 한다. */
 .section-title .panel-toggle-caret {
   color: var(--muted);
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1;
 }
 
@@ -9841,7 +9841,7 @@ button.coach-doc-reserve-chip:disabled {
 .stage-toggle {
   color: var(--muted);
   /* 담당 과정 접기 화살표(.panel-toggle-caret)와 같은 크기로 맞춘다. */
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1;
   margin-left: auto;
 }

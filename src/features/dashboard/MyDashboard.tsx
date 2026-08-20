@@ -227,7 +227,9 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
                 type="button"
               >
                 나의 담당 과정
-                <span aria-hidden="true" className="panel-toggle-caret">{coursesOpen ? "▲" : "▾"}</span>
+                {/* ▲(U+25B2)와 ▼(U+25BC)는 같은 계열이라 크기가 맞는다.
+                    ▾(U+25BE)는 "작은 삼각형"이라 아래쪽만 작아 보인다. */}
+                <span aria-hidden="true" className="panel-toggle-caret">{coursesOpen ? "▲" : "▼"}</span>
               </button>
             </h2>
             <div className="dashboard-table-meta">
@@ -310,7 +312,7 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
                       <div className="stage-head">
                         <strong>{stage.label}</strong>
                         <span className="stage-count">{stage.items.length}건</span>
-                        <span className="stage-toggle">{isOpen ? "▲" : "▾"}</span>
+                        <span className="stage-toggle">{isOpen ? "▲" : "▼"}</span>
                       </div>
                       <div className="stage-tasks">
                         {openTasks.length > 0 ? (
