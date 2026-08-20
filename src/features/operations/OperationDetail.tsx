@@ -32,13 +32,14 @@ import { isSameCourse } from "@/lib/data/operationCalculations";
 import { COURSE_CATEGORY_GROUPS } from "@/lib/data/omRequest/omCourseCategoryOptions";
 import type { PersonOptions } from "@/lib/data/personOptions";
 import { displayRoleAssigneeText } from "@/lib/data/roleAssignees";
-import { isNavigableHref, toHref } from "@/lib/links";
+import { isNavigableHref } from "@/lib/links";
 import { satisfactionNumber } from "@/lib/data/satisfaction";
 import { teamScopeSearchParam, type TeamScope } from "@/lib/teamScope";
 
 const SHOW_OPERATION_DISCUSSION = false;
 const SHOW_LECTURE_REPORTS = false;
 const SHOW_READINESS_SUMMARY = false;
+const SHOW_BULK_EDIT_ROUNDS = false;
 
 const STATUS_CLASS: Record<OperationStatus, string> = {
   "배정필요": "needs-assignment",
@@ -81,8 +82,6 @@ export function OperationDetail({
   const showOperationStatus = !(operation.operationStatus === "배정필요" && Boolean(operation.om));
   const requiredArchiveItems = getRequiredArchiveItems(operation);
   const completedArchiveItems = requiredArchiveItems.filter((archiveItem) => archiveItem.done);
-  const referenceResourceLinks = getReferenceResourceLinks(operation);
-  const registeredReferenceLinks = referenceResourceLinks.filter((resourceLink) => isNavigableHref(resourceLink.href));
   const satisfactionSummary = getSatisfactionSummary(courseOperations);
   const teamQuery = teamScopeSearchParam(teamScope);
   const existingRoundNumbers = courseOperations
@@ -242,38 +241,6 @@ export function OperationDetail({
                   ))}
                 </div>
               </div>
-
-              <div className="resource-summary-card">
-                <div className="resource-row-head">
-                  <strong>참고 자료</strong>
-                  <span>{registeredReferenceLinks.length}/{referenceResourceLinks.length}</span>
-                </div>
-                <div className="archive-item-list" aria-label="아카이브 참고 자료">
-                  {referenceResourceLinks.map((resourceLink) => {
-                    const hasHref = isNavigableHref(resourceLink.href);
-
-                    return (
-                      <div className={`archive-item-row ${hasHref ? "done" : "missing"}`} key={resourceLink.label}>
-                        <strong>{resourceLink.label}</strong>
-                        <div className="archive-item-actions">
-                          {hasHref ? (
-                            <a
-                              className="archive-item-state"
-                              href={toHref(resourceLink.href) ?? resourceLink.href}
-                              rel="noreferrer"
-                              target="_blank"
-                            >
-                              바로가기
-                            </a>
-                          ) : (
-                            <span className="archive-item-state">링크 없음</span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
             </div>
           </section>
 
@@ -291,7 +258,7 @@ export function OperationDetail({
                   nextRoundNo={nextRoundNo}
                 />
                 <BulkAddRoundsButton baseOperationId={operation.operationId} existingRoundNumbers={existingRoundNumbers} />
-                {courseOperations.length > 1 ? <BulkEditRoundsButton /> : null}
+                {SHOW_BULK_EDIT_ROUNDS && courseOperations.length > 1 ? <BulkEditRoundsButton /> : null}
               </div>
             </div>
             <div className="session-table-wrap">
@@ -394,7 +361,7 @@ export function OperationDetail({
                 </tbody>
               </table>
             </div>
-            <BulkSaveRoundsButton />
+            {SHOW_BULK_EDIT_ROUNDS ? <BulkSaveRoundsButton /> : null}
             </EditAllRoundsProvider>
           </section>
 
@@ -540,13 +507,6 @@ function LectureReportsByRound({
       </div>
     </section>
   );
-}
-
-function getReferenceResourceLinks(operation: OperationSession) {
-  return [
-    { label: "기업위키", href: operation.companyWikiLink, field: "companyWikiLink" as const },
-    { label: "강사위키", href: operation.instructorWikiLink, field: "instructorWikiLink" as const }
-  ];
 }
 
 function getRequiredArchiveItems(operation: OperationSession): ArchiveReadinessItem[] {
