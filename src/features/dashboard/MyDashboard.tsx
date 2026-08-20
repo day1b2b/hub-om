@@ -254,12 +254,11 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
           {coursesOpen ? (
           <div className="table-wrap">
             {/* 컬럼 순서·라벨은 운영현황(OperationDashboard) 표를 따른다. 다만 표가 너무 길어져
-                교육형태·싱크업은 뺐고, 실습코치·만족도·매출은 운영 집계값이라 요청에 없어 제외한다. */}
+                교육형태·싱크업·코스ID는 뺐고, 실습코치·만족도·매출은 운영 집계값이라 요청에 없어 제외한다. */}
             <table className="operations-table">
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>코스ID</th>
                   <th>기업</th>
                   <th>과정명</th>
                   <th>총 회차</th>
@@ -277,7 +276,6 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
                     return (
                       <tr className={focusRequestIds.has(request.id) ? "me-focus-row" : ""} key={request.id}>
                         <td>{index + 1}</td>
-                        <td>{request.courseId || "검토필요"}</td>
                         <td><strong>{request.company}</strong></td>
                         <td>
                           <Link className="course-link" href={`/om-request/manage/${request.id}`}>
@@ -295,7 +293,7 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
                   })
                 ) : (
                   <tr>
-                    <td className="empty-state" colSpan={10}>
+                    <td className="empty-state" colSpan={9}>
                       <strong>배정된 담당 과정이 없습니다.</strong>
                       <span>업무 요청 후 담당으로 배정되면 여기에 표시됩니다.</span>
                     </td>
