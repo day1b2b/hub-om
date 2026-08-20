@@ -14,13 +14,32 @@ import { WikiAvatar } from "./wikiAvatar";
 import { InstructorEditor } from "./InstructorEditor";
 import { ProfileAttachments } from "./ProfileAttachments";
 import { NameEditor } from "./NameEditor";
-import { getInstructorNote, notionHref } from "@/lib/data/instructorWikiStore";
+import { NotionLinkEditor } from "./NotionLinkEditor";
+import {
+  getAllInstructorNotes,
+  getInstructorNote,
+  notionHref,
+  resolveNotionLinkTargets
+} from "@/lib/data/instructorWikiStore";
 
 export async function InstructorWikiDetail({ entry }: { entry: InstructorWikiEntry }) {
   const coach = entry.coach;
   const note = await getInstructorNote(entry.name);
   const displayName = note.displayName?.trim() || entry.name;
   const notionUrl = notionHref(note.notionId);
+
+  // 수동 연결용 노션 강사 명단. 이 항목이 노션 본체인지도 함께 판단한다.
+  const allNotes = await getAllInstructorNotes();
+  const notionNames = Object.keys(allNotes)
+    .filter((candidate) => allNotes[candidate]?.notion)
+    .sort((a, b) => a.localeCompare(b, "ko"));
+  const isNotionEntry = Boolean(note.notion);
+
+  // 이 강사로 연결돼 있는 운영 현황 표기들(본체 화면에서 해제할 수 있게).
+  const linkTargets = resolveNotionLinkTargets(allNotes);
+  const linkedAliases = Object.keys(linkTargets)
+    .filter((alias) => linkTargets[alias] === entry.name)
+    .sort((a, b) => a.localeCompare(b, "ko"));
 
   // 강사 프로필은 coach-db가 우선이고, 없으면 노션 강사 DB 스냅샷으로 채운다.
   const np = note.notion;
@@ -51,6 +70,13 @@ export async function InstructorWikiDetail({ entry }: { entry: InstructorWikiEnt
             ) : (
               <span className="notion-chip is-off">노션 미연결</span>
             )}
+            {/* 운영 현황 표기가 노션과 달라 프로필이 안 붙는 경우, OM이 여기서 한 번 연결한다. */}
+            <NotionLinkEditor
+              isNotionEntry={isNotionEntry}
+              linkedAliases={linkedAliases}
+              name={entry.name}
+              notionNames={notionNames}
+            />
             {/* 섭외지양은 노션 강사 DB의 "섭외지양 여부"만 보고 자동 표기한다.
                 수동 토글은 없앴다. 원천이 노션 하나여야 화면과 노션이 어긋나지 않는다. */}
             {np?.recruitAvoid ? <span className="recruit-avoid-badge">⛔ 섭외지양</span> : null}

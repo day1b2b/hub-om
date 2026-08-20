@@ -9532,6 +9532,50 @@ button.coach-doc-reserve-chip:disabled {
   gap: 10px;
 }
 
+/* 강사위키 — 노션 강사 수동 연결 */
+.notion-chip.is-link {
+  background: transparent;
+  border: 1px dashed var(--line);
+  cursor: pointer;
+}
+
+.notion-link-editor {
+  align-items: center;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.notion-link-alias {
+  align-items: center;
+  background: var(--panel-2, rgba(127, 127, 127, 0.12));
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 11px;
+  gap: 2px;
+  padding: 2px 4px 2px 8px;
+}
+
+.notion-link-alias button {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 10px;
+  line-height: 1;
+  padding: 2px 4px;
+}
+
+.notion-link-alias button:hover {
+  color: #e5484d;
+}
+
+.notion-link-editor .wiki-input {
+  font-size: 12px;
+  min-width: 160px;
+  padding: 3px 6px;
+}
+
 /* 내 대시보드 "나의 담당 과정" 표.
    운영현황 표(.operations-table)의 글자 크기는 따르되, 그 클래스는 쓰지 않는다.
    거기엔 min-width 1740px과 운영현황 컬럼 순서에 맞춘 폭 규칙(nth-child 4~7,14,15)이 있어

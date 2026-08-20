@@ -81,8 +81,26 @@ const ACTIVE_OPERATION_STATUSES: OperationStatus[] = ["배정필요", "배정예
 // ---- 파싱 / 집계 -----------------------------------------------------------
 
 // 시트 instructors 칸에 강사명 대신 들어오는 표기. 강사가 아니므로 위키 목록에서 제외한다.
-// 현재 운영 현황에 실제로 있는 값은 "없음", "(VOD)" 두 가지다. 나머지는 같은 뜻의 표기 대비.
-const NON_INSTRUCTOR_TOKENS = new Set(["없음", "해당없음", "미정", "tbd", "-", "x", "vod", "(vod)"]);
+// 사람 이름이 아니라 자리표시자로 들어온 값들이다. 걸러내지 않으면 강사위키에 "강사"라는
+// 이름의 강사가 생긴다(배포 화면에서 실제로 확인됨).
+const NON_INSTRUCTOR_TOKENS = new Set([
+  "없음",
+  "해당없음",
+  "미정",
+  "추후",
+  "추후미정",
+  "tbd",
+  "-",
+  "x",
+  "vod",
+  "(vod)",
+  // 역할명이 이름 자리에 들어온 경우.
+  "강사",
+  "코치",
+  "실습코치",
+  "담당",
+  "담당자"
+]);
 
 // 운영 현황 instructors 필드는 자유 텍스트다. 구분자로만 분리하고 이름은 원문 유지한다.
 // (예: "박강사", "홍길동, 김철수", "홍길동/이영희")
@@ -170,6 +188,51 @@ export function mergeNotionInstructors(
     if (!name || seen.has(name)) continue;
     seen.add(name);
     merged.push({ id: name, name, companies: [], courseCount: 0, courses: [], coach: null, categories: [] });
+  }
+
+  return merged.sort((a, b) => a.name.localeCompare(b.name, "ko"));
+}
+
+/**
+ * OM이 수동 연결한 노션 강사로 항목을 합친다.
+ *
+ * 운영 현황은 강사 식별자 없이 이름 텍스트만 갖고 있어서, `디노랩스_김진태`처럼 표기가 다르면
+ * 노션의 `김진태`와 별개 사람으로 갈린다. 자동 정규화는 동명이인(김성재A/김성재B)을 합칠 위험이
+ * 있어 쓸 수 없으므로, OM이 상세 화면에서 "이 사람은 노션의 이 강사"라고 한 번 지정한 값
+ * (instructor_notes.notionId)을 조인 키로 쓴다.
+ *
+ * linkTargets: 운영 현황 표기 → 노션 강사명. 연결된 항목의 코스 이력을 노션 강사명 항목으로 옮긴다.
+ */
+export function applyNotionLinks(
+  entries: InstructorWikiEntry[],
+  linkTargets: Record<string, string>
+): InstructorWikiEntry[] {
+  if (Object.keys(linkTargets).length === 0) return entries;
+
+  const byName = new Map<string, InstructorWikiEntry>();
+  for (const entry of entries) byName.set(entry.name, entry);
+
+  const removed = new Set<string>();
+
+  for (const entry of entries) {
+    const target = linkTargets[entry.name];
+    if (!target || target === entry.name) continue;
+
+    let host = byName.get(target);
+    if (!host) {
+      // 노션 강사 항목이 아직 목록에 없으면(동기화 전 등) 빈 항목을 만들어 이력을 붙인다.
+      host = { id: target, name: target, companies: [], courseCount: 0, courses: [], coach: null, categories: [] };
+      byName.set(target, host);
+    }
+    host.courses.push(...entry.courses);
+    removed.add(entry.name);
+  }
+
+  const merged = [...byName.values()].filter((entry) => !removed.has(entry.name));
+  for (const entry of merged) {
+    entry.courses.sort((a, b) => (b.startDate ?? "").localeCompare(a.startDate ?? ""));
+    entry.companies = Array.from(new Set(entry.courses.map((course) => course.companyName).filter(Boolean)));
+    entry.courseCount = entry.courses.length;
   }
 
   return merged.sort((a, b) => a.name.localeCompare(b.name, "ko"));
