@@ -86,7 +86,6 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
     (operation) => isDone(operation) && operation.hasResultReport === "확인필요"
   ).length;
   const hasIssue = operations.filter((operation) => operation.operationIssue.trim() !== "").length;
-  const operationsWithLinks = operations.filter((operation) => operationLinks(operation).length > 0);
 
   // 담당 과정(요청)과 운영이 같은 courseId면 같은 과정이다. 요청 쪽 표현(차수/세팅 정보)이 더 풍부하므로
   // 요청이 대표하고, 운영 중복은 제거한다(캘린더·사전세팅에서 두 번 뜨지 않게).
@@ -350,52 +349,6 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
         </section>
 
         <MonthlyCalendar events={calendarEvents} today={today} />
-
-        <section className="dashboard-panel">
-          <div className="section-title">
-            <h2>내 운영 자료 바로가기</h2>
-            <span>{operationsWithLinks.length}건</span>
-          </div>
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>기업 / 과정</th>
-                  <th>자료</th>
-                </tr>
-              </thead>
-              <tbody>
-                {operationsWithLinks.length > 0 ? (
-                  operationsWithLinks.map((operation) => (
-                    <tr key={operation.operationId}>
-                      <td>
-                        <Link className="course-link" href={`/operations/${operation.operationId}`}>
-                          <strong>{operation.companyName}</strong>
-                          <span>{operation.courseName}</span>
-                        </Link>
-                      </td>
-                      <td>
-                        {operationLinks(operation).map((link, index) => (
-                          <span key={link.label}>
-                            {index > 0 ? " · " : null}
-                            <a href={link.url} rel="noreferrer" target="_blank">{link.label}</a>
-                          </span>
-                        ))}
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td className="empty-state" colSpan={2}>
-                      <strong>등록된 자료 링크가 없습니다.</strong>
-                      <span>운영에 Drive·강의관리·결과보고서 링크가 등록되면 여기에 모입니다.</span>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
       </section>
     </main>
   );
@@ -628,17 +581,6 @@ function scheduleRange(request: OmRequest): { start: string; end: string } {
   if (dates.length === 0) return { start: "-", end: "-" };
 
   return { start: dates[0], end: dates[dates.length - 1] };
-}
-
-// 운영에 등록된 자료 링크만 모은다.
-function operationLinks(operation: OperationSession): Array<{ label: string; url: string }> {
-  const links: Array<{ label: string; url: string }> = [];
-  if (operation.driveLink) links.push({ label: "Drive", url: operation.driveLink });
-  if (operation.lectureManagementLink) links.push({ label: "강의관리", url: operation.lectureManagementLink });
-  if (operation.resultReportLink) links.push({ label: "결과보고서", url: operation.resultReportLink });
-  if (operation.padletLink) links.push({ label: "Padlet", url: operation.padletLink });
-  if (operation.companyWikiLink) links.push({ label: "기업위키", url: operation.companyWikiLink });
-  return links;
 }
 
 function Metric({ label, value }: { label: string; value: number | string }) {
