@@ -11,7 +11,6 @@ import {
   type InstructorWikiEntry
 } from "./instructorWikiModel";
 import { WikiAvatar } from "./wikiAvatar";
-import { RecruitAvoidToggle } from "./RecruitAvoidToggle";
 import { InstructorEditor } from "./InstructorEditor";
 import { ProfileAttachments } from "./ProfileAttachments";
 import { NameEditor } from "./NameEditor";
@@ -52,11 +51,9 @@ export async function InstructorWikiDetail({ entry }: { entry: InstructorWikiEnt
             ) : (
               <span className="notion-chip is-off">노션 미연결</span>
             )}
-            <RecruitAvoidToggle name={entry.name} initialAvoid={note.recruitAvoid ?? false} />
-            {/* 노션 쪽에만 섭외지양이 걸린 경우. OM 토글을 덮지 않고 별도로 알려준다. */}
-            {np?.recruitAvoid && !note.recruitAvoid ? (
-              <span className="recruit-avoid-badge">⛔ 노션: 섭외지양</span>
-            ) : null}
+            {/* 섭외지양은 노션 강사 DB의 "섭외지양 여부"만 보고 자동 표기한다.
+                수동 토글은 없앴다. 원천이 노션 하나여야 화면과 노션이 어긋나지 않는다. */}
+            {np?.recruitAvoid ? <span className="recruit-avoid-badge">⛔ 섭외지양</span> : null}
             <span className="coach-plan-badge">운영 현황 연동</span>
             {roleSummary(entry).map((role) => (
               <span className={`status ${ROLE_CLASS[role]}`} key={role}>{role}</span>
