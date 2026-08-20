@@ -30,7 +30,15 @@ export default async function InstructorWikiDetailPage({ params }: InstructorWik
   if (!entry) {
     const note = await getInstructorNote(name);
     if (note?.notion) {
-      entry = { id: name, name, companies: [], courseCount: 0, courses: [], coach: null };
+      entry = {
+        id: name,
+        name,
+        companies: [],
+        courseCount: 0,
+        courses: [],
+        coach: null,
+        categories: note.notion.categories ?? []
+      };
     }
   }
 

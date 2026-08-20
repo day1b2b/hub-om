@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import {
   cleanCourseName,
+  groupEntriesByCategory,
   hasActiveCourse,
   hasOperationHistory,
   ROLE_CLASS,
@@ -44,6 +45,7 @@ export function InstructorWiki({
   const [statusTab, setStatusTab] = useState<StatusTabKey>("all");
   const [companyFilter, setCompanyFilter] = useState("전체 기업");
   const [view, setView] = useState<"gallery" | "list">("gallery");
+  const [grouping, setGrouping] = useState<"all" | "category">("all");
   const avoidSet = useMemo(() => new Set(recruitAvoidNames), [recruitAvoidNames]);
 
   const companyOptions = useMemo(
@@ -58,6 +60,7 @@ export function InstructorWiki({
         entry.name,
         ...entry.companies,
         ...entry.courses.map((course) => course.courseName),
+        ...entry.categories,
         ...(entry.coach?.fields ?? [])
       ]
         .join(" ")
@@ -90,6 +93,72 @@ export function InstructorWiki({
         : key === "history"
           ? historyOnlyCount
           : noHistoryCount;
+
+  // 카테고리별 보기는 현재 필터 결과를 그대로 묶는다(검색·탭·기업 필터가 먼저 적용됨).
+  const categoryGroups = useMemo(() => groupEntriesByCategory(filtered), [filtered]);
+
+  // 목록에서는 항상 상세로 간다. 노션 이동은 상세 헤더의 강사명 메뉴에서 한다.
+  const renderCard = (entry: InstructorWikiEntry) => {
+    const recent = entry.courses[0];
+    return (
+      <Link className="wiki-card" href={`/instructor-wiki/${encodeURIComponent(entry.name)}`} key={entry.id}>
+        <span className="wiki-card-head">
+          <WikiAvatar name={entry.name} />
+          <span className="wiki-card-name">{entry.name}</span>
+          {avoidSet.has(entry.name) ? <span className="recruit-avoid-tag">⛔ 섭외지양</span> : null}
+        </span>
+        <span className="wiki-card-meta">
+          {hasOperationHistory(entry)
+            ? `${roleSummary(entry).join(" · ") || "강사"} · 코스 ${entry.courseCount}건`
+            : "운영 이력 없음"}
+        </span>
+        {recent ? (
+          <span className="wiki-card-course">{recent.companyName} · {cleanCourseName(recent.courseName)}</span>
+        ) : entry.categories.length > 0 ? (
+          <span className="wiki-card-course">{entry.categories.join(" · ")}</span>
+        ) : null}
+      </Link>
+    );
+  };
+
+  const renderRow = (entry: InstructorWikiEntry, index: number) => {
+    const recent = entry.courses[0];
+    return (
+      <tr key={entry.id}>
+        <td>{index + 1}</td>
+        <td>
+          <Link className="row-link row-link--logo" href={`/instructor-wiki/${encodeURIComponent(entry.name)}`}>
+            <WikiAvatar name={entry.name} size="sm" />
+            <strong>{entry.name}</strong>
+            {avoidSet.has(entry.name) ? <span className="recruit-avoid-tag">⛔ 섭외지양</span> : null}
+          </Link>
+        </td>
+        <td>
+          {entry.categories.length > 0 ? entry.categories.join(", ") : <span className="td-muted">-</span>}
+        </td>
+        <td>
+          {hasOperationHistory(entry) ? (
+            roleSummary(entry).map((role) => (
+              <span className={`status ${ROLE_CLASS[role]}`} key={role} style={{ marginRight: 4 }}>{role}</span>
+            ))
+          ) : (
+            <span className="td-muted">운영 이력 없음</span>
+          )}
+        </td>
+        <td>{entry.courseCount}건</td>
+        <td>
+          {recent ? (
+            <>
+              <span className="title-company">{recent.companyName}</span>{" "}
+              {cleanCourseName(recent.courseName)}
+            </>
+          ) : (
+            <span className="td-muted">-</span>
+          )}
+        </td>
+      </tr>
+    );
+  };
 
   return (
     <main className="dashboard-shell">
@@ -133,6 +202,17 @@ export function InstructorWiki({
             <button className={view === "gallery" ? "selected" : ""} onClick={() => setView("gallery")} type="button">▦ 갤러리</button>
             <button className={view === "list" ? "selected" : ""} onClick={() => setView("list")} type="button">☰ 리스트</button>
           </div>
+          {/* 전체보기 / 카테고리(노션 전문분야)별 그룹핑 */}
+          <div className="view-toggle">
+            <button className={grouping === "all" ? "selected" : ""} onClick={() => setGrouping("all")} type="button">전체보기</button>
+            <button
+              className={grouping === "category" ? "selected" : ""}
+              onClick={() => setGrouping("category")}
+              type="button"
+            >
+              카테고리별
+            </button>
+          </div>
           <select onChange={(event) => setCompanyFilter(event.target.value)} value={companyFilter}>
             {companyOptions.map((option) => (
               <option key={option}>{option}</option>
@@ -141,9 +221,9 @@ export function InstructorWiki({
           <div className="search">
             <span>🔍</span>
             <input
-              aria-label="강사명·기업·과정 검색"
+              aria-label="강사명·기업·과정·카테고리 검색"
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="강사명·기업·과정 검색"
+              placeholder="강사명·기업·과정·카테고리 검색"
               value={query}
             />
           </div>
@@ -151,35 +231,15 @@ export function InstructorWiki({
         </div>
 
         {view === "gallery" ? (
-          <div className="wiki-gallery">
-            {loadFailed ? (
+          loadFailed ? (
+            <div className="wiki-gallery">
               <div className="wiki-empty">
                 <strong>운영 현황 데이터를 불러오지 못했습니다.</strong>
                 <span>데이터 연결 상태를 확인해 주세요.</span>
               </div>
-            ) : filtered.length > 0 ? (
-              filtered.map((entry) => {
-                const recent = entry.courses[0];
-                // 목록에서는 항상 상세로 간다. 노션 이동은 상세 헤더의 강사명 메뉴에서 한다.
-                return (
-                  <Link className="wiki-card" href={`/instructor-wiki/${encodeURIComponent(entry.name)}`} key={entry.id}>
-                    <span className="wiki-card-head">
-                      <WikiAvatar name={entry.name} />
-                      <span className="wiki-card-name">{entry.name}</span>
-                      {avoidSet.has(entry.name) ? <span className="recruit-avoid-tag">⛔ 섭외지양</span> : null}
-                    </span>
-                    <span className="wiki-card-meta">
-                      {hasOperationHistory(entry)
-                        ? `${roleSummary(entry).join(" · ") || "강사"} · 코스 ${entry.courseCount}건`
-                        : "운영 이력 없음"}
-                    </span>
-                    {recent ? (
-                      <span className="wiki-card-course">{recent.companyName} · {cleanCourseName(recent.courseName)}</span>
-                    ) : null}
-                  </Link>
-                );
-              })
-            ) : (
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="wiki-gallery">
               <div className="wiki-empty">
                 <strong>{provenance === "empty" ? "표시할 강사가 없습니다." : "조건에 맞는 강사가 없습니다."}</strong>
                 <span>
@@ -188,8 +248,19 @@ export function InstructorWiki({
                     : "검색어나 필터를 조정해 보세요."}
                 </span>
               </div>
-            )}
-          </div>
+            </div>
+          ) : grouping === "category" ? (
+            categoryGroups.map((group) => (
+              <section className="wiki-group" key={group.label}>
+                <h2 className="wiki-group-head">
+                  {group.label} <span>{group.entries.length}명</span>
+                </h2>
+                <div className="wiki-gallery">{group.entries.map(renderCard)}</div>
+              </section>
+            ))
+          ) : (
+            <div className="wiki-gallery">{filtered.map(renderCard)}</div>
+          )
         ) : (
           <div className="table-section">
             <div className="table-header">
@@ -202,6 +273,7 @@ export function InstructorWiki({
                   <tr>
                     <th>#</th>
                     <th>강사명</th>
+                    <th>카테고리</th>
                     <th>역할</th>
                     <th>담당 코스</th>
                     <th>최근 담당 (기업 · 과정)</th>
@@ -210,50 +282,29 @@ export function InstructorWiki({
                 <tbody>
                   {loadFailed ? (
                     <tr>
-                      <td className="empty-state" colSpan={5}>
+                      <td className="empty-state" colSpan={6}>
                         <strong>운영 현황 데이터를 불러오지 못했습니다.</strong>
                         <span>데이터 연결 상태를 확인해 주세요.</span>
                       </td>
                     </tr>
                   ) : filtered.length > 0 ? (
-                    filtered.map((entry, index) => {
-                      const recent = entry.courses[0];
-                      return (
-                        <tr key={entry.id}>
-                          <td>{index + 1}</td>
-                          <td>
-                            <Link className="row-link row-link--logo" href={`/instructor-wiki/${encodeURIComponent(entry.name)}`}>
-                              <WikiAvatar name={entry.name} size="sm" />
-                              <strong>{entry.name}</strong>
-                              {avoidSet.has(entry.name) ? <span className="recruit-avoid-tag">⛔ 섭외지양</span> : null}
-                            </Link>
-                          </td>
-                          <td>
-                            {hasOperationHistory(entry) ? (
-                              roleSummary(entry).map((role) => (
-                                <span className={`status ${ROLE_CLASS[role]}`} key={role} style={{ marginRight: 4 }}>{role}</span>
-                              ))
-                            ) : (
-                              <span className="td-muted">운영 이력 없음</span>
-                            )}
-                          </td>
-                          <td>{entry.courseCount}건</td>
-                          <td>
-                            {recent ? (
-                              <>
-                                <span className="title-company">{recent.companyName}</span>{" "}
-                                {cleanCourseName(recent.courseName)}
-                              </>
-                            ) : (
-                              <span className="td-muted">-</span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })
+                    grouping === "category" ? (
+                      categoryGroups.map((group) => (
+                        <Fragment key={group.label}>
+                          <tr className="table-group-row">
+                            <td colSpan={6}>
+                              {group.label} <span>{group.entries.length}명</span>
+                            </td>
+                          </tr>
+                          {group.entries.map(renderRow)}
+                        </Fragment>
+                      ))
+                    ) : (
+                      filtered.map(renderRow)
+                    )
                   ) : (
                     <tr>
-                      <td className="empty-state" colSpan={5}>
+                      <td className="empty-state" colSpan={6}>
                         <strong>{provenance === "empty" ? "표시할 강사가 없습니다." : "조건에 맞는 강사가 없습니다."}</strong>
                         <span>
                           {provenance === "empty"

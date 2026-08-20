@@ -2,6 +2,7 @@ import { InstructorWiki } from "@/features/wiki/InstructorWiki";
 import {
   aggregateInstructors,
   attachCoachSummaries,
+  attachNotionCategories,
   mergeNotionInstructors,
   type InstructorWikiEntry,
   type InstructorWikiProvenance
@@ -33,6 +34,14 @@ export default async function InstructorWikiPage() {
   const notes = await getAllInstructorNotes();
   const notionNames = Object.keys(notes).filter((name) => notes[name]?.notion);
   entries = mergeNotionInstructors(entries, notionNames);
+
+  // 카테고리(전문분야)는 노션 값. 그룹핑에 쓴다.
+  const categoriesByName: Record<string, string[]> = {};
+  for (const name of notionNames) {
+    const categories = notes[name]?.notion?.categories;
+    if (categories && categories.length > 0) categoriesByName[name] = categories;
+  }
+  attachNotionCategories(entries, categoriesByName);
 
   // coach-db 연결 시 전문분야/평가 보강(best-effort). 미연결이면 조용히 건너뛴다.
   try {

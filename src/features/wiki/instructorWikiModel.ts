@@ -45,6 +45,8 @@ export interface InstructorWikiEntry {
   courseCount: number;
   courses: InstructorCourse[];
   coach: InstructorCoachInfo | null;
+  /** 노션 강사 DB의 "카테고리"(전문분야). 그룹핑·필터용. 노션 미연결이면 빈 배열. */
+  categories: string[];
 }
 
 export const STATUS_LABEL: Record<CoachStatusValue, string> = {
@@ -99,7 +101,7 @@ export function aggregateInstructors(operations: OperationSession[]): Instructor
   const addCourse = (operation: OperationSession, name: string, role: InstructorRole) => {
     let entry = byName.get(name);
     if (!entry) {
-      entry = { id: name, name, companies: [], courseCount: 0, courses: [], coach: null };
+      entry = { id: name, name, companies: [], courseCount: 0, courses: [], coach: null, categories: [] };
       byName.set(name, entry);
     }
     entry.courses.push({
@@ -167,10 +169,63 @@ export function mergeNotionInstructors(
     const name = rawName.trim();
     if (!name || seen.has(name)) continue;
     seen.add(name);
-    merged.push({ id: name, name, companies: [], courseCount: 0, courses: [], coach: null });
+    merged.push({ id: name, name, companies: [], courseCount: 0, courses: [], coach: null, categories: [] });
   }
 
   return merged.sort((a, b) => a.name.localeCompare(b.name, "ko"));
+}
+
+// 노션 카테고리를 강사명 완전일치로 붙인다(coach-db 보강과 같은 방식).
+export function attachNotionCategories(
+  entries: InstructorWikiEntry[],
+  categoriesByName: Record<string, string[]>
+): void {
+  for (const entry of entries) {
+    const categories = categoriesByName[entry.name.trim()];
+    if (categories && categories.length > 0) {
+      entry.categories = categories;
+    }
+  }
+}
+
+export const NO_CATEGORY_LABEL = "카테고리 미지정";
+
+export interface InstructorCategoryGroup {
+  label: string;
+  entries: InstructorWikiEntry[];
+}
+
+/**
+ * 카테고리별로 묶는다. 노션 카테고리는 multi_select라 한 강사가 여러 카테고리에 속할 수 있고,
+ * 그 경우 각 그룹에 모두 들어간다(합계가 전체 인원보다 클 수 있음).
+ * 카테고리가 없는 강사는 "카테고리 미지정"으로 맨 뒤에 모은다.
+ */
+export function groupEntriesByCategory(entries: InstructorWikiEntry[]): InstructorCategoryGroup[] {
+  const byCategory = new Map<string, InstructorWikiEntry[]>();
+  const noCategory: InstructorWikiEntry[] = [];
+
+  for (const entry of entries) {
+    if (entry.categories.length === 0) {
+      noCategory.push(entry);
+      continue;
+    }
+    for (const category of entry.categories) {
+      const bucket = byCategory.get(category);
+      if (bucket) bucket.push(entry);
+      else byCategory.set(category, [entry]);
+    }
+  }
+
+  // 인원 많은 카테고리를 먼저 보여준다(같으면 이름순). 미지정은 항상 마지막.
+  const groups = Array.from(byCategory.entries())
+    .map(([label, groupEntries]) => ({ label, entries: groupEntries }))
+    .sort((a, b) => b.entries.length - a.entries.length || a.label.localeCompare(b.label, "ko"));
+
+  if (noCategory.length > 0) {
+    groups.push({ label: NO_CATEGORY_LABEL, entries: noCategory });
+  }
+
+  return groups;
 }
 
 // 이 강사가 운영 현황에서 맡은 역할 목록(강사 · 실습코치)

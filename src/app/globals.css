@@ -9532,6 +9532,42 @@ button.coach-doc-reserve-chip:disabled {
   gap: 10px;
 }
 
+/* 강사위키 — 카테고리별 그룹 (갤러리) */
+.wiki-group {
+  margin-bottom: 18px;
+}
+
+.wiki-group-head {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  font-size: 13px;
+  font-weight: 700;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding-bottom: 6px;
+}
+
+.wiki-group-head span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* 강사위키 — 카테고리별 그룹 (리스트 표 안 구분행) */
+.table-group-row td {
+  background: var(--panel-2, rgba(127, 127, 127, 0.08));
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.table-group-row td span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 6px;
+}
+
 /* 기업위키 — 갤러리 카드 */
 .wiki-gallery {
   display: grid;
