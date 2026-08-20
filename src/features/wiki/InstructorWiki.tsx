@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { Fragment, useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
+import { InstructorCategoryTree } from "./InstructorCategoryTree";
 import {
   cleanCourseName,
   groupEntriesByCategory,
   hasActiveCourse,
   hasOperationHistory,
+  NO_CATEGORY_LABEL,
   ROLE_CLASS,
   roleSummary,
   type InstructorWikiEntry,
@@ -46,6 +48,7 @@ export function InstructorWiki({
   const [companyFilter, setCompanyFilter] = useState("전체 기업");
   const [view, setView] = useState<"gallery" | "list">("gallery");
   const [grouping, setGrouping] = useState<"all" | "category">("all");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const avoidSet = useMemo(() => new Set(recruitAvoidNames), [recruitAvoidNames]);
 
   const companyOptions = useMemo(
@@ -53,7 +56,9 @@ export function InstructorWiki({
     [entries]
   );
 
-  const filtered = useMemo(() => {
+  // 1단계: 검색·상태탭·기업 필터. 카테고리 트리의 인원수는 이 결과를 기준으로 세야
+  // 카테고리를 골라도 트리 숫자가 그대로 남는다.
+  const baseFiltered = useMemo(() => {
     const keyword = query.trim().toLowerCase();
     return entries.filter((entry) => {
       const searchable = [
@@ -80,6 +85,16 @@ export function InstructorWiki({
       return queryMatches && statusMatches && companyMatches;
     });
   }, [companyFilter, entries, query, statusTab]);
+
+  // 트리에 그릴 카테고리 그룹(카테고리 선택과 무관하게 유지).
+  const treeGroups = useMemo(() => groupEntriesByCategory(baseFiltered), [baseFiltered]);
+
+  // 2단계: 트리에서 고른 카테고리 적용.
+  const filtered = useMemo(() => {
+    if (selectedCategory === null) return baseFiltered;
+    if (selectedCategory === NO_CATEGORY_LABEL) return baseFiltered.filter((entry) => entry.categories.length === 0);
+    return baseFiltered.filter((entry) => entry.categories.includes(selectedCategory));
+  }, [baseFiltered, selectedCategory]);
 
   const activeCount = entries.filter((entry) => hasActiveCourse(entry)).length;
   const noHistoryCount = entries.filter((entry) => !hasOperationHistory(entry)).length;
@@ -227,9 +242,21 @@ export function InstructorWiki({
               value={query}
             />
           </div>
-          <span className="filter-result-count">총 {filtered.length}명</span>
+          <span className="filter-result-count">
+            총 {filtered.length}명
+            {selectedCategory !== null ? ` · ${selectedCategory}` : ""}
+          </span>
         </div>
 
+        <div className="wiki-body">
+          <InstructorCategoryTree
+            groups={treeGroups}
+            onSelect={setSelectedCategory}
+            selected={selectedCategory}
+            totalCount={baseFiltered.length}
+          />
+
+          <div className="wiki-results">
         {view === "gallery" ? (
           loadFailed ? (
             <div className="wiki-gallery">
@@ -319,6 +346,8 @@ export function InstructorWiki({
             </div>
           </div>
         )}
+          </div>
+        </div>
       </section>
     </main>
   );
