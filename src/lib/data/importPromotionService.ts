@@ -84,6 +84,13 @@ const RESULT_REPORT_STATUS_BY_TEXT: Record<string, ResultReportStatus> = {
   "검토필요": ResultReportStatus.NEEDS_REVIEW
 };
 
+const ONSITE_REQUIRED_BY_TEXT: Record<string, OnsiteRequired> = {
+  "y": OnsiteRequired.Y,
+  "n": OnsiteRequired.N,
+  "일부": OnsiteRequired.PARTIAL,
+  "일부필요": OnsiteRequired.PARTIAL
+};
+
 export async function promoteReadyImportRows(importRunId: string): Promise<ImportPromotionResult> {
   const prisma = getPrismaClient();
   const roleRoster = await new PrismaTeamMemberRepository().listRoleRosters();
@@ -317,7 +324,7 @@ function buildOperationSessionCreateData(input: {
     lectureManagementLink: nullableText(input.fields.lectureManagementLink),
     omName: nullableText(resolveAssigneeText(input.fields.om, "om", input.roleRoster)),
     omUpdate: nullableText(input.fields.omUpdate),
-    onsiteRequired: OnsiteRequired.UNKNOWN,
+    onsiteRequired: enumFromText(ONSITE_REQUIRED_BY_TEXT, input.fields.onsiteText, OnsiteRequired.UNKNOWN),
     onsiteText: nullableText(input.fields.onsiteText),
     operationChannel: enumFromText(
       {
