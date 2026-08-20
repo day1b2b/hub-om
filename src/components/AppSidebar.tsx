@@ -60,7 +60,7 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
         <div className="nav-section">
           <div className="nav-section-title">대시보드</div>
           <Link className={isMyDashboardPage ? "active" : ""} data-icon="👤" href="/me">내 대시보드</Link>
-          <Link className={pathname === "/dashboard" ? "active" : ""} data-icon="🔒" href="/dashboard">대시보드(전체)</Link>
+          <Link className={pathname === "/dashboard" ? "active" : ""} data-icon="📊" href="/dashboard">대시보드(전체)</Link>
         </div>
 
         <div className="nav-section">
