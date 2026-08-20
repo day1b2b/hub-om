@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
+import { ExternalTableLink } from "@/components/ExternalTableLink";
 import { holidayName } from "./holidays";
 import type { OmRequest } from "@/lib/data/omRequest/omRequestTypes";
 import type { OperationSession, OperationStatus } from "@/lib/data/operationTypes";
@@ -20,6 +21,8 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
   const today = useMemo(() => new Date(), []);
   const [monthView, setMonthView] = useState(() => ({ year: today.getFullYear(), month: today.getMonth() }));
   const [openStage, setOpenStage] = useState<null | string>(null);
+  // 담당 과정 표 접기/펼치기. 과정이 많으면 화면이 길어져 아래 패널이 멀어진다.
+  const [coursesOpen, setCoursesOpen] = useState(true);
 
   if (!omName) {
     return (
@@ -86,7 +89,6 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
     (operation) => isDone(operation) && operation.hasResultReport === "확인필요"
   ).length;
   const hasIssue = operations.filter((operation) => operation.operationIssue.trim() !== "").length;
-  const operationsWithLinks = operations.filter((operation) => operationLinks(operation).length > 0);
 
   // 담당 과정(요청)과 운영이 같은 courseId면 같은 과정이다. 요청 쪽 표현(차수/세팅 정보)이 더 풍부하므로
   // 요청이 대표하고, 운영 중복은 제거한다(캘린더·사전세팅에서 두 번 뜨지 않게).
@@ -98,31 +100,38 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
       const start = parseDate(operation.startDate);
       const end = parseDate(operation.endDate) ?? start;
       if (!start || !end) return [];
+      const onsite = operation.onsiteRequired === "Y";
       return [{
         id: `op-${operation.operationId}`,
-        label: operation.companyName,
+        // 현장운영지원은 이름에 붙여 캘린더에서 바로 알아보게 한다.
+        label: onsite ? `${operation.companyName}_현장운영지원` : operation.companyName,
         company: operation.companyName,
         course: operation.courseName,
         start: stripTime(start),
         end: stripTime(end),
-        href: `/operations/${operation.operationId}`
+        href: `/operations/${operation.operationId}`,
+        onsite
       }];
     }),
     ...assignedRequests.flatMap((request) => {
       // 교육 일정 차수(세션)를 각 날짜에 개별 표시한다. 세션에 dateEnd가 있으면 그 기간만큼 막대로.
       const multiSession = request.sessions.length > 1;
+      const onsite = request.onSiteOperation === "Y";
+      // 기업명 뒤에 바로 붙여, 막대가 좁아 잘려도 앞부분이 먼저 보이게 한다.
+      const baseLabel = onsite ? `${request.company}_현장운영지원` : request.company;
       return request.sessions.flatMap((session, index) => {
         const start = parseDate(session.date);
         const end = parseDate(session.dateEnd ?? session.date) ?? start;
         if (!start || !end) return [];
         return [{
           id: `req-${request.id}-${index}`,
-          label: multiSession ? `${request.company} ${index + 1}차` : request.company,
+          label: multiSession ? `${baseLabel} ${index + 1}차` : baseLabel,
           company: request.company,
           course: request.courseName,
           start: stripTime(start),
           end: stripTime(end),
-          href: `/om-request/manage/${request.id}`
+          href: `/om-request/manage/${request.id}`,
+          onsite
         }];
       });
     })
@@ -218,51 +227,80 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
 
         <section className="dashboard-panel">
           <div className="section-title">
-            <h2>나의 담당 과정</h2>
+            <h2>
+              <button
+                aria-expanded={coursesOpen}
+                className="panel-toggle"
+                onClick={() => setCoursesOpen((open) => !open)}
+                type="button"
+              >
+                나의 담당 과정
+                {/* ▲(U+25B2)와 ▼(U+25BC)는 같은 계열이라 크기가 맞는다.
+                    ▾(U+25BE)는 "작은 삼각형"이라 아래쪽만 작아 보인다. */}
+                <span aria-hidden="true" className="panel-toggle-caret">{coursesOpen ? "▲" : "▼"}</span>
+              </button>
+            </h2>
             <div className="dashboard-table-meta">
               <span>전체 {sortedAssignedRequests.length}건 · {monthView.month + 1}월 {focusRequestIds.size}건</span>
-              <div className="me-cal-nav" aria-label="월 이동">
-                <button aria-label="이전 달" onClick={() => moveMonth(-1)} type="button">‹</button>
-                <strong>{monthView.year}년 {monthView.month + 1}월</strong>
-                <button aria-label="다음 달" onClick={() => moveMonth(1)} type="button">›</button>
-              </div>
+              {/* 월 이동은 표의 강조 대상을 바꾸는 것이라 접혀 있을 때는 숨긴다. */}
+              {coursesOpen ? (
+                <div className="me-cal-nav" aria-label="월 이동">
+                  <button aria-label="이전 달" onClick={() => moveMonth(-1)} type="button">‹</button>
+                  <strong>{monthView.year}년 {monthView.month + 1}월</strong>
+                  <button aria-label="다음 달" onClick={() => moveMonth(1)} type="button">›</button>
+                </div>
+              ) : null}
             </div>
           </div>
+          {coursesOpen ? (
           <div className="table-wrap">
-            <table>
+            {/* 컬럼 구성은 운영현황(OperationDashboard) 표와 같게 맞춘다.
+                실습코치·만족도·매출은 운영 집계값이라 요청(OmRequest)에는 없어 제외한다. */}
+            <table className="operations-table">
               <thead>
                 <tr>
-                  <th>기업 / 과정</th>
+                  <th>#</th>
                   <th>교육형태</th>
+                  <th>코스ID</th>
+                  <th>기업</th>
+                  <th>과정명</th>
+                  <th>총 회차</th>
+                  <th>싱크업</th>
+                  <th>OM</th>
+                  <th>LD</th>
                   <th>시작일</th>
                   <th>종료일</th>
-                  <th>총 회차</th>
-                  <th>LD</th>
+                  <th>강사</th>
                 </tr>
               </thead>
               <tbody>
                 {sortedAssignedRequests.length > 0 ? (
-                  sortedAssignedRequests.map((request) => {
+                  sortedAssignedRequests.map((request, index) => {
                     const schedule = scheduleRange(request);
                     return (
                       <tr className={focusRequestIds.has(request.id) ? "me-focus-row" : ""} key={request.id}>
+                        <td>{index + 1}</td>
+                        <td>{request.trainingType}</td>
+                        <td>{request.courseId || "검토필요"}</td>
+                        <td><strong>{request.company}</strong></td>
                         <td>
                           <Link className="course-link" href={`/om-request/manage/${request.id}`}>
-                            <strong>{request.company}</strong>
-                            <span>{request.courseName}</span>
+                            <strong>{request.courseName}</strong>
                           </Link>
                         </td>
-                        <td>{request.trainingType}</td>
+                        <td>{request.totalSessions}</td>
+                        <td><ExternalTableLink href={request.syncupLink} /></td>
+                        <td>{request.assignedOm || "배정필요"}</td>
+                        <td>{request.ld || "미정"}</td>
                         <td>{schedule.start}</td>
                         <td>{schedule.end}</td>
-                        <td>{request.totalSessions}회</td>
-                        <td>{request.ld || "-"}</td>
+                        <td>{request.instructorName || "-"}</td>
                       </tr>
                     );
                   })
                 ) : (
                   <tr>
-                    <td className="empty-state" colSpan={6}>
+                    <td className="empty-state" colSpan={12}>
                       <strong>배정된 담당 과정이 없습니다.</strong>
                       <span>업무 요청 후 담당으로 배정되면 여기에 표시됩니다.</span>
                     </td>
@@ -271,6 +309,7 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
               </tbody>
             </table>
           </div>
+          ) : null}
         </section>
 
         <section className="dashboard-grid" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
@@ -294,7 +333,7 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
                       <div className="stage-head">
                         <strong>{stage.label}</strong>
                         <span className="stage-count">{stage.items.length}건</span>
-                        <span className="stage-toggle">{isOpen ? "▲" : "▾"}</span>
+                        <span className="stage-toggle">{isOpen ? "▲" : "▼"}</span>
                       </div>
                       <div className="stage-tasks">
                         {openTasks.length > 0 ? (
@@ -350,52 +389,6 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
         </section>
 
         <MonthlyCalendar events={calendarEvents} today={today} />
-
-        <section className="dashboard-panel">
-          <div className="section-title">
-            <h2>내 운영 자료 바로가기</h2>
-            <span>{operationsWithLinks.length}건</span>
-          </div>
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>기업 / 과정</th>
-                  <th>자료</th>
-                </tr>
-              </thead>
-              <tbody>
-                {operationsWithLinks.length > 0 ? (
-                  operationsWithLinks.map((operation) => (
-                    <tr key={operation.operationId}>
-                      <td>
-                        <Link className="course-link" href={`/operations/${operation.operationId}`}>
-                          <strong>{operation.companyName}</strong>
-                          <span>{operation.courseName}</span>
-                        </Link>
-                      </td>
-                      <td>
-                        {operationLinks(operation).map((link, index) => (
-                          <span key={link.label}>
-                            {index > 0 ? " · " : null}
-                            <a href={link.url} rel="noreferrer" target="_blank">{link.label}</a>
-                          </span>
-                        ))}
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td className="empty-state" colSpan={2}>
-                      <strong>등록된 자료 링크가 없습니다.</strong>
-                      <span>운영에 Drive·강의관리·결과보고서 링크가 등록되면 여기에 모입니다.</span>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
       </section>
     </main>
   );
@@ -457,6 +450,8 @@ interface CalendarEvent {
   start: Date;
   end: Date;
   href: string;
+  /** 현장운영지원 과정. label에 "_현장운영지원"이 붙고, 막대에 테두리도 준다. */
+  onsite: boolean;
 }
 
 // 기업별로 캘린더 막대 색을 다르게. 같은 기업은 항상 같은 색(이름 해시 기반).
@@ -562,12 +557,21 @@ function MonthlyCalendar({ events, today }: { events: CalendarEvent[]; today: Da
               <div className="me-cal-week-bars">
                 {bars.map((bar) => (
                   <a
-                    className={["me-cal-bar", bar.isStart ? "is-start" : "", bar.isEnd ? "is-end" : ""].filter(Boolean).join(" ")}
+                    className={[
+                      "me-cal-bar",
+                      bar.isStart ? "is-start" : "",
+                      bar.isEnd ? "is-end" : "",
+                      bar.event.onsite ? "is-onsite" : ""
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
                     href={bar.event.href}
                     key={bar.event.id}
                     style={{ gridColumn: `${bar.startCol + 1} / ${bar.endCol + 2}`, gridRow: bar.lane + 1, background: colorForCompany(bar.event.company) }}
                     title={`${bar.event.label} · ${bar.event.course}`}
                   >
+                    {/* 현장운영지원 표기는 label에 들어있다. 막대가 좁아 글자가 잘릴 때를 위해
+                        is-onsite 클래스로 테두리도 함께 준다. */}
                     {bar.event.label}
                   </a>
                 ))}
@@ -628,17 +632,6 @@ function scheduleRange(request: OmRequest): { start: string; end: string } {
   if (dates.length === 0) return { start: "-", end: "-" };
 
   return { start: dates[0], end: dates[dates.length - 1] };
-}
-
-// 운영에 등록된 자료 링크만 모은다.
-function operationLinks(operation: OperationSession): Array<{ label: string; url: string }> {
-  const links: Array<{ label: string; url: string }> = [];
-  if (operation.driveLink) links.push({ label: "Drive", url: operation.driveLink });
-  if (operation.lectureManagementLink) links.push({ label: "강의관리", url: operation.lectureManagementLink });
-  if (operation.resultReportLink) links.push({ label: "결과보고서", url: operation.resultReportLink });
-  if (operation.padletLink) links.push({ label: "Padlet", url: operation.padletLink });
-  if (operation.companyWikiLink) links.push({ label: "기업위키", url: operation.companyWikiLink });
-  return links;
 }
 
 function Metric({ label, value }: { label: string; value: number | string }) {

@@ -9532,6 +9532,31 @@ button.coach-doc-reserve-chip:disabled {
   gap: 10px;
 }
 
+/* 대시보드 패널 제목 접기/펼치기 버튼 (제목 스타일은 h2가 그대로 가짐) */
+.panel-toggle {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  gap: 6px;
+  padding: 0;
+}
+
+.panel-toggle:hover .panel-toggle-caret {
+  color: inherit;
+}
+
+/* .section-title span 규칙(12px)보다 우선하도록 선택자를 한 단계 올린다.
+   제목(13px)보다 살짝 크게 잡아 눌러야 하는 곳이 바로 보이게 한다. */
+.section-title .panel-toggle-caret {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1;
+}
+
 /* 강사위키 — 카테고리 트리 + 결과 2단 레이아웃 */
 .wiki-body {
   align-items: start;
@@ -9815,7 +9840,9 @@ button.coach-doc-reserve-chip:disabled {
 
 .stage-toggle {
   color: var(--muted);
-  font-size: 11px;
+  /* 담당 과정 접기 화살표(.panel-toggle-caret)와 같은 크기로 맞춘다. */
+  font-size: 14px;
+  line-height: 1;
   margin-left: auto;
 }
 
@@ -10053,6 +10080,12 @@ button.coach-doc-reserve-chip:disabled {
   inset: 30px 0 4px;
   pointer-events: none;
   position: absolute;
+}
+
+/* 현장운영지원 막대. 이름에 "_현장운영지원"이 붙지만 막대가 좁으면 글자가 잘리므로,
+   눈으로 훑을 때도 구분되게 안쪽 테두리를 준다. 배경색은 기업 구분용이라 건드리지 않는다. */
+.me-cal-bar.is-onsite {
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.85);
 }
 
 .me-cal-bar {
