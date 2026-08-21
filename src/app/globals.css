@@ -6761,6 +6761,33 @@ td span {
   width: 100%;
 }
 
+.lecture-note-issue-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.lecture-note-tag-toggle {
+  background: #fbfcfe;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  height: 28px;
+  padding: 0 12px;
+}
+
+.lecture-note-tag-toggle:hover {
+  border-color: #c9c9c3;
+}
+
+.lecture-note-tag-toggle.active {
+  background: var(--purple-bg);
+  border-color: var(--purple);
+  color: var(--purple);
+}
+
 .lecture-note-textarea {
   background: #fbfcfe;
   border: 1px solid var(--line);
