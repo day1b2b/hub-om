@@ -193,6 +193,8 @@ export class LocalJsonOperationRepository implements OperationRepository {
       lectureManagementNote: normalizeOptionalText(input.lectureManagementNote, operation.lectureManagementNote),
       om: normalizeOptionalText(input.om, operation.om),
       onsiteOm: normalizeOptionalText(input.onsiteOm, operation.onsiteOm),
+      onsiteRequired: input.onsiteRequired ?? operation.onsiteRequired,
+      onsiteText: input.onsiteRequired ? onsiteRequiredLabel(input.onsiteRequired) : operation.onsiteText,
       operationCost: input.operationCost === undefined ? operation.operationCost : input.operationCost,
       operationDetail: normalizeOptionalText(input.operationDetail, operation.operationDetail),
       operationIssue: normalizeOptionalText(input.operationIssue, operation.operationIssue),

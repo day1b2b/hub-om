@@ -49,8 +49,6 @@ export function IssueReviewEditor({ operation }: IssueReviewEditorProps) {
       values.omUpdate !== operation.omUpdate,
     [operation.omUpdate, operation.operationIssue, operation.specialNotes, values]
   );
-  const hasDraft = draftSavedAt !== null;
-  const hasReadableChanges = hasChanges || hasDraft;
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -142,8 +140,6 @@ export function IssueReviewEditor({ operation }: IssueReviewEditorProps) {
 
       <div className="issue-editor-footer">
         <div className="issue-review-summary">
-          <span>{hasReadableChanges ? "작성 상태" : "검토 필요"}</span>
-          <strong>{operation.validationErrors.length > 0 ? operation.validationErrors.join(", ") : "없음"}</strong>
           {draftSavedAt ? (
             <small>{formatDraftTime(draftSavedAt)} 임시 저장됨 · 나만 보임, 아직 반영 안 됨</small>
           ) : null}
