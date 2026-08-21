@@ -615,7 +615,11 @@ function getValidationErrors(value: unknown): string[] {
 }
 
 function normalizeVisibleText(value: string): string {
-  return value.trim().replace(/\s+/g, " ");
+  return value
+    .split("\n")
+    .map((line) => line.trim().replace(/[^\S\n]+/g, " "))
+    .join("\n")
+    .trim();
 }
 
 function nullableText(value: string): string | null {
