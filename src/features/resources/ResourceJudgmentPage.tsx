@@ -166,7 +166,7 @@ export function ResourceJudgmentPage({
           <div>
             <h1>리소스</h1>
             <p className="lede">
-              달력과 OM별 운영 목록을 함께 보며 실제로 추가 요청을 받을 수 있는지 확인합니다.
+              달력을 보며 실제로 추가 요청을 받을 수 있는지 확인합니다.
             </p>
           </div>
         </header>
