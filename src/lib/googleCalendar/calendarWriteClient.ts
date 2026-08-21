@@ -60,6 +60,8 @@ export interface CalendarEventBody {
   start: { date: string } | { dateTime: string; timeZone: string };
   end: { date: string } | { dateTime: string; timeZone: string };
   attendees?: CalendarEventAttendee[];
+  guestsCanModify?: boolean;
+  guestsCanInviteOthers?: boolean;
 }
 
 async function callCalendar(path: string, init: RequestInit): Promise<Response> {

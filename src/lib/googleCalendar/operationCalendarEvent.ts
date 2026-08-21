@@ -83,6 +83,11 @@ export function buildCalendarEventBody(operation: OperationSession, attendeeEmai
   return {
     summary: buildEventSummary(operation),
     description: buildDescription(operation),
+    // 참석자가 일정을 고치거나 다른 사람을 초대하지 못하게 막는다(스펙 D5: 반영 대상은 읽기 전용).
+    // guestsCanModify는 기본값도 false지만, guestsCanInviteOthers는 기본이 true라
+    // 명시하지 않으면 OM이 임의로 참석자를 늘릴 수 있다. 둘 다 못 박는다.
+    guestsCanModify: false,
+    guestsCanInviteOthers: false,
     ...(operation.region ? { location: operation.region } : {}),
     ...schedule,
     ...(attendeeEmails.length > 0 ? { attendees: attendeeEmails.map((email) => ({ email })) } : {})
