@@ -6,6 +6,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import type { OperationSession } from "@/lib/data/operationTypes";
 import { splitPersonNames } from "@/lib/data/personNames";
 import { TEAM_OPTIONS, type TeamUser } from "@/lib/data/teamUsers/teamUserTypes";
+import { getSeoulToday } from "@/lib/seoulDate";
 import { teamScopeSearchParam, type TeamScope } from "@/lib/teamScope";
 
 type DashboardScope = "이번달" | "연간";
@@ -20,7 +21,7 @@ interface MainDashboardProps {
 }
 
 export function MainDashboard({ operations, teamScope, teamUsers }: MainDashboardProps) {
-  const today = useMemo(() => new Date(), []);
+  const today = useMemo(() => getSeoulToday(), []);
   const [scope, setScope] = useState<DashboardScope>("이번달");
   const [omPart, setOmPart] = useState<OmPartFilter>(OM_PART_ALL);
   const teamQuery = teamScopeSearchParam(teamScope);
