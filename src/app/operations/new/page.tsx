@@ -5,7 +5,7 @@ import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { getOmRequest } from "@/lib/data/omRequest/omRequestLocalRepository";
 import { buildPersonOptions, buildRoleRosterFromOperations, mergeRoleRosters } from "@/lib/data/personOptions";
 import { getStoredTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFactory";
-import { filterRoleRosterByTeamScope, resolveTeamScope } from "@/lib/teamScope";
+import { filterRoleRosterByTeamScope, resolveTeamScope, withUnclassifiedOwners } from "@/lib/teamScope";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +27,7 @@ export default async function NewOperationPage({ searchParams }: NewOperationPag
   const effectiveRoleRoster = mergeRoleRosters(roleRoster, buildRoleRosterFromOperations(operations));
   const scopedRoleRoster = filterRoleRosterByTeamScope(effectiveRoleRoster, teamScope);
   const storageTarget = process.env.OPERATION_DATA_SOURCE === "local" || !process.env.DATABASE_URL ? "로컬 JSON" : "운영 DB";
-  const personOptions = buildPersonOptions(scopedRoleRoster);
+  const personOptions = buildPersonOptions(withUnclassifiedOwners(scopedRoleRoster, effectiveRoleRoster));
   const fromRequestId = firstParamValue(params.fromRequestId);
   const initialValues = fromRequestId ? await buildInitialValuesFromOmRequest(fromRequestId) : undefined;
 
