@@ -16,7 +16,7 @@
 | 원천 | 가져올 후보 데이터 | 상태 | 비고 |
 | --- | --- | --- | --- |
 | Salesmap | 기업, 과정명, 코스ID, 매출, 딜/계약 상태, 시작/종료일 후보 | 진행중 | 엑셀 수기 입력을 가장 먼저 대체할 후보. `readSalesRecords()` reader 스캐폴딩 추가(env 기반, dry-run). 상세는 아래 `## Salesmap 연동` 참고 |
-| Notion | 팀별 리소스 일정, 운영 담당자, 기업명, 과정명, 강의장소 | 진행중 | DB 모드에서도 `NOTION_TOKEN`과 팀별 `NOTION_TEAM*_RESOURCE_*` 설정이 있으면 리소스 화면의 해당 팀 일정/담당자를 Notion API에서 읽음 |
+| Notion | 팀별 리소스 일정, 기업명, 과정명, 강의장소 | 중단 | 리소스 화면(캘린더/운영 상세)에서 Notion 원천 일정을 읽어와 DB 데이터를 대체하던 기능(`notionResourceOperationRepository.ts`)은 2026-08-22 제거함 — 이제 hub-om DB가 유일한 운영 일정 원천. `NOTION_TEAM*_RESOURCE_*` 설정은 담당자(OM/LD) 명단을 Notion에서 가져오는 별개 기능(`notionTeamMemberRepository.ts`)에서 계속 사용 중 |
 | Google Calendar | OM별 강의 일정, 부재 일정, 주변 일정 | 진행중 | 서비스 계정 읽기 결과를 리소스 달력에 읽기 전용 일정으로 표시 |
 | hub-om 입력 | OM, 운영 이슈, 현장 투입 여부, 링크, 회고, 아카이빙 완료 | TODO | 사람이 판단하거나 보강해야 하는 값 |
 | 만족도 원천 | 전체 만족도, 강사 만족도 | TODO | 종료 후 자동 보강 후보 |
