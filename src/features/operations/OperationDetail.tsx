@@ -21,8 +21,7 @@ import { ResultReportConditionSelect } from "./ResultReportConditionSelect";
 import { ResultReportRequirementCell } from "./ResultReportRequirementCell";
 import { SatisfactionSurveyConditionSelect } from "./SatisfactionSurveyConditionSelect";
 import type {
-  OperationSession,
-  OperationStatus
+  OperationSession
 } from "@/lib/data/operationTypes";
 import type {
   OperationCollaboration,
@@ -40,15 +39,6 @@ const SHOW_OPERATION_DISCUSSION = false;
 const SHOW_LECTURE_REPORTS = false;
 const SHOW_READINESS_SUMMARY = false;
 const SHOW_BULK_EDIT_ROUNDS = false;
-
-const STATUS_CLASS: Record<OperationStatus, string> = {
-  "배정필요": "needs-assignment",
-  "배정예정": "planned-assignment",
-  "진행중": "active",
-  "완료": "done",
-  "회고완료": "retrospective-done",
-  "아카이빙필요": "archive-needed"
-};
 
 interface OperationDetailProps {
   collaboration: OperationCollaboration;
@@ -74,7 +64,6 @@ export function OperationDetail({
   const courseOperations = getCourseOperations(operation, relatedOperations);
   const courseGroups = getCourseGroups(operation, sameCourseIdOperations);
   const educationFormatText = aggregateUniqueValues(courseOperations, (candidate) => candidate.educationFormat);
-  const showOperationStatus = !(operation.operationStatus === "배정필요" && Boolean(operation.om));
   const requiredArchiveItems = getRequiredArchiveItems(operation);
   const completedArchiveItems = requiredArchiveItems.filter((archiveItem) => archiveItem.done);
   const satisfactionSummary = getSatisfactionSummary(courseOperations);
@@ -99,7 +88,6 @@ export function OperationDetail({
           <div className="title-row">
             <span className="title-company">{operation.companyName}</span>
             <h1>{operation.courseName}</h1>
-            {showOperationStatus ? <StatusBadge status={operation.operationStatus} /> : null}
             {operation.courseId ? null : <span className="title-course-id">코스ID 검토 필요</span>}
             {operation.processId ? <span className="title-tag">{operation.processId}</span> : null}
             {educationFormatText !== "확인 필요" ? <span className="title-tag">{educationFormatText}</span> : null}
@@ -500,10 +488,6 @@ function getRequiredArchiveItems(operation: OperationSession): ArchiveReadinessI
       value: operation.operationDetail
     }
   ];
-}
-
-function StatusBadge({ status }: { status: OperationStatus }) {
-  return <span className={`status ${STATUS_CLASS[status]}`}>{status}</span>;
 }
 
 function SessionMetricPill({
