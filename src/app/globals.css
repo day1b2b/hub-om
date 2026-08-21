@@ -2862,7 +2862,6 @@ td span {
 }
 
 .operation-detail-layout {
-  align-items: start;
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -4520,12 +4519,12 @@ td span {
 
 .archive-item-list {
   display: grid;
-  gap: 0;
+  gap: 6px 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .archive-item-row {
   align-items: center;
-  border-bottom: 1px solid var(--line);
   color: var(--muted);
   display: grid;
   font-size: 12px;
@@ -4533,10 +4532,6 @@ td span {
   grid-template-columns: minmax(0, 1fr) auto;
   min-height: 33px;
   padding: 6px 0;
-}
-
-.archive-item-row:last-child {
-  border-bottom: 0;
 }
 
 .archive-item-row strong {
@@ -4589,76 +4584,29 @@ td span {
 .course-group-list {
   display: grid;
   gap: 0;
+  list-style: none;
+  margin: 0;
   padding: 4px 14px 12px;
 }
 
 .course-group-item {
   border-bottom: 1px solid var(--line);
-  padding: 8px 0;
 }
 
 .course-group-item:last-child {
   border-bottom: 0;
 }
 
-.course-group-item summary {
-  align-items: center;
+.course-group-item a {
   color: var(--text);
-  cursor: pointer;
-  display: flex;
+  display: block;
   font-size: 13px;
   font-weight: 700;
-  justify-content: space-between;
-  list-style: none;
+  padding: 8px 0;
 }
 
-.course-group-item summary::-webkit-details-marker {
-  display: none;
-}
-
-.course-group-item summary > span:last-child {
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.course-group-rounds {
-  display: grid;
-  gap: 4px;
-  margin-top: 8px;
-}
-
-.course-group-rounds a {
-  align-items: center;
-  border-radius: 6px;
-  color: var(--muted);
-  display: flex;
-  font-size: 12px;
-  justify-content: space-between;
-  padding: 6px 8px;
-}
-
-.course-group-rounds a:hover {
-  background: var(--surface-hover, #f5f5f3);
-}
-
-.course-group-rounds a > span:first-child {
-  color: var(--text);
-  font-weight: 700;
-}
-
-.course-group-rounds li.current-session a {
-  background: #eef5ff;
-}
-
-.current-course-tag {
-  background: #eef5ff;
-  border-radius: 999px;
-  color: #3468c0;
-  font-size: 11px;
-  font-weight: 700;
-  margin-left: 8px;
-  padding: 2px 8px;
+.course-group-item a:hover {
+  color: var(--blue);
 }
 
 .archive-item-actions {
@@ -4782,7 +4730,8 @@ td span {
 }
 
 .session-table th {
-  background: #f8fafc;
+  background: var(--surface-strong);
+  border-bottom: 2px solid var(--line);
   color: var(--muted);
   font-weight: 800;
 }
@@ -4802,6 +4751,11 @@ td span {
 .session-table .status {
   font-size: 11px;
   min-width: 48px;
+}
+
+.session-table .session-cell-wrap {
+  max-width: 140px;
+  white-space: normal;
 }
 
 .session-row-edit-trigger {
@@ -4860,10 +4814,14 @@ td span {
 
 .add-round-dialog {
   grid-template-rows: auto minmax(0, 1fr) auto;
-  max-width: 440px;
+  max-width: 480px;
 }
 
-.add-round-date-row {
+.add-round-dialog .lecture-note-field {
+  max-width: none;
+}
+
+.lecture-note-row {
   display: grid;
   gap: 12px;
   grid-template-columns: 1fr 1fr;
@@ -4947,53 +4905,6 @@ td span {
 
 .bulk-add-rounds-row-status {
   white-space: normal;
-}
-
-.session-row-edit-form {
-  align-items: end;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  white-space: normal;
-}
-
-.session-row-edit-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.session-row-edit-field > span:first-child {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.session-row-edit-field input {
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  font-size: 12px;
-  padding: 6px 8px;
-}
-
-.session-row-edit-date-range {
-  align-items: center;
-  display: flex;
-  gap: 6px;
-}
-
-.session-row-edit-actions {
-  display: flex;
-  gap: 6px;
-}
-
-.session-row-edit-actions button {
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 6px 10px;
-  white-space: nowrap;
 }
 
 .round-resource-cell {
@@ -6877,6 +6788,14 @@ td span {
   padding: 12px 18px;
 }
 
+.lecture-note-footer-start {
+  align-items: center;
+  display: flex;
+  flex: 1;
+  gap: 10px;
+  min-width: 0;
+}
+
 .lecture-note-actions {
   display: inline-flex;
   gap: 8px;
@@ -6905,6 +6824,11 @@ td span {
 .lecture-note-save-error {
   color: var(--red);
   font-size: 12px;
+}
+
+.lecture-note-actions .session-row-delete-trigger {
+  border-color: rgba(180, 35, 24, 0.35);
+  color: var(--red);
 }
 
 .drive-candidate-list {

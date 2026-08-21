@@ -178,6 +178,7 @@ export interface UpdateOperationInput {
   lectureManagementNote?: string;
   om?: string;
   onsiteOm?: string;
+  onsiteRequired?: OnsiteRequired;
   operationCost?: number | null;
   operationDetail?: string;
   operationIssue?: string;

@@ -3,6 +3,7 @@ import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import type {
   ArchiveStatus,
+  OnsiteRequired,
   OperationSession,
   ResultReportStatus,
   SatisfactionSurveyStatus,
@@ -36,6 +37,7 @@ const APPLYABLE_FIELDS = [
   "lectureManagementNote",
   "om",
   "onsiteOm",
+  "onsiteRequired",
   "operationCost",
   "operationDetail",
   "operationIssue",
@@ -124,6 +126,11 @@ function assignUpdateValue(update: UpdateOperationInput, field: ApplyableField, 
     return;
   }
 
+  if (field === "onsiteRequired") {
+    if (isOnsiteRequired(value)) update.onsiteRequired = value;
+    return;
+  }
+
   if (field === "startDate" || field === "endDate") {
     if (isDateText(value)) update[field] = value;
     return;
@@ -152,6 +159,10 @@ function isResultReportStatus(value: string): value is ResultReportStatus {
 
 function isSatisfactionSurveyStatus(value: string): value is SatisfactionSurveyStatus {
   return value === "불필요" || value === "확인필요";
+}
+
+function isOnsiteRequired(value: string): value is OnsiteRequired {
+  return value === "Y" || value === "N" || value === "PARTIAL" || value === "UNKNOWN";
 }
 
 function isDateText(value: string): boolean {
