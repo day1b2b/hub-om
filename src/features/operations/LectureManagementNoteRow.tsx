@@ -2,6 +2,15 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  blankLectureNoteTab,
+  composeLectureNote,
+  containsLectureNoteMarkers,
+  ISSUE_TAG_OPTIONS,
+  parseLectureNote,
+  parseLectureNoteBody,
+  type LectureNoteTab
+} from "@/lib/data/lectureNote";
 import { isNavigableHref, toHref } from "@/lib/links";
 
 type SaveState = "idle" | "saving" | "failed";
@@ -12,26 +21,6 @@ interface LectureManagementNoteRowProps {
   operationId: string;
   startDate: string;
   value: string;
-}
-
-interface LectureNoteDraft {
-  courseSummary: string;
-  issue: string;
-  staffOpinion: string;
-  studentCount: string;
-}
-
-interface LectureNoteTab extends LectureNoteDraft {
-  date: string;
-}
-
-const COURSE_SUMMARY_MARKER = "[강의 요약]";
-const STAFF_OPINION_MARKER = "[운영진 의견]";
-const ISSUE_MARKER = "[이슈]";
-const DATE_HEADER_PATTERN = /^\[날짜:\s*(.*?)\]\s*$/gm;
-
-function blankTab(defaultDate: string = ""): LectureNoteTab {
-  return { courseSummary: "", date: defaultDate, issue: "", staffOpinion: "", studentCount: "" };
 }
 
 export function LectureManagementNoteRow({
@@ -47,7 +36,7 @@ export function LectureManagementNoteRow({
   const [mode, setMode] = useState<NoteMode>(() => (isNavigableHref(value) ? "link" : "text"));
   const [linkDraft, setLinkDraft] = useState(() => (isNavigableHref(value) ? value : ""));
   const [saveState, setSaveState] = useState<SaveState>("idle");
-  const activeTab = tabs[activeTabIndex] ?? blankTab();
+  const activeTab = tabs[activeTabIndex] ?? blankLectureNoteTab();
   const hasHref = isNavigableHref(value);
 
   return (
@@ -157,8 +146,25 @@ export function LectureManagementNoteRow({
                   />
                 </label>
 
+                <div className="lecture-note-field lecture-note-field-block">
+                  <span>이슈 유형</span>
+                  <div aria-label="이슈 유형 선택" className="lecture-note-issue-tags" role="group">
+                    {ISSUE_TAG_OPTIONS.map((tag) => (
+                      <button
+                        aria-pressed={activeTab.issueTags.includes(tag)}
+                        className={`lecture-note-tag-toggle ${activeTab.issueTags.includes(tag) ? "active" : ""}`}
+                        key={tag}
+                        onClick={() => toggleIssueTag(tag)}
+                        type="button"
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <label className="lecture-note-field lecture-note-field-block">
-                  <span>이슈</span>
+                  <span>이슈 상세</span>
                   <textarea
                     className="lecture-note-textarea"
                     onChange={(event) => updateActiveTab({ issue: event.target.value })}
@@ -219,7 +225,7 @@ export function LectureManagementNoteRow({
 
   function addTab() {
     const newIndex = tabs.length;
-    setTabs((current) => [...current, blankTab()]);
+    setTabs((current) => [...current, blankLectureNoteTab()]);
     setActiveTabIndex(newIndex);
   }
 
@@ -235,15 +241,26 @@ export function LectureManagementNoteRow({
     setTabs((current) => current.map((tab, index) => (index === activeTabIndex ? { ...tab, ...patch } : tab)));
   }
 
+  function toggleIssueTag(tag: string) {
+    setTabs((current) =>
+      current.map((tab, index) =>
+        index === activeTabIndex
+          ? { ...tab, issueTags: tab.issueTags.includes(tag) ? tab.issueTags.filter((item) => item !== tag) : [...tab.issueTags, tag] }
+          : tab
+      )
+    );
+  }
+
   function handleSmartPaste(event: React.ClipboardEvent<HTMLInputElement | HTMLTextAreaElement>) {
     const pasted = event.clipboardData.getData("text");
-    if (!containsNoteMarkers(pasted)) return;
+    if (!containsLectureNoteMarkers(pasted)) return;
 
     event.preventDefault();
     const parsed = parseLectureNoteBody(pasted);
     updateActiveTab({
       courseSummary: parsed.courseSummary || activeTab.courseSummary,
       issue: parsed.issue || activeTab.issue,
+      issueTags: parsed.issueTags.length > 0 ? parsed.issueTags : activeTab.issueTags,
       staffOpinion: parsed.staffOpinion || activeTab.staffOpinion,
       studentCount: parsed.studentCount || activeTab.studentCount
     });
@@ -282,87 +299,4 @@ export function LectureManagementNoteRow({
     setSaveState("idle");
     router.refresh();
   }
-}
-
-function containsNoteMarkers(value: string): boolean {
-  return value.includes(COURSE_SUMMARY_MARKER) || value.includes(STAFF_OPINION_MARKER) || value.includes(ISSUE_MARKER);
-}
-
-function parseLectureNote(value: string, defaultDate: string): LectureNoteTab[] {
-  const blocks = splitDateBlocks(value);
-  const tabs = blocks.map((block) => ({ date: block.date, ...parseLectureNoteBody(block.body) }));
-
-  if (tabs.length === 0) return [blankTab(defaultDate)];
-  if (tabs.length === 1 && !tabs[0].date.trim() && !hasTabContent(tabs[0])) return [blankTab(defaultDate)];
-
-  return tabs;
-}
-
-function splitDateBlocks(value: string): { date: string; body: string }[] {
-  const matches = [...value.matchAll(DATE_HEADER_PATTERN)];
-
-  if (matches.length === 0) return [{ body: value, date: "" }];
-
-  return matches.map((match, index) => {
-    const start = (match.index ?? 0) + match[0].length;
-    const end = index + 1 < matches.length ? matches[index + 1].index ?? value.length : value.length;
-
-    return { body: value.slice(start, end).trim(), date: match[1].trim() };
-  });
-}
-
-function parseLectureNoteBody(value: string): LectureNoteDraft {
-  const studentCountMatch = value.match(/학습\s*인원\s*[:：]\s*(.*)/);
-  const studentCount = studentCountMatch ? studentCountMatch[1].trim() : "";
-  const courseSummary = extractSection(value, COURSE_SUMMARY_MARKER, [STAFF_OPINION_MARKER, ISSUE_MARKER]);
-  const staffOpinion = extractSection(value, STAFF_OPINION_MARKER, [ISSUE_MARKER]);
-  const issue = extractSection(value, ISSUE_MARKER, []);
-
-  if (!studentCount && !courseSummary && !staffOpinion && !issue && value.trim()) {
-    return { courseSummary: value.trim(), issue: "", staffOpinion: "", studentCount: "" };
-  }
-
-  return { courseSummary, issue, staffOpinion, studentCount };
-}
-
-function extractSection(value: string, marker: string, followingMarkers: string[]): string {
-  const startIndex = value.indexOf(marker);
-  if (startIndex === -1) return "";
-
-  const afterMarker = value.slice(startIndex + marker.length);
-  const endIndex = followingMarkers
-    .map((followingMarker) => afterMarker.indexOf(followingMarker))
-    .filter((index) => index !== -1)
-    .sort((a, b) => a - b)[0];
-
-  return (endIndex === undefined ? afterMarker : afterMarker.slice(0, endIndex)).trim();
-}
-
-function composeLectureNote(tabs: LectureNoteTab[]): string {
-  const meaningfulTabs = tabs.filter((tab) => hasTabContent(tab));
-
-  if (meaningfulTabs.length === 0) return "";
-
-  if (meaningfulTabs.length === 1 && !meaningfulTabs[0].date.trim()) {
-    return composeLectureNoteBody(meaningfulTabs[0]);
-  }
-
-  return meaningfulTabs
-    .map((tab) => `[날짜: ${tab.date.trim()}]\n${composeLectureNoteBody(tab)}`.trim())
-    .join("\n\n");
-}
-
-function hasTabContent(tab: LectureNoteTab): boolean {
-  return Boolean(tab.date.trim() || tab.courseSummary.trim() || tab.staffOpinion.trim() || tab.issue.trim() || tab.studentCount.trim());
-}
-
-function composeLectureNoteBody(draft: LectureNoteDraft): string {
-  const sections = [
-    draft.studentCount.trim() ? `학습 인원: ${draft.studentCount.trim()}` : "",
-    draft.courseSummary.trim() ? `${COURSE_SUMMARY_MARKER}\n${draft.courseSummary.trim()}` : "",
-    draft.staffOpinion.trim() ? `${STAFF_OPINION_MARKER}\n${draft.staffOpinion.trim()}` : "",
-    draft.issue.trim() ? `${ISSUE_MARKER}\n${draft.issue.trim()}` : ""
-  ].filter(Boolean);
-
-  return sections.join("\n\n");
 }

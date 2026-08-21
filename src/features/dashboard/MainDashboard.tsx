@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
+import { extractIssueTagsFromNote } from "@/lib/data/lectureNote";
 import type { OperationSession } from "@/lib/data/operationTypes";
 import { splitPersonNames } from "@/lib/data/personNames";
 import { TEAM_OPTIONS, type TeamUser } from "@/lib/data/teamUsers/teamUserTypes";
@@ -63,6 +64,11 @@ export function MainDashboard({ operations, teamScope, teamUsers }: MainDashboar
   const uncategorizedCount = scopedCourses.filter((operation) => !operation.courseCategory).length;
   const toolCounts = topCounts(
     scopedCourses.flatMap((operation) => splitToolsList(operation.tools ?? "")),
+    8
+  );
+  // 이슈는 회차(강의)마다 발생하므로 과정 단위(scopedCourses)가 아닌 회차 단위(scopedOperations)로 집계한다.
+  const issueTagCounts = topCounts(
+    scopedOperations.flatMap((operation) => extractIssueTagsFromNote(operation.lectureManagementNote)),
     8
   );
 
@@ -178,6 +184,14 @@ export function MainDashboard({ operations, teamScope, teamUsers }: MainDashboar
               <span>연간 추이</span>
             </div>
             <MonthlyTrendChart items={monthlyCounts} />
+          </section>
+
+          <section className="dashboard-panel dashboard-panel-wide">
+            <div className="section-title">
+              <h2>이슈 유형별 발생 빈도</h2>
+              <span>강의관리에 등록된 이슈 유형 태그 기준, 회차당 다중 선택 합산</span>
+            </div>
+            <BarList items={issueTagCounts} />
           </section>
         </section>
 
