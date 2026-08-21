@@ -389,7 +389,13 @@ function jsonValueToString(value: Prisma.JsonValue | undefined) {
 }
 
 function normalizeVisibleText(value: string | undefined): string {
-  return typeof value === "string" ? value.trim().replace(/\s+/g, " ") : "";
+  if (typeof value !== "string") return "";
+
+  return value
+    .split("\n")
+    .map((line) => line.trim().replace(/[^\S\n]+/g, " "))
+    .join("\n")
+    .trim();
 }
 
 function nullableText(value: string | undefined): string | null {
