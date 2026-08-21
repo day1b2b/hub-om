@@ -16,6 +16,13 @@ const UNMATCHED_OWNER = "매칭 필요";
 const PART_ORDER = ["1파트", "2파트", "3파트"];
 const UNCLASSIFIED_PART = "미분류";
 const ALL_PARTS_FILTER = "전체담당자";
+// 버튼 값은 멤버 관리 데이터(파트 키)와 그대로 매칭시키고, 표시 문구만 여기서 바꾼다.
+const PART_FILTER_LABEL: Record<string, string> = {
+  [ALL_PARTS_FILTER]: "전체",
+  "1파트": "AX 1파트",
+  "2파트": "AX 2파트",
+  "3파트": "AX 3파트"
+};
 const OWNER_ALIASES: Record<string, string> = {
   "이유진": "이유진C"
 };
@@ -176,7 +183,7 @@ export function ResourceJudgmentPage({
               }}
               type="button"
             >
-              {part}
+              {PART_FILTER_LABEL[part] ?? part}
             </button>
           ))}
         </div>
