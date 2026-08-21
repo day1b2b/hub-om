@@ -19,8 +19,15 @@ function logSkip(operationId: string, reason: string): void {
   console.warn(`[gcal] ${operationId} 반영 건너뜀: ${reason}`);
 }
 
-/** 생성·수정 공통. 매핑이 있으면 patch, 없으면 insert 후 매핑을 남긴다. */
-export async function reflectOperationUpsert(operation: OperationSession): Promise<void> {
+/**
+ * 기능을 켜기 전부터 있던 과정은 캘린더에 올리지 않는다.
+ * 그런 과정을 누가 수정했다는 이유로 뒤늦게 초대 메일이 나가면 받는 사람이 당황한다.
+ * 그래서 이벤트를 새로 만드는 것은 "운영 생성" 때뿐이고, 수정은 이미 캘린더에
+ * 올라가 있는 과정(매핑이 있는 과정)에만 반영한다.
+ */
+type ReflectTrigger = "created" | "updated";
+
+async function reflectOperation(operation: OperationSession, trigger: ReflectTrigger): Promise<void> {
   try {
     if (!isCalendarWriteEnabled()) return;
 
@@ -38,6 +45,9 @@ export async function reflectOperationUpsert(operation: OperationSession): Promi
 
     const body = buildCalendarEventBody(operation, targets.attendeeEmails);
     const existing = await findCalendarEventLink(operation.operationId);
+
+    // 수정인데 캘린더에 없는 과정 = 기능 도입 전에 만들어진 과정. 건드리지 않는다.
+    if (!existing && trigger === "updated") return;
 
     // 담당 OM이 다른 파트로 바뀌면 캘린더가 달라진다. 옛 캘린더의 이벤트를 지우고 새로 만든다.
     if (existing && existing.calendarId !== calendarId) {
@@ -57,6 +67,16 @@ export async function reflectOperationUpsert(operation: OperationSession): Promi
   } catch (error) {
     console.error(`[gcal] ${operation.operationId} 반영 실패:`, error);
   }
+}
+
+/** 운영 생성. 캘린더에 일정을 만들고 담당·현장 OM을 초대한다. */
+export function reflectOperationCreated(operation: OperationSession): Promise<void> {
+  return reflectOperation(operation, "created");
+}
+
+/** 운영 수정. 이미 캘린더에 올라간 과정만 갱신한다. */
+export function reflectOperationUpdated(operation: OperationSession): Promise<void> {
+  return reflectOperation(operation, "updated");
 }
 
 /** 취소·삭제. 이벤트를 지우고 매핑도 정리한다(스펙 D4). */
