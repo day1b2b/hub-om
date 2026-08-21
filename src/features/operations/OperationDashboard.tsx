@@ -12,6 +12,7 @@ import type {
 import { splitPersonNames } from "@/lib/data/personNames";
 import { normalizePersonKey } from "@/lib/data/roleAssignees";
 import { satisfactionNumber } from "@/lib/data/satisfaction";
+import { getSeoulToday } from "@/lib/seoulDate";
 import { teamScopeSearchParam, type TeamScope } from "@/lib/teamScope";
 
 const 전체_파트 = "전체 파트";
@@ -59,7 +60,7 @@ function sumRevenueByCourseId(operations: ReadonlyArray<Pick<OperationSession, "
 }
 
 export function OperationDashboard({ omRoster, operations, partByPersonKey, teamScope }: OperationDashboardProps) {
-  const today = useMemo(() => new Date(), []);
+  const today = useMemo(() => getSeoulToday(), []);
   const teamQuery = teamScopeSearchParam(teamScope);
   const [companyFilter, setCompanyFilter] = useState("전체 기업");
   const [formatFilter, setFormatFilter] = useState<"전체 교육형태" | EducationFormat>("전체 교육형태");
