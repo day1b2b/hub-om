@@ -800,3 +800,19 @@ model InstructorNote {
   @@index([recruitAvoid], map: "instructor_notes_recruit_avoid_idx")
   @@map("instructor_notes")
 }
+
+// 운영 1건(OperationSession.operationId) ↔ 구글 캘린더 이벤트 1건 매핑.
+// 운영현황 → 구글 단방향 반영에서 수정·삭제 대상을 찾는 데 쓴다.
+// OperationSession에 컬럼을 붙이지 않고 분리한 이유는 로컬 JSON 저장소와 스키마를
+// 맞출 필요가 없고, 연동을 껐다 켜도 운영 데이터가 오염되지 않기 때문이다.
+// 캘린더가 바뀔 수 있어(담당 OM의 파트 변경) calendarId도 함께 보관한다.
+model CalendarEventLink {
+  id          String   @id @default(uuid()) @db.Uuid
+  operationId String   @unique @map("operation_id")
+  calendarId  String   @map("calendar_id")
+  eventId     String   @map("event_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("calendar_event_links")
+}
