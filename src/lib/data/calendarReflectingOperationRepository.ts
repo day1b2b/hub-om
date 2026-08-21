@@ -12,8 +12,9 @@ import type {
   UpdateOperationInput
 } from "./operationTypes";
 import {
+  reflectOperationCreated,
   reflectOperationDelete,
-  reflectOperationUpsert
+  reflectOperationUpdated
 } from "@/lib/googleCalendar/reflectOperationToCalendar";
 
 // 캘린더 이벤트에 드러나는 값만 추린다. 만족도·비용처럼 일정과 무관한 수정에는
@@ -49,13 +50,13 @@ export class CalendarReflectingOperationRepository implements OperationRepositor
 
   async createOperation(input: CreateOperationInput): Promise<OperationSession> {
     const operation = await this.inner.createOperation(input);
-    await reflectOperationUpsert(operation);
+    await reflectOperationCreated(operation);
     return operation;
   }
 
   async updateOperation(operationId: string, input: UpdateOperationInput): Promise<OperationSession> {
     const operation = await this.inner.updateOperation(operationId, input);
-    if (touchesCalendar(input)) await reflectOperationUpsert(operation);
+    if (touchesCalendar(input)) await reflectOperationUpdated(operation);
     return operation;
   }
 
