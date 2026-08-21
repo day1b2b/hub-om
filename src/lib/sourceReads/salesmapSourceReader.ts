@@ -133,7 +133,12 @@ export class SalesmapSourceReader implements OperationSourceReader {
     const { entry, value } = await readTimedCache(
       cachedSalesRead,
       getResourceReadCacheTtlMs(),
-      () => this.readFreshSalesRecords()
+      () => this.readFreshSalesRecords(),
+      // 딜 전체 읽기는 수십 초~분 단위로 걸린다. 진행 중인 읽기를 곧바로 캐시에 올려,
+      // 그 사이 들어온 호출이 새 읽기를 또 시작하지 않고 같은 결과를 기다리게 한다.
+      (pending) => {
+        cachedSalesRead = pending;
+      }
     );
 
     // 실패(429/에러)는 캐시하지 않는다 → 제한이 풀리면 다음 호출에서 곧바로 다시 읽는다.

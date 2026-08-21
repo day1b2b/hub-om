@@ -6,6 +6,7 @@
 
 import type { OperationRepository } from "./operationRepository";
 import type {
+  CourseLookupCandidate,
   CreateOperationInput,
   OperationSession,
   OperationSummary,
@@ -38,6 +39,11 @@ export class CalendarReflectingOperationRepository implements OperationRepositor
 
   listOperations(): Promise<OperationSession[]> {
     return this.inner.listOperations();
+  }
+
+  findCoursesByCourseId(courseId: string): Promise<CourseLookupCandidate[]> {
+    // 읽기 전용 조회 — 캘린더에 반영할 것이 없어 그대로 넘긴다.
+    return this.inner.findCoursesByCourseId(courseId);
   }
 
   getOperationById(operationId: string): Promise<OperationSession | null> {
