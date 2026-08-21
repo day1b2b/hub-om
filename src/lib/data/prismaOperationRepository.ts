@@ -12,6 +12,7 @@ import {
 } from "@prisma/client";
 import type {
   ArchiveStatus,
+  CourseLookupCandidate,
   CreateOperationInput,
   EducationFormat,
   OnsiteRequired,
@@ -31,6 +32,7 @@ import {
   deriveSessionDurationDays,
   deriveSessionDurationType,
   formatProcessId,
+  normalizeCourseId,
   summarizeOperations
 } from "./operationCalculations";
 import type { OperationRepository } from "./operationRepository";
@@ -142,6 +144,42 @@ const PRISMA_OPERATION_TYPE: Record<OperationType, PrismaOperationType> = {
 };
 
 export class PrismaOperationRepository implements OperationRepository {
+  /**
+   * 코스ID로 과정을 찾는다. 운영현황(hub-om DB)이 원천이므로 세일즈맵 딜을 긁지 않고 바로 답한다.
+   *
+   * DB에 적재된 코스ID에는 제로폭 문자가 섞여 있을 수 있어(적재 원천이 엑셀·시트) 정확히 일치하는
+   * 조건만으로는 놓친다. 그래서 `contains`로 후보를 좁힌 뒤 normalizeCourseId로 다시 걸러낸다.
+   * 과정(Course) 행은 회차보다 훨씬 적어 이 방식으로도 충분히 가볍다.
+   */
+  async findCoursesByCourseId(courseId: string): Promise<CourseLookupCandidate[]> {
+    const target = normalizeCourseId(courseId);
+    if (!target) return [];
+
+    const prisma = getPrismaClient();
+    const courses = await prisma.course.findMany({
+      where: { courseId: { contains: target } },
+      include: {
+        company: true,
+        sessions: {
+          where: { deletedAt: null },
+          orderBy: { startDate: "desc" },
+          take: 1,
+          select: { startDate: true }
+        }
+      }
+    });
+
+    return courses
+      .filter((course) => normalizeCourseId(course.courseId) === target)
+      .map((course) => ({
+        courseId: normalizeCourseId(course.courseId),
+        companyName: course.company.name,
+        courseName: course.name,
+        latestStartDate: course.sessions[0] ? toDateString(course.sessions[0].startDate) : null
+      }))
+      .sort(compareCourseLookupCandidates);
+  }
+
   async listOperations(): Promise<OperationSession[]> {
     const prisma = getPrismaClient();
     const sessions = await prisma.operationSession.findMany({
@@ -549,6 +587,17 @@ function decimalToNumber(value: { toString(): string } | null): number | null {
   if (value === null) return null;
   const parsed = Number(value.toString());
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+/** 최근 회차가 있는 과정을 앞에 둔다. 회차가 없는 과정은 뒤로, 같으면 과정명 순(결정적). */
+function compareCourseLookupCandidates(a: CourseLookupCandidate, b: CourseLookupCandidate): number {
+  if (a.latestStartDate !== b.latestStartDate) {
+    if (!a.latestStartDate) return 1;
+    if (!b.latestStartDate) return -1;
+    return b.latestStartDate.localeCompare(a.latestStartDate);
+  }
+
+  return a.courseName.localeCompare(b.courseName);
 }
 
 function toDateString(value: Date): string {
