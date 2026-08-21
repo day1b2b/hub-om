@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useEditAllRoundsSignal } from "./EditAllRoundsProvider";
 
@@ -9,9 +10,11 @@ type SaveState = "idle" | "saving" | "failed";
 interface EditableSessionRowProps {
   children?: ReactNode;
   coach: string;
+  deleteButton?: ReactNode;
   endDate: string;
   instructors: string;
   operationId: string;
+  region: string;
   startDate: string;
   timeText: string;
 }
@@ -20,11 +23,22 @@ interface SessionDraft {
   coach: string;
   endDate: string;
   instructors: string;
+  region: string;
   startDate: string;
   timeText: string;
 }
 
-export function EditableSessionRow({ children, coach, endDate, instructors, operationId, startDate, timeText }: EditableSessionRowProps) {
+export function EditableSessionRow({
+  children,
+  coach,
+  deleteButton,
+  endDate,
+  instructors,
+  operationId,
+  region,
+  startDate,
+  timeText
+}: EditableSessionRowProps) {
   const router = useRouter();
   const editAllContext = useEditAllRoundsSignal();
   const [isEditing, setIsEditing] = useState(false);
@@ -64,95 +78,124 @@ export function EditableSessionRow({ children, coach, endDate, instructors, oper
     return () => unregisterRow(operationId);
   }, [isEditing, operationId, editAllContext?.registerRow, editAllContext?.unregisterRow]);
 
-  if (!isEditing) {
-    return (
-      <>
-        <td>
-          <span className="stacked-cell">
-            <strong>{startDate} ~ {endDate}</strong>
-            <small>{timeText || "시간 미정"}</small>
-          </span>
-        </td>
-        <td>{instructors || "미정"}</td>
-        <td>{coach || "미정"}</td>
-        {children}
-        <td>
-          <button className="session-row-edit-trigger" onClick={startEditing} type="button">
-            수정
-          </button>
-        </td>
-      </>
-    );
-  }
-
   return (
     <>
-      <td colSpan={3}>
-        <div className="session-row-edit-form">
-          <label className="session-row-edit-field">
-            <span>일정</span>
-            <span className="session-row-edit-date-range">
-              <input
-                aria-label="시작일"
-                onChange={(event) => setDraft((current) => ({ ...current, startDate: event.target.value }))}
-                type="date"
-                value={draft.startDate}
-              />
-              <span>~</span>
-              <input
-                aria-label="종료일"
-                onChange={(event) => setDraft((current) => ({ ...current, endDate: event.target.value }))}
-                type="date"
-                value={draft.endDate}
-              />
-            </span>
-          </label>
-          <label className="session-row-edit-field">
-            <span>시간</span>
-            <input
-              onChange={(event) => setDraft((current) => ({ ...current, timeText: event.target.value }))}
-              placeholder="예: 09:30 ~ 17:30"
-              type="text"
-              value={draft.timeText}
-            />
-          </label>
-          <label className="session-row-edit-field">
-            <span>강사</span>
-            <input
-              onChange={(event) => setDraft((current) => ({ ...current, instructors: event.target.value }))}
-              placeholder="강사명"
-              type="text"
-              value={draft.instructors}
-            />
-          </label>
-          <label className="session-row-edit-field">
-            <span>실습코치</span>
-            <input
-              onChange={(event) => setDraft((current) => ({ ...current, coach: event.target.value }))}
-              placeholder="실습코치명"
-              type="text"
-              value={draft.coach}
-            />
-          </label>
-        </div>
-        {saveState === "failed" ? <span className="archive-item-save-error">저장하지 못했습니다.</span> : null}
+      <td className="session-cell-wrap">{region || "미정"}</td>
+      <td>
+        <span className="stacked-cell">
+          <strong>{startDate} ~ {endDate}</strong>
+          <small>{timeText || "시간 미정"}</small>
+        </span>
       </td>
+      <td>{instructors || "미정"}</td>
+      <td>{coach || "미정"}</td>
       {children}
       <td>
-        <div className="session-row-edit-actions">
-          <button disabled={saveState === "saving"} onClick={save} type="button">
-            {saveState === "saving" ? "저장 중" : "저장"}
-          </button>
-          <button disabled={saveState === "saving"} onClick={cancelEditing} type="button">
-            취소
-          </button>
-        </div>
+        <button className="session-row-edit-trigger" onClick={startEditing} type="button">
+          수정
+        </button>
       </td>
+      {isEditing
+        ? createPortal(
+            <div aria-modal="true" className="drive-review-modal" role="dialog">
+              <div className="drive-review-backdrop" onClick={cancelEditing} />
+              <section aria-labelledby="edit-round-title" className="drive-review-dialog add-round-dialog">
+                <div className="drive-review-header">
+                  <div>
+                    <h2 id="edit-round-title">회차 수정</h2>
+                  </div>
+                  <button aria-label="회차 수정 닫기" onClick={cancelEditing} type="button">
+                    닫기
+                  </button>
+                </div>
+
+                <div className="lecture-note-body">
+                  <div className="lecture-note-row">
+                    <label className="lecture-note-field">
+                      <span>시작일</span>
+                      <input
+                        onChange={(event) => setDraft((current) => ({ ...current, startDate: event.target.value }))}
+                        type="date"
+                        value={draft.startDate}
+                      />
+                    </label>
+                    <label className="lecture-note-field">
+                      <span>종료일</span>
+                      <input
+                        onChange={(event) => setDraft((current) => ({ ...current, endDate: event.target.value }))}
+                        type="date"
+                        value={draft.endDate}
+                      />
+                    </label>
+                  </div>
+
+                  <div className="lecture-note-row">
+                    <label className="lecture-note-field">
+                      <span>시간</span>
+                      <input
+                        onChange={(event) => setDraft((current) => ({ ...current, timeText: event.target.value }))}
+                        placeholder="예: 09:30 ~ 17:30"
+                        type="text"
+                        value={draft.timeText}
+                      />
+                    </label>
+                    <label className="lecture-note-field">
+                      <span>장소</span>
+                      <input
+                        onChange={(event) => setDraft((current) => ({ ...current, region: event.target.value }))}
+                        placeholder="예: 서울 강남"
+                        type="text"
+                        value={draft.region}
+                      />
+                    </label>
+                  </div>
+
+                  <div className="lecture-note-row">
+                    <label className="lecture-note-field">
+                      <span>강사</span>
+                      <input
+                        onChange={(event) => setDraft((current) => ({ ...current, instructors: event.target.value }))}
+                        placeholder="강사명"
+                        type="text"
+                        value={draft.instructors}
+                      />
+                    </label>
+                    <label className="lecture-note-field">
+                      <span>실습코치</span>
+                      <input
+                        onChange={(event) => setDraft((current) => ({ ...current, coach: event.target.value }))}
+                        placeholder="실습코치명"
+                        type="text"
+                        value={draft.coach}
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                <div className="lecture-note-footer">
+                  <div className="lecture-note-footer-start">
+                    {deleteButton}
+                    {saveState === "failed" ? <span className="lecture-note-save-error">저장하지 못했습니다.</span> : null}
+                  </div>
+                  <div className="lecture-note-actions">
+                    <button disabled={saveState === "saving"} onClick={cancelEditing} type="button">
+                      취소
+                    </button>
+                    <button disabled={saveState === "saving"} onClick={save} type="button">
+                      {saveState === "saving" ? "저장 중" : "저장"}
+                    </button>
+                  </div>
+                </div>
+              </section>
+            </div>,
+            document.body
+          )
+        : null}
     </>
   );
 
   function toDraft(): SessionDraft {
-    return { coach, endDate, instructors, startDate, timeText };
+    return { coach, endDate, instructors, region, startDate, timeText };
   }
 
   function startEditing() {
@@ -175,7 +218,8 @@ export function EditableSessionRow({ children, coach, endDate, instructors, oper
       { field: "endDate", action: "replace" as const, value: draft.endDate.trim() },
       { field: "timeText", action: "replace" as const, value: draft.timeText.trim() },
       { field: "instructors", action: "replace" as const, value: draft.instructors.trim() },
-      { field: "coach", action: "replace" as const, value: draft.coach.trim() }
+      { field: "coach", action: "replace" as const, value: draft.coach.trim() },
+      { field: "region", action: "replace" as const, value: draft.region.trim() }
     ];
 
     let response: Response;

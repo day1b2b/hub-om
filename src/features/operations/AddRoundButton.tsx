@@ -10,6 +10,7 @@ interface AddRoundButtonProps {
   baseCoach: string;
   baseInstructors: string;
   baseOperationId: string;
+  baseRegion: string;
   baseTimeText: string;
   nextRoundNo: string;
 }
@@ -18,6 +19,7 @@ interface RoundDraft {
   coach: string;
   endDate: string;
   instructors: string;
+  region: string;
   roundNo: string;
   startDate: string;
   timeText: string;
@@ -27,6 +29,7 @@ export function AddRoundButton({
   baseCoach,
   baseInstructors,
   baseOperationId,
+  baseRegion,
   baseTimeText,
   nextRoundNo
 }: AddRoundButtonProps) {
@@ -39,7 +42,7 @@ export function AddRoundButton({
   return (
     <>
       <button className="secondary-action add-round-trigger" onClick={openDialog} type="button">
-        + 차수 추가
+        + 회차 추가
       </button>
 
       {isOpen ? (
@@ -48,10 +51,10 @@ export function AddRoundButton({
           <section aria-labelledby="add-round-title" className="drive-review-dialog add-round-dialog">
             <div className="drive-review-header">
               <div>
-                <h2 id="add-round-title">차수 추가</h2>
+                <h2 id="add-round-title">회차 추가</h2>
                 <p>동일 과정에 새 회차를 추가합니다.</p>
               </div>
-              <button aria-label="차수 추가 닫기" onClick={closeDialog} type="button">
+              <button aria-label="회차 추가 닫기" onClick={closeDialog} type="button">
                 닫기
               </button>
             </div>
@@ -62,7 +65,7 @@ export function AddRoundButton({
                 <input readOnly type="text" value={draft.roundNo} />
               </label>
 
-              <div className="add-round-date-row">
+              <div className="lecture-note-row">
                 <label className="lecture-note-field">
                   <span>시작일</span>
                   <input
@@ -81,35 +84,47 @@ export function AddRoundButton({
                 </label>
               </div>
 
-              <label className="lecture-note-field">
-                <span>시간</span>
-                <input
-                  onChange={(event) => setDraft((current) => ({ ...current, timeText: event.target.value }))}
-                  placeholder="예: 09:30 ~ 17:30"
-                  type="text"
-                  value={draft.timeText}
-                />
-              </label>
+              <div className="lecture-note-row">
+                <label className="lecture-note-field">
+                  <span>시간</span>
+                  <input
+                    onChange={(event) => setDraft((current) => ({ ...current, timeText: event.target.value }))}
+                    placeholder="예: 09:30 ~ 17:30"
+                    type="text"
+                    value={draft.timeText}
+                  />
+                </label>
+                <label className="lecture-note-field">
+                  <span>장소</span>
+                  <input
+                    onChange={(event) => setDraft((current) => ({ ...current, region: event.target.value }))}
+                    placeholder="예: 서울 강남"
+                    type="text"
+                    value={draft.region}
+                  />
+                </label>
+              </div>
 
-              <label className="lecture-note-field">
-                <span>강사</span>
-                <input
-                  onChange={(event) => setDraft((current) => ({ ...current, instructors: event.target.value }))}
-                  placeholder="강사명"
-                  type="text"
-                  value={draft.instructors}
-                />
-              </label>
-
-              <label className="lecture-note-field">
-                <span>실습코치</span>
-                <input
-                  onChange={(event) => setDraft((current) => ({ ...current, coach: event.target.value }))}
-                  placeholder="실습코치명"
-                  type="text"
-                  value={draft.coach}
-                />
-              </label>
+              <div className="lecture-note-row">
+                <label className="lecture-note-field">
+                  <span>강사</span>
+                  <input
+                    onChange={(event) => setDraft((current) => ({ ...current, instructors: event.target.value }))}
+                    placeholder="강사명"
+                    type="text"
+                    value={draft.instructors}
+                  />
+                </label>
+                <label className="lecture-note-field">
+                  <span>실습코치</span>
+                  <input
+                    onChange={(event) => setDraft((current) => ({ ...current, coach: event.target.value }))}
+                    placeholder="실습코치명"
+                    type="text"
+                    value={draft.coach}
+                  />
+                </label>
+              </div>
             </div>
 
             <div className="lecture-note-footer">
@@ -130,7 +145,15 @@ export function AddRoundButton({
   );
 
   function toDraft(): RoundDraft {
-    return { coach: baseCoach, endDate: "", instructors: baseInstructors, roundNo: nextRoundNo, startDate: "", timeText: baseTimeText };
+    return {
+      coach: baseCoach,
+      endDate: "",
+      instructors: baseInstructors,
+      region: baseRegion,
+      roundNo: nextRoundNo,
+      startDate: "",
+      timeText: baseTimeText
+    };
   }
 
   function openDialog() {
@@ -177,7 +200,7 @@ export function AddRoundButton({
       });
     } catch {
       setSaveState("failed");
-      setError("차수를 추가하지 못했습니다.");
+      setError("회차를 추가하지 못했습니다.");
       return;
     }
 
@@ -185,7 +208,7 @@ export function AddRoundButton({
 
     if (!response.ok || !payload.ok) {
       setSaveState("failed");
-      setError(payload.error ?? "차수를 추가하지 못했습니다.");
+      setError(payload.error ?? "회차를 추가하지 못했습니다.");
       return;
     }
 

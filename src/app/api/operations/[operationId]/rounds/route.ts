@@ -16,6 +16,7 @@ interface CreateRoundBody {
   coach?: unknown;
   endDate?: unknown;
   instructors?: unknown;
+  region?: unknown;
   roundNo?: unknown;
   startDate?: unknown;
   timeText?: unknown;
@@ -94,7 +95,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       operationStatus: "배정예정",
       operationType: baseOperation.operationType,
       padletLink: baseOperation.padletLink,
-      region: baseOperation.region,
+      region: textValue(body.region) || baseOperation.region,
       resultReportLink: "",
       revenue: baseOperation.revenue,
       roundNo,
@@ -106,7 +107,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 
     return NextResponse.json({ ok: true, operation });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "차수를 추가하지 못했습니다.";
+    const message = error instanceof Error ? error.message : "회차를 추가하지 못했습니다.";
     return NextResponse.json({ ok: false, error: message }, { status: 400 });
   }
 }

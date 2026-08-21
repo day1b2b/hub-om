@@ -4,6 +4,7 @@ export interface ParsedRound {
   errors: string[];
   instructors: string;
   raw: string;
+  region: string;
   roundNo: string;
   startDate: string;
   status: "idle" | "saving" | "done" | "failed";
@@ -74,8 +75,15 @@ function applyRoundSequenceValidation(rows: ParsedRound[], existingRoundNumbers:
 
 function toParsedRound(line: string): ParsedRound {
   const cells = (line.includes("\t") ? line.split("\t") : line.split(",")).map((cell) => cell.trim());
-  const [roundNoCell = "", startDateCell = "", endDateCell = "", timeTextCell = "", instructorsCell = "", coachCell = ""] =
-    cells;
+  const [
+    roundNoCell = "",
+    startDateCell = "",
+    endDateCell = "",
+    timeTextCell = "",
+    instructorsCell = "",
+    coachCell = "",
+    regionCell = ""
+  ] = cells;
 
   const roundNo = roundNoCell.trim();
   const startDate = normalizeDateCell(startDateCell);
@@ -94,6 +102,7 @@ function toParsedRound(line: string): ParsedRound {
     errors,
     instructors: instructorsCell.trim(),
     raw: line,
+    region: regionCell.trim(),
     roundNo,
     startDate,
     status: "idle",

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 interface DeleteRoundButtonProps {
   fallbackOperationId: string | null;
   isCurrent: boolean;
+  isFirstRound: boolean;
   isLastRound: boolean;
   operationId: string;
   roundLabel: string;
@@ -15,6 +16,7 @@ interface DeleteRoundButtonProps {
 export function DeleteRoundButton({
   fallbackOperationId,
   isCurrent,
+  isFirstRound,
   isLastRound,
   operationId,
   roundLabel,
@@ -29,6 +31,19 @@ export function DeleteRoundButton({
         className="session-row-edit-trigger session-row-delete-trigger"
         disabled
         title="마지막 회차는 삭제할 수 없습니다. 과정 자체를 지우려면 관리자에게 문의하세요."
+        type="button"
+      >
+        삭제 불가
+      </button>
+    );
+  }
+
+  if (isFirstRound) {
+    return (
+      <button
+        className="session-row-edit-trigger session-row-delete-trigger"
+        disabled
+        title="1회차는 삭제할 수 없습니다."
         type="button"
       >
         삭제 불가
