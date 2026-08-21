@@ -56,6 +56,8 @@ export function MainDashboard({ operations, teamScope, teamUsers }: MainDashboar
   // 과정(Course.id) 기준 카운트: 회차가 여러 건인 과정을 중복 집계하지 않기 위해 과정당 1건으로 축약한다.
   const scopedCourses = dedupeByCourse(scopedOperations);
   const courseCount = scopedCourses.length;
+  // 진행중/예정/완료는 과정의 전체 회차(첫 회차 시작일 ~ 마지막 회차 종료일) 기간 기준으로 판정한다.
+  const coursePeriods = buildCoursePeriods(omPartOperations);
   const companyCounts = topCounts(scopedCourses.map((operation) => operation.companyName), 5);
   const categoryCounts = topCounts(scopedCourses.map((operation) => operation.courseCategory), 5);
   const uncategorizedCount = scopedCourses.filter((operation) => !operation.courseCategory).length;
@@ -112,9 +114,18 @@ export function MainDashboard({ operations, teamScope, teamUsers }: MainDashboar
         </div>
 
         <section className="metrics" aria-label="운영 요약">
-          <Metric label="진행중" value={scopedOperations.filter((operation) => operation.operationStatus === "진행중").length} />
-          <Metric label="예정" value={scopedOperations.filter((operation) => isUpcoming(operation, today)).length} />
-          <Metric label="완료" value={scopedOperations.filter(isDone).length} />
+          <Metric
+            label="진행중"
+            value={scopedCourses.filter((course) => courseStatus(course, coursePeriods, today) === "진행중").length}
+          />
+          <Metric
+            label="예정"
+            value={scopedCourses.filter((course) => courseStatus(course, coursePeriods, today) === "예정").length}
+          />
+          <Metric
+            label="완료"
+            value={scopedCourses.filter((course) => courseStatus(course, coursePeriods, today) === "완료").length}
+          />
           <Metric label="총 매출" value={formatShortMoney(scopedCourses.reduce((sum, operation) => sum + (operation.revenue ?? 0), 0))} />
           <Metric label="참여 기업" value={new Set(scopedOperations.map((operation) => operation.companyName)).size} />
           <Metric label="전체 과정" value={courseCount} />
@@ -311,18 +322,47 @@ function MonthlyTrendChart({ items }: { items: Array<{ count: number; label: str
   );
 }
 
-function isUpcoming(operation: OperationSession, today: Date) {
-  const start = parseDate(operation.startDate);
-  return start ? start.getTime() > stripTime(today).getTime() : false;
-}
-
 function isEnded(operation: OperationSession, today: Date) {
   const end = parseDate(operation.endDate);
   return end ? end.getTime() < stripTime(today).getTime() : false;
 }
 
-function isDone(operation: OperationSession) {
-  return operation.operationStatus === "완료" || operation.operationStatus === "회고완료";
+interface CoursePeriod {
+  start: Date | null;
+  end: Date | null;
+}
+
+/** 과정별로 모든 회차를 통틀어 가장 이른 시작일 ~ 가장 늦은 종료일을 구한다. */
+function buildCoursePeriods(operations: OperationSession[]): Map<string, CoursePeriod> {
+  const periods = new Map<string, CoursePeriod>();
+
+  for (const operation of operations) {
+    const key = operation.courseRecordId ?? operation.id;
+    const start = parseDate(operation.startDate);
+    const end = parseDate(operation.endDate);
+    const period = periods.get(key) ?? { start: null, end: null };
+
+    if (start && (!period.start || start.getTime() < period.start.getTime())) period.start = start;
+    if (end && (!period.end || end.getTime() > period.end.getTime())) period.end = end;
+
+    periods.set(key, period);
+  }
+
+  return periods;
+}
+
+function courseStatus(
+  operation: OperationSession,
+  coursePeriods: Map<string, CoursePeriod>,
+  today: Date
+): "예정" | "진행중" | "완료" {
+  const key = operation.courseRecordId ?? operation.id;
+  const period = coursePeriods.get(key);
+  const todayTime = stripTime(today).getTime();
+
+  if (period?.start && period.start.getTime() > todayTime) return "예정";
+  if (period?.end && period.end.getTime() < todayTime) return "완료";
+  return "진행중";
 }
 
 function isSameMonth(operation: OperationSession, today: Date) {
