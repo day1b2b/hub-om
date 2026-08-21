@@ -9,10 +9,11 @@ interface BulkAddRoundsButtonProps {
   existingRoundNumbers: number[];
 }
 
-const PLACEHOLDER_TEXT = "1\t2026-03-09\t2026-03-09\t09:30 ~ 17:30\t강사A\t코치A\n2\t2026-03-16\t2026-03-16\t09:30 ~ 17:30\t강사A\t코치A";
+const PLACEHOLDER_TEXT =
+  "1\t2026-03-09\t2026-03-09\t09:30 ~ 17:30\t강사A\t코치A\t서울 강남\n2\t2026-03-16\t2026-03-16\t09:30 ~ 17:30\t강사A\t코치A\t서울 강남";
 
-const TEMPLATE_HEADER = ["회차", "시작일", "종료일", "시간", "강사", "실습코치"];
-const TEMPLATE_SAMPLE_ROW = ["1", "2026-03-09", "2026-03-09", "09:30 ~ 17:30", "강사A", "코치A"];
+const TEMPLATE_HEADER = ["회차", "시작일", "종료일", "시간", "강사", "실습코치", "장소"];
+const TEMPLATE_SAMPLE_ROW = ["1", "2026-03-09", "2026-03-09", "09:30 ~ 17:30", "강사A", "코치A", "서울 강남"];
 
 export function BulkAddRoundsButton({ baseOperationId, existingRoundNumbers }: BulkAddRoundsButtonProps) {
   const router = useRouter();
@@ -31,7 +32,7 @@ export function BulkAddRoundsButton({ baseOperationId, existingRoundNumbers }: B
   return (
     <>
       <button className="secondary-action add-round-trigger" onClick={openDialog} type="button">
-        + 차수 일괄등록
+        + 회차 일괄등록
       </button>
 
       {isOpen ? (
@@ -40,10 +41,10 @@ export function BulkAddRoundsButton({ baseOperationId, existingRoundNumbers }: B
           <section aria-labelledby="bulk-add-rounds-title" className="drive-review-dialog bulk-add-rounds-dialog">
             <div className="drive-review-header">
               <div>
-                <h2 id="bulk-add-rounds-title">차수 일괄 등록</h2>
-                <p>엑셀에서 회차, 시작일, 종료일, 시간, 강사, 실습코치 순서로 복사해 아래에 붙여넣으세요.</p>
+                <h2 id="bulk-add-rounds-title">회차 일괄 등록</h2>
+                <p>엑셀에서 회차, 시작일, 종료일, 시간, 강사, 실습코치, 장소 순서로 복사해 아래에 붙여넣으세요.</p>
               </div>
-              <button aria-label="차수 일괄 등록 닫기" onClick={closeDialog} type="button">
+              <button aria-label="회차 일괄 등록 닫기" onClick={closeDialog} type="button">
                 닫기
               </button>
             </div>
@@ -53,11 +54,11 @@ export function BulkAddRoundsButton({ baseOperationId, existingRoundNumbers }: B
                 <button className="secondary-action" onClick={downloadTemplate} type="button">
                   양식 다운로드 (엑셀)
                 </button>
-                <span>양식을 채운 뒤 회차~실습코치 6개 열을 복사해 아래에 붙여넣으세요.</span>
+                <span>양식을 채운 뒤 회차~장소 7개 열을 복사해 아래에 붙여넣으세요.</span>
               </div>
 
               <label className="bulk-add-rounds-field">
-                <span>붙여넣기 (회차 / 시작일 / 종료일 / 시간 / 강사 / 실습코치)</span>
+                <span>붙여넣기 (회차 / 시작일 / 종료일 / 시간 / 강사 / 실습코치 / 장소)</span>
                 <textarea
                   className="bulk-add-rounds-textarea"
                   onChange={(event) => handlePasteChange(event.target.value)}
@@ -78,6 +79,7 @@ export function BulkAddRoundsButton({ baseOperationId, existingRoundNumbers }: B
                         <th>시간</th>
                         <th>강사</th>
                         <th>실습코치</th>
+                        <th>장소</th>
                         <th>상태</th>
                       </tr>
                     </thead>
@@ -90,6 +92,7 @@ export function BulkAddRoundsButton({ baseOperationId, existingRoundNumbers }: B
                           <td>{row.timeText || "-"}</td>
                           <td>{row.instructors || "-"}</td>
                           <td>{row.coach || "-"}</td>
+                          <td>{row.region || "-"}</td>
                           <td className="bulk-add-rounds-row-status">
                             {row.errors.length > 0 ? row.errors.join(", ") : row.statusMessage || "등록 대기"}
                           </td>
@@ -147,7 +150,7 @@ export function BulkAddRoundsButton({ baseOperationId, existingRoundNumbers }: B
     const link = document.createElement("a");
 
     link.href = url;
-    link.download = "차수_일괄등록_양식.csv";
+    link.download = "회차_일괄등록_양식.csv";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -181,6 +184,7 @@ export function BulkAddRoundsButton({ baseOperationId, existingRoundNumbers }: B
             coach: row.coach,
             endDate: row.endDate,
             instructors: row.instructors,
+            region: row.region,
             roundNo: row.roundNo,
             startDate: row.startDate,
             timeText: row.timeText

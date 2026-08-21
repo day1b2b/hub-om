@@ -6,6 +6,7 @@ import { LocalJsonOperationRepository } from "@/lib/data/localJsonOperationRepos
 import { isSameCourse, normalizeCourseId } from "@/lib/data/operationCalculations";
 import { readOperationCollaboration } from "@/lib/data/operationCollaboration";
 import { hasNotionResourceConfig, listNotionResourceOperations } from "@/lib/data/notionResourceOperationRepository";
+import { resolveOnsiteOmOptionsByEmail } from "@/lib/data/myOperations";
 import { listCustomTools } from "@/lib/data/omRequest/omCustomToolsLocalRepository";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import type { OperationSession } from "@/lib/data/operationTypes";
@@ -36,6 +37,7 @@ export default async function OperationDetailPage({ params, searchParams }: Oper
     searchParams
   ]);
   const personOptions = buildPersonOptions(mergeRoleRosters(roleRoster, buildRoleRosterFromOperations(operations)));
+  const onsiteOmOptions = await resolveOnsiteOmOptionsByEmail(session.user?.email, personOptions.om);
   let operation = operations.find((candidate) => candidate.operationId === operationId);
   let allOperations = operations;
 
@@ -72,6 +74,7 @@ export default async function OperationDetailPage({ params, searchParams }: Oper
     <OperationDetail
       collaboration={collaboration}
       extraTools={listCustomTools()}
+      onsiteOmOptions={onsiteOmOptions}
       operation={operation}
       personOptions={personOptions}
       relatedOperations={relatedOperations}
