@@ -6,39 +6,23 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { holidayName } from "@/features/dashboard/holidays";
 import type { OmAvailabilityRoster } from "@/lib/data/omAvailability/omAvailabilityTypes";
 import type { OmRequest } from "@/lib/data/omRequest/omRequestTypes";
-import type { OperationSession, OperationStatus } from "@/lib/data/operationTypes";
+import type { OperationSession } from "@/lib/data/operationTypes";
 import { splitPersonNames } from "@/lib/data/personNames";
 import type { ResourceOwnerRoster } from "@/lib/data/teamMemberRepository";
 import type { CalendarResourceEvent } from "@/lib/sourceReads";
 import { teamScopeSearchParam, type TeamScope } from "@/lib/teamScope";
 
-const STATUS_CLASS: Record<OperationStatus, string> = {
-  "배정필요": "needs-assignment",
-  "배정예정": "planned-assignment",
-  "진행중": "active",
-  "완료": "done",
-  "회고완료": "retrospective-done",
-  "아카이빙필요": "archive-needed"
-};
-
-// 운영 목록 화면에서는 6개 세부 상태를 예정/진행중/종료 3단으로만 보여준다.
-const SIMPLE_STATUS_LABEL: Record<OperationStatus, string> = {
-  "배정필요": "예정",
-  "배정예정": "예정",
-  "진행중": "진행중",
-  "완료": "종료",
-  "회고완료": "종료",
-  "아카이빙필요": "종료"
-};
-
-function isEndedStatus(status: OperationStatus) {
-  return SIMPLE_STATUS_LABEL[status] === "종료";
-}
-
 const UNMATCHED_OWNER = "매칭 필요";
 const PART_ORDER = ["1파트", "2파트", "3파트"];
 const UNCLASSIFIED_PART = "미분류";
 const ALL_PARTS_FILTER = "전체담당자";
+// 버튼 값은 멤버 관리 데이터(파트 키)와 그대로 매칭시키고, 표시 문구만 여기서 바꾼다.
+const PART_FILTER_LABEL: Record<string, string> = {
+  [ALL_PARTS_FILTER]: "전체",
+  "1파트": "AX 1파트",
+  "2파트": "AX 2파트",
+  "3파트": "AX 3파트"
+};
 const OWNER_ALIASES: Record<string, string> = {
   "이유진": "이유진C"
 };
@@ -90,15 +74,6 @@ interface CalendarItem {
   type: "operation" | "request" | "source";
 }
 
-interface ResourceBoardItem {
-  endDate: string;
-  key: string;
-  operations: OperationSession[];
-  representative: OperationSession;
-  startDate: string;
-  totalOperations: OperationSession[];
-}
-
 export function ResourceJudgmentPage({
   calendarEvents = [],
   operations,
@@ -111,7 +86,6 @@ export function ResourceJudgmentPage({
   const teamQuery = teamScopeSearchParam(teamScope);
   const [ownerFilter, setOwnerFilter] = useState("전체 담당자");
   const [partFilter, setPartFilter] = useState(ALL_PARTS_FILTER);
-  const [searchQuery, setSearchQuery] = useState("");
   const [expandedCalendarDays, setExpandedCalendarDays] = useState<Set<string>>(() => new Set());
   const teamOperations = operations;
   const rosterOwners = useMemo(() => getRosterOwners(ownerRoster), [ownerRoster]);
@@ -171,10 +145,6 @@ export function ResourceJudgmentPage({
         .filter((item) => isCalendarItemInWindow(item, viewDate)),
     [filteredPendingRequests, resourceOwnerMap, teamQuery, viewDate]
   );
-  const boardOperations = useMemo(
-    () => filteredOperations.filter((operation) => isInBoardWindow(operation, viewDate)),
-    [filteredOperations, viewDate]
-  );
   const calendarWeeks = buildCalendarWeeks(
     viewDate,
     calendarOperations,
@@ -187,14 +157,6 @@ export function ResourceJudgmentPage({
     month: "long",
     year: "numeric"
   }).format(viewDate);
-  const listOperations = boardOperations
-    .filter((operation) => operation.operationStatus !== "배정필요")
-    .filter((operation) => matchesResourceSearch(operation, searchQuery));
-  const listItems = [...buildBoardItems(listOperations, filteredOperations)].sort((a, b) => {
-    const endedDiff = Number(isEndedStatus(a.representative.operationStatus)) - Number(isEndedStatus(b.representative.operationStatus));
-    return endedDiff !== 0 ? endedDiff : compareStableText(a.startDate, b.startDate);
-  });
-
   return (
     <main className="dashboard-shell">
       <AppSidebar label="Resource view" teamScope={teamScope} />
@@ -204,7 +166,7 @@ export function ResourceJudgmentPage({
           <div>
             <h1>리소스</h1>
             <p className="lede">
-              달력과 OM별 운영 목록을 함께 보며 실제로 추가 요청을 받을 수 있는지 확인합니다.
+              달력을 보며 실제로 추가 요청을 받을 수 있는지 확인합니다.
             </p>
           </div>
         </header>
@@ -221,7 +183,7 @@ export function ResourceJudgmentPage({
               }}
               type="button"
             >
-              {part}
+              {PART_FILTER_LABEL[part] ?? part}
             </button>
           ))}
         </div>
@@ -322,79 +284,6 @@ export function ResourceJudgmentPage({
             })}
           </div>
         </section>
-
-        <section className="resource-section compact-resource-section">
-          <div className="section-title resource-section-title">
-            <h2>운영 목록</h2>
-            <div className="resource-list-filters">
-              <select
-                aria-label="담당 OM 필터"
-                className="owner-filter-select"
-                onChange={(event) => {
-                  setOwnerFilter(event.target.value);
-                  collapseExpandedItems();
-                }}
-                value={effectiveOwnerFilter}
-              >
-                {ownerOptions.map((owner) => (
-                  <option key={owner}>{owner}</option>
-                ))}
-              </select>
-              <input
-                aria-label="운영 목록 검색"
-                className="resource-list-search"
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="과정명, 기업 검색"
-                type="search"
-                value={searchQuery}
-              />
-            </div>
-          </div>
-          <div className="table-wrap">
-            <table className="resource-owner-table">
-              <thead>
-                <tr>
-                  <th>담당 OM</th>
-                  <th>현장운영</th>
-                  <th>상태</th>
-                  <th>과정명</th>
-                  <th>기업</th>
-                  <th>기간</th>
-                  <th>회차</th>
-                </tr>
-              </thead>
-              <tbody>
-                {listItems.length > 0 ? (
-                  listItems.map((item) => (
-                    <tr key={item.key}>
-                      <td>
-                        {item.representative.om || "배정필요"}
-                        {isUnmatchedOwnerValue(item.representative.om, resourceOwnerMap) ? <Tag tone="pink">매칭 필요</Tag> : null}
-                      </td>
-                      <td>{item.representative.onsiteOm || "-"}</td>
-                      <td><StatusBadge status={item.representative.operationStatus} /></td>
-                      <td>
-                        <Link className="course-link" href={`/operations/${item.representative.operationId}${teamQuery}`}>
-                          <strong>{item.representative.courseName}</strong>
-                        </Link>
-                      </td>
-                      <td>{item.representative.companyName}</td>
-                      <td>{formatBoardItemDateRange(item)}</td>
-                      <td>{courseRoundLabel(item) || "-"}</td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td className="empty-state" colSpan={7}>
-                      <strong>표시할 운영 건이 없습니다.</strong>
-                      <span>필터 또는 검색어를 바꿔 확인하세요.</span>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
       </section>
     </main>
   );
@@ -411,10 +300,6 @@ export function ResourceJudgmentPage({
     setViewDate(date);
     collapseExpandedItems();
   }
-}
-
-function StatusBadge({ status }: { status: OperationStatus }) {
-  return <span className={`status ${STATUS_CLASS[status]}`}>{SIMPLE_STATUS_LABEL[status]}</span>;
 }
 
 function Tag({ children, tone }: { children: string; tone: string }) {
@@ -693,70 +578,6 @@ function isToday(date: Date) {
   );
 }
 
-function buildBoardItems(operations: OperationSession[], totalOperations: OperationSession[]): ResourceBoardItem[] {
-  const grouped = new Map<string, OperationSession[]>();
-  const totalGrouped = new Map<string, OperationSession[]>();
-
-  for (const operation of totalOperations) {
-    const key = boardTotalKey(operation);
-    totalGrouped.set(key, [...(totalGrouped.get(key) ?? []), operation]);
-  }
-
-  for (const operation of operations) {
-    const key = boardMergeKey(operation);
-    grouped.set(key, [...(grouped.get(key) ?? []), operation]);
-  }
-
-  return Array.from(grouped.entries())
-    .map(([key, groupedOperations]) => buildBoardItem(key, groupedOperations, totalGrouped.get(boardTotalKey(groupedOperations[0])) ?? groupedOperations))
-    .sort((a, b) => compareStableText(a.startDate, b.startDate));
-}
-
-function buildBoardItem(key: string, operations: OperationSession[], totalOperations: OperationSession[]): ResourceBoardItem {
-  const sorted = [...operations].sort((a, b) => {
-    const startDiff = compareStableText(a.startDate, b.startDate);
-    if (startDiff !== 0) return startDiff;
-    return compareStableText(a.operationId, b.operationId);
-  });
-
-  return {
-    endDate: sorted.reduce((latest, operation) => maxDateString(latest, operation.endDate), sorted[0].endDate),
-    key,
-    operations: sorted,
-    representative: sorted[0],
-    startDate: sorted[0].startDate,
-    totalOperations
-  };
-}
-
-function boardMergeKey(operation: OperationSession) {
-  return [
-    operation.courseId,
-    operation.companyName,
-    operation.courseName,
-    operation.operationStatus,
-    operation.operationType,
-    operation.archiveStatus
-  ].map(normalizeBoardKeyPart).join("|");
-}
-
-function boardTotalKey(operation: OperationSession) {
-  return [
-    operation.courseId,
-    operation.companyName,
-    operation.courseName,
-    operation.operationType
-  ].map(normalizeBoardKeyPart).join("|");
-}
-
-function normalizeBoardKeyPart(value: string) {
-  return value.replace(/\s+/g, "").toLowerCase();
-}
-
-function maxDateString(left: string, right: string) {
-  return left >= right ? left : right;
-}
-
 function unique(values: string[]) {
   return Array.from(new Set(values.filter(Boolean))).sort(compareStableText);
 }
@@ -815,17 +636,6 @@ function isCalendarEventInWindow(event: CalendarResourceEvent, viewDate: Date) {
 
   const windowStart = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
   const windowEnd = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0);
-
-  return start.getTime() <= windowEnd.getTime() && windowStart.getTime() <= end.getTime();
-}
-
-function isInBoardWindow(operation: OperationSession, viewDate: Date) {
-  const start = parseDate(operation.startDate);
-  const end = parseDate(operation.endDate);
-  if (!start || !end) return false;
-
-  const windowStart = new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1);
-  const windowEnd = new Date(viewDate.getFullYear(), viewDate.getMonth() + 3, 0);
 
   return start.getTime() <= windowEnd.getTime() && windowStart.getTime() <= end.getTime();
 }
@@ -903,48 +713,6 @@ function toggleSetValue(current: Set<string>, value: string) {
   return next;
 }
 
-function formatBoardItemDateRange(item: ResourceBoardItem) {
-  const start = formatShortDate(item.startDate);
-  const end = formatShortDate(item.endDate);
-
-  return start === end ? start : `${start}~${end}`;
-}
-
-function courseRoundLabel(item: ResourceBoardItem) {
-  const totalRoundCount = getRoundCount(item.totalOperations);
-  if (totalRoundCount > 1) return `총 ${totalRoundCount}회차`;
-
-  const rounds = unique(item.operations.map((operation) => operation.roundNo).filter(Boolean));
-
-  return formatRoundLabel(rounds);
-}
-
-function getRoundCount(operations: OperationSession[]) {
-  const rounds = unique(operations.map((operation) => operation.roundNo).filter(Boolean));
-
-  return rounds.length > 0 ? rounds.length : operations.length;
-}
-
-function formatRoundLabel(rounds: string[]) {
-  if (rounds.length === 0) return "";
-  if (rounds.length === 1) return `${rounds[0]}회차`;
-
-  const numericRounds = rounds.map(Number);
-  const canUseRange =
-    numericRounds.every(Number.isInteger) &&
-    Math.max(...numericRounds) - Math.min(...numericRounds) + 1 === numericRounds.length;
-
-  if (canUseRange) return `${Math.min(...numericRounds)}~${Math.max(...numericRounds)}회차`;
-
-  return `${rounds.join(", ")}회차`;
-}
-
-function formatShortDate(value: string) {
-  const [, month, day] = value.split("-");
-
-  return `${Number(month)}/${Number(day)}`;
-}
-
 function getResourceOwners(value: string, allowedOwners: Map<string, string>) {
   const owners = splitPersonNames(value)
     .map((owner) => resolveOwnerDisplayName(owner, allowedOwners))
@@ -961,18 +729,6 @@ function getOperationResourceOwners(operation: OperationSession, allowedOwners: 
     ...getResourceOwners(operation.om, allowedOwners),
     ...getResourceOwners(operation.onsiteOm, allowedOwners)
   ]);
-}
-
-function isUnmatchedOwnerValue(value: string, allowedOwners: Map<string, string>) {
-  return getResourceOwners(value, allowedOwners).includes(UNMATCHED_OWNER);
-}
-
-function matchesResourceSearch(operation: OperationSession, query: string) {
-  const normalizedQuery = query.trim().toLowerCase();
-  if (!normalizedQuery) return true;
-
-  return [operation.courseName, operation.companyName, operation.om, operation.onsiteOm]
-    .some((field) => field.toLowerCase().includes(normalizedQuery));
 }
 
 function getCalendarOperationOwner(value: string, allowedOwners: Map<string, string>) {
