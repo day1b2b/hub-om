@@ -64,6 +64,29 @@ export function filterRoleRosterByTeamScope(roleRoster: TeamMemberRoleRoster, te
   };
 }
 
+/**
+ * 팀 스코프는 1·2팀 시절 구분이어서, 멤버 관리에 "AX N파트"로 등록된 사람은
+ * 미분류로 떨어져 스코프 필터에서 전부 걸러진다. 그 결과 담당자 선택 목록에
+ * 실제 조직의 OM이 하나도 안 나오는 문제가 생긴다.
+ * 선택 목록에서는 스코프와 무관하게 미분류를 항상 함께 보여준다.
+ */
+export function withUnclassifiedOwners(
+  scopedRoleRoster: TeamMemberRoleRoster,
+  fullRoleRoster: TeamMemberRoleRoster
+): TeamMemberRoleRoster {
+  return {
+    ld: mergeUnclassified(scopedRoleRoster.ld, fullRoleRoster.ld),
+    om: mergeUnclassified(scopedRoleRoster.om, fullRoleRoster.om)
+  };
+}
+
+function mergeUnclassified(scoped: ResourceOwnerRoster, full: ResourceOwnerRoster): ResourceOwnerRoster {
+  const unclassified = full["미분류"] ?? [];
+  if (unclassified.length === 0) return scoped;
+
+  return { ...scoped, "미분류": unclassified };
+}
+
 export function teamScopeSearchParam(teamScope: TeamScope) {
   if (teamScope === "both") return "";
 
