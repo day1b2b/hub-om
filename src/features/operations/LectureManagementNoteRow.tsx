@@ -128,6 +128,7 @@ export function LectureManagementNoteRow({
                   <span>학습 인원</span>
                   <input
                     onChange={(event) => updateActiveTab({ studentCount: event.target.value })}
+                    onPaste={handleSmartPaste}
                     placeholder="예: 27명"
                     type="text"
                     value={activeTab.studentCount}
@@ -139,6 +140,7 @@ export function LectureManagementNoteRow({
                   <textarea
                     className="lecture-note-textarea"
                     onChange={(event) => updateActiveTab({ courseSummary: event.target.value })}
+                    onPaste={handleSmartPaste}
                     placeholder="시간대별 강의 진행 내용을 기록하세요."
                     value={activeTab.courseSummary}
                   />
@@ -149,6 +151,7 @@ export function LectureManagementNoteRow({
                   <textarea
                     className="lecture-note-textarea"
                     onChange={(event) => updateActiveTab({ staffOpinion: event.target.value })}
+                    onPaste={handleSmartPaste}
                     placeholder="강사/학습자/교육환경/교담자 관련 의견을 기록하세요."
                     value={activeTab.staffOpinion}
                   />
@@ -159,6 +162,7 @@ export function LectureManagementNoteRow({
                   <textarea
                     className="lecture-note-textarea"
                     onChange={(event) => updateActiveTab({ issue: event.target.value })}
+                    onPaste={handleSmartPaste}
                     placeholder="발생한 이슈와 대응 내용을 기록하세요."
                     value={activeTab.issue}
                   />
@@ -231,10 +235,25 @@ export function LectureManagementNoteRow({
     setTabs((current) => current.map((tab, index) => (index === activeTabIndex ? { ...tab, ...patch } : tab)));
   }
 
+  function handleSmartPaste(event: React.ClipboardEvent<HTMLInputElement | HTMLTextAreaElement>) {
+    const pasted = event.clipboardData.getData("text");
+    if (!containsNoteMarkers(pasted)) return;
+
+    event.preventDefault();
+    const parsed = parseLectureNoteBody(pasted);
+    updateActiveTab({
+      courseSummary: parsed.courseSummary || activeTab.courseSummary,
+      issue: parsed.issue || activeTab.issue,
+      staffOpinion: parsed.staffOpinion || activeTab.staffOpinion,
+      studentCount: parsed.studentCount || activeTab.studentCount
+    });
+  }
+
   async function save() {
     setSaveState("saving");
 
-    const noteValue = mode === "link" ? linkDraft.trim() : composeLectureNote(tabs);
+    const tabsWithDates = tabs.map((tab) => ({ ...tab, date: tab.date.trim() || startDate }));
+    const noteValue = mode === "link" ? linkDraft.trim() : composeLectureNote(tabsWithDates);
     const patches = [{ field: "lectureManagementNote", action: "replace" as const, value: noteValue }];
 
     let response: Response;
@@ -263,6 +282,10 @@ export function LectureManagementNoteRow({
     setSaveState("idle");
     router.refresh();
   }
+}
+
+function containsNoteMarkers(value: string): boolean {
+  return value.includes(COURSE_SUMMARY_MARKER) || value.includes(STAFF_OPINION_MARKER) || value.includes(ISSUE_MARKER);
 }
 
 function parseLectureNote(value: string, defaultDate: string): LectureNoteTab[] {
