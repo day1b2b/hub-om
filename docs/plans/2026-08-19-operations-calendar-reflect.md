@@ -99,11 +99,22 @@
 
 ## 8. 사람(유진님) 준비물 체크리스트
 
+**2026-08-21 전부 완료.** 아래는 완료 기록.
+
 - [x] B2B 전용 구글 계정 생성
-- [ ] 파트 캘린더 3개 생성 + B2B 계정 소유/편집
-- [ ] Google Cloud OAuth 클라이언트(client id/secret)
-- [ ] B2B 계정으로 OAuth 동의 1회 → refresh token → Coolify env
-- [ ] 파트→calendarId env 값 채우기
+- [x] 파트 캘린더 3개 생성 + B2B 계정 소유/편집 (3개 모두 `owner` 권한 확인)
+- [x] Google Cloud OAuth 클라이언트(client id/secret) — 프로젝트 `hub-om-calendar`
+- [x] B2B 계정으로 OAuth 동의 1회 → refresh token → Coolify env
+- [x] 파트→calendarId env 값 채우기 (`GOOGLE_CAL_PART_CALENDARS`)
+- [x] Coolify 재배포로 env 반영 확인
+
+### 세팅 중 걸렸던 것 (재작업 시 참고)
+
+- 브라우저 기본 계정이 회사 계정이면 GCP 콘솔·OAuth Playground가 조직 정책에 막힌다. 콘솔 URL에 B2B 계정의 `authuser` 파라미터를 붙여서 접근한다.
+- 동의 화면을 **내부**로 만들면 `403 org_internal`이 난다. B2B 계정이 개인 Gmail이라 자동 생성된 조직의 구성원이 아니기 때문. **외부**로 설정해야 한다.
+- 외부 + `테스트 중` 상태면 **refresh token이 7일 후 만료**된다. 반드시 **프로덕션 게시**까지 해야 한다.
+- 프로덕션 게시 조건은 앱 이름·지원 이메일·**홈페이지 URL**·**개인정보처리방침 URL**·승인된 도메인이다. hub-om의 `/privacy`·`/terms`와 서비스 도메인으로 충족했다. 구글 심사(verification)는 동의 계정이 B2B 하나뿐이라 불필요하다.
+- OAuth Playground는 리디렉션이 회사 계정으로 돌아가 실패한다. 클라이언트에 `http://localhost` 리디렉션을 추가하고 로컬에서 코드를 받아 교환하는 편이 확실하다.
 
 ---
 
