@@ -263,7 +263,11 @@ function compareOperationSessions(a: OperationSession, b: OperationSession): num
 }
 
 function normalizeVisibleText(value: string) {
-  return value.trim().replace(/\s+/g, " ");
+  return value
+    .split("\n")
+    .map((line) => line.trim().replace(/[^\S\n]+/g, " "))
+    .join("\n")
+    .trim();
 }
 
 function normalizeOptionalText(value: string | undefined, fallback: string) {
