@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { hasSalesmapConfig, SalesmapSourceReader } from "@/lib/sourceReads/salesmapSourceReader";
+import { waitAtMost } from "@/lib/waitAtMost";
 
 /**
  * 코스ID → {고객사, 과정명} 읽기 전용 조회.
@@ -17,6 +18,14 @@ import { hasSalesmapConfig, SalesmapSourceReader } from "@/lib/sourceReads/sales
  */
 
 export const dynamic = "force-dynamic";
+
+/** 응답을 기다리는 상한(ms). 이 시간을 넘으면 읽기는 뒤에서 계속하고 먼저 응답한다. */
+const DEFAULT_LOOKUP_DEADLINE_MS = 6000;
+
+function readLookupDeadlineMs(): number {
+  const configured = Number(process.env.COURSE_LOOKUP_DEADLINE_MS);
+  return Number.isFinite(configured) && configured > 0 ? configured : DEFAULT_LOOKUP_DEADLINE_MS;
+}
 
 /** 코스ID 비교용 정규화: 제로폭 공백 등 보이지 않는 문자를 제거하고 앞뒤 공백을 없앤다. */
 function normalizeCourseId(value: string): string {
@@ -59,7 +68,18 @@ export async function GET(request: Request) {
     );
   }
 
-  const read = await new SalesmapSourceReader().readSalesRecords();
+  const readPromise = new SalesmapSourceReader().readSalesRecords();
+  // 시간이 지나 먼저 응답한 뒤에 읽기가 실패하면 처리되지 않은 rejection이 되므로 미리 받아둔다.
+  void readPromise.catch(() => undefined);
+
+  // 세일즈맵 딜 전체 읽기는 최대 20페이지(페이지마다 지연·429 재시도)라 수십 초~분 단위로 걸린다.
+  // 자동 채움을 부르는 로컬 도구는 그만큼 기다리지 못하므로 여기서 먼저 끊는다.
+  const read = await waitAtMost(readPromise, readLookupDeadlineMs());
+  if (!read) {
+    // 아직 캐시가 비어 있어 딜을 처음 읽는 중. 호출자는 조용히 폴백하고 잠시 뒤 다시 물어보면 된다.
+    return NextResponse.json({ ok: true, found: false, courseId, warming: true }, { status: 200 });
+  }
+
   if (read.status === "failed") {
     return NextResponse.json(
       { ok: false, error: read.issues[0]?.message ?? "세일즈맵 딜을 읽지 못했습니다." },
