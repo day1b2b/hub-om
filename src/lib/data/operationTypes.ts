@@ -43,6 +43,18 @@ export type ValidationStatus = "정상" | "검토필요";
 
 export type SourceTeam = "1팀" | "2팀" | "미분류";
 
+/**
+ * 코스ID로 찾은 과정(Course) 한 건 — 자동 채움 조회용 최소 정보.
+ * 한 코스ID에 과정이 여러 개인 경우가 있어(전체 16~18%) 항상 목록으로 다룬다.
+ */
+export interface CourseLookupCandidate {
+  courseId: string;
+  companyName: string;
+  courseName: string;
+  /** 이 과정의 가장 최근 회차 강의일정(yyyy-mm-dd). 회차가 없으면 null. */
+  latestStartDate: null | string;
+}
+
 export interface OperationSession {
   id: string;
   operationId: string;

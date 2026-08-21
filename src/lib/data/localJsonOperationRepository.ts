@@ -5,10 +5,16 @@ import {
   buildOperationMonth,
   deriveSessionDurationDays,
   deriveSessionDurationType,
+  normalizeCourseId,
   summarizeOperations
 } from "./operationCalculations";
 import type { OperationRepository } from "./operationRepository";
-import type { CreateOperationInput, OperationSession, UpdateOperationInput } from "./operationTypes";
+import type {
+  CourseLookupCandidate,
+  CreateOperationInput,
+  OperationSession,
+  UpdateOperationInput
+} from "./operationTypes";
 
 interface LocalOperationPayload {
   operations?: OperationSession[];
@@ -37,6 +43,42 @@ export class LocalJsonOperationRepository implements OperationRepository {
 
       throw error;
     }
+  }
+
+  /** 코스ID로 과정을 찾는다 — 로컬 JSON에는 회차만 있어 과정 단위로 묶어 낸다. */
+  async findCoursesByCourseId(courseId: string): Promise<CourseLookupCandidate[]> {
+    const target = normalizeCourseId(courseId);
+    if (!target) return [];
+
+    const byCourse = new Map<string, CourseLookupCandidate>();
+
+    for (const operation of await this.listOperations()) {
+      if (normalizeCourseId(operation.courseId) !== target) continue;
+
+      const key = `${operation.companyName}|${operation.courseName}`;
+      const previous = byCourse.get(key);
+      const latestStartDate =
+        previous?.latestStartDate && previous.latestStartDate > operation.startDate
+          ? previous.latestStartDate
+          : operation.startDate || null;
+
+      byCourse.set(key, {
+        courseId: target,
+        companyName: operation.companyName,
+        courseName: operation.courseName,
+        latestStartDate
+      });
+    }
+
+    return [...byCourse.values()].sort((a, b) => {
+      if (a.latestStartDate !== b.latestStartDate) {
+        if (!a.latestStartDate) return 1;
+        if (!b.latestStartDate) return -1;
+        return b.latestStartDate.localeCompare(a.latestStartDate);
+      }
+
+      return a.courseName.localeCompare(b.courseName);
+    });
   }
 
   async getOperationById(operationId: string): Promise<OperationSession | null> {

@@ -1,4 +1,7 @@
 import { NextResponse } from "next/server";
+import { resolveCourseLookup } from "@/lib/data/courseLookup";
+import { normalizeCourseId } from "@/lib/data/operationCalculations";
+import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { hasSalesmapConfig, SalesmapSourceReader } from "@/lib/sourceReads/salesmapSourceReader";
 import { waitAtMost } from "@/lib/waitAtMost";
 
@@ -6,8 +9,15 @@ import { waitAtMost } from "@/lib/waitAtMost";
  * 코스ID → {고객사, 과정명} 읽기 전용 조회.
  *
  * 만족도 분석기(survey_analysis) 같은 외부 로컬 도구가 코스ID를 입력할 때 고객사·과정명을
- * 자동 채우도록 돕는 가벼운 조회 엔드포인트다. 세일즈맵 딜을 새로 긁지 않고, 관리자 매출
- * 동기화와 같은 `SalesmapSourceReader`의 캐시된 결과를 재사용한다(코스ID로 필터만).
+ * 자동 채우도록 돕는 가벼운 조회 엔드포인트다.
+ *
+ * 원천은 두 개이고 순서가 있다:
+ *   1. **운영현황(hub-om DB)** — 만족도를 돌리는 과정은 이미 운영현황에 등록된 과정이므로 여기가 원천이다.
+ *      코스ID 하나를 인덱스로 찾는 DB 조회라 즉시 답한다.
+ *   2. 세일즈맵 — 운영현황에 아직 없는 과정을 위한 폴백. 딜 전체를 읽어야 해서 느리므로
+ *      캐시가 비어 있으면 `warming`으로 먼저 답하고 읽기는 뒤에서 계속한다.
+ *
+ * 응답의 `source`로 어느 원천에서 온 값인지 알려준다.
  *
  * 보안:
  *   - 공유 토큰(`COURSE_LOOKUP_TOKEN`)이 있어야만 응답한다. 토큰은 저장소에 두지 않고
@@ -25,11 +35,6 @@ const DEFAULT_LOOKUP_DEADLINE_MS = 6000;
 function readLookupDeadlineMs(): number {
   const configured = Number(process.env.COURSE_LOOKUP_DEADLINE_MS);
   return Number.isFinite(configured) && configured > 0 ? configured : DEFAULT_LOOKUP_DEADLINE_MS;
-}
-
-/** 코스ID 비교용 정규화: 제로폭 공백 등 보이지 않는 문자를 제거하고 앞뒤 공백을 없앤다. */
-function normalizeCourseId(value: string): string {
-  return value.replace(/[​-‍﻿ ]/g, "").trim();
 }
 
 /** 요청에서 공유 토큰을 꺼낸다: `Authorization: Bearer` → `x-lookup-token` → `?token=` 순. */
@@ -61,6 +66,37 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, error: "courseId가 필요합니다." }, { status: 400 });
   }
 
+  // 1) 운영현황(hub-om DB)에서 먼저 찾는다 — 원천이자 가장 빠른 경로.
+  const candidates = await getOperationRepository().findCoursesByCourseId(courseId);
+  const resolved = resolveCourseLookup(candidates);
+
+  if (resolved && (resolved.company || resolved.courseName)) {
+    return NextResponse.json({
+      ok: true,
+      found: true,
+      source: "operations",
+      courseId,
+      company: resolved.company,
+      courseName: resolved.courseName,
+      // 한 코스ID에 과정이 여럿이면 과정명은 비워 보낸다(호출자가 안내 문구에 쓴다).
+      ambiguous: resolved.ambiguous,
+      candidateCount: resolved.candidateCount
+    });
+  }
+
+  // 운영현황에 과정은 있는데 고객사까지 갈려서 채울 값이 없는 경우 — 세일즈맵을 봐도 답이 갈리므로 여기서 끝낸다.
+  if (resolved) {
+    return NextResponse.json({
+      ok: true,
+      found: false,
+      source: "operations",
+      courseId,
+      ambiguous: true,
+      candidateCount: resolved.candidateCount
+    });
+  }
+
+  // 2) 운영현황에 없으면 세일즈맵으로 폴백.
   if (!hasSalesmapConfig()) {
     return NextResponse.json(
       { ok: false, configured: false, error: "세일즈맵이 설정되지 않았습니다." },
@@ -77,7 +113,10 @@ export async function GET(request: Request) {
   const read = await waitAtMost(readPromise, readLookupDeadlineMs());
   if (!read) {
     // 아직 캐시가 비어 있어 딜을 처음 읽는 중. 호출자는 조용히 폴백하고 잠시 뒤 다시 물어보면 된다.
-    return NextResponse.json({ ok: true, found: false, courseId, warming: true }, { status: 200 });
+    return NextResponse.json(
+      { ok: true, found: false, source: "salesmap", courseId, warming: true },
+      { status: 200 }
+    );
   }
 
   if (read.status === "failed") {
@@ -95,6 +134,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       ok: true,
       found: false,
+      source: "salesmap",
       courseId,
       partial: read.status === "partial"
     });
@@ -105,6 +145,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     ok: true,
     found: true,
+    source: "salesmap",
     courseId,
     company,
     courseName
