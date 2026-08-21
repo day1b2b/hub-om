@@ -1,11 +1,9 @@
 import { notFound } from "next/navigation";
 import { OperationDetail } from "@/features/operations/OperationDetail";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
-import { mergeExternalResourceOperations } from "@/lib/data/externalResourceMerge";
 import { LocalJsonOperationRepository } from "@/lib/data/localJsonOperationRepository";
 import { isSameCourse, normalizeCourseId } from "@/lib/data/operationCalculations";
 import { readOperationCollaboration } from "@/lib/data/operationCollaboration";
-import { hasNotionResourceConfig, listNotionResourceOperations } from "@/lib/data/notionResourceOperationRepository";
 import { resolveOnsiteOmOptionsByEmail } from "@/lib/data/myOperations";
 import { listCustomTools } from "@/lib/data/omRequest/omCustomToolsLocalRepository";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
@@ -29,7 +27,6 @@ export default async function OperationDetailPage({ params, searchParams }: Oper
   const { operationId } = await params;
   const repository = getOperationRepository();
   const teamMemberRepository = getStoredTeamMemberRepository();
-  const shouldReadExternalResources = hasNotionResourceConfig();
   const [operations, ownerRoster, roleRoster, queryParams] = await Promise.all([
     repository.listOperations(),
     teamMemberRepository.listResourceOwners(),
@@ -40,12 +37,6 @@ export default async function OperationDetailPage({ params, searchParams }: Oper
   const onsiteOmOptions = await resolveOnsiteOmOptionsByEmail(session.user?.email, personOptions.om);
   let operation = operations.find((candidate) => candidate.operationId === operationId);
   let allOperations = operations;
-
-  if (shouldReadExternalResources && (!operation || isNotionResourceOperationId(operationId))) {
-    const externalResourceOperations = await listNotionResourceOperations();
-    allOperations = mergeExternalResourceOperations(operations, externalResourceOperations);
-    operation = allOperations.find((candidate) => candidate.operationId === operationId);
-  }
 
   if (!operation && isExcelImportOperationId(operationId)) {
     const localOperations = await new LocalJsonOperationRepository().listOperations();
@@ -82,10 +73,6 @@ export default async function OperationDetailPage({ params, searchParams }: Oper
       teamScope={teamScope}
     />
   );
-}
-
-function isNotionResourceOperationId(operationId: string) {
-  return operationId.startsWith("NOTION-");
 }
 
 function isExcelImportOperationId(operationId: string) {
