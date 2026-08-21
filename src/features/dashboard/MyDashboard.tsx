@@ -6,6 +6,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { holidayName } from "./holidays";
 import type { OmRequest } from "@/lib/data/omRequest/omRequestTypes";
 import type { OperationSession, OperationStatus } from "@/lib/data/operationTypes";
+import { getSeoulToday } from "@/lib/seoulDate";
 
 interface MyDashboardProps {
   // 로그인 계정이 명단(team-users.json)에 없으면 null.
@@ -17,7 +18,7 @@ interface MyDashboardProps {
 }
 
 export function MyDashboard({ assignedRequests, omName, operations }: MyDashboardProps) {
-  const today = useMemo(() => new Date(), []);
+  const today = useMemo(() => getSeoulToday(), []);
   const [monthView, setMonthView] = useState(() => ({ year: today.getFullYear(), month: today.getMonth() }));
   const [openStage, setOpenStage] = useState<null | string>(null);
   // 담당 과정 표 접기/펼치기. 과정이 많으면 화면이 길어져 아래 패널이 멀어진다.
