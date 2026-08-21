@@ -360,7 +360,6 @@ export function OperationDashboard({ omRoster, operations, partByPersonKey, team
               <span>과정 기준</span>
             </div>
           </div>
-          {renderPagination()}
           <div className="table-wrap">
             <table className="operations-table">
               <thead>
@@ -456,11 +455,13 @@ function getPageNumbers(current: number, total: number): Array<number | "ellipsi
 const OPERATIONS_CSV_HEADERS = [
   "#",
   "교육형태",
-  "운영유형",
   "코스ID",
   "기업",
   "과정명",
+  "과정 카테고리 소분류",
+  "사용 Tool",
   "총 회차",
+  "교육일수",
   "싱크업",
   "OM",
   "LD",
@@ -468,22 +469,25 @@ const OPERATIONS_CSV_HEADERS = [
   "종료일",
   "강사",
   "실습코치",
+  "현장 투입 여부",
+  "만족도 여부",
   "만족도(전체)",
   "만족도(강사)",
-  "매출(코스ID기준)",
-  "강사비",
-  "운영비"
+  "결과보고서 여부",
+  "매출(코스ID기준)"
 ];
 
 function downloadOperationsCsv(courseGroups: CourseGroup[], today: Date) {
   const rows = courseGroups.map((group, index) => [
     `${index + 1}`,
     summarizeText(group.operations, (operation) => operation.educationFormat),
-    summarizeText(group.operations, (operation) => operation.operationType),
     group.courseId || "검토필요",
     group.companyName,
     group.courseName,
+    summarizeText(group.operations, (operation) => operation.courseCategory),
+    summarizeText(group.operations, (operation) => operation.tools),
     `${group.operations.length}`,
+    summarizeText(group.operations, (operation) => operation.educationDays),
     isSafeHttpUrl(group.operationDetail) ? group.operationDetail : "-",
     summarizeText(group.operations, (operation) => operation.om, "배정필요"),
     summarizeText(group.operations, (operation) => operation.ld, "미정"),
@@ -491,13 +495,14 @@ function downloadOperationsCsv(courseGroups: CourseGroup[], today: Date) {
     group.endDate,
     summarizeInstructors(group.operations),
     summarizeText(group.operations, (operation) => operation.coach),
+    onsiteRequiredLabel(summarizeText(group.operations, (operation) => operation.onsiteRequired)),
+    summarizeText(group.operations, (operation) => operation.hasSatisfactionSurvey),
     formatSatisfactionValue(average(satisfactionValues(group.operations, (operation) => operation.avgSatisfaction))),
     formatSatisfactionValue(
       average(satisfactionValues(group.operations, (operation) => operation.instructorSatisfaction))
     ),
-    formatMoney(sumRevenueByCourseId(group.operations)),
-    formatMoney(sumMoney(group.operations, (operation) => operation.instructorCost)),
-    formatMoney(sumMoney(group.operations, (operation) => operation.operationCost))
+    summarizeText(group.operations, (operation) => operation.hasResultReport),
+    formatMoney(sumRevenueByCourseId(group.operations))
   ]);
 
   const csvBody = [OPERATIONS_CSV_HEADERS, ...rows]
@@ -513,6 +518,14 @@ function downloadOperationsCsv(courseGroups: CourseGroup[], today: Date) {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+}
+
+function onsiteRequiredLabel(value: string): string {
+  if (value === "Y") return "예";
+  if (value === "N") return "아니오";
+  if (value === "PARTIAL") return "일부";
+  if (value === "UNKNOWN") return "확인필요";
+  return value;
 }
 
 function escapeCsvField(value: string): string {
@@ -639,15 +652,6 @@ function satisfactionValues(
   return operations
     .map((operation) => satisfactionNumber(getValue(operation)))
     .filter((value): value is number => value !== null);
-}
-
-function sumMoney(
-  operations: OperationSession[],
-  getValue: (operation: OperationSession) => number | null
-): number | null {
-  const values = operations.map(getValue).filter((value): value is number => value !== null);
-  if (values.length === 0) return null;
-  return values.reduce((sum, value) => sum + value, 0);
 }
 
 function isUpcoming(operation: OperationSession, today: Date) {
