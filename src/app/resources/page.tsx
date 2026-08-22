@@ -1,8 +1,6 @@
 import { ResourceJudgmentPage } from "@/features/resources/ResourceJudgmentPage";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
-import { mergeExternalResourceOperations } from "@/lib/data/externalResourceMerge";
 import { getOmAvailabilityRoster } from "@/lib/data/omAvailability/omAvailabilityLocalRepository";
-import { hasNotionResourceConfig, listNotionResourceOperations } from "@/lib/data/notionResourceOperationRepository";
 import { listOmRequests } from "@/lib/data/omRequest/omRequestLocalRepository";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { getTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFactory";
@@ -21,22 +19,19 @@ export default async function ResourcesPage({ searchParams }: ResourcesPageProps
 
   const repository = getOperationRepository();
   const teamMemberRepository = getTeamMemberRepository();
-  const shouldReadNotionResources = hasNotionResourceConfig();
-  const [operations, memberRoster, roleRoster, externalResourceOperations, calendarEvents, omRequests, params, partRoster] =
+  const [operations, memberRoster, roleRoster, calendarEvents, omRequests, params, partRoster] =
     await Promise.all([
       repository.listOperations(),
       teamMemberRepository.listResourceOwners(),
       teamMemberRepository.listRoleRosters(),
-      shouldReadNotionResources ? listNotionResourceOperations() : Promise.resolve([]),
       listCalendarResourceEvents(),
       listOmRequests(),
       searchParams,
       getOmAvailabilityRoster()
     ]);
-  const resourceOperations = mergeExternalResourceOperations(operations, externalResourceOperations);
   const resourceOwnerRoster = roleRoster.om;
   const teamScope = resolveTeamScope(params, session, hasRosterMembers(memberRoster) ? memberRoster : resourceOwnerRoster);
-  const scopedOperations = filterOperationsByTeamScope(resourceOperations, teamScope, resourceOwnerRoster);
+  const scopedOperations = filterOperationsByTeamScope(operations, teamScope, resourceOwnerRoster);
   const scopedOwnerRoster = filterOwnerRosterByTeamScope(resourceOwnerRoster, teamScope);
   const scopedCalendarEvents = filterCalendarEventsByOwnerRoster(calendarEvents, scopedOwnerRoster);
   // om-request는 접수 시점에 바로 operation이 생성되므로(omRequestOperationLink), 정상적으로 연결된
