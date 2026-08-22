@@ -1,4 +1,48 @@
+import { normalizeCourseId } from "./operationCalculations";
 import type { CourseLookupCandidate } from "./operationTypes";
+
+/** 저장소에서 읽어온 그대로의 과정 한 줄. courseId는 아직 정규화되지 않았다. */
+export interface CourseLookupRow {
+  courseId: string;
+  companyName: string;
+  courseName: string;
+  latestStartDate: string | null;
+}
+
+/** 최근 회차가 있는 과정을 앞에 둔다. 회차가 없는 과정은 뒤로, 같으면 과정명 순(결정적). */
+export function compareCourseLookupCandidates(a: CourseLookupCandidate, b: CourseLookupCandidate): number {
+  if (a.latestStartDate !== b.latestStartDate) {
+    if (!a.latestStartDate) return 1;
+    if (!b.latestStartDate) return -1;
+    return b.latestStartDate.localeCompare(a.latestStartDate);
+  }
+
+  return a.courseName.localeCompare(b.courseName);
+}
+
+/**
+ * 읽어온 과정 줄들에서 코스ID가 `target`과 같은 것만 골라낸다.
+ *
+ * **양쪽을 정규화해서 비교한다.** 코스ID는 사내 다른 시스템이 채워 넣는 값이라 제로폭 문자나
+ * 엑셀에서 온 `.0` 꼬리가 섞여 들어온다. 원문끼리 비교하면 눈에 같아 보이는 값이 안 맞는다
+ * (PR #189에서 시트 쪽 전 건 매칭 실패로 겪은 문제). 이 레포의 다른 경로들
+ * (localJsonOperationRepository·salesRevenueSync·operationMatch)도 모두 정규화 비교를 쓴다.
+ *
+ * `target`은 호출자가 이미 `normalizeCourseId`를 거친 값이어야 한다.
+ */
+export function selectCoursesByCourseId(rows: CourseLookupRow[], target: string): CourseLookupCandidate[] {
+  if (!target) return [];
+
+  return rows
+    .filter((row) => normalizeCourseId(row.courseId) === target)
+    .map((row) => ({
+      courseId: target,
+      companyName: row.companyName,
+      courseName: row.courseName,
+      latestStartDate: row.latestStartDate
+    }))
+    .sort(compareCourseLookupCandidates);
+}
 
 export interface CourseLookupResolution {
   /** 채울 고객사명. 후보들의 고객사가 갈리면 빈 문자열. */

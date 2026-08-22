@@ -10,6 +10,9 @@ import {
   SatisfactionSurveyStatus as PrismaSatisfactionSurveyStatus,
   SourceTeam as PrismaSourceTeam
 } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
+import { selectCoursesByCourseId } from "./courseLookup";
+import type { CourseLookupRow } from "./courseLookup";
 import type {
   ArchiveStatus,
   CourseLookupCandidate,
@@ -155,29 +158,15 @@ export class PrismaOperationRepository implements OperationRepository {
     const target = normalizeCourseId(courseId);
     if (!target) return [];
 
-    const prisma = getPrismaClient();
-    const courses = await prisma.course.findMany({
-      where: { courseId: { contains: target } },
-      include: {
-        company: true,
-        sessions: {
-          where: { deletedAt: null },
-          orderBy: { startDate: "desc" },
-          take: 1,
-          select: { startDate: true }
-        }
-      }
-    });
+    // 1) 인덱스(courses.course_id)를 타는 빠른 경로. 대개 여기서 끝난다.
+    const fast = selectCoursesByCourseId(await readCourseLookupRows({ courseId: { contains: target } }), target);
+    if (fast.length > 0) return fast;
 
-    return courses
-      .filter((course) => normalizeCourseId(course.courseId) === target)
-      .map((course) => ({
-        courseId: normalizeCourseId(course.courseId),
-        companyName: course.company.name,
-        courseName: course.name,
-        latestStartDate: course.sessions[0] ? toDateString(course.sessions[0].startDate) : null
-      }))
-      .sort(compareCourseLookupCandidates);
+    // 2) 빈손이면 전체를 정규화 기준으로 다시 훑는다.
+    //    SQL의 contains는 원문을 그대로 비교하므로, 코스ID 안에 제로폭 문자가 섞여 있으면
+    //    정규화하면 같은 값인데도 1)의 후보에 아예 들어오지 못한다(PR #189와 같은 원인).
+    //    미등록 코스ID를 입력했을 때만 한 번 더 읽으므로 상시 비용은 아니다.
+    return selectCoursesByCourseId(await readCourseLookupRows({}), target);
   }
 
   async listOperations(): Promise<OperationSession[]> {
@@ -595,15 +584,33 @@ function decimalToNumber(value: { toString(): string } | null): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-/** 최근 회차가 있는 과정을 앞에 둔다. 회차가 없는 과정은 뒤로, 같으면 과정명 순(결정적). */
-function compareCourseLookupCandidates(a: CourseLookupCandidate, b: CourseLookupCandidate): number {
-  if (a.latestStartDate !== b.latestStartDate) {
-    if (!a.latestStartDate) return 1;
-    if (!b.latestStartDate) return -1;
-    return b.latestStartDate.localeCompare(a.latestStartDate);
-  }
+/**
+ * 코스ID 조회에 필요한 최소 정보만 읽는다(과정명·고객사명·최근 회차 시작일).
+ * `where`를 비우면 전체를 읽으므로, 정규화 재조회처럼 빈손일 때만 쓴다.
+ */
+async function readCourseLookupRows(where: Prisma.CourseWhereInput): Promise<CourseLookupRow[]> {
+  const prisma = getPrismaClient();
+  const courses = await prisma.course.findMany({
+    where,
+    select: {
+      courseId: true,
+      name: true,
+      company: { select: { name: true } },
+      sessions: {
+        where: { deletedAt: null },
+        orderBy: { startDate: "desc" },
+        take: 1,
+        select: { startDate: true }
+      }
+    }
+  });
 
-  return a.courseName.localeCompare(b.courseName);
+  return courses.map((course) => ({
+    courseId: course.courseId,
+    companyName: course.company.name,
+    courseName: course.name,
+    latestStartDate: course.sessions[0] ? toDateString(course.sessions[0].startDate) : null
+  }));
 }
 
 function toDateString(value: Date): string {
