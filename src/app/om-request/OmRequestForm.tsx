@@ -1,9 +1,8 @@
 "use client";
 
 import Script from "next/script";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { parseToolsValue, TOOL_GROUPS, TOOL_META_OPTIONS } from "@/lib/data/omRequest/omToolOptions";
 import { calcSessionDuration, type OmRequestInput, type OmRequestSession, type TrainingType, type YN } from "@/lib/data/omRequest/omRequestTypes";
 import { COURSE_CATEGORY_GROUPS, getCourseCategoryMajor, getCourseCategoryMinors } from "@/lib/data/omRequest/omCourseCategoryOptions";
@@ -125,18 +124,183 @@ function YNToggle({
   );
 }
 
+function useCloseOnOutsideClick(open: boolean, onClose: () => void) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open, onClose]);
+  return ref;
+}
+
+function ToolMultiSelect({
+  extraTools,
+  selected,
+  customTools,
+  onToggle,
+  onCustomChange
+}: {
+  extraTools: string[];
+  selected: Set<string>;
+  customTools: string;
+  onToggle: (tool: string) => void;
+  onCustomChange: (value: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const containerRef = useCloseOnOutsideClick(open, () => setOpen(false));
+
+  const customList = customTools.split(",").map((t) => t.trim()).filter(Boolean);
+  const groups = [
+    ...TOOL_GROUPS,
+    ...(extraTools.length > 0 ? [{ category: "추가된 도구", tools: extraTools }] : []),
+    { category: "기타", tools: TOOL_META_OPTIONS }
+  ];
+
+  const q = query.trim().toLowerCase();
+  const filteredGroups = q
+    ? groups.map((g) => ({ ...g, tools: g.tools.filter((t) => t.toLowerCase().includes(q)) })).filter((g) => g.tools.length > 0)
+    : groups;
+  const hasExactMatch = q !== "" && groups.some((g) => g.tools.some((t) => t.toLowerCase() === q));
+
+  function removeCustom(tool: string) {
+    onCustomChange(customList.filter((t) => t !== tool).join(", "));
+  }
+
+  function addCustom() {
+    const value = query.trim();
+    if (!value || customList.includes(value)) return;
+    onCustomChange([...customList, value].join(", "));
+    setQuery("");
+  }
+
+  return (
+    <div className="om-tool-select" ref={containerRef}>
+      <div className="om-tool-tags" onClick={() => setOpen(true)}>
+        {Array.from(selected).map((tool) => (
+          <span className="om-tool-tag" key={tool}>
+            {tool}
+            <button type="button" aria-label={`${tool} 제거`} onClick={(e) => { e.stopPropagation(); onToggle(tool); }}>×</button>
+          </span>
+        ))}
+        {customList.map((tool) => (
+          <span className="om-tool-tag om-tool-tag-custom" key={tool}>
+            {tool}
+            <button type="button" aria-label={`${tool} 제거`} onClick={(e) => { e.stopPropagation(); removeCustom(tool); }}>×</button>
+          </span>
+        ))}
+        <input
+          className="om-tool-search-input"
+          onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") { e.preventDefault(); addCustom(); }
+            if (e.key === "Backspace" && query === "") {
+              if (customList.length > 0) removeCustom(customList[customList.length - 1]);
+              else {
+                const last = Array.from(selected).pop();
+                if (last) onToggle(last);
+              }
+            }
+          }}
+          placeholder={selected.size === 0 && customList.length === 0 ? "Tool 검색 (예: ChatGPT, Python)" : "추가 검색..."}
+          type="text"
+          value={query}
+        />
+      </div>
+      {open && (
+        <div className="om-tool-dropdown">
+          {filteredGroups.map((g) => (
+            <div className="om-tool-dropdown-group" key={g.category}>
+              <span className="om-tool-dropdown-group-title">{g.category}</span>
+              {g.tools.map((tool) => (
+                <button
+                  className={`om-tool-dropdown-option${selected.has(tool) ? " selected" : ""}`}
+                  key={tool}
+                  onMouseDown={(e) => { e.preventDefault(); onToggle(tool); }}
+                  type="button"
+                >
+                  <span>{tool}</span>
+                  {selected.has(tool) && <span className="om-tool-check">✓</span>}
+                </button>
+              ))}
+            </div>
+          ))}
+          {filteredGroups.length === 0 && <p className="om-tool-dropdown-empty">일치하는 도구가 없습니다.</p>}
+          {q !== "" && !hasExactMatch && !customList.includes(query.trim()) && (
+            <button className="om-tool-dropdown-add" onMouseDown={(e) => { e.preventDefault(); addCustom(); }} type="button">
+              + &ldquo;{query.trim()}&rdquo; 직접 추가
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CompanyCombobox({
+  value,
+  knownCompanies,
+  onChange
+}: {
+  value: string;
+  knownCompanies: string[];
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useCloseOnOutsideClick(open, () => setOpen(false));
+
+  const q = value.trim().toLowerCase();
+  const matches = q ? knownCompanies.filter((c) => c.toLowerCase().includes(q)) : knownCompanies;
+  const isNewCompany = q !== "" && !knownCompanies.some((c) => c.toLowerCase() === q);
+
+  return (
+    <div className="om-company-combobox" ref={containerRef}>
+      <input
+        required
+        onChange={(e) => { onChange(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        placeholder="고객사명"
+        type="text"
+        value={value}
+      />
+      {open && matches.length > 0 && (
+        <div className="om-company-dropdown">
+          {matches.slice(0, 20).map((company) => (
+            <button
+              className="om-company-dropdown-option"
+              key={company}
+              onMouseDown={(e) => { e.preventDefault(); onChange(company); setOpen(false); }}
+              type="button"
+            >
+              {company}
+            </button>
+          ))}
+        </div>
+      )}
+      {isNewCompany && <p className="om-field-hint om-company-new-hint">이 표기로 접수된 적이 없어요. 오타가 아니라면 이대로 접수해주세요.</p>}
+    </div>
+  );
+}
+
 export function OmRequestForm({
   extraTools = [],
   ldName,
   defaultTeam,
   initialData,
-  requestId
+  requestId,
+  knownCompanies = []
 }: {
   extraTools?: string[];
   ldName: string;
   defaultTeam?: string;
   initialData?: OmRequestInput;
   requestId?: string;
+  knownCompanies?: string[];
 }) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
@@ -312,31 +476,22 @@ export function OmRequestForm({
         <div className="operation-form-grid">
 
           <label>
-            <span>구분<RequiredMark /></span>
-            <select value={form.team} onChange={(e) => setField("team", e.target.value)}>
-              {TEAM_OPTIONS.map((t) => <option key={t}>{t}</option>)}
-            </select>
-          </label>
-
-          <label>
             <span>LD<RequiredMark /></span>
-            <input
-              required
-              type="text"
-              value={form.ld}
-              onChange={(e) => setField("ld", e.target.value)}
-            />
+            {requestId ? (
+              <input
+                required
+                type="text"
+                value={form.ld}
+                onChange={(e) => setField("ld", e.target.value)}
+              />
+            ) : (
+              <input disabled type="text" value={form.ld} title="LD는 로그인한 본인 기준으로 고정됩니다." />
+            )}
           </label>
 
           <label>
             <span>기업명<RequiredMark /></span>
-            <input
-              required
-              type="text"
-              value={form.company}
-              placeholder="고객사명"
-              onChange={(e) => setField("company", e.target.value)}
-            />
+            <CompanyCombobox value={form.company} knownCompanies={knownCompanies} onChange={(v) => setField("company", v)} />
           </label>
 
           <label>
@@ -354,6 +509,31 @@ export function OmRequestForm({
             <span>교육형태<RequiredMark /></span>
             <select value={form.trainingType} onChange={(e) => setField("trainingType", e.target.value as TrainingType)}>
               {TRAINING_TYPE_OPTIONS.map((t) => <option key={t}>{t}</option>)}
+            </select>
+          </label>
+
+          <label>
+            <span>과정 카테고리 대분류<RequiredMark /></span>
+            <select
+              required
+              value={form.courseCategoryMajor ?? ""}
+              onChange={(e) => setForm((prev) => ({ ...prev, courseCategoryMajor: e.target.value, courseCategory: "" }))}
+            >
+              <option value="">선택</option>
+              {COURSE_CATEGORY_GROUPS.map((group) => <option key={group.major}>{group.major}</option>)}
+            </select>
+          </label>
+
+          <label>
+            <span>과정 카테고리 소분류<RequiredMark /></span>
+            <select
+              required
+              disabled={!form.courseCategoryMajor}
+              value={form.courseCategory}
+              onChange={(e) => setField("courseCategory", e.target.value)}
+            >
+              <option value="">{form.courseCategoryMajor ? "선택" : "대분류를 먼저 선택하세요"}</option>
+              {getCourseCategoryMinors(form.courseCategoryMajor ?? "").map((minor) => <option key={minor}>{minor}</option>)}
             </select>
           </label>
 
@@ -386,31 +566,6 @@ export function OmRequestForm({
           </label>
 
           <label>
-            <span>과정 카테고리 대분류<RequiredMark /></span>
-            <select
-              required
-              value={form.courseCategoryMajor ?? ""}
-              onChange={(e) => setForm((prev) => ({ ...prev, courseCategoryMajor: e.target.value, courseCategory: "" }))}
-            >
-              <option value="">선택</option>
-              {COURSE_CATEGORY_GROUPS.map((group) => <option key={group.major}>{group.major}</option>)}
-            </select>
-          </label>
-
-          <label>
-            <span>과정 카테고리 소분류<RequiredMark /></span>
-            <select
-              required
-              disabled={!form.courseCategoryMajor}
-              value={form.courseCategory}
-              onChange={(e) => setField("courseCategory", e.target.value)}
-            >
-              <option value="">{form.courseCategoryMajor ? "선택" : "대분류를 먼저 선택하세요"}</option>
-              {getCourseCategoryMinors(form.courseCategoryMajor ?? "").map((minor) => <option key={minor}>{minor}</option>)}
-            </select>
-          </label>
-
-          <label className="wide-field">
             <span>싱크업 링크<RequiredMark /></span>
             <input
               required
@@ -421,7 +576,7 @@ export function OmRequestForm({
             />
           </label>
 
-          <label className="wide-field">
+          <label>
             <span>드라이브 링크</span>
             <input
               type="text"
@@ -436,54 +591,17 @@ export function OmRequestForm({
 
       {/* 사용 Tool */}
       <div className="operation-form-section">
-        <div className="section-title"><h2>사용 Tool<RequiredMark /></h2></div>
-        <p className="om-field-hint">아직 tool이 정해지지 않았을 시 미확인으로 체크바랍니다.</p>
-        <div className="om-tool-groups">
-          {TOOL_GROUPS.map((group) => (
-            <div className="om-tool-group" key={group.category}>
-              <span className="om-tool-group-title">{group.category}</span>
-              <div className="om-tool-group-options">
-                {group.tools.map((tool) => (
-                  <label className="inline-toggle" key={tool}>
-                    <input checked={selectedTools.has(tool)} onChange={() => toggleTool(tool)} type="checkbox" />
-                    <span>{tool}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          ))}
-          {extraTools.length > 0 && (
-            <div className="om-tool-group">
-              <span className="om-tool-group-title">추가된 도구</span>
-              <div className="om-tool-group-options">
-                {extraTools.map((tool) => (
-                  <label className="inline-toggle" key={tool}>
-                    <input checked={selectedTools.has(tool)} onChange={() => toggleTool(tool)} type="checkbox" />
-                    <span>{tool}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
-          <div className="om-tool-group">
-            <span className="om-tool-group-title">기타</span>
-            <div className="om-tool-group-options">
-              {TOOL_META_OPTIONS.map((meta) => (
-                <label className="inline-toggle" key={meta}>
-                  <input checked={selectedTools.has(meta)} onChange={() => toggleTool(meta)} type="checkbox" />
-                  <span>{meta}</span>
-                </label>
-              ))}
-            </div>
-            <input
-              className="om-tool-custom-input"
-              onChange={(e) => handleCustomToolsChange(e.target.value)}
-              placeholder="목록에 없는 도구는 직접 입력 (쉼표로 구분)"
-              type="text"
-              value={customTools}
-            />
-          </div>
+        <div className="section-title">
+          <h2>사용 Tool<RequiredMark /></h2>
+          <p className="om-field-hint">아직 tool이 정해지지 않았을 시 미확인을 검색해 선택바랍니다.</p>
         </div>
+        <ToolMultiSelect
+          extraTools={extraTools}
+          selected={selectedTools}
+          customTools={customTools}
+          onToggle={toggleTool}
+          onCustomChange={handleCustomToolsChange}
+        />
       </div>
 
       {/* 세팅 및 운영 */}
@@ -500,29 +618,8 @@ export function OmRequestForm({
       {/* 교육 일정 */}
       <div className="operation-form-section">
         <div className="section-title"><h2>교육 일정</h2></div>
-        <div className="om-field-hint-list">
-          <p className="om-field-hint">1회차를 적으시고 총 회차 수를 늘리시면 아래 자동 복사가 되니 참고 바랍니다.</p>
-          <p className="om-field-hint">회차만 확정되고 일정이 확정되지 않았다면 대략적으로 넣어주시고 요청사항에 내용을 자세하게 작성해주세요.</p>
-          <p className="om-field-hint">숫자만 입력해도 날짜가 자동 완성돼요 (예: 20260812 → 2026-08-12).</p>
-          <p className="om-field-hint">장소가 미정이면 미정이라고 입력해도 됩니다.</p>
-        </div>
 
-        <div className="om-session-sheet-actions">
-          <a className="secondary-action" download href="/api/om-request/session-template">샘플 시트 다운로드</a>
-          <label className="secondary-action om-session-upload-label">
-            엑셀로 일괄 입력(선택)
-            <input
-              accept=".xlsx"
-              className="om-session-upload-input"
-              onChange={handleSessionSheetUpload}
-              type="file"
-            />
-          </label>
-          <span className="om-field-hint">칼럼: {"회차, 시작일, 종료일, 시작시간, 종료시간, 장소"}</span>
-        </div>
-        {sheetError && <p className="om-request-error">{sheetError}</p>}
-
-        <div className="operation-form-grid compact">
+        <div className="om-session-toolbar">
           <label className="om-session-count-field">
             <span>총 회차<RequiredMark /></span>
             <input
@@ -534,7 +631,20 @@ export function OmRequestForm({
               onChange={(e) => handleTotalSessionsChange(Number(e.target.value))}
             />
           </label>
+          <div className="om-session-toolbar-actions">
+            <a className="secondary-action" download href="/api/om-request/session-template">샘플 시트 다운로드</a>
+            <label className="secondary-action om-session-upload-label">
+              엑셀로 일괄 입력
+              <input
+                accept=".xlsx"
+                className="om-session-upload-input"
+                onChange={handleSessionSheetUpload}
+                type="file"
+              />
+            </label>
+          </div>
         </div>
+        {sheetError && <p className="om-request-error">{sheetError}</p>}
 
         <div className="om-sessions-table">
           <div className="om-sessions-header">
@@ -577,7 +687,7 @@ export function OmRequestForm({
               <input
                 className="duration-input"
                 type="text"
-                value={session.duration}
+                value={session.duration ? `${session.duration}h` : ""}
                 placeholder="자동"
                 readOnly
               />
@@ -586,7 +696,7 @@ export function OmRequestForm({
                   required
                   type="text"
                   value={session.location}
-                  placeholder="장소 입력 또는 검색"
+                  placeholder="장소 입력 또는 검색 (미정이면 미정이라고 기입)"
                   onChange={(e) => updateSession(idx, "location", e.target.value)}
                 />
                 <AddressSearchButton onSelect={(addr) => updateSession(idx, "location", addr)} />
@@ -598,8 +708,10 @@ export function OmRequestForm({
 
       {/* 요청사항 */}
       <div className="operation-form-section">
-        <div className="section-title"><h2>요청사항<RequiredMark /></h2></div>
-        <p className="om-field-hint">과정 관련하여 최대한 자세하게 작성바랍니다.</p>
+        <div className="section-title">
+          <h2>요청사항<RequiredMark /></h2>
+          <p className="om-field-hint">과정 관련하여 최대한 자세하게 작성바랍니다.</p>
+        </div>
         <div className="operation-form-grid">
           <label className="full-row-field">
             <textarea
