@@ -80,7 +80,7 @@ export function withUnclassifiedOwners(
   };
 }
 
-function mergeUnclassified(scoped: ResourceOwnerRoster, full: ResourceOwnerRoster): ResourceOwnerRoster {
+export function mergeUnclassified(scoped: ResourceOwnerRoster, full: ResourceOwnerRoster): ResourceOwnerRoster {
   const unclassified = full["미분류"] ?? [];
   if (unclassified.length === 0) return scoped;
 
