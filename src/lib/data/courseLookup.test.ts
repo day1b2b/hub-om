@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { resolveCourseLookup } from "@/lib/data/courseLookup";
+import { resolveCourseLookup, selectCoursesByCourseId } from "@/lib/data/courseLookup";
+import type { CourseLookupRow } from "@/lib/data/courseLookup";
 import type { CourseLookupCandidate } from "@/lib/data/operationTypes";
 
 function candidate(companyName: string, courseName: string, latestStartDate: null | string = null): CourseLookupCandidate {
@@ -51,4 +52,67 @@ test("앞뒤 공백은 정리해서 채운다", () => {
 
   assert.equal(resolved?.company, "KT");
   assert.equal(resolved?.courseName, "Gen AI 활용과정");
+});
+
+// ── selectCoursesByCourseId — 원문이 아니라 정규화 기준으로 골라내는지 ──────────
+
+function row(courseId: string, companyName: string, courseName: string, latestStartDate: null | string = null): CourseLookupRow {
+  return { courseId, companyName, courseName, latestStartDate };
+}
+
+test("코스ID가 같은 과정만 골라낸다", () => {
+  const picked = selectCoursesByCourseId(
+    [row("260455", "삼성전자DX", "AI Essential Plus"), row("260456", "KT", "다른 과정")],
+    "260455"
+  );
+
+  assert.equal(picked.length, 1);
+  assert.equal(picked[0]?.courseName, "AI Essential Plus");
+  assert.equal(picked[0]?.courseId, "260455");
+});
+
+test("코스ID에 제로폭 문자가 섞여 있어도 찾는다 — 원문 비교면 놓친다", () => {
+  const picked = selectCoursesByCourseId([row("2604\u200b55", "삼성전자DX", "AI Essential Plus")], "260455");
+
+  assert.equal(picked.length, 1, "제로폭 문자가 섞인 과정을 놓쳤다");
+  assert.equal(picked[0]?.courseId, "260455", "돌려주는 코스ID는 정규화된 값이어야 한다");
+});
+
+test("엑셀에서 온 .0 꼬리가 붙어 있어도 찾는다", () => {
+  const picked = selectCoursesByCourseId([row("260455.0", "삼성전자DX", "AI Essential Plus")], "260455");
+
+  assert.equal(picked.length, 1);
+});
+
+test("앞뒤 공백이 있어도 찾는다", () => {
+  assert.equal(selectCoursesByCourseId([row("  260455 ", "KT", "과정")], "260455").length, 1);
+});
+
+test("부분만 겹치는 코스ID는 고르지 않는다", () => {
+  const picked = selectCoursesByCourseId(
+    [row("1260455", "KT", "앞에 붙음"), row("2604550", "KT", "뒤에 붙음")],
+    "260455"
+  );
+
+  assert.equal(picked.length, 0);
+});
+
+test("target이 비면 아무것도 고르지 않는다", () => {
+  assert.deepEqual(selectCoursesByCourseId([row("260455", "KT", "과정")], ""), []);
+});
+
+test("최근 회차가 있는 과정을 앞에, 회차 없는 과정을 뒤에 둔다", () => {
+  const picked = selectCoursesByCourseId(
+    [
+      row("260455", "KT", "회차 없음"),
+      row("260455", "KT", "옛 회차", "2026-01-05"),
+      row("260455", "KT", "최근 회차", "2026-08-01")
+    ],
+    "260455"
+  );
+
+  assert.deepEqual(
+    picked.map((candidate) => candidate.courseName),
+    ["최근 회차", "옛 회차", "회차 없음"]
+  );
 });
