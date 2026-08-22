@@ -8,6 +8,7 @@ import type {
   OperationSummary,
   OperationType,
   ResultReportStatus,
+  SatisfactionSurveyStatus,
   ValidationStatus
 } from "./operationTypes";
 import { satisfactionNumber } from "./satisfaction";
@@ -102,6 +103,7 @@ export interface ArchiveCompletionInput {
   courseId: string;
   lectureManagementNote: string;
   avgSatisfaction: string;
+  hasSatisfactionSurvey: SatisfactionSurveyStatus;
   hasResultReport: ResultReportStatus;
   resultReportLink: string;
 }
@@ -114,15 +116,23 @@ export function deriveArchiveStatus(endDate: string, input: ArchiveCompletionInp
   return isArchiveComplete(input) ? "완료" : "아카이빙필요";
 }
 
-/** 아카이빙 완료 조건: 코스ID, 강의관리 시트, 만족도 등록 + (결과보고서 필요 시) 결과보고서 링크 등록. */
+/**
+ * 아카이빙 완료 조건: 코스ID, 강의관리 시트, (만족도 조사를 하는 회차면) 만족도 등록,
+ * (결과보고서가 필요한 회차면) 결과보고서 링크 등록.
+ *
+ * 조사하지 않기로 한 회차(만족도 조사 여부 = 불필요)는 채울 값 자체가 없으므로 만족도를
+ * 요구하지 않는다. 요구하면 나머지를 다 정리해도 영원히 "아카이빙필요"에 남는다.
+ * 결과보고서가 "유"일 때만 링크를 요구하는 것과 같은 구조다.
+ */
 export function isArchiveComplete(input: ArchiveCompletionInput): boolean {
   const hasCourseId = Boolean(input.courseId.trim());
   const hasLectureManagementNote = Boolean(input.lectureManagementNote.trim());
-  const hasSatisfaction = Boolean(input.avgSatisfaction.trim());
+  const hasRequiredSatisfaction =
+    input.hasSatisfactionSurvey === "불필요" || Boolean(input.avgSatisfaction.trim());
   const hasRequiredResultReportLink =
     input.hasResultReport !== "유" || Boolean(input.resultReportLink.trim());
 
-  return hasCourseId && hasLectureManagementNote && hasSatisfaction && hasRequiredResultReportLink;
+  return hasCourseId && hasLectureManagementNote && hasRequiredSatisfaction && hasRequiredResultReportLink;
 }
 
 export function deriveSessionDurationDays(startDate: string, endDate: string): number | null {
