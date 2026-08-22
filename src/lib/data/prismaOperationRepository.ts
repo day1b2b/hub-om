@@ -210,6 +210,7 @@ export class PrismaOperationRepository implements OperationRepository {
           courseId: session.course.courseId ?? "",
           lectureManagementNote: session.lectureManagementNote ?? "",
           avgSatisfaction: session.avgSatisfaction ?? "",
+          hasSatisfactionSurvey: SATISFACTION_SURVEY_STATUS[session.hasSatisfactionSurvey],
           hasResultReport: RESULT_REPORT_STATUS[session.hasResultReport],
           resultReportLink: session.resultReportLink ?? ""
         }),

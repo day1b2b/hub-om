@@ -221,7 +221,10 @@ function buildTodo(operation: OperationSession, stage: ReminderStage): string[] 
 
   if (!operation.courseId.trim()) todo.push("코스ID 등록");
   if (!operation.lectureManagementNote.trim()) todo.push("강의관리 등록");
-  if (!operation.avgSatisfaction.trim()) todo.push("만족도 등록");
+  // 조사하지 않기로 한 회차는 등록할 값이 없으므로 재촉하지 않는다(아카이빙 완료 조건과 같은 규칙).
+  if (operation.hasSatisfactionSurvey !== "불필요" && !operation.avgSatisfaction.trim()) {
+    todo.push("만족도 등록");
+  }
   if (stage === "d7" && needsRetrospective(operation)) todo.push("운영 회고 작성");
 
   return todo;
