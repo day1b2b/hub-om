@@ -46,6 +46,11 @@ export class CalendarReflectingOperationRepository implements OperationRepositor
     return this.inner.findCoursesByCourseId(courseId);
   }
 
+  findCoursesByCompany(companyQuery: string, courseQuery: string, limit: number): Promise<CourseLookupCandidate[]> {
+    // 읽기 전용 조회 — 캘린더에 반영할 것이 없어 그대로 넘긴다.
+    return this.inner.findCoursesByCompany(companyQuery, courseQuery, limit);
+  }
+
   getOperationById(operationId: string): Promise<OperationSession | null> {
     return this.inner.getOperationById(operationId);
   }

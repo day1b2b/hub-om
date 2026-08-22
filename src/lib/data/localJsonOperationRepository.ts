@@ -8,6 +8,7 @@ import {
   normalizeCourseId,
   summarizeOperations
 } from "./operationCalculations";
+import { normalizeLookupName, selectCoursesByCompany } from "./courseLookup";
 import type { OperationRepository } from "./operationRepository";
 import type {
   CourseLookupCandidate,
@@ -79,6 +80,31 @@ export class LocalJsonOperationRepository implements OperationRepository {
 
       return a.courseName.localeCompare(b.courseName);
     });
+  }
+
+  async findCoursesByCompany(companyQuery: string, courseQuery: string, limit: number): Promise<CourseLookupCandidate[]> {
+    if (!normalizeLookupName(companyQuery)) return [];
+
+    // 같은 과정의 여러 회차를 한 줄로 접고(가장 최근 강의일정만 남김), 고르기는 순수 함수에 맡긴다.
+    const byCourse = new Map<string, { courseId: string; companyName: string; courseName: string; latestStartDate: null | string }>();
+
+    for (const operation of await this.listOperations()) {
+      const key = `${operation.companyName}|${operation.courseName}`;
+      const previous = byCourse.get(key);
+      const latestStartDate =
+        previous?.latestStartDate && previous.latestStartDate > operation.startDate
+          ? previous.latestStartDate
+          : operation.startDate || null;
+
+      byCourse.set(key, {
+        courseId: operation.courseId,
+        companyName: operation.companyName,
+        courseName: operation.courseName,
+        latestStartDate
+      });
+    }
+
+    return selectCoursesByCompany([...byCourse.values()], companyQuery, courseQuery, limit);
   }
 
   async getOperationById(operationId: string): Promise<OperationSession | null> {
