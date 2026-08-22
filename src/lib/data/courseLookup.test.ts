@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { resolveCourseLookup, selectCoursesByCourseId } from "@/lib/data/courseLookup";
+import { resolveCourseLookup, selectCoursesByCompany, selectCoursesByCourseId } from "@/lib/data/courseLookup";
 import type { CourseLookupRow } from "@/lib/data/courseLookup";
 import type { CourseLookupCandidate } from "@/lib/data/operationTypes";
 
@@ -115,4 +115,63 @@ test("최근 회차가 있는 과정을 앞에, 회차 없는 과정을 뒤에 �
     picked.map((candidate) => candidate.courseName),
     ["최근 회차", "옛 회차", "회차 없음"]
   );
+});
+
+// ── selectCoursesByCompany — 코스ID를 모를 때 고객사명으로 찾는 역방향 조회 ──────
+
+const COMPANY_ROWS: CourseLookupRow[] = [
+  row("260455", "삼성전자DX", "AI Essential Plus", "2026-07-22"),
+  row("260812", "삼성전자DX", "데이터 리터러시 기본", "2026-06-10"),
+  row("259901", "삼성전자 DX부문", "AI 활용 심화", "2026-03-14"),
+  row("260759", "KT", "AX 오픈클래스_Claude", "2026-07-30"),
+  row("262915", "KT", "하네스엔지니어링 후속교육", "2026-08-03"),
+  row("", "삼성전자DX", "코스ID 미등록 과정", "2026-08-01")
+];
+
+test("고객사명 일부만 쳐도 그 고객사 과정이 나온다", () => {
+  const picked = selectCoursesByCompany(COMPANY_ROWS, "삼성", "", 20);
+
+  assert.deepEqual(picked.map((c) => c.courseName),
+    ["코스ID 미등록 과정", "AI Essential Plus", "데이터 리터러시 기본", "AI 활용 심화"]);
+});
+
+test("최근 회차가 있는 과정이 앞에 온다", () => {
+  const picked = selectCoursesByCompany(COMPANY_ROWS, "KT", "", 20);
+
+  assert.deepEqual(picked.map((c) => c.courseId), ["262915", "260759"]);
+});
+
+test("과정명 조각으로 더 좁힐 수 있다", () => {
+  const picked = selectCoursesByCompany(COMPANY_ROWS, "삼성", "리터러시", 20);
+
+  assert.equal(picked.length, 1);
+  assert.equal(picked[0]?.courseId, "260812");
+});
+
+test("코스ID가 아직 안 채워진 과정도 후보에 넣는다 — 감추면 왜 안 보이는지 알 수 없다", () => {
+  const picked = selectCoursesByCompany(COMPANY_ROWS, "삼성전자DX", "", 20);
+
+  const unregistered = picked.find((c) => c.courseName === "코스ID 미등록 과정");
+  assert.ok(unregistered, "코스ID 없는 과정이 빠졌다");
+  assert.equal(unregistered?.courseId, "");
+});
+
+test("대소문자·연속 공백·제로폭 문자를 무시하고 찾는다", () => {
+  assert.equal(selectCoursesByCompany(COMPANY_ROWS, "  삼성전자dx  ", "", 20).length, 3);
+  assert.equal(selectCoursesByCompany(COMPANY_ROWS, "삼성\u200b전자DX", "", 20).length, 3);
+});
+
+test("limit보다 하나 더 돌려준다 — 호출자가 '더 있음'을 알 수 있게", () => {
+  const picked = selectCoursesByCompany(COMPANY_ROWS, "삼성", "", 2);
+
+  assert.equal(picked.length, 3, "limit+1개를 돌려줘야 잘렸는지 판단할 수 있다");
+});
+
+test("고객사명이 비면 아무것도 돌려주지 않는다 — 전체를 쏟지 않는다", () => {
+  assert.deepEqual(selectCoursesByCompany(COMPANY_ROWS, "", "", 20), []);
+  assert.deepEqual(selectCoursesByCompany(COMPANY_ROWS, "   ", "", 20), []);
+});
+
+test("찾는 고객사가 없으면 빈 목록", () => {
+  assert.deepEqual(selectCoursesByCompany(COMPANY_ROWS, "없는회사", "", 20), []);
 });

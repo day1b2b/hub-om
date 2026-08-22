@@ -11,7 +11,7 @@ import {
   SourceTeam as PrismaSourceTeam
 } from "@prisma/client";
 import type { Prisma } from "@prisma/client";
-import { selectCoursesByCourseId } from "./courseLookup";
+import { normalizeLookupName, selectCoursesByCompany, selectCoursesByCourseId } from "./courseLookup";
 import type { CourseLookupRow } from "./courseLookup";
 import type {
   ArchiveStatus,
@@ -167,6 +167,15 @@ export class PrismaOperationRepository implements OperationRepository {
     //    정규화하면 같은 값인데도 1)의 후보에 아예 들어오지 못한다(PR #189와 같은 원인).
     //    미등록 코스ID를 입력했을 때만 한 번 더 읽으므로 상시 비용은 아니다.
     return selectCoursesByCourseId(await readCourseLookupRows({}), target);
+  }
+
+  async findCoursesByCompany(companyQuery: string, courseQuery: string, limit: number): Promise<CourseLookupCandidate[]> {
+    if (!normalizeLookupName(companyQuery)) return [];
+
+    // 고객사명은 부분 일치라 인덱스를 타지 못하고, 정렬(최근 회차)과 과정명 좁히기도 어차피 JS에서 한다.
+    // 게다가 저장된 normalizedName에 제로폭 문자가 섞여 있으면 SQL 비교가 놓친다(#346과 같은 원인).
+    // 그래서 필요한 열만 한 번 읽고 정규화 기준으로 고른다 — '코스ID 찾기'를 누를 때만 부르는 조회다.
+    return selectCoursesByCompany(await readCourseLookupRows({}), companyQuery, courseQuery, limit);
   }
 
   async listOperations(): Promise<OperationSession[]> {

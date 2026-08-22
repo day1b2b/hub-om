@@ -44,6 +44,48 @@ export function selectCoursesByCourseId(rows: CourseLookupRow[], target: string)
     .sort(compareCourseLookupCandidates);
 }
 
+/** 고객사명·과정명 검색용 정규화: 보이지 않는 문자·연속 공백을 정리하고 소문자로. */
+export function normalizeLookupName(value: unknown): string {
+  return String(value ?? "")
+    .replace(/[​-‍﻿]/g, "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
+/**
+ * 고객사명(+선택적으로 과정명)으로 과정 후보를 고른다. **코스ID를 모를 때 쓰는 역방향 조회.**
+ *
+ * 코스ID는 6자리 숫자라 외우기 어렵다. 그래서 아는 값(고객사명)에서 출발해 코스ID를 찾게 한다.
+ * 한 고객사에 과정이 수십~수백 개일 수 있으므로 **최근 회차가 있는 과정을 앞에 두고 잘라낸다**
+ * (`limit`보다 하나 더 돌려줘, 호출자가 '더 있음'을 알 수 있게 한다).
+ *
+ * 코스ID가 아직 안 채워진 과정도 후보에 넣는다 — 스키마 주석대로 코스ID는 나중에 채워지는
+ * 값이라, 감추면 "운영현황에 있는데 왜 안 보이나"가 된다. 호출자가 빈 코스ID를 보고 안내한다.
+ */
+export function selectCoursesByCompany(
+  rows: CourseLookupRow[],
+  companyQuery: string,
+  courseQuery: string,
+  limit: number
+): CourseLookupCandidate[] {
+  const company = normalizeLookupName(companyQuery);
+  if (!company) return [];
+  const course = normalizeLookupName(courseQuery);
+
+  return rows
+    .filter((row) => normalizeLookupName(row.companyName).includes(company))
+    .filter((row) => (course ? normalizeLookupName(row.courseName).includes(course) : true))
+    .map((row) => ({
+      courseId: normalizeCourseId(row.courseId),
+      companyName: row.companyName,
+      courseName: row.courseName,
+      latestStartDate: row.latestStartDate
+    }))
+    .sort(compareCourseLookupCandidates)
+    .slice(0, Math.max(0, limit) + 1);
+}
+
 export interface CourseLookupResolution {
   /** 채울 고객사명. 후보들의 고객사가 갈리면 빈 문자열. */
   company: string;
