@@ -37,6 +37,16 @@ function readLookupDeadlineMs(): number {
   return Number.isFinite(configured) && configured > 0 ? configured : DEFAULT_LOOKUP_DEADLINE_MS;
 }
 
+const DEFAULT_SEARCH_LIMIT = 20;
+const MAX_SEARCH_LIMIT = 50;
+
+/** 고객사명 검색이 돌려줄 후보 수. 한 고객사에 과정이 수백 개일 수 있어 반드시 자른다. */
+function readSearchLimit(raw: null | string): number {
+  const parsed = Number.parseInt(raw ?? "", 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_SEARCH_LIMIT;
+  return Math.min(parsed, MAX_SEARCH_LIMIT);
+}
+
 /** 요청에서 공유 토큰을 꺼낸다: `Authorization: Bearer` → `x-lookup-token` → `?token=` 순. */
 function readRequestToken(request: Request, url: URL): string {
   const auth = request.headers.get("authorization") ?? "";
@@ -61,9 +71,33 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, error: "인증 토큰이 올바르지 않습니다." }, { status: 401 });
   }
 
+  // 고객사명 검색 모드 — 코스ID를 모를 때(6자리 숫자라 외우기 어렵다) 아는 값에서 출발한다.
+  // 운영현황만 본다. 세일즈맵 역방향 검색은 딜 전체를 읽어야 해서 이 용도에 맞지 않는다.
+  const companyQuery = (url.searchParams.get("company") ?? "").trim();
+  if (companyQuery) {
+    const courseQuery = (url.searchParams.get("course") ?? "").trim();
+    const limit = readSearchLimit(url.searchParams.get("limit"));
+    const found = await getOperationRepository().findCoursesByCompany(companyQuery, courseQuery, limit);
+
+    return NextResponse.json({
+      ok: true,
+      mode: "company",
+      source: "operations",
+      query: { company: companyQuery, course: courseQuery },
+      // limit보다 하나 더 받아 잘렸는지 판단한다(호출자가 '더 좁혀 주세요'를 안내할 수 있게).
+      truncated: found.length > limit,
+      candidates: found.slice(0, limit).map((candidate) => ({
+        courseId: candidate.courseId,
+        company: candidate.companyName,
+        courseName: candidate.courseName,
+        latestStartDate: candidate.latestStartDate
+      }))
+    });
+  }
+
   const courseId = (url.searchParams.get("courseId") ?? "").trim();
   if (!courseId) {
-    return NextResponse.json({ ok: false, error: "courseId가 필요합니다." }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "courseId 또는 company가 필요합니다." }, { status: 400 });
   }
 
   // 1) 운영현황(hub-om DB)에서 먼저 찾는다 — 원천이자 가장 빠른 경로.
