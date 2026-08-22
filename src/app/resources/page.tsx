@@ -6,7 +6,7 @@ import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { getTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFactory";
 import type { ResourceOwnerRoster } from "@/lib/data/teamMemberRepository";
 import { getOperationSourceReader, type CalendarResourceEvent } from "@/lib/sourceReads";
-import { filterOperationsByTeamScope, filterOwnerRosterByTeamScope, resolveTeamScope } from "@/lib/teamScope";
+import { filterOperationsByTeamScope, filterOwnerRosterByTeamScope, mergeUnclassified, resolveTeamScope } from "@/lib/teamScope";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +32,9 @@ export default async function ResourcesPage({ searchParams }: ResourcesPageProps
   const resourceOwnerRoster = roleRoster.om;
   const teamScope = resolveTeamScope(params, session, hasRosterMembers(memberRoster) ? memberRoster : resourceOwnerRoster);
   const scopedOperations = filterOperationsByTeamScope(operations, teamScope, resourceOwnerRoster);
-  const scopedOwnerRoster = filterOwnerRosterByTeamScope(resourceOwnerRoster, teamScope);
+  // 팀 스코프(1팀/2팀)는 멤버 관리의 "AX N파트" 표기를 모르므로, 그쪽 담당자는 필터에서
+  // 전부 "미분류"로 떨어진다. 파트 필터/담당자 매칭이 그 사람들을 계속 인식하도록 되살린다.
+  const scopedOwnerRoster = mergeUnclassified(filterOwnerRosterByTeamScope(resourceOwnerRoster, teamScope), resourceOwnerRoster);
   const scopedCalendarEvents = filterCalendarEventsByOwnerRoster(calendarEvents, scopedOwnerRoster);
   // om-request는 접수 시점에 바로 operation이 생성되므로(omRequestOperationLink), 정상적으로 연결된
   // 건은 이미 resourceOperations에 들어 있다. 연결이 실패한 예외 건만 캘린더에 별도로 보여준다.
