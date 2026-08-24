@@ -19,6 +19,7 @@ import { OnsiteRequiredConditionSelect } from "./OnsiteRequiredConditionSelect";
 import { OperationDiscussionPanel } from "./OperationDiscussionPanel";
 import { ResultReportConditionSelect } from "./ResultReportConditionSelect";
 import { ResultReportRequirementCell } from "./ResultReportRequirementCell";
+import { SatisfactionAnalysisButton } from "./SatisfactionAnalysisButton";
 import { SatisfactionSurveyConditionSelect } from "./SatisfactionSurveyConditionSelect";
 import type {
   OperationSession
@@ -227,6 +228,7 @@ export function OperationDetail({
             <div className="section-title">
               <h2>회차 목록</h2>
               <div className="course-sessions-header-actions">
+                <SatisfactionAnalysisButton />
                 <AddRoundButton
                   baseCoach={operation.coach}
                   baseInstructors={operation.instructors}
