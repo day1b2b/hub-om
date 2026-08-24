@@ -488,7 +488,7 @@ function downloadOperationsCsv(courseGroups: CourseGroup[], today: Date) {
     summarizeText(group.operations, (operation) => operation.courseCategory),
     summarizeText(group.operations, (operation) => operation.tools),
     `${group.operations.length}`,
-    summarizeText(group.operations, (operation) => operation.educationDays),
+    summarizeText(group.operations, resolveEducationDays),
     isSafeHttpUrl(group.operationDetail) ? group.operationDetail : "-",
     summarizeText(group.operations, (operation) => operation.om, "배정필요"),
     summarizeText(group.operations, (operation) => operation.ld, "미정"),
@@ -625,6 +625,11 @@ function summarizeText(
   if (values.length === 0) return emptyFallback;
   if (values.length === 1) return values[0];
   return "상이";
+}
+
+function resolveEducationDays(operation: OperationSession): string {
+  if (operation.educationDays.trim()) return operation.educationDays;
+  return operation.sessionDurationDays !== null ? `${operation.sessionDurationDays}` : "";
 }
 
 function summarizeInstructors(operations: OperationSession[]): string {
