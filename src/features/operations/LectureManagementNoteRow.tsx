@@ -30,8 +30,16 @@ const STAFF_OPINION_MARKER = "[운영진 의견]";
 const ISSUE_MARKER = "[이슈]";
 const DATE_HEADER_PATTERN = /^\[날짜:\s*(.*?)\]\s*$/gm;
 
+// 텍스트 직접입력 모드는 결과보고서/패들렛처럼 링크 등록만 쓰기로 하면서 잠시 꺼둠. 코드는 남겨두고 필요해지면 true로 되돌린다.
+const SHOW_LECTURE_TEXT_MODE = false;
+
 function blankTab(defaultDate: string = ""): LectureNoteTab {
   return { courseSummary: "", date: defaultDate, issue: "", staffOpinion: "", studentCount: "" };
+}
+
+function resolveInitialMode(value: string): NoteMode {
+  if (!SHOW_LECTURE_TEXT_MODE) return "link";
+  return isNavigableHref(value) ? "link" : "text";
 }
 
 export function LectureManagementNoteRow({
@@ -44,7 +52,7 @@ export function LectureManagementNoteRow({
   const [isOpen, setIsOpen] = useState(false);
   const [tabs, setTabs] = useState<LectureNoteTab[]>(() => parseLectureNote(value, startDate));
   const [activeTabIndex, setActiveTabIndex] = useState(0);
-  const [mode, setMode] = useState<NoteMode>(() => (isNavigableHref(value) ? "link" : "text"));
+  const [mode, setMode] = useState<NoteMode>(() => resolveInitialMode(value));
   const [linkDraft, setLinkDraft] = useState(() => (isNavigableHref(value) ? value : ""));
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const activeTab = tabs[activeTabIndex] ?? blankTab();
@@ -59,7 +67,7 @@ export function LectureManagementNoteRow({
           </a>
         ) : null}
         <button className="archive-item-edit-trigger" onClick={openDialog} type="button">
-          {done ? "확인" : "등록"}
+          {done ? "수정" : "등록"}
         </button>
       </div>
 
@@ -69,42 +77,44 @@ export function LectureManagementNoteRow({
           <section aria-labelledby="lecture-management-note-title" className="drive-review-dialog lecture-note-dialog">
             <div className="drive-review-header">
               <div>
-                <h2 id="lecture-management-note-title">강의관리</h2>
-                <p>강의가 어떻게 진행되었는지 기록합니다.</p>
+                <h2 id="lecture-management-note-title">강의관리 등록</h2>
+                {SHOW_LECTURE_TEXT_MODE ? <p>강의가 어떻게 진행되었는지 기록합니다.</p> : null}
               </div>
               <button aria-label="강의관리 닫기" onClick={closeDialog} type="button">
                 닫기
               </button>
             </div>
 
-            <div className="lecture-note-tabbar">
-              <div className="lecture-note-tabs">
-                <button className={`lecture-note-tab ${mode === "text" ? "active" : ""}`} onClick={() => setMode("text")} type="button">
-                  텍스트로 기록
-                </button>
-                <button className={`lecture-note-tab ${mode === "link" ? "active" : ""}`} onClick={() => setMode("link")} type="button">
-                  링크로 등록
-                </button>
-              </div>
-
-              {mode === "text" ? (
+            {SHOW_LECTURE_TEXT_MODE ? (
+              <div className="lecture-note-tabbar">
                 <div className="lecture-note-tabs">
-                  {tabs.map((tab, index) => (
-                    <button
-                      className={`lecture-note-tab ${index === activeTabIndex ? "active" : ""}`}
-                      key={index}
-                      onClick={() => setActiveTabIndex(index)}
-                      type="button"
-                    >
-                      {tab.date.trim() || `날짜 ${index + 1}`}
-                    </button>
-                  ))}
-                  <button className="lecture-note-tab-add" onClick={addTab} type="button">
-                    + 날짜 추가
+                  <button className={`lecture-note-tab ${mode === "text" ? "active" : ""}`} onClick={() => setMode("text")} type="button">
+                    텍스트로 기록
+                  </button>
+                  <button className={`lecture-note-tab ${mode === "link" ? "active" : ""}`} onClick={() => setMode("link")} type="button">
+                    링크로 등록
                   </button>
                 </div>
-              ) : null}
-            </div>
+
+                {mode === "text" ? (
+                  <div className="lecture-note-tabs">
+                    {tabs.map((tab, index) => (
+                      <button
+                        className={`lecture-note-tab ${index === activeTabIndex ? "active" : ""}`}
+                        key={index}
+                        onClick={() => setActiveTabIndex(index)}
+                        type="button"
+                      >
+                        {tab.date.trim() || `날짜 ${index + 1}`}
+                      </button>
+                    ))}
+                    <button className="lecture-note-tab-add" onClick={addTab} type="button">
+                      + 날짜 추가
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
 
             {mode === "text" ? (
               <div className="lecture-note-body">
@@ -202,7 +212,7 @@ export function LectureManagementNoteRow({
   function openDialog() {
     setTabs(parseLectureNote(value, startDate));
     setActiveTabIndex(0);
-    setMode(isNavigableHref(value) ? "link" : "text");
+    setMode(resolveInitialMode(value));
     setLinkDraft(isNavigableHref(value) ? value : "");
     setSaveState("idle");
     setIsOpen(true);
@@ -211,7 +221,7 @@ export function LectureManagementNoteRow({
   function closeDialog() {
     setTabs(parseLectureNote(value, startDate));
     setActiveTabIndex(0);
-    setMode(isNavigableHref(value) ? "link" : "text");
+    setMode(resolveInitialMode(value));
     setLinkDraft(isNavigableHref(value) ? value : "");
     setSaveState("idle");
     setIsOpen(false);
