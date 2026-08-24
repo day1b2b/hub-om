@@ -4811,7 +4811,8 @@ td span {
   background: var(--surface-hover, #f4f5f7);
 }
 
-.satisfaction-analysis-dialog {
+/* .drive-review-dialog 가 스타일시트에서 더 뒤에 있어 같은 명시도로는 덮이지 않는다. */
+.drive-review-dialog.satisfaction-analysis-dialog {
   grid-template-rows: auto minmax(0, 1fr) auto;
   max-width: 460px;
 }
