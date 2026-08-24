@@ -37,8 +37,10 @@ const DEFAULT_PAGE_DELAY_MS = 300;
 const MAX_RATE_LIMIT_RETRIES = 6;
 const MAX_RETRY_WAIT_MS = 20000;
 
-const DEFAULT_FIELD_COURSE_ID = "코스ID";
-const DEFAULT_FIELD_COMPANY = "고객사";
+// 기본값 = 우리 세일즈맵 워크스페이스의 실제 필드명(2026-08-07 실검증).
+// 코스ID 필드명에는 공백이 있다("코스 ID"). 이름이 틀리면 읽기 0건으로 조용히 실패하므로 기본값을 실제 값에 맞춰 둔다.
+const DEFAULT_FIELD_COURSE_ID = "코스 ID";
+const DEFAULT_FIELD_COMPANY = "회사";
 const DEFAULT_FIELD_COURSE_NAME = "과정명";
 
 interface SalesmapConfig {
