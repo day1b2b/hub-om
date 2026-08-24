@@ -4811,6 +4811,53 @@ td span {
   background: var(--surface-hover, #f4f5f7);
 }
 
+.satisfaction-analysis-dialog {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  max-width: 460px;
+}
+
+.satisfaction-analysis-guide {
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.satisfaction-analysis-guide ol {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
+.satisfaction-analysis-guide code {
+  background: var(--surface-hover, #f4f5f7);
+  border-radius: 4px;
+  font-size: 12px;
+  padding: 1px 5px;
+}
+
+.satisfaction-analysis-note {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 12px;
+}
+
+.lecture-note-actions a.satisfaction-analysis-open {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--text);
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 800;
+  min-height: 32px;
+  padding: 0 12px;
+  text-decoration: none;
+}
+
+.lecture-note-actions a.satisfaction-analysis-open:hover {
+  border-color: #c9c9c3;
+}
+
 .bulk-save-rounds-bar {
   align-items: center;
   display: flex;
