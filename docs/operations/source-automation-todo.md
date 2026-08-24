@@ -37,8 +37,8 @@ Salesmap을 엑셀 수기 입력의 첫 대체 원천으로 붙이기 위한 결
 
 ### 매핑 방침 (`SalesRecord` 기준)
 
-- `courseId` ← 코스ID 커스텀 필드 (기본 키 `코스ID`, `SALESMAP_FIELD_COURSE_ID`로 변경 가능)
-- `companyName` ← 고객사 필드/관계 (기본 `고객사`, `SALESMAP_FIELD_COMPANY`)
+- `courseId` ← 코스ID 커스텀 필드 (기본 키 `코스 ID` — 공백 포함, `SALESMAP_FIELD_COURSE_ID`로 변경 가능)
+- `companyName` ← 고객사 필드/관계 (기본 `회사`, `SALESMAP_FIELD_COMPANY`)
 - `courseName` ← 과정명 필드 (기본 `과정명`, `SALESMAP_FIELD_COURSE_NAME`), 없으면 딜 `이름` fallback
 - `revenue` ← `price`/`금액`
 - `probability` ← `파이프라인 단계` 이름(딜 상태 참고값)
