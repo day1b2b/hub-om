@@ -135,6 +135,23 @@ export function isArchiveComplete(input: ArchiveCompletionInput): boolean {
   return hasCourseId && hasLectureManagementNote && hasRequiredSatisfaction && hasRequiredResultReportLink;
 }
 
+/**
+ * 아카이빙에서 빠진 항목 이름들. isArchiveComplete와 같은 기준을 쓴다.
+ *
+ * "아카이빙 필요"라고만 보여주면 무엇을 채워야 하는지 알 수 없어 운영 상세를 열어봐야 한다.
+ * 판정과 표시가 어긋나지 않도록 조건을 여기 한 곳에만 둔다.
+ */
+export function missingArchiveItems(input: ArchiveCompletionInput): string[] {
+  const missing: string[] = [];
+  if (!input.courseId.trim()) missing.push("코스ID");
+  if (!input.lectureManagementNote.trim()) missing.push("강의관리");
+  // 조사하지 않기로 한 회차는 채울 값이 없으므로 요구하지 않는다.
+  if (input.hasSatisfactionSurvey !== "불필요" && !input.avgSatisfaction.trim()) missing.push("만족도");
+  // 결과보고서가 "유"일 때만 링크를 요구한다.
+  if (input.hasResultReport === "유" && !input.resultReportLink.trim()) missing.push("결과보고서 링크");
+  return missing;
+}
+
 export function deriveSessionDurationDays(startDate: string, endDate: string): number | null {
   const start = parseDate(startDate);
   const end = parseDate(endDate);
