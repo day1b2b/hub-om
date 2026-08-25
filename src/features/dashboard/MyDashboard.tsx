@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { holidayName } from "./holidays";
+import { missingArchiveItems } from "@/lib/data/operationCalculations";
 import { requestHref } from "./requestHref";
 import type { OmRequest } from "@/lib/data/omRequest/omRequestTypes";
 import type { OperationSession, OperationStatus } from "@/lib/data/operationTypes";
@@ -173,11 +174,19 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
   // 항목마다 이미 세팅 종류를 갖고 있으니 그걸 종류별로 세어 접힌 상태에서도 보이게 한다.
   const countSetup = (predicate: (request: OmRequest) => boolean) =>
     preRequests.filter(({ request }) => predicate(request)).length;
+  const hasNamedSetup = (request: OmRequest) =>
+    request.skillfloSetup === "Y" ||
+    request.skillmatchSetup === "Y" ||
+    request.onSiteOperation === "Y" ||
+    request.coachRequest === "Y";
   const preSetupTasks = [
     { name: "스킬플로", value: countSetup((request) => request.skillfloSetup === "Y") },
     { name: "스킬매치", value: countSetup((request) => request.skillmatchSetup === "Y") },
     { name: "현장운영", value: countSetup((request) => request.onSiteOperation === "Y") },
     { name: "코치", value: countSetup((request) => request.coachRequest === "Y") },
+    // 세팅 종류가 하나도 Y가 아닌 요청. 그래도 기본 준비는 해야 하므로 세어 준다.
+    // 이걸 빼면 그런 과정만 있을 때 "1건 · 챙길 항목 없음"이 된다.
+    { name: "기본 준비", value: countSetup((request) => !hasNamedSetup(request)) },
     // 요청 없이 운영만 있는 건은 세팅 종류를 알 수 없어 따로 센다.
     { name: "세팅 확인", value: preOperations.length }
   ];
@@ -465,7 +474,19 @@ function needsArchiveWork(operation: OperationSession): boolean {
 function resultTaskText(operation: OperationSession): string {
   const tasks: string[] = [];
   if (operation.operationStatus === "완료") tasks.push("회고");
-  if (operation.archiveStatus === "아카이빙필요" || operation.operationStatus === "아카이빙필요") tasks.push("아카이빙");
+  if (needsArchiveWork(operation)) {
+    // "아카이빙"이라고만 쓰면 무엇을 채워야 하는지 몰라 운영 상세를 열어봐야 한다.
+    // 판정과 같은 기준(isArchiveComplete)에서 빠진 항목 이름을 뽑아 붙인다.
+    const missing = missingArchiveItems({
+      courseId: operation.courseId,
+      lectureManagementNote: operation.lectureManagementNote,
+      avgSatisfaction: operation.avgSatisfaction,
+      hasSatisfactionSurvey: operation.hasSatisfactionSurvey,
+      hasResultReport: operation.hasResultReport,
+      resultReportLink: operation.resultReportLink
+    });
+    tasks.push(missing.length > 0 ? `아카이빙(${missing.join("·")})` : "아카이빙");
+  }
   if (isDone(operation) && operation.avgSatisfaction.trim() === "") tasks.push("만족도");
   if (isDone(operation) && operation.hasResultReport === "확인필요") tasks.push("결과보고서");
   return tasks.length > 0 ? `할 일: ${tasks.join("·")}` : "마감 완료";
