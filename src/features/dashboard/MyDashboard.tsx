@@ -78,18 +78,8 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
   const upcoming = scopedOperations.filter((operation) => isUpcoming(operation, today)).length;
   const done = scopedOperations.filter(isDone).length;
 
-  // 내 할 일(밀린 작업)은 기간과 무관하게 전체 기준으로 센다. 지난달 미완 항목이 숨지 않도록.
-  const pendingRetrospective = operations.filter((operation) => operation.operationStatus === "완료").length;
-  const needsArchive = operations.filter(
-    (operation) => operation.archiveStatus === "아카이빙필요" || operation.operationStatus === "아카이빙필요"
-  ).length;
-  const missingSatisfaction = operations.filter(
-    (operation) => isDone(operation) && operation.avgSatisfaction.trim() === ""
-  ).length;
-  const missingResultReport = operations.filter(
-    (operation) => isDone(operation) && operation.hasResultReport === "확인필요"
-  ).length;
-  const hasIssue = operations.filter((operation) => operation.operationIssue.trim() !== "").length;
+  // 밀린 작업 집계는 각 단계의 항목에서 직접 센다(아래 stages 참고).
+  // 기간 필터는 걸지 않는다 — 지난달 미완 항목이 숨으면 안 된다.
 
   // 담당 과정(요청)과 운영이 같은 courseId면 같은 과정이다. 요청 쪽 표현(차수/세팅 정보)이 더 풍부하므로
   // 요청이 대표하고, 운영 중복은 제거한다(캘린더·사전세팅에서 두 번 뜨지 않게).
@@ -198,24 +188,55 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
     task: operation.operationIssue.trim() ? `이슈: ${operation.operationIssue}` : "현장 운영 진행 중",
     href: `/operations/${operation.operationId}`
   }));
-  const resultItems: StageItem[] = phaseOperations("결과").map((operation) => ({
+  // 결과 단계 = 진행상태가 완료·회고완료·아카이빙필요인 운영 + 아카이빙이 남은 운영.
+  // 아카이빙필요는 진행상태와 별개 칼럼(archiveStatus)이라, 진행상태가 아직 배정예정인데
+  // 아카이빙만 필요한 건이 생긴다. 그런 건이 결과 항목에 없으면 "아카이빙필요 12건"인데
+  // 펼치면 "해당 단계의 과정이 없습니다"가 뜬다. 마감 업무가 남은 건이니 결과에 포함한다.
+  const resultOperations = (() => {
+    const picked = new Map<string, OperationSession>();
+    for (const operation of phaseOperations("결과")) picked.set(operation.operationId, operation);
+    for (const operation of operations) {
+      if (needsArchiveWork(operation)) picked.set(operation.operationId, operation);
+    }
+    return [...picked.values()];
+  })();
+  const resultItems: StageItem[] = resultOperations.map((operation) => ({
     id: `o-${operation.operationId}`,
     company: operation.companyName,
     course: operation.courseName,
     task: resultTaskText(operation),
     href: `/operations/${operation.operationId}`
   }));
+
+  // 칩은 그 단계에 실제로 담긴 운영에서만 센다. 전체에서 세면 항목 수와 어긋나
+  // "N건인데 해당 단계의 과정이 없음" 같은 표시가 나온다.
+  const fieldOperations = phaseOperations("현장 운영");
   const stages = [
     { label: "사전세팅", items: preItems, tasks: preSetupTasks },
-    { label: "현장 운영", items: fieldItems, tasks: [{ name: "운영이슈", value: hasIssue }] },
+    {
+      label: "현장 운영",
+      items: fieldItems,
+      tasks: [
+        { name: "운영이슈", value: fieldOperations.filter((operation) => operation.operationIssue.trim() !== "").length }
+      ]
+    },
     {
       label: "결과",
       items: resultItems,
       tasks: [
-        { name: "회고 대기", value: pendingRetrospective },
-        { name: "아카이빙필요", value: needsArchive },
-        { name: "만족도 미확인", value: missingSatisfaction },
-        { name: "결과보고서 미확인", value: missingResultReport }
+        {
+          name: "회고 대기",
+          value: resultOperations.filter((operation) => operation.operationStatus === "완료").length
+        },
+        { name: "아카이빙필요", value: resultOperations.filter(needsArchiveWork).length },
+        {
+          name: "만족도 미확인",
+          value: resultOperations.filter((operation) => isDone(operation) && operation.avgSatisfaction.trim() === "").length
+        },
+        {
+          name: "결과보고서 미확인",
+          value: resultOperations.filter((operation) => isDone(operation) && operation.hasResultReport === "확인필요").length
+        }
       ]
     }
   ];
@@ -433,6 +454,11 @@ function requiredSetupText(request: OmRequest): string {
   if (request.onSiteOperation === "Y") setups.push("현장운영");
   if (request.coachRequest === "Y") setups.push("코치");
   return setups.length > 0 ? `세팅: ${setups.join("·")}` : "사전 세팅 준비";
+}
+
+/** 아카이빙이 남았는지. 진행상태와 archiveStatus 두 곳에 나타날 수 있다. */
+function needsArchiveWork(operation: OperationSession): boolean {
+  return operation.archiveStatus === "아카이빙필요" || operation.operationStatus === "아카이빙필요";
 }
 
 // 결과 단계에서 남은 마감 업무.
