@@ -7,11 +7,17 @@ import { stripPiiFromNote } from "@/lib/data/instructorNotePii";
 
 export type JsonObject = Record<string, unknown>;
 
-// 노션 강사 페이지 1건 → { 강사명, InstructorNote }. 이름 없으면 null(건너뜀).
-export function mapPageToInstructor(page: JsonObject): { name: string; note: InstructorNote } | null {
+// 노션 강사 페이지 1건 → { 강사명, 노션 NO, InstructorNote }.
+// 이름이 없거나 NO를 못 읽으면 null(건너뜀). NO가 노션↔사이트 연결 키라 없으면 저장할 수 없다.
+export function mapPageToInstructor(
+  page: JsonObject
+): { name: string; notionNo: number; note: InstructorNote } | null {
   const properties = isObject(page.properties) ? page.properties : {};
   const name = getText(properties["강사명"]).trim();
   if (!name) return null;
+
+  const notionNo = getUniqueId(properties["ID"]);
+  if (notionNo === undefined) return null;
 
   const categories = getMultiSelect(properties["카테고리"]);
   const lectureTopics = getMultiSelect(properties["담당 강의 정보"]);
@@ -38,12 +44,14 @@ export function mapPageToInstructor(page: JsonObject): { name: string; note: Ins
   }
 
   const note: InstructorNote = {
+    notionNo,
+    instructorName: name,
     notionId: typeof page.id === "string" ? page.id.replace(/-/g, "") : undefined,
     recruitAvoid: profile.recruitAvoid === true,
     notion: profile
   };
 
-  return { name, note: stripPiiFromNote(note) };
+  return { name, notionNo, note: stripPiiFromNote(note) };
 }
 
 // ---- 노션 속성 파서 (코치 동기화와 동일 규칙 + 강사 DB용 보강) --------------------
@@ -73,6 +81,16 @@ function getMultiSelect(prop: unknown): string[] {
   return prop.multi_select
     .map((item) => (isObject(item) && typeof item.name === "string" ? item.name.trim() : ""))
     .filter(Boolean);
+}
+
+/**
+ * 노션 auto increment ID("NO"). API에서는 unique_id 타입으로 { prefix, number } 형태로 온다.
+ * 이 값이 노션↔사이트 연결 키다. 강사명은 바뀌고 동명이인도 있어 키가 될 수 없다.
+ */
+function getUniqueId(prop: unknown): number | undefined {
+  if (!isObject(prop) || prop.type !== "unique_id" || !isObject(prop.unique_id)) return undefined;
+  const value = prop.unique_id.number;
+  return typeof value === "number" ? value : undefined;
 }
 
 function getNumber(prop: unknown): number | undefined {

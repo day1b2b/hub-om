@@ -16,22 +16,29 @@ import { ProfileAttachments } from "./ProfileAttachments";
 import { NameEditor } from "./NameEditor";
 import { NotionLinkEditor } from "./NotionLinkEditor";
 import {
-  getAllInstructorNotes,
   getInstructorNote,
+  getInstructorNoteByNotionNo,
+  listInstructorNotes,
   notionHref,
   resolveNotionLinkTargets
 } from "@/lib/data/instructorWikiStore";
 
 export async function InstructorWikiDetail({ entry }: { entry: InstructorWikiEntry }) {
   const coach = entry.coach;
-  const note = await getInstructorNote(entry.name);
+  // 노션 NO가 있으면 그것으로 읽는다(동명이인 구분). 없으면 운영 현황 표기라 이름으로 읽는다.
+  const note =
+    entry.notionNo !== undefined
+      ? await getInstructorNoteByNotionNo(entry.notionNo)
+      : await getInstructorNote(entry.name);
   const displayName = note.displayName?.trim() || entry.name;
   const notionUrl = notionHref(note.notionId);
 
   // 수동 연결용 노션 강사 명단. 이 항목이 노션 본체인지도 함께 판단한다.
-  const allNotes = await getAllInstructorNotes();
-  const notionNames = Object.keys(allNotes)
-    .filter((candidate) => allNotes[candidate]?.notion)
+  const allNotes = await listInstructorNotes();
+  const notionNames = allNotes
+    .filter((candidate) => candidate.notion)
+    .map((candidate) => (candidate.instructorName ?? "").trim())
+    .filter(Boolean)
     .sort((a, b) => a.localeCompare(b, "ko"));
   const isNotionEntry = Boolean(note.notion);
 

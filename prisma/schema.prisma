@@ -784,7 +784,12 @@ model CoachdbArchiveRow {
 // 같은 컬럼에 섞으면 재수집 때 OM 수정분이 덮이거나 노션 값이 OM 값으로 굳는다.
 model InstructorNote {
   id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  instructorName String    @unique @map("instructor_name")
+  // 노션 강사 DB의 ID(auto increment, 화면상 "NO"). 노션↔사이트 연결 키다.
+  // 강사명은 노션에서 바뀔 수 있고 동명이인(같은 이름의 서로 다른 강사)도 있어 키로 쓸 수 없다.
+  // 노션에 없는 강사(운영현황에만 있는 표기)는 null이며, 그 경우에만 이름으로 식별한다.
+  notionNo       Int?      @unique @map("notion_no")
+  // 노션에서 온 이름. 동명이인이 각각 한 행을 가지므로 unique가 아니다.
+  instructorName String    @map("instructor_name")
   displayName    String?   @map("display_name")
   notionId       String?   @map("notion_id")
   partnerId      String?   @map("partner_id")
@@ -798,6 +803,7 @@ model InstructorNote {
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
   @@index([recruitAvoid], map: "instructor_notes_recruit_avoid_idx")
+  @@index([instructorName], map: "instructor_notes_instructor_name_idx")
   @@map("instructor_notes")
 }
 
