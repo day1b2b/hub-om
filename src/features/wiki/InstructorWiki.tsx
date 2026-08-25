@@ -6,6 +6,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { InstructorCategoryTree } from "./InstructorCategoryTree";
 import {
   cleanCourseName,
+  instructorWikiHref,
   groupEntriesByCategory,
   hasActiveCourse,
   hasOperationHistory,
@@ -116,7 +117,7 @@ export function InstructorWiki({
   const renderCard = (entry: InstructorWikiEntry) => {
     const recent = entry.courses[0];
     return (
-      <Link className="wiki-card" href={`/instructor-wiki/${encodeURIComponent(entry.name)}`} key={entry.id}>
+      <Link className="wiki-card" href={instructorWikiHref(entry)} key={entry.id}>
         <span className="wiki-card-head">
           <WikiAvatar name={entry.name} />
           <span className="wiki-card-name">{entry.name}</span>
@@ -142,7 +143,7 @@ export function InstructorWiki({
       <tr key={entry.id}>
         <td>{index + 1}</td>
         <td>
-          <Link className="row-link row-link--logo" href={`/instructor-wiki/${encodeURIComponent(entry.name)}`}>
+          <Link className="row-link row-link--logo" href={instructorWikiHref(entry)}>
             <WikiAvatar name={entry.name} size="sm" />
             <strong>{entry.name}</strong>
             {avoidSet.has(entry.name) ? <span className="recruit-avoid-tag">⛔ 섭외지양</span> : null}

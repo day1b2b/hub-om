@@ -4,10 +4,12 @@ import { test } from "node:test";
 import {
   applyNotionLinks,
   groupEntriesByCategory,
-  mergeNotionInstructors,
+  instructorWikiHref,
+  mergeNotionNotes,
   parseInstructorNames,
   type InstructorWikiEntry
 } from "@/features/wiki/instructorWikiModel.ts";
+import type { InstructorNote } from "@/lib/data/instructorNoteRepository.ts";
 
 function entry(name: string, categories: string[] = [], courseCount = 0): InstructorWikiEntry {
   return { id: name, name, companies: [], courseCount, courses: [], coach: null, categories };
@@ -30,12 +32,40 @@ test("이름에 포함된 글자는 자리표시자로 오인하지 않는다", 
   assert.deepEqual(parseInstructorNames("박강사현"), ["박강사현"]);
 });
 
+function note(notionNo: number, instructorName: string, categories: string[] = []): InstructorNote {
+  return { notionNo, instructorName, notion: { syncedAt: "2026-08-25T00:00:00.000Z", categories } };
+}
+
 test("노션에만 있는 강사를 코스 없는 항목으로 합친다", () => {
-  const merged = mergeNotionInstructors([entry("정백", [], 2)], ["정백", "이한나"]);
+  const merged = mergeNotionNotes([entry("정백", [], 2)], [note(1, "정백"), note(2, "이한나")]);
   assert.equal(merged.length, 2);
-  // 이름이 겹치면 운영 현황 쪽 이력을 유지한다.
-  assert.equal(merged.find((item) => item.name === "정백")?.courseCount, 2);
+  // 이름이 겹치면 운영 현황 쪽 이력을 유지하고 NO만 붙는다.
+  const jb = merged.find((item) => item.name === "정백");
+  assert.equal(jb?.courseCount, 2);
+  assert.equal(jb?.notionNo, 1);
   assert.equal(merged.find((item) => item.name === "이한나")?.courseCount, 0);
+});
+
+test("노션 카테고리가 합칠 때 함께 붙는다", () => {
+  const merged = mergeNotionNotes([entry("정백", [], 1)], [note(1, "정백", ["생성형AI"])]);
+  assert.deepEqual(merged[0].categories, ["생성형AI"]);
+});
+
+test("동명이인은 운영 항목에 붙이지 않고 각각 세운다", () => {
+  // 김준범 NO=185 / NO=746 처럼 이름이 같으면 운영 현황의 그 이름이 누구인지 알 수 없다.
+  // 추측해서 한쪽에 붙이면 다른 사람 이력이 섞인다.
+  const merged = mergeNotionNotes([entry("김준범", [], 3)], [note(185, "김준범"), note(746, "김준범")]);
+  assert.equal(merged.length, 3);
+  assert.equal(merged.filter((item) => item.notionNo === undefined).length, 1, "운영 항목은 NO 없이 남는다");
+  assert.deepEqual(
+    merged.filter((item) => item.notionNo !== undefined).map((item) => item.notionNo).sort((a, b) => a! - b!),
+    [185, 746]
+  );
+});
+
+test("상세 주소는 NO가 있으면 NO, 없으면 이름", () => {
+  assert.equal(instructorWikiHref({ name: "정백", notionNo: 12 }), "/instructor-wiki/12");
+  assert.equal(instructorWikiHref({ name: "디노랩스_김진태" }), "/instructor-wiki/%EB%94%94%EB%85%B8%EB%9E%A9%EC%8A%A4_%EA%B9%80%EC%A7%84%ED%83%9C");
 });
 
 test("카테고리별로 묶고 미지정은 맨 뒤에 둔다", () => {
@@ -85,7 +115,7 @@ test("연결된 표기의 코스 이력을 노션 강사 항목으로 합친다"
     { "디노랩스_김진태": "김진태" }
   );
 
-  assert.deepEqual(merged.map((entry) => entry.name), ["김진태"]);
+  assert.deepEqual(merged.map((item) => item.name), ["김진태"]);
   assert.equal(merged[0].courseCount, 2);
   // 최근 순 정렬 유지 + 기업 목록 재계산
   assert.equal(merged[0].courses[0].startDate, "2026-03-01");
@@ -103,7 +133,7 @@ test("연결 대상이 목록에 없으면 빈 항목을 만들어 이력을 옮
 test("자기 자신을 가리키는 연결은 무시한다", () => {
   const entries = [withCourse("김진태", "A사", "2026-01-01")];
   const merged = applyNotionLinks(entries, { 김진태: "김진태" });
-  assert.deepEqual(merged.map((entry) => entry.name), ["김진태"]);
+  assert.deepEqual(merged.map((item) => item.name), ["김진태"]);
   assert.equal(merged[0].courseCount, 1);
 });
 

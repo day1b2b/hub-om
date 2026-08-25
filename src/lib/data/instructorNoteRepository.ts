@@ -22,6 +22,14 @@ export interface InstructorNotionProfile {
 }
 
 export interface InstructorNote {
+  /**
+   * 노션 강사 DB의 ID(화면상 "NO"). 노션↔사이트를 잇는 키다.
+   * 강사명은 노션에서 바뀌고 동명이인도 있어 키로 쓸 수 없다(예: 김준범 NO=185 / NO=746).
+   * 노션에 없는 강사(운영현황 표기만 있는 경우)는 undefined이며 그때만 이름으로 식별한다.
+   */
+  notionNo?: number;
+  /** 노션에서 온 강사명. 동명이인이 각각 한 행을 가지므로 고유하지 않다. */
+  instructorName?: string;
   displayName?: string;   // 강사명 수정값
   notionId?: string;      // 노션 강사 페이지 고유 ID(또는 전체 URL) — 연결값
   partnerId?: string;
@@ -33,8 +41,17 @@ export interface InstructorNote {
 }
 
 export interface InstructorNoteRepository {
+  /** 이름으로 조회. 노션에 없는 강사(운영현황 표기)나 예전 경로용. 동명이인은 첫 행이 나온다. */
   getNote(name: string): Promise<InstructorNote>;
-  getAllNotes(): Promise<Record<string, InstructorNote>>;
+  /** 노션 NO로 조회. 동명이인까지 정확히 구분되는 정식 경로다. */
+  getNoteByNotionNo(notionNo: number): Promise<InstructorNote>;
+  /**
+   * 전체 노트를 배열로 돌려준다.
+   * 이름 키 Record였을 때는 동명이인 두 행 중 하나가 사라졌다. 배열이어야 둘 다 보인다.
+   */
+  listNotes(): Promise<InstructorNote[]>;
   /** 보낸 필드만 병합 저장한다. 섭외지양 토글·폼 저장이 각각 일부만 보내기 때문. */
   saveNote(name: string, patch: InstructorNote): Promise<InstructorNote>;
+  /** 노션 NO 기준 병합 저장. 동기화와 NO 기반 화면이 쓴다. */
+  saveNoteByNotionNo(notionNo: number, patch: InstructorNote): Promise<InstructorNote>;
 }

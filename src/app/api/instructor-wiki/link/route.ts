@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
 import {
-  getAllInstructorNotes,
+  listInstructorNotes,
   notionIdKey,
   saveInstructorNote
 } from "@/lib/data/instructorWikiStore";
@@ -42,8 +42,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "자기 자신에는 연결할 수 없습니다." }, { status: 400 });
     }
 
-    const notes = await getAllInstructorNotes();
-    const target = notes[targetName];
+    const notes = await listInstructorNotes();
+    const target = notes.find((note) => (note.instructorName ?? "").trim() === targetName);
     if (!target?.notion) {
       return NextResponse.json({ error: "노션 강사 명단에 없는 이름입니다." }, { status: 400 });
     }

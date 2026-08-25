@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { NO_CATEGORY_LABEL, type InstructorCategoryGroup } from "./instructorWikiModel";
+import { instructorWikiHref, NO_CATEGORY_LABEL, type InstructorCategoryGroup } from "./instructorWikiModel";
 
 interface InstructorCategoryTreeProps {
   groups: InstructorCategoryGroup[];
@@ -75,7 +75,7 @@ export function InstructorCategoryTree({ groups, totalCount, selected, onSelect 
                   <ul className="tree-children">
                     {group.entries.map((entry) => (
                       <li key={entry.id}>
-                        <Link className="tree-leaf" href={`/instructor-wiki/${encodeURIComponent(entry.name)}`}>
+                        <Link className="tree-leaf" href={instructorWikiHref(entry)}>
                           {entry.name}
                         </Link>
                       </li>

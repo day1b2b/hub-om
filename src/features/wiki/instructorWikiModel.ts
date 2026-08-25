@@ -1,3 +1,4 @@
+import type { InstructorNote } from "@/lib/data/instructorNoteRepository";
 import type { CoachStatusValue, CoachSummary } from "@/lib/data/coachTypes";
 import type { OperationSession, OperationStatus } from "@/lib/data/operationTypes";
 
@@ -47,6 +48,11 @@ export interface InstructorWikiEntry {
   coach: InstructorCoachInfo | null;
   /** 노션 강사 DB의 "카테고리"(전문분야). 그룹핑·필터용. 노션 미연결이면 빈 배열. */
   categories: string[];
+  /**
+   * 노션 강사 DB의 ID("NO"). 노션↔사이트 연결 키이며 상세 주소로도 쓴다.
+   * 운영 현황에만 있는 표기(노션에 없는 강사)는 undefined다.
+   */
+  notionNo?: number;
 }
 
 export const STATUS_LABEL: Record<CoachStatusValue, string> = {
@@ -167,39 +173,11 @@ export function hasOperationHistory(entry: InstructorWikiEntry): boolean {
 }
 
 /**
- * 강사 명단의 기준을 노션 강사 DB로 넓힌다.
- *
- * 강사 정보(소속·카테고리·강사료)는 노션에서 오고, 담당 코스·과정은 운영 현황에서 온다.
- * 그래서 운영 현황 기반 entry는 그대로 두고(코스 이력 보존), 노션에만 있는 이름은
- * 코스가 빈 entry로 추가한다. 이름이 겹치면 운영 현황 쪽 entry를 유지한다.
- *
- * 이름은 완전일치로만 합친다. 운영 현황의 "디노랩스_김진태"처럼 표기가 다르면 별개 강사로
- * 남는데, 자동 정규화는 동명이인(예: 노션의 김성재A/김성재B)을 합쳐버릴 위험이 있어 하지 않는다.
- */
-export function mergeNotionInstructors(
-  entries: InstructorWikiEntry[],
-  notionNames: string[]
-): InstructorWikiEntry[] {
-  const seen = new Set(entries.map((entry) => entry.name.trim()));
-  const merged = [...entries];
-
-  for (const rawName of notionNames) {
-    const name = rawName.trim();
-    if (!name || seen.has(name)) continue;
-    seen.add(name);
-    merged.push({ id: name, name, companies: [], courseCount: 0, courses: [], coach: null, categories: [] });
-  }
-
-  return merged.sort((a, b) => a.name.localeCompare(b.name, "ko"));
-}
-
-/**
  * OM이 수동 연결한 노션 강사로 항목을 합친다.
  *
  * 운영 현황은 강사 식별자 없이 이름 텍스트만 갖고 있어서, `디노랩스_김진태`처럼 표기가 다르면
- * 노션의 `김진태`와 별개 사람으로 갈린다. 자동 정규화는 동명이인(김성재A/김성재B)을 합칠 위험이
- * 있어 쓸 수 없으므로, OM이 상세 화면에서 "이 사람은 노션의 이 강사"라고 한 번 지정한 값
- * (instructor_notes.notionId)을 조인 키로 쓴다.
+ * 노션의 `김진태`와 별개 사람으로 갈린다. 노션 NO를 키로 쓰게 된 뒤에도 이 문제는 남는다.
+ * 운영 현황 쪽에 NO가 없기 때문이다. 그래서 OM이 상세 화면에서 지정한 연결을 그대로 쓴다.
  *
  * linkTargets: 운영 현황 표기 → 노션 강사명. 연결된 항목의 코스 이력을 노션 강사명 항목으로 옮긴다.
  */
@@ -238,17 +216,71 @@ export function applyNotionLinks(
   return merged.sort((a, b) => a.name.localeCompare(b.name, "ko"));
 }
 
-// 노션 카테고리를 강사명 완전일치로 붙인다(coach-db 보강과 같은 방식).
-export function attachNotionCategories(
-  entries: InstructorWikiEntry[],
-  categoriesByName: Record<string, string[]>
-): void {
-  for (const entry of entries) {
-    const categories = categoriesByName[entry.name.trim()];
-    if (categories && categories.length > 0) {
-      entry.categories = categories;
-    }
+/**
+ * 강사 명단의 기준을 노션 강사 DB로 넓힌다.
+ *
+ * 강사 정보(소속·카테고리·강사료)는 노션에서 오고, 담당 코스·과정은 운영 현황에서 온다.
+ * 그래서 운영 현황 기반 entry는 그대로 두고(코스 이력 보존) 노션 NO·카테고리만 붙이며,
+ * 운영에 없는 노션 강사는 코스가 빈 entry로 추가한다.
+ *
+ * 이름이 같은 노션 강사가 둘 이상이면(동명이인, 예: 김준범 NO=185 / NO=746) 운영 현황의
+ * 그 이름이 누구인지 알 수 없다. 이때는 추측하지 않고 운영 entry를 그대로 두고 노션 쪽을
+ * 각각 별도 entry로 세운다. 목록에 셋이 보이면서 정리가 필요한 상태가 드러난다.
+ */
+export function mergeNotionNotes(entries: InstructorWikiEntry[], notes: InstructorNote[]): InstructorWikiEntry[] {
+  const notionNotes = notes.filter((note) => note.notionNo !== undefined && note.instructorName);
+
+  // 이름이 몇 번 쓰였는지 세어 동명이인을 가려낸다.
+  const nameUseCount = new Map<string, number>();
+  for (const note of notionNotes) {
+    const name = (note.instructorName ?? "").trim();
+    nameUseCount.set(name, (nameUseCount.get(name) ?? 0) + 1);
   }
+
+  const merged = [...entries];
+  const byName = new Map<string, InstructorWikiEntry[]>();
+  for (const entry of merged) {
+    const list = byName.get(entry.name) ?? [];
+    list.push(entry);
+    byName.set(entry.name, list);
+  }
+
+  for (const note of notionNotes) {
+    const name = (note.instructorName ?? "").trim();
+    const notionNo = note.notionNo as number;
+    const categories = note.notion?.categories ?? [];
+
+    // 이름이 유일하고, 그 이름의 운영 entry가 딱 하나이고, 아직 NO가 안 붙었으면 그 entry에 붙인다.
+    const candidates = (byName.get(name) ?? []).filter((entry) => entry.notionNo === undefined);
+    if (nameUseCount.get(name) === 1 && candidates.length === 1) {
+      candidates[0].notionNo = notionNo;
+      if (categories.length > 0) candidates[0].categories = categories;
+      continue;
+    }
+
+    merged.push({
+      id: `no-${notionNo}`,
+      name,
+      companies: [],
+      courseCount: 0,
+      courses: [],
+      coach: null,
+      categories,
+      notionNo
+    });
+  }
+
+  return merged.sort((a, b) => a.name.localeCompare(b.name, "ko"));
+}
+
+/**
+ * 상세 화면 주소. 노션 NO가 있으면 NO로 간다(동명이인까지 구분됨).
+ * 노션에 없는 강사(운영 현황 표기만 있는 경우)는 이름으로 갈 수밖에 없다.
+ */
+export function instructorWikiHref(entry: Pick<InstructorWikiEntry, "name" | "notionNo">): string {
+  return entry.notionNo !== undefined
+    ? `/instructor-wiki/${entry.notionNo}`
+    : `/instructor-wiki/${encodeURIComponent(entry.name)}`;
 }
 
 export const NO_CATEGORY_LABEL = "카테고리 미지정";

@@ -11,6 +11,8 @@ function samplePage() {
   return {
     id: "3284576d-6ffa-80b8-ba67-f52b29c2a2e8",
     properties: {
+      // 노션 auto increment ID("NO"). 이 값이 노션↔사이트 연결 키다.
+      ID: { type: "unique_id", unique_id: { prefix: null, number: 385 } },
       강사명: { type: "title", title: [{ plain_text: "홍길동" }] },
       소속정보: { type: "multi_select", multi_select: [{ name: "샘플파트너스" }] },
       카테고리: { type: "multi_select", multi_select: [{ name: "생성형AI" }, { name: "마케팅" }] },
@@ -64,7 +66,13 @@ test("개인정보(연락처·이메일·생년월일)는 저장 대상에서 �
 });
 
 test("강사명이 없으면 건너뛴다(null)", () => {
-  const mapped = mapPageToInstructor({ id: "x", properties: { 강사명: { type: "title", title: [] } } });
+  const mapped = mapPageToInstructor({
+    id: "x",
+    properties: {
+      ID: { type: "unique_id", unique_id: { prefix: null, number: 1 } },
+      강사명: { type: "title", title: [] }
+    }
+  });
   assert.equal(mapped, null);
 });
 
@@ -92,7 +100,10 @@ test("섭외지양 여부가 비어 있으면 false다", () => {
 test("빈 값·미지정 속성은 프로필에서 빠진다", () => {
   const mapped = mapPageToInstructor({
     id: "abc",
-    properties: { 강사명: { type: "title", title: [{ plain_text: "김철수" }] } }
+    properties: {
+      ID: { type: "unique_id", unique_id: { prefix: null, number: 7 } },
+      강사명: { type: "title", title: [{ plain_text: "김철수" }] }
+    }
   });
   assert.ok(mapped);
   const notion = mapped.note.notion;
@@ -101,4 +112,20 @@ test("빈 값·미지정 속성은 프로필에서 빠진다", () => {
   assert.equal(notion.categories, undefined);
   assert.equal(notion.baseFee, undefined);
   assert.equal(mapped.note.recruitAvoid, false);
+});
+
+test("노션 NO(ID)를 읽어 연결 키로 담는다", () => {
+  const mapped = mapPageToInstructor(samplePage());
+  assert.ok(mapped);
+  assert.equal(mapped.notionNo, 385);
+  assert.equal(mapped.note.notionNo, 385);
+  // 이름도 값으로 함께 저장한다(NO가 키, 이름은 따라오는 값).
+  assert.equal(mapped.note.instructorName, "홍길동");
+});
+
+test("NO가 없으면 건너뛴다(null)", () => {
+  // 연결 키가 없으면 어느 행인지 특정할 수 없어 저장하면 안 된다.
+  const page = samplePage();
+  delete (page.properties as Record<string, unknown>).ID;
+  assert.equal(mapPageToInstructor(page), null);
 });

@@ -46,6 +46,10 @@ export function stripPiiFromNotionProfile(
 /** DB에 저장해도 되는 필드만 남긴다. 연락처·이메일은 컬럼 자체가 없다. */
 export function stripPiiFromNote(note: InstructorNote): InstructorNote {
   const safe: InstructorNote = {};
+  // 연결 키(노션 NO)와 이름은 개인정보가 아니라 식별값이라 그대로 넘긴다.
+  // 허용 목록 방식이라 여기 빠지면 저장 단계에서 조용히 사라진다.
+  if (note.notionNo !== undefined) safe.notionNo = note.notionNo;
+  if (note.instructorName !== undefined) safe.instructorName = note.instructorName;
   if (note.displayName !== undefined) safe.displayName = note.displayName;
   if (note.notionId !== undefined) safe.notionId = note.notionId;
   if (note.partnerId !== undefined) safe.partnerId = note.partnerId;
