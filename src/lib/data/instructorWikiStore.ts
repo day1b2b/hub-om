@@ -10,9 +10,22 @@ export function getInstructorNote(name: string): Promise<InstructorNote> {
   return getInstructorNoteRepository().getNote(name);
 }
 
-// 목록 화면용: 전체 저장값(섭외지양 표시 등에 사용).
-export function getAllInstructorNotes(): Promise<Record<string, InstructorNote>> {
-  return getInstructorNoteRepository().getAllNotes();
+/** 노션 NO로 조회. 동명이인까지 구분되는 정식 경로. */
+export function getInstructorNoteByNotionNo(notionNo: number): Promise<InstructorNote> {
+  return getInstructorNoteRepository().getNoteByNotionNo(notionNo);
+}
+
+/**
+ * 목록 화면용: 전체 저장값.
+ * 이름 키 Record였을 때는 동명이인 두 행 중 하나가 사라졌다. 배열로 받아 둘 다 살린다.
+ */
+export function listInstructorNotes(): Promise<InstructorNote[]> {
+  return getInstructorNoteRepository().listNotes();
+}
+
+/** 노션 NO 기준 병합 저장(동기화·NO 기반 화면용). */
+export function saveInstructorNoteByNotionNo(notionNo: number, patch: InstructorNote): Promise<InstructorNote> {
+  return getInstructorNoteRepository().saveNoteByNotionNo(notionNo, patch);
 }
 
 // 부분 필드만 병합 저장(섭외지양 토글, 폼 저장이 각각 일부만 보낼 수 있음).
@@ -45,13 +58,14 @@ export function notionIdKey(idOrUrl: string | undefined): string {
  * 노션 동기화가 만든 노트는 이름이 노션 강사명이고 notionId가 자기 페이지 ID다. 그래서
  * "notionId가 다른 노트의 이름을 가리키는" 경우만 수동 연결로 본다(자기 자신은 제외).
  */
-export function resolveNotionLinkTargets(notes: Record<string, InstructorNote>): Record<string, string> {
+export function resolveNotionLinkTargets(notes: InstructorNote[]): Record<string, string> {
   // 같은 노션 ID를 여러 노트가 갖고 있을 수 있다(예전에 연결하면서 스냅샷까지 복사된 경우).
   // 그때 정본은 동기화가 계속 갱신하는 쪽이므로 notion.syncedAt이 가장 최근인 노트를 고른다.
   // 동률이면 이름이 짧은 쪽 → 사전순으로 결정적으로 정한다.
   const ownerByNotionId = new Map<string, string>();
-  for (const [name, note] of Object.entries(notes)) {
-    if (!note?.notion) continue;
+  for (const note of notes) {
+    const name = (note.instructorName ?? "").trim();
+    if (!name || !note?.notion) continue;
     const key = notionIdKey(note.notionId);
     if (!key) continue;
 
@@ -62,7 +76,9 @@ export function resolveNotionLinkTargets(notes: Record<string, InstructorNote>):
   }
 
   const targets: Record<string, string> = {};
-  for (const [name, note] of Object.entries(notes)) {
+  for (const note of notes) {
+    const name = (note.instructorName ?? "").trim();
+    if (!name) continue;
     const key = notionIdKey(note?.notionId);
     if (!key) continue;
     const target = ownerByNotionId.get(key);
@@ -72,9 +88,10 @@ export function resolveNotionLinkTargets(notes: Record<string, InstructorNote>):
 }
 
 /** candidate가 current보다 정본에 적합한가. */
-function preferOwner(notes: Record<string, InstructorNote>, candidate: string, current: string): boolean {
-  const a = notes[candidate]?.notion?.syncedAt ?? "";
-  const b = notes[current]?.notion?.syncedAt ?? "";
+function preferOwner(notes: InstructorNote[], candidate: string, current: string): boolean {
+  const find = (name: string) => notes.find((note) => (note.instructorName ?? "").trim() === name);
+  const a = find(candidate)?.notion?.syncedAt ?? "";
+  const b = find(current)?.notion?.syncedAt ?? "";
   if (a !== b) return a > b;
   if (candidate.length !== current.length) return candidate.length < current.length;
   return candidate.localeCompare(current, "ko") < 0;

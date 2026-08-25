@@ -5,7 +5,12 @@ import type { InstructorNote, InstructorNotionProfile } from "@/lib/data/instruc
 
 // 노션 페이지 ID·파트너 ID는 화면에서 다루지 않는다.
 // 노션 ID는 연결 스크립트가 채우고 이동은 헤더의 노션 칩으로 한다. 저장은 부분 병합이라 값은 그대로 보존된다.
-type Field = Exclude<keyof InstructorNote, "recruitAvoid" | "displayName" | "notionId" | "partnerId" | "notion">;
+// 폼에서 편집하는 자유 입력 칸만 남긴다. 식별값(notionNo·instructorName)과
+// 자동 채움값(notion)·별도 컨트롤(recruitAvoid·displayName 등)은 제외한다.
+type Field = Exclude<
+  keyof InstructorNote,
+  "recruitAvoid" | "displayName" | "notionId" | "partnerId" | "notion" | "notionNo" | "instructorName"
+>;
 type FormState = Record<Field, string>;
 
 // 연락처·이메일은 PII라 읽기 모드에서 가운데를 가린다. "✏ 수정"을 누르면 원본이 보인다.
