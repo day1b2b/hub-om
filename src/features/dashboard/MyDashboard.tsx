@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { holidayName } from "./holidays";
+import { requestHref } from "./requestHref";
 import type { OmRequest } from "@/lib/data/omRequest/omRequestTypes";
 import type { OperationSession, OperationStatus } from "@/lib/data/operationTypes";
 import { getSeoulToday } from "@/lib/seoulDate";
@@ -159,15 +160,13 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
 
   const preItems: StageItem[] = [
     ...preRequests.map(({ request, days }) => {
-      const matchedOperationId = operationIdByCourse.get(request.courseId);
       return {
         id: `r-${request.id}`,
         company: request.company,
         course: request.courseName,
         task: `D-${days} · ${requiredSetupText(request)}`,
         days,
-        // 매칭 운영이 있으면 운영 상세, 없으면 그 과정(배정)의 상세로 — 항상 상세 한 단계 안으로.
-        href: matchedOperationId ? `/operations/${matchedOperationId}` : `/om-request/manage/${request.id}`
+        href: requestHref(request, operationIdByCourse)
       };
     }),
     ...preOperations.map(({ operation, days }) => ({
@@ -298,7 +297,7 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
                         <td>{index + 1}</td>
                         <td><strong>{request.company}</strong></td>
                         <td>
-                          <Link className="course-link" href={`/om-request/manage/${request.id}`}>
+                          <Link className="course-link" href={requestHref(request, operationIdByCourse)}>
                             <strong>{request.courseName}</strong>
                           </Link>
                         </td>
