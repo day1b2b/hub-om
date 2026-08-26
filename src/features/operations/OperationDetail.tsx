@@ -44,6 +44,7 @@ const SHOW_BULK_EDIT_ROUNDS = false;
 interface OperationDetailProps {
   collaboration: OperationCollaboration;
   extraTools?: string[];
+  instructorOptions?: string[];
   onsiteOmOptions?: string[];
   operation: OperationSession;
   personOptions?: PersonOptions;
@@ -55,6 +56,7 @@ interface OperationDetailProps {
 export function OperationDetail({
   collaboration,
   extraTools = [],
+  instructorOptions = [],
   onsiteOmOptions,
   operation,
   personOptions = { ld: [], om: [] },
@@ -235,6 +237,7 @@ export function OperationDetail({
                   baseOperationId={operation.operationId}
                   baseRegion={operation.region}
                   baseTimeText={operation.timeText}
+                  instructorOptions={instructorOptions}
                   nextRoundNo={nextRoundNo}
                 />
                 <BulkAddRoundsButton baseOperationId={operation.operationId} existingRoundNumbers={existingRoundNumbers} />
@@ -293,6 +296,7 @@ export function OperationDetail({
                           />
                         }
                         endDate={courseOperation.endDate}
+                        instructorOptions={instructorOptions}
                         instructors={courseOperation.instructors}
                         operationId={courseOperation.operationId}
                         region={courseOperation.region}

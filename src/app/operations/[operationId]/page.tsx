@@ -7,6 +7,7 @@ import { readOperationCollaboration } from "@/lib/data/operationCollaboration";
 import { resolveOnsiteOmOptionsByEmail } from "@/lib/data/myOperations";
 import { listCustomTools } from "@/lib/data/omRequest/omCustomToolsLocalRepository";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
+import { getInstructorNoteRepository } from "@/lib/data/instructorNoteRepositoryFactory";
 import type { OperationSession } from "@/lib/data/operationTypes";
 import { buildPersonOptions, buildRoleRosterFromOperations, mergeRoleRosters } from "@/lib/data/personOptions";
 import { getStoredTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFactory";
@@ -27,13 +28,19 @@ export default async function OperationDetailPage({ params, searchParams }: Oper
   const { operationId } = await params;
   const repository = getOperationRepository();
   const teamMemberRepository = getStoredTeamMemberRepository();
-  const [operations, ownerRoster, roleRoster, queryParams] = await Promise.all([
+  const [operations, ownerRoster, roleRoster, instructorNotes, queryParams] = await Promise.all([
     repository.listOperations(),
     teamMemberRepository.listResourceOwners(),
     teamMemberRepository.listRoleRosters(),
+    getInstructorNoteRepository().listNotes(),
     searchParams
   ]);
   const personOptions = buildPersonOptions(mergeRoleRosters(roleRoster, buildRoleRosterFromOperations(operations)));
+  // 강사 드롭다운 추천용. 노션 강사 DB(InstructorNote) 동기화 명단에서 가져온다.
+  // 목록에 없으면 자유 입력 그대로 저장된다(신규 강사 등, 선택을 강제하지 않음).
+  const instructorOptions = Array.from(
+    new Set(instructorNotes.map((n) => (n.displayName || n.instructorName || "").trim()).filter(Boolean))
+  ).sort((a, b) => a.localeCompare(b, "ko"));
   const onsiteOmOptions = await resolveOnsiteOmOptionsByEmail(session.user?.email, personOptions.om);
   let operation = operations.find((candidate) => candidate.operationId === operationId);
   let allOperations = operations;
@@ -65,6 +72,7 @@ export default async function OperationDetailPage({ params, searchParams }: Oper
     <OperationDetail
       collaboration={collaboration}
       extraTools={listCustomTools()}
+      instructorOptions={instructorOptions}
       onsiteOmOptions={onsiteOmOptions}
       operation={operation}
       personOptions={personOptions}
