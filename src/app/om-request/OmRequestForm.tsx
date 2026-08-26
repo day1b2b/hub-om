@@ -3,6 +3,7 @@
 import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { NameCombobox } from "@/components/NameCombobox";
 import { parseToolsValue, TOOL_GROUPS, TOOL_META_OPTIONS } from "@/lib/data/omRequest/omToolOptions";
 import { calcSessionDuration, type OmRequestInput, type OmRequestSession, type TrainingType, type YN } from "@/lib/data/omRequest/omRequestTypes";
 import { COURSE_CATEGORY_GROUPS, getCourseCategoryMajor, getCourseCategoryMinors } from "@/lib/data/omRequest/omCourseCategoryOptions";
@@ -293,7 +294,8 @@ export function OmRequestForm({
   defaultTeam,
   initialData,
   requestId,
-  knownCompanies = []
+  knownCompanies = [],
+  knownInstructors = []
 }: {
   extraTools?: string[];
   ldName: string;
@@ -301,6 +303,7 @@ export function OmRequestForm({
   initialData?: OmRequestInput;
   requestId?: string;
   knownCompanies?: string[];
+  knownInstructors?: string[];
 }) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
@@ -558,10 +561,11 @@ export function OmRequestForm({
 
           <label>
             <span>강사명</span>
-            <input
-              type="text"
+            <NameCombobox
+              options={knownInstructors}
+              onChange={(value) => setField("instructorName", value)}
+              unmatchedHint="등록된 강사 명단과 이름이 달라요. 강사DB 노션을 확인해주세요."
               value={form.instructorName}
-              onChange={(e) => setField("instructorName", e.target.value)}
             />
           </label>
 
