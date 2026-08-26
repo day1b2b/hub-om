@@ -51,7 +51,7 @@ export function AddRoundButton({
       {isOpen ? (
         <div aria-modal="true" className="drive-review-modal" role="dialog">
           <div className="drive-review-backdrop" onClick={closeDialog} />
-          <section aria-labelledby="add-round-title" className="drive-review-dialog add-round-dialog">
+          <section aria-labelledby="add-round-title" className="drive-review-dialog add-round-dialog round-fields-dialog">
             <div className="drive-review-header">
               <div>
                 <h2 id="add-round-title">회차 추가</h2>

@@ -4875,6 +4875,24 @@ td span {
   max-width: none;
 }
 
+/* 회차 추가/수정 레이어 전용. 강사/실습코치 콤보박스 드롭다운이 맨 아래 줄 밑에서
+   펼쳐지므로, 내용물 높이만큼만 잡히지 않도록 미리 여유 높이를 확보해 드롭다운이
+   열려도 레이어 안에서 스크롤이 생기지 않게 한다. add-round-dialog를 공유하는
+   다른 레이어(결과보고서/패들렛 링크 등록 등)는 필드가 적어 그대로 둔다. */
+.round-fields-dialog {
+  min-height: min(680px, calc(100vh - 48px));
+}
+
+/* .drive-review-dialog가 스타일시트에서 더 뒤에 있어 같은 명시도(단일 클래스)로는
+   grid-template-rows가 덮이지 않는다(.satisfaction-analysis-dialog와 같은 이유). */
+.drive-review-dialog.round-fields-dialog {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.add-round-dialog .lecture-note-field {
+  max-width: none;
+}
+
 .lecture-note-row {
   display: grid;
   gap: 12px;
