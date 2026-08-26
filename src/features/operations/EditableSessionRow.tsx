@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
+import { NameCombobox } from "@/components/NameCombobox";
 import { useEditAllRoundsSignal } from "./EditAllRoundsProvider";
 
 type SaveState = "idle" | "saving" | "failed";
@@ -12,6 +13,7 @@ interface EditableSessionRowProps {
   coach: string;
   deleteButton?: ReactNode;
   endDate: string;
+  instructorOptions?: string[];
   instructors: string;
   operationId: string;
   region: string;
@@ -33,6 +35,7 @@ export function EditableSessionRow({
   coach,
   deleteButton,
   endDate,
+  instructorOptions = [],
   instructors,
   operationId,
   region,
@@ -153,10 +156,11 @@ export function EditableSessionRow({
                   <div className="lecture-note-row">
                     <label className="lecture-note-field">
                       <span>강사</span>
-                      <input
-                        onChange={(event) => setDraft((current) => ({ ...current, instructors: event.target.value }))}
+                      <NameCombobox
+                        options={instructorOptions}
+                        onChange={(value) => setDraft((current) => ({ ...current, instructors: value }))}
                         placeholder="강사명"
-                        type="text"
+                        unmatchedHint="등록된 강사 명단과 이름이 달라요. 강사DB 노션을 확인해주세요."
                         value={draft.instructors}
                       />
                     </label>

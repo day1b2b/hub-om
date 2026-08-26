@@ -4,6 +4,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { listCustomTools } from "@/lib/data/omRequest/omCustomToolsLocalRepository";
 import { getOmRequest } from "@/lib/data/omRequest/omRequestLocalRepository";
+import { getInstructorNoteRepository } from "@/lib/data/instructorNoteRepositoryFactory";
 import { OmRequestForm } from "@/app/om-request/OmRequestForm";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +21,11 @@ export default async function OmRequestEditPage({ params }: Props) {
 
   const ldName = session.user?.name ?? session.user?.email?.split("@")[0] ?? "";
   const extraTools = listCustomTools();
+
+  const instructorNotes = await getInstructorNoteRepository().listNotes();
+  const knownInstructors = Array.from(
+    new Set(instructorNotes.map((n) => (n.displayName || n.instructorName || "").trim()).filter(Boolean))
+  ).sort((a, b) => a.localeCompare(b, "ko"));
 
   const {
     id: _id,
@@ -46,7 +52,13 @@ export default async function OmRequestEditPage({ params }: Props) {
             <h1>업무 요청 수정</h1>
           </div>
         </header>
-        <OmRequestForm extraTools={extraTools} ldName={ldName} initialData={initialData} requestId={id} />
+        <OmRequestForm
+          extraTools={extraTools}
+          ldName={ldName}
+          initialData={initialData}
+          requestId={id}
+          knownInstructors={knownInstructors}
+        />
       </section>
     </main>
   );

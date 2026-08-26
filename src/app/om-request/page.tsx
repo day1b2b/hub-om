@@ -3,6 +3,7 @@ import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { listCustomTools } from "@/lib/data/omRequest/omCustomToolsLocalRepository";
 import { listTeamUsers } from "@/lib/data/teamUsers/teamUserRepository";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
+import { getInstructorNoteRepository } from "@/lib/data/instructorNoteRepositoryFactory";
 import { OmRequestForm } from "./OmRequestForm";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +26,13 @@ export default async function OmRequestPage() {
     a.localeCompare(b, "ko")
   );
 
+  // 강사명 콤보박스 추천용. 노션 강사 DB(InstructorNote) 동기화 명단에서 가져온다.
+  // 목록에 없으면 자유 입력 그대로 접수된다(신규 강사 등, 선택을 강제하지 않음).
+  const instructorNotes = await getInstructorNoteRepository().listNotes();
+  const knownInstructors = Array.from(
+    new Set(instructorNotes.map((n) => (n.displayName || n.instructorName || "").trim()).filter(Boolean))
+  ).sort((a, b) => a.localeCompare(b, "ko"));
+
   return (
     <main className="dashboard-shell">
       <AppSidebar label="업무 요청" teamScope="both" />
@@ -35,7 +43,13 @@ export default async function OmRequestPage() {
             <p className="page-subtitle">교육 운영 담당자(OM) 업무를 요청합니다.</p>
           </div>
         </header>
-        <OmRequestForm extraTools={extraTools} ldName={ldName} defaultTeam={matchedMember?.team} knownCompanies={knownCompanies} />
+        <OmRequestForm
+          extraTools={extraTools}
+          ldName={ldName}
+          defaultTeam={matchedMember?.team}
+          knownCompanies={knownCompanies}
+          knownInstructors={knownInstructors}
+        />
       </section>
     </main>
   );

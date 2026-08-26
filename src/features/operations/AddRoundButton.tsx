@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { NameCombobox } from "@/components/NameCombobox";
 import { isValidTimeRangeText, normalizeTimeRangeText } from "./parsePastedRounds";
 
 type SaveState = "idle" | "saving" | "failed";
@@ -12,6 +13,7 @@ interface AddRoundButtonProps {
   baseOperationId: string;
   baseRegion: string;
   baseTimeText: string;
+  instructorOptions?: string[];
   nextRoundNo: string;
 }
 
@@ -31,6 +33,7 @@ export function AddRoundButton({
   baseOperationId,
   baseRegion,
   baseTimeText,
+  instructorOptions = [],
   nextRoundNo
 }: AddRoundButtonProps) {
   const router = useRouter();
@@ -108,10 +111,11 @@ export function AddRoundButton({
               <div className="lecture-note-row">
                 <label className="lecture-note-field">
                   <span>강사</span>
-                  <input
-                    onChange={(event) => setDraft((current) => ({ ...current, instructors: event.target.value }))}
+                  <NameCombobox
+                    options={instructorOptions}
+                    onChange={(value) => setDraft((current) => ({ ...current, instructors: value }))}
                     placeholder="강사명"
-                    type="text"
+                    unmatchedHint="등록된 강사 명단과 이름이 달라요. 강사DB 노션을 확인해주세요."
                     value={draft.instructors}
                   />
                 </label>
