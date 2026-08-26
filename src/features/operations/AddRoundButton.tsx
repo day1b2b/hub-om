@@ -115,7 +115,7 @@ export function AddRoundButton({
                     options={instructorOptions}
                     onChange={(value) => setDraft((current) => ({ ...current, instructors: value }))}
                     placeholder="강사명"
-                    unmatchedHint="등록된 강사 명단과 이름이 달라요. 신규 강사라면 이대로 추가해주세요."
+                    unmatchedHint="등록된 강사 명단과 이름이 달라요. 강사DB 노션을 확인해주세요."
                     value={draft.instructors}
                   />
                 </label>

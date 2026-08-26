@@ -564,7 +564,7 @@ export function OmRequestForm({
             <NameCombobox
               options={knownInstructors}
               onChange={(value) => setField("instructorName", value)}
-              unmatchedHint="등록된 강사 명단과 이름이 달라요. 신규 강사라면 이대로 접수해주세요."
+              unmatchedHint="등록된 강사 명단과 이름이 달라요. 강사DB 노션을 확인해주세요."
               value={form.instructorName}
             />
           </label>
