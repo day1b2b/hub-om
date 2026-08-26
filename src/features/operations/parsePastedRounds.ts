@@ -29,12 +29,16 @@ export function normalizeTimeRangeText(value: string): string {
   return `${startHour.padStart(2, "0")}:${startMinute} ~ ${endHour.padStart(2, "0")}:${endMinute}`;
 }
 
-export function parsePastedRounds(value: string, existingRoundNumbers: number[] = []): ParsedRound[] {
+export function parsePastedRounds(
+  value: string,
+  existingRoundNumbers: number[] = [],
+  knownInstructorNames: string[] = []
+): ParsedRound[] {
   const rows = value
     .split("\n")
     .map((line) => line.replace(/\r$/, ""))
     .filter((line) => line.trim().length > 0)
-    .map((line) => toParsedRound(line));
+    .map((line) => toParsedRound(line, knownInstructorNames));
 
   return applyRoundSequenceValidation(rows, existingRoundNumbers);
 }
@@ -73,7 +77,7 @@ function applyRoundSequenceValidation(rows: ParsedRound[], existingRoundNumbers:
   });
 }
 
-function toParsedRound(line: string): ParsedRound {
+function toParsedRound(line: string, knownInstructorNames: string[] = []): ParsedRound {
   const cells = (line.includes("\t") ? line.split("\t") : line.split(",")).map((cell) => cell.trim());
   const [
     roundNoCell = "",
@@ -89,18 +93,22 @@ function toParsedRound(line: string): ParsedRound {
   const startDate = normalizeDateCell(startDateCell);
   const endDate = normalizeDateCell(endDateCell);
   const timeText = timeTextCell.trim();
+  const instructors = instructorsCell.trim();
   const errors: string[] = [];
 
   if (!roundNo) errors.push("회차 필요");
   if (!startDate) errors.push("시작일 확인 필요");
   if (!endDate) errors.push("종료일 확인 필요");
   if (timeText && !isValidTimeRangeText(timeText)) errors.push("시간 형식 확인 필요 (예: 09:30 ~ 17:30)");
+  if (instructors && !isKnownInstructor(instructors, knownInstructorNames)) {
+    errors.push("강사DB 노션에 없는 이름 (확인 필요)");
+  }
 
   return {
     coach: coachCell.trim(),
     endDate,
     errors,
-    instructors: instructorsCell.trim(),
+    instructors,
     raw: line,
     region: regionCell.trim(),
     roundNo,
@@ -109,6 +117,12 @@ function toParsedRound(line: string): ParsedRound {
     statusMessage: "",
     timeText: isValidTimeRangeText(timeText) ? normalizeTimeRangeText(timeText) : timeText
   };
+}
+
+function isKnownInstructor(name: string, knownInstructorNames: string[]): boolean {
+  if (knownInstructorNames.length === 0) return true;
+  const normalized = name.toLowerCase();
+  return knownInstructorNames.some((known) => known.toLowerCase() === normalized);
 }
 
 function normalizeDateCell(value: string): string {
