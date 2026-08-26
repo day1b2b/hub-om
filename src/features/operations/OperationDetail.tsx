@@ -240,7 +240,11 @@ export function OperationDetail({
                   instructorOptions={instructorOptions}
                   nextRoundNo={nextRoundNo}
                 />
-                <BulkAddRoundsButton baseOperationId={operation.operationId} existingRoundNumbers={existingRoundNumbers} />
+                <BulkAddRoundsButton
+                  baseOperationId={operation.operationId}
+                  existingRoundNumbers={existingRoundNumbers}
+                  instructorOptions={instructorOptions}
+                />
                 {SHOW_BULK_EDIT_ROUNDS && courseOperations.length > 1 ? <BulkEditRoundsButton /> : null}
               </div>
             </div>

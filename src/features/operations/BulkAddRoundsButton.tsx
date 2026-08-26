@@ -7,6 +7,7 @@ import { parsePastedRounds, type ParsedRound } from "./parsePastedRounds";
 interface BulkAddRoundsButtonProps {
   baseOperationId: string;
   existingRoundNumbers: number[];
+  instructorOptions?: string[];
 }
 
 const PLACEHOLDER_TEXT =
@@ -15,7 +16,7 @@ const PLACEHOLDER_TEXT =
 const TEMPLATE_HEADER = ["회차", "시작일", "종료일", "시간", "강사", "실습코치", "장소"];
 const TEMPLATE_SAMPLE_ROW = ["1", "2026-03-09", "2026-03-09", "09:30 ~ 17:30", "강사A", "코치A", "서울 강남"];
 
-export function BulkAddRoundsButton({ baseOperationId, existingRoundNumbers }: BulkAddRoundsButtonProps) {
+export function BulkAddRoundsButton({ baseOperationId, existingRoundNumbers, instructorOptions = [] }: BulkAddRoundsButtonProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [pasteText, setPasteText] = useState("");
@@ -139,7 +140,7 @@ export function BulkAddRoundsButton({ baseOperationId, existingRoundNumbers }: B
 
   function handlePasteChange(value: string) {
     setPasteText(value);
-    setRows(parsePastedRounds(value, existingRoundNumbers));
+    setRows(parsePastedRounds(value, existingRoundNumbers, instructorOptions));
     setError(null);
   }
 
