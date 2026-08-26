@@ -102,7 +102,7 @@ export function EditableSessionRow({
         ? createPortal(
             <div aria-modal="true" className="drive-review-modal" role="dialog">
               <div className="drive-review-backdrop" onClick={cancelEditing} />
-              <section aria-labelledby="edit-round-title" className="drive-review-dialog add-round-dialog">
+              <section aria-labelledby="edit-round-title" className="drive-review-dialog add-round-dialog round-fields-dialog">
                 <div className="drive-review-header">
                   <div>
                     <h2 id="edit-round-title">회차 수정</h2>
