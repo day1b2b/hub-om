@@ -47,6 +47,7 @@ export function EditableSessionRow({
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState<SessionDraft>(() => toDraft());
   const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [error, setError] = useState<string | null>(null);
   const lastEditAllSignal = useRef(editAllContext?.editAllSignal ?? 0);
   const saveRef = useRef<(() => Promise<boolean>) | null>(null);
 
@@ -179,7 +180,8 @@ export function EditableSessionRow({
                 <div className="lecture-note-footer">
                   <div className="lecture-note-footer-start">
                     {deleteButton}
-                    {saveState === "failed" ? <span className="lecture-note-save-error">저장하지 못했습니다.</span> : null}
+                    {error ? <span className="lecture-note-save-error">{error}</span> : null}
+                    {!error && saveState === "failed" ? <span className="lecture-note-save-error">저장하지 못했습니다.</span> : null}
                   </div>
                   <div className="lecture-note-actions">
                     <button disabled={saveState === "saving"} onClick={cancelEditing} type="button">
@@ -205,16 +207,24 @@ export function EditableSessionRow({
   function startEditing() {
     setDraft(toDraft());
     setSaveState("idle");
+    setError(null);
     setIsEditing(true);
   }
 
   function cancelEditing() {
     setDraft(toDraft());
     setSaveState("idle");
+    setError(null);
     setIsEditing(false);
   }
 
   async function save(): Promise<boolean> {
+    const instructorName = draft.instructors.trim();
+    if (instructorName && !instructorOptions.some((name) => name.toLowerCase() === instructorName.toLowerCase())) {
+      setError("등록된 강사 명단과 이름이 달라요. 강사DB 노션을 확인해주세요.");
+      return false;
+    }
+    setError(null);
     setSaveState("saving");
 
     const patches = [

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppSidebar } from "@/components/AppSidebar";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
+import { resolveSessionIsAdmin } from "@/lib/auth/requireAdminSession";
 import { getOmNamesForPart } from "@/lib/data/omAvailability/omAvailabilityLocalRepository";
 import { buildOmBusyDates } from "@/lib/data/omAvailability/omBusyDates";
 import { recommendOms } from "@/lib/data/omAvailability/recommendOms";
@@ -43,10 +44,11 @@ export default async function OmRequestDetailPage({ params }: Props) {
   const request = await getOmRequest(id);
   if (!request) notFound();
 
-  const [operations, roleRoster, allRequests] = await Promise.all([
+  const [operations, roleRoster, allRequests, isAdmin] = await Promise.all([
     getOperationRepository().listOperations(),
     getTeamMemberRepository().listRoleRosters(),
-    listOmRequests()
+    listOmRequests(),
+    resolveSessionIsAdmin()
   ]);
   const busyDatesByOm = buildOmBusyDates(operations, allRequests, request.id);
   const partManagerName = omRequestManagerName(request.team);
@@ -87,7 +89,7 @@ export default async function OmRequestDetailPage({ params }: Props) {
                 이 요청으로 운영 등록
               </Link>
             )}
-            <RequestActions id={request.id} />
+            <RequestActions id={request.id} isAdmin={isAdmin} isAssigned={request.status === "배정완료"} />
           </div>
         </header>
 

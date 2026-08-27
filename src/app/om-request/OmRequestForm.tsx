@@ -440,6 +440,11 @@ export function OmRequestForm({
       setError("사용 Tool을 1개 이상 선택하거나 입력해주세요.");
       return;
     }
+    const instructorName = form.instructorName.trim();
+    if (instructorName && !knownInstructors.some((name) => name.toLowerCase() === instructorName.toLowerCase())) {
+      setError("등록된 강사 명단과 이름이 달라요. 강사DB 노션을 확인해주세요.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
