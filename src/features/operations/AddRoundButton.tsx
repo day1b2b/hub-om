@@ -184,6 +184,12 @@ export function AddRoundButton({
       return;
     }
 
+    const instructorName = draft.instructors.trim();
+    if (instructorName && !instructorOptions.some((name) => name.toLowerCase() === instructorName.toLowerCase())) {
+      setError("등록된 강사 명단과 이름이 달라요. 강사DB 노션을 확인해주세요.");
+      return;
+    }
+
     setSaveState("saving");
     setError(null);
 
