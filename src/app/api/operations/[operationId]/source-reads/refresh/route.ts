@@ -28,8 +28,12 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   const body = (await request.json().catch(() => ({}))) as { source?: unknown };
   const source = parseRefreshSource(body.source);
-  clearOperationDiscussionCache(operationId, source);
-  const collaboration = await readOperationCollaboration(operation, { gmailOAuthAccessToken: session.googleAccessToken });
+  const requestUserEmail = session.user?.email ?? undefined;
+  clearOperationDiscussionCache(operationId, source, { requestUserEmail });
+  const collaboration = await readOperationCollaboration(operation, {
+    gmailOAuthAccessToken: session.googleAccessToken,
+    requestUserEmail
+  });
   const emailCount = collaboration?.discussionReferences.filter((item) => item.sourceKind === "email").length ?? null;
   const emailCandidateCount = collaboration?.discussionDiagnostics.emailCandidateCount ?? null;
   const emailMatchedCount = collaboration?.discussionDiagnostics.emailMatchedCount ?? emailCount;

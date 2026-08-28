@@ -69,6 +69,11 @@ export interface OperationDiscussionDiagnostics {
 
 export interface OperationCollaborationReadOptions {
   gmailOAuthAccessToken?: string;
+  /**
+   * 요청을 보낸 사용자의 검증된 세션 이메일(NextAuth `signIn`에서 워크스페이스 도메인 검증을 거친 값).
+   * OAuth 경로의 Gmail 캐시를 사용자별로 분리하는 데만 쓰인다 — 클라이언트가 임의로 지정한 값이 아니다.
+   */
+  requestUserEmail?: string;
 }
 
 export type OperationDiscussionRefreshSource = "all" | "email" | "slack";
@@ -122,19 +127,50 @@ export async function readOperationCollaboration(
   };
 }
 
-export function clearOperationDiscussionCache(operationId: string, source: OperationDiscussionRefreshSource) {
+export interface ClearOperationDiscussionCacheOptions {
+  /**
+   * 지정하면 이 사용자 본인의 Gmail OAuth 캐시(+공용 서비스 계정 캐시)만 지운다.
+   * 생략하면(관리자/전체 무효화 용도) 해당 과정의 모든 사용자 Gmail 캐시를 지운다.
+   */
+  requestUserEmail?: string;
+}
+
+export function clearOperationDiscussionCache(
+  operationId: string,
+  source: OperationDiscussionRefreshSource,
+  options: ClearOperationDiscussionCacheOptions = {}
+) {
   if (source === "all" || source === "slack") {
     slackDiscussionCache.delete(operationId);
     operationReportCache.delete(operationId);
   }
 
   if (source === "all" || source === "email") {
-    gmailDiscussionCache.delete(operationId);
     manualEmailDiscussionCache.delete(operationId);
+    clearGmailDiscussionCache(operationId, options.requestUserEmail);
   }
 
   if (source === "all") {
     operationCollaborationCacheState.genericDiscussionCacheEntry = null;
+  }
+}
+
+function clearGmailDiscussionCache(operationId: string, requestUserEmail?: string) {
+  gmailDiscussionCache.delete(buildGmailServiceAccountCacheKey(operationId));
+
+  const userKey = normalizeGmailCacheUserKey(requestUserEmail);
+
+  if (userKey) {
+    gmailDiscussionCache.delete(buildGmailOAuthCacheKey(operationId, userKey));
+    return;
+  }
+
+  const oauthPrefix = buildGmailOAuthCacheKeyPrefix(operationId);
+
+  for (const key of gmailDiscussionCache.keys()) {
+    if (key.startsWith(oauthPrefix)) {
+      gmailDiscussionCache.delete(key);
+    }
   }
 }
 
@@ -260,14 +296,46 @@ function readSlackOperationSpecificDiscussionCache(operation: OperationSession) 
 }
 
 function readGmailOperationSpecificDiscussionCache(operation: OperationSession, options: OperationCollaborationReadOptions) {
-  const cacheKey = `${operation.operationId}:${options.gmailOAuthAccessToken ? "oauth" : "service-account"}`;
+  const read = () => readGmailOperationDiscussionReferences(operation, { oauthAccessToken: options.gmailOAuthAccessToken });
 
-  return readTimedCache(gmailDiscussionCache.get(cacheKey) ?? null, getResourceReadCacheTtlMs(), () =>
-    readGmailOperationDiscussionReferences(operation, { oauthAccessToken: options.gmailOAuthAccessToken })
-  ).then((cached) => {
+  if (!options.gmailOAuthAccessToken) {
+    const cacheKey = buildGmailServiceAccountCacheKey(operation.operationId);
+
+    return readTimedCache(gmailDiscussionCache.get(cacheKey) ?? null, getResourceReadCacheTtlMs(), read).then((cached) => {
+      gmailDiscussionCache.set(cacheKey, cached.entry);
+      return cached.value;
+    });
+  }
+
+  const userKey = normalizeGmailCacheUserKey(options.requestUserEmail);
+
+  if (!userKey) {
+    // 신원이 확인되지 않은 OAuth 요청은 다른 사용자와 공유되는 캐시에 절대 넣지 않고 매번 새로 읽는다.
+    return read();
+  }
+
+  const cacheKey = buildGmailOAuthCacheKey(operation.operationId, userKey);
+
+  return readTimedCache(gmailDiscussionCache.get(cacheKey) ?? null, getResourceReadCacheTtlMs(), read).then((cached) => {
     gmailDiscussionCache.set(cacheKey, cached.entry);
     return cached.value;
   });
+}
+
+function buildGmailServiceAccountCacheKey(operationId: string) {
+  return `${operationId}:service-account`;
+}
+
+function buildGmailOAuthCacheKeyPrefix(operationId: string) {
+  return `${operationId}:oauth:`;
+}
+
+function buildGmailOAuthCacheKey(operationId: string, userKey: string) {
+  return `${buildGmailOAuthCacheKeyPrefix(operationId)}${userKey}`;
+}
+
+function normalizeGmailCacheUserKey(email: string | undefined) {
+  return email?.trim().toLowerCase() || "";
 }
 
 function readManualEmailOperationSpecificDiscussionCache(operation: OperationSession) {

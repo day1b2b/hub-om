@@ -65,7 +65,8 @@ export default async function OperationDetailPage({ params, searchParams }: Oper
       )
     : [];
   const collaboration = await readOperationCollaboration(operation, {
-    gmailOAuthAccessToken: session.googleAccessToken
+    gmailOAuthAccessToken: session.googleAccessToken,
+    requestUserEmail: session.user?.email ?? undefined
   });
 
   return (
