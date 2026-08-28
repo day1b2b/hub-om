@@ -4,6 +4,13 @@ import { useState } from "react";
 
 const ANALYSIS_SITE_URL = "http://127.0.0.1:7890";
 
+/**
+ * 설치 창구 — 회사 구글 계정으로 열리고, 프로그램과 본인 설정 파일이 한 파일로 내려온다.
+ * (Apps Script, 액세스: 조직 내 사용자)
+ */
+const INSTALL_URL =
+  "https://script.google.com/a/macros/day1company.co.kr/s/AKfycbyXCmCLb9z7rN5NZ-T-Jpdm0bV6q42ZrtX1MNJt7vFnsjRPbC-G3ZCFPStjEs8bebb9/exec";
+
 export function SatisfactionAnalysisButton() {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -31,16 +38,10 @@ export function SatisfactionAnalysisButton() {
             </div>
 
             <div className="lecture-note-body satisfaction-analysis-guide">
-              <p>분석 사이트를 실행한 뒤 열어주세요.</p>
-              <ol>
-                <li>
-                  <code>survey_analysis</code> 스킬 폴더 &gt; <code>런처</code> &gt;{" "}
-                  <code>start-분석사이트</code> 실행
-                </li>
-                <li>아래 &lsquo;분석 사이트 열기&rsquo; 클릭</li>
-              </ol>
+              <p>설치하셨으면 아래 &lsquo;분석 사이트 열기&rsquo;를 눌러주세요.</p>
               <p className="satisfaction-analysis-note">
-                스킬 설치 안내는 <code>survey_analysis</code> 스킬의 <code>설치안내.md</code>에 있습니다.
+                처음이시면 <b>설치하기</b>를 눌러주세요. 프로그램과 설정 파일이 한 파일로 받아집니다. 설치하면
+                바탕화면에 <code>분석 사이트 열기</code> 아이콘이 생깁니다.
               </p>
             </div>
 
@@ -49,6 +50,14 @@ export function SatisfactionAnalysisButton() {
                 <button onClick={closeDialog} type="button">
                   닫기
                 </button>
+                <a
+                  className="satisfaction-analysis-install"
+                  href={INSTALL_URL}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  설치하기
+                </a>
                 <a
                   className="satisfaction-analysis-open"
                   href={ANALYSIS_SITE_URL}

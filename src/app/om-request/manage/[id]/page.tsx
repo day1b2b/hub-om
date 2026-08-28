@@ -8,7 +8,12 @@ import { buildOmBusyDates } from "@/lib/data/omAvailability/omBusyDates";
 import { recommendOms } from "@/lib/data/omAvailability/recommendOms";
 import { getCourseCategoryMajor } from "@/lib/data/omRequest/omCourseCategoryOptions";
 import { getOmRequest, listOmRequests } from "@/lib/data/omRequest/omRequestLocalRepository";
-import { canManageOmRequestAssignment, omRequestManagerName, omRequestStatusLabel } from "@/lib/data/omRequest/omRequestTypes";
+import {
+  canManageOmRequestAssignment,
+  isOmRequestAuthor,
+  omRequestManagerName,
+  omRequestStatusLabel
+} from "@/lib/data/omRequest/omRequestTypes";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { getTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFactory";
 import { AssignForm } from "./AssignForm";
@@ -58,6 +63,7 @@ export default async function OmRequestDetailPage({ params }: Props) {
 
   const currentUserName = session.user?.name ?? session.user?.email?.split("@")[0] ?? "";
   const canAssign = canManageOmRequestAssignment(request.team, currentUserName, session.user?.email);
+  const canEdit = isAdmin || isOmRequestAuthor(request, session.user?.email);
 
   const createdAt = new Date(request.createdAt).toLocaleString("ko-KR", {
     year: "numeric", month: "2-digit", day: "2-digit",
@@ -89,7 +95,12 @@ export default async function OmRequestDetailPage({ params }: Props) {
                 이 요청으로 운영 등록
               </Link>
             )}
-            <RequestActions id={request.id} isAdmin={isAdmin} isAssigned={request.status === "배정완료"} />
+            <RequestActions
+              id={request.id}
+              isAdmin={isAdmin}
+              isAssigned={request.status === "배정완료"}
+              canEdit={canEdit}
+            />
           </div>
         </header>
 

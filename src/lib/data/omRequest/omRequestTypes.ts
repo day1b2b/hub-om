@@ -88,3 +88,11 @@ export function canManageOmRequestAssignment(team: string, userName: string, use
   if (!managerName) return true;
   return userName.trim() === managerName.trim();
 }
+
+// 요청 작성자 판별. 작성자 식별은 접수 시점에 세션에서 저장한 ldEmail로만 한다(ld는
+// 사용자가 자유롭게 고칠 수 있는 표시용 이름이라 신뢰할 수 없다). ldEmail이 없는
+// 예전 데이터는 작성자를 확인할 수 없으므로 false(수정 불가)로 처리한다(fail-closed).
+export function isOmRequestAuthor(request: { ldEmail?: string | null }, userEmail?: string | null): boolean {
+  if (!request.ldEmail || !userEmail) return false;
+  return request.ldEmail.trim().toLowerCase() === userEmail.trim().toLowerCase();
+}
