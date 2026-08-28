@@ -1,4 +1,4 @@
-import { accessSync } from "node:fs";
+import { statSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
 
@@ -18,8 +18,11 @@ function existingModuleUrl(basePath) {
 
   for (const candidate of candidates) {
     try {
-      accessSync(candidate);
-      return pathToFileURL(candidate).href;
+      // statSync + isFile(): 디렉터리(예: "@/lib/sourceReads")를 그 자체로 반환하면
+      // 아래 index.ts 후보를 시도하지 못한 채 EISDIR로 죽는다. 파일인 경우만 채택한다.
+      if (statSync(candidate).isFile()) {
+        return pathToFileURL(candidate).href;
+      }
     } catch {
       // Try the next extension.
     }
