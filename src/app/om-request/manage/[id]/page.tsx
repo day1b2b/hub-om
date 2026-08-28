@@ -63,7 +63,7 @@ export default async function OmRequestDetailPage({ params }: Props) {
 
   const currentUserName = session.user?.name ?? session.user?.email?.split("@")[0] ?? "";
   const canAssign = canManageOmRequestAssignment(request.team, currentUserName, session.user?.email);
-  const canEdit = isAdmin || isOmRequestAuthor(request, session.user?.email);
+  const isAuthor = isOmRequestAuthor(request, session.user?.email);
 
   const createdAt = new Date(request.createdAt).toLocaleString("ko-KR", {
     year: "numeric", month: "2-digit", day: "2-digit",
@@ -99,7 +99,7 @@ export default async function OmRequestDetailPage({ params }: Props) {
               id={request.id}
               isAdmin={isAdmin}
               isAssigned={request.status === "배정완료"}
-              canEdit={canEdit}
+              isAuthor={isAuthor}
             />
           </div>
         </header>

@@ -7,16 +7,17 @@ export function RequestActions({
   id,
   isAdmin,
   isAssigned,
-  canEdit
+  isAuthor
 }: {
   id: string;
   isAdmin: boolean;
   isAssigned: boolean;
-  canEdit: boolean;
+  isAuthor: boolean;
 }) {
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
-  const canDelete = isAdmin || !isAssigned;
+  const canEdit = isAdmin || isAuthor;
+  const canDelete = isAdmin || (isAuthor && !isAssigned);
 
   async function handleDelete() {
     if (!confirm("이 요청을 삭제하시겠습니까? 되돌릴 수 없습니다.")) return;
