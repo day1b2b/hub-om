@@ -3,7 +3,17 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-export function RequestActions({ id, isAdmin, isAssigned }: { id: string; isAdmin: boolean; isAssigned: boolean }) {
+export function RequestActions({
+  id,
+  isAdmin,
+  isAssigned,
+  canEdit
+}: {
+  id: string;
+  isAdmin: boolean;
+  isAssigned: boolean;
+  canEdit: boolean;
+}) {
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
   const canDelete = isAdmin || !isAssigned;
@@ -27,7 +37,9 @@ export function RequestActions({ id, isAdmin, isAssigned }: { id: string; isAdmi
 
   return (
     <div className="request-actions">
-      <a className="request-edit-btn" href={`/om-request/manage/${id}/edit`}>수정</a>
+      {canEdit ? (
+        <a className="request-edit-btn" href={`/om-request/manage/${id}/edit`}>수정</a>
+      ) : null}
       {canDelete ? (
         <button className="request-delete-btn" disabled={deleting} onClick={handleDelete}>
           {deleting ? "삭제 중..." : "삭제"}
