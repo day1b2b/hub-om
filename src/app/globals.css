@@ -4859,6 +4859,26 @@ td span {
   border-color: #c9c9c3;
 }
 
+/* 처음 받는 사람용 — 설치 창구로 보낸다. '분석 사이트 열기'보다 한 단계 낮게 보이게 둔다. */
+.lecture-note-actions a.satisfaction-analysis-install {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--muted);
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 700;
+  min-height: 32px;
+  padding: 0 12px;
+  text-decoration: none;
+}
+
+.lecture-note-actions a.satisfaction-analysis-install:hover {
+  border-color: #c9c9c3;
+  color: var(--text);
+}
+
 .bulk-save-rounds-bar {
   align-items: center;
   display: flex;
