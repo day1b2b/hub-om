@@ -222,7 +222,7 @@ function ToolMultiSelect({
                 <button
                   className={`om-tool-dropdown-option${selected.has(tool) ? " selected" : ""}`}
                   key={tool}
-                  onMouseDown={(e) => { e.preventDefault(); onToggle(tool); }}
+                  onMouseDown={(e) => { e.preventDefault(); onToggle(tool); setQuery(""); }}
                   type="button"
                 >
                   <span>{tool}</span>
@@ -309,6 +309,8 @@ export function OmRequestForm({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sheetError, setSheetError] = useState<string | null>(null);
+  // 접수 완료 모달. 제출 버튼이 폼 하단이라 상단 안내를 놓치기 쉬워, 클릭 위치에 바로 뜨는 모달로 확인시킨다.
+  const [submitted, setSubmitted] = useState(false);
 
   const [form, setForm] = useState<OmRequestInput>(() => {
     const base: OmRequestInput = initialData ?? {
@@ -464,8 +466,9 @@ export function OmRequestForm({
           body: JSON.stringify(form)
         });
         if (!res.ok) throw new Error("저장에 실패했습니다.");
-        const created = await res.json() as { id: string };
-        router.push(`/om-request/complete?id=${created.id}`);
+        // 접수 성공 → 하단에서 클릭해도 바로 보이도록 화면 중앙 모달로 확인시킨다.
+        setSubmitted(true);
+        setSubmitting(false);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "오류가 발생했습니다.");
@@ -743,6 +746,28 @@ export function OmRequestForm({
         </button>
       </div>
     </form>
+
+    {submitted && (
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="요청 접수 완료"
+        style={{ position: "fixed", inset: 0, background: "rgba(15,19,25,.5)", display: "grid", placeItems: "center", zIndex: 1000, padding: 20 }}
+      >
+        <div style={{ background: "#ffffff", color: "#1a1f2b", borderRadius: 16, padding: "30px 26px", maxWidth: 400, width: "100%", textAlign: "center", boxShadow: "0 12px 44px rgba(0,0,0,.28)" }}>
+          <div style={{ width: 54, height: 54, borderRadius: "50%", background: "#2f9e44", color: "#fff", display: "grid", placeItems: "center", fontSize: 30, margin: "0 auto 16px" }} aria-hidden="true">✓</div>
+          <h2 style={{ margin: "0 0 22px", fontSize: "1.25rem" }}>요청이 접수되었습니다</h2>
+          <button
+            className="primary-action"
+            type="button"
+            style={{ width: "100%" }}
+            onClick={() => router.push("/om-request/manage")}
+          >
+            확인 (담당 관리로 이동)
+          </button>
+        </div>
+      </div>
+    )}
     </>
   );
 }
