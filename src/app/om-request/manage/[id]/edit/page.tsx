@@ -1,9 +1,11 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { AppSidebar } from "@/components/AppSidebar";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
+import { resolveSessionIsAdmin } from "@/lib/auth/requireAdminSession";
 import { listCustomTools } from "@/lib/data/omRequest/omCustomToolsLocalRepository";
 import { getOmRequest } from "@/lib/data/omRequest/omRequestLocalRepository";
+import { isOmRequestAuthor } from "@/lib/data/omRequest/omRequestTypes";
 import { getInstructorNoteRepository } from "@/lib/data/instructorNoteRepositoryFactory";
 import { OmRequestForm } from "@/app/om-request/OmRequestForm";
 
@@ -18,6 +20,11 @@ export default async function OmRequestEditPage({ params }: Props) {
   const { id } = await params;
   const request = await getOmRequest(id);
   if (!request) notFound();
+
+  const isAdmin = await resolveSessionIsAdmin();
+  if (!isAdmin && !isOmRequestAuthor(request, session.user?.email)) {
+    redirect(`/om-request/manage/${id}`);
+  }
 
   const ldName = session.user?.name ?? session.user?.email?.split("@")[0] ?? "";
   const extraTools = listCustomTools();
