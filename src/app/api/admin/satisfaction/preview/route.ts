@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { parseGoogleSpreadsheetUrl, readGoogleSheetRows } from "@/lib/data/googleSheetsImport";
+import { getGoogleB2BAccessToken } from "@/lib/googleCalendar/calendarWriteClient";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { matchSatisfactionRow, sheetValuesToRows } from "@/lib/data/satisfactionSheet";
 import type { OperationCandidate } from "@/lib/data/operationMatch/matchOperation";
@@ -13,15 +14,7 @@ export const dynamic = "force-dynamic";
  * 시트는 로그인한 사용자의 Google 권한으로 읽는다(데이터 검수 기능과 동일).
  */
 export async function POST(request: Request) {
-  const session = await requireWorkspaceSession();
-  const accessToken = session.googleAccessToken;
-
-  if (!accessToken) {
-    return NextResponse.json(
-      { ok: false, error: "Google 스프레드시트 읽기 권한이 필요합니다.", reauthRequired: true },
-      { status: 401 }
-    );
-  }
+  await requireWorkspaceSession();
 
   try {
     const body = (await request.json()) as {
@@ -42,6 +35,8 @@ export async function POST(request: Request) {
     }
 
     const { spreadsheetId } = parseGoogleSpreadsheetUrl(sheetUrl);
+    // 개별 사용자 권한이 아니라 전용 B2B 구글 계정(캘린더 OAuth와 공용)으로 시트를 읽는다.
+    const accessToken = await getGoogleB2BAccessToken();
     const values = await readGoogleSheetRows(accessToken, spreadsheetId, tabTitle);
     const headerRowNumber =
       Number.isInteger(body.headerRowNumber) && (body.headerRowNumber ?? 0) > 0 ? Number(body.headerRowNumber) : 1;

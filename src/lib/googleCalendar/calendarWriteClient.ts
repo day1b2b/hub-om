@@ -49,6 +49,15 @@ export function resetAccessTokenCache(): void {
   cachedToken = null;
 }
 
+/**
+ * 캘린더와 같은 B2B 구글 계정(GOOGLE_CAL_OAUTH_*)의 access token.
+ * 만족도 시트 읽기 등, 개별 사용자 권한 대신 공용 계정으로 구글 API를 호출할 때 재사용한다.
+ * (이 토큰이 시트 스코프까지 가지려면 refresh token이 spreadsheets.readonly 동의를 포함해야 한다.)
+ */
+export async function getGoogleB2BAccessToken(): Promise<string> {
+  return getAccessToken();
+}
+
 export interface CalendarEventAttendee {
   email: string;
 }
