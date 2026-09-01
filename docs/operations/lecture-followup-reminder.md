@@ -67,6 +67,7 @@ admin 계정으로 로그인한 브라우저에서 `https://hub-om.skillflo.app/
 | --- | --- |
 | `SLACK_OM_REQUEST_BOT_TOKEN` (없으면 `SLACK_BOT_TOKEN`) | DM을 보내는 봇 토큰. 운영요청 알림과 같은 봇을 쓴다. |
 | `SLACK_REMINDER_ONLY_EMAILS` | 시범 대상. 실제 DM을 받을 이메일만 쉼표로 적는다. **비우면 아무에게도 보내지 않는다.** 전원 발송은 `ALL`. |
+| `SLACK_REMINDER_START_DATE` | 발송 시작일(`YYYY-MM-DD`, 한국 날짜). 이 날짜 전에는 미리보기만 되고 DM은 나가지 않는다. 미리보기의 `blocked`에 `발송 시작일 이전`으로 표시된다. 비우면 즉시 발송 가능. |
 | `REMINDER_MAX_DM_PER_RUN` | 1회 실행 발송 상한(기본 50). 넘으면 발송하지 않고 경고만 돌려준다. |
 | `HUB_OM_BASE_URL` | DM 안의 회차 링크 주소. 비우면 `AUTH_URL`, 그다음 배포 주소를 쓴다. |
 | `REMINDER_SENT_LOG_FILE` | 같은 날 중복 발송을 막는 로그 파일 경로. 비우면 OS 임시 디렉터리. |
@@ -79,6 +80,7 @@ Slack 앱 스코프는 `chat:write`가 기본이고, 워크스페이스 설정�
 2. **미리보기.** admin 계정으로 위 GET URL을 열어 대상 회차·문구·차단 사유를 확인한다.
 3. **시범 발송.** Coolify env에 `SLACK_REMINDER_ONLY_EMAILS`에 본인 이메일만 넣고 재배포한 뒤, 하루 정도 스케줄을 돌려 실제 DM을 받아 본다.
 4. **전원 전환.** 문구가 확정되면 `SLACK_REMINDER_ONLY_EMAILS=ALL`로 바꾼다.
+5. **시작일 예약(선택).** 사이트 안내일이 정해져 있으면 `SLACK_REMINDER_START_DATE`에 그 날짜를 넣어둔다. 그날 아침 첫 실행부터 자동으로 발송이 시작되고, 그 전까지는 스케줄이 돌아도 DM이 나가지 않는다.
 
 ## Coolify 스케줄 작업
 
