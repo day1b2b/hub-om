@@ -1773,8 +1773,100 @@ select {
 }
 
 .operations-table {
-  min-width: 1740px;
+  /* 폭을 내용이 아니라 지정값으로 정한다.
+     auto 였을 때는 칼럼 폭 = '현재 페이지 15행 중 가장 긴 값' 이라, 정렬이나 페이지 이동으로
+     보이는 행이 바뀌면 15개 칼럼 폭이 한꺼번에 다시 계산돼 화면이 흔들렸다
+     (강사 정렬 한 번에 13개 칼럼이 움직였다 — 2026-09-01 실측).
+     지정값은 내용과 무관하므로 무엇을 정렬해도 폭이 그대로다.
+     폭은 실제 데이터의 최대 내용 폭을 재서(캔버스 measureText) 여백을 더해 잡았다. */
+  min-width: 2074px;
+  table-layout: fixed;
+  width: 100%;
 }
+
+/* 지정 폭보다 긴 값은 …로 줄인다 — 넉넉하게 잡았으니 드물다. 전체 값은 상세 화면에 있다. */
+.operations-table th,
+.operations-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 칼럼별 지정 폭 (순서 = 표 머리글 순서) */
+.operations-table th:nth-child(1),
+.operations-table td:nth-child(1) {
+  width: 48px;
+}
+
+.operations-table th:nth-child(2),
+.operations-table td:nth-child(2) {
+  width: 86px;
+}
+
+.operations-table th:nth-child(3),
+.operations-table td:nth-child(3) {
+  width: 96px;
+}
+
+.operations-table th:nth-child(4),
+.operations-table td:nth-child(4) {
+  width: 210px;
+}
+
+.operations-table th:nth-child(5),
+.operations-table td:nth-child(5) {
+  width: 490px;
+}
+
+.operations-table th:nth-child(6),
+.operations-table td:nth-child(6) {
+  width: 76px;
+}
+
+.operations-table th:nth-child(7),
+.operations-table td:nth-child(7) {
+  width: 62px;
+}
+
+.operations-table th:nth-child(8),
+.operations-table td:nth-child(8) {
+  width: 126px;
+}
+
+.operations-table th:nth-child(9),
+.operations-table td:nth-child(9) {
+  width: 92px;
+}
+
+.operations-table th:nth-child(10),
+.operations-table td:nth-child(10) {
+  width: 100px;
+}
+
+.operations-table th:nth-child(11),
+.operations-table td:nth-child(11) {
+  width: 100px;
+}
+
+.operations-table th:nth-child(12),
+.operations-table td:nth-child(12) {
+  width: 124px;
+}
+
+.operations-table th:nth-child(13),
+.operations-table td:nth-child(13) {
+  width: 236px;
+}
+
+.operations-table th:nth-child(14),
+.operations-table td:nth-child(14) {
+  width: 104px;
+}
+
+.operations-table th:nth-child(15),
+.operations-table td:nth-child(15) {
+  width: 124px;
+}
+
 
 .operations-table th,
 .operations-table td {
