@@ -27,7 +27,7 @@ const STAGE_HEADING: Record<ReminderStage, { emoji: string; label: string; suffi
 const STAGE_ORDER: ReminderStage[] = ["d1", "d7"];
 const DEFAULT_MAX_DM_PER_RUN = 50;
 
-export type ReminderBlockedReason = "Slack ID 없음" | "명단에 없음" | "시범 대상 아님";
+export type ReminderBlockedReason = "Slack ID 없음" | "명단에 없음" | "발송 시작일 이전" | "시범 대상 아님";
 
 /** 화이트리스트 상태. off = 아무에게도 안 보냄(기본값), list = 지정한 사람만, all = 전원. */
 export type AllowlistMode = "all" | "list" | "off";
@@ -69,6 +69,8 @@ export interface ReminderRunSummary {
   today: string;
   targetDates: Record<ReminderStage, string>;
   allowlistMode: AllowlistMode;
+  startDate: null | string;
+  beforeStartDate: boolean;
   matchedSessions: number;
   skippedComplete: number;
   skippedAlreadySent: number;
@@ -96,6 +98,9 @@ export async function runLectureFollowUpReminders(options: {
 
   const sentKeys = readSentKeys();
   const allowlist = readAllowlist();
+  const startDate = readStartDate();
+  // 시작일 전에는 미리보기(대상·문구·차단 사유)는 그대로 되고 DM만 나가지 않는다.
+  const beforeStartDate = Boolean(startDate) && today < startDate;
   const unassignedSessions: ReminderSkippedSession[] = [];
   const tasksByOm = new Map<string, { omName: string; tasks: ReminderTask[] }>();
   let matchedSessions = 0;
@@ -141,7 +146,7 @@ export async function runLectureFollowUpReminders(options: {
   }
 
   const recipients: ReminderRecipient[] = [...tasksByOm.values()]
-    .map(({ omName, tasks }) => buildRecipient(omName, sortTasks(tasks), teamUsers, allowlist, today))
+    .map(({ omName, tasks }) => buildRecipient(omName, sortTasks(tasks), teamUsers, allowlist, today, beforeStartDate))
     .sort((a, b) => a.omName.localeCompare(b.omName, "ko"));
 
   const sendable = recipients.filter((recipient) => !recipient.blocked);
@@ -155,6 +160,8 @@ export async function runLectureFollowUpReminders(options: {
       today,
       targetDates,
       allowlistMode: allowlist.mode,
+      startDate: startDate || null,
+      beforeStartDate,
       matchedSessions,
       skippedComplete,
       skippedAlreadySent,
@@ -194,6 +201,8 @@ export async function runLectureFollowUpReminders(options: {
     today,
     targetDates,
     allowlistMode: allowlist.mode,
+    startDate: startDate || null,
+    beforeStartDate,
     matchedSessions,
     skippedComplete,
     skippedAlreadySent,
@@ -274,7 +283,8 @@ function buildRecipient(
   tasks: ReminderTask[],
   teamUsers: TeamUser[],
   allowlist: { emails: Set<string>; mode: AllowlistMode },
-  today: string
+  today: string,
+  beforeStartDate: boolean
 ): ReminderRecipient {
   const normalized = normalizePersonName(omName);
   const user = teamUsers.find((candidate) => normalizePersonName(candidate.name) === normalized);
@@ -285,7 +295,7 @@ function buildRecipient(
     omName,
     email: email || null,
     slackId: slackId || null,
-    blocked: resolveBlockedReason(user, slackId, email, allowlist),
+    blocked: resolveBlockedReason(user, slackId, email, allowlist, beforeStartDate),
     tasks,
     message: buildMessage(omName, tasks, today),
     sent: false
@@ -296,10 +306,13 @@ function resolveBlockedReason(
   user: TeamUser | undefined,
   slackId: string,
   email: string,
-  allowlist: { emails: Set<string>; mode: AllowlistMode }
+  allowlist: { emails: Set<string>; mode: AllowlistMode },
+  beforeStartDate: boolean
 ): null | ReminderBlockedReason {
+  // 명단·Slack ID 문제를 먼저 보여준다. 시작일 전에도 이 진단은 계속 필요하다.
   if (!user) return "명단에 없음";
   if (!slackId) return "Slack ID 없음";
+  if (beforeStartDate) return "발송 시작일 이전";
   if (allowlist.mode === "all") return null;
   if (allowlist.mode === "list" && allowlist.emails.has(email.toLowerCase())) return null;
 
@@ -364,6 +377,17 @@ function readAllowlist(): { emails: Set<string>; mode: AllowlistMode } {
     .filter(Boolean);
 
   return emails.length > 0 ? { emails: new Set(emails), mode: "list" } : { emails: new Set(), mode: "off" };
+}
+
+/**
+ * 발송 시작일(YYYY-MM-DD, 한국 날짜 기준).
+ * 이 날짜가 되기 전에는 미리보기만 되고 DM은 한 통도 나가지 않는다.
+ * 사이트 정식 안내 시점에 맞춰 알림을 자동으로 켜기 위한 값이고, 비우면 즉시 발송 가능 상태다.
+ */
+function readStartDate(): string {
+  const raw = process.env.SLACK_REMINDER_START_DATE?.trim() ?? "";
+
+  return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : "";
 }
 
 function readMaxDmPerRun(): number {
