@@ -121,19 +121,25 @@ function satisfactionSortValue(group: CourseGroup): null | number {
 const SORT_COLUMNS: Record<SortKey, { label: string; value: (group: CourseGroup) => null | number | string }> = {
   coach: { label: "실습코치", value: (g) => summarizeText(g.operations, (o) => o.coach) },
   companyName: { label: "기업", value: (g) => g.companyName },
-  courseId: { label: "코스ID", value: (g) => g.courseId },
+  // 표시와 같은 폴백을 쓴다 — "검토필요"(코스ID 미입력)를 정렬로 모아 보는 게 이 칼럼 정렬의 주 용도다.
+  courseId: { label: "코스ID", value: (g) => g.courseId || "검토필요" },
   courseName: { label: "과정명", value: (g) => g.courseName },
   educationFormat: { label: "교육형태", value: (g) => summarizeText(g.operations, (o) => o.educationFormat) },
   endDate: { label: "종료일", value: (g) => g.endDate },
   instructors: { label: "강사", value: (g) => summarizeInstructors(g.operations) },
-  ld: { label: "LD", value: (g) => summarizeText(g.operations, (o) => o.ld, "") },
-  om: { label: "OM", value: (g) => summarizeText(g.operations, (o) => o.om, "") },
+  ld: { label: "LD", value: (g) => summarizeText(g.operations, (o) => o.ld, "미정") },
+  om: { label: "OM", value: (g) => summarizeText(g.operations, (o) => o.om, "배정필요") },
   revenue: { label: "매출(코스ID기준)", value: (g) => sumRevenueByCourseId(g.operations) },
   roundCount: { label: "총 회차", value: (g) => g.operations.length },
   satisfaction: { label: "만족도(평균)", value: satisfactionSortValue },
   startDate: { label: "시작일", value: (g) => g.startDate }
 };
 
+/**
+ * '값 없음' 판정. 문자 칼럼은 화면 폴백("검토필요"·"배정필요"·"미정"·"-")을 정렬값으로 쓰므로
+ * 여기 걸리지 않는다 — 그 문구를 정렬로 모아 보는 것이 정렬의 주 용도이기 때문이다.
+ * 실제로 걸리는 것은 만족도 미입력(null) 같은 숫자 칼럼이다.
+ */
 function isEmptySortValue(value: null | number | string): boolean {
   return value === null || (typeof value === "string" && !value.trim());
 }
