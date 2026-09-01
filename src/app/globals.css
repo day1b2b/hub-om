@@ -403,6 +403,7 @@ button {
   min-height: 100vh;
 }
 
+.public-home-section,
 .public-home-footer {
   margin: 0 auto;
   max-width: 980px;
@@ -576,6 +577,26 @@ button {
 .public-home-footer a {
   color: var(--accent);
   font-weight: 600;
+}
+
+.public-home-section {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 14px;
+  padding-bottom: 36px;
+  padding-top: 36px;
+  width: 100%;
+}
+
+.public-home-section h2 {
+  font-size: 20px;
+  line-height: 1.4;
+}
+
+.public-home-section p {
+  color: var(--muted);
+  line-height: 1.75;
+  margin-bottom: 0;
 }
 
 .content {
@@ -10426,6 +10447,7 @@ button.coach-doc-reserve-chip:disabled {
   }
 
   .public-hero,
+  .public-home-section,
   .public-home-footer {
     padding-left: 18px;
     padding-right: 18px;
