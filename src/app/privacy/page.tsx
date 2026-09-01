@@ -31,11 +31,6 @@ export default function PrivacyPage() {
             <li>Google 로그인 기본 정보: 이름, 이메일 주소, 프로필 이미지, 계정 식별 정보</li>
             <li>권한 확인 정보: 허용된 Google Workspace 도메인 여부 및 로그인 세션 정보</li>
             <li>
-              Gmail 읽기 전용 데이터: 사용자가 승인한 범위에서 과정 관련 메일 후보를 찾기 위한
-              제목, 발신자, 수신자 또는 참조자, 날짜, 메시지 식별자, 본문 요약 생성에 사용하는
-              본문 내용, 라벨 등 메타데이터
-            </li>
-            <li>
               Google Sheets 읽기 전용 데이터: 사용자가 지정한 시트 URL과 탭에서 읽은 셀 값. 조회한
               내용은 hub-om 데이터베이스에 복사·저장되며, 원본 시트는 수정하지 않습니다.
             </li>
@@ -61,8 +56,6 @@ export default function PrivacyPage() {
           </p>
           <ul>
             <li>허용된 회사 Google Workspace 계정인지 확인하고 로그인 세션을 유지</li>
-            <li>운영 상세 화면에서 과정과 관련된 Gmail 논의 후보를 읽기 전용으로 조회</li>
-            <li>운영 담당자가 메일 제목, 발신자, 날짜, 스니펫을 확인해 관련 논의를 찾도록 지원</li>
             <li>사용자가 지정한 Google Sheets의 셀 값을 읽어 교육 운영 데이터로 가져오기</li>
             <li>
               사용자의 요청에 따라 본인 또는 편집 권한이 있는 회사 공유 Google Calendar에 교육
@@ -72,23 +65,9 @@ export default function PrivacyPage() {
           </ul>
         </section>
 
-        <section>
-          <h2>3. Gmail 데이터 처리 방식</h2>
-          <p>
-            hub-om은 Gmail API를 읽기 전용으로 사용합니다. 운영 담당자가 과정 상세 화면을 열람할 때,
-            사용자 본인이 로그인 시 승인한 권한으로 해당 과정과 관련된 메일을 검색하고, 서버에서
-            메일 본문을 조회해 운영에 참고할 수 있는 짧은 요약(핵심 문장 발췌)을 생성합니다. 화면에는
-            제목, 날짜, 요약, 원문으로 이동하는 링크를 표시하며, 조회한 메일 본문 원문은 데이터베이스에
-            영구 저장하지 않고 일정 시간(TTL) 동안만 서버 메모리에 캐시한 뒤 자동 만료됩니다.
-          </p>
-          <p>
-            hub-om은 사용자의 Gmail 메시지를 전송, 수정, 삭제하거나 사용자를 대신해 메일을 작성하지
-            않습니다.
-          </p>
-        </section>
 
         <section>
-          <h2>4. Google Sheets 및 Google Calendar 데이터 처리 방식</h2>
+          <h2>3. Google Sheets 및 Google Calendar 데이터 처리 방식</h2>
           <p>
             사용자가 기존 회사 스프레드시트의 URL과 탭을 지정하면 hub-om은 Google Sheets API를
             읽기 전용으로 사용하여 셀 값을 가져오고 교육 운영 데이터로 데이터베이스에 저장합니다.
@@ -107,7 +86,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2>5. 보관 및 삭제</h2>
+          <h2>4. 보관 및 삭제</h2>
           <p>
             로그인 세션과 업무 기록은 서비스 제공, 보안, 감사, 장애 대응에 필요한 기간 동안
             보관합니다. Google API로 조회한 원천 데이터는 업무 후보 확인에 필요한 범위에서만
@@ -125,7 +104,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2>6. 공유 및 제3자 제공</h2>
+          <h2>5. 공유 및 제3자 제공</h2>
           <p>
             hub-om은 Google 사용자 데이터를 광고 목적으로 판매하거나 공유하지 않습니다. 또한 Google
             사용자 데이터를 일반화된 AI 또는 머신러닝 모델 학습 목적으로 사용하지 않습니다.
@@ -139,7 +118,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2>7. Google API Services User Data Policy 준수</h2>
+          <h2>6. Google API Services User Data Policy 준수</h2>
           <p>
             hub-om의 Google API 사용과 Google 사용자 데이터 이전은 Google API Services User Data
             Policy 및 Limited Use 요구사항을 준수합니다. Google 사용자 데이터는 사용자가 승인한
@@ -148,7 +127,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2>8. 사용자 선택권</h2>
+          <h2>7. 사용자 선택권</h2>
           <p>사용자는 Google 계정 보안 설정에서 hub-om에 부여한 접근 권한을 철회할 수 있습니다.</p>
           <ul>
             <li>Google 계정의 보안 설정에서 타사 앱 접근 권한을 삭제</li>
@@ -163,7 +142,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2>9. 보안</h2>
+          <h2>8. 보안</h2>
           <p>
             hub-om은 접근 권한을 허용된 회사 Google Workspace 계정으로 제한하고, 인증 정보와 API
             비밀값을 공개 저장소에 저장하지 않습니다. 운영 환경의 비밀값은 배포 환경의 보안 저장소에서
@@ -172,7 +151,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2>10. 문의</h2>
+          <h2>9. 문의</h2>
           <p>
             개인정보 처리, Google 데이터 접근, 권한 철회, 삭제 요청은 아래 이메일로 문의할 수
             있습니다.
@@ -183,7 +162,7 @@ export default function PrivacyPage() {
         </section>
 
         <section>
-          <h2>11. 개인정보보호책임자 및 관련 부서</h2>
+          <h2>10. 개인정보보호책임자 및 관련 부서</h2>
           <p>
             회사는 개인정보 처리에 관한 업무를 총괄해서 책임지고, 개인정보 처리와 관련한 사용자의
             불만처리 및 피해구제 등을 위하여 아래와 같이 개인정보보호책임자를 지정하고 있습니다.

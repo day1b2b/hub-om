@@ -48,9 +48,8 @@ export default function TermsPage() {
           <h2>3. Google API 및 외부 원천 이용</h2>
           <p>
             hub-om은 사용자가 승인한 Google API 권한을 통해 업무에 필요한 데이터를 처리합니다.
-            Gmail은 과정 관련 대화를 찾고 요약을 표시하는 데 읽기 전용으로 사용하며, Google Sheets는
-            사용자가 지정한 셀 값을 가져오는 데 읽기 전용으로 사용합니다. hub-om은 Gmail 메시지를
-            전송·수정·삭제하거나 원본 스프레드시트를 수정·삭제하지 않습니다.
+            Google Sheets는 사용자가 지정한 셀 값을 가져오는 데 읽기 전용으로 사용하며, hub-om은
+            원본 스프레드시트를 수정·삭제하지 않습니다.
           </p>
           <p>
             Google Calendar는 사용자의 요청에 따라 교육 일정을 생성, 수정 또는 삭제하는 데
