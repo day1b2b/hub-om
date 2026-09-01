@@ -16,7 +16,8 @@ interface RouteContext {
 }
 
 export async function POST(request: Request, { params }: RouteContext) {
-  const session = await requireWorkspaceSession();
+  // 로그인·워크스페이스 도메인 확인은 그대로 둔다. 세션 값 자체는 더 이상 쓰지 않는다.
+  await requireWorkspaceSession();
 
   const { operationId } = await params;
   const repository = getOperationRepository();
@@ -28,12 +29,8 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   const body = (await request.json().catch(() => ({}))) as { source?: unknown };
   const source = parseRefreshSource(body.source);
-  const requestUserEmail = session.user?.email ?? undefined;
-  clearOperationDiscussionCache(operationId, source, { requestUserEmail });
-  const collaboration = await readOperationCollaboration(operation, {
-    gmailOAuthAccessToken: session.googleAccessToken,
-    requestUserEmail
-  });
+  clearOperationDiscussionCache(operationId, source);
+  const collaboration = await readOperationCollaboration(operation);
   const emailCount = collaboration?.discussionReferences.filter((item) => item.sourceKind === "email").length ?? null;
   const emailCandidateCount = collaboration?.discussionDiagnostics.emailCandidateCount ?? null;
   const emailMatchedCount = collaboration?.discussionDiagnostics.emailMatchedCount ?? emailCount;

@@ -48,7 +48,7 @@ export default function TermsPage() {
           <h2>3. Google API 및 외부 원천 이용</h2>
           <p>
             hub-om은 사용자가 승인한 Google API 권한과 조직에서 설정한 읽기 전용 연동을 통해 운영
-            업무에 필요한 후보 데이터를 조회할 수 있습니다. Gmail, Google Drive, Google Sheets,
+            업무에 필요한 후보 데이터를 조회할 수 있습니다. Google Drive, Google Sheets,
             Google Calendar 등 외부 원천 데이터는 운영 판단을 돕기 위한 참고 정보로 제공됩니다.
           </p>
           <p>

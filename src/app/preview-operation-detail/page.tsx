@@ -20,7 +20,7 @@ export default async function PreviewOperationDetailPage() {
   const sameCourseIdOperations = operations.filter(
     (candidate) => normalizeCourseId(candidate.courseId) === normalizeCourseId(operation.courseId)
   );
-  const collaboration = await readOperationCollaboration(operation, {});
+  const collaboration = await readOperationCollaboration(operation);
 
   return (
     <OperationDetail
