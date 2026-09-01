@@ -1,5 +1,6 @@
 import { OperationDashboard, type OmRosterEntry } from "@/features/operations/OperationDashboard";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
+import { resolveOmNameByEmail } from "@/lib/data/myOperations";
 import { normalizePersonKey } from "@/lib/data/roleAssignees";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { getStoredTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFactory";
@@ -17,11 +18,13 @@ export default async function OperationsPage({ searchParams }: OperationsPagePro
 
   const repository = getOperationRepository();
   const teamMemberRepository = getStoredTeamMemberRepository();
-  const [operations, ownerRoster, teamUsers, params] = await Promise.all([
+  const [operations, ownerRoster, teamUsers, params, myOmName] = await Promise.all([
     repository.listOperations(),
     teamMemberRepository.listResourceOwners(),
     listTeamUsers(),
-    searchParams
+    searchParams,
+    // 로그인한 사람의 OM 이름. 내 대시보드(/me)와 같은 규칙을 쓴다 — 매핑을 두 벌 만들지 않는다.
+    resolveOmNameByEmail(session.user?.email)
   ]);
   const teamScope = resolveTeamScope(params, session, ownerRoster);
   const scopedOperations = filterOperationsByTeamScope(operations, teamScope, ownerRoster);
@@ -30,6 +33,7 @@ export default async function OperationsPage({ searchParams }: OperationsPagePro
 
   return (
     <OperationDashboard
+      myOmName={myOmName}
       omRoster={omRoster}
       operations={scopedOperations}
       partByPersonKey={partByPersonKey}
