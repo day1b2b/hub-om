@@ -1795,6 +1795,28 @@ select {
   font-weight: 500;
 }
 
+/* 정렬 가능한 머리글 — 누를 수 있다는 것이 보여야 한다(안 보이면 아무도 안 누른다). */
+.operations-table th.operations-th-sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.operations-table th.operations-th-sortable:hover {
+  color: var(--text);
+}
+
+.operations-table th.operations-th-sortable.is-sorted {
+  color: var(--green);
+}
+
+.operations-sort-mark {
+  display: inline-block;
+  font-size: 9px;
+  margin-left: 3px;
+  /* 정렬 표시가 켜질 때 칼럼 폭이 흔들리지 않도록 자리를 미리 잡아 둔다. */
+  min-width: 8px;
+}
+
 .operations-table td strong {
   font-weight: 700;
 }

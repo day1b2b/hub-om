@@ -24,6 +24,8 @@ export interface OmRosterEntry {
 }
 
 interface OperationDashboardProps {
+  /** 로그인한 사람의 OM 이름(명단에 없으면 null) — OM 필터 기본값으로 쓴다. */
+  myOmName: null | string;
   omRoster: OmRosterEntry[];
   operations: OperationSession[];
   partByPersonKey: Record<string, string>;
@@ -59,17 +61,109 @@ function sumRevenueByCourseId(operations: ReadonlyArray<Pick<OperationSession, "
   return total;
 }
 
-export function OperationDashboard({ omRoster, operations, partByPersonKey, teamScope }: OperationDashboardProps) {
+/**
+ * 표 정렬 정의. 비교값은 **화면에 찍는 값을 만드는 함수를 그대로 써서** 뽑는다 —
+ * 보이는 값과 정렬 기준이 어긋나면 사용자는 정렬이 고장난 것으로 읽는다.
+ * 숫자 칼럼은 숫자로, 나머지는 한국어 로케일 문자열로 비교한다.
+ * (#·싱크업은 정렬 대상이 아니다 — 행 번호와 링크 유무라 순서에 의미가 없다.)
+ */
+type SortKey =
+  | "coach"
+  | "companyName"
+  | "courseId"
+  | "courseName"
+  | "educationFormat"
+  | "instructors"
+  | "ld"
+  | "om"
+  | "revenue"
+  | "roundCount"
+  | "satisfaction"
+  | "startDate"
+  | "endDate";
+
+/** 만족도 정렬값. average() 가 표시용 문자열(toFixed(2))이라 그대로 비교하면 "10.00" < "4.62" 가 된다. */
+function satisfactionSortValue(group: CourseGroup): null | number {
+  const shown = average(satisfactionValues(group.operations, (operation) => operation.avgSatisfaction));
+  return shown === null ? null : Number(shown);
+}
+
+/**
+ * 칼럼마다 '정렬에 쓸 값' 만 정의한다. 비교·빈값·방향 처리는 compareGroups 한 곳에서 한다 —
+ * 칼럼별로 흩어 놓으면 "빈 값은 늘 뒤" 같은 규칙이 한두 칼럼에서 조용히 깨진다.
+ * 값은 **화면에 찍는 값을 만드는 함수를 그대로 써서** 뽑는다. 보이는 값과 정렬 기준이
+ * 어긋나면 사용자는 정렬이 고장난 것으로 읽는다.
+ */
+const SORT_COLUMNS: Record<SortKey, { label: string; value: (group: CourseGroup) => null | number | string }> = {
+  coach: { label: "실습코치", value: (g) => summarizeText(g.operations, (o) => o.coach) },
+  companyName: { label: "기업", value: (g) => g.companyName },
+  courseId: { label: "코스ID", value: (g) => g.courseId },
+  courseName: { label: "과정명", value: (g) => g.courseName },
+  educationFormat: { label: "교육형태", value: (g) => summarizeText(g.operations, (o) => o.educationFormat) },
+  endDate: { label: "종료일", value: (g) => g.endDate },
+  instructors: { label: "강사", value: (g) => summarizeInstructors(g.operations) },
+  ld: { label: "LD", value: (g) => summarizeText(g.operations, (o) => o.ld, "") },
+  om: { label: "OM", value: (g) => summarizeText(g.operations, (o) => o.om, "") },
+  revenue: { label: "매출(코스ID기준)", value: (g) => sumRevenueByCourseId(g.operations) },
+  roundCount: { label: "총 회차", value: (g) => g.operations.length },
+  satisfaction: { label: "만족도(평균)", value: satisfactionSortValue },
+  startDate: { label: "시작일", value: (g) => g.startDate }
+};
+
+function isEmptySortValue(value: null | number | string): boolean {
+  return value === null || (typeof value === "string" && !value.trim());
+}
+
+/**
+ * 정렬 비교. 빈 값("미정"·"검토필요"·미입력)은 **오름·내림 어느 쪽이든 늘 뒤로** 보낸다 —
+ * 방향을 뒤집을 때마다 빈 칸이 1페이지를 덮으면 정렬이 쓸모없어진다.
+ * 값이 같으면 기본 순서(최신 시작일순)로 갈라 페이지를 넘길 때 순서가 흔들리지 않게 한다.
+ */
+function compareGroups(a: CourseGroup, b: CourseGroup, key: SortKey, dir: "asc" | "desc"): number {
+  const left = SORT_COLUMNS[key].value(a);
+  const right = SORT_COLUMNS[key].value(b);
+  const leftEmpty = isEmptySortValue(left);
+  const rightEmpty = isEmptySortValue(right);
+
+  if (leftEmpty && rightEmpty) return b.startDate.localeCompare(a.startDate);
+  if (leftEmpty) return 1;
+  if (rightEmpty) return -1;
+
+  // 문자 비교는 이 화면의 필터 드롭다운(unique)과 같은 compareStableText 를 쓴다 —
+  // 같은 화면에서 목록 순서와 표 순서가 어긋나면 둘 중 하나가 고장난 것처럼 보인다.
+  const compared =
+    typeof left === "number" && typeof right === "number"
+      ? left - right
+      : compareStableText(String(left), String(right));
+
+  if (compared !== 0) return compared * (dir === "asc" ? 1 : -1);
+  return b.startDate.localeCompare(a.startDate);
+}
+
+export function OperationDashboard({
+  myOmName,
+  omRoster,
+  operations,
+  partByPersonKey,
+  teamScope
+}: OperationDashboardProps) {
   const today = useMemo(() => getSeoulToday(), []);
   const teamQuery = teamScopeSearchParam(teamScope);
   const [companyFilter, setCompanyFilter] = useState("전체 기업");
   const [formatFilter, setFormatFilter] = useState<"전체 교육형태" | EducationFormat>("전체 교육형태");
-  const [omFilter, setOmFilter] = useState(전체_OM);
+  // 기본값 = 로그인한 사람. 자기 과정부터 보는 게 대부분의 목적이라 기본을 그쪽으로 둔다.
+  //   명단(omRoster)에 없는 이름이면 선택지에 없으니 전체로 둔다 — 빈 목록이 뜨는 것보다 낫다.
+  //   드롭다운에 자기 이름이 그대로 보이므로 "데이터가 안 나온다" 로 오해할 여지는 없다.
+  const [omFilter, setOmFilter] = useState(() =>
+    myOmName && omRoster.some((om) => om.name === myOmName) ? myOmName : 전체_OM
+  );
   const [partFilter, setPartFilter] = useState(전체_파트);
   const [archiveOnly, setArchiveOnly] = useState(false);
   const [query, setQuery] = useState("");
   // 기본 날짜 필터는 "전체"(빈 범위 = 전체 조회). 사용자가 필요할 때 좁힌다.
   const [range, setRange] = useState<{ start: string; end: string }>({ start: "", end: "" });
+  // 표 정렬. null = 기본(최신 시작일순) — 머리글을 세 번 누르면 이 상태로 돌아온다.
+  const [sort, setSort] = useState<null | { dir: "asc" | "desc"; key: SortKey }>(null);
   const [page, setPage] = useState(1);
   const [pageInput, setPageInput] = useState("");
   const pageSize = 15;
@@ -133,14 +227,45 @@ export function OperationDashboard({ omRoster, operations, partByPersonKey, team
   const filteredOperations = baseFilteredOperations;
 
   const courseGroups = useMemo(() => {
-    return groupOperationsByCourse(filteredOperations, today);
-  }, [filteredOperations, today]);
+    const groups = groupOperationsByCourse(filteredOperations, today);
+    if (!sort) return groups;   // 기본 = groupOperationsByCourse 의 최신 시작일 내림차순
+
+    // ★ 페이지를 자르기 전에 전체를 정렬한다. 보이는 15건만 정렬하면 정렬이 아니라 착시다.
+    return groups.slice().sort((a, b) => compareGroups(a, b, sort.key, sort.dir));
+  }, [filteredOperations, sort, today]);
 
   // 필터로 결과가 줄면 현재 페이지를 유효 범위로 클램프해 빈 페이지가 뜨지 않게 한다.
   const totalPages = Math.max(1, Math.ceil(courseGroups.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const pagedGroups = courseGroups.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const pageNumbers = getPageNumbers(currentPage, totalPages);
+
+  // 오름차순 → 내림차순 → 기본. 기본(최신순)이 의미 있는 순서라 되돌아갈 길을 남긴다.
+  function toggleSort(key: SortKey) {
+    setPage(1);
+    setSort((current) => {
+      if (!current || current.key !== key) return { dir: "asc", key };
+      if (current.dir === "asc") return { dir: "desc", key };
+      return null;
+    });
+  }
+
+  function renderSortableHeader(key: SortKey) {
+    const column = SORT_COLUMNS[key];
+    const active = sort?.key === key;
+    const mark = active ? (sort?.dir === "asc" ? "▲" : "▼") : "";
+    return (
+      <th
+        aria-sort={active ? (sort?.dir === "asc" ? "ascending" : "descending") : "none"}
+        className={active ? "operations-th-sortable is-sorted" : "operations-th-sortable"}
+        onClick={() => toggleSort(key)}
+        title={`${column.label} 기준으로 정렬`}
+      >
+        {column.label}
+        <span className="operations-sort-mark">{mark}</span>
+      </th>
+    );
+  }
 
   function goToPage(target: number) {
     setPage(Math.min(Math.max(1, target), totalPages));
@@ -366,20 +491,20 @@ export function OperationDashboard({ omRoster, operations, partByPersonKey, team
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>교육형태</th>
-                  <th>코스ID</th>
-                  <th>기업</th>
-                  <th>과정명</th>
-                  <th>총 회차</th>
+                  {renderSortableHeader("educationFormat")}
+                  {renderSortableHeader("courseId")}
+                  {renderSortableHeader("companyName")}
+                  {renderSortableHeader("courseName")}
+                  {renderSortableHeader("roundCount")}
                   <th>싱크업</th>
-                  <th>OM</th>
-                  <th>LD</th>
-                  <th>시작일</th>
-                  <th>종료일</th>
-                  <th>강사</th>
-                  <th>실습코치</th>
-                  <th>만족도(평균)</th>
-                  <th>매출(코스ID기준)</th>
+                  {renderSortableHeader("om")}
+                  {renderSortableHeader("ld")}
+                  {renderSortableHeader("startDate")}
+                  {renderSortableHeader("endDate")}
+                  {renderSortableHeader("instructors")}
+                  {renderSortableHeader("coach")}
+                  {renderSortableHeader("satisfaction")}
+                  {renderSortableHeader("revenue")}
                 </tr>
               </thead>
               <tbody>
