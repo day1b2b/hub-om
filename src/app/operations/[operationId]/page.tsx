@@ -64,10 +64,7 @@ export default async function OperationDetailPage({ params, searchParams }: Oper
         (candidate) => normalizeCourseId(candidate.courseId) === normalizeCourseId(operation.courseId)
       )
     : [];
-  const collaboration = await readOperationCollaboration(operation, {
-    gmailOAuthAccessToken: session.googleAccessToken,
-    requestUserEmail: session.user?.email ?? undefined
-  });
+  const collaboration = await readOperationCollaboration(operation);
 
   return (
     <OperationDetail
