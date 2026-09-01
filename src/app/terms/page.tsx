@@ -21,7 +21,7 @@ export default function TermsPage() {
             기업교육 운영 현황, 일정, 논의, 자료 후보를 확인하고 관리하기 위한 내부 업무용
             서비스입니다.
           </p>
-          <p className="legal-updated">시행일: 2026-06-16</p>
+          <p className="legal-updated">시행일: 2026-09-01</p>
         </header>
 
         <section>
@@ -47,14 +47,19 @@ export default function TermsPage() {
         <section>
           <h2>3. Google API 및 외부 원천 이용</h2>
           <p>
-            hub-om은 사용자가 승인한 Google API 권한과 조직에서 설정한 읽기 전용 연동을 통해 운영
-            업무에 필요한 후보 데이터를 조회할 수 있습니다. Google Drive, Google Sheets,
-            Google Calendar 등 외부 원천 데이터는 운영 판단을 돕기 위한 참고 정보로 제공됩니다.
+            hub-om은 사용자가 승인한 Google API 권한을 통해 업무에 필요한 데이터를 처리합니다.
+            Google Sheets는 사용자가 지정한 셀 값을 가져오는 데 읽기 전용으로 사용하며, hub-om은
+            원본 스프레드시트를 수정·삭제하지 않습니다.
           </p>
           <p>
-            hub-om은 기본적으로 외부 원천에 쓰기 작업을 수행하지 않으며, 원천 데이터의 정확성,
-            최신성, 완전성을 보장하지 않습니다. 사용자는 중요한 운영 판단 전 원천 시스템 또는
-            담당자 확인을 함께 수행해야 합니다.
+            Google Calendar는 사용자의 요청에 따라 교육 일정을 생성, 수정 또는 삭제하는 데
+            사용합니다. 일정 작업은 사용자가 편집할 수 있는 본인 캘린더와 회사 공유 캘린더에서만
+            수행되며, hub-om은 캘린더의 공유 권한, ACL, 소유권 또는 설정을 변경하지 않습니다.
+          </p>
+          <p>
+            외부 원천 데이터의 정확성, 최신성 및 완전성은 해당 Google 서비스의 상태와 사용자의
+            입력·권한에 따라 달라질 수 있습니다. 사용자는 중요한 운영 판단이나 일정 변경 전에
+            대상과 내용을 확인해야 합니다.
           </p>
         </section>
 
@@ -107,10 +112,9 @@ export default function TermsPage() {
             개인정보 및 Google 사용자 데이터 처리 기준은 개인정보처리방침에서 정합니다. 사용자는
             서비스를 이용함으로써 개인정보처리방침에 따른 데이터 처리를 이해하고 동의합니다.
           </p>
-          {/* 개인정보처리방침 링크 숨김 처리 */}
-          {/* <p>
+          <p>
             <a href="/privacy">개인정보처리방침 보기</a>
-          </p> */}
+          </p>
         </section>
 
         <section>
@@ -130,8 +134,7 @@ export default function TermsPage() {
         </section>
 
         <footer className="legal-footer">
-          {/* 개인정보처리방침 링크 숨김 처리 */}
-          {/* <a href="/privacy">개인정보처리방침</a> */}
+          <a href="/privacy">개인정보처리방침</a>
           <Link href="/">홈으로 돌아가기</Link>
         </footer>
       </article>
