@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { ExternalTableLink, isSafeHttpUrl } from "@/components/ExternalTableLink";
 import { SearchableSelect } from "@/components/SearchableSelect";
+import { normalizeCourseId } from "@/lib/data/operationCalculations";
 import type {
   EducationFormat,
   OperationSession
@@ -48,16 +49,39 @@ function operationParts(operation: OperationSession, partByPersonKey: Record<str
  * 같은 코스ID가 여러 과정(행)에 걸쳐 있어도 총액이 중복 집계되지 않는다.
  * 코스ID가 없는 항목은 각각 1건으로 집계한다.
  */
+/**
+ * 코스ID 하나당 매출을 1회만 센다(같은 코스ID를 여러 과정이 공유하므로 합산하면 뻥튀기된다).
+ *
+ * 예전 구현은 '처음 만난 세션'의 매출만 썼다. 같은 코스ID의 세션 중 앞쪽이 비어 있으면
+ * 그 코스ID 전체가 0으로 집계돼, 목록에는 475,000,000 이 보이는데 총 매출에는 안 들어갔다.
+ * 세션 순서만 바뀌어도 총 매출이 달라졌다(2026-09-01 확인). 그래서 코스ID별로 '값이 채워진
+ * 세션' 을 쓰도록(최댓값) 바꿨다 — 순서에 무관하고, 같은 값이 여러 번 세지지도 않는다.
+ *
+ * 묶는 열쇠는 normalizeCourseId 로 정규화한다. 코스ID에 제로폭 공백(U+200B)이 섞여 들어오는
+ * 일이 반복돼서, 정규화 없이 묶으면 "255413" 과 "255413​" 가 다른 코스ID로 잡혀
+ * 같은 매출이 두 번 더해진다.
+ */
 function sumRevenueByCourseId(operations: ReadonlyArray<Pick<OperationSession, "courseId" | "revenue">>): number {
-  const countedCourseIds = new Set<string>();
+  const revenueByCourseId = new Map<string, number>();
   let total = 0;
+
   for (const operation of operations) {
-    if (operation.courseId) {
-      if (countedCourseIds.has(operation.courseId)) continue;
-      countedCourseIds.add(operation.courseId);
+    const revenue = operation.revenue ?? 0;
+    const key = normalizeCourseId(operation.courseId);
+
+    if (!key) {
+      // 코스ID가 없으면 묶을 열쇠가 없다 — 세션별로 그대로 더한다(기존 동작 유지).
+      total += revenue;
+      continue;
     }
-    total += operation.revenue ?? 0;
+
+    revenueByCourseId.set(key, Math.max(revenueByCourseId.get(key) ?? 0, revenue));
   }
+
+  for (const revenue of revenueByCourseId.values()) {
+    total += revenue;
+  }
+
   return total;
 }
 
