@@ -329,6 +329,7 @@ export function OperationDetail({
                             teamQuery={teamQuery}
                           />
                         }
+                        educationDates={courseOperation.educationDates}
                         endDate={courseOperation.endDate}
                         instructorOptions={instructorOptions}
                         instructors={courseOperation.instructors}

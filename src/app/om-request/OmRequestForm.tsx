@@ -3,11 +3,14 @@
 import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { MultiDateCalendar } from "@/components/MultiDateCalendar";
 import { NameCombobox } from "@/components/NameCombobox";
 import { parseToolsValue, TOOL_GROUPS, TOOL_META_OPTIONS } from "@/lib/data/omRequest/omToolOptions";
 import { calcSessionDuration, type OmRequestInput, type OmRequestSession, type TrainingType, type YN } from "@/lib/data/omRequest/omRequestTypes";
 import { COURSE_CATEGORY_GROUPS, getCourseCategoryMajor, getCourseCategoryMinors } from "@/lib/data/omRequest/omCourseCategoryOptions";
 import { parseSessionSheet } from "@/lib/data/omRequest/omSessionSheet";
+import { deriveDateRangeFromEducationDates, parseEducationDatesText } from "@/lib/data/operationCalculations";
+import { sessionDatesOf, summarizeSessionDates } from "@/lib/data/omRequest/omRequestSessionDates";
 
 declare global {
   interface Window {
@@ -53,51 +56,8 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
 });
 
 function emptySession(): OmRequestSession {
-  return { date: "", dateEnd: "", timeStart: "", timeEnd: "", duration: "", location: "" };
+  return { date: "", dateEnd: "", timeStart: "", timeEnd: "", duration: "", location: "", educationDatesText: "" };
 }
-
-function formatDateInput(raw: string): string {
-  const digits = raw.replace(/\D/g, "").slice(0, 8);
-  if (digits.length <= 4) return digits;
-  if (digits.length <= 6) return `${digits.slice(0, 4)}-${digits.slice(4)}`;
-  return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`;
-}
-
-function DateInput({ value, required, onChange }: { value: string; required?: boolean; onChange: (v: string) => void }) {
-  const pickerRef = useRef<HTMLInputElement>(null);
-  return (
-    <div className="date-input-wrapper">
-      <input
-        required={required}
-        type="text"
-        inputMode="numeric"
-        placeholder="YYYY-MM-DD"
-        value={value}
-        onChange={(e) => onChange(formatDateInput(e.target.value))}
-      />
-      <button
-        type="button"
-        className="date-picker-btn"
-        onClick={() => pickerRef.current?.showPicker()}
-        aria-label="달력에서 선택"
-      >
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="1" y="3" width="14" height="12" rx="2" stroke="currentColor" strokeWidth="1.4"/>
-          <path d="M1 7h14" stroke="currentColor" strokeWidth="1.4"/>
-          <path d="M5 1v3M11 1v3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-        </svg>
-      </button>
-      <input
-        ref={pickerRef}
-        type="date"
-        className="date-picker-hidden"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
-    </div>
-  );
-}
-
 
 function RequiredMark() {
   return <em className="required-mark" aria-label="필수">*</em>;
@@ -311,6 +271,7 @@ export function OmRequestForm({
   const [sheetError, setSheetError] = useState<string | null>(null);
   // 접수 완료 모달. 제출 버튼이 폼 하단이라 상단 안내를 놓치기 쉬워, 클릭 위치에 바로 뜨는 모달로 확인시킨다.
   const [submitted, setSubmitted] = useState(false);
+  const [openDateEditorIndex, setOpenDateEditorIndex] = useState<number | null>(null);
 
   const [form, setForm] = useState<OmRequestInput>(() => {
     const base: OmRequestInput = initialData ?? {
@@ -436,6 +397,19 @@ export function OmRequestForm({
     });
   }
 
+  /** 달력에서 고른 날짜들로 date/dateEnd(최소/최대)와 educationDatesText를 한 번에 갱신한다. */
+  function updateSessionDates(idx: number, dates: string[]) {
+    const range = deriveDateRangeFromEducationDates(dates);
+    setForm((prev) => ({
+      ...prev,
+      sessions: prev.sessions.map((s, i) =>
+        i === idx
+          ? { ...s, date: range?.startDate ?? "", dateEnd: range?.endDate ?? "", educationDatesText: dates.join(", ") }
+          : s
+      )
+    }));
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (selectedTools.size === 0 && !customTools.trim()) {
@@ -445,6 +419,19 @@ export function OmRequestForm({
     const instructorName = form.instructorName.trim();
     if (instructorName && !knownInstructors.some((name) => name.toLowerCase() === instructorName.toLowerCase())) {
       setError("등록된 강사 명단과 이름이 달라요. 강사DB 노션을 확인해주세요.");
+      return;
+    }
+    const invalidEducationDatesRow = form.sessions.findIndex(
+      (session) =>
+        session.educationDatesText?.trim() && parseEducationDatesText(session.educationDatesText).errors.length > 0
+    );
+    if (invalidEducationDatesRow !== -1) {
+      setError(`${invalidEducationDatesRow + 1}회차 실제교육일 형식을 확인해주세요 (예: 2026-09-03, 2026-09-04).`);
+      return;
+    }
+    const missingDatesRow = form.sessions.findIndex((session) => !session.date);
+    if (missingDatesRow !== -1) {
+      setError(`${missingDatesRow + 1}회차 교육일을 최소 1일 선택해주세요.`);
       return;
     }
     setSubmitting(true);
@@ -662,8 +649,7 @@ export function OmRequestForm({
         <div className="om-sessions-table">
           <div className="om-sessions-header">
             <span>회차</span>
-            <span>시작일<em className="required-mark">*</em></span>
-            <span>종료일</span>
+            <span>교육일<em className="required-mark">*</em></span>
             <span>시작 시간<em className="required-mark">*</em></span>
             <span>종료 시간<em className="required-mark">*</em></span>
             <span>시수</span>
@@ -672,15 +658,13 @@ export function OmRequestForm({
           {form.sessions.map((session, idx) => (
             <div className="om-sessions-row" key={idx}>
               <span className="session-num">{idx + 1}</span>
-              <DateInput
-                required
-                value={session.date}
-                onChange={(v) => updateSession(idx, "date", v)}
-              />
-              <DateInput
-                value={session.dateEnd ?? ""}
-                onChange={(v) => updateSession(idx, "dateEnd", v)}
-              />
+              <button
+                className="session-dates-trigger"
+                onClick={() => setOpenDateEditorIndex(idx)}
+                type="button"
+              >
+                {summarizeSessionDates(session)}
+              </button>
               <select
                 required
                 value={session.timeStart}
@@ -718,6 +702,36 @@ export function OmRequestForm({
           ))}
         </div>
       </div>
+
+      {openDateEditorIndex !== null && form.sessions[openDateEditorIndex] ? (
+        <div aria-modal="true" className="drive-review-modal" role="dialog">
+          <div className="drive-review-backdrop" onClick={() => setOpenDateEditorIndex(null)} />
+          <section aria-labelledby="session-dates-title" className="drive-review-dialog session-dates-dialog">
+            <div className="drive-review-header">
+              <div>
+                <h2 id="session-dates-title">{openDateEditorIndex + 1}회차 교육일</h2>
+                <p>실제 교육이 있는 날짜만 달력에서 클릭하세요.</p>
+              </div>
+              <button aria-label="교육일 선택 닫기" onClick={() => setOpenDateEditorIndex(null)} type="button">
+                닫기
+              </button>
+            </div>
+            <div className="lecture-note-body">
+              <MultiDateCalendar
+                onChange={(dates) => updateSessionDates(openDateEditorIndex, dates)}
+                value={sessionDatesOf(form.sessions[openDateEditorIndex])}
+              />
+            </div>
+            <div className="lecture-note-footer">
+              <div className="lecture-note-actions">
+                <button onClick={() => setOpenDateEditorIndex(null)} type="button">
+                  확인
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+      ) : null}
 
       {/* 요청사항 */}
       <div className="operation-form-section">

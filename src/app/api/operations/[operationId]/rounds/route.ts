@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
-import { isSameCourse } from "@/lib/data/operationCalculations";
+import { isSameCourse, parseEducationDatesText } from "@/lib/data/operationCalculations";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import type { CreateOperationInput } from "@/lib/data/operationTypes";
 
@@ -14,6 +14,7 @@ interface RouteContext {
 
 interface CreateRoundBody {
   coach?: unknown;
+  educationDates?: unknown;
   endDate?: unknown;
   instructors?: unknown;
   region?: unknown;
@@ -36,9 +37,18 @@ export async function POST(request: Request, { params }: RouteContext) {
   const roundNo = textValue(body.roundNo);
   const startDate = textValue(body.startDate);
   const endDate = textValue(body.endDate);
+  const educationDatesText = textValue(body.educationDates);
+  const parsedEducationDates = educationDatesText ? parseEducationDatesText(educationDatesText) : null;
 
   if (!roundNo || !startDate || !endDate) {
     return NextResponse.json({ ok: false, error: "회차, 시작일, 종료일은 필수입니다." }, { status: 400 });
+  }
+
+  if (parsedEducationDates && parsedEducationDates.errors.length > 0) {
+    return NextResponse.json(
+      { ok: false, error: `실제 교육일을 확인해주세요: ${parsedEducationDates.errors.join(", ")}` },
+      { status: 400 }
+    );
   }
 
   const allOperations = await repository.listOperations();
@@ -80,6 +90,7 @@ export async function POST(request: Request, { params }: RouteContext) {
       createdBy: session.user?.email ?? undefined,
       driveLink: "",
       educationDays: baseOperation.educationDays,
+      educationDates: parsedEducationDates?.dates,
       educationFormat: baseOperation.educationFormat,
       endDate,
       instructorCost: null,

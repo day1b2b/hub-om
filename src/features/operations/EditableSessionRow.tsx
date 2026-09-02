@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
+import { MultiDateCalendar } from "@/components/MultiDateCalendar";
 import { NameCombobox } from "@/components/NameCombobox";
+import { deriveDateRangeFromEducationDates, enumerateDateRange, formatEducationDatesList } from "@/lib/data/operationCalculations";
 import { useEditAllRoundsSignal } from "./EditAllRoundsProvider";
 
 type SaveState = "idle" | "saving" | "failed";
@@ -12,6 +14,7 @@ interface EditableSessionRowProps {
   children?: ReactNode;
   coach: string;
   deleteButton?: ReactNode;
+  educationDates: string[];
   endDate: string;
   instructorOptions?: string[];
   instructors: string;
@@ -23,10 +26,9 @@ interface EditableSessionRowProps {
 
 interface SessionDraft {
   coach: string;
-  endDate: string;
+  educationDates: string[];
   instructors: string;
   region: string;
-  startDate: string;
   timeText: string;
 }
 
@@ -34,6 +36,7 @@ export function EditableSessionRow({
   children,
   coach,
   deleteButton,
+  educationDates,
   endDate,
   instructorOptions = [],
   instructors,
@@ -88,6 +91,7 @@ export function EditableSessionRow({
       <td>
         <span className="stacked-cell">
           <strong>{startDate} ~ {endDate}</strong>
+          {educationDates.length > 0 ? <small>실제 {formatEducationDatesList(educationDates)}</small> : null}
           <small>{timeText || "시간 미정"}</small>
         </span>
       </td>
@@ -114,24 +118,13 @@ export function EditableSessionRow({
                 </div>
 
                 <div className="lecture-note-body">
-                  <div className="lecture-note-row">
-                    <label className="lecture-note-field">
-                      <span>시작일</span>
-                      <input
-                        onChange={(event) => setDraft((current) => ({ ...current, startDate: event.target.value }))}
-                        type="date"
-                        value={draft.startDate}
-                      />
-                    </label>
-                    <label className="lecture-note-field">
-                      <span>종료일</span>
-                      <input
-                        onChange={(event) => setDraft((current) => ({ ...current, endDate: event.target.value }))}
-                        type="date"
-                        value={draft.endDate}
-                      />
-                    </label>
-                  </div>
+                  <label className="lecture-note-field">
+                    <span>교육일 (달력에서 실제 교육이 있는 날짜만 클릭)</span>
+                    <MultiDateCalendar
+                      onChange={(dates) => setDraft((current) => ({ ...current, educationDates: dates }))}
+                      value={draft.educationDates}
+                    />
+                  </label>
 
                   <div className="lecture-note-row">
                     <label className="lecture-note-field">
@@ -201,7 +194,13 @@ export function EditableSessionRow({
   );
 
   function toDraft(): SessionDraft {
-    return { coach, endDate, instructors, region, startDate, timeText };
+    return {
+      coach,
+      educationDates: educationDates.length > 0 ? educationDates : enumerateDateRange(startDate, endDate),
+      instructors,
+      region,
+      timeText
+    };
   }
 
   function startEditing() {
@@ -224,12 +223,20 @@ export function EditableSessionRow({
       setError("등록된 강사 명단과 이름이 달라요. 강사DB 노션을 확인해주세요.");
       return false;
     }
+
+    if (draft.educationDates.length === 0) {
+      setError("교육일을 최소 1일 선택해주세요.");
+      return false;
+    }
+
     setError(null);
     setSaveState("saving");
 
+    const range = deriveDateRangeFromEducationDates(draft.educationDates)!;
     const patches = [
-      { field: "startDate", action: "replace" as const, value: draft.startDate.trim() },
-      { field: "endDate", action: "replace" as const, value: draft.endDate.trim() },
+      { field: "startDate", action: "replace" as const, value: range.startDate },
+      { field: "endDate", action: "replace" as const, value: range.endDate },
+      { field: "educationDates", action: "replace" as const, value: draft.educationDates.join(", ") },
       { field: "timeText", action: "replace" as const, value: draft.timeText.trim() },
       { field: "instructors", action: "replace" as const, value: draft.instructors.trim() },
       { field: "coach", action: "replace" as const, value: draft.coach.trim() },

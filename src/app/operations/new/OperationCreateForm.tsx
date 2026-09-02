@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { MultiDateCalendar } from "@/components/MultiDateCalendar";
 import { parsePastedRounds, type ParsedRound } from "@/features/operations/parsePastedRounds";
 import type { TrainingType } from "@/lib/data/omRequest/omRequestTypes";
+import { enumerateDateRange } from "@/lib/data/operationCalculations";
 import { teamScopeSearchParam, type TeamScope } from "@/lib/teamScope";
 
 interface OperationCreateFormInitialValues {
@@ -34,8 +36,16 @@ interface OperationCreateFormProps {
 
 const TRAINING_TYPE_OPTIONS: TrainingType[] = ["오프라인", "블렌디드", "비대면", "해커톤"];
 
-const TEMPLATE_HEADER = ["회차", "시작일", "종료일", "시간", "강사", "실습코치"];
-const TEMPLATE_SAMPLE_ROW = ["1", "2026-03-09", "2026-03-09", "09:30 ~ 17:30", "강사A", "코치A"];
+const TEMPLATE_HEADER = ["회차", "시작일", "종료일", "시간", "강사", "실습코치", "실제교육일(선택)"];
+const TEMPLATE_SAMPLE_ROW = [
+  "1",
+  "2026-09-03",
+  "2026-09-07",
+  "09:30 ~ 17:30",
+  "강사A",
+  "코치A",
+  "2026-09-03, 2026-09-04, 2026-09-07"
+];
 
 type SubmitState = "idle" | "saving" | "failed";
 
@@ -59,6 +69,10 @@ export function OperationCreateForm({ initialValues = {}, personOptions, teamSco
   const [rows, setRows] = useState<ParsedRound[]>(() => parsePastedRounds(seedLine));
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
   const [error, setError] = useState<string | null>(null);
+  // 붙여넣은 텍스트의 "실제교육일" 칸을 달력으로 고쳐 쓴 값. 붙여넣기 텍스트를 다시
+  // 고치면(handlePasteChange) 초기화되는, 현재 미리보기 한정 보정값이다.
+  const [dateOverrides, setDateOverrides] = useState<Record<number, string[]>>({});
+  const [openDateEditorIndex, setOpenDateEditorIndex] = useState<number | null>(null);
 
   const validCount = rows.filter((row) => row.errors.length === 0).length;
 
@@ -126,7 +140,7 @@ export function OperationCreateForm({ initialValues = {}, personOptions, teamSco
           </div>
 
           <label className="bulk-add-rounds-field">
-            <span>붙여넣기 (회차 / 시작일 / 종료일 / 시간 / 강사 / 실습코치)</span>
+            <span>붙여넣기 (회차 / 시작일 / 종료일 / 시간 / 강사 / 실습코치 / 실제교육일(선택))</span>
             <textarea
               className="bulk-add-rounds-textarea"
               onChange={(event) => handlePasteChange(event.target.value)}
@@ -146,6 +160,7 @@ export function OperationCreateForm({ initialValues = {}, personOptions, teamSco
                     <th>시간</th>
                     <th>강사</th>
                     <th>실습코치</th>
+                    <th>실제교육일</th>
                     <th>상태</th>
                   </tr>
                 </thead>
@@ -158,6 +173,18 @@ export function OperationCreateForm({ initialValues = {}, personOptions, teamSco
                       <td>{row.timeText || "-"}</td>
                       <td>{row.instructors || "-"}</td>
                       <td>{row.coach || "-"}</td>
+                      <td className="bulk-add-rounds-education-dates-cell">
+                        <span>
+                          {dateOverrides[index]
+                            ? dateOverrides[index].join(", ")
+                            : row.educationDates.length > 0
+                              ? row.educationDates.join(", ")
+                              : "전체 기간"}
+                        </span>
+                        <button onClick={() => setOpenDateEditorIndex(index)} type="button">
+                          달력에서 고르기
+                        </button>
+                      </td>
                       <td className="bulk-add-rounds-row-status">
                         {row.errors.length > 0 ? row.errors.join(", ") : "등록 대기"}
                       </td>
@@ -172,6 +199,36 @@ export function OperationCreateForm({ initialValues = {}, personOptions, teamSco
         </div>
       </section>
 
+      {openDateEditorIndex !== null && rows[openDateEditorIndex] ? (
+        <div aria-modal="true" className="drive-review-modal" role="dialog">
+          <div className="drive-review-backdrop" onClick={() => setOpenDateEditorIndex(null)} />
+          <section aria-labelledby="bulk-round-dates-title" className="drive-review-dialog session-dates-dialog">
+            <div className="drive-review-header">
+              <div>
+                <h2 id="bulk-round-dates-title">{rows[openDateEditorIndex].roundNo || openDateEditorIndex + 1}회차 실제 교육일</h2>
+                <p>쉬는 날이 있으면 달력에서 해당 날짜만 눌러 빼주세요.</p>
+              </div>
+              <button aria-label="교육일 선택 닫기" onClick={() => setOpenDateEditorIndex(null)} type="button">
+                닫기
+              </button>
+            </div>
+            <div className="lecture-note-body">
+              <MultiDateCalendar
+                onChange={(dates) => setDateOverrides((current) => ({ ...current, [openDateEditorIndex]: dates }))}
+                value={effectiveDatesOf(openDateEditorIndex)}
+              />
+            </div>
+            <div className="lecture-note-footer">
+              <div className="lecture-note-actions">
+                <button onClick={() => setOpenDateEditorIndex(null)} type="button">
+                  확인
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
       <div className="operation-form-actions">
         {error ? <span className="lecture-note-save-error">{error}</span> : null}
         <Link className="secondary-action" href={`/operations${teamQuery}`}>취소</Link>
@@ -185,6 +242,17 @@ export function OperationCreateForm({ initialValues = {}, personOptions, teamSco
   function handlePasteChange(value: string) {
     setPasteText(value);
     setRows(parsePastedRounds(value));
+    setDateOverrides({});
+    setOpenDateEditorIndex(null);
+  }
+
+  /** 달력에 보여줄 값. 달력으로 고친 적이 있으면 그 값을, 없으면 붙여넣은 실제교육일
+   * 텍스트를, 그것도 없으면 시작일~종료일 전체를 미리 선택된 상태로 보여준다. */
+  function effectiveDatesOf(index: number): string[] {
+    if (dateOverrides[index]) return dateOverrides[index];
+    const row = rows[index];
+    if (row.educationDates.length > 0) return row.educationDates;
+    return enumerateDateRange(row.startDate, row.endDate);
   }
 
   function downloadTemplate() {
@@ -224,6 +292,7 @@ export function OperationCreateForm({ initialValues = {}, personOptions, teamSco
     const om = omNames.filter(Boolean).join(", ");
     const ld = ldNames.filter(Boolean).join(", ");
     const [firstRound, ...restRounds] = rows;
+    const submittedEducationDates = (index: number) => (dateOverrides[index] ?? rows[index].educationDates).join(", ");
 
     let response: Response;
 
@@ -238,6 +307,7 @@ export function OperationCreateForm({ initialValues = {}, personOptions, teamSco
           courseName: courseName.trim(),
           driveLink: initialValues.driveLink,
           educationDays: initialValues.educationDays,
+          educationDates: submittedEducationDates(0),
           endDate: firstRound.endDate,
           instructors: firstRound.instructors,
           ld,
@@ -267,7 +337,7 @@ export function OperationCreateForm({ initialValues = {}, personOptions, teamSco
 
     const createdOperationIds = [payload.operation.operationId];
 
-    for (const round of restRounds) {
+    for (const [restIndex, round] of restRounds.entries()) {
       let roundResponse: Response;
 
       try {
@@ -276,6 +346,7 @@ export function OperationCreateForm({ initialValues = {}, personOptions, teamSco
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             coach: round.coach,
+            educationDates: submittedEducationDates(restIndex + 1),
             endDate: round.endDate,
             instructors: round.instructors,
             roundNo: round.roundNo,
