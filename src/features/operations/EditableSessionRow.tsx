@@ -90,10 +90,8 @@ export function EditableSessionRow({
       <td className="session-cell-wrap">{region || "미정"}</td>
       <td>
         <span className="stacked-cell">
-          <strong>
-            {startDate} ~ {endDate}
-            {educationDates.length > 0 ? ` (실제 ${formatEducationDatesList(educationDates)})` : ""}
-          </strong>
+          <strong>{startDate} ~ {endDate}</strong>
+          {educationDates.length > 0 ? <small>실제 {formatEducationDatesList(educationDates)}</small> : null}
           <small>{timeText || "시간 미정"}</small>
         </span>
       </td>
