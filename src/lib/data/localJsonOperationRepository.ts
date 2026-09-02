@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
   buildOperationMonth,
+  deriveDateRangeFromEducationDates,
   deriveSessionDurationDays,
   deriveSessionDurationType,
   normalizeCourseId,
@@ -114,8 +115,10 @@ export class LocalJsonOperationRepository implements OperationRepository {
 
   async createOperation(input: CreateOperationInput): Promise<OperationSession> {
     const operations = await this.listOperations();
-    const startDate = normalizeVisibleText(input.startDate);
-    const endDate = normalizeVisibleText(input.endDate);
+    const educationDates = input.educationDates ?? [];
+    const derivedRange = deriveDateRangeFromEducationDates(educationDates);
+    const startDate = derivedRange?.startDate ?? normalizeVisibleText(input.startDate);
+    const endDate = derivedRange?.endDate ?? normalizeVisibleText(input.endDate);
     const operationId = `manual-${randomUUID()}`;
     const revenue = input.revenue;
     const totalCost = input.totalCost;
@@ -131,6 +134,7 @@ export class LocalJsonOperationRepository implements OperationRepository {
       courseName: normalizeVisibleText(input.courseName),
       driveLink: normalizeVisibleText(input.driveLink),
       educationDays: normalizeVisibleText(input.educationDays),
+      educationDates,
       educationFormat: input.educationFormat,
       educationFormatRaw: input.educationFormat,
       endDate,
@@ -192,8 +196,10 @@ export class LocalJsonOperationRepository implements OperationRepository {
     }
 
     const totalCost = input.totalCost === undefined ? operation.totalCost : input.totalCost;
-    const startDate = input.startDate ?? operation.startDate;
-    const endDate = input.endDate ?? operation.endDate;
+    const derivedRange =
+      input.educationDates !== undefined ? deriveDateRangeFromEducationDates(input.educationDates) : null;
+    const startDate = derivedRange?.startDate ?? input.startDate ?? operation.startDate;
+    const endDate = derivedRange?.endDate ?? input.endDate ?? operation.endDate;
     const sessionDurationDays = deriveSessionDurationDays(startDate, endDate);
     const updatedOperation: OperationSession = {
       ...operation,
@@ -207,6 +213,7 @@ export class LocalJsonOperationRepository implements OperationRepository {
       courseName: normalizeOptionalText(input.courseName, operation.courseName),
       driveLink: normalizeOptionalText(input.driveLink, operation.driveLink),
       educationDays: normalizeOptionalText(input.educationDays, operation.educationDays),
+      educationDates: input.educationDates ?? operation.educationDates,
       endDate,
       hasResultReport: input.hasResultReport ?? operation.hasResultReport,
       hasSatisfactionSurvey: input.hasSatisfactionSurvey ?? operation.hasSatisfactionSurvey,

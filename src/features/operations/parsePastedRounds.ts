@@ -1,5 +1,9 @@
+import { parseEducationDatesText } from "@/lib/data/operationCalculations";
+
 export interface ParsedRound {
   coach: string;
+  /** 실제 교육이 있는 날짜(yyyy-mm-dd) 목록. 붙여넣기 열에 값이 없으면 빈 배열(=시작일~종료일 전체가 교육일). */
+  educationDates: string[];
   endDate: string;
   errors: string[];
   instructors: string;
@@ -86,7 +90,8 @@ function toParsedRound(line: string, knownInstructorNames: string[] = []): Parse
     timeTextCell = "",
     instructorsCell = "",
     coachCell = "",
-    regionCell = ""
+    regionCell = "",
+    educationDatesCell = ""
   ] = cells;
 
   const roundNo = roundNoCell.trim();
@@ -94,6 +99,8 @@ function toParsedRound(line: string, knownInstructorNames: string[] = []): Parse
   const endDate = normalizeDateCell(endDateCell);
   const timeText = timeTextCell.trim();
   const instructors = instructorsCell.trim();
+  const educationDatesText = educationDatesCell.trim();
+  const parsedEducationDates = educationDatesText ? parseEducationDatesText(educationDatesText) : null;
   const errors: string[] = [];
 
   if (!roundNo) errors.push("회차 필요");
@@ -103,9 +110,13 @@ function toParsedRound(line: string, knownInstructorNames: string[] = []): Parse
   if (instructors && !isKnownInstructor(instructors, knownInstructorNames)) {
     errors.push("강사DB 노션에 없는 이름 (확인 필요)");
   }
+  if (parsedEducationDates && parsedEducationDates.errors.length > 0) {
+    errors.push(`실제 교육일 확인 필요 (${parsedEducationDates.errors.join(", ")})`);
+  }
 
   return {
     coach: coachCell.trim(),
+    educationDates: parsedEducationDates?.dates ?? [],
     endDate,
     errors,
     instructors,

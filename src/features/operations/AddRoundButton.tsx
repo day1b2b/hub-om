@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { NameCombobox } from "@/components/NameCombobox";
+import { parseEducationDatesText } from "@/lib/data/operationCalculations";
 import { isValidTimeRangeText, normalizeTimeRangeText } from "./parsePastedRounds";
 
 type SaveState = "idle" | "saving" | "failed";
@@ -19,6 +20,7 @@ interface AddRoundButtonProps {
 
 interface RoundDraft {
   coach: string;
+  educationDatesText: string;
   endDate: string;
   instructors: string;
   region: string;
@@ -87,6 +89,16 @@ export function AddRoundButton({
                 </label>
               </div>
 
+              <label className="lecture-note-field">
+                <span>실제 교육일 (선택, 쉼표로 구분 — 비우면 시작일~종료일 전체)</span>
+                <input
+                  onChange={(event) => setDraft((current) => ({ ...current, educationDatesText: event.target.value }))}
+                  placeholder="예: 2026-09-03, 2026-09-04, 2026-09-07"
+                  type="text"
+                  value={draft.educationDatesText}
+                />
+              </label>
+
               <div className="lecture-note-row">
                 <label className="lecture-note-field">
                   <span>시간</span>
@@ -151,6 +163,7 @@ export function AddRoundButton({
   function toDraft(): RoundDraft {
     return {
       coach: baseCoach,
+      educationDatesText: "",
       endDate: "",
       instructors: baseInstructors,
       region: baseRegion,
@@ -184,6 +197,11 @@ export function AddRoundButton({
       return;
     }
 
+    if (draft.educationDatesText.trim() && parseEducationDatesText(draft.educationDatesText).errors.length > 0) {
+      setError("실제 교육일 형식을 확인해주세요 (예: 2026-09-03, 2026-09-04).");
+      return;
+    }
+
     const instructorName = draft.instructors.trim();
     if (instructorName && !instructorOptions.some((name) => name.toLowerCase() === instructorName.toLowerCase())) {
       setError("등록된 강사 명단과 이름이 달라요. 강사DB 노션을 확인해주세요.");
@@ -193,8 +211,10 @@ export function AddRoundButton({
     setSaveState("saving");
     setError(null);
 
+    const { educationDatesText, ...draftFields } = draft;
     const normalizedDraft = {
-      ...draft,
+      ...draftFields,
+      educationDates: educationDatesText,
       timeText: draft.timeText.trim() ? normalizeTimeRangeText(draft.timeText) : draft.timeText
     };
 

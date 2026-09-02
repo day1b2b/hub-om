@@ -34,8 +34,16 @@ interface OperationCreateFormProps {
 
 const TRAINING_TYPE_OPTIONS: TrainingType[] = ["오프라인", "블렌디드", "비대면", "해커톤"];
 
-const TEMPLATE_HEADER = ["회차", "시작일", "종료일", "시간", "강사", "실습코치"];
-const TEMPLATE_SAMPLE_ROW = ["1", "2026-03-09", "2026-03-09", "09:30 ~ 17:30", "강사A", "코치A"];
+const TEMPLATE_HEADER = ["회차", "시작일", "종료일", "시간", "강사", "실습코치", "실제교육일(선택)"];
+const TEMPLATE_SAMPLE_ROW = [
+  "1",
+  "2026-09-03",
+  "2026-09-07",
+  "09:30 ~ 17:30",
+  "강사A",
+  "코치A",
+  "2026-09-03, 2026-09-04, 2026-09-07"
+];
 
 type SubmitState = "idle" | "saving" | "failed";
 
@@ -126,7 +134,7 @@ export function OperationCreateForm({ initialValues = {}, personOptions, teamSco
           </div>
 
           <label className="bulk-add-rounds-field">
-            <span>붙여넣기 (회차 / 시작일 / 종료일 / 시간 / 강사 / 실습코치)</span>
+            <span>붙여넣기 (회차 / 시작일 / 종료일 / 시간 / 강사 / 실습코치 / 실제교육일(선택))</span>
             <textarea
               className="bulk-add-rounds-textarea"
               onChange={(event) => handlePasteChange(event.target.value)}
@@ -146,6 +154,7 @@ export function OperationCreateForm({ initialValues = {}, personOptions, teamSco
                     <th>시간</th>
                     <th>강사</th>
                     <th>실습코치</th>
+                    <th>실제교육일</th>
                     <th>상태</th>
                   </tr>
                 </thead>
@@ -158,6 +167,7 @@ export function OperationCreateForm({ initialValues = {}, personOptions, teamSco
                       <td>{row.timeText || "-"}</td>
                       <td>{row.instructors || "-"}</td>
                       <td>{row.coach || "-"}</td>
+                      <td>{row.educationDates.length > 0 ? row.educationDates.join(", ") : "전체 기간"}</td>
                       <td className="bulk-add-rounds-row-status">
                         {row.errors.length > 0 ? row.errors.join(", ") : "등록 대기"}
                       </td>
@@ -238,6 +248,7 @@ export function OperationCreateForm({ initialValues = {}, personOptions, teamSco
           courseName: courseName.trim(),
           driveLink: initialValues.driveLink,
           educationDays: initialValues.educationDays,
+          educationDates: firstRound.educationDates.join(", "),
           endDate: firstRound.endDate,
           instructors: firstRound.instructors,
           ld,
@@ -276,6 +287,7 @@ export function OperationCreateForm({ initialValues = {}, personOptions, teamSco
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             coach: round.coach,
+            educationDates: round.educationDates.join(", "),
             endDate: round.endDate,
             instructors: round.instructors,
             roundNo: round.roundNo,

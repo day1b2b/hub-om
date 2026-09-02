@@ -80,6 +80,8 @@ export interface OperationSession {
   operationTypeRaw: string;
   roundNo: string;
   educationDays: string;
+  /** 실제 교육이 있는 날짜(yyyy-mm-dd) 목록. 과거 데이터 등 비어 있으면 startDate~endDate 전체를 교육일로 본다. */
+  educationDates: string[];
   startDate: string;
   endDate: string;
   operationMonth: string;
@@ -129,6 +131,8 @@ export interface CreateOperationInput {
   createdBy?: string;
   driveLink: string;
   educationDays: string;
+  /** 실제 교육이 있는 날짜(yyyy-mm-dd) 목록. 있으면 startDate/endDate는 이 값의 최소/최대로 자동 계산한다. */
+  educationDates?: string[];
   educationFormat: EducationFormat;
   endDate: string;
   instructorCost: number | null;
@@ -166,6 +170,8 @@ export interface UpdateOperationInput {
   courseName?: string;
   driveLink?: string;
   educationDays?: string;
+  /** 실제 교육이 있는 날짜(yyyy-mm-dd) 목록. 전달하면 startDate/endDate는 이 값의 최소/최대로 다시 계산한다. */
+  educationDates?: string[];
   endDate?: string;
   hasResultReport?: ResultReportStatus;
   hasSatisfactionSurvey?: SatisfactionSurveyStatus;

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { NameCombobox } from "@/components/NameCombobox";
+import { formatEducationDatesList, parseEducationDatesText } from "@/lib/data/operationCalculations";
 import { useEditAllRoundsSignal } from "./EditAllRoundsProvider";
 
 type SaveState = "idle" | "saving" | "failed";
@@ -12,6 +13,7 @@ interface EditableSessionRowProps {
   children?: ReactNode;
   coach: string;
   deleteButton?: ReactNode;
+  educationDates: string[];
   endDate: string;
   instructorOptions?: string[];
   instructors: string;
@@ -23,6 +25,7 @@ interface EditableSessionRowProps {
 
 interface SessionDraft {
   coach: string;
+  educationDatesText: string;
   endDate: string;
   instructors: string;
   region: string;
@@ -34,6 +37,7 @@ export function EditableSessionRow({
   children,
   coach,
   deleteButton,
+  educationDates,
   endDate,
   instructorOptions = [],
   instructors,
@@ -87,7 +91,10 @@ export function EditableSessionRow({
       <td className="session-cell-wrap">{region || "미정"}</td>
       <td>
         <span className="stacked-cell">
-          <strong>{startDate} ~ {endDate}</strong>
+          <strong>
+            {startDate} ~ {endDate}
+            {educationDates.length > 0 ? ` (실제 ${formatEducationDatesList(educationDates)})` : ""}
+          </strong>
           <small>{timeText || "시간 미정"}</small>
         </span>
       </td>
@@ -132,6 +139,16 @@ export function EditableSessionRow({
                       />
                     </label>
                   </div>
+
+                  <label className="lecture-note-field">
+                    <span>실제 교육일 (선택, 쉼표로 구분 — 비우면 시작일~종료일 전체가 교육일)</span>
+                    <input
+                      onChange={(event) => setDraft((current) => ({ ...current, educationDatesText: event.target.value }))}
+                      placeholder="예: 2026-09-03, 2026-09-04, 2026-09-07"
+                      type="text"
+                      value={draft.educationDatesText}
+                    />
+                  </label>
 
                   <div className="lecture-note-row">
                     <label className="lecture-note-field">
@@ -201,7 +218,7 @@ export function EditableSessionRow({
   );
 
   function toDraft(): SessionDraft {
-    return { coach, endDate, instructors, region, startDate, timeText };
+    return { coach, educationDatesText: educationDates.join(", "), endDate, instructors, region, startDate, timeText };
   }
 
   function startEditing() {
@@ -224,12 +241,19 @@ export function EditableSessionRow({
       setError("등록된 강사 명단과 이름이 달라요. 강사DB 노션을 확인해주세요.");
       return false;
     }
+
+    if (draft.educationDatesText.trim() && parseEducationDatesText(draft.educationDatesText).errors.length > 0) {
+      setError("실제 교육일 형식을 확인해주세요 (예: 2026-09-03, 2026-09-04).");
+      return false;
+    }
+
     setError(null);
     setSaveState("saving");
 
     const patches = [
       { field: "startDate", action: "replace" as const, value: draft.startDate.trim() },
       { field: "endDate", action: "replace" as const, value: draft.endDate.trim() },
+      { field: "educationDates", action: "replace" as const, value: draft.educationDatesText.trim() },
       { field: "timeText", action: "replace" as const, value: draft.timeText.trim() },
       { field: "instructors", action: "replace" as const, value: draft.instructors.trim() },
       { field: "coach", action: "replace" as const, value: draft.coach.trim() },
