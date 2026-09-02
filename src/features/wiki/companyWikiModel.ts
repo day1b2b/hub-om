@@ -52,7 +52,7 @@ function hasLink(value: null | string | undefined): boolean {
 
 /** 코스ID가 비어도 과정명으로 갈라지도록 둘을 합쳐 키로 쓴다. */
 function courseKey(operation: OperationSession): string {
-  return `${(operation.courseId ?? "").trim()}|${operation.courseName.trim()}`;
+  return `${(operation.courseId ?? "").trim()}|${(operation.courseName ?? "").trim()}`;
 }
 
 function uniqueNames(operations: ReadonlyArray<OperationSession>, pick: (o: OperationSession) => string): string[] {
@@ -107,7 +107,7 @@ function buildCourses(operations: ReadonlyArray<OperationSession>): CompanyWikiC
     courses.push({
       key,
       courseId: (list[0].courseId ?? "").trim(),
-      courseName: list[0].courseName,
+      courseName: (list[0].courseName ?? "").trim(),
       rounds: list.length,
       // 회차 중 하나라도 링크가 있으면 있는 것으로 본다. 회차마다 채워지는 시점이 달라서다.
       syncup: list.some((operation) => hasLink(operation.operationDetail)),
@@ -124,7 +124,7 @@ function buildCourses(operations: ReadonlyArray<OperationSession>): CompanyWikiC
   // 최근 운영이 위로. 같은 날짜면 과정명 가나다순.
   return courses.sort((a, b) => {
     if (a.startDate !== b.startDate) return b.startDate.localeCompare(a.startDate);
-    return a.courseName.localeCompare(b.courseName, "ko");
+    return (a.courseName ?? "").localeCompare(b.courseName ?? "", "ko");
   });
 }
 
@@ -152,7 +152,7 @@ function buildHistory(operations: ReadonlyArray<OperationSession>): CompanyWikiH
       const period = start === "" ? "-" : end === "" || end === start ? start : `${start} ~ ${end}`;
       return {
         key: operation.operationId,
-        courseName: operation.courseName,
+        courseName: (operation.courseName ?? "").trim(),
         roundNo: (operation.roundNo ?? "").trim() || "-",
         period,
         satisfaction: (operation.avgSatisfaction ?? "").trim() || "-",

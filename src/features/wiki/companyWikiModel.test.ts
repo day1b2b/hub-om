@@ -164,3 +164,11 @@ test("공백 외의 차이는 합치지 않는다", () => {
   ]);
   assert.deepEqual(entries.map((e) => e.name), ["가온", "가온물산"]);
 });
+
+test("과정명이 비어 있어도 정렬에서 터지지 않는다", () => {
+  // localeCompare는 null에서 예외를 던진다. 코스 정렬 비교라 반드시 막아야 한다.
+  const broken = { operationId: "op-x", companyName: "가온물산", startDate: "2026-09-14" } as unknown as OperationSession;
+  const entries = aggregateCompanies([broken, operation({ operationId: "ok", companyName: "가온물산" })]);
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].courseCount, 2);
+});
