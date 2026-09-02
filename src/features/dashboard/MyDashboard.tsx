@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { holidayName } from "./holidays";
 import { missingArchiveItems } from "@/lib/data/operationCalculations";
+import { createRequestMatcher } from "./requestDedup";
 import { requestHref } from "./requestHref";
 import type { OmRequest } from "@/lib/data/omRequest/omRequestTypes";
 import type { OperationSession, OperationStatus } from "@/lib/data/operationTypes";
@@ -82,18 +83,15 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
   // 밀린 작업 집계는 각 단계의 항목에서 직접 센다(아래 stages 참고).
   // 기간 필터는 걸지 않는다 — 지난달 미완 항목이 숨으면 안 된다.
 
-  // 담당 과정(요청)과 운영이 같은 courseId면 같은 과정이다. 요청 쪽 표현(차수/세팅 정보)이 더 풍부하므로
-  // 요청이 대표하고, 운영 중복은 제거한다(캘린더·사전세팅에서 두 번 뜨지 않게).
-  // 코스ID가 빈 요청은 이 집합에 넣지 않는다. ""가 들어가면 코스ID가 비어 있는 운영이 전부
-  // "담당 과정으로 이미 표시됨"으로 걸러져, 캘린더와 사전세팅에서 통째로 사라진다.
-  // (상단 요약은 이 걸러내기를 안 거쳐서 "예정 1건"인데 D-day는 "없음"이 되는 모순이 생겼다.)
-  const requestCourseIds = new Set(
-    assignedRequests.map((request) => (request.courseId ?? "").trim()).filter(Boolean)
-  );
+  // 담당 과정(요청)과 운영은 같은 과정을 양쪽에서 들고 있다. 요청 쪽 표현(차수/세팅 정보)이
+  // 더 풍부하므로 요청이 대표하고, 짝이 되는 운영은 제거한다(캘린더·사전세팅에 두 번 뜨지 않게).
+  // 짝짓기는 operationId 우선 → courseId. 코스ID를 안 적고 접수한 과정도 자동 생성된 운영의
+  // operationId를 갖고 있어서, 코스ID 없이도 대시보드에 정상으로 뜬다. 자세한 규칙은 requestDedup.ts.
+  const isRepresentedByRequest = createRequestMatcher(assignedRequests);
   // 캘린더는 운영 + 나의 담당 과정을 모두 반영한다(담당 과정에 새 과정이 추가되면 캘린더에도 자동 표시).
   const calendarEvents: CalendarEvent[] = [
     ...operations.flatMap((operation) => {
-      if (requestCourseIds.has((operation.courseId ?? "").trim())) return []; // 담당 과정의 차수 이벤트로 대체
+      if (isRepresentedByRequest(operation)) return []; // 담당 과정의 차수 이벤트로 대체
       const start = parseDate(operation.startDate);
       const end = parseDate(operation.endDate) ?? start;
       if (!start || !end) return [];
@@ -141,7 +139,13 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
     return date ? daysBetween(today, date) : null;
   };
   // 클릭 시 운영 현황 상세로 보내기 위한 courseId → 운영 id 매핑.
-  const operationIdByCourse = new Map(operations.map((operation) => [operation.courseId, operation.operationId]));
+  // 빈 코스ID는 키로 넣지 않는다. ""가 키가 되면 코스ID 없는 운영끼리 서로 덮어써
+  // 무관한 운영으로 연결된다.
+  const operationIdByCourse = new Map(
+    operations
+      .filter((operation) => (operation.courseId ?? "").trim() !== "")
+      .map((operation) => [(operation.courseId ?? "").trim(), operation.operationId])
+  );
   // 사전세팅 = 강의 시작 전 단계 전체(아직 시작하지 않은 과정). 이전에는 D-7~D-2 창만 봤는데,
   // 그러면 그 창에 든 과정이 없을 때 단계가 비어 보여 실제 준비 상황과 어긋났다.
   // 임박한 순으로 정렬해 위쪽이 먼저 챙길 것이 되게 한다.
@@ -149,8 +153,8 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
     .map((request) => ({ request, days: daysToStart(scheduleRange(request).start) }))
     .filter((entry): entry is { request: OmRequest; days: number } => entry.days !== null && entry.days >= 0);
   const preOperations = operations
-    // 담당 과정(요청) 항목이 대표 → 같은 courseId의 운영은 중복 제거.
-    .filter((operation) => !requestCourseIds.has((operation.courseId ?? "").trim()))
+    // 담당 과정(요청) 항목이 대표 → 짝이 되는 운영은 중복 제거.
+    .filter((operation) => !isRepresentedByRequest(operation))
     .map((operation) => ({ operation, days: daysToStart(operation.startDate) }))
     .filter((entry): entry is { operation: OperationSession; days: number } => entry.days !== null && entry.days >= 0);
 
