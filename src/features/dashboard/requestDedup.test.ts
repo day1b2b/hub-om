@@ -62,14 +62,18 @@ test("운영에 시작일이 없으면 코스ID만으로 걸러내지 않는다"
 });
 
 test("코스ID가 비어 있어도 operationId로 짝을 맞춘다", () => {
-  const isRepresented = createRequestMatcher([request({ courseId: "", operationId: "op-9" })]);
-  assert.equal(isRepresented({ courseId: "", operationId: "op-9" }), true);
+  const isRepresented = createRequestMatcher([
+    request({ courseId: "", operationId: "op-9", sessions: [session("2026-09-07")] })
+  ]);
+  assert.equal(isRepresented({ courseId: "", operationId: "op-9", startDate: "2026-09-07" }), true);
 });
 
 test("코스ID가 빈 요청 때문에 무관한 운영이 사라지지 않는다", () => {
   // 이 회귀가 실제로 났다. 빈 코스ID가 짝짓기 키에 들어가면
   // 코스ID 없는 운영이 전부 걸러져 캘린더·사전세팅이 통째로 비었다.
-  const isRepresented = createRequestMatcher([request({ courseId: "", operationId: "op-9" })]);
+  const isRepresented = createRequestMatcher([
+    request({ courseId: "", operationId: "op-9", sessions: [session("2026-09-07")] })
+  ]);
   assert.equal(isRepresented({ courseId: "", operationId: "op-other" }), false);
   assert.equal(isRepresented({ courseId: undefined, operationId: "op-other" }), false);
 });
@@ -88,4 +92,20 @@ test("코스ID가 나중에 채워져 운영이 따로 생겨도 같은 날짜�
     isRepresented({ courseId: "C-2608-210", operationId: "op-later", startDate: "2026-11-16" }),
     true
   );
+});
+
+test("교육 일정 차수가 없는 담당 과정은 아무것도 대표하지 못한다", () => {
+  // 실제 증상: 담당 과정 표에는 1건이 뜨는데 캘린더·사전세팅·D-day는 비어 있었다.
+  // 차수가 없으면 요청은 캘린더에 찍을 날짜가 없는데, 짝인 운영까지 지워 과정이 사라진다.
+  const isRepresented = createRequestMatcher([
+    request({ courseId: "", operationId: "op-9", sessions: [] })
+  ]);
+  assert.equal(isRepresented({ courseId: "", operationId: "op-9", startDate: "2026-09-07" }), false);
+});
+
+test("차수 날짜가 빈 문자열이어도 대표하지 못한다", () => {
+  const isRepresented = createRequestMatcher([
+    request({ courseId: "261578", operationId: "op-9", sessions: [session("")] })
+  ]);
+  assert.equal(isRepresented({ courseId: "261578", operationId: "op-9", startDate: "2026-11-16" }), false);
 });
