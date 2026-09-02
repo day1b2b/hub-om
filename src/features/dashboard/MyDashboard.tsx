@@ -84,11 +84,16 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
 
   // 담당 과정(요청)과 운영이 같은 courseId면 같은 과정이다. 요청 쪽 표현(차수/세팅 정보)이 더 풍부하므로
   // 요청이 대표하고, 운영 중복은 제거한다(캘린더·사전세팅에서 두 번 뜨지 않게).
-  const requestCourseIds = new Set(assignedRequests.map((request) => request.courseId));
+  // 코스ID가 빈 요청은 이 집합에 넣지 않는다. ""가 들어가면 코스ID가 비어 있는 운영이 전부
+  // "담당 과정으로 이미 표시됨"으로 걸러져, 캘린더와 사전세팅에서 통째로 사라진다.
+  // (상단 요약은 이 걸러내기를 안 거쳐서 "예정 1건"인데 D-day는 "없음"이 되는 모순이 생겼다.)
+  const requestCourseIds = new Set(
+    assignedRequests.map((request) => (request.courseId ?? "").trim()).filter(Boolean)
+  );
   // 캘린더는 운영 + 나의 담당 과정을 모두 반영한다(담당 과정에 새 과정이 추가되면 캘린더에도 자동 표시).
   const calendarEvents: CalendarEvent[] = [
     ...operations.flatMap((operation) => {
-      if (requestCourseIds.has(operation.courseId)) return []; // 담당 과정의 차수 이벤트로 대체
+      if (requestCourseIds.has((operation.courseId ?? "").trim())) return []; // 담당 과정의 차수 이벤트로 대체
       const start = parseDate(operation.startDate);
       const end = parseDate(operation.endDate) ?? start;
       if (!start || !end) return [];
@@ -145,7 +150,7 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
     .filter((entry): entry is { request: OmRequest; days: number } => entry.days !== null && entry.days >= 0);
   const preOperations = operations
     // 담당 과정(요청) 항목이 대표 → 같은 courseId의 운영은 중복 제거.
-    .filter((operation) => !requestCourseIds.has(operation.courseId))
+    .filter((operation) => !requestCourseIds.has((operation.courseId ?? "").trim()))
     .map((operation) => ({ operation, days: daysToStart(operation.startDate) }))
     .filter((entry): entry is { operation: OperationSession; days: number } => entry.days !== null && entry.days >= 0);
 
