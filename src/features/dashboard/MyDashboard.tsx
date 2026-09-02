@@ -58,16 +58,9 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
       return { year: next.getFullYear(), month: next.getMonth() };
     });
   }
-  const scopedOperations = operations.filter((operation) => {
-    const start = parseDate(operation.startDate);
-    return start ? start.getFullYear() === monthView.year && start.getMonth() === monthView.month : false;
-  });
   // 담당 과정 표의 월 강조 범위. 그 달과 기간이 겹치는 줄만 강조한다.
   const monthStartTime = stripTime(new Date(monthView.year, monthView.month, 1)).getTime();
   const monthEndTime = stripTime(new Date(monthView.year, monthView.month + 1, 0)).getTime();
-  const active = scopedOperations.filter((operation) => operation.operationStatus === "진행중").length;
-  const upcoming = scopedOperations.filter((operation) => isUpcoming(operation, today)).length;
-  const done = scopedOperations.filter(isDone).length;
 
   // 밀린 작업 집계는 각 단계의 항목에서 직접 센다(아래 stages 참고).
   // 기간 필터는 걸지 않는다 — 지난달 미완 항목이 숨으면 안 된다.
@@ -151,6 +144,19 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
     return stripTime(from).getTime() <= monthEndTime && stripTime(to).getTime() >= monthStartTime;
   };
   const focusRowKeys = new Set(courseRows.filter((row) => isInMonth(row.start, row.end)).map((row) => row.key));
+
+  // 요약 지표는 담당 전체 기준이다. 전에는 선택한 달에 "시작하는" 운영만 세서,
+  // 운영 현황에 20건이 잡히는 담당자의 대시보드에 "전체 1"이 떴다.
+  // 월 이동은 캘린더와 담당 과정 표의 강조에만 쓴다.
+  // 전체 = 바로 아래 담당 과정 표의 줄 수와 같게 맞춘다(두 숫자가 어긋나면 어느 쪽도 못 믿는다).
+  const totalCount = courseRows.length;
+  const active = operations.filter((operation) => operation.operationStatus === "진행중").length;
+  // 예정도 표와 같은 기준(운영 + 짝 없는 담당 과정)으로 센다. 진행상태가 아니라 시작일로 본다.
+  const upcoming = courseRows.filter((row) => {
+    const start = parseDate(row.start);
+    return start ? stripTime(start).getTime() > stripTime(today).getTime() : false;
+  }).length;
+  const done = operations.filter(isDone).length;
 
   // 사전세팅 = 강의 시작 전 단계 전체(아직 시작하지 않은 과정). 이전에는 D-7~D-2 창만 봤는데,
   // 그러면 그 창에 든 과정이 없을 때 단계가 비어 보여 실제 준비 상황과 어긋났다.
@@ -282,7 +288,7 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
         </header>
 
         <section className="metrics" aria-label="내 운영 요약">
-          <Metric label="전체" value={scopedOperations.length} />
+          <Metric label="전체" value={totalCount} />
           <Metric label="진행중" value={active} />
           <Metric label="예정" value={upcoming} />
           <Metric label="완료" value={done} />
@@ -713,11 +719,6 @@ function Metric({ label, value }: { label: string; value: number | string }) {
       <strong>{value}</strong>
     </div>
   );
-}
-
-function isUpcoming(operation: OperationSession, today: Date) {
-  const start = parseDate(operation.startDate);
-  return start ? start.getTime() > stripTime(today).getTime() : false;
 }
 
 function isDone(operation: OperationSession) {
