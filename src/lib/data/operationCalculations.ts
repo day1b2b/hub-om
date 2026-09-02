@@ -229,6 +229,87 @@ export function buildOperationMonth(startDate: string): string {
   return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, "0")}`;
 }
 
+const EDUCATION_DATE_TOKEN_PATTERN = /^(\d{4})[.\-/]\s*(\d{1,2})[.\-/]\s*(\d{1,2})\.?$/;
+
+export interface ParsedEducationDates {
+  dates: string[];
+  errors: string[];
+}
+
+/**
+ * 쉼표/줄바꿈으로 구분해 붙여넣은 실제 교육일 목록을 파싱한다("2026-09-03, 2026-09-04, 2026-09-07"
+ * 같은 입력을 가정). 월/일만 있고 연도가 없는 입력은 어느 해인지 단정할 수 없어 형식 오류로 취급한다.
+ * 중복은 제거하고 날짜순으로 정렬해 돌려준다.
+ */
+export function parseEducationDatesText(value: string): ParsedEducationDates {
+  const tokens = value
+    .split(/[,\n]/)
+    .map((token) => token.trim())
+    .filter((token) => token.length > 0);
+
+  const errors: string[] = [];
+  const dateSet = new Set<string>();
+
+  for (const token of tokens) {
+    const normalized = normalizeEducationDateToken(token);
+
+    if (!normalized) {
+      errors.push(`"${token}" 날짜 형식을 확인해주세요 (예: 2026-09-03).`);
+      continue;
+    }
+
+    dateSet.add(normalized);
+  }
+
+  return { dates: Array.from(dateSet).sort(), errors };
+}
+
+function normalizeEducationDateToken(token: string): string | null {
+  const match = EDUCATION_DATE_TOKEN_PATTERN.exec(token);
+  if (!match) return null;
+
+  const [, year, month, day] = match;
+  const isoDate = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+  return parseDate(isoDate) ? isoDate : null;
+}
+
+/** 실제 교육일 목록을 짧은 표시용 문자열로 만든다 (예: "9/3, 9/4, 9/7"). */
+export function formatEducationDatesList(dates: string[]): string {
+  return dates
+    .map((date) => {
+      const parsed = parseDate(date);
+      return parsed ? `${parsed.getMonth() + 1}/${parsed.getDate()}` : date;
+    })
+    .join(", ");
+}
+
+/** 실제 교육일 목록에서 startDate/endDate(최소/최대)를 계산한다. 빈 목록이면 null. */
+export function deriveDateRangeFromEducationDates(
+  dates: string[]
+): { startDate: string; endDate: string } | null {
+  if (dates.length === 0) return null;
+  const sorted = [...dates].sort();
+  return { startDate: sorted[0], endDate: sorted[sorted.length - 1] };
+}
+
+/** startDate~endDate 사이 모든 날짜(양끝 포함)를 나열한다. 실제 교육일이 아직 없는 회차를
+ * 달력에서 편집할 때 "일단 전체 기간을 선택된 상태로 보여주고 쉬는 날만 해제"할 수 있게 쓴다. */
+export function enumerateDateRange(startDate: string, endDate: string): string[] {
+  const start = parseDate(startDate);
+  const end = parseDate(endDate);
+  if (!start || !end || end < start) return [];
+
+  const dates: string[] = [];
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    dates.push(
+      `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}-${String(cursor.getDate()).padStart(2, "0")}`
+    );
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return dates;
+}
+
 function isPastDate(value: string): boolean {
   const parsed = parseDate(value);
   if (!parsed) return false;

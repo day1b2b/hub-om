@@ -31,6 +31,7 @@ import type {
 import {
   buildOperationMonth,
   deriveArchiveStatus,
+  deriveDateRangeFromEducationDates,
   deriveProfit,
   deriveSessionDurationDays,
   deriveSessionDurationType,
@@ -230,6 +231,7 @@ export class PrismaOperationRepository implements OperationRepository {
         operationTypeRaw: OPERATION_TYPE[session.course.operationType],
         roundNo: session.roundNo ?? "",
         educationDays: session.educationDays ?? "",
+        educationDates: session.educationDates.map((date) => toDateString(date)),
         startDate: toDateString(session.startDate),
         endDate: toDateString(session.endDate),
         operationMonth: session.operationMonth ?? "",
@@ -280,8 +282,10 @@ export class PrismaOperationRepository implements OperationRepository {
     const companyName = normalizeVisibleText(input.companyName);
     const courseName = normalizeVisibleText(input.courseName);
     const courseId = normalizeVisibleText(input.courseId);
-    const startDate = parseDateInput(input.startDate, "startDate");
-    const endDate = parseDateInput(input.endDate, "endDate");
+    const educationDates = input.educationDates ?? [];
+    const derivedRange = deriveDateRangeFromEducationDates(educationDates);
+    const startDate = parseDateInput(derivedRange?.startDate ?? input.startDate, "startDate");
+    const endDate = parseDateInput(derivedRange?.endDate ?? input.endDate, "endDate");
 
     if (!companyName) {
       throw new Error("Company name is required.");
@@ -349,6 +353,7 @@ export class PrismaOperationRepository implements OperationRepository {
           createdBy: input.createdBy ?? null,
           driveLink: normalizeVisibleText(input.driveLink) || null,
           educationDays: normalizeVisibleText(input.educationDays) || null,
+          educationDates: educationDates.map((date) => parseDateInput(date, "educationDates")),
           educationFormat,
           educationFormatRaw: input.educationFormat,
           endDate,
@@ -506,15 +511,20 @@ export class PrismaOperationRepository implements OperationRepository {
       data.hasSatisfactionSurvey = PRISMA_SATISFACTION_SURVEY_STATUS[input.hasSatisfactionSurvey];
     }
 
-    if (input.startDate !== undefined || input.endDate !== undefined) {
+    if (input.startDate !== undefined || input.endDate !== undefined || input.educationDates !== undefined) {
       const current = await this.getOperationById(operationId);
 
       if (!current) {
         throw new Error("Operation not found.");
       }
 
-      const nextStartDate = input.startDate ?? current.startDate;
-      const nextEndDate = input.endDate ?? current.endDate;
+      // 실제 교육일 목록을 같이 보내면 그 최소/최대를 startDate/endDate로 삼는다(직접 보낸
+      // startDate/endDate보다 우선) — 두 값이 따로 놀면(예: 날짜 목록엔 9/7이 있는데 endDate는 9/4)
+      // 목록 쪽이 더 정확한 값이기 때문이다.
+      const derivedRange =
+        input.educationDates !== undefined ? deriveDateRangeFromEducationDates(input.educationDates) : null;
+      const nextStartDate = derivedRange?.startDate ?? input.startDate ?? current.startDate;
+      const nextEndDate = derivedRange?.endDate ?? input.endDate ?? current.endDate;
       const sessionDurationDays = deriveSessionDurationDays(nextStartDate, nextEndDate);
 
       data.startDate = parseDateInput(nextStartDate, "startDate");
@@ -522,6 +532,10 @@ export class PrismaOperationRepository implements OperationRepository {
       data.operationMonth = buildOperationMonth(nextStartDate);
       data.sessionDurationDays = sessionDurationDays;
       data.sessionDurationType = PRISMA_OPERATION_TYPE[deriveSessionDurationType(sessionDurationDays)];
+
+      if (input.educationDates !== undefined) {
+        data.educationDates = input.educationDates.map((date) => parseDateInput(date, "educationDates"));
+      }
     }
 
     if (input.instructorCost !== undefined) data.instructorCost = input.instructorCost;

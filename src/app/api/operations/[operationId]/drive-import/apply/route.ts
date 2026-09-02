@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
+import { parseEducationDatesText } from "@/lib/data/operationCalculations";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import type {
   ArchiveStatus,
@@ -26,6 +27,7 @@ const APPLYABLE_FIELDS = [
   "courseName",
   "driveLink",
   "educationDays",
+  "educationDates",
   "educationFormat",
   "endDate",
   "hasResultReport",
@@ -140,6 +142,17 @@ function assignUpdateValue(update: UpdateOperationInput, field: ApplyableField, 
 
   if (field === "startDate" || field === "endDate") {
     if (isDateText(value)) update[field] = value;
+    return;
+  }
+
+  if (field === "educationDates") {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      update.educationDates = [];
+      return;
+    }
+    const parsed = parseEducationDatesText(trimmed);
+    if (parsed.errors.length === 0) update.educationDates = parsed.dates;
     return;
   }
 

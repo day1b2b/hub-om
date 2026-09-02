@@ -126,14 +126,23 @@ export async function notifyOmRequestCreated(params: {
   onSiteOperation: string;
   coachRequest: string;
   totalSessions: number;
-  sessions: { date: string; dateEnd?: string; timeStart: string; timeEnd: string; duration: string; location: string }[];
+  sessions: {
+    date: string;
+    dateEnd?: string;
+    timeStart: string;
+    timeEnd: string;
+    duration: string;
+    location: string;
+    educationDatesText?: string;
+  }[];
   notes: string;
 }): Promise<{ channel: string; ts: string } | null> {
   const sessionLines = params.sessions
     .map((s, i) => {
       const duration = s.duration ? (s.duration.endsWith("h") ? s.duration : `${s.duration}h`) : "";
       const dateRange = s.dateEnd ? `${s.date} ~ ${s.dateEnd}` : s.date;
-      return `• ${i + 1}회차 / ${dateRange} / ${s.timeStart} ~ ${s.timeEnd}${duration ? ` / ${duration}` : ""} / ${s.location}`;
+      const educationDatesSuffix = s.educationDatesText?.trim() ? ` / 실제 교육일 ${s.educationDatesText.trim()}` : "";
+      return `• ${i + 1}회차 / ${dateRange} / ${s.timeStart} ~ ${s.timeEnd}${duration ? ` / ${duration}` : ""} / ${s.location}${educationDatesSuffix}`;
     })
     .join("\n");
 

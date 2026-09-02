@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
   buildOperationMonth,
+  deriveDateRangeFromEducationDates,
   deriveSessionDurationDays,
   deriveSessionDurationType,
   normalizeCourseId,
@@ -36,7 +37,12 @@ export class LocalJsonOperationRepository implements OperationRepository {
         throw new Error("Local operation data must be an array or an object with an operations array.");
       }
 
-      return [...operations].sort(compareOperationSessions);
+      // educationDates 필드 추가 이전에 저장된 로컬 픽스처 데이터는 이 키가 아예 없다.
+      // Postgres는 마이그레이션이 기존 행을 빈 배열로 채워주지만, 로컬 JSON은 그런 백필이
+      // 없으니 읽을 때 직접 채워 화면 쪽에서 항상 배열이라고 가정할 수 있게 한다.
+      return [...operations]
+        .map((operation) => ({ ...operation, educationDates: operation.educationDates ?? [] }))
+        .sort(compareOperationSessions);
     } catch (error) {
       if (isFileMissingError(error)) {
         return [];
@@ -114,8 +120,10 @@ export class LocalJsonOperationRepository implements OperationRepository {
 
   async createOperation(input: CreateOperationInput): Promise<OperationSession> {
     const operations = await this.listOperations();
-    const startDate = normalizeVisibleText(input.startDate);
-    const endDate = normalizeVisibleText(input.endDate);
+    const educationDates = input.educationDates ?? [];
+    const derivedRange = deriveDateRangeFromEducationDates(educationDates);
+    const startDate = derivedRange?.startDate ?? normalizeVisibleText(input.startDate);
+    const endDate = derivedRange?.endDate ?? normalizeVisibleText(input.endDate);
     const operationId = `manual-${randomUUID()}`;
     const revenue = input.revenue;
     const totalCost = input.totalCost;
@@ -131,6 +139,7 @@ export class LocalJsonOperationRepository implements OperationRepository {
       courseName: normalizeVisibleText(input.courseName),
       driveLink: normalizeVisibleText(input.driveLink),
       educationDays: normalizeVisibleText(input.educationDays),
+      educationDates,
       educationFormat: input.educationFormat,
       educationFormatRaw: input.educationFormat,
       endDate,
@@ -192,8 +201,10 @@ export class LocalJsonOperationRepository implements OperationRepository {
     }
 
     const totalCost = input.totalCost === undefined ? operation.totalCost : input.totalCost;
-    const startDate = input.startDate ?? operation.startDate;
-    const endDate = input.endDate ?? operation.endDate;
+    const derivedRange =
+      input.educationDates !== undefined ? deriveDateRangeFromEducationDates(input.educationDates) : null;
+    const startDate = derivedRange?.startDate ?? input.startDate ?? operation.startDate;
+    const endDate = derivedRange?.endDate ?? input.endDate ?? operation.endDate;
     const sessionDurationDays = deriveSessionDurationDays(startDate, endDate);
     const updatedOperation: OperationSession = {
       ...operation,
@@ -207,6 +218,7 @@ export class LocalJsonOperationRepository implements OperationRepository {
       courseName: normalizeOptionalText(input.courseName, operation.courseName),
       driveLink: normalizeOptionalText(input.driveLink, operation.driveLink),
       educationDays: normalizeOptionalText(input.educationDays, operation.educationDays),
+      educationDates: input.educationDates ?? operation.educationDates,
       educationFormat: input.educationFormat ?? operation.educationFormat,
       endDate,
       hasResultReport: input.hasResultReport ?? operation.hasResultReport,
