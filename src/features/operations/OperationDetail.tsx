@@ -81,6 +81,9 @@ export function OperationDetail({
     sameCourseIdOperations.length > 0
       ? sameCourseIdOperations.map((candidate) => candidate.operationId)
       : [operation.operationId];
+  // 과정명(과정ID 단위)은 코스ID명(코스ID 단위)보다 좁다 — 같은 코스ID라도 커리큘럼이 다르면
+  // 과정명은 따로 가야 하므로 이 과정(courseOperations)의 회차에만 반영한다.
+  const courseOperationIds = courseOperations.map((candidate) => candidate.operationId);
 
   return (
     <main className="dashboard-shell">
@@ -125,7 +128,14 @@ export function OperationDetail({
               />
               <EditableCourseNameItem
                 displayValue={operation.courseName || "미정"}
+                label="코스ID명"
                 operationIds={sameCourseIdOperationIds}
+                value={operation.courseName}
+              />
+              <EditableCourseNameItem
+                displayValue={operation.courseName || "미정"}
+                label="과정명"
+                operationIds={courseOperationIds}
                 value={operation.courseName}
               />
               <EditableInfoItem
