@@ -5,6 +5,9 @@ import { useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { holidayName } from "./holidays";
 import { missingArchiveItems } from "@/lib/data/operationCalculations";
+import { buildMyCourseRows } from "./myCourseRows";
+import type { OmNameDiagnosis } from "./omNameDiagnosis";
+import { calendarLabel, isOnsiteSupportForViewer } from "./onsiteLabel";
 import { createRequestMatcher } from "./requestDedup";
 import { requestHref } from "./requestHref";
 import type { OmRequest } from "@/lib/data/omRequest/omRequestTypes";
@@ -14,13 +17,15 @@ import { getSeoulToday } from "@/lib/seoulDate";
 interface MyDashboardProps {
   // 로그인 계정이 명단(team-users.json)에 없으면 null.
   omName: null | string;
+  // 담당이 0건인 이유(이름 어긋남·이메일 중복). 정상이면 null.
+  diagnosis: OmNameDiagnosis | null;
   // 이미 내 담당으로 필터된 운영 목록.
   operations: OperationSession[];
   // 나에게 배정된 OM 운영 요청.
   assignedRequests: OmRequest[];
 }
 
-export function MyDashboard({ assignedRequests, omName, operations }: MyDashboardProps) {
+export function MyDashboard({ assignedRequests, diagnosis, omName, operations }: MyDashboardProps) {
   const today = useMemo(() => getSeoulToday(), []);
   const [monthView, setMonthView] = useState(() => ({ year: today.getFullYear(), month: today.getMonth() }));
   const [openStage, setOpenStage] = useState<null | string>(null);
@@ -57,28 +62,9 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
       return { year: next.getFullYear(), month: next.getMonth() };
     });
   }
-  const scopedOperations = operations.filter((operation) => {
-    const start = parseDate(operation.startDate);
-    return start ? start.getFullYear() === monthView.year && start.getMonth() === monthView.month : false;
-  });
-  // 나의 담당 과정도 선택한 달에 진행되는 것만(세션 기간이 그 달과 겹치는 요청).
+  // 담당 과정 표의 월 강조 범위. 그 달과 기간이 겹치는 줄만 강조한다.
   const monthStartTime = stripTime(new Date(monthView.year, monthView.month, 1)).getTime();
   const monthEndTime = stripTime(new Date(monthView.year, monthView.month + 1, 0)).getTime();
-  const monthAssignedRequests = assignedRequests.filter((request) => {
-    const range = scheduleRange(request);
-    const start = parseDate(range.start);
-    const end = parseDate(range.end) ?? start;
-    if (!start || !end) return false;
-    return stripTime(start).getTime() <= monthEndTime && stripTime(end).getTime() >= monthStartTime;
-  });
-  // 담당 과정 표는 전체를 시작일 순으로 다 보여주고, 선택한 달에 진행되는 건만 강조한다.
-  const sortedAssignedRequests = [...assignedRequests].sort((a, b) =>
-    scheduleRange(a).start.localeCompare(scheduleRange(b).start)
-  );
-  const focusRequestIds = new Set(monthAssignedRequests.map((request) => request.id));
-  const active = scopedOperations.filter((operation) => operation.operationStatus === "진행중").length;
-  const upcoming = scopedOperations.filter((operation) => isUpcoming(operation, today)).length;
-  const done = scopedOperations.filter(isDone).length;
 
   // 밀린 작업 집계는 각 단계의 항목에서 직접 센다(아래 stages 참고).
   // 기간 필터는 걸지 않는다 — 지난달 미완 항목이 숨으면 안 된다.
@@ -95,11 +81,12 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
       const start = parseDate(operation.startDate);
       const end = parseDate(operation.endDate) ?? start;
       if (!start || !end) return [];
-      const onsite = operation.onsiteRequired === "Y";
+      // 현장운영지원 표기는 "내가 지원자로 들어간 건"에만 붙인다. 담당 OM인 과정에는
+      // 현장에 가더라도 붙이지 않는다 — 그 표기의 목적이 담당 과정과의 구별이라서다.
+      const onsite = isOnsiteSupportForViewer(operation, omName);
       return [{
         id: `op-${operation.operationId}`,
-        // 현장운영지원은 이름에 붙여 캘린더에서 바로 알아보게 한다.
-        label: onsite ? `${operation.companyName}_현장운영지원` : operation.companyName,
+        label: calendarLabel(operation.companyName, onsite),
         company: operation.companyName,
         course: operation.courseName,
         start: stripTime(start),
@@ -111,9 +98,9 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
     ...assignedRequests.flatMap((request) => {
       // 교육 일정 차수(세션)를 각 날짜에 개별 표시한다. 세션에 dateEnd가 있으면 그 기간만큼 막대로.
       const multiSession = request.sessions.length > 1;
-      const onsite = request.onSiteOperation === "Y";
-      // 기업명 뒤에 바로 붙여, 막대가 좁아 잘려도 앞부분이 먼저 보이게 한다.
-      const baseLabel = onsite ? `${request.company}_현장운영지원` : request.company;
+      // 담당 과정(업무요청)은 내가 담당 OM으로 배정된 건만 모아 온다. 담당이므로
+      // 현장운영이 필요한 과정이어도 "_현장운영지원"을 붙이지 않는다.
+      const baseLabel = calendarLabel(request.company, false);
       return request.sessions.flatMap((session, index) => {
         const start = parseDate(session.date);
         const end = parseDate(session.dateEnd ?? session.date) ?? start;
@@ -126,7 +113,7 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
           start: stripTime(start),
           end: stripTime(end),
           href: `/om-request/manage/${request.id}`,
-          onsite
+          onsite: false
         }];
       });
     })
@@ -146,6 +133,36 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
       .filter((operation) => (operation.courseId ?? "").trim() !== "")
       .map((operation) => [(operation.courseId ?? "").trim(), operation.operationId])
   );
+  // 담당 과정 표는 업무요청 + 운영현황을 합쳐 전체를 시작일 순으로 보여주고,
+  // 선택한 달에 진행되는 줄만 강조한다. 운영현황에서 OM 배정만 된 과정도 표에 떠야 한다.
+  const courseRows = buildMyCourseRows(
+    assignedRequests,
+    operations,
+    isRepresentedByRequest,
+    scheduleRange,
+    (request) => requestHref(request, operationIdByCourse)
+  );
+  const isInMonth = (start: string, end: string) => {
+    const from = parseDate(start);
+    const to = parseDate(end) ?? from;
+    if (!from || !to) return false;
+    return stripTime(from).getTime() <= monthEndTime && stripTime(to).getTime() >= monthStartTime;
+  };
+  const focusRowKeys = new Set(courseRows.filter((row) => isInMonth(row.start, row.end)).map((row) => row.key));
+
+  // 요약 지표는 담당 전체 기준이다. 전에는 선택한 달에 "시작하는" 운영만 세서,
+  // 운영 현황에 20건이 잡히는 담당자의 대시보드에 "전체 1"이 떴다.
+  // 월 이동은 캘린더와 담당 과정 표의 강조에만 쓴다.
+  // 전체 = 바로 아래 담당 과정 표의 줄 수와 같게 맞춘다(두 숫자가 어긋나면 어느 쪽도 못 믿는다).
+  const totalCount = courseRows.length;
+  const active = operations.filter((operation) => operation.operationStatus === "진행중").length;
+  // 예정도 표와 같은 기준(운영 + 짝 없는 담당 과정)으로 센다. 진행상태가 아니라 시작일로 본다.
+  const upcoming = courseRows.filter((row) => {
+    const start = parseDate(row.start);
+    return start ? stripTime(start).getTime() > stripTime(today).getTime() : false;
+  }).length;
+  const done = operations.filter(isDone).length;
+
   // 사전세팅 = 강의 시작 전 단계 전체(아직 시작하지 않은 과정). 이전에는 D-7~D-2 창만 봤는데,
   // 그러면 그 창에 든 과정이 없을 때 단계가 비어 보여 실제 준비 상황과 어긋났다.
   // 임박한 순으로 정렬해 위쪽이 먼저 챙길 것이 되게 한다.
@@ -258,9 +275,10 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
       ]
     }
   ];
-  // 다음 과정 D-day: 운영 + 담당 과정을 모두 고려해 가장 임박한 것을 찾는다.
-  const nextEvent = findNextEvent(calendarEvents, today);
-  const nextEventDday = nextEvent ? daysBetween(today, nextEvent.start) : null;
+  // 다음 과정 D-day: 운영 + 담당 과정을 모두 고려해 임박한 순으로 몇 개를 보여 준다.
+  // 하나만 보여 주면 그 과정을 치른 뒤 다음이 무엇인지 캘린더를 뒤져야 했다.
+  const nextEvents = findNextEvents(calendarEvents, today, 3);
+  const [nextEvent, ...upcomingAfterNext] = nextEvents;
 
   return (
     <main className="dashboard-shell">
@@ -275,8 +293,10 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
           </div>
         </header>
 
+        {diagnosis ? <NameMismatchNotice diagnosis={diagnosis} /> : null}
+
         <section className="metrics" aria-label="내 운영 요약">
-          <Metric label="전체" value={scopedOperations.length} />
+          <Metric label="전체" value={totalCount} />
           <Metric label="진행중" value={active} />
           <Metric label="예정" value={upcoming} />
           <Metric label="완료" value={done} />
@@ -298,7 +318,7 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
               </button>
             </h2>
             <div className="dashboard-table-meta">
-              <span>전체 {sortedAssignedRequests.length}건 · {monthView.month + 1}월 {focusRequestIds.size}건</span>
+              <span>전체 {courseRows.length}건 · {monthView.month + 1}월 {focusRowKeys.size}건</span>
               {/* 월 이동은 표의 강조 대상을 바꾸는 것이라 접혀 있을 때는 숨긴다. */}
               {coursesOpen ? (
                 <div className="me-cal-nav" aria-label="월 이동">
@@ -328,31 +348,28 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
                 </tr>
               </thead>
               <tbody>
-                {sortedAssignedRequests.length > 0 ? (
-                  sortedAssignedRequests.map((request, index) => {
-                    const schedule = scheduleRange(request);
-                    return (
-                      <tr className={focusRequestIds.has(request.id) ? "me-focus-row" : ""} key={request.id}>
-                        <td>{index + 1}</td>
-                        <td><strong>{request.company}</strong></td>
-                        <td>
-                          <Link className="course-link" href={requestHref(request, operationIdByCourse)}>
-                            <strong>{request.courseName}</strong>
-                          </Link>
-                        </td>
-                        <td>{request.totalSessions}</td>
-                        <td>{request.ld || "미정"}</td>
-                        <td>{schedule.start}</td>
-                        <td>{schedule.end}</td>
-                        <td>{request.instructorName || "-"}</td>
-                      </tr>
-                    );
-                  })
+                {courseRows.length > 0 ? (
+                  courseRows.map((row, index) => (
+                    <tr className={focusRowKeys.has(row.key) ? "me-focus-row" : ""} key={row.key}>
+                      <td>{index + 1}</td>
+                      <td><strong>{row.company}</strong></td>
+                      <td>
+                        <Link className="course-link" href={row.href}>
+                          <strong>{row.courseName}</strong>
+                        </Link>
+                      </td>
+                      <td>{row.totalSessions}</td>
+                      <td>{row.ld}</td>
+                      <td>{row.start}</td>
+                      <td>{row.end}</td>
+                      <td>{row.instructor}</td>
+                    </tr>
+                  ))
                 ) : (
                   <tr>
                     <td className="empty-state" colSpan={8}>
                       <strong>배정된 담당 과정이 없습니다.</strong>
-                      <span>업무 요청 후 담당으로 배정되면 여기에 표시됩니다.</span>
+                      <span>업무 요청이나 운영 현황에서 담당으로 배정되면 여기에 표시됩니다.</span>
                     </td>
                   </tr>
                 )}
@@ -421,17 +438,34 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
           <section className="dashboard-panel">
             <div className="section-title">
               <h2>다음 과정 D-day</h2>
-              <span>가장 임박한 예정 과정</span>
+              <span>임박한 예정 과정 {nextEvents.length}건</span>
             </div>
             {nextEvent ? (
-              <div className="dday-card">
-                <strong className="dday-badge">{nextEventDday === 0 ? "D-DAY" : `D-${nextEventDday}`}</strong>
-                <Link className="course-link" href={nextEvent.href}>
-                  <strong>{nextEvent.label}</strong>
-                  <span>{nextEvent.course}</span>
-                </Link>
-                <span className="dday-date">{formatDateText(nextEvent.start)} 시작</span>
-              </div>
+              <>
+                <div className="dday-card">
+                  <strong className="dday-badge">{ddayText(daysBetween(today, nextEvent.start))}</strong>
+                  <Link className="course-link" href={nextEvent.href}>
+                    <strong>{nextEvent.label}</strong>
+                    <span>{nextEvent.course}</span>
+                  </Link>
+                  <span className="dday-date">{formatDateText(nextEvent.start)} 시작</span>
+                </div>
+                {/* 두 번째부터는 한 줄씩. 첫 과정만 크게 두어 "가장 임박한 것"이 그대로 눈에 남는다. */}
+                {upcomingAfterNext.length > 0 ? (
+                  <ul className="dday-next-list">
+                    {upcomingAfterNext.map((event) => (
+                      <li key={event.id}>
+                        <span className="dday-next-badge">{ddayText(daysBetween(today, event.start))}</span>
+                        <Link className="course-link" href={event.href}>
+                          <strong>{event.label}</strong>
+                          <span>{event.course}</span>
+                        </Link>
+                        <span className="dday-next-date">{formatDateText(event.start)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </>
             ) : (
               <PanelEmpty label="예정된 과정이 없습니다" />
             )}
@@ -703,6 +737,45 @@ function scheduleRange(request: OmRequest): { start: string; end: string } {
   return { start: dates[0], end: dates[dates.length - 1] };
 }
 
+/**
+ * 담당이 0건인 이유를 화면에서 바로 읽게 한다.
+ *
+ * 전에는 이름이 어긋나 0건인 것과 정말 담당이 없는 것이 똑같이
+ * "배정된 담당 과정이 없습니다"로 보여서, 원인을 찾는 데 한참 걸렸다.
+ */
+function NameMismatchNotice({ diagnosis }: { diagnosis: OmNameDiagnosis }) {
+  const duplicated = diagnosis.rosterNamesForEmail.length > 1;
+
+  return (
+    <section className="dashboard-panel" aria-label="담당 과정이 0건인 이유">
+      <div className="empty-state">
+        <strong>
+          운영 현황에는 {diagnosis.totalOperations}건이 있는데, &lsquo;{diagnosis.omName}&rsquo; 이름으로 잡힌 과정이 0건입니다.
+        </strong>
+        <span>
+          내 대시보드는 <b>로그인 계정 → 명단의 이름 → 운영 현황 OM 칸</b> 순서로 이어집니다.
+          가운데 이름이 운영 현황 표기와 다르면 과정이 많아도 0건으로 보입니다.
+        </span>
+        {duplicated ? (
+          <span>
+            <b>이 계정 이메일로 명단 행이 {diagnosis.rosterNamesForEmail.length}개 있습니다:</b>{" "}
+            {diagnosis.rosterNamesForEmail.join(", ")} — 나중에 등록된 행의 이름이 적용됩니다.
+            관리자 → 사용자 관리에서 중복 행을 지우고 하나만 남겨 주세요.
+          </span>
+        ) : null}
+        {diagnosis.omNamesInOperations.length > 0 ? (
+          <span>
+            운영 현황 OM 칸에 쓰인 이름: {diagnosis.omNamesInOperations.join(", ")}
+          </span>
+        ) : null}
+        <span>
+          관리자 → 사용자 관리에서 내 이름을 운영 현황 OM 표기와 같게 맞추면 바로 보입니다.
+        </span>
+      </div>
+    </section>
+  );
+}
+
 function Metric({ label, value }: { label: string; value: number | string }) {
   return (
     <div className="metric">
@@ -710,11 +783,6 @@ function Metric({ label, value }: { label: string; value: number | string }) {
       <strong>{value}</strong>
     </div>
   );
-}
-
-function isUpcoming(operation: OperationSession, today: Date) {
-  const start = parseDate(operation.startDate);
-  return start ? start.getTime() > stripTime(today).getTime() : false;
 }
 
 function isDone(operation: OperationSession) {
@@ -733,18 +801,30 @@ function stripTime(value: Date) {
 }
 
 // 오늘 이후 시작하는 과정(운영 + 담당 과정) 중 가장 임박한 것을 찾는다.
-function findNextEvent(events: CalendarEvent[], today: Date): CalendarEvent | null {
+/**
+ * 오늘 이후 시작하는 과정(운영 + 담당 과정) 중 임박한 순으로 limit개.
+ *
+ * 전에는 가장 임박한 하나만 보여 줬는데, 그 하나를 치르면 다음에 무엇이 오는지
+ * 캘린더를 뒤져야 했다. 며칠 안에 몰린 과정을 한눈에 보려면 몇 개는 같이 보여야 한다.
+ * 같은 날 시작하는 과정이 여러 개면 기업·과정명 순으로 세워 순서가 흔들리지 않게 한다.
+ */
+function findNextEvents(events: CalendarEvent[], today: Date, limit: number): CalendarEvent[] {
   const todayTime = stripTime(today).getTime();
-  let best: CalendarEvent | null = null;
 
-  for (const event of events) {
-    const time = event.start.getTime();
-    if (time >= todayTime && (!best || time < best.start.getTime())) {
-      best = event;
-    }
-  }
+  return events
+    .filter((event) => event.start.getTime() >= todayTime)
+    .sort((a, b) => {
+      const diff = a.start.getTime() - b.start.getTime();
+      if (diff !== 0) return diff;
+      const byCompany = a.label.localeCompare(b.label, "ko");
+      return byCompany !== 0 ? byCompany : a.course.localeCompare(b.course, "ko");
+    })
+    .slice(0, limit);
+}
 
-  return best;
+/** D-0은 "D-DAY"로 쓴다. 숫자 0은 남은 날이 없다는 뜻으로 잘 안 읽힌다. */
+function ddayText(days: number): string {
+  return days === 0 ? "D-DAY" : `D-${days}`;
 }
 
 function daysBetween(from: Date, to: Date): number {

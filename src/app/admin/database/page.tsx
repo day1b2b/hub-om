@@ -1,5 +1,6 @@
 import { AppSidebar } from "@/components/AppSidebar";
 import { AdminDatabaseGrid } from "@/features/admin/AdminDatabaseGrid";
+import { CourseDeletePanel } from "@/features/admin/CourseDeletePanel";
 import { DeletedOperationsPanel } from "@/features/admin/DeletedOperationsPanel";
 import { OmAssignmentStatusBackfillPanel } from "@/features/admin/OmAssignmentStatusBackfillPanel";
 import { OnsiteRequiredBackfillPanel } from "@/features/admin/OnsiteRequiredBackfillPanel";
@@ -57,6 +58,8 @@ export default async function AdminDatabasePage({ searchParams }: AdminDatabaseP
             <DeletedOperationsPanel />
           </>
         ) : null}
+
+        {selectedTable.key === "courses" ? <CourseDeletePanel /> : null}
       </section>
     </main>
   );

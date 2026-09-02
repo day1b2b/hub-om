@@ -9298,6 +9298,13 @@ button.coach-doc-reserve-chip:disabled {
   padding: 8px 18px 18px;
 }
 
+/* 기업명과 과정명이 각 줄에 오게 한다. .course-link는 block이지만 안의 strong/span은
+   inline이라 그대로 두면 "휴먼tss_현장운영지원휴먼TSS 전사 AI..."처럼 붙어 보인다. */
+.dday-card .course-link {
+  display: grid;
+  gap: 2px;
+}
+
 .dday-badge {
   color: var(--text);
   font-size: 34px;
@@ -9308,6 +9315,57 @@ button.coach-doc-reserve-chip:disabled {
 .dday-date {
   color: var(--muted);
   font-size: 12px;
+}
+
+/* 두 번째부터의 임박 과정. 첫 과정(.dday-card)만 크게 두고 나머지는 한 줄씩 쌓는다.
+   D-day · 과정 · 날짜를 한 줄에 놓되 과정명이 길어지면 그 칸만 줄어들게 한다. */
+.dday-next-list {
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: 2px;
+  list-style: none;
+  margin: 0;
+  padding: 10px 18px 16px;
+}
+
+.dday-next-list li {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: 5px 0;
+}
+
+.dday-next-badge {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.dday-next-list .course-link {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+/* 한 줄 항목이라 기업명·과정명이 넘치면 잘라 낸다. 줄바꿈되면 줄 높이가 들쭉날쭉해진다. */
+.dday-next-list .course-link strong,
+.dday-next-list .course-link span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dday-next-list .course-link span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.dday-next-date {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 /* 기업 위키(company-wiki) 목록/상세에서 추가로 쓰는 클래스 */

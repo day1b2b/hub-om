@@ -1,5 +1,6 @@
 import { getPrismaClient } from "@/lib/data/prisma";
 import { ADMIN_ENUM_LABELS, getAdminEditableField } from "@/lib/admin/databaseEditConfig";
+import { formatProcessId } from "@/lib/data/operationCalculations";
 
 export interface DatabaseCellOption {
   label: string;
@@ -81,6 +82,7 @@ export async function readDatabaseDashboard(): Promise<DatabaseDashboardSnapshot
       orderBy: { updatedAt: "desc" },
       select: {
         id: true,
+        processSeq: true,
         courseId: true,
         name: true,
         operationType: true,
@@ -258,6 +260,7 @@ export async function readDatabaseDashboard(): Promise<DatabaseDashboardSnapshot
       rowCount: courseCount,
       rows: courses.map((course) => ({
         cells: [
+          { label: "과정ID", value: formatProcessId(course.processSeq) },
           { label: "기업", value: course.company.name },
           editableCell("courses", "name", course.name),
           editableCell("courses", "courseId", course.courseId),
