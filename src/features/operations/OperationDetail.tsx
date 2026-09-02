@@ -117,9 +117,9 @@ export function OperationDetail({
         ) : null}
 
         <section className="operation-detail-layout">
-          <section className="detail-section compact-info-section">
+          <section className="detail-section compact-info-section wide-detail-section">
             <div className="section-title">
-              <h2>과정 정보</h2>
+              <h2>코스 정보</h2>
             </div>
             <div className="info-grid">
               <EditableInfoItem
@@ -134,6 +134,14 @@ export function OperationDetail({
                 operationIds={sameCourseIdOperationIds}
                 value={operation.courseName}
               />
+            </div>
+          </section>
+
+          <section className="detail-section compact-info-section">
+            <div className="section-title">
+              <h2>과정 정보</h2>
+            </div>
+            <div className="info-grid">
               <EditableCourseNameItem
                 displayValue={operation.courseName || "미정"}
                 label="과정명"
