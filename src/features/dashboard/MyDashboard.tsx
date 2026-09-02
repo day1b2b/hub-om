@@ -47,7 +47,7 @@ export function MyDashboard({ assignedRequests, diagnosis, omName, operations }:
           <section className="dashboard-panel">
             <div className="empty-state">
               <strong>명단에 등록된 계정이 아닙니다.</strong>
-              <span>관리자에게 OM 명단 등록을 요청하세요. (관리자 전용 → 사용자 관리)</span>
+              <span>관리자에게 OM 명단 등록을 요청하세요. (관리자 전용 → 데이터 관리 → 멤버 관리)</span>
             </div>
           </section>
         </section>
@@ -760,7 +760,7 @@ function NameMismatchNotice({ diagnosis }: { diagnosis: OmNameDiagnosis }) {
           <span>
             <b>이 계정 이메일로 명단 행이 {diagnosis.rosterNamesForEmail.length}개 있습니다:</b>{" "}
             {diagnosis.rosterNamesForEmail.join(", ")} — 나중에 등록된 행의 이름이 적용됩니다.
-            관리자 → 사용자 관리에서 중복 행을 지우고 하나만 남겨 주세요.
+            관리자 → 멤버 관리에서 중복 행을 지우고 하나만 남겨 주세요.
           </span>
         ) : null}
         {diagnosis.omNamesInOperations.length > 0 ? (
@@ -769,7 +769,7 @@ function NameMismatchNotice({ diagnosis }: { diagnosis: OmNameDiagnosis }) {
           </span>
         ) : null}
         <span>
-          관리자 → 사용자 관리에서 내 이름을 운영 현황 OM 표기와 같게 맞추면 바로 보입니다.
+          관리자 → 멤버 관리에서 내 이름을 운영 현황 OM 표기와 같게 맞추면 바로 보입니다.
         </span>
       </div>
     </section>

@@ -209,7 +209,9 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
 
   return (
     <div className="user-management">
-      <form className="user-add-form" style={{ flexWrap: "nowrap" }} onSubmit={handleAdd}>
+      {/* 인라인 nowrap을 두면 컨트롤이 6개라 좁은 화면에서 [추가] 버튼이 오른쪽으로 밀려
+          잘린다. globals.css의 flex-wrap: wrap을 그대로 쓴다. */}
+      <form className="user-add-form" onSubmit={handleAdd}>
         <select
           value={team}
           onChange={(e) => setTeam(e.target.value)}
@@ -298,25 +300,39 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
             <span className="user-list-count">
               {teamFilter === "전체" ? `총 ${users.length}명` : `${teamFilter} ${filteredUsers.length}명`}
             </span>
-            {selected.size > 0 && (
-              <div className="user-bulk-assign">
-                <select
-                  value={assignRole}
-                  onChange={(e) => setAssignRole(e.target.value as TeamUserRole)}
-                  className="user-input"
-                >
-                  {ROLE_OPTIONS.map((r) => (
-                    <option key={r.value} value={r.value}>{r.label}</option>
-                  ))}
-                </select>
-                <button className="user-add-btn" disabled={assigning} onClick={handleAssignRole} type="button">
-                  {assigning ? "지정 중..." : `${selected.size}명 구분 지정`}
-                </button>
-                <button className="user-delete-btn" disabled={deleting} onClick={handleDelete}>
-                  {deleting ? "삭제 중..." : `${selected.size}명 삭제`}
-                </button>
-              </div>
-            )}
+            {/* 전에는 행을 체크할 때만 이 영역이 나타났다. 그래서 구분 지정·삭제 기능이
+                아예 없는 것으로 보였다. 항상 두고 선택 전에는 비활성으로 알려 준다. */}
+            <div className="user-bulk-assign">
+              <select
+                value={assignRole}
+                onChange={(e) => setAssignRole(e.target.value as TeamUserRole)}
+                className="user-input"
+                disabled={selected.size === 0}
+              >
+                {ROLE_OPTIONS.map((r) => (
+                  <option key={r.value} value={r.value}>{r.label}</option>
+                ))}
+              </select>
+              <button
+                className="user-add-btn"
+                disabled={assigning || selected.size === 0}
+                onClick={handleAssignRole}
+                type="button"
+              >
+                {assigning ? "지정 중..." : selected.size > 0 ? `${selected.size}명 구분 지정` : "구분 지정"}
+              </button>
+              <button
+                className="user-delete-btn"
+                disabled={deleting || selected.size === 0}
+                onClick={handleDelete}
+                type="button"
+              >
+                {deleting ? "삭제 중..." : selected.size > 0 ? `${selected.size}명 삭제` : "삭제"}
+              </button>
+              {selected.size === 0 && (
+                <span className="user-bulk-hint">표에서 행을 선택하면 쓸 수 있어요</span>
+              )}
+            </div>
           </div>
           {teamEditError && <p className="om-request-error">{teamEditError}</p>}
           <table className="user-table">
