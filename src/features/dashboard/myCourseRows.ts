@@ -16,12 +16,17 @@ export interface MyCourseRow {
   source: "request" | "operation";
 }
 
-/** 같은 과정으로 묶는 키. 코스ID가 비어 있어도 기업+과정명으로 묶인다. */
+/**
+ * 같은 과정으로 묶는 키. 코스ID가 비어 있어도 기업+과정명으로 묶인다.
+ *
+ * 타입은 string이지만 원천에서 비어 들어온 행이 있을 수 있어 전부 널 가드를 둔다.
+ * 이 함수는 /me의 모든 운영마다 돌기 때문에, 한 행만 비어도 대시보드 전체가 죽는다.
+ */
 function courseKey(operation: OperationSession): string {
   return [
     (operation.courseId ?? "").trim(),
-    operation.companyName.trim(),
-    operation.courseName.trim()
+    (operation.companyName ?? "").trim(),
+    (operation.courseName ?? "").trim()
   ].join("|");
 }
 
@@ -69,8 +74,8 @@ export function buildMyCourseRows(
     .filter((operation) => !isRepresentedByRequest(operation))
     .map((operation) => ({
       key: `o-${operation.operationId}`,
-      company: operation.companyName,
-      courseName: operation.courseName,
+      company: (operation.companyName ?? "").trim(),
+      courseName: (operation.courseName ?? "").trim(),
       totalSessions: roundsByCourse.get(courseKey(operation)) ?? 1,
       ld: operation.ld || "미정",
       start: operation.startDate || "-",
