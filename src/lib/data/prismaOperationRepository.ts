@@ -181,21 +181,27 @@ export class PrismaOperationRepository implements OperationRepository {
 
   async listOperations(): Promise<OperationSession[]> {
     const prisma = getPrismaClient();
-    const sessions = await prisma.operationSession.findMany({
-      where: { deletedAt: null },
-      include: {
-        course: {
-          include: {
-            company: true
+    const [sessions, courseIdLabels] = await Promise.all([
+      prisma.operationSession.findMany({
+        where: { deletedAt: null },
+        include: {
+          course: {
+            include: {
+              company: true
+            }
+          },
+          sourceRecords: {
+            orderBy: { createdAt: "desc" },
+            take: 1
           }
         },
-        sourceRecords: {
-          orderBy: { createdAt: "desc" },
-          take: 1
-        }
-      },
-      orderBy: [{ startDate: "asc" }, { operationId: "asc" }]
-    });
+        orderBy: [{ startDate: "asc" }, { operationId: "asc" }]
+      }),
+      prisma.courseIdLabel.findMany()
+    ]);
+    const courseIdLabelByKey = new Map(
+      courseIdLabels.map((row) => [courseIdLabelKey(row.companyId, row.courseId), row.label])
+    );
 
     return sessions.map((session) => {
       const revenue = decimalToNumber(session.course.revenue);
@@ -208,6 +214,7 @@ export class PrismaOperationRepository implements OperationRepository {
         processId: formatProcessId(session.course.processSeq),
         courseRecordId: session.course.id,
         courseId: session.course.courseId,
+        courseIdLabel: courseIdLabelByKey.get(courseIdLabelKey(session.course.companyId, session.course.courseId)) ?? "",
         companyName: session.course.company.name,
         courseName: session.course.name,
         courseCategory: session.course.courseCategory ?? "",
@@ -484,6 +491,35 @@ export class PrismaOperationRepository implements OperationRepository {
       data.courseRecordId = course.id;
     }
 
+    if (input.courseIdLabel !== undefined) {
+      const nextLabel = normalizeVisibleText(input.courseIdLabel);
+      const session = await prisma.operationSession.findUnique({
+        include: { course: true },
+        where: { operationId }
+      });
+
+      if (!session) {
+        throw new Error("Operation not found.");
+      }
+
+      // 코스ID명은 courseId 하나당 한 행뿐이라(과정명과 별개 테이블), Course를 upsert/재배정하지
+      // 않는다 — 그래서 같은 코스ID를 쓰는 서로 다른 과정들을 병합시키지 않는다.
+      await prisma.courseIdLabel.upsert({
+        where: {
+          companyId_courseId: {
+            companyId: session.course.companyId,
+            courseId: session.course.courseId
+          }
+        },
+        create: {
+          companyId: session.course.companyId,
+          courseId: session.course.courseId,
+          label: nextLabel
+        },
+        update: { label: nextLabel }
+      });
+    }
+
     if (input.courseCategory !== undefined || input.tools !== undefined) {
       const session = await prisma.operationSession.findUnique({
         select: { courseRecordId: true },
@@ -656,6 +692,10 @@ function normalizeVisibleText(value: string): string {
 
 function nullableText(value: string): string | null {
   return normalizeVisibleText(value) || null;
+}
+
+function courseIdLabelKey(companyId: string, courseId: string): string {
+  return `${companyId}::${courseId}`;
 }
 
 function normalizeName(value: string): string {
