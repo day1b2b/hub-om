@@ -29,3 +29,18 @@ export async function saveCalendarEventLink(link: CalendarEventLink): Promise<vo
 export async function deleteCalendarEventLink(operationId: string): Promise<void> {
   await getPrismaClient().calendarEventLink.deleteMany({ where: { operationId } });
 }
+
+/**
+ * 캘린더 하나에 걸린 매핑을 eventId로 찾을 수 있게 돌려준다.
+ * 역반영은 구글에서 읽은 이벤트가 어느 회차인지 거꾸로 찾아야 한다.
+ */
+export async function findCalendarEventLinksByCalendar(calendarId: string): Promise<Map<string, CalendarEventLink>> {
+  const rows = await getPrismaClient().calendarEventLink.findMany({ where: { calendarId } });
+
+  return new Map(
+    rows.map((row) => [
+      row.eventId,
+      { operationId: row.operationId, calendarId: row.calendarId, eventId: row.eventId }
+    ])
+  );
+}
