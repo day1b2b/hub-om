@@ -9271,6 +9271,13 @@ button.coach-doc-reserve-chip:disabled {
   padding: 8px 18px 18px;
 }
 
+/* 기업명과 과정명이 각 줄에 오게 한다. .course-link는 block이지만 안의 strong/span은
+   inline이라 그대로 두면 "휴먼tss_현장운영지원휴먼TSS 전사 AI..."처럼 붙어 보인다. */
+.dday-card .course-link {
+  display: grid;
+  gap: 2px;
+}
+
 .dday-badge {
   color: var(--text);
   font-size: 34px;
