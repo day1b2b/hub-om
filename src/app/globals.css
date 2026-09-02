@@ -4953,6 +4953,19 @@ td span {
   white-space: nowrap;
 }
 
+/* 회차 추가/일괄등록 버튼과 같은 줄에 있으면 만족도 분석 버튼이 묻혀서
+   테두리만 있는 형제 버튼들과 달리 채워진 색으로 눈에 띄게 한다. */
+.satisfaction-analysis-trigger {
+  background: var(--green);
+  border-color: var(--green);
+  color: #ffffff;
+}
+
+.satisfaction-analysis-trigger:hover {
+  background: #5c7a54;
+  border-color: #5c7a54;
+}
+
 .add-round-trigger:hover {
   background: var(--surface-hover, #f4f5f7);
 }
