@@ -3,9 +3,24 @@
 import { createContext, useContext, type ReactNode } from "react";
 
 const IsAdminContext = createContext(false);
+const SatisfactionMatchingAccessContext = createContext(false);
 
-export function RoleProvider({ isAdmin, children }: { isAdmin: boolean; children: ReactNode }) {
-  return <IsAdminContext.Provider value={isAdmin}>{children}</IsAdminContext.Provider>;
+export function RoleProvider({
+  isAdmin,
+  satisfactionMatchingEnabled = false,
+  children
+}: {
+  isAdmin: boolean;
+  satisfactionMatchingEnabled?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <IsAdminContext.Provider value={isAdmin}>
+      <SatisfactionMatchingAccessContext.Provider value={isAdmin && satisfactionMatchingEnabled}>
+        {children}
+      </SatisfactionMatchingAccessContext.Provider>
+    </IsAdminContext.Provider>
+  );
 }
 
 /**
@@ -13,4 +28,9 @@ export function RoleProvider({ isAdmin, children }: { isAdmin: boolean; children
  */
 export function useIsAdmin() {
   return useContext(IsAdminContext);
+}
+
+/** 메뉴 표시용. 실제 접근 통제는 페이지와 API에서도 서버 측으로 수행한다. */
+export function useCanAccessSatisfactionMatching() {
+  return useContext(SatisfactionMatchingAccessContext);
 }

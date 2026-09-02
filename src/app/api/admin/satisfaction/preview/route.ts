@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
+import { authorizeSatisfactionMatching } from "@/lib/auth/satisfactionMatchingAccess";
 import { parseGoogleSpreadsheetUrl, readGoogleSheetRows } from "@/lib/data/googleSheetsImport";
 import { getGoogleB2BAccessToken } from "@/lib/googleCalendar/calendarWriteClient";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
@@ -11,10 +11,11 @@ export const dynamic = "force-dynamic";
 /**
  * 만족도 집계 시트를 운영 세션에 매칭해보는 미리보기(드라이런).
  * DB에 아무것도 쓰지 않고, 매칭/모호/미매칭 결과만 반환한다.
- * 시트는 로그인한 사용자의 Google 권한으로 읽는다(데이터 검수 기능과 동일).
+ * 활성화된 경우에만 관리자가 B2B 공용 계정 권한으로 시트를 읽는다.
  */
 export async function POST(request: Request) {
-  await requireWorkspaceSession();
+  const access = await authorizeSatisfactionMatching();
+  if (!access.ok) return access.response;
 
   try {
     const body = (await request.json()) as {

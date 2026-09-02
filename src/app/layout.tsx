@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Providers } from "@/components/Providers";
 import { resolveSessionIsAdmin } from "@/lib/auth/requireAdminSession";
+import { isSatisfactionMatchingEnabled } from "@/lib/auth/satisfactionMatchingAccess";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,7 +16,9 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   return (
     <html lang="ko">
       <body>
-        <Providers isAdmin={isAdmin}>{children}</Providers>
+        <Providers isAdmin={isAdmin} satisfactionMatchingEnabled={isSatisfactionMatchingEnabled()}>
+          {children}
+        </Providers>
       </body>
     </html>
   );
