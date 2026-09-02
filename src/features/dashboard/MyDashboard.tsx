@@ -6,6 +6,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { holidayName } from "./holidays";
 import { missingArchiveItems } from "@/lib/data/operationCalculations";
 import { buildMyCourseRows } from "./myCourseRows";
+import type { OmNameDiagnosis } from "./omNameDiagnosis";
 import { createRequestMatcher } from "./requestDedup";
 import { requestHref } from "./requestHref";
 import type { OmRequest } from "@/lib/data/omRequest/omRequestTypes";
@@ -15,13 +16,15 @@ import { getSeoulToday } from "@/lib/seoulDate";
 interface MyDashboardProps {
   // 로그인 계정이 명단(team-users.json)에 없으면 null.
   omName: null | string;
+  // 담당이 0건인 이유(이름 어긋남·이메일 중복). 정상이면 null.
+  diagnosis: OmNameDiagnosis | null;
   // 이미 내 담당으로 필터된 운영 목록.
   operations: OperationSession[];
   // 나에게 배정된 OM 운영 요청.
   assignedRequests: OmRequest[];
 }
 
-export function MyDashboard({ assignedRequests, omName, operations }: MyDashboardProps) {
+export function MyDashboard({ assignedRequests, diagnosis, omName, operations }: MyDashboardProps) {
   const today = useMemo(() => getSeoulToday(), []);
   const [monthView, setMonthView] = useState(() => ({ year: today.getFullYear(), month: today.getMonth() }));
   const [openStage, setOpenStage] = useState<null | string>(null);
@@ -270,9 +273,10 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
       ]
     }
   ];
-  // 다음 과정 D-day: 운영 + 담당 과정을 모두 고려해 가장 임박한 것을 찾는다.
-  const nextEvent = findNextEvent(calendarEvents, today);
-  const nextEventDday = nextEvent ? daysBetween(today, nextEvent.start) : null;
+  // 다음 과정 D-day: 운영 + 담당 과정을 모두 고려해 임박한 순으로 몇 개를 보여 준다.
+  // 하나만 보여 주면 그 과정을 치른 뒤 다음이 무엇인지 캘린더를 뒤져야 했다.
+  const nextEvents = findNextEvents(calendarEvents, today, 3);
+  const [nextEvent, ...upcomingAfterNext] = nextEvents;
 
   return (
     <main className="dashboard-shell">
@@ -286,6 +290,8 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
             <p className="lede">{omName}님이 담당한 운영 현황과 지금 챙겨야 할 일을 모아 봅니다.</p>
           </div>
         </header>
+
+        {diagnosis ? <NameMismatchNotice diagnosis={diagnosis} /> : null}
 
         <section className="metrics" aria-label="내 운영 요약">
           <Metric label="전체" value={totalCount} />
@@ -430,17 +436,34 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
           <section className="dashboard-panel">
             <div className="section-title">
               <h2>다음 과정 D-day</h2>
-              <span>가장 임박한 예정 과정</span>
+              <span>임박한 예정 과정 {nextEvents.length}건</span>
             </div>
             {nextEvent ? (
-              <div className="dday-card">
-                <strong className="dday-badge">{nextEventDday === 0 ? "D-DAY" : `D-${nextEventDday}`}</strong>
-                <Link className="course-link" href={nextEvent.href}>
-                  <strong>{nextEvent.label}</strong>
-                  <span>{nextEvent.course}</span>
-                </Link>
-                <span className="dday-date">{formatDateText(nextEvent.start)} 시작</span>
-              </div>
+              <>
+                <div className="dday-card">
+                  <strong className="dday-badge">{ddayText(daysBetween(today, nextEvent.start))}</strong>
+                  <Link className="course-link" href={nextEvent.href}>
+                    <strong>{nextEvent.label}</strong>
+                    <span>{nextEvent.course}</span>
+                  </Link>
+                  <span className="dday-date">{formatDateText(nextEvent.start)} 시작</span>
+                </div>
+                {/* 두 번째부터는 한 줄씩. 첫 과정만 크게 두어 "가장 임박한 것"이 그대로 눈에 남는다. */}
+                {upcomingAfterNext.length > 0 ? (
+                  <ul className="dday-next-list">
+                    {upcomingAfterNext.map((event) => (
+                      <li key={event.id}>
+                        <span className="dday-next-badge">{ddayText(daysBetween(today, event.start))}</span>
+                        <Link className="course-link" href={event.href}>
+                          <strong>{event.label}</strong>
+                          <span>{event.course}</span>
+                        </Link>
+                        <span className="dday-next-date">{formatDateText(event.start)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </>
             ) : (
               <PanelEmpty label="예정된 과정이 없습니다" />
             )}
@@ -712,6 +735,45 @@ function scheduleRange(request: OmRequest): { start: string; end: string } {
   return { start: dates[0], end: dates[dates.length - 1] };
 }
 
+/**
+ * 담당이 0건인 이유를 화면에서 바로 읽게 한다.
+ *
+ * 전에는 이름이 어긋나 0건인 것과 정말 담당이 없는 것이 똑같이
+ * "배정된 담당 과정이 없습니다"로 보여서, 원인을 찾는 데 한참 걸렸다.
+ */
+function NameMismatchNotice({ diagnosis }: { diagnosis: OmNameDiagnosis }) {
+  const duplicated = diagnosis.rosterNamesForEmail.length > 1;
+
+  return (
+    <section className="dashboard-panel" aria-label="담당 과정이 0건인 이유">
+      <div className="empty-state">
+        <strong>
+          운영 현황에는 {diagnosis.totalOperations}건이 있는데, &lsquo;{diagnosis.omName}&rsquo; 이름으로 잡힌 과정이 0건입니다.
+        </strong>
+        <span>
+          내 대시보드는 <b>로그인 계정 → 명단의 이름 → 운영 현황 OM 칸</b> 순서로 이어집니다.
+          가운데 이름이 운영 현황 표기와 다르면 과정이 많아도 0건으로 보입니다.
+        </span>
+        {duplicated ? (
+          <span>
+            <b>이 계정 이메일로 명단 행이 {diagnosis.rosterNamesForEmail.length}개 있습니다:</b>{" "}
+            {diagnosis.rosterNamesForEmail.join(", ")} — 나중에 등록된 행의 이름이 적용됩니다.
+            관리자 → 사용자 관리에서 중복 행을 지우고 하나만 남겨 주세요.
+          </span>
+        ) : null}
+        {diagnosis.omNamesInOperations.length > 0 ? (
+          <span>
+            운영 현황 OM 칸에 쓰인 이름: {diagnosis.omNamesInOperations.join(", ")}
+          </span>
+        ) : null}
+        <span>
+          관리자 → 사용자 관리에서 내 이름을 운영 현황 OM 표기와 같게 맞추면 바로 보입니다.
+        </span>
+      </div>
+    </section>
+  );
+}
+
 function Metric({ label, value }: { label: string; value: number | string }) {
   return (
     <div className="metric">
@@ -737,18 +799,30 @@ function stripTime(value: Date) {
 }
 
 // 오늘 이후 시작하는 과정(운영 + 담당 과정) 중 가장 임박한 것을 찾는다.
-function findNextEvent(events: CalendarEvent[], today: Date): CalendarEvent | null {
+/**
+ * 오늘 이후 시작하는 과정(운영 + 담당 과정) 중 임박한 순으로 limit개.
+ *
+ * 전에는 가장 임박한 하나만 보여 줬는데, 그 하나를 치르면 다음에 무엇이 오는지
+ * 캘린더를 뒤져야 했다. 며칠 안에 몰린 과정을 한눈에 보려면 몇 개는 같이 보여야 한다.
+ * 같은 날 시작하는 과정이 여러 개면 기업·과정명 순으로 세워 순서가 흔들리지 않게 한다.
+ */
+function findNextEvents(events: CalendarEvent[], today: Date, limit: number): CalendarEvent[] {
   const todayTime = stripTime(today).getTime();
-  let best: CalendarEvent | null = null;
 
-  for (const event of events) {
-    const time = event.start.getTime();
-    if (time >= todayTime && (!best || time < best.start.getTime())) {
-      best = event;
-    }
-  }
+  return events
+    .filter((event) => event.start.getTime() >= todayTime)
+    .sort((a, b) => {
+      const diff = a.start.getTime() - b.start.getTime();
+      if (diff !== 0) return diff;
+      const byCompany = a.label.localeCompare(b.label, "ko");
+      return byCompany !== 0 ? byCompany : a.course.localeCompare(b.course, "ko");
+    })
+    .slice(0, limit);
+}
 
-  return best;
+/** D-0은 "D-DAY"로 쓴다. 숫자 0은 남은 날이 없다는 뜻으로 잘 안 읽힌다. */
+function ddayText(days: number): string {
+  return days === 0 ? "D-DAY" : `D-${days}`;
 }
 
 function daysBetween(from: Date, to: Date): number {
