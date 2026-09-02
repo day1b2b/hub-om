@@ -24,6 +24,7 @@ const APPLYABLE_FIELDS = [
   "costRaw",
   "courseCategory",
   "courseId",
+  "courseIdLabel",
   "courseName",
   "driveLink",
   "educationDays",

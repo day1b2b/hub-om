@@ -147,6 +147,24 @@ model Course {
   @@map("courses")
 }
 
+// 코스ID(백오피스 코스ID) 단위 라벨 = "코스ID명". 과정(Course.name = "과정명")과는
+// 독립적인 테이블이다 — 같은 코스ID 아래 커리큘럼이 다른 과정이 여러 개 있어도
+// 코스ID명은 courseId 하나당 한 행만 있고, "과정명"을 고쳐도 이 값은 바뀌지 않는다.
+// (과거엔 courseName 컬럼 하나를 공유해서, "코스ID명"을 고치면 그 코스ID를 쓰는
+// 서로 다른 과정들의 courseRecordId가 전부 같은 Course로 재배정되며 병합되는
+// 사고가 있었다 — 그 사고를 구조적으로 막기 위해 분리함.)
+model CourseIdLabel {
+  id        String   @id @default(uuid()) @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  courseId  String   @map("course_id")
+  label     String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([companyId, courseId])
+  @@map("course_id_labels")
+}
+
 model OperationSession {
   id                    String             @id @default(uuid()) @db.Uuid
   operationId           String             @unique @map("operation_id")

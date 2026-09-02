@@ -41,7 +41,11 @@ export class LocalJsonOperationRepository implements OperationRepository {
       // Postgres는 마이그레이션이 기존 행을 빈 배열로 채워주지만, 로컬 JSON은 그런 백필이
       // 없으니 읽을 때 직접 채워 화면 쪽에서 항상 배열이라고 가정할 수 있게 한다.
       return [...operations]
-        .map((operation) => ({ ...operation, educationDates: operation.educationDates ?? [] }))
+        .map((operation) => ({
+          ...operation,
+          courseIdLabel: operation.courseIdLabel ?? "",
+          educationDates: operation.educationDates ?? []
+        }))
         .sort(compareOperationSessions);
     } catch (error) {
       if (isFileMissingError(error)) {
@@ -136,6 +140,7 @@ export class LocalJsonOperationRepository implements OperationRepository {
       costRaw: normalizeVisibleText(input.costRaw),
       courseCategory: normalizeVisibleText(input.courseCategory ?? ""),
       courseId: normalizeVisibleText(input.courseId),
+      courseIdLabel: "",
       courseName: normalizeVisibleText(input.courseName),
       driveLink: normalizeVisibleText(input.driveLink),
       educationDays: normalizeVisibleText(input.educationDays),
@@ -215,6 +220,7 @@ export class LocalJsonOperationRepository implements OperationRepository {
       costRaw: normalizeOptionalText(input.costRaw, operation.costRaw),
       courseCategory: normalizeOptionalText(input.courseCategory, operation.courseCategory),
       courseId: normalizeOptionalText(input.courseId, operation.courseId),
+      courseIdLabel: normalizeOptionalText(input.courseIdLabel, operation.courseIdLabel),
       courseName: normalizeOptionalText(input.courseName, operation.courseName),
       driveLink: normalizeOptionalText(input.driveLink, operation.driveLink),
       educationDays: normalizeOptionalText(input.educationDays, operation.educationDays),
@@ -252,9 +258,21 @@ export class LocalJsonOperationRepository implements OperationRepository {
       tools: normalizeOptionalText(input.tools, operation.tools),
       totalCost
     };
-    const nextOperations = operations.map((candidate) =>
-      candidate.operationId === operationId ? updatedOperation : candidate
-    );
+    // 코스ID명은 courseId 하나당 라벨 하나를 공유한다(Prisma 경로의 CourseIdLabel과 같은 의미).
+    // 로컬 JSON에는 별도 테이블이 없어, 같은 회사+코스ID를 쓰는 모든 행에 그대로 복제해 흉내낸다.
+    const sharedCourseIdLabel =
+      input.courseIdLabel !== undefined ? normalizeOptionalText(input.courseIdLabel, operation.courseIdLabel) : null;
+    const nextOperations = operations.map((candidate) => {
+      if (candidate.operationId === operationId) return updatedOperation;
+      if (
+        sharedCourseIdLabel !== null &&
+        normalizeCourseId(candidate.courseId) === normalizeCourseId(operation.courseId) &&
+        candidate.companyName === operation.companyName
+      ) {
+        return { ...candidate, courseIdLabel: sharedCourseIdLabel };
+      }
+      return candidate;
+    });
     const { absolutePath, localDir } = this.getLocalFilePath();
 
     await mkdir(localDir, { recursive: true });
