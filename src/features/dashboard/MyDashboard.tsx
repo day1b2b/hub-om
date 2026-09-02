@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { holidayName } from "./holidays";
 import { missingArchiveItems } from "@/lib/data/operationCalculations";
+import { buildMyCourseRows } from "./myCourseRows";
 import { createRequestMatcher } from "./requestDedup";
 import { requestHref } from "./requestHref";
 import type { OmRequest } from "@/lib/data/omRequest/omRequestTypes";
@@ -61,21 +62,9 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
     const start = parseDate(operation.startDate);
     return start ? start.getFullYear() === monthView.year && start.getMonth() === monthView.month : false;
   });
-  // 나의 담당 과정도 선택한 달에 진행되는 것만(세션 기간이 그 달과 겹치는 요청).
+  // 담당 과정 표의 월 강조 범위. 그 달과 기간이 겹치는 줄만 강조한다.
   const monthStartTime = stripTime(new Date(monthView.year, monthView.month, 1)).getTime();
   const monthEndTime = stripTime(new Date(monthView.year, monthView.month + 1, 0)).getTime();
-  const monthAssignedRequests = assignedRequests.filter((request) => {
-    const range = scheduleRange(request);
-    const start = parseDate(range.start);
-    const end = parseDate(range.end) ?? start;
-    if (!start || !end) return false;
-    return stripTime(start).getTime() <= monthEndTime && stripTime(end).getTime() >= monthStartTime;
-  });
-  // 담당 과정 표는 전체를 시작일 순으로 다 보여주고, 선택한 달에 진행되는 건만 강조한다.
-  const sortedAssignedRequests = [...assignedRequests].sort((a, b) =>
-    scheduleRange(a).start.localeCompare(scheduleRange(b).start)
-  );
-  const focusRequestIds = new Set(monthAssignedRequests.map((request) => request.id));
   const active = scopedOperations.filter((operation) => operation.operationStatus === "진행중").length;
   const upcoming = scopedOperations.filter((operation) => isUpcoming(operation, today)).length;
   const done = scopedOperations.filter(isDone).length;
@@ -146,6 +135,23 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
       .filter((operation) => (operation.courseId ?? "").trim() !== "")
       .map((operation) => [(operation.courseId ?? "").trim(), operation.operationId])
   );
+  // 담당 과정 표는 업무요청 + 운영현황을 합쳐 전체를 시작일 순으로 보여주고,
+  // 선택한 달에 진행되는 줄만 강조한다. 운영현황에서 OM 배정만 된 과정도 표에 떠야 한다.
+  const courseRows = buildMyCourseRows(
+    assignedRequests,
+    operations,
+    isRepresentedByRequest,
+    scheduleRange,
+    (request) => requestHref(request, operationIdByCourse)
+  );
+  const isInMonth = (start: string, end: string) => {
+    const from = parseDate(start);
+    const to = parseDate(end) ?? from;
+    if (!from || !to) return false;
+    return stripTime(from).getTime() <= monthEndTime && stripTime(to).getTime() >= monthStartTime;
+  };
+  const focusRowKeys = new Set(courseRows.filter((row) => isInMonth(row.start, row.end)).map((row) => row.key));
+
   // 사전세팅 = 강의 시작 전 단계 전체(아직 시작하지 않은 과정). 이전에는 D-7~D-2 창만 봤는데,
   // 그러면 그 창에 든 과정이 없을 때 단계가 비어 보여 실제 준비 상황과 어긋났다.
   // 임박한 순으로 정렬해 위쪽이 먼저 챙길 것이 되게 한다.
@@ -298,7 +304,7 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
               </button>
             </h2>
             <div className="dashboard-table-meta">
-              <span>전체 {sortedAssignedRequests.length}건 · {monthView.month + 1}월 {focusRequestIds.size}건</span>
+              <span>전체 {courseRows.length}건 · {monthView.month + 1}월 {focusRowKeys.size}건</span>
               {/* 월 이동은 표의 강조 대상을 바꾸는 것이라 접혀 있을 때는 숨긴다. */}
               {coursesOpen ? (
                 <div className="me-cal-nav" aria-label="월 이동">
@@ -328,31 +334,28 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
                 </tr>
               </thead>
               <tbody>
-                {sortedAssignedRequests.length > 0 ? (
-                  sortedAssignedRequests.map((request, index) => {
-                    const schedule = scheduleRange(request);
-                    return (
-                      <tr className={focusRequestIds.has(request.id) ? "me-focus-row" : ""} key={request.id}>
-                        <td>{index + 1}</td>
-                        <td><strong>{request.company}</strong></td>
-                        <td>
-                          <Link className="course-link" href={requestHref(request, operationIdByCourse)}>
-                            <strong>{request.courseName}</strong>
-                          </Link>
-                        </td>
-                        <td>{request.totalSessions}</td>
-                        <td>{request.ld || "미정"}</td>
-                        <td>{schedule.start}</td>
-                        <td>{schedule.end}</td>
-                        <td>{request.instructorName || "-"}</td>
-                      </tr>
-                    );
-                  })
+                {courseRows.length > 0 ? (
+                  courseRows.map((row, index) => (
+                    <tr className={focusRowKeys.has(row.key) ? "me-focus-row" : ""} key={row.key}>
+                      <td>{index + 1}</td>
+                      <td><strong>{row.company}</strong></td>
+                      <td>
+                        <Link className="course-link" href={row.href}>
+                          <strong>{row.courseName}</strong>
+                        </Link>
+                      </td>
+                      <td>{row.totalSessions}</td>
+                      <td>{row.ld}</td>
+                      <td>{row.start}</td>
+                      <td>{row.end}</td>
+                      <td>{row.instructor}</td>
+                    </tr>
+                  ))
                 ) : (
                   <tr>
                     <td className="empty-state" colSpan={8}>
                       <strong>배정된 담당 과정이 없습니다.</strong>
-                      <span>업무 요청 후 담당으로 배정되면 여기에 표시됩니다.</span>
+                      <span>업무 요청이나 운영 현황에서 담당으로 배정되면 여기에 표시됩니다.</span>
                     </td>
                   </tr>
                 )}
