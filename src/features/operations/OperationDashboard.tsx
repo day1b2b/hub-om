@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { ExternalTableLink, isSafeHttpUrl } from "@/components/ExternalTableLink";
 import { SearchableSelect } from "@/components/SearchableSelect";
+import { EditableCourseNameCell } from "./EditableCourseNameCell";
 import { normalizeCourseId } from "@/lib/data/operationCalculations";
 import type {
   EducationFormat,
@@ -545,11 +546,11 @@ export function OperationDashboard({
                       <td>{summarizeText(group.operations, (operation) => operation.educationFormat)}</td>
                       <td>{group.courseId || "검토필요"}</td>
                       <td><strong>{group.companyName}</strong></td>
-                      <td>
-                        <Link className="course-link" href={`/operations/${group.linkOperationId}${teamQuery}`}>
-                          <strong>{group.courseName}</strong>
-                        </Link>
-                      </td>
+                      <EditableCourseNameCell
+                        courseName={group.courseName}
+                        href={`/operations/${group.linkOperationId}${teamQuery}`}
+                        operationIds={group.operations.map((operation) => operation.operationId)}
+                      />
                       <td>{group.operations.length}</td>
                       <td><ExternalTableLink href={group.operationDetail} /></td>
                       <td>{summarizeText(group.operations, (operation) => operation.om, "배정필요")}</td>

@@ -1950,6 +1950,38 @@ select {
   white-space: nowrap;
 }
 
+/* 과정명 셀 — 링크+수정 버튼(보기) / 입력창+저장·취소(편집)를 좁은 칼럼 폭 안에서 보여준다.
+   가로로 늘어놓으면 280px 폭에서 버튼이 잘리므로 편집 폼은 세로로 쌓는다. */
+.course-name-cell {
+  white-space: normal;
+}
+
+.course-name-cell-view {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.course-name-cell-view .course-link {
+  flex: 1;
+  min-width: 0;
+}
+
+.course-name-cell-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.course-name-cell-edit-form input {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  box-sizing: border-box;
+  font-size: 12px;
+  padding: 6px 8px;
+  width: 100%;
+}
+
 .table-link-icon {
   align-items: center;
   border: 1px solid transparent;
