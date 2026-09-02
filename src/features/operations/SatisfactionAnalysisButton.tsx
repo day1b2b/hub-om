@@ -16,7 +16,7 @@ export function SatisfactionAnalysisButton() {
 
   return (
     <>
-      <button className="secondary-action add-round-trigger" onClick={openDialog} type="button">
+      <button className="secondary-action add-round-trigger satisfaction-analysis-trigger" onClick={openDialog} type="button">
         만족도 분석
       </button>
 
