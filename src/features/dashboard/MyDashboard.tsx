@@ -270,9 +270,10 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
       ]
     }
   ];
-  // 다음 과정 D-day: 운영 + 담당 과정을 모두 고려해 가장 임박한 것을 찾는다.
-  const nextEvent = findNextEvent(calendarEvents, today);
-  const nextEventDday = nextEvent ? daysBetween(today, nextEvent.start) : null;
+  // 다음 과정 D-day: 운영 + 담당 과정을 모두 고려해 임박한 순으로 몇 개를 보여 준다.
+  // 하나만 보여 주면 그 과정을 치른 뒤 다음이 무엇인지 캘린더를 뒤져야 했다.
+  const nextEvents = findNextEvents(calendarEvents, today, 3);
+  const [nextEvent, ...upcomingAfterNext] = nextEvents;
 
   return (
     <main className="dashboard-shell">
@@ -430,17 +431,34 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
           <section className="dashboard-panel">
             <div className="section-title">
               <h2>다음 과정 D-day</h2>
-              <span>가장 임박한 예정 과정</span>
+              <span>임박한 예정 과정 {nextEvents.length}건</span>
             </div>
             {nextEvent ? (
-              <div className="dday-card">
-                <strong className="dday-badge">{nextEventDday === 0 ? "D-DAY" : `D-${nextEventDday}`}</strong>
-                <Link className="course-link" href={nextEvent.href}>
-                  <strong>{nextEvent.label}</strong>
-                  <span>{nextEvent.course}</span>
-                </Link>
-                <span className="dday-date">{formatDateText(nextEvent.start)} 시작</span>
-              </div>
+              <>
+                <div className="dday-card">
+                  <strong className="dday-badge">{ddayText(daysBetween(today, nextEvent.start))}</strong>
+                  <Link className="course-link" href={nextEvent.href}>
+                    <strong>{nextEvent.label}</strong>
+                    <span>{nextEvent.course}</span>
+                  </Link>
+                  <span className="dday-date">{formatDateText(nextEvent.start)} 시작</span>
+                </div>
+                {/* 두 번째부터는 한 줄씩. 첫 과정만 크게 두어 "가장 임박한 것"이 그대로 눈에 남는다. */}
+                {upcomingAfterNext.length > 0 ? (
+                  <ul className="dday-next-list">
+                    {upcomingAfterNext.map((event) => (
+                      <li key={event.id}>
+                        <span className="dday-next-badge">{ddayText(daysBetween(today, event.start))}</span>
+                        <Link className="course-link" href={event.href}>
+                          <strong>{event.label}</strong>
+                          <span>{event.course}</span>
+                        </Link>
+                        <span className="dday-next-date">{formatDateText(event.start)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </>
             ) : (
               <PanelEmpty label="예정된 과정이 없습니다" />
             )}
@@ -737,18 +755,30 @@ function stripTime(value: Date) {
 }
 
 // 오늘 이후 시작하는 과정(운영 + 담당 과정) 중 가장 임박한 것을 찾는다.
-function findNextEvent(events: CalendarEvent[], today: Date): CalendarEvent | null {
+/**
+ * 오늘 이후 시작하는 과정(운영 + 담당 과정) 중 임박한 순으로 limit개.
+ *
+ * 전에는 가장 임박한 하나만 보여 줬는데, 그 하나를 치르면 다음에 무엇이 오는지
+ * 캘린더를 뒤져야 했다. 며칠 안에 몰린 과정을 한눈에 보려면 몇 개는 같이 보여야 한다.
+ * 같은 날 시작하는 과정이 여러 개면 기업·과정명 순으로 세워 순서가 흔들리지 않게 한다.
+ */
+function findNextEvents(events: CalendarEvent[], today: Date, limit: number): CalendarEvent[] {
   const todayTime = stripTime(today).getTime();
-  let best: CalendarEvent | null = null;
 
-  for (const event of events) {
-    const time = event.start.getTime();
-    if (time >= todayTime && (!best || time < best.start.getTime())) {
-      best = event;
-    }
-  }
+  return events
+    .filter((event) => event.start.getTime() >= todayTime)
+    .sort((a, b) => {
+      const diff = a.start.getTime() - b.start.getTime();
+      if (diff !== 0) return diff;
+      const byCompany = a.label.localeCompare(b.label, "ko");
+      return byCompany !== 0 ? byCompany : a.course.localeCompare(b.course, "ko");
+    })
+    .slice(0, limit);
+}
 
-  return best;
+/** D-0은 "D-DAY"로 쓴다. 숫자 0은 남은 날이 없다는 뜻으로 잘 안 읽힌다. */
+function ddayText(days: number): string {
+  return days === 0 ? "D-DAY" : `D-${days}`;
 }
 
 function daysBetween(from: Date, to: Date): number {
