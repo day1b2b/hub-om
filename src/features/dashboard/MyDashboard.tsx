@@ -6,6 +6,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { holidayName } from "./holidays";
 import { missingArchiveItems } from "@/lib/data/operationCalculations";
 import { buildMyCourseRows } from "./myCourseRows";
+import type { OmNameDiagnosis } from "./omNameDiagnosis";
 import { createRequestMatcher } from "./requestDedup";
 import { requestHref } from "./requestHref";
 import type { OmRequest } from "@/lib/data/omRequest/omRequestTypes";
@@ -15,13 +16,15 @@ import { getSeoulToday } from "@/lib/seoulDate";
 interface MyDashboardProps {
   // 로그인 계정이 명단(team-users.json)에 없으면 null.
   omName: null | string;
+  // 담당이 0건인 이유(이름 어긋남·이메일 중복). 정상이면 null.
+  diagnosis: OmNameDiagnosis | null;
   // 이미 내 담당으로 필터된 운영 목록.
   operations: OperationSession[];
   // 나에게 배정된 OM 운영 요청.
   assignedRequests: OmRequest[];
 }
 
-export function MyDashboard({ assignedRequests, omName, operations }: MyDashboardProps) {
+export function MyDashboard({ assignedRequests, diagnosis, omName, operations }: MyDashboardProps) {
   const today = useMemo(() => getSeoulToday(), []);
   const [monthView, setMonthView] = useState(() => ({ year: today.getFullYear(), month: today.getMonth() }));
   const [openStage, setOpenStage] = useState<null | string>(null);
@@ -286,6 +289,8 @@ export function MyDashboard({ assignedRequests, omName, operations }: MyDashboar
             <p className="lede">{omName}님이 담당한 운영 현황과 지금 챙겨야 할 일을 모아 봅니다.</p>
           </div>
         </header>
+
+        {diagnosis ? <NameMismatchNotice diagnosis={diagnosis} /> : null}
 
         <section className="metrics" aria-label="내 운영 요약">
           <Metric label="전체" value={totalCount} />
@@ -710,6 +715,45 @@ function scheduleRange(request: OmRequest): { start: string; end: string } {
   if (dates.length === 0) return { start: "-", end: "-" };
 
   return { start: dates[0], end: dates[dates.length - 1] };
+}
+
+/**
+ * 담당이 0건인 이유를 화면에서 바로 읽게 한다.
+ *
+ * 전에는 이름이 어긋나 0건인 것과 정말 담당이 없는 것이 똑같이
+ * "배정된 담당 과정이 없습니다"로 보여서, 원인을 찾는 데 한참 걸렸다.
+ */
+function NameMismatchNotice({ diagnosis }: { diagnosis: OmNameDiagnosis }) {
+  const duplicated = diagnosis.rosterNamesForEmail.length > 1;
+
+  return (
+    <section className="dashboard-panel" aria-label="담당 과정이 0건인 이유">
+      <div className="empty-state">
+        <strong>
+          운영 현황에는 {diagnosis.totalOperations}건이 있는데, &lsquo;{diagnosis.omName}&rsquo; 이름으로 잡힌 과정이 0건입니다.
+        </strong>
+        <span>
+          내 대시보드는 <b>로그인 계정 → 명단의 이름 → 운영 현황 OM 칸</b> 순서로 이어집니다.
+          가운데 이름이 운영 현황 표기와 다르면 과정이 많아도 0건으로 보입니다.
+        </span>
+        {duplicated ? (
+          <span>
+            <b>이 계정 이메일로 명단 행이 {diagnosis.rosterNamesForEmail.length}개 있습니다:</b>{" "}
+            {diagnosis.rosterNamesForEmail.join(", ")} — 나중에 등록된 행의 이름이 적용됩니다.
+            관리자 → 사용자 관리에서 중복 행을 지우고 하나만 남겨 주세요.
+          </span>
+        ) : null}
+        {diagnosis.omNamesInOperations.length > 0 ? (
+          <span>
+            운영 현황 OM 칸에 쓰인 이름: {diagnosis.omNamesInOperations.join(", ")}
+          </span>
+        ) : null}
+        <span>
+          관리자 → 사용자 관리에서 내 이름을 운영 현황 OM 표기와 같게 맞추면 바로 보입니다.
+        </span>
+      </div>
+    </section>
+  );
 }
 
 function Metric({ label, value }: { label: string; value: number | string }) {
