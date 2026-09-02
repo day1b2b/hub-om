@@ -1,3 +1,4 @@
+import { parseEducationDatesText } from "../operationCalculations";
 import { getOperationRepository } from "../operationRepositoryFactory";
 import type { CreateOperationInput } from "../operationTypes";
 import type { OmRequest } from "./omRequestTypes";
@@ -34,6 +35,12 @@ export async function createLinkedOperationForOmRequest(request: OmRequest): Pro
   let firstOperationId: string | null = null;
 
   for (const [index, session] of sessions.entries()) {
+    // 세션에 실제 교육일을 따로 적어뒀으면(예: 9/3, 9/4, 9/7) 그 값을 우선한다 — date~dateEnd는
+    // 그 사이 모든 날짜가 교육일이라고 가정하지만, 중간에 쉬는 날이 있는 회차는 그 가정이 틀리다.
+    const educationDates = session.educationDatesText
+      ? parseEducationDatesText(session.educationDatesText).dates
+      : undefined;
+
     const input: CreateOperationInput = {
       archiveStatus: "아카이빙전",
       coach: "",
@@ -46,6 +53,7 @@ export async function createLinkedOperationForOmRequest(request: OmRequest): Pro
       createdBy: request.ld,
       driveLink: request.driveLink,
       educationDays: session.duration || "",
+      educationDates,
       educationFormat: EDUCATION_FORMAT_BY_TRAINING_TYPE[request.trainingType],
       endDate: session.dateEnd || session.date,
       instructorCost: null,

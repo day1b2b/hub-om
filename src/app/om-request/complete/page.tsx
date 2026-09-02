@@ -85,6 +85,7 @@ export default async function OmRequestCompletePage({ searchParams }: Props) {
                   <span>종료</span>
                   <span>시수</span>
                   <span>장소</span>
+                  <span>실제교육일</span>
                 </div>
                 {request.sessions.map((s, i) => (
                   <div className="om-session-list-row" key={i}>
@@ -95,6 +96,7 @@ export default async function OmRequestCompletePage({ searchParams }: Props) {
                     <span>{s.timeEnd}</span>
                     <span>{s.duration || "-"}</span>
                     <span className="om-session-location">{s.location}</span>
+                    <span>{s.educationDatesText || "전체 기간"}</span>
                   </div>
                 ))}
               </div>

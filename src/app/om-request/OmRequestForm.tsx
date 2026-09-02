@@ -8,6 +8,7 @@ import { parseToolsValue, TOOL_GROUPS, TOOL_META_OPTIONS } from "@/lib/data/omRe
 import { calcSessionDuration, type OmRequestInput, type OmRequestSession, type TrainingType, type YN } from "@/lib/data/omRequest/omRequestTypes";
 import { COURSE_CATEGORY_GROUPS, getCourseCategoryMajor, getCourseCategoryMinors } from "@/lib/data/omRequest/omCourseCategoryOptions";
 import { parseSessionSheet } from "@/lib/data/omRequest/omSessionSheet";
+import { parseEducationDatesText } from "@/lib/data/operationCalculations";
 
 declare global {
   interface Window {
@@ -53,7 +54,7 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
 });
 
 function emptySession(): OmRequestSession {
-  return { date: "", dateEnd: "", timeStart: "", timeEnd: "", duration: "", location: "" };
+  return { date: "", dateEnd: "", timeStart: "", timeEnd: "", duration: "", location: "", educationDatesText: "" };
 }
 
 function formatDateInput(raw: string): string {
@@ -447,6 +448,14 @@ export function OmRequestForm({
       setError("등록된 강사 명단과 이름이 달라요. 강사DB 노션을 확인해주세요.");
       return;
     }
+    const invalidEducationDatesRow = form.sessions.findIndex(
+      (session) =>
+        session.educationDatesText?.trim() && parseEducationDatesText(session.educationDatesText).errors.length > 0
+    );
+    if (invalidEducationDatesRow !== -1) {
+      setError(`${invalidEducationDatesRow + 1}회차 실제교육일 형식을 확인해주세요 (예: 2026-09-03, 2026-09-04).`);
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -668,6 +677,7 @@ export function OmRequestForm({
             <span>종료 시간<em className="required-mark">*</em></span>
             <span>시수</span>
             <span>장소<em className="required-mark">*</em></span>
+            <span>실제교육일(선택)</span>
           </div>
           {form.sessions.map((session, idx) => (
             <div className="om-sessions-row" key={idx}>
@@ -714,6 +724,13 @@ export function OmRequestForm({
                 />
                 <AddressSearchButton onSelect={(addr) => updateSession(idx, "location", addr)} />
               </div>
+              <input
+                className="education-dates-input"
+                type="text"
+                value={session.educationDatesText ?? ""}
+                placeholder="예: 2026-09-03, 2026-09-04, 2026-09-07"
+                onChange={(e) => updateSession(idx, "educationDatesText", e.target.value)}
+              />
             </div>
           ))}
         </div>

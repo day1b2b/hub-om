@@ -1,17 +1,21 @@
 import * as XLSX from "xlsx";
+import { parseEducationDatesText } from "../operationCalculations";
 import { calcSessionDuration, type OmRequestSession } from "./omRequestTypes";
 
-export const SESSION_SHEET_HEADERS = ["회차", "시작일", "종료일", "시작시간", "종료시간", "장소"] as const;
+export const SESSION_SHEET_HEADERS = ["회차", "시작일", "종료일", "시작시간", "종료시간", "장소", "실제교육일"] as const;
 export const SESSION_SHEET_FILE_NAME = "OM업무요청_교육일정_샘플.xlsx";
 
 const TEXT_FORMAT = "@";
 const TEMPLATE_ROW_COUNT = 10;
 const TIME_PATTERN = /^([01]\d|2[0-3]):(00|30)$/;
 
-const EXAMPLE_ROW = ["1", "2026-08-12", "2026-08-13", "09:00", "18:00", "서울 강남구 ○○빌딩 3층"];
+const EXAMPLE_ROW = ["1", "2026-08-12", "2026-08-13", "09:00", "18:00", "서울 강남구 ○○빌딩 3층", ""];
 
 export function buildSessionSheetWorkbook(): XLSX.WorkBook {
-  const rows = [EXAMPLE_ROW, ...Array.from({ length: TEMPLATE_ROW_COUNT - 1 }, (_, i) => [String(i + 2), "", "", "", "", ""])];
+  const rows = [
+    EXAMPLE_ROW,
+    ...Array.from({ length: TEMPLATE_ROW_COUNT - 1 }, (_, i) => [String(i + 2), "", "", "", "", "", ""])
+  ];
   const worksheet = XLSX.utils.aoa_to_sheet([[...SESSION_SHEET_HEADERS], ...rows]);
 
   const range = XLSX.utils.decode_range(worksheet["!ref"] as string);
@@ -22,7 +26,7 @@ export function buildSessionSheetWorkbook(): XLSX.WorkBook {
       if (cell) cell.z = TEXT_FORMAT;
     }
   }
-  worksheet["!cols"] = [{ wch: 6 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 30 }];
+  worksheet["!cols"] = [{ wch: 6 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 30 }, { wch: 36 }];
 
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "교육일정");
@@ -66,18 +70,22 @@ export function parseSessionSheet(buffer: ArrayBuffer): ParsedSessionSheet {
 
   const dataRows = body.filter((row) => row.some((cell) => String(cell ?? "").trim() !== ""));
   const rows: ParsedSessionRow[] = dataRows.map((row, index) => {
-    const [, dateRaw, dateEndRaw, timeStartRaw, timeEndRaw, locationRaw] = row;
+    const [, dateRaw, dateEndRaw, timeStartRaw, timeEndRaw, locationRaw, educationDatesRaw] = row;
     const date = normalizeDateCell(dateRaw);
     const dateEnd = normalizeDateCell(dateEndRaw);
     const timeStart = normalizeTimeCell(timeStartRaw);
     const timeEnd = normalizeTimeCell(timeEndRaw);
     const location = String(locationRaw ?? "").trim();
+    const educationDatesText = String(educationDatesRaw ?? "").trim();
 
     const errors: string[] = [];
     if (!date) errors.push("시작일이 비어있습니다.");
     if (!timeStart || !TIME_PATTERN.test(timeStart)) errors.push("시작시간 형식을 확인해주세요 (예: 09:00, 30분 단위).");
     if (!timeEnd || !TIME_PATTERN.test(timeEnd)) errors.push("종료시간 형식을 확인해주세요 (예: 18:00, 30분 단위).");
     if (!location) errors.push("장소가 비어있습니다.");
+    if (educationDatesText && parseEducationDatesText(educationDatesText).errors.length > 0) {
+      errors.push("실제교육일 형식을 확인해주세요 (예: 2026-09-03, 2026-09-04).");
+    }
 
     return {
       rowNumber: index + 2,
@@ -87,7 +95,8 @@ export function parseSessionSheet(buffer: ArrayBuffer): ParsedSessionSheet {
         timeStart,
         timeEnd,
         duration: calcSessionDuration(timeStart, timeEnd),
-        location
+        location,
+        educationDatesText: educationDatesText || undefined
       },
       errors
     };
