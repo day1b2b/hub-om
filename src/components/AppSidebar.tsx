@@ -23,6 +23,7 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
   const isSyncAdminPage = pathname?.startsWith("/admin/sync") ?? false;
   const isUsersAdminPage = pathname?.startsWith("/admin/users") ?? false;
   const isSatisfactionPreviewPage = pathname?.startsWith("/admin/satisfaction-preview") ?? false;
+  const isCourseNameRestorePage = pathname?.startsWith("/admin/course-name-restore") ?? false;
   const isMyDashboardPage = pathname === "/me";
   const isInstructorWikiPage = pathname === "/instructor-wiki";
   const isCompanyWikiPage = pathname === "/company-wiki";
@@ -83,6 +84,7 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
             <Link className={isImportAdminPage ? "active" : ""} data-icon="🔒" href="/admin/imports">데이터 일괄 등록</Link>
             <Link className={isUsersAdminPage ? "active" : ""} data-icon="🔒" href="/admin/users">멤버 관리</Link>
             <Link className={isDatabaseAdminPage ? "active" : ""} data-icon="🔒" href="/admin/database">DB 조회</Link>
+            <Link className={isCourseNameRestorePage ? "active" : ""} data-icon="🔒" href="/admin/course-name-restore">과정명 되돌리기</Link>
           </div>
         ) : null}
 
