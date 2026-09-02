@@ -128,9 +128,24 @@ function buildCourses(operations: ReadonlyArray<OperationSession>): CompanyWikiC
   });
 }
 
+/** 회차 번호를 숫자로 읽는다("3차" → 3). 못 읽으면 뒤로 보내기 위해 큰 값을 준다. */
+function roundOrder(operation: OperationSession): number {
+  const matched = (operation.roundNo ?? "").match(/\d+/);
+  return matched ? Number.parseInt(matched[0], 10) : Number.MAX_SAFE_INTEGER;
+}
+
 function buildHistory(operations: ReadonlyArray<OperationSession>): CompanyWikiHistory[] {
+  // 1차부터 순서대로. 만족도 추이를 보는 표라 시간 순서가 위에서 아래로 흘러야 읽힌다.
+  // 일정이 아직 없는 회차는 날짜로 줄을 세울 수 없으니 회차 번호로 세운다.
   return [...operations]
-    .sort((a, b) => (b.startDate ?? "").localeCompare(a.startDate ?? ""))
+    .sort((a, b) => {
+      const aDate = (a.startDate ?? "").trim();
+      const bDate = (b.startDate ?? "").trim();
+      // 날짜 없는 회차는 맨 뒤로. 빈 문자열을 그냥 비교하면 1차보다 앞에 온다.
+      if ((aDate === "") !== (bDate === "")) return aDate === "" ? 1 : -1;
+      if (aDate !== bDate) return aDate.localeCompare(bDate);
+      return roundOrder(a) - roundOrder(b);
+    })
     .map((operation) => {
       const start = (operation.startDate ?? "").trim();
       const end = (operation.endDate ?? "").trim();
