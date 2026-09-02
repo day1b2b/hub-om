@@ -3016,7 +3016,8 @@ td span {
   display: grid;
 }
 
-.detail-side-stack {
+.detail-side-stack,
+.detail-primary-stack {
   align-content: start;
   display: grid;
   gap: 12px;
