@@ -52,7 +52,11 @@ export function AddRoundButton({
       {isOpen ? (
         <div aria-modal="true" className="drive-review-modal" role="dialog">
           <div className="drive-review-backdrop" onClick={closeDialog} />
-          <section aria-labelledby="add-round-title" className="drive-review-dialog add-round-dialog round-fields-dialog">
+          <section
+            aria-labelledby="add-round-title"
+            className="drive-review-dialog add-round-dialog round-fields-dialog add-round-create-dialog"
+          >
+
             <div className="drive-review-header">
               <div>
                 <h2 id="add-round-title">회차 추가</h2>
@@ -69,55 +73,54 @@ export function AddRoundButton({
                 <input readOnly type="text" value={draft.roundNo} />
               </label>
 
-              <label className="lecture-note-field">
-                <span>교육일 (달력에서 실제 교육이 있는 날짜만 클릭)</span>
-                <MultiDateCalendar
-                  onChange={(dates) => setDraft((current) => ({ ...current, educationDates: dates }))}
-                  value={draft.educationDates}
-                />
-              </label>
+              <div className="add-round-layout">
+                <label className="lecture-note-field add-round-calendar-field">
+                  <span>교육일 (달력에서 실제 교육이 있는 날짜만 클릭)</span>
+                  <MultiDateCalendar
+                    onChange={(dates) => setDraft((current) => ({ ...current, educationDates: dates }))}
+                    value={draft.educationDates}
+                  />
+                </label>
 
-              <div className="lecture-note-row">
-                <label className="lecture-note-field">
-                  <span>시간</span>
-                  <input
-                    onChange={(event) => setDraft((current) => ({ ...current, timeText: event.target.value }))}
-                    placeholder="예: 09:30 ~ 17:30"
-                    type="text"
-                    value={draft.timeText}
-                  />
-                </label>
-                <label className="lecture-note-field">
-                  <span>장소</span>
-                  <input
-                    onChange={(event) => setDraft((current) => ({ ...current, region: event.target.value }))}
-                    placeholder="예: 서울 강남"
-                    type="text"
-                    value={draft.region}
-                  />
-                </label>
-              </div>
-
-              <div className="lecture-note-row">
-                <label className="lecture-note-field">
-                  <span>강사</span>
-                  <NameCombobox
-                    options={instructorOptions}
-                    onChange={(value) => setDraft((current) => ({ ...current, instructors: value }))}
-                    placeholder="강사명"
-                    unmatchedHint="등록된 강사 명단과 이름이 달라요. 강사DB 노션을 확인해주세요."
-                    value={draft.instructors}
-                  />
-                </label>
-                <label className="lecture-note-field">
-                  <span>실습코치</span>
-                  <input
-                    onChange={(event) => setDraft((current) => ({ ...current, coach: event.target.value }))}
-                    placeholder="실습코치명"
-                    type="text"
-                    value={draft.coach}
-                  />
-                </label>
+                <div className="add-round-side-fields">
+                  <label className="lecture-note-field">
+                    <span>시간</span>
+                    <input
+                      onChange={(event) => setDraft((current) => ({ ...current, timeText: event.target.value }))}
+                      placeholder="예: 09:30 ~ 17:30"
+                      type="text"
+                      value={draft.timeText}
+                    />
+                  </label>
+                  <label className="lecture-note-field">
+                    <span>장소</span>
+                    <input
+                      onChange={(event) => setDraft((current) => ({ ...current, region: event.target.value }))}
+                      placeholder="예: 서울 강남"
+                      type="text"
+                      value={draft.region}
+                    />
+                  </label>
+                  <label className="lecture-note-field">
+                    <span>강사</span>
+                    <NameCombobox
+                      options={instructorOptions}
+                      onChange={(value) => setDraft((current) => ({ ...current, instructors: value }))}
+                      placeholder="강사명"
+                      unmatchedHint="등록된 강사 명단과 이름이 달라요. 강사DB 노션을 확인해주세요."
+                      value={draft.instructors}
+                    />
+                  </label>
+                  <label className="lecture-note-field">
+                    <span>실습코치</span>
+                    <input
+                      onChange={(event) => setDraft((current) => ({ ...current, coach: event.target.value }))}
+                      placeholder="실습코치명"
+                      type="text"
+                      value={draft.coach}
+                    />
+                  </label>
+                </div>
               </div>
             </div>
 
