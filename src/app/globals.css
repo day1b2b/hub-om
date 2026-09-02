@@ -3018,9 +3018,19 @@ td span {
 
 .detail-side-stack,
 .detail-primary-stack {
-  align-content: start;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 12px;
+}
+
+/* 옆 컬럼(코스정보+과정정보 / 담당자+지표+드라이브)의 내용 길이가 서로 다르면
+   짧은 쪽 아래에 빈 여백이 남아 두 컬럼의 아래쪽 테두리가 어긋나 보인다.
+   짧은 쪽의 마지막 카드를 남는 높이만큼 늘려 두 컬럼의 아래쪽을 맞춘다. */
+.detail-side-stack > :last-child,
+.detail-primary-stack > :last-child {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
 }
 
 .wide-detail-section,
@@ -5321,9 +5331,10 @@ td span {
 }
 
 .resource-card-grid {
-  display: grid;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   gap: 12px;
-  grid-template-columns: minmax(0, 1fr);
 }
 
 .resource-summary-card {
@@ -5331,6 +5342,7 @@ td span {
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
+  flex: 1;
   gap: 9px;
   min-width: 0;
   padding: 14px 16px 15px;
