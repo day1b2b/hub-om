@@ -49,11 +49,17 @@ function resolveTeamOption(memberTeam?: string): string | undefined {
   return TEAM_OPTIONS.find((option) => memberTeam.includes(option));
 }
 
-const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
-  const h = String(Math.floor(i / 2)).padStart(2, "0");
-  const m = i % 2 === 0 ? "00" : "30";
-  return `${h}:${m}`;
-});
+function buildTimeOptions(startHour: number, endHour: number): string[] {
+  const options: string[] = [];
+  for (let h = startHour; h <= endHour; h++) {
+    options.push(`${String(h).padStart(2, "0")}:00`);
+    if (h < endHour) options.push(`${String(h).padStart(2, "0")}:30`);
+  }
+  return options;
+}
+
+const START_TIME_OPTIONS = buildTimeOptions(8, 20);
+const END_TIME_OPTIONS = buildTimeOptions(8, 23);
 
 function emptySession(): OmRequestSession {
   return { date: "", dateEnd: "", timeStart: "", timeEnd: "", duration: "", location: "", educationDatesText: "" };
@@ -671,7 +677,7 @@ export function OmRequestForm({
                 onChange={(e) => updateSession(idx, "timeStart", e.target.value)}
               >
                 <option value="">시작</option>
-                {TIME_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
+                {START_TIME_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
               <select
                 required
@@ -679,7 +685,7 @@ export function OmRequestForm({
                 onChange={(e) => updateSession(idx, "timeEnd", e.target.value)}
               >
                 <option value="">종료</option>
-                {TIME_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
+                {END_TIME_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
               <input
                 className="duration-input"
