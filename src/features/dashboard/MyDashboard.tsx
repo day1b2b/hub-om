@@ -7,6 +7,7 @@ import { holidayName } from "./holidays";
 import { missingArchiveItems } from "@/lib/data/operationCalculations";
 import { buildMyCourseRows } from "./myCourseRows";
 import type { OmNameDiagnosis } from "./omNameDiagnosis";
+import { calendarLabel, isOnsiteSupportForViewer } from "./onsiteLabel";
 import { createRequestMatcher } from "./requestDedup";
 import { requestHref } from "./requestHref";
 import type { OmRequest } from "@/lib/data/omRequest/omRequestTypes";
@@ -80,11 +81,12 @@ export function MyDashboard({ assignedRequests, diagnosis, omName, operations }:
       const start = parseDate(operation.startDate);
       const end = parseDate(operation.endDate) ?? start;
       if (!start || !end) return [];
-      const onsite = operation.onsiteRequired === "Y";
+      // 현장운영지원 표기는 "내가 지원자로 들어간 건"에만 붙인다. 담당 OM인 과정에는
+      // 현장에 가더라도 붙이지 않는다 — 그 표기의 목적이 담당 과정과의 구별이라서다.
+      const onsite = isOnsiteSupportForViewer(operation, omName);
       return [{
         id: `op-${operation.operationId}`,
-        // 현장운영지원은 이름에 붙여 캘린더에서 바로 알아보게 한다.
-        label: onsite ? `${operation.companyName}_현장운영지원` : operation.companyName,
+        label: calendarLabel(operation.companyName, onsite),
         company: operation.companyName,
         course: operation.courseName,
         start: stripTime(start),
@@ -96,9 +98,9 @@ export function MyDashboard({ assignedRequests, diagnosis, omName, operations }:
     ...assignedRequests.flatMap((request) => {
       // 교육 일정 차수(세션)를 각 날짜에 개별 표시한다. 세션에 dateEnd가 있으면 그 기간만큼 막대로.
       const multiSession = request.sessions.length > 1;
-      const onsite = request.onSiteOperation === "Y";
-      // 기업명 뒤에 바로 붙여, 막대가 좁아 잘려도 앞부분이 먼저 보이게 한다.
-      const baseLabel = onsite ? `${request.company}_현장운영지원` : request.company;
+      // 담당 과정(업무요청)은 내가 담당 OM으로 배정된 건만 모아 온다. 담당이므로
+      // 현장운영이 필요한 과정이어도 "_현장운영지원"을 붙이지 않는다.
+      const baseLabel = calendarLabel(request.company, false);
       return request.sessions.flatMap((session, index) => {
         const start = parseDate(session.date);
         const end = parseDate(session.dateEnd ?? session.date) ?? start;
@@ -111,7 +113,7 @@ export function MyDashboard({ assignedRequests, diagnosis, omName, operations }:
           start: stripTime(start),
           end: stripTime(end),
           href: `/om-request/manage/${request.id}`,
-          onsite
+          onsite: false
         }];
       });
     })
