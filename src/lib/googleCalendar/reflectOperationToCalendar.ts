@@ -43,7 +43,7 @@ async function reflectOperation(operation: OperationSession, trigger: ReflectTri
       return;
     }
 
-    const body = buildCalendarEventBody(operation, targets.attendeeEmails);
+    const body = buildCalendarEventBody(operation, targets.attendeeEmails, targets.partKey);
     const existing = await findCalendarEventLink(operation.operationId);
 
     // 수정인데 캘린더에 없는 과정 = 기능 도입 전에 만들어진 과정. 건드리지 않는다.
