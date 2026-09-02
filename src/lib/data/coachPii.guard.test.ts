@@ -11,13 +11,17 @@ function readSource(relativePath: string): string {
 }
 
 // 공개 계층에 절대 새면 안 되는 민감(PII) 식별자.
+//
+// feedback(평가 한줄평)은 2026-07-23 공개 조회로 전환됐다(커밋 7c55530, 사용자 확인).
+// 목록에서 빼지 않아 이 테스트가 그때부터 실패 상태로 방치돼 있었다 — CI가 단위 테스트를
+// 돌리지 않아 드러나지 않았다. 결정은 이미 났으므로 테스트를 현실에 맞춘다.
+// hiredByText·hiredById(섭외 관련)는 그 결정 범위가 아니어서 계속 금지로 남긴다.
 const FORBIDDEN_PII_TOKENS = [
   "employeeId",
   "phone",
   "email",
   "birthDate",
   "affiliation",
-  "feedback",
   "hiredByText",
   "hiredById"
 ];

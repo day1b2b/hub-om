@@ -277,7 +277,7 @@ export function MyDashboard({ assignedRequests, diagnosis, omName, operations }:
   ];
   // 다음 과정 D-day: 운영 + 담당 과정을 모두 고려해 임박한 순으로 몇 개를 보여 준다.
   // 하나만 보여 주면 그 과정을 치른 뒤 다음이 무엇인지 캘린더를 뒤져야 했다.
-  const nextEvents = findNextEvents(calendarEvents, today, 3);
+  const nextEvents = findNextEvents(calendarEvents, today, 4);
   const [nextEvent, ...upcomingAfterNext] = nextEvents;
 
   return (
@@ -438,7 +438,7 @@ export function MyDashboard({ assignedRequests, diagnosis, omName, operations }:
           <section className="dashboard-panel">
             <div className="section-title">
               <h2>다음 과정 D-day</h2>
-              <span>임박한 예정 과정 {nextEvents.length}건</span>
+              <span>다가오는 예정 과정 {nextEvents.length}건</span>
             </div>
             {nextEvent ? (
               <>

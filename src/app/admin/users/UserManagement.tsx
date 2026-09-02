@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { findDuplicateEmails } from "@/lib/data/teamUsers/duplicateEmails";
 import { TEAM_OPTIONS } from "@/lib/data/teamUsers/teamUserTypes";
 import type { TeamUser, TeamUserInput, TeamUserRole } from "@/lib/data/teamUsers/teamUserTypes";
 
@@ -35,6 +36,11 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
 
   const filteredUsers =
     teamFilter === "전체" ? users : users.filter((u) => u.team === teamFilter);
+
+  // 같은 이메일 행은 조용히 사람을 가린다. 명단 조회가 나중 행의 이름을 집어서,
+  // 그 이름이 운영 현황 OM 표기와 다르면 그 사람 대시보드가 통째로 0건이 된다.
+  // 팀 필터와 무관하게 전체에서 찾는다 — 중복 두 행이 서로 다른 팀에 있을 수 있다.
+  const duplicateEmails = useMemo(() => findDuplicateEmails(users), [users]);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -269,6 +275,22 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
           );
         })}
       </div>
+
+      {duplicateEmails.length > 0 && (
+        <div className="om-request-error" role="alert">
+          <strong>같은 이메일로 등록된 행이 있습니다 ({duplicateEmails.length}건).</strong>
+          <br />
+          한 사람에 행이 둘이면 나중에 등록된 행의 이름이 적용되고, 그 이름이 운영 현황 OM
+          표기와 다르면 그 사람의 내 대시보드가 0건으로 보입니다. 하나만 남기고 지워 주세요.
+          <ul>
+            {duplicateEmails.map((group) => (
+              <li key={group.email}>
+                {group.email} — {group.names.join(", ")}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {filteredUsers.length > 0 && (
         <>
