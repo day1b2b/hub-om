@@ -41,6 +41,8 @@ const SHOW_LECTURE_REPORTS = false;
 const SHOW_READINESS_SUMMARY = false;
 const SHOW_BULK_EDIT_ROUNDS = false;
 
+const EDUCATION_FORMAT_OPTIONS = ["오프라인", "비대면", "블렌디드", "플립러닝", "검토필요"];
+
 interface OperationDetailProps {
   collaboration: OperationCollaboration;
   extraTools?: string[];
@@ -137,6 +139,14 @@ export function OperationDetail({
                 label="과정명"
                 operationIds={courseOperationIds}
                 value={operation.courseName}
+              />
+              <EditableInfoItem
+                displayValue={operation.educationFormat}
+                fields={[
+                  { name: "educationFormat", options: EDUCATION_FORMAT_OPTIONS, type: "select", value: operation.educationFormat }
+                ]}
+                label="교육형태"
+                operationId={operation.operationId}
               />
               <EditableInfoItem
                 displayValue={operation.courseCategory || "미정"}
