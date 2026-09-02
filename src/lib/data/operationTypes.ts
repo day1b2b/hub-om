@@ -172,6 +172,7 @@ export interface UpdateOperationInput {
   educationDays?: string;
   /** 실제 교육이 있는 날짜(yyyy-mm-dd) 목록. 전달하면 startDate/endDate는 이 값의 최소/최대로 다시 계산한다. */
   educationDates?: string[];
+  educationFormat?: EducationFormat;
   endDate?: string;
   hasResultReport?: ResultReportStatus;
   hasSatisfactionSurvey?: SatisfactionSurveyStatus;

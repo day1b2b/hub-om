@@ -219,6 +219,7 @@ export class LocalJsonOperationRepository implements OperationRepository {
       driveLink: normalizeOptionalText(input.driveLink, operation.driveLink),
       educationDays: normalizeOptionalText(input.educationDays, operation.educationDays),
       educationDates: input.educationDates ?? operation.educationDates,
+      educationFormat: input.educationFormat ?? operation.educationFormat,
       endDate,
       hasResultReport: input.hasResultReport ?? operation.hasResultReport,
       hasSatisfactionSurvey: input.hasSatisfactionSurvey ?? operation.hasSatisfactionSurvey,

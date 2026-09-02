@@ -3016,10 +3016,21 @@ td span {
   display: grid;
 }
 
-.detail-side-stack {
-  align-content: start;
-  display: grid;
+.detail-side-stack,
+.detail-primary-stack {
+  display: flex;
+  flex-direction: column;
   gap: 12px;
+}
+
+/* 옆 컬럼(코스정보+과정정보 / 담당자+지표+드라이브)의 내용 길이가 서로 다르면
+   짧은 쪽 아래에 빈 여백이 남아 두 컬럼의 아래쪽 테두리가 어긋나 보인다.
+   짧은 쪽의 마지막 카드를 남는 높이만큼 늘려 두 컬럼의 아래쪽을 맞춘다. */
+.detail-side-stack > :last-child,
+.detail-primary-stack > :last-child {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
 }
 
 .wide-detail-section,
@@ -4942,6 +4953,19 @@ td span {
   white-space: nowrap;
 }
 
+/* 회차 추가/일괄등록 버튼과 같은 줄에 있으면 만족도 분석 버튼이 묻혀서
+   테두리만 있는 형제 버튼들과 달리 채워진 색으로 눈에 띄게 한다. */
+.satisfaction-analysis-trigger {
+  background: var(--green);
+  border-color: var(--green);
+  color: #ffffff;
+}
+
+.satisfaction-analysis-trigger:hover {
+  background: #5c7a54;
+  border-color: #5c7a54;
+}
+
 .add-round-trigger:hover {
   background: var(--surface-hover, #f4f5f7);
 }
@@ -5347,9 +5371,10 @@ td span {
 }
 
 .resource-card-grid {
-  display: grid;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   gap: 12px;
-  grid-template-columns: minmax(0, 1fr);
 }
 
 .resource-summary-card {
@@ -5357,6 +5382,7 @@ td span {
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
+  flex: 1;
   gap: 9px;
   min-width: 0;
   padding: 14px 16px 15px;

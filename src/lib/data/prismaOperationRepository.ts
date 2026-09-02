@@ -505,6 +505,7 @@ export class PrismaOperationRepository implements OperationRepository {
 
     if (input.driveLink !== undefined) data.driveLink = nullableText(input.driveLink);
     if (input.educationDays !== undefined) data.educationDays = nullableText(input.educationDays);
+    if (input.educationFormat !== undefined) data.educationFormat = PRISMA_EDUCATION_FORMAT[input.educationFormat];
     if (input.hasResultReport !== undefined) data.hasResultReport = PRISMA_RESULT_REPORT_STATUS[input.hasResultReport];
     if (input.hasSatisfactionSurvey !== undefined) {
       data.hasSatisfactionSurvey = PRISMA_SATISFACTION_SURVEY_STATUS[input.hasSatisfactionSurvey];
