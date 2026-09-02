@@ -5134,6 +5134,33 @@ td span {
   white-space: normal;
 }
 
+.bulk-add-rounds-education-dates-cell {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  white-space: normal;
+}
+
+.bulk-add-rounds-education-dates-cell span {
+  color: var(--muted);
+}
+
+.bulk-add-rounds-education-dates-cell button {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 11px;
+  padding: 3px 6px;
+  white-space: nowrap;
+}
+
+.bulk-add-rounds-education-dates-cell button:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
 .round-resource-cell {
   white-space: normal;
 }
