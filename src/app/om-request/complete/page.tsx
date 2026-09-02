@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AppSidebar } from "@/components/AppSidebar";
 import { getOmRequest } from "@/lib/data/omRequest/omRequestLocalRepository";
+import { summarizeSessionDates } from "@/lib/data/omRequest/omRequestSessionDates";
 
 export const dynamic = "force-dynamic";
 
@@ -79,24 +80,20 @@ export default async function OmRequestCompletePage({ searchParams }: Props) {
               <div className="om-session-list">
                 <div className="om-session-list-header">
                   <span>회차</span>
-                  <span>시작일</span>
-                  <span>종료일</span>
+                  <span>교육일</span>
                   <span>시작</span>
                   <span>종료</span>
                   <span>시수</span>
                   <span>장소</span>
-                  <span>실제교육일</span>
                 </div>
                 {request.sessions.map((s, i) => (
                   <div className="om-session-list-row" key={i}>
                     <span className="om-session-num">{i + 1}</span>
-                    <span>{s.date}</span>
-                    <span>{s.dateEnd || "-"}</span>
+                    <span>{summarizeSessionDates(s)}</span>
                     <span>{s.timeStart}</span>
                     <span>{s.timeEnd}</span>
                     <span>{s.duration || "-"}</span>
                     <span className="om-session-location">{s.location}</span>
-                    <span>{s.educationDatesText || "전체 기간"}</span>
                   </div>
                 ))}
               </div>

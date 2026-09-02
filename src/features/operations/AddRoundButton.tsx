@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { MultiDateCalendar } from "@/components/MultiDateCalendar";
 import { NameCombobox } from "@/components/NameCombobox";
-import { parseEducationDatesText } from "@/lib/data/operationCalculations";
+import { deriveDateRangeFromEducationDates } from "@/lib/data/operationCalculations";
 import { isValidTimeRangeText, normalizeTimeRangeText } from "./parsePastedRounds";
 
 type SaveState = "idle" | "saving" | "failed";
@@ -20,12 +21,10 @@ interface AddRoundButtonProps {
 
 interface RoundDraft {
   coach: string;
-  educationDatesText: string;
-  endDate: string;
+  educationDates: string[];
   instructors: string;
   region: string;
   roundNo: string;
-  startDate: string;
   timeText: string;
 }
 
@@ -70,32 +69,11 @@ export function AddRoundButton({
                 <input readOnly type="text" value={draft.roundNo} />
               </label>
 
-              <div className="lecture-note-row">
-                <label className="lecture-note-field">
-                  <span>시작일</span>
-                  <input
-                    onChange={(event) => setDraft((current) => ({ ...current, startDate: event.target.value }))}
-                    type="date"
-                    value={draft.startDate}
-                  />
-                </label>
-                <label className="lecture-note-field">
-                  <span>종료일</span>
-                  <input
-                    onChange={(event) => setDraft((current) => ({ ...current, endDate: event.target.value }))}
-                    type="date"
-                    value={draft.endDate}
-                  />
-                </label>
-              </div>
-
               <label className="lecture-note-field">
-                <span>실제 교육일 (선택, 쉼표로 구분 — 비우면 시작일~종료일 전체)</span>
-                <input
-                  onChange={(event) => setDraft((current) => ({ ...current, educationDatesText: event.target.value }))}
-                  placeholder="예: 2026-09-03, 2026-09-04, 2026-09-07"
-                  type="text"
-                  value={draft.educationDatesText}
+                <span>교육일 (달력에서 실제 교육이 있는 날짜만 클릭)</span>
+                <MultiDateCalendar
+                  onChange={(dates) => setDraft((current) => ({ ...current, educationDates: dates }))}
+                  value={draft.educationDates}
                 />
               </label>
 
@@ -163,12 +141,10 @@ export function AddRoundButton({
   function toDraft(): RoundDraft {
     return {
       coach: baseCoach,
-      educationDatesText: "",
-      endDate: "",
+      educationDates: [],
       instructors: baseInstructors,
       region: baseRegion,
       roundNo: nextRoundNo,
-      startDate: "",
       timeText: baseTimeText
     };
   }
@@ -187,18 +163,13 @@ export function AddRoundButton({
   }
 
   async function save() {
-    if (!draft.roundNo.trim() || !draft.startDate.trim() || !draft.endDate.trim()) {
-      setError("회차, 시작일, 종료일은 필수입니다.");
+    if (!draft.roundNo.trim() || draft.educationDates.length === 0) {
+      setError("회차와 교육일(최소 1일)은 필수입니다.");
       return;
     }
 
     if (draft.timeText.trim() && !isValidTimeRangeText(draft.timeText)) {
       setError("시간 형식을 확인해주세요 (예: 09:30 ~ 17:30).");
-      return;
-    }
-
-    if (draft.educationDatesText.trim() && parseEducationDatesText(draft.educationDatesText).errors.length > 0) {
-      setError("실제 교육일 형식을 확인해주세요 (예: 2026-09-03, 2026-09-04).");
       return;
     }
 
@@ -211,10 +182,12 @@ export function AddRoundButton({
     setSaveState("saving");
     setError(null);
 
-    const { educationDatesText, ...draftFields } = draft;
+    const range = deriveDateRangeFromEducationDates(draft.educationDates)!;
     const normalizedDraft = {
-      ...draftFields,
-      educationDates: educationDatesText,
+      ...draft,
+      educationDates: draft.educationDates.join(", "),
+      startDate: range.startDate,
+      endDate: range.endDate,
       timeText: draft.timeText.trim() ? normalizeTimeRangeText(draft.timeText) : draft.timeText
     };
 

@@ -292,6 +292,24 @@ export function deriveDateRangeFromEducationDates(
   return { startDate: sorted[0], endDate: sorted[sorted.length - 1] };
 }
 
+/** startDate~endDate 사이 모든 날짜(양끝 포함)를 나열한다. 실제 교육일이 아직 없는 회차를
+ * 달력에서 편집할 때 "일단 전체 기간을 선택된 상태로 보여주고 쉬는 날만 해제"할 수 있게 쓴다. */
+export function enumerateDateRange(startDate: string, endDate: string): string[] {
+  const start = parseDate(startDate);
+  const end = parseDate(endDate);
+  if (!start || !end || end < start) return [];
+
+  const dates: string[] = [];
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    dates.push(
+      `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}-${String(cursor.getDate()).padStart(2, "0")}`
+    );
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return dates;
+}
+
 function isPastDate(value: string): boolean {
   const parsed = parseDate(value);
   if (!parsed) return false;

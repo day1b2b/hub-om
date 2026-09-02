@@ -11439,7 +11439,7 @@ button.coach-doc-reserve-chip:disabled {
   font-weight: 600;
   color: var(--muted);
   gap: 8px;
-  grid-template-columns: 52px 148px 148px 108px 108px 44px 1.2fr 1fr;
+  grid-template-columns: 52px 220px 108px 108px 44px 1fr;
   padding: 8px 12px;
   text-align: center;
 }
@@ -11449,7 +11449,7 @@ button.coach-doc-reserve-chip:disabled {
   border-bottom: 1px solid var(--line);
   display: grid;
   gap: 8px;
-  grid-template-columns: 52px 148px 148px 108px 108px 44px 1.2fr 1fr;
+  grid-template-columns: 52px 220px 108px 108px 44px 1fr;
   justify-items: center;
   padding: 6px 12px;
 }
@@ -11472,7 +11472,7 @@ button.coach-doc-reserve-chip:disabled {
   width: 100%;
 }
 
-.om-sessions-row > *:nth-last-child(-n + 2) {
+.om-sessions-row > *:last-child {
   justify-self: stretch;
 }
 
@@ -11481,8 +11481,28 @@ button.coach-doc-reserve-chip:disabled {
   width: 100%;
 }
 
-.om-sessions-row > *:not(:nth-last-child(-n + 2)) input[type="text"] {
+.om-sessions-row > *:not(:last-child) input[type="text"] {
   text-align: center;
+}
+
+.session-dates-trigger {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 6px;
+  text-align: center;
+  width: 100%;
+}
+
+.session-dates-trigger:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.session-dates-dialog {
+  max-width: 340px;
 }
 
 .date-input-wrapper input[type="text"] {
@@ -11624,7 +11644,7 @@ button.coach-doc-reserve-chip:disabled {
   font-size: 12px;
   font-weight: 600;
   gap: 8px;
-  grid-template-columns: 36px 110px 110px 72px 72px 48px 1.2fr 1fr;
+  grid-template-columns: 36px 160px 72px 72px 48px 1fr;
   padding: 8px 12px;
   text-align: center;
 }
@@ -11638,7 +11658,7 @@ button.coach-doc-reserve-chip:disabled {
   border-bottom: 1px solid var(--line);
   display: grid;
   gap: 8px;
-  grid-template-columns: 36px 110px 110px 72px 72px 48px 1.2fr 1fr;
+  grid-template-columns: 36px 160px 72px 72px 48px 1fr;
   padding: 8px 12px;
   text-align: center;
 }
@@ -11744,6 +11764,90 @@ button.coach-doc-reserve-chip:disabled {
 .address-search-btn:hover {
   background: var(--surface-strong);
   color: var(--blue);
+}
+
+/* 실제 교육일 다중 선택 달력 */
+.multi-date-calendar {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  width: 280px;
+}
+
+.multi-date-calendar-header {
+  align-items: center;
+  background: var(--surface-strong);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  font-size: 13px;
+  font-weight: 600;
+  justify-content: space-between;
+  padding: 8px 12px;
+}
+
+.multi-date-calendar-header button {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 6px;
+}
+
+.multi-date-calendar-header button:hover {
+  color: var(--blue);
+}
+
+.multi-date-calendar-weekdays {
+  display: grid;
+  font-size: 11px;
+  color: var(--muted);
+  grid-template-columns: repeat(7, 1fr);
+  padding: 6px 6px 0;
+  text-align: center;
+}
+
+.multi-date-calendar-grid {
+  display: grid;
+  gap: 2px;
+  grid-template-columns: repeat(7, 1fr);
+  padding: 4px 6px 8px;
+}
+
+.multi-date-calendar-cell {
+  aspect-ratio: 1;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.multi-date-calendar-cell.empty {
+  cursor: default;
+}
+
+.multi-date-calendar-cell.weekend {
+  color: var(--red);
+}
+
+.multi-date-calendar-cell:not(.empty):hover {
+  background: var(--surface-strong);
+}
+
+.multi-date-calendar-cell.selected {
+  background: var(--blue);
+  color: #fff;
+  font-weight: 600;
+}
+
+.multi-date-calendar-summary {
+  background: var(--surface-strong);
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  padding: 6px 12px;
 }
 
 /* 배정 관리 */
