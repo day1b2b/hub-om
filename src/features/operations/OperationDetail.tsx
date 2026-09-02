@@ -99,6 +99,8 @@ export function OperationDetail({
             {operation.courseId ? null : <span className="title-course-id">코스ID 검토 필요</span>}
             {operation.processId ? <span className="title-tag">{operation.processId}</span> : null}
             {educationFormatText !== "확인 필요" ? <span className="title-tag">{educationFormatText}</span> : null}
+            <span className="title-tag">{formatCourseDateRange(courseOperations)}</span>
+            <span className="title-tag">{formatTotalEducationDays(courseOperations)}</span>
           </div>
           <div className="detail-header-actions">
             {SHOW_READINESS_SUMMARY ? (
@@ -120,7 +122,7 @@ export function OperationDetail({
           <div className="detail-primary-stack">
             <section className="detail-section compact-info-section">
               <div className="section-title">
-                <h2>코스 정보</h2>
+                <h2>코스 정보 (백오피스 정보)</h2>
               </div>
               <div className="info-grid">
                 <EditableInfoItem
@@ -188,8 +190,6 @@ export function OperationDetail({
                     operationId: candidate.operationId
                   }))}
                 />
-                <InfoItem label="기간" value={formatCourseDateRange(courseOperations)} />
-                <InfoItem label="교육일수" value={formatTotalEducationDays(courseOperations)} />
               </div>
             </section>
           </div>
