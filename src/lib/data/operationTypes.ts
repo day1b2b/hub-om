@@ -166,6 +166,7 @@ export interface UpdateOperationInput {
   courseName?: string;
   driveLink?: string;
   educationDays?: string;
+  educationFormat?: EducationFormat;
   endDate?: string;
   hasResultReport?: ResultReportStatus;
   hasSatisfactionSurvey?: SatisfactionSurveyStatus;

@@ -3,6 +3,7 @@ import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import type {
   ArchiveStatus,
+  EducationFormat,
   OnsiteRequired,
   OperationSession,
   ResultReportStatus,
@@ -25,6 +26,7 @@ const APPLYABLE_FIELDS = [
   "courseName",
   "driveLink",
   "educationDays",
+  "educationFormat",
   "endDate",
   "hasResultReport",
   "hasSatisfactionSurvey",
@@ -131,6 +133,11 @@ function assignUpdateValue(update: UpdateOperationInput, field: ApplyableField, 
     return;
   }
 
+  if (field === "educationFormat") {
+    if (isEducationFormat(value)) update.educationFormat = value;
+    return;
+  }
+
   if (field === "startDate" || field === "endDate") {
     if (isDateText(value)) update[field] = value;
     return;
@@ -163,6 +170,16 @@ function isSatisfactionSurveyStatus(value: string): value is SatisfactionSurveyS
 
 function isOnsiteRequired(value: string): value is OnsiteRequired {
   return value === "Y" || value === "N" || value === "PARTIAL" || value === "UNKNOWN";
+}
+
+function isEducationFormat(value: string): value is EducationFormat {
+  return (
+    value === "오프라인" ||
+    value === "비대면" ||
+    value === "블렌디드" ||
+    value === "플립러닝" ||
+    value === "검토필요"
+  );
 }
 
 function isDateText(value: string): boolean {

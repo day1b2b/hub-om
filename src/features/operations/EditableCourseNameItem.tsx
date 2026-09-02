@@ -7,11 +7,12 @@ type SaveState = "idle" | "saving" | "failed";
 
 interface EditableCourseNameItemProps {
   displayValue: string;
+  label: string;
   operationIds: string[];
   value: string;
 }
 
-export function EditableCourseNameItem({ displayValue, operationIds, value }: EditableCourseNameItemProps) {
+export function EditableCourseNameItem({ displayValue, label, operationIds, value }: EditableCourseNameItemProps) {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -20,7 +21,7 @@ export function EditableCourseNameItem({ displayValue, operationIds, value }: Ed
   if (!isEditing) {
     return (
       <div className="info-item editable-info-item">
-        <span>코스ID명</span>
+        <span>{label}</span>
         <div className="info-item-value-row">
           <strong>{displayValue}</strong>
           <button className="info-item-edit-trigger" onClick={startEditing} type="button">
@@ -33,10 +34,10 @@ export function EditableCourseNameItem({ displayValue, operationIds, value }: Ed
 
   return (
     <div className="info-item editable-info-item editing">
-      <span>코스ID명</span>
+      <span>{label}</span>
       <div className="info-item-edit-form">
         <input
-          aria-label="코스ID명"
+          aria-label={label}
           onChange={(event) => setDraft(event.target.value)}
           placeholder="예: AX 교육 실무2"
           type="text"
