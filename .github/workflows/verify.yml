@@ -49,6 +49,14 @@ jobs:
           OPERATION_DATA_SOURCE: local
         run: npm run typecheck
 
+      # 단위 테스트는 순수 함수 검증이라 DB·네트워크가 필요 없다. typecheck·lint가 못 잡는
+      # 계산·판정 회귀를 여기서 막는다. build 앞에 두어 빠른 실패가 먼저 보이게 한다.
+      - name: Unit tests
+        env:
+          DATABASE_URL: postgresql://verify:verify@localhost:5432/verify?schema=public
+          OPERATION_DATA_SOURCE: local
+        run: npm test
+
       - name: Build
         env:
           DATABASE_URL: postgresql://verify:verify@localhost:5432/verify?schema=public
