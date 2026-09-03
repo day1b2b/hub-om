@@ -3,12 +3,13 @@
 // 구글·DB를 호출하지 않는 코드만 둬서 테스트에서 규칙(D7~D9)을 그대로 검증할 수 있게 한다.
 // 실행(읽기·쓰기)은 calendarReverseSync.ts / applyCalendarReverseSync.ts가 담당한다.
 //
-// 매핑 단위가 "회차의 실제 교육일 1일"이므로 비교 대상도 그 교육일의 이벤트 계획 1건이다.
-// 매니저가 이벤트를 다른 날로 옮기면 그 교육일이 바뀐 것으로 본다.
+// 매핑 단위는 "연속 교육일 구간 1개 ↔ 이벤트 1건"이다(9/7~9/9 한 건, 9/11 한 건).
+// 매핑 키는 구간의 시작 교육일이고, 매니저가 이벤트를 옮기면 그 구간이 옮겨진 것으로 본다.
 // 제목은 파트에 따라 달라지므로(강의관리 표기) 이벤트가 있는 파트 키를 함께 받는다.
 
 import type { OperationSession } from "@/lib/data/operationTypes";
 import type { CalendarEventSnapshot } from "./calendarWriteClient";
+import { enumerateDateRange } from "@/lib/data/operationCalculations";
 import { buildCalendarEventBodies, normalizeEducationDates } from "./operationCalendarEvent";
 import type { CalendarEventLink } from "./calendarEventLinkRepository";
 
@@ -31,8 +32,10 @@ export interface ReverseSyncItem {
   operationId: string;
   calendarId: string;
   eventId: string;
-  /** 매핑된 교육일. 운영현황 반영은 이 날짜를 새 날짜로 바꾸는 것이다. */
+  /** 매핑된 구간의 시작 교육일. 운영현황 반영은 이 구간을 새 구간으로 바꾸는 것이다. */
   eventDate: string;
+  /** 매핑된 구간의 마지막 교육일. 하루짜리면 eventDate와 같다. */
+  eventEndDate: string;
   /** 이벤트가 올라가 있는 파트 키. 제목을 다시 만들 때 필요하다. */
   partKey: null | string;
   companyName: string;
@@ -71,6 +74,7 @@ export function evaluateEventAgainstOperation(
     calendarId: link.calendarId,
     eventId: event.id,
     eventDate: link.eventDate,
+    eventEndDate: link.eventDate,
     partKey: partKey ?? null,
     companyName: operation.companyName,
     courseName: operation.courseName,
@@ -94,6 +98,7 @@ export function evaluateEventAgainstOperation(
   }
 
   const expected = plan.body;
+  base.eventEndDate = plan.eventEndDate;
   const scheduleDiffers = normalizeSchedule(expected.start, expected.end) !== normalizeSchedule(event.start, event.end);
   const revertFields: string[] = [];
   if (expected.summary !== event.summary) revertFields.push("제목");
@@ -132,22 +137,30 @@ export function evaluateEventAgainstOperation(
 }
 
 /**
- * 교육일 목록에서 한 날짜를 다른 날짜로 옮긴다.
- * 옮길 곳에 이미 교육일이 있으면 합치지 않고 충돌로 알린다 — 이벤트가 하루에 두 개가 되는
- * 상태를 코드가 임의로 정리하면 사람이 의도한 일정을 잃을 수 있다.
+ * 교육일 목록에서 한 연속 구간을 새 구간으로 옮긴다.
+ * 매니저가 3일짜리 이벤트를 옮기면 그 3일이 새 위치로 함께 움직이고, 길이를 늘리면
+ * 늘어난 날짜까지 교육일이 된다.
+ *
+ * 옮길 곳에 (그 구간 밖의) 교육일이 이미 있으면 합치지 않고 충돌로 알린다 —
+ * 하루에 이벤트가 두 개가 되는 상태를 코드가 임의로 정리하면 사람이 의도한 일정을 잃는다.
  */
-export function replaceEducationDate(
+export function replaceEducationRun(
   dates: string[],
-  fromDate: string,
-  toDate: string
+  runStart: string,
+  runEnd: string,
+  nextStart: string,
+  nextEnd: string
 ): { dates: string[]; conflict: boolean } {
   const normalized = normalizeEducationDates(dates);
-  if (fromDate === toDate) return { dates: normalized, conflict: false };
-  if (normalized.includes(toDate)) return { dates: normalized, conflict: true };
+  const oldRun = new Set(enumerateDateRange(runStart, runEnd));
+  const nextRun = enumerateDateRange(nextStart, nextEnd);
 
-  const replaced = normalized.map((date) => (date === fromDate ? toDate : date));
+  if (nextRun.length === 0) return { dates: normalized, conflict: true };
 
-  return { dates: normalizeEducationDates(replaced), conflict: false };
+  const kept = normalized.filter((date) => !oldRun.has(date));
+  if (nextRun.some((date) => kept.includes(date))) return { dates: normalized, conflict: true };
+
+  return { dates: normalizeEducationDates([...kept, ...nextRun]), conflict: false };
 }
 
 /** 종일/시간 지정 두 형태를 한 문자열로 만들어 비교한다. 초·오프셋 표기 차이는 무시한다. */
