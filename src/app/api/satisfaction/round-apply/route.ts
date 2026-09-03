@@ -124,7 +124,8 @@ export async function POST(request: Request) {
     await repository.updateOperation(decision.operationId!, { avgSatisfaction: decision.value! });
 
     // 담당 OM 과 다른 사람이 눌렀는지 알린다 — 막지는 않는다(휴가·대리 반영이 실제로 있다).
-    const operation = operations.find((item) => item.id === decision.operationId);
+    // decision.operationId 는 업무 키다 (행 id 가 아니다) — 찾을 때도 같은 키로 본다
+    const operation = operations.find((item) => item.operationId === decision.operationId);
     const submitter = (body.manager ?? "").trim().toLowerCase();
     const ownerText = `${operation?.om ?? ""} ${operation?.onsiteOm ?? ""}`.trim();
     const byOther =
