@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs --test \"src/**/*.test.ts\"",
+    "test": "node --experimental-strip-types --experimental-test-module-mocks --experimental-loader ./scripts/ts-loader.mjs --test \"src/**/*.test.ts\"",
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
     "db:validate": "prisma validate",
