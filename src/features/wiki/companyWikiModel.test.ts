@@ -172,3 +172,41 @@ test("과정명이 비어 있어도 정렬에서 터지지 않는다", () => {
   assert.equal(entries.length, 1);
   assert.equal(entries[0].courseCount, 2);
 });
+
+test("companyId가 있으면 기업명 표기가 달라도 한 기업으로 묶는다", () => {
+  // Company.id가 기업을 식별한다. 운영 현황에 표기를 다르게 적어도 갈리지 않는다.
+  const entries = aggregateCompanies([
+    operation({ operationId: "a", companyId: "cmp-1", companyName: "가온물산" }),
+    operation({ operationId: "b", companyId: "cmp-1", companyName: "가온 물산(주)" })
+  ]);
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].roundCount, 2);
+});
+
+test("companyId가 다르면 기업명이 같아도 나눈다", () => {
+  // 이름이 같은 별개 법인이 있을 수 있다. 식별자를 이름보다 믿는다.
+  const entries = aggregateCompanies([
+    operation({ operationId: "a", companyId: "cmp-1", companyName: "가온물산" }),
+    operation({ operationId: "b", companyId: "cmp-2", companyName: "가온물산" })
+  ]);
+  assert.equal(entries.length, 2);
+});
+
+test("companyId가 없으면 기업명으로 묶는다(공백·대소문자 무시)", () => {
+  // 로컬 JSON 저장소나 외부 원천 병합 항목에는 companyId가 없다.
+  const entries = aggregateCompanies([
+    operation({ operationId: "a", companyName: "샘플전자 DS" }),
+    operation({ operationId: "b", companyName: "샘플전자DS" })
+  ]);
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].roundCount, 2);
+});
+
+test("companyId가 있는 행과 없는 행은 섞지 않는다", () => {
+  // 한쪽만 식별자를 가진 상태에서 억지로 합치면 근거 없는 병합이 된다.
+  const entries = aggregateCompanies([
+    operation({ operationId: "a", companyId: "cmp-1", companyName: "가온물산" }),
+    operation({ operationId: "b", companyName: "가온물산" })
+  ]);
+  assert.equal(entries.length, 2);
+});

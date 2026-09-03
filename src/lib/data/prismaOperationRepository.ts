@@ -215,6 +215,7 @@ export class PrismaOperationRepository implements OperationRepository {
         courseRecordId: session.course.id,
         courseId: session.course.courseId,
         courseIdLabel: courseIdLabelByKey.get(courseIdLabelKey(session.course.companyId, session.course.courseId)) ?? "",
+        companyId: session.course.companyId,
         companyName: session.course.company.name,
         courseName: session.course.name,
         courseCategory: session.course.courseCategory ?? "",
