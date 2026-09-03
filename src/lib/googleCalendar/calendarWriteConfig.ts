@@ -62,3 +62,30 @@ export function resolvePartCalendarId(part: string | null | undefined): string {
 export function isCalendarWriteEnabled(): boolean {
   return Boolean(readCalendarWriteCredentials()) && Boolean(process.env.GOOGLE_CAL_PART_CALENDARS?.trim());
 }
+
+/**
+ * GOOGLE_CAL_PART_CALENDARS에 등록된 모든 파트 캘린더를 돌려준다.
+ * 역반영은 특정 파트가 아니라 세 캘린더 전체의 변경을 훑어야 하므로 목록이 필요하다.
+ * 같은 캘린더 ID가 두 파트에 걸려 있으면 한 번만 훑도록 중복을 제거한다.
+ */
+export function listPartCalendars(): { partKey: string; calendarId: string }[] {
+  const raw = process.env.GOOGLE_CAL_PART_CALENDARS?.trim();
+  if (!raw) return [];
+
+  const seen = new Set<string>();
+  const calendars: { partKey: string; calendarId: string }[] = [];
+
+  for (const entry of raw.split(",")) {
+    const sep = entry.indexOf(":");
+    if (sep === -1) continue;
+
+    const partKey = entry.slice(0, sep).trim();
+    const calendarId = entry.slice(sep + 1).trim();
+    if (!partKey || !calendarId || seen.has(calendarId)) continue;
+
+    seen.add(calendarId);
+    calendars.push({ partKey, calendarId });
+  }
+
+  return calendars;
+}
