@@ -319,3 +319,31 @@ test("시간 지정 일정은 여러 날에 걸쳐도 시작·종료 날짜를 �
     timeText: "10:00 ~ 17:30"
   });
 });
+
+// ── 자기 쓰기 잔향 방어 (최소 시차) ──────────────────────────────
+test("hub-om이 방금 쓴 잔향(1초 차이)은 사람의 수정으로 보지 않는다", () => {
+  const operationUpdatedAt = new Date("2026-09-03T06:27:26.598Z");
+  const event = eventFixture({
+    start: { dateTime: "2026-09-14T10:00:00+09:00" },
+    end: { dateTime: "2026-09-15T17:00:00+09:00" },
+    updated: "2026-09-03T06:27:27.688Z"
+  });
+
+  const item = itemOf(evaluateEventAgainstOperation(operationFixture(), linkFixture(), event, operationUpdatedAt));
+
+  // 운영현황을 덮어쓰지 않고 캘린더를 되돌리는 쪽으로 판정한다.
+  assert.equal(item.action, "캘린더 원복");
+});
+
+test("시차를 충분히 넘기면 사람의 수정으로 본다", () => {
+  const operationUpdatedAt = new Date("2026-09-03T06:00:00.000Z");
+  const event = eventFixture({
+    start: { dateTime: "2026-09-14T10:00:00+09:00" },
+    end: { dateTime: "2026-09-15T17:00:00+09:00" },
+    updated: "2026-09-03T06:10:00.000Z"
+  });
+
+  const item = itemOf(evaluateEventAgainstOperation(operationFixture(), linkFixture(), event, operationUpdatedAt));
+
+  assert.equal(item.action, "운영현황 반영");
+});
