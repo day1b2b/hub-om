@@ -46,3 +46,21 @@ test("여러 중복 그룹을 이메일 순으로 돌려준다", () => {
   ]);
   assert.deepEqual(groups.map((g) => g.email), ["a@x.kr", "b@x.kr"]);
 });
+
+test("이름이 서로 다른 중복은 namesDiffer가 참", () => {
+  const groups = findDuplicateEmails([
+    { name: "김정선A", email: "a@x.kr" },
+    { name: "김정선", email: "a@x.kr" }
+  ]);
+  assert.equal(groups[0].namesDiffer, true);
+});
+
+test("이름이 같은 중복은 namesDiffer가 거짓", () => {
+  // 실데이터: "정수아" 두 줄. 어느 줄이 이겨도 이름이 같아 지금은 대시보드가 비지 않는다.
+  const groups = findDuplicateEmails([
+    { name: "정수아", email: "s@x.kr" },
+    { name: "정수아", email: "s@x.kr" }
+  ]);
+  assert.equal(groups[0].namesDiffer, false);
+  assert.deepEqual(groups[0].names, ["정수아", "정수아"]);
+});

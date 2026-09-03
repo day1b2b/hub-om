@@ -2225,8 +2225,11 @@ td span {
 
 .empty-state {
   color: var(--muted);
+  /* 안내 문장이 단어 중간에서 갈리지 않게 한다(.om-request-error와 같은 이유). */
+  overflow-wrap: anywhere;
   padding: 34px 18px;
   text-align: center;
+  word-break: keep-all;
 }
 
 .empty-state strong,
@@ -11666,7 +11669,11 @@ button.coach-doc-reserve-chip:disabled {
   color: var(--red);
   font-size: 13px;
   margin: 0 0 12px;
+  /* 한글은 기본값이 음절 단위로 끊어서 "하나 / 만 남기고"처럼 단어가 갈린다.
+     keep-all로 띄어쓰기에서만 끊고, 긴 이메일·주소가 줄을 넘칠 때만 anywhere가 받는다. */
+  overflow-wrap: anywhere;
   white-space: pre-line;
+  word-break: keep-all;
 }
 
 .om-session-toolbar {

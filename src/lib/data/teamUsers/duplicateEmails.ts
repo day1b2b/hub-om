@@ -3,6 +3,15 @@ export interface DuplicateEmailGroup {
   email: string;
   /** 그 이메일로 등록된 이름들. 조회에서 이기는 순서와는 무관하게 전부. */
   names: string[];
+  /**
+   * 이름까지 서로 다른가.
+   *
+   * 이름이 같은 중복(예: "정수아" 두 줄)은 어느 줄이 조회에 이겨도 이름이 같아서
+   * 지금 당장 대시보드가 비지 않는다. 이름이 다른 중복(예: "김정선A" / "김정선")만
+   * 실제로 담당 과정을 0건으로 만든다. 화면에서 겁을 주는 정도를 나누기 위해 구분한다.
+   * (이름이 같아도 나중에 한쪽만 바뀌면 터지므로 정리 대상인 것은 같다.)
+   */
+  namesDiffer: boolean;
 }
 
 /**
@@ -31,6 +40,6 @@ export function findDuplicateEmails(
 
   return [...byEmail.entries()]
     .filter(([, names]) => names.length > 1)
-    .map(([email, names]) => ({ email, names }))
+    .map(([email, names]) => ({ email, names, namesDiffer: new Set(names).size > 1 }))
     .sort((a, b) => a.email.localeCompare(b.email));
 }

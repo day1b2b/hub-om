@@ -278,16 +278,22 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
         })}
       </div>
 
+      {/* 이름까지 다른 중복만 지금 당장 대시보드를 비운다. 이름이 같은 중복은 정리 대상이긴
+          하지만 아직 증상이 없으므로 겁주는 정도를 나눈다 — 안내가 실제와 어긋나면 안 믿게 된다. */}
       {duplicateEmails.length > 0 && (
         <div className="om-request-error" role="alert">
           <strong>같은 이메일로 등록된 행이 있습니다 ({duplicateEmails.length}건).</strong>
           <br />
-          한 사람에 행이 둘이면 나중에 등록된 행의 이름이 적용되고, 그 이름이 운영 현황 OM
-          표기와 다르면 그 사람의 내 대시보드가 0건으로 보입니다. 하나만 남기고 지워 주세요.
+          한 사람에 행이 둘이면 나중에 등록된 행의 이름이 적용됩니다. 하나만 남기고 지워 주세요.
           <ul>
             {duplicateEmails.map((group) => (
               <li key={group.email}>
                 {group.email} — {group.names.join(", ")}
+                {group.namesDiffer ? (
+                  <> · 이름이 서로 달라 이 사람의 내 대시보드가 지금 0건으로 보입니다</>
+                ) : (
+                  <> · 이름이 같아 지금은 화면에 이상이 없지만, 한쪽만 바뀌면 문제가 생깁니다</>
+                )}
               </li>
             ))}
           </ul>
