@@ -117,13 +117,17 @@ export async function insertEvent(calendarId: string, body: CalendarEventBody): 
 /**
  * 부분 갱신을 허용한다. 역반영 원복은 제목·장소만 보내야 해서 전체 본문을 강제하지 않는다.
  * notifyAttendees=true일 때만 참석자에게 메일이 간다(기본은 조용히).
+ *
+ * 이벤트가 이미 없으면(404/410) 던지지 않고 "missing"으로 알린다. 사람이 캘린더에서
+ * 지운 일정은 hub-om에 반영하지 않기로 했으므로(D8), 호출부가 그 상태를 오류가 아니라
+ * 정상 분기로 다뤄야 한다.
  */
 export async function patchEvent(
   calendarId: string,
   eventId: string,
   body: Partial<CalendarEventBody>,
   options?: { notifyAttendees?: boolean }
-): Promise<void> {
+): Promise<"updated" | "missing"> {
   const response = await callCalendar(
     `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}?${
       options?.notifyAttendees ? SEND_UPDATES : SEND_UPDATES_SILENT
@@ -131,7 +135,10 @@ export async function patchEvent(
     { method: "PATCH", body: JSON.stringify(body) }
   );
 
+  if (response.status === 404 || response.status === 410) return "missing";
   if (!response.ok) throw new Error(`events.patch 실패(${response.status}): ${await response.text()}`);
+
+  return "updated";
 }
 
 /**

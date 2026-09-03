@@ -17,11 +17,7 @@ export type ReverseSyncAction =
   /** 캘린더가 더 최신이고 날짜·시간이 다르다 → 운영현황을 갱신한다. */
   | "운영현황 반영"
   /** 운영현황이 더 최신이거나 날짜 외 필드가 바뀌었다 → 캘린더를 운영현황 값으로 되돌린다. */
-  | "캘린더 원복"
-  /** 원본 이벤트가 사라졌다 → 다시 만들고 담당 OM에게 알린다. */
-  | "이벤트 재생성"
-  /** 같은 일정을 사람이 상한을 넘겨 다시 지웠다 → 되살리지 않고 매핑을 놓아준다. */
-  | "복구 중단";
+  | "캘린더 원복";
 
 export interface ReverseSyncSchedule {
   startDate: string;
@@ -69,8 +65,7 @@ export function evaluateEventAgainstOperation(
   event: CalendarEventSnapshot,
   operationUpdatedAt: Date | null,
   partKey?: string | null,
-  minLagMs: number = DEFAULT_MIN_LAG_MS,
-  maxRecreate: number = DEFAULT_MAX_RECREATE
+  minLagMs: number = DEFAULT_MIN_LAG_MS
 ): ReverseSyncEvaluation {
   const educationDates = normalizeEducationDates(operation.educationDates);
   const base = {
@@ -89,12 +84,16 @@ export function evaluateEventAgainstOperation(
     operationUpdatedAt: operationUpdatedAt?.toISOString() ?? null
   };
 
-  // 원본이 사라진 경우. 회차 취소는 운영현황에서만 하므로(D4) 이건 비정상이다.
-  // 다만 되살린 일정을 또 지웠다면 실수가 아니라 사람의 판단으로 본다 — 복구를 멈춘다.
+  // 원본이 사라진 경우. 캘린더에서의 삭제는 hub-om에 반영하지 않는다(D8).
+  //
+  // 파트 캘린더에는 OM장처럼 편집 권한을 가진 사람이 있어서 원본 삭제가 실제로 일어난다.
+  // 되살리면 사람이 의도해서 지운 일정이 10분 뒤 돌아오고, 그때마다 초대 메일과 DM이 나간다.
+  // 그래서 캘린더 쪽 삭제는 그대로 두고, 회차를 없애는 것은 운영현황에서만 한다(D4).
+  //
+  // 매핑은 지우지 않는다. 지우면 다음 정방향 반영이 그 교육일을 새 이벤트로 만들어
+  // 사람이 지운 일정을 되살린다. "매핑 있음 + 이벤트 없음"이 이 결정을 그대로 나타낸 상태다.
   if (event.status === "cancelled") {
-    const action: ReverseSyncAction = link.recreateCount >= maxRecreate ? "복구 중단" : "이벤트 재생성";
-
-    return { kind: "item", item: { ...base, action } };
+    return { kind: "skip", reason: "원본이 삭제됨 — 무조치(캘린더 삭제는 hub-om에 반영하지 않음)" };
   }
 
   const plan = buildCalendarEventBodies(operation, [], partKey).find((entry) => entry.eventDate === link.eventDate);
@@ -216,16 +215,6 @@ function previousDay(date: string): string {
  * 구간 단위로 바꾼 배포) 교육일이 지워질 뻔했다. 시차를 두면 자기 쓰기의 잔향이 걸러진다.
  */
 const DEFAULT_MIN_LAG_MS = 120_000;
-
-/**
- * 같은 교육일의 이벤트를 되살리는 최대 횟수(기본 1회).
- *
- * 파트 캘린더에는 OM장처럼 편집 권한을 가진 사람이 있어서, 참석자가 아니어도 원본을
- * 지울 수 있다. 첫 삭제는 실수로 보고 되살리지만, 되살린 일정을 또 지웠다면 그건
- * 의도다. 계속 되살리면 사람과 코드가 싸우면서 초대 메일과 DM이 무한히 나간다.
- * 상한을 넘으면 복구를 멈추고 담당 OM에게 hub-om에서 처리하라고 알린다.
- */
-const DEFAULT_MAX_RECREATE = 1;
 
 /**
  * 회차 수정 시각을 모르면(로컬 JSON 저장소 등) 캘린더를 최신으로 보지 않는다.

@@ -8,7 +8,8 @@
 //  - 담당 매니저가 캘린더에서 고칠 수 있는 것은 날짜·시간뿐이다(D7).
 //  - 제목·장소가 바뀌었으면 운영현황 값으로 되돌린다(원복).
 //  - 같은 회차가 양쪽에서 바뀌면 최신 수정이 이긴다. 이벤트 updated vs 회차 updatedAt.
-//  - 원본 이벤트가 사라졌으면(cancelled) 회차 취소가 아니라 비정상이므로 재생성 대상이다(D8).
+//  - 원본 이벤트가 사라졌으면(cancelled) 손대지 않는다. 캘린더에서의 삭제는 hub-om에
+//    반영하지 않고 매핑도 남겨 둔다(D8). 아무 처리도 없으니 로그가 유일한 흔적이다.
 //
 // syncToken 대신 updatedMin 시간 창을 쓴다. 저장할 상태가 없어 마이그레이션이 필요 없고,
 // 실행이 한 번 빠져도 다음 창이 겹치면 따라잡는다.
@@ -39,8 +40,6 @@ export interface ReverseSyncPlan {
   enabled: boolean;
   lookbackMinutes: number;
   minLagSeconds: number;
-  /** 같은 교육일 이벤트를 되살리는 최대 횟수. 넘으면 "복구 중단"으로 잡힌다. */
-  maxRecreate: number;
   updatedMin: string;
   calendars: { partKey: string; calendarId: string; scannedEvents: number; linkedEvents: number }[];
   items: ReverseSyncItem[];
@@ -58,11 +57,10 @@ export async function planCalendarReverseSync(options?: { now?: Date }): Promise
     enabled: true,
     lookbackMinutes,
     minLagSeconds: readMinLagMs() / 1000,
-    maxRecreate: readMaxRecreate(),
     updatedMin,
     calendars: [],
     items: [],
-    counts: { "운영현황 반영": 0, "캘린더 원복": 0, "이벤트 재생성": 0, "복구 중단": 0 },
+    counts: { "운영현황 반영": 0, "캘린더 원복": 0 },
     skipped: []
   };
 
@@ -124,28 +122,31 @@ export async function planCalendarReverseSync(options?: { now?: Date }): Promise
       event,
       updatedAtByOperation.get(link.operationId) ?? null,
       partKey,
-      readMinLagMs(),
-      readMaxRecreate()
+      readMinLagMs()
     );
 
     if (evaluation.kind === "item") items.push(evaluation.item);
     if (evaluation.kind === "skip") {
+      // 사람이 원본을 지운 건 아무 처리도 하지 않으므로 로그가 유일한 흔적이다.
+      // 응답의 skipped는 스케줄 실행에서 아무도 읽지 않는다.
+      if (event.status === "cancelled") {
+        console.warn(
+          `[gcal-reverse] ${link.operationId} 원본 삭제 감지 — 무조치` +
+            ` (교육일=${link.eventDate}, event=${event.id}, calendar=${link.calendarId})`
+        );
+      }
+
       skipped.push({ calendarId: link.calendarId, eventId: event.id, reason: evaluation.reason });
     }
   }
 
-  const counts = {
-    "운영현황 반영": 0,
-    "캘린더 원복": 0,
-    "이벤트 재생성": 0,
-    "복구 중단": 0
-  } satisfies Record<ReverseSyncAction, number>;
+  const counts = { "운영현황 반영": 0, "캘린더 원복": 0 } satisfies Record<ReverseSyncAction, number>;
   for (const item of items) counts[item.action] += 1;
 
   return { ...empty, calendars, items: sortItems(items), counts, skipped };
 }
 
-const ACTION_ORDER: ReverseSyncAction[] = ["운영현황 반영", "이벤트 재생성", "복구 중단", "캘린더 원복"];
+const ACTION_ORDER: ReverseSyncAction[] = ["운영현황 반영", "캘린더 원복"];
 
 function sortItems(items: ReverseSyncItem[]): ReverseSyncItem[] {
   return [...items].sort((a, b) => {
@@ -163,16 +164,6 @@ function readMinLagMs(): number {
   const parsed = Number(process.env.CALENDAR_REVERSE_SYNC_MIN_LAG_SECONDS?.trim());
 
   return Number.isFinite(parsed) && parsed >= 0 ? Math.floor(parsed) * 1000 : 120_000;
-}
-
-/**
- * 같은 교육일 이벤트를 되살리는 최대 횟수(기본 1회).
- * 0으로 두면 사람이 지운 일정을 아예 되살리지 않는다.
- */
-function readMaxRecreate(): number {
-  const parsed = Number(process.env.CALENDAR_REVERSE_SYNC_MAX_RECREATE?.trim());
-
-  return Number.isFinite(parsed) && parsed >= 0 ? Math.floor(parsed) : 1;
 }
 
 function readLookbackMinutes(): number {
