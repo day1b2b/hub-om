@@ -86,8 +86,15 @@ async function callCalendar(path: string, init: RequestInit): Promise<Response> 
   });
 }
 
-// 참석자에게 초대 메일이 가도록 sendUpdates=all을 항상 붙인다.
+// 새 일정과 취소는 참석자가 반드시 알아야 하므로 메일을 보낸다(sendUpdates=all).
 const SEND_UPDATES = "sendUpdates=all";
+
+// 수정은 조용히 반영한다(sendUpdates=none).
+// 교육일 구간마다 이벤트가 따로 있어서, 회차를 한 번 고치면 구간 수만큼 "일정이
+// 변경되었습니다" 메일이 나간다. 장소 오타 하나에 두세 통이 가는 건 과하다.
+// 캘린더 내용은 즉시 갱신되고 담당자는 자기 캘린더에서 최신 상태를 본다.
+// 역반영이 제목·장소를 되돌릴 때도 이 경로라 조용히 처리된다.
+const SEND_UPDATES_SILENT = "sendUpdates=none";
 
 export async function insertEvent(calendarId: string, body: CalendarEventBody): Promise<string> {
   const response = await callCalendar(`/calendars/${encodeURIComponent(calendarId)}/events?${SEND_UPDATES}`, {
@@ -110,7 +117,7 @@ export async function patchEvent(
   body: Partial<CalendarEventBody>
 ): Promise<void> {
   const response = await callCalendar(
-    `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}?${SEND_UPDATES}`,
+    `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}?${SEND_UPDATES_SILENT}`,
     { method: "PATCH", body: JSON.stringify(body) }
   );
 
