@@ -38,6 +38,12 @@ export interface RoundApplyDecision {
   status: RoundApplyStatus;
   /** 사용자에게 그대로 보여줄 문장 — 조용한 실패를 만들지 않는다 */
   message: string;
+  /**
+   * ★쓰기에 쓰는 키 = 운영의 업무 키(operationId).
+   * 매칭 결과가 돌려주는 것은 행 id 이고, updateOperation 은 `where: { operationId }` 로 찾는다.
+   * 이 둘을 헷갈리면 매칭은 맞는데 쓰기만 "No record was found for an update" 로 실패한다
+   * (2026-09-03 실제로 겪음). 관리자 경로(satisfactionApplyPlan)와 같은 키를 쓴다.
+   */
   operationId?: string;
   operationLabel?: string;
   value?: string;
@@ -79,6 +85,13 @@ export function planRoundApply(
     return { write: false, status: "missing", message: "매칭된 운영 정보를 찾지 못했어요." };
   }
 
+  // 쓰기 키는 행 id 가 아니라 업무 키다. 없으면 쓰지 않는다 —
+  // 엉뚱한 키로 쓰는 것보다 못 썼다고 알리는 게 낫다.
+  const writeKey = (operation.operationId ?? "").trim();
+  if (!writeKey) {
+    return { write: false, status: "missing", message: "운영 회차의 식별자(operationId)가 없어 반영하지 않았어요." };
+  }
+
   const previous = (operation.avgSatisfaction ?? "").trim();
   const label = operationLabel(operation);
 
@@ -87,7 +100,7 @@ export function planRoundApply(
       write: false,
       status: "same",
       message: "이미 같은 값이라 그대로 두었어요.",
-      operationId: match.operationId,
+      operationId: writeKey,
       operationLabel: label,
       value,
       previous
@@ -98,7 +111,7 @@ export function planRoundApply(
     write: true,
     status: previous ? "overwritten" : "filled",
     message: previous ? `만족도를 ${previous} → ${value} 로 바꿨어요.` : `만족도 ${value} 를 반영했어요.`,
-    operationId: match.operationId,
+    operationId: writeKey,
     operationLabel: label,
     value,
     previous: previous || null

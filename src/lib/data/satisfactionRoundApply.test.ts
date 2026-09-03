@@ -29,7 +29,9 @@ function matched(operationId = "op-1"): SatisfactionMatchResult {
 }
 
 function target(avgSatisfaction: null | string): RoundApplyTarget {
-  return { id: "op-1", operationId: "260455", companyName: "삼성전자DX", courseName: "AI Essential", avgSatisfaction };
+  // ★ id(행 id)와 operationId(업무 키)를 일부러 다르게 둔다 —
+  //   updateOperation 은 업무 키로 찾는다. 둘을 헷갈리면 매칭은 맞는데 쓰기만 실패한다.
+  return { id: "op-1", operationId: "OP-260455", companyName: "삼성전자DX", courseName: "AI Essential", avgSatisfaction };
 }
 
 const find = (op: RoundApplyTarget | undefined) => () => op;
@@ -89,6 +91,27 @@ test("매칭됐는데 운영 정보를 못 찾으면 조용히 넘기지 않는�
   const d = planRoundApply("4.55", matched(), find(undefined));
   assert.equal(d.write, false);
   assert.equal(d.status, "missing");
+});
+
+test("쓰기 키는 행 id 가 아니라 업무 키(operationId) 다", () => {
+  // 2026-09-03: 행 id 를 넘겨 "No record was found for an update" 로 쓰기만 실패했다.
+  const d = planRoundApply("4.55", matched("op-1"), find(target("")));
+  assert.equal(d.write, true);
+  assert.equal(d.operationId, "OP-260455");
+  assert.notEqual(d.operationId, "op-1");
+});
+
+test("값이 같아 안 쓰는 경우에도 키는 업무 키다", () => {
+  const d = planRoundApply("4.55", matched("op-1"), find(target("4.55")));
+  assert.equal(d.operationId, "OP-260455");
+});
+
+test("업무 키가 없으면 쓰지 않고 알린다", () => {
+  const noKey: RoundApplyTarget = { id: "op-1", companyName: "삼성전자DX", courseName: "AI Essential", avgSatisfaction: "" };
+  const d = planRoundApply("4.55", matched("op-1"), find(noKey));
+  assert.equal(d.write, false);
+  assert.equal(d.status, "missing");
+  assert.match(d.message, /식별자/);
 });
 
 test("어떤 경우에도 사용자에게 보여줄 문장이 있다", () => {
