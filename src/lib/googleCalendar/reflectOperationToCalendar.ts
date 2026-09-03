@@ -1,18 +1,24 @@
-// 운영현황 변경을 구글 캘린더에 반영한다(hub-om → 구글 단방향).
+// 운영현황 변경을 구글 캘린더에 반영한다(hub-om → 구글).
 //
 // 이 모듈의 함수는 절대 throw하지 않는다. 운영현황 저장은 이미 끝난 뒤에 불리는
 // 부수작업이라, 구글이 죽었다고 저장을 되돌리거나 요청을 실패시키면 안 된다.
 // (스펙 §6, src/app/api/om-request/route.ts의 부수작업 격리와 같은 방침)
+//
+// 실제 교육일마다 이벤트를 따로 만든다. 회차 기간에 쉬는 날이 섞이면 기간 이벤트
+// 하나로는 교육 없는 날까지 일정이 잡히기 때문이다. 교육일이 바뀌면 늘어난 날은
+// 새로 만들고, 빠진 날은 지운다.
 
 import type { OperationSession } from "@/lib/data/operationTypes";
 import { isCalendarWriteEnabled, resolvePartCalendarId } from "./calendarWriteConfig";
 import { deleteEvent, insertEvent, patchEvent } from "./calendarWriteClient";
 import { resolveCalendarTargets } from "./calendarParticipants";
-import { buildCalendarEventBody } from "./operationCalendarEvent";
+import { buildCalendarEventBodies } from "./operationCalendarEvent";
 import {
   deleteCalendarEventLink,
-  findCalendarEventLink,
-  saveCalendarEventLink
+  deleteCalendarEventLinks,
+  listCalendarEventLinks,
+  saveCalendarEventLink,
+  type CalendarEventLink
 } from "./calendarEventLinkRepository";
 
 function logSkip(operationId: string, reason: string): void {
@@ -43,33 +49,52 @@ async function reflectOperation(operation: OperationSession, trigger: ReflectTri
       return;
     }
 
-    const body = buildCalendarEventBody(operation, targets.attendeeEmails, targets.partKey);
-    const existing = await findCalendarEventLink(operation.operationId);
+    const existing = await listCalendarEventLinks(operation.operationId);
 
     // 수정인데 캘린더에 없는 과정 = 기능 도입 전에 만들어진 과정. 건드리지 않는다.
-    if (!existing && trigger === "updated") return;
+    if (existing.length === 0 && trigger === "updated") return;
 
-    // 담당 OM이 다른 파트로 바뀌면 캘린더가 달라진다. 옛 캘린더의 이벤트를 지우고 새로 만든다.
-    if (existing && existing.calendarId !== calendarId) {
-      await deleteEvent(existing.calendarId, existing.eventId);
-      const eventId = await insertEvent(calendarId, body);
-      await saveCalendarEventLink({ operationId: operation.operationId, calendarId, eventId });
-      return;
+    // 담당 OM이 다른 파트로 바뀌면 캘린더가 달라진다. 옛 캘린더의 이벤트를 먼저 지운다.
+    const sameCalendar = new Map<string, CalendarEventLink>();
+    for (const link of existing) {
+      if (link.calendarId === calendarId) {
+        sameCalendar.set(link.eventDate, link);
+        continue;
+      }
+
+      await deleteEvent(link.calendarId, link.eventId);
+      await deleteCalendarEventLink(operation.operationId, link.eventDate);
     }
 
-    if (existing) {
-      await patchEvent(existing.calendarId, existing.eventId, body);
-      return;
+    for (const plan of buildCalendarEventBodies(operation, targets.attendeeEmails, targets.partKey)) {
+      const link = sameCalendar.get(plan.eventDate);
+
+      if (link) {
+        await patchEvent(calendarId, link.eventId, plan.body);
+        sameCalendar.delete(plan.eventDate);
+        continue;
+      }
+
+      const eventId = await insertEvent(calendarId, plan.body);
+      await saveCalendarEventLink({
+        operationId: operation.operationId,
+        calendarId,
+        eventId,
+        eventDate: plan.eventDate
+      });
     }
 
-    const eventId = await insertEvent(calendarId, body);
-    await saveCalendarEventLink({ operationId: operation.operationId, calendarId, eventId });
+    // 남은 매핑 = 교육일에서 빠진 날. 이벤트와 매핑을 함께 정리한다.
+    for (const [eventDate, link] of sameCalendar) {
+      await deleteEvent(link.calendarId, link.eventId);
+      await deleteCalendarEventLink(operation.operationId, eventDate);
+    }
   } catch (error) {
     console.error(`[gcal] ${operation.operationId} 반영 실패:`, error);
   }
 }
 
-/** 운영 생성. 캘린더에 일정을 만들고 담당·현장 OM을 초대한다. */
+/** 운영 생성. 교육일마다 일정을 만들고 담당·현장 OM을 초대한다. */
 export function reflectOperationCreated(operation: OperationSession): Promise<void> {
   return reflectOperation(operation, "created");
 }
@@ -79,16 +104,19 @@ export function reflectOperationUpdated(operation: OperationSession): Promise<vo
   return reflectOperation(operation, "updated");
 }
 
-/** 취소·삭제. 이벤트를 지우고 매핑도 정리한다(스펙 D4). */
+/** 취소·삭제. 회차에 걸린 이벤트를 모두 지우고 매핑도 정리한다(스펙 D4). */
 export async function reflectOperationDelete(operationId: string): Promise<void> {
   try {
     if (!isCalendarWriteEnabled()) return;
 
-    const existing = await findCalendarEventLink(operationId);
-    if (!existing) return;
+    const existing = await listCalendarEventLinks(operationId);
+    if (existing.length === 0) return;
 
-    await deleteEvent(existing.calendarId, existing.eventId);
-    await deleteCalendarEventLink(operationId);
+    for (const link of existing) {
+      await deleteEvent(link.calendarId, link.eventId);
+    }
+
+    await deleteCalendarEventLinks(operationId);
   } catch (error) {
     console.error(`[gcal] ${operationId} 삭제 반영 실패:`, error);
   }
