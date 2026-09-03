@@ -144,17 +144,29 @@ test("날짜와 제목이 함께 바뀌면 날짜는 반영하고 제목은 원�
   assert.deepEqual(item.revertFields, ["제목"]);
 });
 
-test("원본이 취소되면 재생성 대상이다", () => {
-  const item = itemOf(
-    evaluateEventAgainstOperation(
-      operationFixture(),
-      linkFixture(),
-      eventFixture({ status: "cancelled" }),
-      OPERATION_UPDATED_AT
-    )
+test("원본이 삭제되면 아무 것도 하지 않는다(캘린더 삭제는 반영하지 않음)", () => {
+  const evaluation = evaluateEventAgainstOperation(
+    operationFixture(),
+    linkFixture(),
+    eventFixture({ status: "cancelled" }),
+    OPERATION_UPDATED_AT
   );
 
-  assert.equal(item.action, "이벤트 재생성");
+  assert.equal(evaluation.kind, "skip");
+});
+
+test("원본이 삭제된 회차는 매핑을 지우지 않는다(다음 정방향 반영이 되살리지 않도록)", () => {
+  // 판정은 skip만 돌려주고 매핑에 손대는 지시를 내지 않는다.
+  // item이 없으므로 적용 단계가 실행할 쓰기도 없다.
+  const evaluation = evaluateEventAgainstOperation(
+    operationFixture(),
+    linkFixture(),
+    eventFixture({ status: "cancelled", summary: "누가 제목까지 바꿔놓은 상태" }),
+    OPERATION_UPDATED_AT
+  );
+
+  assert.equal(evaluation.kind, "skip");
+  assert.match((evaluation as { kind: "skip"; reason: string }).reason, /무조치/);
 });
 
 test("운영현황에서 빠진 구간은 손대지 않고 건너뛴다", () => {

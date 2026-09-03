@@ -12,18 +12,15 @@
 // 한계: 시간(timeText)은 회차 단위 값이다. 매니저가 특정 교육일의 시간만 바꿔도 그 회차
 // 전체 시간이 바뀌고, 다른 교육일 이벤트도 다음 반영에서 같은 시간으로 맞춰진다.
 //
+// 사람이 캘린더에서 지운 이벤트는 여기서 다루지 않는다. 판정 단계가 무조치로 걸러내고
+// 로그만 남긴다(D8) — 되살리면 사람이 의도해서 지운 일정이 돌아온다.
+//
 // 스펙: docs/plans/2026-08-19-operations-calendar-reflect.md (D7~D9, 5-B절)
 
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
-import { normalizePersonName } from "@/lib/data/myOperations";
-import { splitPersonNames } from "@/lib/data/personNames";
-import { listTeamUsers } from "@/lib/data/teamUsers/teamUserRepository";
-import { sendSlackDirectMessage } from "@/lib/slack/notifySlack";
-import { insertEvent, patchEvent } from "./calendarWriteClient";
-import { resolveCalendarTargets } from "./calendarParticipants";
-import { resolvePartCalendarId } from "./calendarWriteConfig";
+import { patchEvent } from "./calendarWriteClient";
 import type { OperationSession } from "@/lib/data/operationTypes";
-import { moveCalendarEventLinkDate, saveCalendarEventLink } from "./calendarEventLinkRepository";
+import { moveCalendarEventLinkDate } from "./calendarEventLinkRepository";
 import { buildCalendarEventBodies } from "./operationCalendarEvent";
 import { planCalendarReverseSync, type ReverseSyncPlan } from "./calendarReverseSync";
 import { replaceEducationRun, type ReverseSyncItem } from "./calendarReverseSyncRules";
@@ -81,9 +78,8 @@ export async function applyCalendarReverseSync(): Promise<ReverseSyncApplyResult
 
 async function applyItem(item: ReverseSyncItem): Promise<string> {
   if (item.action === "운영현황 반영") return applyScheduleToOperation(item);
-  if (item.action === "캘린더 원복") return revertEventToOperation(item);
 
-  return recreateEvent(item);
+  return revertEventToOperation(item);
 }
 
 /** 캘린더에서 바뀐 날짜·시간을 운영현황에 쓴다. 그 외 필드는 캘린더 쪽을 되돌린다. */
@@ -197,63 +193,6 @@ async function revertEventToOperation(item: ReverseSyncItem): Promise<string> {
   console.info(`[gcal-reverse] ${item.operationId} 원복: ${fields} (event=${item.eventId})`);
 
   return `캘린더 원복 (${fields})`;
-}
-
-/** 사람이 지운 원본 이벤트를 다시 만들고 담당 OM에게 알린다(D8). */
-async function recreateEvent(item: ReverseSyncItem): Promise<string> {
-  const operation = await findOperation(item.operationId);
-  const targets = await resolveCalendarTargets(operation);
-  const calendarId = resolvePartCalendarId(targets.partKey) || item.calendarId;
-  const plan = buildCalendarEventBodies(operation, targets.attendeeEmails, targets.partKey).find(
-    (entry) => entry.eventDate === item.eventDate
-  );
-
-  if (!plan) throw new Error(`운영현황에 없는 교육일(${item.eventDate})이라 다시 만들지 않았습니다.`);
-
-  const eventId = await insertEvent(calendarId, plan.body);
-  await saveCalendarEventLink({
-    operationId: operation.operationId,
-    calendarId,
-    eventId,
-    eventDate: item.eventDate
-  });
-  console.info(`[gcal-reverse] ${item.operationId} 이벤트 재생성: ${item.eventId} → ${eventId} (${item.eventDate})`);
-
-  const notified = await notifyRecreated(item);
-
-  return notified ? "이벤트 재생성 + 담당 OM 알림" : "이벤트 재생성 (담당 OM 알림 실패/대상 없음)";
-}
-
-/**
- * 재생성 사실을 담당 OM에게 DM으로 알린다. 마무리 알림과 같은 발송 경로를 쓴다.
- * 재생성하면 이벤트가 다시 존재하므로 다음 실행에서는 대상이 아니다 — 반복 알림이 구조적으로 없다.
- */
-async function notifyRecreated(item: ReverseSyncItem): Promise<boolean> {
-  try {
-    const names = splitPersonNames(item.omName, "").filter((name) => name.trim());
-    if (names.length === 0) return false;
-
-    const users = await listTeamUsers();
-    const text =
-      ":arrows_counterclockwise: *캘린더에서 삭제된 일정을 복구했습니다.*\n" +
-      `*과정* ${item.companyName} / ${item.courseName}${item.roundNo ? ` ${item.roundNo}회차` : ""}\n` +
-      "회차 취소는 hub-om 운영현황에서 해주세요. 캘린더에서는 날짜·시간만 수정하실 수 있습니다.";
-
-    let sent = false;
-    for (const name of names) {
-      const key = normalizePersonName(name);
-      const slackId = users.find((user) => normalizePersonName(user.name) === key)?.slackId?.trim();
-      if (!slackId) continue;
-
-      if (await sendSlackDirectMessage(slackId, text)) sent = true;
-    }
-
-    return sent;
-  } catch (error) {
-    // 알림 실패로 재생성 자체를 실패로 만들지 않는다.
-    console.error(`[gcal-reverse] ${item.operationId} 재생성 알림 실패:`, error);
-    return false;
-  }
 }
 
 function findPlanBody(operation: OperationSession, eventDate: string, partKey: null | string) {

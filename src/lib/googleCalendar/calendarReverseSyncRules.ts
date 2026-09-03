@@ -17,9 +17,7 @@ export type ReverseSyncAction =
   /** 캘린더가 더 최신이고 날짜·시간이 다르다 → 운영현황을 갱신한다. */
   | "운영현황 반영"
   /** 운영현황이 더 최신이거나 날짜 외 필드가 바뀌었다 → 캘린더를 운영현황 값으로 되돌린다. */
-  | "캘린더 원복"
-  /** 원본 이벤트가 사라졌다 → 다시 만들고 담당 OM에게 알린다. */
-  | "이벤트 재생성";
+  | "캘린더 원복";
 
 export interface ReverseSyncSchedule {
   startDate: string;
@@ -86,9 +84,16 @@ export function evaluateEventAgainstOperation(
     operationUpdatedAt: operationUpdatedAt?.toISOString() ?? null
   };
 
-  // 원본이 사라진 경우. 회차 취소는 운영현황에서만 하므로(D4) 이건 비정상이다.
+  // 원본이 사라진 경우. 캘린더에서의 삭제는 hub-om에 반영하지 않는다(D8).
+  //
+  // 파트 캘린더에는 OM장처럼 편집 권한을 가진 사람이 있어서 원본 삭제가 실제로 일어난다.
+  // 되살리면 사람이 의도해서 지운 일정이 10분 뒤 돌아오고, 그때마다 초대 메일과 DM이 나간다.
+  // 그래서 캘린더 쪽 삭제는 그대로 두고, 회차를 없애는 것은 운영현황에서만 한다(D4).
+  //
+  // 매핑은 지우지 않는다. 지우면 다음 정방향 반영이 그 교육일을 새 이벤트로 만들어
+  // 사람이 지운 일정을 되살린다. "매핑 있음 + 이벤트 없음"이 이 결정을 그대로 나타낸 상태다.
   if (event.status === "cancelled") {
-    return { kind: "item", item: { ...base, action: "이벤트 재생성" } };
+    return { kind: "skip", reason: "원본이 삭제됨 — 무조치(캘린더 삭제는 hub-om에 반영하지 않음)" };
   }
 
   const plan = buildCalendarEventBodies(operation, [], partKey).find((entry) => entry.eventDate === link.eventDate);

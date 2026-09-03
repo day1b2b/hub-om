@@ -78,7 +78,15 @@ async function reflectOperation(operation: OperationSession, trigger: ReflectTri
           plan.body.attendees?.map((attendee) => attendee.email) ?? []
         );
 
-        await patchEvent(calendarId, link.eventId, plan.body, { notifyAttendees });
+        const result = await patchEvent(calendarId, link.eventId, plan.body, { notifyAttendees });
+
+        // 사람이 캘린더에서 지운 이벤트다. 다시 만들지 않는다 — 캘린더에서의 삭제는
+        // hub-om에 반영하지 않기로 했고(D8), 여기서 새로 만들면 그 결정이 뒤집힌다.
+        // 매핑은 그대로 남겨 둔다. 지우면 이 loop가 다음 번에 새 이벤트를 만든다.
+        if (result === "missing") {
+          logSkip(operation.operationId, `${plan.eventDate} 이벤트가 캘린더에 없음(사람이 지움) — 갱신 건너뜀`);
+        }
+
         sameCalendar.delete(plan.eventDate);
         continue;
       }
