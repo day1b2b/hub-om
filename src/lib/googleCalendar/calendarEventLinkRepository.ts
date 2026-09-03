@@ -15,33 +15,18 @@ export interface CalendarEventLink {
   eventId: string;
   /** 이 이벤트가 담당하는 교육일(YYYY-MM-DD). */
   eventDate: string;
-  /**
-   * 사람이 지운 이벤트를 hub-om이 되살린 횟수.
-   * 반복 삭제를 사람의 의도로 보고 복구를 멈추는 기준이다(D8 상한).
-   */
-  recreateCount: number;
 }
-
-/** 매핑을 저장할 때 넘기는 값. 복구 횟수는 저장소가 관리하므로 받지 않는다. */
-export type CalendarEventLinkInput = Omit<CalendarEventLink, "recreateCount">;
 
 function toDateOnly(eventDate: string): Date {
   return new Date(`${eventDate}T00:00:00Z`);
 }
 
-function toLink(row: {
-  operationId: string;
-  calendarId: string;
-  eventId: string;
-  eventDate: Date;
-  recreateCount: number;
-}): CalendarEventLink {
+function toLink(row: { operationId: string; calendarId: string; eventId: string; eventDate: Date }): CalendarEventLink {
   return {
     operationId: row.operationId,
     calendarId: row.calendarId,
     eventId: row.eventId,
-    eventDate: row.eventDate.toISOString().slice(0, 10),
-    recreateCount: row.recreateCount
+    eventDate: row.eventDate.toISOString().slice(0, 10)
   };
 }
 
@@ -55,33 +40,13 @@ export async function listCalendarEventLinks(operationId: string): Promise<Calen
   return rows.map(toLink);
 }
 
-/**
- * 매핑을 저장한다. 같은 교육일에 이미 매핑이 있으면 이벤트만 갈아끼운다.
- *
- * options.recreated는 "사람이 지운 이벤트를 되살린 저장"이라는 표시다.
- * 그때만 복구 횟수를 1 올린다 — 평상시 정방향 반영은 횟수를 건드리지 않는다.
- */
-export async function saveCalendarEventLink(
-  link: CalendarEventLinkInput,
-  options?: { recreated?: boolean }
-): Promise<void> {
+export async function saveCalendarEventLink(link: CalendarEventLink): Promise<void> {
   const eventDate = toDateOnly(link.eventDate);
-  const recreated = options?.recreated === true;
 
   await getPrismaClient().calendarEventLink.upsert({
     where: { operationId_eventDate: { operationId: link.operationId, eventDate } },
-    create: {
-      operationId: link.operationId,
-      calendarId: link.calendarId,
-      eventId: link.eventId,
-      eventDate,
-      ...(recreated ? { recreateCount: 1 } : {})
-    },
-    update: {
-      calendarId: link.calendarId,
-      eventId: link.eventId,
-      ...(recreated ? { recreateCount: { increment: 1 } } : {})
-    }
+    create: { operationId: link.operationId, calendarId: link.calendarId, eventId: link.eventId, eventDate },
+    update: { calendarId: link.calendarId, eventId: link.eventId }
   });
 }
 

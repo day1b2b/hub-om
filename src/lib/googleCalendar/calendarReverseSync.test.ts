@@ -33,8 +33,8 @@ function operationFixture(overrides: Partial<OperationSession> = {}): OperationS
 }
 
 /** 기본 링크는 뒤 구간(9/7~9/8)을 본다. 매핑 키는 구간 시작일이다. */
-function linkFixture(eventDate = "2026-09-07", recreateCount = 0): CalendarEventLink {
-  return { operationId: "OP-1", calendarId: "cal-1", eventId: "EV-1", eventDate, recreateCount };
+function linkFixture(eventDate = "2026-09-07"): CalendarEventLink {
+  return { operationId: "OP-1", calendarId: "cal-1", eventId: "EV-1", eventDate };
 }
 
 /** 9/7~9/8 구간 계획과 일치하는 이벤트. 각 테스트에서 어긋나게 만들 부분만 덮어쓴다. */
@@ -155,51 +155,6 @@ test("원본이 취소되면 재생성 대상이다", () => {
   );
 
   assert.equal(item.action, "이벤트 재생성");
-});
-
-test("한 번 되살린 일정을 또 지우면 복구를 중단한다", () => {
-  const item = itemOf(
-    evaluateEventAgainstOperation(
-      operationFixture(),
-      linkFixture("2026-09-07", 1),
-      eventFixture({ status: "cancelled" }),
-      OPERATION_UPDATED_AT
-    )
-  );
-
-  assert.equal(item.action, "복구 중단");
-});
-
-test("상한을 올리면 그만큼 더 되살린다", () => {
-  const item = itemOf(
-    evaluateEventAgainstOperation(
-      operationFixture(),
-      linkFixture("2026-09-07", 1),
-      eventFixture({ status: "cancelled" }),
-      OPERATION_UPDATED_AT,
-      null,
-      undefined,
-      2
-    )
-  );
-
-  assert.equal(item.action, "이벤트 재생성");
-});
-
-test("상한이 0이면 처음부터 되살리지 않는다", () => {
-  const item = itemOf(
-    evaluateEventAgainstOperation(
-      operationFixture(),
-      linkFixture("2026-09-07", 0),
-      eventFixture({ status: "cancelled" }),
-      OPERATION_UPDATED_AT,
-      null,
-      undefined,
-      0
-    )
-  );
-
-  assert.equal(item.action, "복구 중단");
 });
 
 test("운영현황에서 빠진 구간은 손대지 않고 건너뛴다", () => {

@@ -39,8 +39,6 @@ export interface ReverseSyncPlan {
   enabled: boolean;
   lookbackMinutes: number;
   minLagSeconds: number;
-  /** 같은 교육일 이벤트를 되살리는 최대 횟수. 넘으면 "복구 중단"으로 잡힌다. */
-  maxRecreate: number;
   updatedMin: string;
   calendars: { partKey: string; calendarId: string; scannedEvents: number; linkedEvents: number }[];
   items: ReverseSyncItem[];
@@ -58,11 +56,10 @@ export async function planCalendarReverseSync(options?: { now?: Date }): Promise
     enabled: true,
     lookbackMinutes,
     minLagSeconds: readMinLagMs() / 1000,
-    maxRecreate: readMaxRecreate(),
     updatedMin,
     calendars: [],
     items: [],
-    counts: { "운영현황 반영": 0, "캘린더 원복": 0, "이벤트 재생성": 0, "복구 중단": 0 },
+    counts: { "운영현황 반영": 0, "캘린더 원복": 0, "이벤트 재생성": 0 },
     skipped: []
   };
 
@@ -124,8 +121,7 @@ export async function planCalendarReverseSync(options?: { now?: Date }): Promise
       event,
       updatedAtByOperation.get(link.operationId) ?? null,
       partKey,
-      readMinLagMs(),
-      readMaxRecreate()
+      readMinLagMs()
     );
 
     if (evaluation.kind === "item") items.push(evaluation.item);
@@ -134,18 +130,13 @@ export async function planCalendarReverseSync(options?: { now?: Date }): Promise
     }
   }
 
-  const counts = {
-    "운영현황 반영": 0,
-    "캘린더 원복": 0,
-    "이벤트 재생성": 0,
-    "복구 중단": 0
-  } satisfies Record<ReverseSyncAction, number>;
+  const counts = { "운영현황 반영": 0, "캘린더 원복": 0, "이벤트 재생성": 0 } satisfies Record<ReverseSyncAction, number>;
   for (const item of items) counts[item.action] += 1;
 
   return { ...empty, calendars, items: sortItems(items), counts, skipped };
 }
 
-const ACTION_ORDER: ReverseSyncAction[] = ["운영현황 반영", "이벤트 재생성", "복구 중단", "캘린더 원복"];
+const ACTION_ORDER: ReverseSyncAction[] = ["운영현황 반영", "이벤트 재생성", "캘린더 원복"];
 
 function sortItems(items: ReverseSyncItem[]): ReverseSyncItem[] {
   return [...items].sort((a, b) => {
@@ -163,16 +154,6 @@ function readMinLagMs(): number {
   const parsed = Number(process.env.CALENDAR_REVERSE_SYNC_MIN_LAG_SECONDS?.trim());
 
   return Number.isFinite(parsed) && parsed >= 0 ? Math.floor(parsed) * 1000 : 120_000;
-}
-
-/**
- * 같은 교육일 이벤트를 되살리는 최대 횟수(기본 1회).
- * 0으로 두면 사람이 지운 일정을 아예 되살리지 않는다.
- */
-function readMaxRecreate(): number {
-  const parsed = Number(process.env.CALENDAR_REVERSE_SYNC_MAX_RECREATE?.trim());
-
-  return Number.isFinite(parsed) && parsed >= 0 ? Math.floor(parsed) : 1;
 }
 
 function readLookbackMinutes(): number {
