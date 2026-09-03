@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
+import { authorizeSatisfactionMatching } from "@/lib/auth/satisfactionMatchingAccess";
 import { parseGoogleSpreadsheetUrl, readGoogleSheetRows } from "@/lib/data/googleSheetsImport";
 import { getGoogleB2BAccessToken } from "@/lib/googleCalendar/calendarWriteClient";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
@@ -19,7 +19,9 @@ export const dynamic = "force-dynamic";
  *   - 물리 삭제·스키마 변경 없음. 수정 필드는 avgSatisfaction 하나뿐.
  */
 export async function POST(request: Request) {
-  const session = await requireWorkspaceSession();
+  const access = await authorizeSatisfactionMatching();
+  if (!access.ok) return access.response;
+  const { session } = access;
 
   try {
     const body = (await request.json().catch(() => ({}))) as {
