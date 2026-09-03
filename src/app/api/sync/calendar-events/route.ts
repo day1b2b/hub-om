@@ -6,7 +6,8 @@ import { applyCalendarReverseSync } from "@/lib/googleCalendar/applyCalendarReve
 export const dynamic = "force-dynamic";
 
 // 구글 캘린더 → 운영현황 역반영.
-// GET = 계획 미리보기(쓰기 없음), POST = 적용(운영현황 날짜·시간 쓰기 + 캘린더 원복·재생성).
+// GET = 계획 미리보기(쓰기 없음), POST = 적용(운영현황 날짜·시간 쓰기 + 캘린더 원복).
+// 사람이 캘린더에서 지운 이벤트는 적용 대상이 아니다 — 무조치로 걸러내고 로그만 남긴다(D8).
 // 경로를 src/auth.ts의 SYNC_API_PATHS에도 등록해야 베어러 요청이 로그인 화면으로
 // 리다이렉트되지 않는다(마무리 알림에서 겪은 사고).
 
