@@ -38,6 +38,7 @@ export interface ReverseSyncPlan {
   ok: boolean;
   enabled: boolean;
   lookbackMinutes: number;
+  minLagSeconds: number;
   updatedMin: string;
   calendars: { partKey: string; calendarId: string; scannedEvents: number; linkedEvents: number }[];
   items: ReverseSyncItem[];
@@ -54,6 +55,7 @@ export async function planCalendarReverseSync(options?: { now?: Date }): Promise
     ok: true,
     enabled: true,
     lookbackMinutes,
+    minLagSeconds: readMinLagMs() / 1000,
     updatedMin,
     calendars: [],
     items: [],
@@ -118,7 +120,8 @@ export async function planCalendarReverseSync(options?: { now?: Date }): Promise
       link,
       event,
       updatedAtByOperation.get(link.operationId) ?? null,
-      partKey
+      partKey,
+      readMinLagMs()
     );
 
     if (evaluation.kind === "item") items.push(evaluation.item);
@@ -141,6 +144,16 @@ function sortItems(items: ReverseSyncItem[]): ReverseSyncItem[] {
 
     return a.companyName.localeCompare(b.companyName, "ko");
   });
+}
+
+/**
+ * 사람의 수정으로 인정하는 최소 시차(초). hub-om 자기 쓰기의 잔향(1~2초)을 걸러낸다.
+ * 0으로 두면 시차 없이 최신 승자 판정만 한다(권장하지 않음).
+ */
+function readMinLagMs(): number {
+  const parsed = Number(process.env.CALENDAR_REVERSE_SYNC_MIN_LAG_SECONDS?.trim());
+
+  return Number.isFinite(parsed) && parsed >= 0 ? Math.floor(parsed) * 1000 : 120_000;
 }
 
 function readLookbackMinutes(): number {
