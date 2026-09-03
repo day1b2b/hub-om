@@ -11,6 +11,7 @@ import {
   SourceTeam
 } from "@prisma/client";
 import { requireAdminSession } from "@/lib/auth/requireAdminSession";
+import { describeCellUpdateError, prismaErrorCode } from "@/lib/admin/databaseCellError";
 import { getAdminEditableField, type AdminDatabaseTableKey, type AdminEditableField } from "@/lib/admin/databaseEditConfig";
 import { getPrismaClient } from "@/lib/data/prisma";
 
@@ -57,13 +58,35 @@ export async function PATCH(request: Request) {
   const prisma = getPrismaClient();
   const updatedBy = session.user?.email ?? null;
 
-  await updateCell({
-    field: body.field,
-    rowId: body.rowId,
-    table: body.table as AdminDatabaseTableKey,
-    updatedBy,
-    value: parsedValue.value
-  });
+  const table = body.table as AdminDatabaseTableKey;
+
+  try {
+    await updateCell({
+      field: body.field,
+      rowId: body.rowId,
+      table,
+      updatedBy,
+      value: parsedValue.value
+    });
+  } catch (error) {
+    // 전에는 예외를 잡지 않아 화면에 "저장하지 못했습니다."만 떴다. 기업명을 이미 있는
+    // 기업 이름으로 바꾸려다 유니크 제약에 걸린 경우가 실제로 있었는데, 왜 막혔는지
+    // 알 수 없어 원인을 찾는 데 시간이 걸렸다. 무엇이 막았는지 문장으로 돌려준다.
+    const code = prismaErrorCode(error);
+    return NextResponse.json(
+      {
+        ok: false,
+        error: describeCellUpdateError({
+          code,
+          field: body.field,
+          label: editableField.label,
+          table,
+          value: String(parsedValue.value ?? "")
+        })
+      },
+      { status: code === "P2002" ? 409 : code === "P2025" ? 404 : 500 }
+    );
+  }
 
   return NextResponse.json({ ok: true });
 
