@@ -103,7 +103,12 @@ export async function insertEvent(calendarId: string, body: CalendarEventBody): 
   return created.id;
 }
 
-export async function patchEvent(calendarId: string, eventId: string, body: CalendarEventBody): Promise<void> {
+/** 부분 갱신을 허용한다. 역반영 원복은 제목·장소만 보내야 해서 전체 본문을 강제하지 않는다. */
+export async function patchEvent(
+  calendarId: string,
+  eventId: string,
+  body: Partial<CalendarEventBody>
+): Promise<void> {
   const response = await callCalendar(
     `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}?${SEND_UPDATES}`,
     { method: "PATCH", body: JSON.stringify(body) }
