@@ -60,6 +60,46 @@ test("buildEventSummary는 노션 기입 규칙과 같은 표기를 만든다", 
   );
 });
 
+test("1파트는 [강의관리] 기업명_과정명_N회차 표기를 쓴다", () => {
+  assert.equal(
+    buildEventSummary(operationFixture(), "1파트"),
+    "[강의관리] 롯데정밀화학_AI 업무 효율화_2회차"
+  );
+  // 파트 값은 사용자 소속 팀 표기("AX 1파트")로도 들어온다. 캘린더 선택과 같은 규칙으로 읽는다.
+  assert.equal(
+    buildEventSummary(operationFixture(), "AX 1파트"),
+    "[강의관리] 롯데정밀화학_AI 업무 효율화_2회차"
+  );
+  // 회차 표기 규칙은 기존과 같다.
+  assert.equal(
+    buildEventSummary(operationFixture({ roundNo: "3회차" }), "1파트"),
+    "[강의관리] 롯데정밀화학_AI 업무 효율화_3회차"
+  );
+  assert.equal(
+    buildEventSummary(operationFixture({ roundNo: "" }), "1파트"),
+    "[강의관리] 롯데정밀화학_AI 업무 효율화"
+  );
+});
+
+test("1파트가 아니면 제목 표기가 바뀌지 않는다", () => {
+  for (const part of ["2파트", "3파트", "AX 2파트", "", null, undefined]) {
+    assert.equal(
+      buildEventSummary(operationFixture(), part),
+      "[롯데정밀화학] AI 업무 효율화_2회차",
+      `파트=${String(part)}`
+    );
+  }
+});
+
+test("buildCalendarEventBody가 파트를 제목까지 전달한다", () => {
+  const part1 = buildCalendarEventBody(operationFixture(), [], "1파트");
+  assert.equal(part1.summary, "[강의관리] 롯데정밀화학_AI 업무 효율화_2회차");
+
+  // 파트를 넘기지 않으면(=파트를 못 정한 경우) 기존 표기를 유지한다.
+  const fallback = buildCalendarEventBody(operationFixture(), []);
+  assert.equal(fallback.summary, "[롯데정밀화학] AI 업무 효율화_2회차");
+});
+
 test("시간 표기가 있으면 시각 지정 일정이 된다", () => {
   const body = buildCalendarEventBody(operationFixture(), ["om@day1company.co.kr"]);
 

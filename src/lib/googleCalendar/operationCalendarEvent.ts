@@ -3,6 +3,7 @@
 
 import type { OperationSession } from "@/lib/data/operationTypes";
 import type { CalendarEventBody } from "./calendarWriteClient";
+import { extractPartKey } from "./calendarWriteConfig";
 
 const TIME_ZONE = "Asia/Seoul";
 
@@ -39,16 +40,33 @@ export function nextDay(date: string): string {
 }
 
 /**
- * 이벤트 제목. 노션 캘린더 기입 규칙과 같은 "[기업명] 과정명_N회차" 표기를 쓴다.
- * roundNo에 이미 "회차"/"차수"가 붙어 있으면 그대로 둔다.
+ * 1파트만 "[강의관리] 기업명_과정명_N회차" 표기를 쓴다(2026-09-02 1파트 요청).
+ * 파트 판별은 캘린더를 고를 때 쓰는 partKey와 같은 값이라, 일정이 올라간 캘린더와
+ * 제목 규칙이 어긋날 수 없다. 다른 파트를 추가하려면 이 목록에만 넣으면 된다.
  */
-export function buildEventSummary(operation: Pick<OperationSession, "companyName" | "courseName" | "roundNo">): string {
-  const base = `[${operation.companyName}] ${operation.courseName}`.trim();
-  const round = operation.roundNo?.trim();
-  if (!round) return base;
+const LECTURE_TITLE_PARTS = ["1파트"];
 
-  const suffix = /회차|차수/.test(round) ? round : `${round}회차`;
-  return `${base}_${suffix}`;
+/**
+ * 이벤트 제목. 기본은 노션 캘린더 기입 규칙과 같은 "[기업명] 과정명_N회차" 표기다.
+ * roundNo에 이미 "회차"/"차수"가 붙어 있으면 그대로 둔다.
+ * partKey는 resolveCalendarTargets가 담당 OM의 소속 팀에서 뽑은 "N파트"다.
+ */
+export function buildEventSummary(
+  operation: Pick<OperationSession, "companyName" | "courseName" | "roundNo">,
+  partKey?: string | null
+): string {
+  const round = operation.roundNo?.trim();
+  const suffix = round ? (/회차|차수/.test(round) ? round : `${round}회차`) : "";
+
+  const part = extractPartKey(partKey);
+  if (part && LECTURE_TITLE_PARTS.includes(part)) {
+    // 기업명이 비어 있어도 "_"로 시작하지 않도록 빈 조각은 빼고 잇는다.
+    const segments = [operation.companyName.trim(), operation.courseName.trim(), suffix].filter(Boolean);
+    return `[강의관리] ${segments.join("_")}`;
+  }
+
+  const base = `[${operation.companyName}] ${operation.courseName}`.trim();
+  return suffix ? `${base}_${suffix}` : base;
 }
 
 /** 운영 상세로 돌아올 수 있게 본문에 hub-om 링크를 남긴다. HUB_OM_BASE_URL 미설정이면 생략. */
@@ -65,7 +83,11 @@ function buildDescription(operation: OperationSession): string {
   return lines.join("\n");
 }
 
-export function buildCalendarEventBody(operation: OperationSession, attendeeEmails: string[]): CalendarEventBody {
+export function buildCalendarEventBody(
+  operation: OperationSession,
+  attendeeEmails: string[],
+  partKey?: string | null
+): CalendarEventBody {
   const times = parseTimeRange(operation.timeText);
 
   // 시간 표기를 읽으면 시작일 시작시각 ~ 종료일 종료시각의 일정으로,
@@ -81,7 +103,7 @@ export function buildCalendarEventBody(operation: OperationSession, attendeeEmai
       };
 
   return {
-    summary: buildEventSummary(operation),
+    summary: buildEventSummary(operation, partKey),
     description: buildDescription(operation),
     // 참석자가 일정을 고치거나 다른 사람을 초대하지 못하게 막는다(스펙 D5: 반영 대상은 읽기 전용).
     // guestsCanModify는 기본값도 false지만, guestsCanInviteOthers는 기본이 true라
