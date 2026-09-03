@@ -12757,6 +12757,18 @@ button.coach-doc-reserve-chip:disabled {
 }
 
 /* 선택 전 안내. 버튼을 숨기지 않고 비활성으로 두되 왜 못 누르는지 알려 준다. */
+/* 중복 이메일 안내의 한 항목. 사실(이메일·이름)과 진단을 줄로 나눠,
+   가운뎃점이 이름 구분자로 읽히지 않게 한다. */
+.user-dup-row,
+.user-dup-note {
+  display: block;
+}
+
+.user-dup-note {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
 .user-bulk-hint {
   color: var(--muted);
   font-size: 12px;
