@@ -288,12 +288,17 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
           <ul>
             {duplicateEmails.map((group) => (
               <li key={group.email}>
-                {group.email} — {group.names.join(", ")}
-                {group.namesDiffer ? (
-                  <> · 이름이 서로 달라 이 사람의 내 대시보드가 지금 0건으로 보입니다</>
-                ) : (
-                  <> · 이름이 같아 지금은 화면에 이상이 없지만, 한쪽만 바뀌면 문제가 생깁니다</>
-                )}
+                {/* 이름 목록과 진단을 한 줄에 이어 붙이면 가운뎃점이 이름 구분자로 읽혀
+                    "정수아, 정수아 · 이름이 같아…"가 이름이 하나 더 있는 것처럼 보였다.
+                    사실(이메일·이름)과 진단을 줄로 나눈다. */}
+                <span className="user-dup-row">
+                  {group.email} — {group.names.join(", ")}
+                </span>
+                <span className="user-dup-note">
+                  {group.namesDiffer
+                    ? "이름이 서로 달라 이 사람의 내 대시보드가 지금 0건입니다."
+                    : "이름이 같아 지금은 이상이 없습니다. 다만 한쪽만 바뀌면 대시보드가 빕니다."}
+                </span>
               </li>
             ))}
           </ul>
