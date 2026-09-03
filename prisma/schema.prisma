@@ -147,6 +147,24 @@ model Course {
   @@map("courses")
 }
 
+// 코스ID(백오피스 코스ID) 단위 라벨 = "코스ID명". 과정(Course.name = "과정명")과는
+// 독립적인 테이블이다 — 같은 코스ID 아래 커리큘럼이 다른 과정이 여러 개 있어도
+// 코스ID명은 courseId 하나당 한 행만 있고, "과정명"을 고쳐도 이 값은 바뀌지 않는다.
+// (과거엔 courseName 컬럼 하나를 공유해서, "코스ID명"을 고치면 그 코스ID를 쓰는
+// 서로 다른 과정들의 courseRecordId가 전부 같은 Course로 재배정되며 병합되는
+// 사고가 있었다 — 그 사고를 구조적으로 막기 위해 분리함.)
+model CourseIdLabel {
+  id        String   @id @default(uuid()) @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  courseId  String   @map("course_id")
+  label     String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([companyId, courseId])
+  @@map("course_id_labels")
+}
+
 model OperationSession {
   id                    String             @id @default(uuid()) @db.Uuid
   operationId           String             @unique @map("operation_id")
@@ -162,6 +180,10 @@ model OperationSession {
   educationDays         String?            @map("education_days")
   startDate             DateTime           @map("start_date") @db.Date
   endDate               DateTime           @map("end_date") @db.Date
+  // 실제 교육이 있는 날짜만 담는다(예: 9/3, 9/4, 9/7 — 주말 제외). startDate/endDate는
+  // 이 값들의 최소/최대로 자동 계산해 유지하며, 기존 정렬·필터·기간 계산과의 호환을 위해 남겨둔다.
+  // 비어 있으면(과거 데이터) startDate~endDate 사이 모든 날짜가 교육일이라는 기존 가정을 그대로 따른다.
+  educationDates        DateTime[]         @map("education_dates") @db.Date
   operationMonth        String?            @map("operation_month")
   sessionDurationDays   Int?               @map("session_duration_days")
   sessionDurationType   OperationType?     @map("session_duration_type")

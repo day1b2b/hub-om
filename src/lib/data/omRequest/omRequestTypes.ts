@@ -8,6 +8,11 @@ export interface OmRequestSession {
   timeEnd: string;
   duration: string;
   location: string;
+  /**
+   * 실제 교육이 있는 날짜를 쉼표로 구분해 적은 값(예: "2026-09-03, 2026-09-04, 2026-09-07").
+   * 비워두면 date~dateEnd 사이 모든 날짜가 교육일이라는 기존 방식 그대로 처리한다.
+   */
+  educationDatesText?: string;
 }
 
 export interface OmRequest {

@@ -64,6 +64,9 @@ export interface OperationSession {
   /** Course.id (내부 UUID PK). 같은 과정의 여러 회차(OperationSession)가 이 값을 공유한다. */
   courseRecordId?: string;
   courseId: string;
+  /** 코스ID 단위 라벨("코스ID명"). courseName("과정명")과 별도 테이블(CourseIdLabel)에 저장되며,
+   * 같은 코스ID를 쓰는 모든 과정이 이 값을 공유한다. 아직 아무도 지정 안 했으면 빈 문자열. */
+  courseIdLabel: string;
   companyName: string;
   courseName: string;
   courseCategory: string;
@@ -80,6 +83,8 @@ export interface OperationSession {
   operationTypeRaw: string;
   roundNo: string;
   educationDays: string;
+  /** 실제 교육이 있는 날짜(yyyy-mm-dd) 목록. 과거 데이터 등 비어 있으면 startDate~endDate 전체를 교육일로 본다. */
+  educationDates: string[];
   startDate: string;
   endDate: string;
   operationMonth: string;
@@ -129,6 +134,8 @@ export interface CreateOperationInput {
   createdBy?: string;
   driveLink: string;
   educationDays: string;
+  /** 실제 교육이 있는 날짜(yyyy-mm-dd) 목록. 있으면 startDate/endDate는 이 값의 최소/최대로 자동 계산한다. */
+  educationDates?: string[];
   educationFormat: EducationFormat;
   endDate: string;
   instructorCost: number | null;
@@ -163,9 +170,13 @@ export interface UpdateOperationInput {
   costRaw?: string;
   courseCategory?: string;
   courseId?: string;
+  courseIdLabel?: string;
   courseName?: string;
   driveLink?: string;
   educationDays?: string;
+  /** 실제 교육이 있는 날짜(yyyy-mm-dd) 목록. 전달하면 startDate/endDate는 이 값의 최소/최대로 다시 계산한다. */
+  educationDates?: string[];
+  educationFormat?: EducationFormat;
   endDate?: string;
   hasResultReport?: ResultReportStatus;
   hasSatisfactionSurvey?: SatisfactionSurveyStatus;

@@ -114,3 +114,15 @@ test("코스ID가 비어도 기업+과정명으로 회차를 묶는다", () => {
   );
   assert.deepEqual(rows.map((r) => r.totalSessions), [2, 2, 1]);
 });
+
+test("기업명·과정명이 비어 있어도 터지지 않는다", () => {
+  // 타입은 string이지만 원천에서 비어 들어온 행이 있을 수 있다.
+  // courseKey가 이 값에 .trim()을 바로 걸어서, 한 행만 비어도 대시보드 전체가 죽었다.
+  const broken = { operationId: "op-x", startDate: "2026-09-14" } as unknown as OperationSession;
+  const rows = buildMyCourseRows([], [broken], noneRepresented, scheduleRange, href);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].company, "");
+  assert.equal(rows[0].courseName, "");
+  assert.equal(rows[0].ld, "미정");
+  assert.equal(rows[0].instructor, "-");
+});

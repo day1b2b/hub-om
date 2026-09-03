@@ -41,6 +41,8 @@ const SHOW_LECTURE_REPORTS = false;
 const SHOW_READINESS_SUMMARY = false;
 const SHOW_BULK_EDIT_ROUNDS = false;
 
+const EDUCATION_FORMAT_OPTIONS = ["오프라인", "비대면", "블렌디드", "플립러닝", "검토필요"];
+
 interface OperationDetailProps {
   collaboration: OperationCollaboration;
   extraTools?: string[];
@@ -77,10 +79,9 @@ export function OperationDetail({
   const nextRoundNo = String(Math.max(0, ...existingRoundNumbers) + 1);
   const fallbackOperationId =
     courseOperations.find((candidate) => candidate.operationId !== operation.operationId)?.operationId ?? null;
-  const sameCourseIdOperationIds =
-    sameCourseIdOperations.length > 0
-      ? sameCourseIdOperations.map((candidate) => candidate.operationId)
-      : [operation.operationId];
+  // 과정명(과정ID 단위)은 코스ID명(코스ID 단위)보다 좁다 — 같은 코스ID라도 커리큘럼이 다르면
+  // 과정명은 따로 가야 하므로 이 과정(courseOperations)의 회차에만 반영한다.
+  const courseOperationIds = courseOperations.map((candidate) => candidate.operationId);
 
   return (
     <main className="dashboard-shell">
@@ -94,6 +95,8 @@ export function OperationDetail({
             {operation.courseId ? null : <span className="title-course-id">코스ID 검토 필요</span>}
             {operation.processId ? <span className="title-tag">{operation.processId}</span> : null}
             {educationFormatText !== "확인 필요" ? <span className="title-tag">{educationFormatText}</span> : null}
+            <span className="title-tag">{formatCourseDateRange(courseOperations)}</span>
+            <span className="title-tag">{formatTotalEducationDays(courseOperations)}</span>
           </div>
           <div className="detail-header-actions">
             {SHOW_READINESS_SUMMARY ? (
@@ -112,57 +115,80 @@ export function OperationDetail({
         ) : null}
 
         <section className="operation-detail-layout">
-          <section className="detail-section compact-info-section">
-            <div className="section-title">
-              <h2>과정 정보</h2>
-            </div>
-            <div className="info-grid">
-              <EditableInfoItem
-                displayValue={operation.courseId || "미정"}
-                fields={[{ name: "courseId", placeholder: "예: 261326", value: operation.courseId }]}
-                label="코스ID"
-                operationId={operation.operationId}
-              />
-              <EditableCourseNameItem
-                displayValue={operation.courseName || "미정"}
-                operationIds={sameCourseIdOperationIds}
-                value={operation.courseName}
-              />
-              <EditableInfoItem
-                displayValue={operation.courseCategory || "미정"}
-                fields={[
-                  {
-                    name: "courseCategory",
-                    optionGroups: COURSE_CATEGORY_GROUPS.map((group) => ({ label: group.major, options: group.minors })),
-                    type: "select",
-                    value: operation.courseCategory
-                  }
-                ]}
-                label="과정 카테고리 소분류"
-                operationId={operation.operationId}
-              />
-              <EditableToolsItem
-                displayValue={operation.tools || "미정"}
-                extraTools={extraTools}
-                operationId={operation.operationId}
-                value={operation.tools}
-              />
-              <ResultReportConditionSelect
-                rounds={courseOperations.map((candidate) => ({
-                  hasResultReport: candidate.hasResultReport,
-                  operationId: candidate.operationId
-                }))}
-              />
-              <SatisfactionSurveyConditionSelect
-                rounds={courseOperations.map((candidate) => ({
-                  hasSatisfactionSurvey: candidate.hasSatisfactionSurvey,
-                  operationId: candidate.operationId
-                }))}
-              />
-              <InfoItem label="기간" value={formatCourseDateRange(courseOperations)} />
-              <InfoItem label="교육일수" value={formatTotalEducationDays(courseOperations)} />
-            </div>
-          </section>
+          <div className="detail-primary-stack">
+            <section className="detail-section compact-info-section">
+              <div className="section-title">
+                <h2>코스 정보 (백오피스 정보)</h2>
+              </div>
+              <div className="info-grid">
+                <EditableInfoItem
+                  displayValue={operation.courseId || "미정"}
+                  fields={[{ name: "courseId", placeholder: "예: 261326", value: operation.courseId }]}
+                  label="코스ID"
+                  operationId={operation.operationId}
+                />
+                <EditableInfoItem
+                  displayValue={operation.courseIdLabel || "미정"}
+                  fields={[{ name: "courseIdLabel", placeholder: "예: 2026 AI 역량강화", value: operation.courseIdLabel }]}
+                  label="코스ID명"
+                  operationId={operation.operationId}
+                />
+              </div>
+            </section>
+
+            <section className="detail-section compact-info-section">
+              <div className="section-title">
+                <h2>과정 정보</h2>
+              </div>
+              <div className="info-grid">
+                <EditableCourseNameItem
+                  displayValue={operation.courseName || "미정"}
+                  label="과정명"
+                  operationIds={courseOperationIds}
+                  value={operation.courseName}
+                />
+                <EditableInfoItem
+                  displayValue={operation.educationFormat}
+                  fields={[
+                    { name: "educationFormat", options: EDUCATION_FORMAT_OPTIONS, type: "select", value: operation.educationFormat }
+                  ]}
+                  label="교육형태"
+                  operationId={operation.operationId}
+                />
+                <EditableInfoItem
+                  displayValue={operation.courseCategory || "미정"}
+                  fields={[
+                    {
+                      name: "courseCategory",
+                      optionGroups: COURSE_CATEGORY_GROUPS.map((group) => ({ label: group.major, options: group.minors })),
+                      type: "select",
+                      value: operation.courseCategory
+                    }
+                  ]}
+                  label="과정 카테고리 소분류"
+                  operationId={operation.operationId}
+                />
+                <EditableToolsItem
+                  displayValue={operation.tools || "미정"}
+                  extraTools={extraTools}
+                  operationId={operation.operationId}
+                  value={operation.tools}
+                />
+                <ResultReportConditionSelect
+                  rounds={courseOperations.map((candidate) => ({
+                    hasResultReport: candidate.hasResultReport,
+                    operationId: candidate.operationId
+                  }))}
+                />
+                <SatisfactionSurveyConditionSelect
+                  rounds={courseOperations.map((candidate) => ({
+                    hasSatisfactionSurvey: candidate.hasSatisfactionSurvey,
+                    operationId: candidate.operationId
+                  }))}
+                />
+              </div>
+            </section>
+          </div>
 
           <div className="detail-side-stack">
             <section className="detail-section compact-info-section">
@@ -299,6 +325,7 @@ export function OperationDetail({
                             teamQuery={teamQuery}
                           />
                         }
+                        educationDates={courseOperation.educationDates}
                         endDate={courseOperation.endDate}
                         instructorOptions={instructorOptions}
                         instructors={courseOperation.instructors}

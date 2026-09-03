@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
+import { parseEducationDatesText } from "@/lib/data/operationCalculations";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import type {
   ArchiveStatus,
+  EducationFormat,
   OnsiteRequired,
   OperationSession,
   ResultReportStatus,
@@ -22,9 +24,12 @@ const APPLYABLE_FIELDS = [
   "costRaw",
   "courseCategory",
   "courseId",
+  "courseIdLabel",
   "courseName",
   "driveLink",
   "educationDays",
+  "educationDates",
+  "educationFormat",
   "endDate",
   "hasResultReport",
   "hasSatisfactionSurvey",
@@ -131,8 +136,24 @@ function assignUpdateValue(update: UpdateOperationInput, field: ApplyableField, 
     return;
   }
 
+  if (field === "educationFormat") {
+    if (isEducationFormat(value)) update.educationFormat = value;
+    return;
+  }
+
   if (field === "startDate" || field === "endDate") {
     if (isDateText(value)) update[field] = value;
+    return;
+  }
+
+  if (field === "educationDates") {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      update.educationDates = [];
+      return;
+    }
+    const parsed = parseEducationDatesText(trimmed);
+    if (parsed.errors.length === 0) update.educationDates = parsed.dates;
     return;
   }
 
@@ -163,6 +184,16 @@ function isSatisfactionSurveyStatus(value: string): value is SatisfactionSurveyS
 
 function isOnsiteRequired(value: string): value is OnsiteRequired {
   return value === "Y" || value === "N" || value === "PARTIAL" || value === "UNKNOWN";
+}
+
+function isEducationFormat(value: string): value is EducationFormat {
+  return (
+    value === "오프라인" ||
+    value === "비대면" ||
+    value === "블렌디드" ||
+    value === "플립러닝" ||
+    value === "검토필요"
+  );
 }
 
 function isDateText(value: string): boolean {

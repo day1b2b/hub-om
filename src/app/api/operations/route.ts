@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
+import { parseEducationDatesText } from "@/lib/data/operationCalculations";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { EDUCATION_FORMAT_BY_TRAINING_TYPE } from "@/lib/data/omRequest/omRequestOperationLink";
 import type { TrainingType } from "@/lib/data/omRequest/omRequestTypes";
@@ -16,6 +17,8 @@ interface CreateCourseBody {
   courseName?: unknown;
   driveLink?: unknown;
   educationDays?: unknown;
+  /** 쉼표/줄바꿈으로 구분한 실제 교육일 목록 (예: "2026-09-03, 2026-09-04, 2026-09-07"). */
+  educationDates?: unknown;
   endDate?: unknown;
   instructors?: unknown;
   ld?: unknown;
@@ -40,6 +43,8 @@ export async function POST(request: Request) {
   const startDate = textValue(body.startDate);
   const endDate = textValue(body.endDate);
   const educationFormat = educationFormatOf(body.trainingType);
+  const educationDatesText = textValue(body.educationDates);
+  const parsedEducationDates = educationDatesText ? parseEducationDatesText(educationDatesText) : null;
 
   if (!companyName || !courseName) {
     return NextResponse.json({ ok: false, error: "기업명과 과정명은 필수입니다." }, { status: 400 });
@@ -47,6 +52,13 @@ export async function POST(request: Request) {
 
   if (!roundNo || !startDate || !endDate) {
     return NextResponse.json({ ok: false, error: "회차, 시작일, 종료일은 필수입니다." }, { status: 400 });
+  }
+
+  if (parsedEducationDates && parsedEducationDates.errors.length > 0) {
+    return NextResponse.json(
+      { ok: false, error: `실제 교육일을 확인해주세요: ${parsedEducationDates.errors.join(", ")}` },
+      { status: 400 }
+    );
   }
 
   try {
@@ -61,6 +73,7 @@ export async function POST(request: Request) {
       createdBy: session.user?.email ?? undefined,
       driveLink: textValue(body.driveLink),
       educationDays: textValue(body.educationDays),
+      educationDates: parsedEducationDates?.dates,
       educationFormat,
       endDate,
       instructorCost: null,

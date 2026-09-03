@@ -3016,10 +3016,21 @@ td span {
   display: grid;
 }
 
-.detail-side-stack {
-  align-content: start;
-  display: grid;
+.detail-side-stack,
+.detail-primary-stack {
+  display: flex;
+  flex-direction: column;
   gap: 12px;
+}
+
+/* 옆 컬럼(코스정보+과정정보 / 담당자+지표+드라이브)의 내용 길이가 서로 다르면
+   짧은 쪽 아래에 빈 여백이 남아 두 컬럼의 아래쪽 테두리가 어긋나 보인다.
+   짧은 쪽의 마지막 카드를 남는 높이만큼 늘려 두 컬럼의 아래쪽을 맞춘다. */
+.detail-side-stack > :last-child,
+.detail-primary-stack > :last-child {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
 }
 
 .wide-detail-section,
@@ -4942,6 +4953,19 @@ td span {
   white-space: nowrap;
 }
 
+/* 회차 추가/일괄등록 버튼과 같은 줄에 있으면 만족도 분석 버튼이 묻혀서
+   테두리만 있는 형제 버튼들과 달리 채워진 색으로 눈에 띄게 한다. */
+.satisfaction-analysis-trigger {
+  background: var(--green);
+  border-color: var(--green);
+  color: #ffffff;
+}
+
+.satisfaction-analysis-trigger:hover {
+  background: #5c7a54;
+  border-color: #5c7a54;
+}
+
 .add-round-trigger:hover {
   background: var(--surface-hover, #f4f5f7);
 }
@@ -5054,6 +5078,39 @@ td span {
   grid-template-columns: 1fr 1fr;
 }
 
+/* 회차 추가 레이어 전용(add-round-create-dialog). 달력 오른쪽 여백에 시간/장소/
+   강사/실습코치 입력을 배치해 아래로 길게 늘어지지 않게 한다. 같은 lecture-note-*
+   클래스를 공유하는 회차 수정 레이어(EditableSessionRow)는 이 규칙의 영향을 받지 않는다. */
+.add-round-create-dialog.add-round-dialog {
+  max-width: 640px;
+}
+
+.add-round-layout {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(0, auto) minmax(200px, 1fr);
+}
+
+.add-round-calendar-field {
+  max-width: none;
+}
+
+.add-round-side-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.add-round-side-fields .lecture-note-field {
+  max-width: none;
+}
+
+@media (max-width: 640px) {
+  .add-round-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 .bulk-add-rounds-dialog {
   grid-template-rows: auto minmax(0, 1fr) auto;
   max-width: 860px;
@@ -5132,6 +5189,33 @@ td span {
 
 .bulk-add-rounds-row-status {
   white-space: normal;
+}
+
+.bulk-add-rounds-education-dates-cell {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  white-space: normal;
+}
+
+.bulk-add-rounds-education-dates-cell span {
+  color: var(--muted);
+}
+
+.bulk-add-rounds-education-dates-cell button {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 11px;
+  padding: 3px 6px;
+  white-space: nowrap;
+}
+
+.bulk-add-rounds-education-dates-cell button:hover {
+  border-color: var(--blue);
+  color: var(--blue);
 }
 
 .round-resource-cell {
@@ -5320,9 +5404,10 @@ td span {
 }
 
 .resource-card-grid {
-  display: grid;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   gap: 12px;
-  grid-template-columns: minmax(0, 1fr);
 }
 
 .resource-summary-card {
@@ -5330,6 +5415,7 @@ td span {
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
+  flex: 1;
   gap: 9px;
   min-width: 0;
   padding: 14px 16px 15px;
@@ -9290,6 +9376,57 @@ button.coach-doc-reserve-chip:disabled {
   font-size: 12px;
 }
 
+/* 두 번째부터의 임박 과정. 첫 과정(.dday-card)만 크게 두고 나머지는 한 줄씩 쌓는다.
+   D-day · 과정 · 날짜를 한 줄에 놓되 과정명이 길어지면 그 칸만 줄어들게 한다. */
+.dday-next-list {
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: 2px;
+  list-style: none;
+  margin: 0;
+  padding: 10px 18px 16px;
+}
+
+.dday-next-list li {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: 5px 0;
+}
+
+.dday-next-badge {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.dday-next-list .course-link {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+/* 한 줄 항목이라 기업명·과정명이 넘치면 잘라 낸다. 줄바꿈되면 줄 높이가 들쭉날쭉해진다. */
+.dday-next-list .course-link strong,
+.dday-next-list .course-link span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dday-next-list .course-link span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.dday-next-date {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 /* 기업 위키(company-wiki) 목록/상세에서 추가로 쓰는 클래스 */
 .row-link {
   background: none;
@@ -11446,7 +11583,7 @@ button.coach-doc-reserve-chip:disabled {
   font-weight: 600;
   color: var(--muted);
   gap: 8px;
-  grid-template-columns: 52px 148px 148px 108px 108px 44px 1fr;
+  grid-template-columns: 52px 220px 108px 108px 44px 1fr;
   padding: 8px 12px;
   text-align: center;
 }
@@ -11456,7 +11593,7 @@ button.coach-doc-reserve-chip:disabled {
   border-bottom: 1px solid var(--line);
   display: grid;
   gap: 8px;
-  grid-template-columns: 52px 148px 148px 108px 108px 44px 1fr;
+  grid-template-columns: 52px 220px 108px 108px 44px 1fr;
   justify-items: center;
   padding: 6px 12px;
 }
@@ -11490,6 +11627,26 @@ button.coach-doc-reserve-chip:disabled {
 
 .om-sessions-row > *:not(:last-child) input[type="text"] {
   text-align: center;
+}
+
+.session-dates-trigger {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 6px;
+  text-align: center;
+  width: 100%;
+}
+
+.session-dates-trigger:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.session-dates-dialog {
+  max-width: 340px;
 }
 
 .date-input-wrapper input[type="text"] {
@@ -11631,7 +11788,7 @@ button.coach-doc-reserve-chip:disabled {
   font-size: 12px;
   font-weight: 600;
   gap: 8px;
-  grid-template-columns: 36px 110px 110px 72px 72px 48px 1fr;
+  grid-template-columns: 36px 160px 72px 72px 48px 1fr;
   padding: 8px 12px;
   text-align: center;
 }
@@ -11645,7 +11802,7 @@ button.coach-doc-reserve-chip:disabled {
   border-bottom: 1px solid var(--line);
   display: grid;
   gap: 8px;
-  grid-template-columns: 36px 110px 110px 72px 72px 48px 1fr;
+  grid-template-columns: 36px 160px 72px 72px 48px 1fr;
   padding: 8px 12px;
   text-align: center;
 }
@@ -11751,6 +11908,90 @@ button.coach-doc-reserve-chip:disabled {
 .address-search-btn:hover {
   background: var(--surface-strong);
   color: var(--blue);
+}
+
+/* 실제 교육일 다중 선택 달력 */
+.multi-date-calendar {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  width: 280px;
+}
+
+.multi-date-calendar-header {
+  align-items: center;
+  background: var(--surface-strong);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  font-size: 13px;
+  font-weight: 600;
+  justify-content: space-between;
+  padding: 8px 12px;
+}
+
+.multi-date-calendar-header button {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 6px;
+}
+
+.multi-date-calendar-header button:hover {
+  color: var(--blue);
+}
+
+.multi-date-calendar-weekdays {
+  display: grid;
+  font-size: 11px;
+  color: var(--muted);
+  grid-template-columns: repeat(7, 1fr);
+  padding: 6px 6px 0;
+  text-align: center;
+}
+
+.multi-date-calendar-grid {
+  display: grid;
+  gap: 2px;
+  grid-template-columns: repeat(7, 1fr);
+  padding: 4px 6px 8px;
+}
+
+.multi-date-calendar-cell {
+  aspect-ratio: 1;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.multi-date-calendar-cell.empty {
+  cursor: default;
+}
+
+.multi-date-calendar-cell.weekend {
+  color: var(--red);
+}
+
+.multi-date-calendar-cell:not(.empty):hover {
+  background: var(--surface-strong);
+}
+
+.multi-date-calendar-cell.selected {
+  background: var(--blue);
+  color: #fff;
+  font-weight: 600;
+}
+
+.multi-date-calendar-summary {
+  background: var(--surface-strong);
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  padding: 6px 12px;
 }
 
 /* 배정 관리 */
