@@ -4,6 +4,7 @@ import { test } from "node:test";
 import type { ArchiveCompletionInput } from "@/lib/data/operationCalculations.ts";
 import {
   deriveArchiveStatus,
+  formatEducationDatesCompact,
   formatEducationDatesList,
   isArchiveComplete,
   missingArchiveItems
@@ -160,4 +161,36 @@ test("교육일이 하루뿐이면 구간 표시 없이 그 날짜만 보여준�
 
 test("입력 순서가 뒤섞여 있어도 날짜순으로 정렬해 구간을 만든다", () => {
   assert.equal(formatEducationDatesList(["2026-09-10", "2026-09-08", "2026-09-09"]), "9/8~9/10");
+});
+
+// ── 알림용 교육일 축약 표기 ────────────────────────────────────────
+test("연속된 교육일은 구간으로 묶고 같은 달은 일자만 쓴다", () => {
+  assert.equal(formatEducationDatesCompact(["2026-09-04", "2026-09-07", "2026-09-08"]), "26.09.04, 07~08");
+});
+
+test("전체가 연속이면 구간 하나로 줄인다", () => {
+  const dates = ["2026-09-04", "2026-09-05", "2026-09-06", "2026-09-07", "2026-09-08"];
+
+  assert.equal(formatEducationDatesCompact(dates), "26.09.04~08");
+});
+
+test("달이 바뀌는 연속 구간은 끝에 월을 붙인다", () => {
+  assert.equal(formatEducationDatesCompact(["2026-09-30", "2026-10-01"]), "26.09.30~10.01");
+});
+
+test("해가 바뀌면 연도까지 다시 붙인다", () => {
+  assert.equal(formatEducationDatesCompact(["2026-12-30", "2026-12-31", "2027-01-05"]), "26.12.30~31, 27.01.05");
+});
+
+test("순서가 뒤섞이고 중복이 있어도 정렬해 묶는다", () => {
+  assert.equal(formatEducationDatesCompact(["2026-09-08", "2026-09-04", "2026-09-08"]), "26.09.04, 08");
+});
+
+test("하루짜리는 날짜 하나만 쓴다", () => {
+  assert.equal(formatEducationDatesCompact(["2026-09-04"]), "26.09.04");
+});
+
+test("빈 목록과 읽을 수 없는 값은 빈 문자열이다", () => {
+  assert.equal(formatEducationDatesCompact([]), "");
+  assert.equal(formatEducationDatesCompact(["없음"]), "");
 });
