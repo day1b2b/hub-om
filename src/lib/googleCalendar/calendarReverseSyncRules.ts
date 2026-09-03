@@ -1,11 +1,16 @@
 // 캘린더 역반영의 판정 규칙(순수 함수).
 //
 // 구글·DB를 호출하지 않는 코드만 둬서 테스트에서 규칙(D7~D9)을 그대로 검증할 수 있게 한다.
-// 실행(읽기·쓰기)은 calendarReverseSync.ts가 담당한다.
+// 실행(읽기·쓰기)은 calendarReverseSync.ts / applyCalendarReverseSync.ts가 담당한다.
+//
+// 매핑 단위가 "회차의 실제 교육일 1일"이므로 비교 대상도 그 교육일의 이벤트 계획 1건이다.
+// 매니저가 이벤트를 다른 날로 옮기면 그 교육일이 바뀐 것으로 본다.
+// 제목은 파트에 따라 달라지므로(강의관리 표기) 이벤트가 있는 파트 키를 함께 받는다.
 
 import type { OperationSession } from "@/lib/data/operationTypes";
 import type { CalendarEventSnapshot } from "./calendarWriteClient";
-import { buildCalendarEventBody } from "./operationCalendarEvent";
+import { buildCalendarEventBodies, normalizeEducationDates } from "./operationCalendarEvent";
+import type { CalendarEventLink } from "./calendarEventLinkRepository";
 
 export type ReverseSyncAction =
   /** 캘린더가 더 최신이고 날짜·시간이 다르다 → 운영현황을 갱신한다. */
@@ -26,10 +31,16 @@ export interface ReverseSyncItem {
   operationId: string;
   calendarId: string;
   eventId: string;
+  /** 매핑된 교육일. 운영현황 반영은 이 날짜를 새 날짜로 바꾸는 것이다. */
+  eventDate: string;
+  /** 이벤트가 올라가 있는 파트 키. 제목을 다시 만들 때 필요하다. */
+  partKey: null | string;
   companyName: string;
   courseName: string;
   roundNo: string;
   omName: string;
+  /** 실제 교육일이 등록된 회차인지. 반영 방식이 달라진다. */
+  perEducationDay: boolean;
   eventUpdatedAt: string;
   operationUpdatedAt: null | string;
   /** action이 "운영현황 반영"일 때만 채운다. */
@@ -38,43 +49,57 @@ export interface ReverseSyncItem {
   revertFields?: string[];
 }
 
+export type ReverseSyncEvaluation =
+  | { kind: "none" }
+  | { kind: "skip"; reason: string }
+  | { kind: "item"; item: ReverseSyncItem };
+
 /**
  * 이벤트 1건과 회차 1건을 비교해 무엇을 할지 정한다. 구글·DB 호출이 없는 순수 함수라
- * 판정 규칙(D7~D9)을 테스트로 고정할 수 있다. 바꿀 것이 없으면 null.
+ * 판정 규칙(D7~D9)을 테스트로 고정할 수 있다.
  */
 export function evaluateEventAgainstOperation(
   operation: OperationSession,
-  link: { operationId: string; calendarId: string; eventId: string },
+  link: CalendarEventLink,
   event: CalendarEventSnapshot,
-  operationUpdatedAt: Date | null
-): null | ReverseSyncItem {
+  operationUpdatedAt: Date | null,
+  partKey?: string | null
+): ReverseSyncEvaluation {
+  const educationDates = normalizeEducationDates(operation.educationDates);
   const base = {
     operationId: operation.operationId,
     calendarId: link.calendarId,
     eventId: event.id,
+    eventDate: link.eventDate,
+    partKey: partKey ?? null,
     companyName: operation.companyName,
     courseName: operation.courseName,
     roundNo: operation.roundNo,
     omName: operation.om,
+    perEducationDay: educationDates.length > 0,
     eventUpdatedAt: event.updated,
     operationUpdatedAt: operationUpdatedAt?.toISOString() ?? null
   };
 
   // 원본이 사라진 경우. 회차 취소는 운영현황에서만 하므로(D4) 이건 비정상이다.
   if (event.status === "cancelled") {
-    return { ...base, action: "이벤트 재생성" };
+    return { kind: "item", item: { ...base, action: "이벤트 재생성" } };
   }
 
-  const expected = buildCalendarEventBody(operation, []);
-  const expectedSchedule = normalizeSchedule(expected.start, expected.end);
-  const eventSchedule = normalizeSchedule(event.start, event.end);
-  const scheduleDiffers = expectedSchedule !== eventSchedule;
+  const plan = buildCalendarEventBodies(operation, [], partKey).find((entry) => entry.eventDate === link.eventDate);
+  if (!plan) {
+    // 운영현황에서 이 교육일이 빠졌는데 정방향 반영이 아직 이벤트를 못 지운 상태.
+    // 역반영에서 이벤트를 지우지는 않는다(삭제는 운영현황이 시작점이다). 다음 정방향 반영이 정리한다.
+    return { kind: "skip", reason: `운영현황에 없는 교육일(${link.eventDate}) — 정방향 반영 대기` };
+  }
 
+  const expected = plan.body;
+  const scheduleDiffers = normalizeSchedule(expected.start, expected.end) !== normalizeSchedule(event.start, event.end);
   const revertFields: string[] = [];
   if (expected.summary !== event.summary) revertFields.push("제목");
   if ((expected.location ?? "") !== event.location) revertFields.push("장소");
 
-  if (!scheduleDiffers && revertFields.length === 0) return null;
+  if (!scheduleDiffers && revertFields.length === 0) return { kind: "none" };
 
   // 날짜·시간이 다를 때만 승자를 따진다. 캘린더가 더 최신이면 운영현황에 반영한다(D7).
   const calendarIsNewer = isCalendarNewer(event.updated, operationUpdatedAt);
@@ -82,22 +107,47 @@ export function evaluateEventAgainstOperation(
 
   if (scheduleDiffers && calendarIsNewer && nextSchedule) {
     return {
-      ...base,
-      action: "운영현황 반영",
-      scheduleChange: {
-        from: { startDate: operation.startDate, endDate: operation.endDate, timeText: operation.timeText },
-        to: nextSchedule
-      },
-      // 날짜·시간은 반영하고, 사람이 함께 바꾼 제목·장소는 되돌린다.
-      ...(revertFields.length > 0 ? { revertFields } : {})
+      kind: "item",
+      item: {
+        ...base,
+        action: "운영현황 반영",
+        scheduleChange: {
+          from: { startDate: operation.startDate, endDate: operation.endDate, timeText: operation.timeText },
+          to: nextSchedule
+        },
+        // 날짜·시간은 반영하고, 사람이 함께 바꾼 제목·장소는 되돌린다.
+        ...(revertFields.length > 0 ? { revertFields } : {})
+      }
     };
   }
 
   return {
-    ...base,
-    action: "캘린더 원복",
-    revertFields: [...revertFields, ...(scheduleDiffers ? ["날짜·시간"] : [])]
+    kind: "item",
+    item: {
+      ...base,
+      action: "캘린더 원복",
+      revertFields: [...revertFields, ...(scheduleDiffers ? ["날짜·시간"] : [])]
+    }
   };
+}
+
+/**
+ * 교육일 목록에서 한 날짜를 다른 날짜로 옮긴다.
+ * 옮길 곳에 이미 교육일이 있으면 합치지 않고 충돌로 알린다 — 이벤트가 하루에 두 개가 되는
+ * 상태를 코드가 임의로 정리하면 사람이 의도한 일정을 잃을 수 있다.
+ */
+export function replaceEducationDate(
+  dates: string[],
+  fromDate: string,
+  toDate: string
+): { dates: string[]; conflict: boolean } {
+  const normalized = normalizeEducationDates(dates);
+  if (fromDate === toDate) return { dates: normalized, conflict: false };
+  if (normalized.includes(toDate)) return { dates: normalized, conflict: true };
+
+  const replaced = normalized.map((date) => (date === fromDate ? toDate : date));
+
+  return { dates: normalizeEducationDates(replaced), conflict: false };
 }
 
 /** 종일/시간 지정 두 형태를 한 문자열로 만들어 비교한다. 초·오프셋 표기 차이는 무시한다. */
@@ -149,4 +199,3 @@ function isCalendarNewer(eventUpdated: string, operationUpdatedAt: Date | null):
 
   return eventTime > operationUpdatedAt.getTime();
 }
-
