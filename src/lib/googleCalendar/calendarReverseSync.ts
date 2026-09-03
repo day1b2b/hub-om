@@ -4,6 +4,7 @@
 // 스펙: docs/plans/2026-08-19-operations-calendar-reflect.md (D6~D9, 5-B절)
 //
 // 판정 원칙
+//  - 매핑 단위는 "회차의 실제 교육일 1일 ↔ 이벤트 1건"이다.
 //  - 담당 매니저가 캘린더에서 고칠 수 있는 것은 날짜·시간뿐이다(D7).
 //  - 제목·장소가 바뀌었으면 운영현황 값으로 되돌린다(원복).
 //  - 같은 회차가 양쪽에서 바뀌면 최신 수정이 이긴다. 이벤트 updated vs 회차 updatedAt.
@@ -14,7 +15,7 @@
 
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { listUpdatedEvents, type CalendarEventSnapshot } from "./calendarWriteClient";
-import { findCalendarEventLinksByCalendar } from "./calendarEventLinkRepository";
+import { findCalendarEventLinksByCalendar, type CalendarEventLink } from "./calendarEventLinkRepository";
 import { isCalendarWriteEnabled, listPartCalendars } from "./calendarWriteConfig";
 import { findOperationUpdatedAt } from "./operationSessionTimestamps";
 import {
@@ -75,7 +76,7 @@ export async function planCalendarReverseSync(options?: { now?: Date }): Promise
 
   const calendars: ReverseSyncPlan["calendars"] = [];
   const skipped: ReverseSyncSkipped[] = [];
-  const pending: { link: { operationId: string; calendarId: string; eventId: string }; event: CalendarEventSnapshot }[] = [];
+  const pending: { link: CalendarEventLink; partKey: string; event: CalendarEventSnapshot }[] = [];
 
   for (const { partKey, calendarId } of partCalendars) {
     const [events, links] = await Promise.all([
@@ -95,7 +96,7 @@ export async function planCalendarReverseSync(options?: { now?: Date }): Promise
       }
 
       linkedEvents += 1;
-      pending.push({ link, event });
+      pending.push({ link, partKey, event });
     }
 
     calendars.push({ partKey, calendarId, scannedEvents: events.length, linkedEvents });
@@ -104,7 +105,7 @@ export async function planCalendarReverseSync(options?: { now?: Date }): Promise
   const updatedAtByOperation = await findOperationUpdatedAt(pending.map((entry) => entry.link.operationId));
   const items: ReverseSyncItem[] = [];
 
-  for (const { link, event } of pending) {
+  for (const { link, partKey, event } of pending) {
     const operation = operations.get(link.operationId);
 
     if (!operation) {
@@ -112,8 +113,18 @@ export async function planCalendarReverseSync(options?: { now?: Date }): Promise
       continue;
     }
 
-    const item = evaluateEventAgainstOperation(operation, link, event, updatedAtByOperation.get(link.operationId) ?? null);
-    if (item) items.push(item);
+    const evaluation = evaluateEventAgainstOperation(
+      operation,
+      link,
+      event,
+      updatedAtByOperation.get(link.operationId) ?? null,
+      partKey
+    );
+
+    if (evaluation.kind === "item") items.push(evaluation.item);
+    if (evaluation.kind === "skip") {
+      skipped.push({ calendarId: link.calendarId, eventId: event.id, reason: evaluation.reason });
+    }
   }
 
   const counts = { "운영현황 반영": 0, "캘린더 원복": 0, "이벤트 재생성": 0 } satisfies Record<ReverseSyncAction, number>;
