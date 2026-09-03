@@ -1,6 +1,7 @@
 import { listTeamUsers } from "@/lib/data/teamUsers/teamUserRepository";
 import type { TeamUser } from "@/lib/data/teamUsers/teamUserTypes";
 import { omRequestManagerName } from "@/lib/data/omRequest/omRequestTypes";
+import { formatEducationDatesCompact, parseEducationDatesText } from "@/lib/data/operationCalculations";
 
 // ── Slack 발송 방식 ────────────────────────────────────────────────
 // 1순위: 봇 토큰(SLACK_BOT_TOKEN) + chat.postMessage.
@@ -113,6 +114,49 @@ function mentionByName(users: TeamUser[], name: string | undefined | null, fallb
   return fallback;
 }
 
+// ── 일정 한 줄 표기 ───────────────────────────────────────────────
+/**
+ * 실제 교육일이 있으면 기간(2026-09-04 ~ 2026-09-08)은 쓰지 않는다. 둘을 같이 적으면
+ * 중복이고 "쉬는 날에도 교육하나?"로 읽힌다. 교육일이 없는(옛 방식) 회차만 기간으로 적는다.
+ * 예) • 1회차 · 26.09.04, 07~08 (3일) · 09:00~18:00 (8h) · TEST
+ */
+function sessionLine(
+  index: number,
+  session: {
+    date: string;
+    dateEnd?: string;
+    timeStart: string;
+    timeEnd: string;
+    duration: string;
+    location: string;
+    educationDatesText?: string;
+  }
+): string {
+  const dates = parseEducationDatesText(session.educationDatesText ?? "").dates;
+  const schedule =
+    dates.length > 0
+      ? `${formatEducationDatesCompact(dates)}${dates.length > 1 ? ` (${dates.length}일)` : ""}`
+      : compactRange(session.date, session.dateEnd);
+
+  const time = session.timeStart && session.timeEnd ? `${session.timeStart}~${session.timeEnd}` : "";
+  const duration = session.duration
+    ? session.duration.endsWith("h")
+      ? session.duration
+      : `${session.duration}h`
+    : "";
+  const timePart = [time, duration ? `(${duration})` : ""].filter(Boolean).join(" ");
+
+  return [`• ${index + 1}회차`, schedule, timePart, session.location].filter(Boolean).join(" · ");
+}
+
+/** 교육일이 없는 회차용 기간 표기. 연속 구간이라 compact 표기가 그대로 구간으로 묶어준다. */
+function compactRange(date: string, dateEnd?: string): string {
+  if (!date) return "";
+  if (!dateEnd || dateEnd === date) return formatEducationDatesCompact([date]);
+
+  return `${formatEducationDatesCompact([date])} ~ ${formatEducationDatesCompact([dateEnd])}`;
+}
+
 // ── 요청 접수 알림 ────────────────────────────────────────────────
 export async function notifyOmRequestCreated(params: {
   team: string;
@@ -137,14 +181,7 @@ export async function notifyOmRequestCreated(params: {
   }[];
   notes: string;
 }): Promise<{ channel: string; ts: string } | null> {
-  const sessionLines = params.sessions
-    .map((s, i) => {
-      const duration = s.duration ? (s.duration.endsWith("h") ? s.duration : `${s.duration}h`) : "";
-      const dateRange = s.dateEnd ? `${s.date} ~ ${s.dateEnd}` : s.date;
-      const educationDatesSuffix = s.educationDatesText?.trim() ? ` / 실제 교육일 ${s.educationDatesText.trim()}` : "";
-      return `• ${i + 1}회차 / ${dateRange} / ${s.timeStart} ~ ${s.timeEnd}${duration ? ` / ${duration}` : ""} / ${s.location}${educationDatesSuffix}`;
-    })
-    .join("\n");
+  const sessionLines = params.sessions.map((session, index) => sessionLine(index, session)).join("\n");
 
   const users = await loadDirectory();
   const ldMention = mentionByEmail(users, params.ldEmail, params.ld);

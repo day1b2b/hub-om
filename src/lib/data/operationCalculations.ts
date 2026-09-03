@@ -318,6 +318,70 @@ function formatMonthDay(date: Date): string {
   return `${date.getMonth() + 1}/${date.getDate()}`;
 }
 
+/**
+ * 알림용 축약 표기. 연속된 날짜는 구간으로 묶고(화면용 formatEducationDatesList와 같은 방침),
+ * 첫 날짜만 YY.MM.DD로 쓰고 이어지는 날짜는 같은 달이면 일자만, 달이 바뀌면 MM.DD,
+ * 해가 바뀌면 다시 YY.MM.DD로 쓴다. 일자는 두 자리를 유지해 "7"이 7월로 읽히지 않게 한다.
+ *
+ * 예) 9/4, 9/7, 9/8        → "26.09.04, 07~08"
+ *     9/4 ~ 9/8 (연속 5일) → "26.09.04~08"
+ *     9/30, 10/1           → "26.09.30~10.01"
+ *     12/30, 12/31, 1/5    → "26.12.30~31, 27.01.05"
+ *
+ * 화면은 M/D 표기(formatEducationDatesList)를 쓴다. 둘을 섞지 않는다.
+ */
+export function formatEducationDatesCompact(dates: string[]): string {
+  const parsed = dates
+    .map((date) => parseDate(date))
+    .filter((value): value is Date => value !== null)
+    .sort((a, b) => a.getTime() - b.getTime());
+
+  if (parsed.length === 0) return "";
+
+  const runs: { start: Date; end: Date }[] = [];
+  for (const value of parsed) {
+    const last = runs[runs.length - 1];
+
+    if (last && value.getTime() - last.end.getTime() === ONE_DAY_MS) {
+      last.end = value;
+      continue;
+    }
+
+    if (last && value.getTime() === last.end.getTime()) continue;
+
+    runs.push({ start: value, end: value });
+  }
+
+  const pad = (value: number) => String(value).padStart(2, "0");
+  let lastYear = -1;
+  let lastMonth = -1;
+
+  // 직전에 쓴 날짜와 같은 해·달이면 생략한다. 구간의 끝은 시작을 기준으로 줄인다.
+  const shorten = (value: Date) => {
+    const year = value.getFullYear();
+    const month = value.getMonth() + 1;
+    const day = pad(value.getDate());
+    const sameYear = year === lastYear;
+    const sameMonth = sameYear && month === lastMonth;
+
+    lastYear = year;
+    lastMonth = month;
+
+    if (sameMonth) return day;
+    if (sameYear) return `${pad(month)}.${day}`;
+
+    return `${pad(year % 100)}.${pad(month)}.${day}`;
+  };
+
+  return runs
+    .map(({ start, end }) => {
+      const startLabel = shorten(start);
+
+      return start.getTime() === end.getTime() ? startLabel : `${startLabel}~${shorten(end)}`;
+    })
+    .join(", ");
+}
+
 /** 실제 교육일 목록에서 startDate/endDate(최소/최대)를 계산한다. 빈 목록이면 null. */
 export function deriveDateRangeFromEducationDates(
   dates: string[]
