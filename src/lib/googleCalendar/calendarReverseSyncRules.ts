@@ -19,7 +19,9 @@ export type ReverseSyncAction =
   /** 운영현황이 더 최신이거나 날짜 외 필드가 바뀌었다 → 캘린더를 운영현황 값으로 되돌린다. */
   | "캘린더 원복"
   /** 원본 이벤트가 사라졌다 → 다시 만들고 담당 OM에게 알린다. */
-  | "이벤트 재생성";
+  | "이벤트 재생성"
+  /** 같은 일정을 사람이 상한을 넘겨 다시 지웠다 → 되살리지 않고 매핑을 놓아준다. */
+  | "복구 중단";
 
 export interface ReverseSyncSchedule {
   startDate: string;
@@ -67,7 +69,8 @@ export function evaluateEventAgainstOperation(
   event: CalendarEventSnapshot,
   operationUpdatedAt: Date | null,
   partKey?: string | null,
-  minLagMs: number = DEFAULT_MIN_LAG_MS
+  minLagMs: number = DEFAULT_MIN_LAG_MS,
+  maxRecreate: number = DEFAULT_MAX_RECREATE
 ): ReverseSyncEvaluation {
   const educationDates = normalizeEducationDates(operation.educationDates);
   const base = {
@@ -87,8 +90,11 @@ export function evaluateEventAgainstOperation(
   };
 
   // 원본이 사라진 경우. 회차 취소는 운영현황에서만 하므로(D4) 이건 비정상이다.
+  // 다만 되살린 일정을 또 지웠다면 실수가 아니라 사람의 판단으로 본다 — 복구를 멈춘다.
   if (event.status === "cancelled") {
-    return { kind: "item", item: { ...base, action: "이벤트 재생성" } };
+    const action: ReverseSyncAction = link.recreateCount >= maxRecreate ? "복구 중단" : "이벤트 재생성";
+
+    return { kind: "item", item: { ...base, action } };
   }
 
   const plan = buildCalendarEventBodies(operation, [], partKey).find((entry) => entry.eventDate === link.eventDate);
@@ -210,6 +216,16 @@ function previousDay(date: string): string {
  * 구간 단위로 바꾼 배포) 교육일이 지워질 뻔했다. 시차를 두면 자기 쓰기의 잔향이 걸러진다.
  */
 const DEFAULT_MIN_LAG_MS = 120_000;
+
+/**
+ * 같은 교육일의 이벤트를 되살리는 최대 횟수(기본 1회).
+ *
+ * 파트 캘린더에는 OM장처럼 편집 권한을 가진 사람이 있어서, 참석자가 아니어도 원본을
+ * 지울 수 있다. 첫 삭제는 실수로 보고 되살리지만, 되살린 일정을 또 지웠다면 그건
+ * 의도다. 계속 되살리면 사람과 코드가 싸우면서 초대 메일과 DM이 무한히 나간다.
+ * 상한을 넘으면 복구를 멈추고 담당 OM에게 hub-om에서 처리하라고 알린다.
+ */
+const DEFAULT_MAX_RECREATE = 1;
 
 /**
  * 회차 수정 시각을 모르면(로컬 JSON 저장소 등) 캘린더를 최신으로 보지 않는다.
