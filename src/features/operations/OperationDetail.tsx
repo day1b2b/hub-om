@@ -649,7 +649,11 @@ function aggregateUniqueValues(
 }
 
 function formatTotalEducationDays(operations: OperationSession[]): string {
-  const totalDays = operations.reduce((sum, candidate) => sum + (candidate.sessionDurationDays ?? 0), 0);
+  const totalDays = operations.reduce(
+    (sum, candidate) =>
+      sum + (candidate.educationDates.length > 0 ? candidate.educationDates.length : candidate.sessionDurationDays ?? 0),
+    0
+  );
 
   return totalDays > 0 ? `총 ${totalDays}일` : "확인 필요";
 }

@@ -103,7 +103,12 @@ export async function insertEvent(calendarId: string, body: CalendarEventBody): 
   return created.id;
 }
 
-export async function patchEvent(calendarId: string, eventId: string, body: CalendarEventBody): Promise<void> {
+/** 부분 갱신을 허용한다. 역반영 원복은 제목·장소만 보내야 해서 전체 본문을 강제하지 않는다. */
+export async function patchEvent(
+  calendarId: string,
+  eventId: string,
+  body: Partial<CalendarEventBody>
+): Promise<void> {
   const response = await callCalendar(
     `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}?${SEND_UPDATES}`,
     { method: "PATCH", body: JSON.stringify(body) }
@@ -125,4 +130,83 @@ export async function deleteEvent(calendarId: string, eventId: string): Promise<
   if (response.ok || response.status === 404 || response.status === 410) return;
 
   throw new Error(`events.delete 실패(${response.status}): ${await response.text()}`);
+}
+
+// ── 역반영용 읽기 ────────────────────────────────────────────────
+// 같은 B2B 계정 토큰으로 events.list를 호출한다. 읽기 전용 서비스계정 reader는
+// 이 캘린더에 접근 권한이 없고(소유자가 B2B 계정), 취소된 이벤트도 봐야 해서 여기 둔다.
+
+export interface CalendarEventSnapshot {
+  id: string;
+  status: string;
+  summary: string;
+  location: string;
+  start: { date?: string; dateTime?: string };
+  end: { date?: string; dateTime?: string };
+  updated: string;
+}
+
+interface CalendarEventListResponse {
+  items?: {
+    id?: string;
+    status?: string;
+    summary?: string;
+    location?: string;
+    start?: { date?: string; dateTime?: string };
+    end?: { date?: string; dateTime?: string };
+    updated?: string;
+  }[];
+  nextPageToken?: string;
+}
+
+const EVENT_FIELDS = "nextPageToken,items(id,status,summary,location,start,end,updated)";
+const EVENT_PAGE_SIZE = 250;
+const MAX_PAGES = 10;
+
+/**
+ * updatedMin 이후에 바뀐 이벤트만 읽는다(취소된 것 포함).
+ * syncToken 대신 시간 창을 쓰는 이유는 저장할 상태가 없어 마이그레이션이 필요 없고,
+ * 실행이 한 번 빠져도 다음 실행의 창이 겹치면 자동으로 따라잡기 때문이다.
+ */
+export async function listUpdatedEvents(calendarId: string, updatedMinIso: string): Promise<CalendarEventSnapshot[]> {
+  const events: CalendarEventSnapshot[] = [];
+  let pageToken = "";
+
+  for (let page = 0; page < MAX_PAGES; page += 1) {
+    const query = new URLSearchParams({
+      updatedMin: updatedMinIso,
+      showDeleted: "true",
+      singleEvents: "true",
+      maxResults: String(EVENT_PAGE_SIZE),
+      fields: EVENT_FIELDS
+    });
+    if (pageToken) query.set("pageToken", pageToken);
+
+    const response = await callCalendar(`/calendars/${encodeURIComponent(calendarId)}/events?${query}`, {
+      method: "GET"
+    });
+
+    if (!response.ok) throw new Error(`events.list 실패(${response.status}): ${await response.text()}`);
+
+    const payload = (await response.json()) as CalendarEventListResponse;
+
+    for (const item of payload.items ?? []) {
+      if (!item.id) continue;
+
+      events.push({
+        id: item.id,
+        status: item.status ?? "confirmed",
+        summary: item.summary ?? "",
+        location: item.location ?? "",
+        start: { date: item.start?.date, dateTime: item.start?.dateTime },
+        end: { date: item.end?.date, dateTime: item.end?.dateTime },
+        updated: item.updated ?? ""
+      });
+    }
+
+    if (!payload.nextPageToken) break;
+    pageToken = payload.nextPageToken;
+  }
+
+  return events;
 }

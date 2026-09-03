@@ -18,6 +18,7 @@ const PUBLIC_PATHS = new Set([
 const SYNC_API_PATHS = new Set([
   "/api/admin/sync-notion",
   "/api/reminders/lecture-followup",
+  "/api/sync/calendar-events",
   "/api/sync/all",
   "/api/sync/engagements",
   "/api/sync/samsung-schedule"
@@ -54,12 +55,17 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           include_granted_scopes: "true",
           prompt: "consent select_account",
           response_type: "code",
-          scope: [
-            "openid",
-            "email",
-            "profile",
-            GOOGLE_SHEETS_READONLY_SCOPE
-          ].join(" ")
+          // 민감 범위를 하나도 요구하지 않는다 — 미인증 앱이 민감 범위를 요구하면
+          // Google이 로그인마다 "확인되지 않은 앱" 경고를 띄우기 때문이다.
+          //
+          // spreadsheets.readonly 는 '구글 시트 링크로 가져오기'(be33658)가 쓰던 것인데,
+          // 그 화면은 a2397b7("엑셀 일괄 등록으로 개편", 2026-08-07)에서 내려갔고
+          // API 라우트(/api/admin/imports/google-sheets/*)만 되돌리기 쉽게 남아 있다.
+          // 즉 아무도 못 쓰는 기능 때문에 전원이 민감 권한에 동의하던 상태였다.
+          //
+          // 되살릴 때: 이 배열에 GOOGLE_SHEETS_READONLY_SCOPE 를 다시 넣고 화면을 붙이면 된다.
+          // (캘린더 쓰기는 이 로그인이 아니라 B2B 전용 계정 토큰 GOOGLE_CAL_OAUTH_* 를 쓴다.)
+          scope: ["openid", "email", "profile"].join(" ")
         }
       }
     })
