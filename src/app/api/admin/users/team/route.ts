@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
+// 명단은 남의 대시보드를 바꾸는 권한의 뿌리다. 로그인만으로는 부족하다.
+import { denyIfNotAdmin } from "@/lib/auth/apiAdminGuard";
 import { updateTeamUserTeam } from "@/lib/data/teamUsers/teamUserRepository";
 import { TEAM_OPTIONS } from "@/lib/data/teamUsers/teamUserTypes";
 
 export async function POST(request: Request) {
+  const denied = await denyIfNotAdmin();
+  if (denied) return denied;
+
   try {
     const body = await request.json();
     const id = typeof body?.id === "string" ? body.id : "";
