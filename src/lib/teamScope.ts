@@ -26,12 +26,27 @@ export function parseTeamScope(value: string | string[] | undefined): TeamScope 
   return null;
 }
 
+/**
+ * 세션(로그인 계정) 기반 팀 자동 추론은 더 이상 하지 않는다 — 명시적으로
+ * `?team=` 파라미터가 있을 때만 그 값을 쓰고, 없으면 항상 "both"(전체)다.
+ *
+ * 이전에는 로그인한 사람 이름을 ownerRoster(1팀/2팀 명단)와 대조해 자동으로
+ * 스코프를 좁혔는데, 이 화면들엔 스코프를 바꿀 수 있는 UI가 아예 없어서
+ * 자동 추론이 틀리면 사용자가 이유도 모른 채 데이터가 안 보이는 상태로
+ * 고립됐다. 특히 ownerRoster를 DB(members 테이블)에서 못 읽어오면
+ * defaultTeamMemberRoster.ts의 하드코딩된 옛 1·2팀 명단으로 대체되는데,
+ * 여기 들어있는 이름과 로그인 계정 이름이 우연히 겹치면(예: "홍예진")
+ * 실제 조직 구조(AX N파트)와 무관하게 해당 팀으로 필터링되어 대부분의
+ * 운영 데이터가 사라져 보였다(대시보드/운영현황/과정캘린더 등에서 재현됨).
+ */
 export function resolveTeamScope(
   searchParams: Record<string, string | string[] | undefined>,
   session: Session,
   ownerRoster: ResourceOwnerRoster
 ): TeamScope {
-  return parseTeamScope(searchParams.team) ?? getSessionTeamScope(session, ownerRoster) ?? "both";
+  void session;
+  void ownerRoster;
+  return parseTeamScope(searchParams.team) ?? "both";
 }
 
 export function filterOperationsByTeamScope(
@@ -91,21 +106,6 @@ export function teamScopeSearchParam(teamScope: TeamScope) {
   if (teamScope === "both") return "";
 
   return `?team=${teamScope}`;
-}
-
-function getSessionTeamScope(session: Session, ownerRoster: ResourceOwnerRoster): TeamScope | null {
-  const candidates = getSessionPersonCandidates(session);
-  if (candidates.length === 0) return null;
-
-  if ((ownerRoster["1팀"] ?? []).some((name) => candidates.includes(normalizePersonName(name)))) return "team_1";
-  if ((ownerRoster["2팀"] ?? []).some((name) => candidates.includes(normalizePersonName(name)))) return "team_2";
-
-  return null;
-}
-
-function getSessionPersonCandidates(session: Session) {
-  const emailLocalPart = session.user?.email?.split("@")[0] ?? "";
-  return [session.user?.name ?? "", emailLocalPart].map(normalizePersonName).filter(Boolean);
 }
 
 function resolveOperationSourceTeam(operation: OperationSession, ownerRoster: ResourceOwnerRoster): SourceTeam {
