@@ -66,7 +66,8 @@ export function evaluateEventAgainstOperation(
   link: CalendarEventLink,
   event: CalendarEventSnapshot,
   operationUpdatedAt: Date | null,
-  partKey?: string | null
+  partKey?: string | null,
+  minLagMs: number = DEFAULT_MIN_LAG_MS
 ): ReverseSyncEvaluation {
   const educationDates = normalizeEducationDates(operation.educationDates);
   const base = {
@@ -107,7 +108,7 @@ export function evaluateEventAgainstOperation(
   if (!scheduleDiffers && revertFields.length === 0) return { kind: "none" };
 
   // 날짜·시간이 다를 때만 승자를 따진다. 캘린더가 더 최신이면 운영현황에 반영한다(D7).
-  const calendarIsNewer = isCalendarNewer(event.updated, operationUpdatedAt);
+  const calendarIsNewer = isCalendarNewer(event.updated, operationUpdatedAt, minLagMs);
   const nextSchedule = scheduleDiffers ? eventScheduleToSession(event) : null;
 
   if (scheduleDiffers && calendarIsNewer && nextSchedule) {
@@ -201,14 +202,24 @@ function previousDay(date: string): string {
 }
 
 /**
+ * "사람이 캘린더를 고쳤다"고 인정하는 최소 시차(기본 2분).
+ *
+ * hub-om이 회차를 저장한 직후 자기 손으로 이벤트를 patch하기 때문에, 구글의 updated는
+ * 회차 updatedAt보다 1~2초 늦게 찍힌다. 그 차이를 사람의 수정으로 오판하면 방금 밀어넣은
+ * 값을 거꾸로 운영현황에 되돌려 쓴다 — 실제로 코드 규칙이 바뀐 직후(이벤트를 하루 단위에서
+ * 구간 단위로 바꾼 배포) 교육일이 지워질 뻔했다. 시차를 두면 자기 쓰기의 잔향이 걸러진다.
+ */
+const DEFAULT_MIN_LAG_MS = 120_000;
+
+/**
  * 회차 수정 시각을 모르면(로컬 JSON 저장소 등) 캘린더를 최신으로 보지 않는다.
  * 판단 근거 없이 운영현황을 덮어쓰지 않는 쪽이 안전하다.
  */
-function isCalendarNewer(eventUpdated: string, operationUpdatedAt: Date | null): boolean {
+function isCalendarNewer(eventUpdated: string, operationUpdatedAt: Date | null, minLagMs: number): boolean {
   if (!operationUpdatedAt) return false;
 
   const eventTime = Date.parse(eventUpdated);
   if (Number.isNaN(eventTime)) return false;
 
-  return eventTime > operationUpdatedAt.getTime();
+  return eventTime - operationUpdatedAt.getTime() > minLagMs;
 }
