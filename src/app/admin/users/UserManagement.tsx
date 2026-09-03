@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { findDuplicateEmails } from "@/lib/data/teamUsers/duplicateEmails";
 import { TEAM_OPTIONS } from "@/lib/data/teamUsers/teamUserTypes";
 import type { TeamUser, TeamUserInput, TeamUserRole } from "@/lib/data/teamUsers/teamUserTypes";
 
@@ -35,6 +36,11 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
 
   const filteredUsers =
     teamFilter === "전체" ? users : users.filter((u) => u.team === teamFilter);
+
+  // 같은 이메일 행은 조용히 사람을 가린다. 명단 조회가 나중 행의 이름을 집어서,
+  // 그 이름이 운영 현황 OM 표기와 다르면 그 사람 대시보드가 통째로 0건이 된다.
+  // 팀 필터와 무관하게 전체에서 찾는다 — 중복 두 행이 서로 다른 팀에 있을 수 있다.
+  const duplicateEmails = useMemo(() => findDuplicateEmails(users), [users]);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -203,7 +209,9 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
 
   return (
     <div className="user-management">
-      <form className="user-add-form" style={{ flexWrap: "nowrap" }} onSubmit={handleAdd}>
+      {/* 인라인 nowrap을 두면 컨트롤이 6개라 좁은 화면에서 [추가] 버튼이 오른쪽으로 밀려
+          잘린다. globals.css의 flex-wrap: wrap을 그대로 쓴다. */}
+      <form className="user-add-form" onSubmit={handleAdd}>
         <select
           value={team}
           onChange={(e) => setTeam(e.target.value)}
@@ -270,31 +278,61 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
         })}
       </div>
 
+      {duplicateEmails.length > 0 && (
+        <div className="om-request-error" role="alert">
+          <strong>같은 이메일로 등록된 행이 있습니다 ({duplicateEmails.length}건).</strong>
+          <br />
+          한 사람에 행이 둘이면 나중에 등록된 행의 이름이 적용되고, 그 이름이 운영 현황 OM
+          표기와 다르면 그 사람의 내 대시보드가 0건으로 보입니다. 하나만 남기고 지워 주세요.
+          <ul>
+            {duplicateEmails.map((group) => (
+              <li key={group.email}>
+                {group.email} — {group.names.join(", ")}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {filteredUsers.length > 0 && (
         <>
           <div className="user-list-header">
             <span className="user-list-count">
               {teamFilter === "전체" ? `총 ${users.length}명` : `${teamFilter} ${filteredUsers.length}명`}
             </span>
-            {selected.size > 0 && (
-              <div className="user-bulk-assign">
-                <select
-                  value={assignRole}
-                  onChange={(e) => setAssignRole(e.target.value as TeamUserRole)}
-                  className="user-input"
-                >
-                  {ROLE_OPTIONS.map((r) => (
-                    <option key={r.value} value={r.value}>{r.label}</option>
-                  ))}
-                </select>
-                <button className="user-add-btn" disabled={assigning} onClick={handleAssignRole} type="button">
-                  {assigning ? "지정 중..." : `${selected.size}명 구분 지정`}
-                </button>
-                <button className="user-delete-btn" disabled={deleting} onClick={handleDelete}>
-                  {deleting ? "삭제 중..." : `${selected.size}명 삭제`}
-                </button>
-              </div>
-            )}
+            {/* 전에는 행을 체크할 때만 이 영역이 나타났다. 그래서 구분 지정·삭제 기능이
+                아예 없는 것으로 보였다. 항상 두고 선택 전에는 비활성으로 알려 준다. */}
+            <div className="user-bulk-assign">
+              <select
+                value={assignRole}
+                onChange={(e) => setAssignRole(e.target.value as TeamUserRole)}
+                className="user-input"
+                disabled={selected.size === 0}
+              >
+                {ROLE_OPTIONS.map((r) => (
+                  <option key={r.value} value={r.value}>{r.label}</option>
+                ))}
+              </select>
+              <button
+                className="user-add-btn"
+                disabled={assigning || selected.size === 0}
+                onClick={handleAssignRole}
+                type="button"
+              >
+                {assigning ? "지정 중..." : selected.size > 0 ? `${selected.size}명 구분 지정` : "구분 지정"}
+              </button>
+              <button
+                className="user-delete-btn"
+                disabled={deleting || selected.size === 0}
+                onClick={handleDelete}
+                type="button"
+              >
+                {deleting ? "삭제 중..." : selected.size > 0 ? `${selected.size}명 삭제` : "삭제"}
+              </button>
+              {selected.size === 0 && (
+                <span className="user-bulk-hint">표에서 행을 선택하면 쓸 수 있어요</span>
+              )}
+            </div>
           </div>
           {teamEditError && <p className="om-request-error">{teamEditError}</p>}
           <table className="user-table">

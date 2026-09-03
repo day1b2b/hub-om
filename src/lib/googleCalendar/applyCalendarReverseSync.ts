@@ -1,10 +1,15 @@
 // 역반영 계획을 실제로 적용한다(calendarReverseSync.ts가 만든 계획을 받아 실행).
 //
 // 쓰기 범위를 좁게 고정한다(db-write-safety):
-//  - 운영현황에 쓰는 필드는 startDate·endDate·timeText 셋뿐이다.
-//  - 대상은 캘린더 매핑이 있는 회차 중 판정이 "운영현황 반영"인 건만이다.
+//  - 운영현황에 쓰는 것은 실제 교육일(educationDates)과 시간(timeText)뿐이다.
+//    startDate/endDate는 리포지토리가 교육일 목록의 최소·최대로 다시 계산한다.
+//    교육일이 등록되지 않은 옛 회차는 startDate·endDate·timeText를 직접 쓴다.
+//  - 대상은 캘린더 매핑이 있는 회차 중 판정이 잡힌 건만이다.
 //  - 1회 실행 상한(CALENDAR_REVERSE_SYNC_MAX_APPLY, 기본 20건)을 넘으면 한 건도 적용하지 않는다.
 //  - 바꾼 값은 이전값→새값으로 로그에 남긴다([gcal-reverse] 접두어로 Coolify 런타임 로그에서 검색).
+//
+// 한계: 시간(timeText)은 회차 단위 값이다. 매니저가 특정 교육일의 시간만 바꿔도 그 회차
+// 전체 시간이 바뀌고, 다른 교육일 이벤트도 다음 반영에서 같은 시간으로 맞춰진다.
 //
 // 스펙: docs/plans/2026-08-19-operations-calendar-reflect.md (D7~D9, 5-B절)
 
@@ -16,9 +21,11 @@ import { sendSlackDirectMessage } from "@/lib/slack/notifySlack";
 import { insertEvent, patchEvent } from "./calendarWriteClient";
 import { resolveCalendarTargets } from "./calendarParticipants";
 import { resolvePartCalendarId } from "./calendarWriteConfig";
-import { saveCalendarEventLink } from "./calendarEventLinkRepository";
-import { buildCalendarEventBody } from "./operationCalendarEvent";
-import { planCalendarReverseSync, type ReverseSyncItem, type ReverseSyncPlan } from "./calendarReverseSync";
+import type { OperationSession } from "@/lib/data/operationTypes";
+import { moveCalendarEventLinkDate, saveCalendarEventLink } from "./calendarEventLinkRepository";
+import { buildCalendarEventBodies } from "./operationCalendarEvent";
+import { planCalendarReverseSync, type ReverseSyncPlan } from "./calendarReverseSync";
+import { replaceEducationDate, type ReverseSyncItem } from "./calendarReverseSyncRules";
 
 const DEFAULT_MAX_APPLY = 20;
 
@@ -83,30 +90,82 @@ async function applyScheduleToOperation(item: ReverseSyncItem): Promise<string> 
   const change = item.scheduleChange;
   if (!change) throw new Error("날짜·시간 변경 내용이 없습니다.");
 
-  await getOperationRepository().updateOperation(item.operationId, {
-    startDate: change.to.startDate,
-    endDate: change.to.endDate,
-    timeText: change.to.timeText
-  });
-
-  const from = `${change.from.startDate}~${change.from.endDate} ${change.from.timeText}`.trim();
-  const to = `${change.to.startDate}~${change.to.endDate} ${change.to.timeText}`.trim();
-  console.info(`[gcal-reverse] ${item.operationId} 날짜·시간 반영: ${from} → ${to} (event=${item.eventId})`);
+  const operation = await findOperation(item.operationId);
+  const detail = item.perEducationDay
+    ? await applyEducationDateChange(item, operation, change.to.startDate, change.to.timeText)
+    : await applyRangeChange(item, change.to);
 
   // 사람이 날짜와 함께 제목·장소도 바꿨으면 그 필드만 되돌린다.
   // 날짜·시간은 방금 받아들인 값이므로 patch에 넣지 않는다.
   const revertFields = (item.revertFields ?? []).filter((field) => field !== "날짜·시간");
-  if (revertFields.length === 0) return `날짜·시간 반영 (${to})`;
+  if (revertFields.length === 0) return detail;
 
-  const operation = await findOperation(item.operationId);
-  const expected = buildCalendarEventBody(operation, []);
-  await patchEvent(item.calendarId, item.eventId, {
-    summary: expected.summary,
-    location: expected.location ?? ""
+  const refreshed = await findOperation(item.operationId);
+  const expected = findPlanBody(refreshed, change.to.startDate, item.partKey);
+  if (expected) {
+    await patchEvent(item.calendarId, item.eventId, {
+      summary: expected.summary,
+      location: expected.location ?? ""
+    });
+    console.info(`[gcal-reverse] ${item.operationId} ${revertFields.join(", ")} 원복 (event=${item.eventId})`);
+  }
+
+  return `${detail} + ${revertFields.join(", ")} 원복`;
+}
+
+/** 교육일별 이벤트: 그 이벤트가 담당하던 교육일을 새 날짜로 옮긴다. */
+async function applyEducationDateChange(
+  item: ReverseSyncItem,
+  operation: OperationSession,
+  nextDate: string,
+  nextTimeText: string
+): Promise<string> {
+  const { dates, conflict } = replaceEducationDate(operation.educationDates, item.eventDate, nextDate);
+
+  if (conflict) {
+    throw new Error(
+      `옮긴 날짜(${nextDate})에 이미 교육일이 있어 반영하지 않았습니다. 운영현황에서 교육일을 정리해주세요.`
+    );
+  }
+
+  const timeChanged = nextTimeText !== "" && nextTimeText !== operation.timeText;
+
+  await getOperationRepository().updateOperation(item.operationId, {
+    educationDates: dates,
+    ...(timeChanged ? { timeText: nextTimeText } : {})
   });
-  console.info(`[gcal-reverse] ${item.operationId} ${revertFields.join(", ")} 원복 (event=${item.eventId})`);
 
-  return `날짜·시간 반영 (${to}) + ${revertFields.join(", ")} 원복`;
+  if (item.eventDate !== nextDate) {
+    await moveCalendarEventLinkDate(item.operationId, item.eventDate, nextDate);
+  }
+
+  console.info(
+    `[gcal-reverse] ${item.operationId} 교육일 반영: ${item.eventDate} → ${nextDate}` +
+      `${timeChanged ? ` / 시간 ${operation.timeText} → ${nextTimeText}` : ""} (event=${item.eventId})`
+  );
+
+  return `교육일 ${item.eventDate} → ${nextDate}${timeChanged ? ` · 시간 ${nextTimeText}` : ""}`;
+}
+
+/** 교육일이 등록되지 않은 옛 회차: 기간 이벤트 1건이므로 시작·종료·시간을 직접 쓴다. */
+async function applyRangeChange(
+  item: ReverseSyncItem,
+  to: { startDate: string; endDate: string; timeText: string }
+): Promise<string> {
+  await getOperationRepository().updateOperation(item.operationId, {
+    startDate: to.startDate,
+    endDate: to.endDate,
+    timeText: to.timeText
+  });
+
+  if (item.eventDate !== to.startDate) {
+    await moveCalendarEventLinkDate(item.operationId, item.eventDate, to.startDate);
+  }
+
+  const summary = `${to.startDate}~${to.endDate} ${to.timeText}`.trim();
+  console.info(`[gcal-reverse] ${item.operationId} 기간 반영: ${summary} (event=${item.eventId})`);
+
+  return `날짜·시간 반영 (${summary})`;
 }
 
 /**
@@ -116,7 +175,8 @@ async function applyScheduleToOperation(item: ReverseSyncItem): Promise<string> 
  */
 async function revertEventToOperation(item: ReverseSyncItem): Promise<string> {
   const operation = await findOperation(item.operationId);
-  const expected = buildCalendarEventBody(operation, []);
+  const expected = findPlanBody(operation, item.eventDate, item.partKey);
+  if (!expected) throw new Error(`운영현황에 없는 교육일(${item.eventDate})입니다.`);
 
   await patchEvent(item.calendarId, item.eventId, {
     summary: expected.summary,
@@ -136,10 +196,20 @@ async function recreateEvent(item: ReverseSyncItem): Promise<string> {
   const operation = await findOperation(item.operationId);
   const targets = await resolveCalendarTargets(operation);
   const calendarId = resolvePartCalendarId(targets.partKey) || item.calendarId;
-  const eventId = await insertEvent(calendarId, buildCalendarEventBody(operation, targets.attendeeEmails));
+  const plan = buildCalendarEventBodies(operation, targets.attendeeEmails, targets.partKey).find(
+    (entry) => entry.eventDate === item.eventDate
+  );
 
-  await saveCalendarEventLink({ operationId: operation.operationId, calendarId, eventId });
-  console.info(`[gcal-reverse] ${item.operationId} 이벤트 재생성: ${item.eventId} → ${eventId}`);
+  if (!plan) throw new Error(`운영현황에 없는 교육일(${item.eventDate})이라 다시 만들지 않았습니다.`);
+
+  const eventId = await insertEvent(calendarId, plan.body);
+  await saveCalendarEventLink({
+    operationId: operation.operationId,
+    calendarId,
+    eventId,
+    eventDate: item.eventDate
+  });
+  console.info(`[gcal-reverse] ${item.operationId} 이벤트 재생성: ${item.eventId} → ${eventId} (${item.eventDate})`);
 
   const notified = await notifyRecreated(item);
 
@@ -178,7 +248,11 @@ async function notifyRecreated(item: ReverseSyncItem): Promise<boolean> {
   }
 }
 
-async function findOperation(operationId: string) {
+function findPlanBody(operation: OperationSession, eventDate: string, partKey: null | string) {
+  return buildCalendarEventBodies(operation, [], partKey).find((entry) => entry.eventDate === eventDate)?.body;
+}
+
+async function findOperation(operationId: string): Promise<OperationSession> {
   const operation = await getOperationRepository().getOperationById(operationId);
   if (!operation) throw new Error(`회차를 찾지 못했습니다(${operationId}).`);
 

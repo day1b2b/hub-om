@@ -47,7 +47,7 @@ export function MyDashboard({ assignedRequests, diagnosis, omName, operations }:
           <section className="dashboard-panel">
             <div className="empty-state">
               <strong>명단에 등록된 계정이 아닙니다.</strong>
-              <span>관리자에게 OM 명단 등록을 요청하세요. (관리자 전용 → 사용자 관리)</span>
+              <span>관리자에게 OM 명단 등록을 요청하세요. (관리자 전용 → 데이터 관리 → 멤버 관리)</span>
             </div>
           </section>
         </section>
@@ -277,7 +277,7 @@ export function MyDashboard({ assignedRequests, diagnosis, omName, operations }:
   ];
   // 다음 과정 D-day: 운영 + 담당 과정을 모두 고려해 임박한 순으로 몇 개를 보여 준다.
   // 하나만 보여 주면 그 과정을 치른 뒤 다음이 무엇인지 캘린더를 뒤져야 했다.
-  const nextEvents = findNextEvents(calendarEvents, today, 3);
+  const nextEvents = findNextEvents(calendarEvents, today, 4);
   const [nextEvent, ...upcomingAfterNext] = nextEvents;
 
   return (
@@ -438,7 +438,7 @@ export function MyDashboard({ assignedRequests, diagnosis, omName, operations }:
           <section className="dashboard-panel">
             <div className="section-title">
               <h2>다음 과정 D-day</h2>
-              <span>임박한 예정 과정 {nextEvents.length}건</span>
+              <span>다가오는 예정 과정 {nextEvents.length}건</span>
             </div>
             {nextEvent ? (
               <>
@@ -760,7 +760,7 @@ function NameMismatchNotice({ diagnosis }: { diagnosis: OmNameDiagnosis }) {
           <span>
             <b>이 계정 이메일로 명단 행이 {diagnosis.rosterNamesForEmail.length}개 있습니다:</b>{" "}
             {diagnosis.rosterNamesForEmail.join(", ")} — 나중에 등록된 행의 이름이 적용됩니다.
-            관리자 → 사용자 관리에서 중복 행을 지우고 하나만 남겨 주세요.
+            관리자 → 멤버 관리에서 중복 행을 지우고 하나만 남겨 주세요.
           </span>
         ) : null}
         {diagnosis.omNamesInOperations.length > 0 ? (
@@ -769,7 +769,7 @@ function NameMismatchNotice({ diagnosis }: { diagnosis: OmNameDiagnosis }) {
           </span>
         ) : null}
         <span>
-          관리자 → 사용자 관리에서 내 이름을 운영 현황 OM 표기와 같게 맞추면 바로 보입니다.
+          관리자 → 멤버 관리에서 내 이름을 운영 현황 OM 표기와 같게 맞추면 바로 보입니다.
         </span>
       </div>
     </section>

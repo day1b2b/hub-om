@@ -12749,6 +12749,12 @@ button.coach-doc-reserve-chip:disabled {
   gap: 8px;
 }
 
+/* 선택 전 안내. 버튼을 숨기지 않고 비활성으로 두되 왜 못 누르는지 알려 준다. */
+.user-bulk-hint {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .user-delete-btn {
   padding: 5px 12px;
   border: 1px solid var(--line);

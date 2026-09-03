@@ -1,5 +1,9 @@
 // 운영현황 1건(OperationSession = 회차)을 구글 캘린더 이벤트 본문으로 변환한다.
 // 순수 함수만 두어 테스트에서 구글 호출 없이 검증할 수 있게 한다.
+//
+// 실제 교육일(educationDates)이 있으면 **교육일마다 이벤트를 따로** 만든다.
+// 기간 이벤트 하나로는 쉬는 날까지 일정이 잡히기 때문이다(9/04~9/08 중 9/05·9/06 휴무).
+// 교육일이 없는 회차는 기존처럼 기간 이벤트 1건으로 둔다.
 
 import type { OperationSession } from "@/lib/data/operationTypes";
 import type { CalendarEventBody } from "./calendarWriteClient";
@@ -115,3 +119,53 @@ export function buildCalendarEventBody(
     ...(attendeeEmails.length > 0 ? { attendees: attendeeEmails.map((email) => ({ email })) } : {})
   };
 }
+
+export interface CalendarEventPlan {
+  /** 이 이벤트가 담당하는 교육일(YYYY-MM-DD). 매핑 키로 쓴다. */
+  eventDate: string;
+  body: CalendarEventBody;
+}
+
+/**
+ * 회차를 이벤트 계획 목록으로 바꾼다.
+ * 실제 교육일이 있으면 날짜별 1건씩, 없으면 기간 이벤트 1건(교육일=시작일)이다.
+ * 교육일이 2개 이상이면 제목 뒤에 "(N/M일차)"를 붙여 캘린더에서 서로 구분되게 한다.
+ */
+export function buildCalendarEventBodies(
+  operation: OperationSession,
+  attendeeEmails: string[],
+  partKey?: string | null
+): CalendarEventPlan[] {
+  const base = buildCalendarEventBody(operation, attendeeEmails, partKey);
+  const dates = normalizeEducationDates(operation.educationDates);
+
+  if (dates.length === 0) {
+    return [{ eventDate: operation.startDate, body: base }];
+  }
+
+  const times = parseTimeRange(operation.timeText);
+
+  return dates.map((date, index) => ({
+    eventDate: date,
+    body: {
+      ...base,
+      summary: dates.length > 1 ? `${base.summary} (${index + 1}/${dates.length}일차)` : base.summary,
+      ...(times
+        ? {
+            start: { dateTime: `${date}T${times.start}:00`, timeZone: TIME_ZONE },
+            end: { dateTime: `${date}T${times.end}:00`, timeZone: TIME_ZONE }
+          }
+        : { start: { date }, end: { date: nextDay(date) } })
+    }
+  }));
+}
+
+/** 형식이 맞는 날짜만 남기고 중복을 제거해 날짜순으로 정렬한다. */
+export function normalizeEducationDates(dates: string[] | null | undefined): string[] {
+  const valid = (dates ?? [])
+    .map((date) => date?.trim() ?? "")
+    .filter((date) => /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(date));
+
+  return [...new Set(valid)].sort();
+}
+

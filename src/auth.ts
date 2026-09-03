@@ -52,7 +52,11 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         params: {
           access_type: "offline",
           hd: ALLOWED_WORKSPACE_DOMAIN,
-          include_granted_scopes: "true",
+          // include_granted_scopes 는 넣지 않는다. 이 옵션은 "예전에 동의한 권한도 합쳐 달라"는
+          // 뜻이라, 지메일·시트 권한을 줬던 사용자는 스코프를 아래처럼 줄여도 옛 민감 권한이
+          // 동의 화면에 도로 끌려 나와 "확인되지 않은 앱" 경고가 계속 떴다(2026-09-03 실측:
+          // 코드 변경 없이 myaccount.google.com 에서 hub-om 동의만 지우자 경고가 사라짐).
+          // 단계적으로 권한을 늘리는 기능이 없어진 지금은 쓸 이유가 없다.
           prompt: "consent select_account",
           response_type: "code",
           // 민감 범위를 하나도 요구하지 않는다 — 미인증 앱이 민감 범위를 요구하면
