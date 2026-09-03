@@ -89,11 +89,15 @@ async function callCalendar(path: string, init: RequestInit): Promise<Response> 
 // 새 일정과 취소는 참석자가 반드시 알아야 하므로 메일을 보낸다(sendUpdates=all).
 const SEND_UPDATES = "sendUpdates=all";
 
-// 수정은 조용히 반영한다(sendUpdates=none).
+// 수정은 기본적으로 조용히 반영한다(sendUpdates=none).
 // 교육일 구간마다 이벤트가 따로 있어서, 회차를 한 번 고치면 구간 수만큼 "일정이
 // 변경되었습니다" 메일이 나간다. 장소 오타 하나에 두세 통이 가는 건 과하다.
 // 캘린더 내용은 즉시 갱신되고 담당자는 자기 캘린더에서 최신 상태를 본다.
 // 역반영이 제목·장소를 되돌릴 때도 이 경로라 조용히 처리된다.
+//
+// 예외는 참석자가 바뀐 수정이다. 이 서비스는 이벤트를 만들 때 담당 OM이 아직
+// 배정되지 않은 경우가 많아(요청 접수 시 생성 → 나중에 배정), 초대 메일이 실제로
+// 나가는 시점이 insert가 아니라 patch다. 참석자가 달라진 patch만 메일을 보낸다.
 const SEND_UPDATES_SILENT = "sendUpdates=none";
 
 export async function insertEvent(calendarId: string, body: CalendarEventBody): Promise<string> {
@@ -110,18 +114,46 @@ export async function insertEvent(calendarId: string, body: CalendarEventBody): 
   return created.id;
 }
 
-/** 부분 갱신을 허용한다. 역반영 원복은 제목·장소만 보내야 해서 전체 본문을 강제하지 않는다. */
+/**
+ * 부분 갱신을 허용한다. 역반영 원복은 제목·장소만 보내야 해서 전체 본문을 강제하지 않는다.
+ * notifyAttendees=true일 때만 참석자에게 메일이 간다(기본은 조용히).
+ */
 export async function patchEvent(
   calendarId: string,
   eventId: string,
-  body: Partial<CalendarEventBody>
+  body: Partial<CalendarEventBody>,
+  options?: { notifyAttendees?: boolean }
 ): Promise<void> {
   const response = await callCalendar(
-    `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}?${SEND_UPDATES_SILENT}`,
+    `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}?${
+      options?.notifyAttendees ? SEND_UPDATES : SEND_UPDATES_SILENT
+    }`,
     { method: "PATCH", body: JSON.stringify(body) }
   );
 
   if (!response.ok) throw new Error(`events.patch 실패(${response.status}): ${await response.text()}`);
+}
+
+/**
+ * 이벤트의 현재 참석자 이메일을 읽는다. patch가 초대 메일을 보내야 하는지
+ * (참석자가 달라졌는지) 판단하는 데만 쓴다. 이벤트를 못 읽으면 null.
+ */
+export async function readEventAttendees(calendarId: string, eventId: string): Promise<null | string[]> {
+  try {
+    const response = await callCalendar(
+      `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}?fields=attendees(email)`,
+      { method: "GET" }
+    );
+
+    if (!response.ok) return null;
+
+    const payload = (await response.json()) as { attendees?: { email?: string }[] };
+
+    return (payload.attendees ?? []).map((attendee) => attendee.email ?? "").filter(Boolean);
+  } catch {
+    // 읽기 실패로 반영 자체를 막지 않는다. 호출부는 "모른다"로 보고 조용히 갱신한다.
+    return null;
+  }
 }
 
 /**
