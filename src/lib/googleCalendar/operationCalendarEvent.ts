@@ -180,3 +180,19 @@ export function normalizeEducationDates(dates: string[] | null | undefined): str
   return [...new Set(valid)].sort();
 }
 
+/**
+ * 참석자 목록이 실제로 달라졌는지. 순서·대소문자·중복은 차이로 보지 않는다.
+ * 이벤트를 못 읽어 before가 null이면 "모른다"이므로 달라지지 않은 것으로 본다
+ * (판단 근거 없이 초대 메일을 다시 보내지 않는 쪽이 안전하다).
+ */
+export function attendeesChanged(before: null | string[], after: string[]): boolean {
+  if (before === null) return false;
+
+  const normalize = (emails: string[]) =>
+    [...new Set(emails.map((email) => email.trim().toLowerCase()).filter(Boolean))].sort();
+
+  const a = normalize(before);
+  const b = normalize(after);
+
+  return a.length !== b.length || a.some((email, index) => email !== b[index]);
+}

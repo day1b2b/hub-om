@@ -10,9 +10,9 @@
 
 import type { OperationSession } from "@/lib/data/operationTypes";
 import { isCalendarWriteEnabled, resolvePartCalendarId } from "./calendarWriteConfig";
-import { deleteEvent, insertEvent, patchEvent } from "./calendarWriteClient";
+import { deleteEvent, insertEvent, patchEvent, readEventAttendees } from "./calendarWriteClient";
 import { resolveCalendarTargets } from "./calendarParticipants";
-import { buildCalendarEventBodies } from "./operationCalendarEvent";
+import { attendeesChanged, buildCalendarEventBodies } from "./operationCalendarEvent";
 import {
   deleteCalendarEventLink,
   deleteCalendarEventLinks,
@@ -70,7 +70,15 @@ async function reflectOperation(operation: OperationSession, trigger: ReflectTri
       const link = sameCalendar.get(plan.eventDate);
 
       if (link) {
-        await patchEvent(calendarId, link.eventId, plan.body);
+        // 참석자가 달라진 수정만 메일을 보낸다. 이 서비스는 요청 접수 시 이벤트를 먼저
+        // 만들고 나중에 OM을 배정하므로, 초대 메일이 실제로 나가는 시점이 이 patch다.
+        // 담당·현장 OM이 같은 사람이면 목록이 그대로여서 메일이 중복으로 가지 않는다.
+        const notifyAttendees = attendeesChanged(
+          await readEventAttendees(calendarId, link.eventId),
+          plan.body.attendees?.map((attendee) => attendee.email) ?? []
+        );
+
+        await patchEvent(calendarId, link.eventId, plan.body, { notifyAttendees });
         sameCalendar.delete(plan.eventDate);
         continue;
       }
