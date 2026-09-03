@@ -7139,6 +7139,19 @@ td span {
   font-size: 12px;
 }
 
+.lecture-note-save-status {
+  color: var(--muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lecture-note-save-status.failed {
+  color: var(--red);
+  white-space: normal;
+}
+
 .lecture-note-actions .session-row-delete-trigger {
   border-color: rgba(180, 35, 24, 0.35);
   color: var(--red);
