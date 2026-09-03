@@ -1,10 +1,14 @@
 // 운영현황 1건(OperationSession = 회차)을 구글 캘린더 이벤트 본문으로 변환한다.
 // 순수 함수만 두어 테스트에서 구글 호출 없이 검증할 수 있게 한다.
 //
-// 실제 교육일(educationDates)이 있으면 **교육일마다 이벤트를 따로** 만든다.
-// 기간 이벤트 하나로는 쉬는 날까지 일정이 잡히기 때문이다(9/04~9/08 중 9/05·9/06 휴무).
+// 실제 교육일(educationDates)이 있으면 **연속 구간마다 이벤트를 하나씩** 만든다.
+// 9/7·9/8·9/9·9/11이면 [9/7~9/9] 1건 + [9/11] 1건 = 2건이다.
+// 기간 이벤트 하나로 묶으면 쉬는 날까지 일정이 잡히고(9/04~9/08 중 9/05·9/06 휴무),
+// 하루씩 쪼개면 초대·변경 메일이 날짜 수만큼 나간다. 연속 구간이 그 사이의 답이다.
+// 알림 표기(formatEducationDatesCompact)와 같은 단위라 두 곳이 다르게 읽히지 않는다.
 // 교육일이 없는 회차는 기존처럼 기간 이벤트 1건으로 둔다.
 
+import { formatEducationDatesCompact, groupConsecutiveDateRuns } from "@/lib/data/operationCalculations";
 import type { OperationSession } from "@/lib/data/operationTypes";
 import type { CalendarEventBody } from "./calendarWriteClient";
 import { extractPartKey } from "./calendarWriteConfig";
@@ -81,6 +85,12 @@ function buildDescription(operation: OperationSession): string {
   if (operation.onsiteOm) lines.push(`현장운영: ${operation.onsiteOm}`);
   if (operation.instructors) lines.push(`강사: ${operation.instructors}`);
 
+  // 이벤트 하나만 열어도 회차 전체 일정을 알 수 있게 교육일 목록을 남긴다.
+  const educationDates = normalizeEducationDates(operation.educationDates);
+  if (educationDates.length > 0) {
+    lines.push(`교육일: ${formatEducationDatesCompact(educationDates)} (${educationDates.length}일)`);
+  }
+
   const baseUrl = process.env.HUB_OM_BASE_URL?.trim().replace(/\/$/, "");
   if (baseUrl) lines.push(`운영 상세: ${baseUrl}/operations/${operation.operationId}`);
 
@@ -121,15 +131,16 @@ export function buildCalendarEventBody(
 }
 
 export interface CalendarEventPlan {
-  /** 이 이벤트가 담당하는 교육일(YYYY-MM-DD). 매핑 키로 쓴다. */
+  /** 이 이벤트가 담당하는 연속 구간의 시작 교육일(YYYY-MM-DD). 매핑 키로 쓴다. */
   eventDate: string;
+  /** 구간의 마지막 교육일. 하루짜리면 eventDate와 같다. */
+  eventEndDate: string;
   body: CalendarEventBody;
 }
 
 /**
  * 회차를 이벤트 계획 목록으로 바꾼다.
- * 실제 교육일이 있으면 날짜별 1건씩, 없으면 기간 이벤트 1건(교육일=시작일)이다.
- * 교육일이 2개 이상이면 제목 뒤에 "(N/M일차)"를 붙여 캘린더에서 서로 구분되게 한다.
+ * 실제 교육일이 있으면 **연속 구간마다 1건**, 없으면 기간 이벤트 1건(키=시작일)이다.
  */
 export function buildCalendarEventBodies(
   operation: OperationSession,
@@ -137,25 +148,25 @@ export function buildCalendarEventBodies(
   partKey?: string | null
 ): CalendarEventPlan[] {
   const base = buildCalendarEventBody(operation, attendeeEmails, partKey);
-  const dates = normalizeEducationDates(operation.educationDates);
+  const runs = groupConsecutiveDateRuns(normalizeEducationDates(operation.educationDates));
 
-  if (dates.length === 0) {
-    return [{ eventDate: operation.startDate, body: base }];
+  if (runs.length === 0) {
+    return [{ eventDate: operation.startDate, eventEndDate: operation.endDate, body: base }];
   }
 
   const times = parseTimeRange(operation.timeText);
 
-  return dates.map((date, index) => ({
-    eventDate: date,
+  return runs.map(({ start, end }) => ({
+    eventDate: start,
+    eventEndDate: end,
     body: {
       ...base,
-      summary: dates.length > 1 ? `${base.summary} (${index + 1}/${dates.length}일차)` : base.summary,
       ...(times
         ? {
-            start: { dateTime: `${date}T${times.start}:00`, timeZone: TIME_ZONE },
-            end: { dateTime: `${date}T${times.end}:00`, timeZone: TIME_ZONE }
+            start: { dateTime: `${start}T${times.start}:00`, timeZone: TIME_ZONE },
+            end: { dateTime: `${end}T${times.end}:00`, timeZone: TIME_ZONE }
           }
-        : { start: { date }, end: { date: nextDay(date) } })
+        : { start: { date: start }, end: { date: nextDay(end) } })
     }
   }));
 }
@@ -169,3 +180,19 @@ export function normalizeEducationDates(dates: string[] | null | undefined): str
   return [...new Set(valid)].sort();
 }
 
+/**
+ * 참석자 목록이 실제로 달라졌는지. 순서·대소문자·중복은 차이로 보지 않는다.
+ * 이벤트를 못 읽어 before가 null이면 "모른다"이므로 달라지지 않은 것으로 본다
+ * (판단 근거 없이 초대 메일을 다시 보내지 않는 쪽이 안전하다).
+ */
+export function attendeesChanged(before: null | string[], after: string[]): boolean {
+  if (before === null) return false;
+
+  const normalize = (emails: string[]) =>
+    [...new Set(emails.map((email) => email.trim().toLowerCase()).filter(Boolean))].sort();
+
+  const a = normalize(before);
+  const b = normalize(after);
+
+  return a.length !== b.length || a.some((email, index) => email !== b[index]);
+}

@@ -382,6 +382,33 @@ export function formatEducationDatesCompact(dates: string[]): string {
     .join(", ");
 }
 
+/**
+ * 교육일 목록을 연속 구간으로 묶는다. 9/7·9/8·9/9·9/11 → [9/7~9/9], [9/11].
+ * 알림 표기와 캘린더 이벤트가 같은 단위(연속은 하나, 끊기면 따로)를 쓰도록 여기 둔다.
+ */
+export function groupConsecutiveDateRuns(dates: string[]): { start: string; end: string }[] {
+  const parsed = [...new Set(dates.map((date) => date?.trim() ?? "").filter(Boolean))]
+    .map((date) => ({ date, value: parseDate(date) }))
+    .filter((entry): entry is { date: string; value: Date } => entry.value !== null)
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  const runs: { start: string; end: string; endValue: Date }[] = [];
+
+  for (const { date, value } of parsed) {
+    const last = runs[runs.length - 1];
+
+    if (last && value.getTime() - last.endValue.getTime() === ONE_DAY_MS) {
+      last.end = date;
+      last.endValue = value;
+      continue;
+    }
+
+    runs.push({ start: date, end: date, endValue: value });
+  }
+
+  return runs.map(({ start, end }) => ({ start, end }));
+}
+
 /** 실제 교육일 목록에서 startDate/endDate(최소/최대)를 계산한다. 빈 목록이면 null. */
 export function deriveDateRangeFromEducationDates(
   dates: string[]

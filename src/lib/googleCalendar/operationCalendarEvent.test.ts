@@ -3,6 +3,7 @@ import { test } from "node:test";
 
 import type { OperationSession } from "@/lib/data/operationTypes";
 import {
+  attendeesChanged,
   buildCalendarEventBody,
   buildEventSummary,
   nextDay,
@@ -142,4 +143,30 @@ test("extractPartKey는 두 표기에서 같은 키를 뽑는다", () => {
   assert.equal(extractPartKey("3파트"), "3파트");
   assert.equal(extractPartKey("영업팀"), null);
   assert.equal(extractPartKey(null), null);
+});
+
+// ── 참석자 변화 판정 (초대 메일 발송 여부) ────────────────────────
+test("참석자가 늘면 달라진 것으로 본다", () => {
+  assert.equal(attendeesChanged([], ["a@day1company.co.kr"]), true);
+  assert.equal(attendeesChanged(["a@day1company.co.kr"], ["a@day1company.co.kr", "b@day1company.co.kr"]), true);
+});
+
+test("같은 사람이 담당·현장을 겸해도 목록이 그대로면 달라지지 않았다", () => {
+  assert.equal(attendeesChanged(["a@day1company.co.kr"], ["a@day1company.co.kr"]), false);
+  assert.equal(attendeesChanged(["a@day1company.co.kr"], ["a@day1company.co.kr", "a@day1company.co.kr"]), false);
+});
+
+test("순서와 대소문자 차이는 무시한다", () => {
+  assert.equal(
+    attendeesChanged(["b@day1company.co.kr", "a@day1company.co.kr"], ["A@day1company.co.kr", "B@day1company.co.kr"]),
+    false
+  );
+});
+
+test("참석자가 빠지면 달라진 것으로 본다", () => {
+  assert.equal(attendeesChanged(["a@day1company.co.kr", "b@day1company.co.kr"], ["a@day1company.co.kr"]), true);
+});
+
+test("이벤트를 못 읽었으면(null) 메일을 다시 보내지 않는다", () => {
+  assert.equal(attendeesChanged(null, ["a@day1company.co.kr"]), false);
 });

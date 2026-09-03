@@ -8,14 +8,14 @@ import { buildCalendarEventBodies } from "@/lib/googleCalendar/operationCalendar
 import {
   evaluateEventAgainstOperation,
   eventScheduleToSession,
-  replaceEducationDate,
+  replaceEducationRun,
   type ReverseSyncEvaluation,
   type ReverseSyncItem
 } from "@/lib/googleCalendar/calendarReverseSyncRules.ts";
 
+// 교육일 9/4 · 9/7 · 9/8 → 연속 구간은 [9/4], [9/7~9/8] 두 개다.
 const EDUCATION_DATES = ["2026-09-04", "2026-09-07", "2026-09-08"];
 
-// 판정에 쓰이는 필드만 채운 최소 회차. 실제 교육일 3일 중 둘째 날(9/07)을 기준으로 본다.
 function operationFixture(overrides: Partial<OperationSession> = {}): OperationSession {
   return {
     operationId: "OP-1",
@@ -32,19 +32,20 @@ function operationFixture(overrides: Partial<OperationSession> = {}): OperationS
   } as OperationSession;
 }
 
+/** 기본 링크는 뒤 구간(9/7~9/8)을 본다. 매핑 키는 구간 시작일이다. */
 function linkFixture(eventDate = "2026-09-07"): CalendarEventLink {
   return { operationId: "OP-1", calendarId: "cal-1", eventId: "EV-1", eventDate };
 }
 
-// 회차의 9/07 계획과 일치하는 이벤트. 각 테스트에서 어긋나게 만들 부분만 덮어쓴다.
+/** 9/7~9/8 구간 계획과 일치하는 이벤트. 각 테스트에서 어긋나게 만들 부분만 덮어쓴다. */
 function eventFixture(overrides: Partial<CalendarEventSnapshot> = {}): CalendarEventSnapshot {
   return {
     id: "EV-1",
     status: "confirmed",
-    summary: "[롯데정밀화학] AI 업무 효율화_2회차 (2/3일차)",
+    summary: "[롯데정밀화학] AI 업무 효율화_2회차",
     location: "서울",
     start: { dateTime: "2026-09-07T10:00:00+09:00" },
-    end: { dateTime: "2026-09-07T17:00:00+09:00" },
+    end: { dateTime: "2026-09-08T17:00:00+09:00" },
     updated: "2026-09-07T02:00:00.000Z",
     ...overrides
   };
@@ -57,7 +58,7 @@ function itemOf(evaluation: ReverseSyncEvaluation): ReverseSyncItem {
   return (evaluation as { kind: "item"; item: ReverseSyncItem }).item;
 }
 
-// ── 교육일별 이벤트 판정 ──────────────────────────────────────────
+// ── 구간 이벤트 판정 ──────────────────────────────────────────────
 test("일치하면 할 일이 없다", () => {
   const evaluation = evaluateEventAgainstOperation(
     operationFixture(),
@@ -69,10 +70,10 @@ test("일치하면 할 일이 없다", () => {
   assert.equal(evaluation.kind, "none");
 });
 
-test("캘린더가 더 최신이고 날짜가 바뀌었으면 그 교육일을 옮긴다", () => {
+test("캘린더가 더 최신이고 구간이 옮겨졌으면 운영현황에 반영한다", () => {
   const event = eventFixture({
-    start: { dateTime: "2026-09-09T10:00:00+09:00" },
-    end: { dateTime: "2026-09-09T17:00:00+09:00" }
+    start: { dateTime: "2026-09-14T10:00:00+09:00" },
+    end: { dateTime: "2026-09-15T17:00:00+09:00" }
   });
 
   const item = itemOf(evaluateEventAgainstOperation(operationFixture(), linkFixture(), event, OPERATION_UPDATED_AT));
@@ -80,14 +81,15 @@ test("캘린더가 더 최신이고 날짜가 바뀌었으면 그 교육일을 �
   assert.equal(item.action, "운영현황 반영");
   assert.equal(item.perEducationDay, true);
   assert.equal(item.eventDate, "2026-09-07");
-  assert.equal(item.scheduleChange?.to.startDate, "2026-09-09");
-  assert.equal(item.scheduleChange?.to.timeText, "10:00 ~ 17:00");
+  assert.equal(item.eventEndDate, "2026-09-08");
+  assert.equal(item.scheduleChange?.to.startDate, "2026-09-14");
+  assert.equal(item.scheduleChange?.to.endDate, "2026-09-15");
 });
 
 test("시간만 바뀌어도 캘린더가 최신이면 반영 대상이다", () => {
   const event = eventFixture({
     start: { dateTime: "2026-09-07T13:00:00+09:00" },
-    end: { dateTime: "2026-09-07T18:00:00+09:00" }
+    end: { dateTime: "2026-09-08T18:00:00+09:00" }
   });
 
   const item = itemOf(evaluateEventAgainstOperation(operationFixture(), linkFixture(), event, OPERATION_UPDATED_AT));
@@ -98,8 +100,8 @@ test("시간만 바뀌어도 캘린더가 최신이면 반영 대상이다", () 
 
 test("운영현황이 더 최신이면 캘린더를 되돌린다", () => {
   const event = eventFixture({
-    start: { dateTime: "2026-09-09T10:00:00+09:00" },
-    end: { dateTime: "2026-09-09T17:00:00+09:00" },
+    start: { dateTime: "2026-09-14T10:00:00+09:00" },
+    end: { dateTime: "2026-09-15T17:00:00+09:00" },
     updated: "2026-09-07T00:30:00.000Z"
   });
 
@@ -111,8 +113,8 @@ test("운영현황이 더 최신이면 캘린더를 되돌린다", () => {
 
 test("회차 수정 시각을 모르면 운영현황을 덮어쓰지 않는다", () => {
   const event = eventFixture({
-    start: { dateTime: "2026-09-09T10:00:00+09:00" },
-    end: { dateTime: "2026-09-09T17:00:00+09:00" }
+    start: { dateTime: "2026-09-14T10:00:00+09:00" },
+    end: { dateTime: "2026-09-15T17:00:00+09:00" }
   });
 
   const item = itemOf(evaluateEventAgainstOperation(operationFixture(), linkFixture(), event, null));
@@ -132,8 +134,8 @@ test("제목·장소만 바뀌었으면 원복 대상이다", () => {
 test("날짜와 제목이 함께 바뀌면 날짜는 반영하고 제목은 원복한다", () => {
   const event = eventFixture({
     summary: "사람이 바꾼 제목",
-    start: { dateTime: "2026-09-09T10:00:00+09:00" },
-    end: { dateTime: "2026-09-09T17:00:00+09:00" }
+    start: { dateTime: "2026-09-14T10:00:00+09:00" },
+    end: { dateTime: "2026-09-15T17:00:00+09:00" }
   });
 
   const item = itemOf(evaluateEventAgainstOperation(operationFixture(), linkFixture(), event, OPERATION_UPDATED_AT));
@@ -155,7 +157,7 @@ test("원본이 취소되면 재생성 대상이다", () => {
   assert.equal(item.action, "이벤트 재생성");
 });
 
-test("운영현황에서 빠진 교육일은 손대지 않고 건너뛴다", () => {
+test("운영현황에서 빠진 구간은 손대지 않고 건너뛴다", () => {
   const evaluation = evaluateEventAgainstOperation(
     operationFixture(),
     linkFixture("2026-09-05"),
@@ -171,7 +173,6 @@ test("운영현황에서 빠진 교육일은 손대지 않고 건너뛴다", () 
 test("교육일이 없으면 기간 이벤트로 보고 시작·종료를 반영한다", () => {
   const operation = operationFixture({ educationDates: [] });
   const event = eventFixture({
-    summary: "[롯데정밀화학] AI 업무 효율화_2회차",
     start: { dateTime: "2026-09-05T10:00:00+09:00" },
     end: { dateTime: "2026-09-09T17:00:00+09:00" }
   });
@@ -190,33 +191,56 @@ test("교육일이 없으면 기간 이벤트로 보고 시작·종료를 반영
 });
 
 // ── 이벤트 계획 만들기 ────────────────────────────────────────────
-test("교육일마다 이벤트를 하나씩 만들고 제목에 일차를 붙인다", () => {
-  const plans = buildCalendarEventBodies(operationFixture(), []);
+test("연속 구간마다 이벤트를 하나씩 만든다", () => {
+  const plans = buildCalendarEventBodies(
+    operationFixture({ educationDates: ["2026-09-07", "2026-09-08", "2026-09-09", "2026-09-11"] }),
+    []
+  );
 
   assert.deepEqual(
-    plans.map((plan) => plan.eventDate),
-    EDUCATION_DATES
+    plans.map((plan) => [plan.eventDate, plan.eventEndDate]),
+    [
+      ["2026-09-07", "2026-09-09"],
+      ["2026-09-11", "2026-09-11"]
+    ]
   );
-  assert.equal(plans[1].body.summary, "[롯데정밀화학] AI 업무 효율화_2회차 (2/3일차)");
-  assert.deepEqual(plans[1].body.start, { dateTime: "2026-09-07T10:00:00", timeZone: "Asia/Seoul" });
-  assert.deepEqual(plans[1].body.end, { dateTime: "2026-09-07T17:00:00", timeZone: "Asia/Seoul" });
+  assert.deepEqual(plans[0].body.start, { dateTime: "2026-09-07T10:00:00", timeZone: "Asia/Seoul" });
+  assert.deepEqual(plans[0].body.end, { dateTime: "2026-09-09T17:00:00", timeZone: "Asia/Seoul" });
+  assert.deepEqual(plans[1].body.start, { dateTime: "2026-09-11T10:00:00", timeZone: "Asia/Seoul" });
 });
 
-test("교육일이 하나면 제목에 일차를 붙이지 않는다", () => {
-  const plans = buildCalendarEventBodies(operationFixture({ educationDates: ["2026-09-07"] }), []);
+test("제목은 회차 제목 그대로이고 설명에 교육일 목록이 들어간다", () => {
+  const plans = buildCalendarEventBodies(
+    operationFixture({ educationDates: ["2026-09-07", "2026-09-08", "2026-09-09", "2026-09-11"] }),
+    []
+  );
+
+  assert.equal(plans[0].body.summary, "[롯데정밀화학] AI 업무 효율화_2회차");
+  assert.ok((plans[0].body.description ?? "").includes("교육일: 26.09.07~09, 11 (4일)"));
+});
+
+test("전체가 연속이면 이벤트 1건으로 묶인다", () => {
+  const plans = buildCalendarEventBodies(
+    operationFixture({ educationDates: ["2026-09-04", "2026-09-05", "2026-09-06"] }),
+    []
+  );
 
   assert.equal(plans.length, 1);
-  assert.equal(plans[0].body.summary, "[롯데정밀화학] AI 업무 효율화_2회차");
+  assert.equal(plans[0].eventDate, "2026-09-04");
+  assert.equal(plans[0].eventEndDate, "2026-09-06");
 });
 
-test("시간 표기를 못 읽으면 교육일마다 하루짜리 종일 일정을 만든다", () => {
-  const plans = buildCalendarEventBodies(operationFixture({ timeText: "미정" }), []);
+test("시간 표기를 못 읽으면 구간 전체를 종일 일정으로 만든다", () => {
+  const plans = buildCalendarEventBodies(
+    operationFixture({ timeText: "미정", educationDates: ["2026-09-07", "2026-09-08"] }),
+    []
+  );
 
-  assert.deepEqual(plans[0].body.start, { date: "2026-09-04" });
-  assert.deepEqual(plans[0].body.end, { date: "2026-09-05" });
+  assert.deepEqual(plans[0].body.start, { date: "2026-09-07" });
+  assert.deepEqual(plans[0].body.end, { date: "2026-09-09" });
 });
 
-test("교육일이 없으면 기간 이벤트 1건이고 교육일 키는 시작일이다", () => {
+test("교육일이 없으면 기간 이벤트 1건이고 키는 시작일이다", () => {
   const plans = buildCalendarEventBodies(operationFixture({ educationDates: [] }), []);
 
   assert.equal(plans.length, 1);
@@ -237,23 +261,36 @@ test("형식이 틀린 교육일과 중복은 걸러진다", () => {
   );
 });
 
-// ── 교육일 교체 ───────────────────────────────────────────────────
-test("교육일 하나를 다른 날짜로 옮기고 정렬한다", () => {
-  const result = replaceEducationDate(EDUCATION_DATES, "2026-09-07", "2026-09-02");
+// ── 교육일 구간 교체 ─────────────────────────────────────────────
+test("구간을 옮기면 그 구간의 날짜가 함께 움직인다", () => {
+  const result = replaceEducationRun(EDUCATION_DATES, "2026-09-07", "2026-09-08", "2026-09-14", "2026-09-15");
 
   assert.equal(result.conflict, false);
-  assert.deepEqual(result.dates, ["2026-09-02", "2026-09-04", "2026-09-08"]);
+  assert.deepEqual(result.dates, ["2026-09-04", "2026-09-14", "2026-09-15"]);
 });
 
-test("옮길 날짜에 이미 교육일이 있으면 충돌로 알린다", () => {
-  const result = replaceEducationDate(EDUCATION_DATES, "2026-09-07", "2026-09-08");
+test("구간 길이를 늘리면 늘어난 날까지 교육일이 된다", () => {
+  const result = replaceEducationRun(
+    ["2026-09-07", "2026-09-08"],
+    "2026-09-07",
+    "2026-09-08",
+    "2026-09-07",
+    "2026-09-10"
+  );
+
+  assert.equal(result.conflict, false);
+  assert.deepEqual(result.dates, ["2026-09-07", "2026-09-08", "2026-09-09", "2026-09-10"]);
+});
+
+test("옮긴 구간이 다른 교육일과 겹치면 충돌로 알린다", () => {
+  const result = replaceEducationRun(EDUCATION_DATES, "2026-09-07", "2026-09-08", "2026-09-03", "2026-09-04");
 
   assert.equal(result.conflict, true);
   assert.deepEqual(result.dates, EDUCATION_DATES);
 });
 
-test("같은 날짜로 옮기면 아무것도 바뀌지 않는다", () => {
-  const result = replaceEducationDate(EDUCATION_DATES, "2026-09-07", "2026-09-07");
+test("같은 자리로 옮기면 아무것도 바뀌지 않는다", () => {
+  const result = replaceEducationRun(EDUCATION_DATES, "2026-09-07", "2026-09-08", "2026-09-07", "2026-09-08");
 
   assert.equal(result.conflict, false);
   assert.deepEqual(result.dates, EDUCATION_DATES);

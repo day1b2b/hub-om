@@ -2,6 +2,7 @@
 //
 // 쓰기 범위를 좁게 고정한다(db-write-safety):
 //  - 운영현황에 쓰는 것은 실제 교육일(educationDates)과 시간(timeText)뿐이다.
+//    매핑 단위가 연속 구간이므로, 이벤트를 옮기면 그 구간의 날짜들이 함께 움직인다.
 //    startDate/endDate는 리포지토리가 교육일 목록의 최소·최대로 다시 계산한다.
 //    교육일이 등록되지 않은 옛 회차는 startDate·endDate·timeText를 직접 쓴다.
 //  - 대상은 캘린더 매핑이 있는 회차 중 판정이 잡힌 건만이다.
@@ -25,7 +26,7 @@ import type { OperationSession } from "@/lib/data/operationTypes";
 import { moveCalendarEventLinkDate, saveCalendarEventLink } from "./calendarEventLinkRepository";
 import { buildCalendarEventBodies } from "./operationCalendarEvent";
 import { planCalendarReverseSync, type ReverseSyncPlan } from "./calendarReverseSync";
-import { replaceEducationDate, type ReverseSyncItem } from "./calendarReverseSyncRules";
+import { replaceEducationRun, type ReverseSyncItem } from "./calendarReverseSyncRules";
 
 const DEFAULT_MAX_APPLY = 20;
 
@@ -92,7 +93,7 @@ async function applyScheduleToOperation(item: ReverseSyncItem): Promise<string> 
 
   const operation = await findOperation(item.operationId);
   const detail = item.perEducationDay
-    ? await applyEducationDateChange(item, operation, change.to.startDate, change.to.timeText)
+    ? await applyEducationRunChange(item, operation, change.to)
     : await applyRangeChange(item, change.to);
 
   // 사람이 날짜와 함께 제목·장소도 바꿨으면 그 필드만 되돌린다.
@@ -113,38 +114,45 @@ async function applyScheduleToOperation(item: ReverseSyncItem): Promise<string> 
   return `${detail} + ${revertFields.join(", ")} 원복`;
 }
 
-/** 교육일별 이벤트: 그 이벤트가 담당하던 교육일을 새 날짜로 옮긴다. */
-async function applyEducationDateChange(
+/** 연속 구간 이벤트: 그 이벤트가 담당하던 구간을 새 구간으로 옮긴다. */
+async function applyEducationRunChange(
   item: ReverseSyncItem,
   operation: OperationSession,
-  nextDate: string,
-  nextTimeText: string
+  to: { startDate: string; endDate: string; timeText: string }
 ): Promise<string> {
-  const { dates, conflict } = replaceEducationDate(operation.educationDates, item.eventDate, nextDate);
+  const { dates, conflict } = replaceEducationRun(
+    operation.educationDates,
+    item.eventDate,
+    item.eventEndDate,
+    to.startDate,
+    to.endDate
+  );
 
   if (conflict) {
     throw new Error(
-      `옮긴 날짜(${nextDate})에 이미 교육일이 있어 반영하지 않았습니다. 운영현황에서 교육일을 정리해주세요.`
+      `옮긴 구간(${to.startDate}~${to.endDate})이 다른 교육일과 겹쳐 반영하지 않았습니다. 운영현황에서 교육일을 정리해주세요.`
     );
   }
 
-  const timeChanged = nextTimeText !== "" && nextTimeText !== operation.timeText;
+  const timeChanged = to.timeText !== "" && to.timeText !== operation.timeText;
 
   await getOperationRepository().updateOperation(item.operationId, {
     educationDates: dates,
-    ...(timeChanged ? { timeText: nextTimeText } : {})
+    ...(timeChanged ? { timeText: to.timeText } : {})
   });
 
-  if (item.eventDate !== nextDate) {
-    await moveCalendarEventLinkDate(item.operationId, item.eventDate, nextDate);
+  if (item.eventDate !== to.startDate) {
+    await moveCalendarEventLinkDate(item.operationId, item.eventDate, to.startDate);
   }
 
+  const before = item.eventDate === item.eventEndDate ? item.eventDate : `${item.eventDate}~${item.eventEndDate}`;
+  const after = to.startDate === to.endDate ? to.startDate : `${to.startDate}~${to.endDate}`;
   console.info(
-    `[gcal-reverse] ${item.operationId} 교육일 반영: ${item.eventDate} → ${nextDate}` +
-      `${timeChanged ? ` / 시간 ${operation.timeText} → ${nextTimeText}` : ""} (event=${item.eventId})`
+    `[gcal-reverse] ${item.operationId} 교육일 반영: ${before} → ${after}` +
+      `${timeChanged ? ` / 시간 ${operation.timeText} → ${to.timeText}` : ""} (event=${item.eventId})`
   );
 
-  return `교육일 ${item.eventDate} → ${nextDate}${timeChanged ? ` · 시간 ${nextTimeText}` : ""}`;
+  return `교육일 ${before} → ${after}${timeChanged ? ` · 시간 ${to.timeText}` : ""}`;
 }
 
 /** 교육일이 등록되지 않은 옛 회차: 기간 이벤트 1건이므로 시작·종료·시간을 직접 쓴다. */
