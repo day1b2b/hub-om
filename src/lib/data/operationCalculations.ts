@@ -273,14 +273,49 @@ function normalizeEducationDateToken(token: string): string | null {
   return parseDate(isoDate) ? isoDate : null;
 }
 
-/** 실제 교육일 목록을 짧은 표시용 문자열로 만든다 (예: "9/3, 9/4, 9/7"). */
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * 실제 교육일 목록을 짧은 표시용 문자열로 만든다. 연속된 날짜는 구간으로 묶고
+ * ("9/8~9/25"), 구간 사이에 쉬는 날이 있으면 쉼표로 나눠 보여준다
+ * (예: "9/3, 9/7"이면 "9/3, 9/7", "9/8~9/10, 9/14~9/16"이면 두 구간).
+ */
 export function formatEducationDatesList(dates: string[]): string {
-  return dates
-    .map((date) => {
-      const parsed = parseDate(date);
-      return parsed ? `${parsed.getMonth() + 1}/${parsed.getDate()}` : date;
-    })
-    .join(", ");
+  const validDates: Date[] = [];
+  const invalidTokens: string[] = [];
+
+  for (const date of dates) {
+    const parsed = parseDate(date);
+    if (parsed) {
+      validDates.push(parsed);
+    } else {
+      invalidTokens.push(date);
+    }
+  }
+
+  validDates.sort((a, b) => a.getTime() - b.getTime());
+
+  const ranges: { start: Date; end: Date }[] = [];
+
+  for (const parsed of validDates) {
+    const lastRange = ranges[ranges.length - 1];
+
+    if (lastRange && parsed.getTime() - lastRange.end.getTime() === ONE_DAY_MS) {
+      lastRange.end = parsed;
+    } else {
+      ranges.push({ start: parsed, end: parsed });
+    }
+  }
+
+  const rangeLabels = ranges.map(({ start, end }) =>
+    start.getTime() === end.getTime() ? formatMonthDay(start) : `${formatMonthDay(start)}~${formatMonthDay(end)}`
+  );
+
+  return [...rangeLabels, ...invalidTokens].join(", ");
+}
+
+function formatMonthDay(date: Date): string {
+  return `${date.getMonth() + 1}/${date.getDate()}`;
 }
 
 /** 실제 교육일 목록에서 startDate/endDate(최소/최대)를 계산한다. 빈 목록이면 null. */

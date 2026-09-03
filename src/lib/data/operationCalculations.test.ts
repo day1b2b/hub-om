@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import type { ArchiveCompletionInput } from "@/lib/data/operationCalculations.ts";
-import { deriveArchiveStatus, isArchiveComplete, missingArchiveItems } from "@/lib/data/operationCalculations.ts";
+import {
+  deriveArchiveStatus,
+  formatEducationDatesList,
+  isArchiveComplete,
+  missingArchiveItems
+} from "@/lib/data/operationCalculations.ts";
 
 // 아카이빙 완료 조건을 모두 채운 기준값. 각 테스트에서 한 가지만 비워 확인한다.
 function completeInput(overrides: Partial<ArchiveCompletionInput> = {}): ArchiveCompletionInput {
@@ -125,4 +130,34 @@ test("여러 개가 빠지면 모두 알려준다", () => {
     resultReportLink: ""
   };
   assert.deepEqual(missingArchiveItems(empty), ["코스ID", "강의관리", "만족도", "결과보고서 링크"]);
+});
+
+test("연속된 실제 교육일은 구간으로 묶어 보여준다", () => {
+  const consecutiveDates = [
+    "2026-09-08", "2026-09-09", "2026-09-10", "2026-09-11", "2026-09-12",
+    "2026-09-13", "2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17",
+    "2026-09-18", "2026-09-19", "2026-09-20", "2026-09-21", "2026-09-22",
+    "2026-09-23", "2026-09-24", "2026-09-25"
+  ];
+
+  assert.equal(formatEducationDatesList(consecutiveDates), "9/8~9/25");
+});
+
+test("쉬는 날로 끊긴 실제 교육일은 구간을 나눠 쉼표로 보여준다", () => {
+  assert.equal(
+    formatEducationDatesList(["2026-09-08", "2026-09-09", "2026-09-10", "2026-09-14", "2026-09-15", "2026-09-16"]),
+    "9/8~9/10, 9/14~9/16"
+  );
+});
+
+test("띄엄띄엄 흩어진 실제 교육일은 날짜를 하나씩 나열한다", () => {
+  assert.equal(formatEducationDatesList(["2026-09-03", "2026-09-06", "2026-09-09"]), "9/3, 9/6, 9/9");
+});
+
+test("교육일이 하루뿐이면 구간 표시 없이 그 날짜만 보여준다", () => {
+  assert.equal(formatEducationDatesList(["2026-09-08"]), "9/8");
+});
+
+test("입력 순서가 뒤섞여 있어도 날짜순으로 정렬해 구간을 만든다", () => {
+  assert.equal(formatEducationDatesList(["2026-09-10", "2026-09-08", "2026-09-09"]), "9/8~9/10");
 });
