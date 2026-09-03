@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { useIsAdmin } from "@/lib/auth/RoleContext";
+import { useCanAccessSatisfactionMatching, useIsAdmin } from "@/lib/auth/RoleContext";
 import type { TeamScope } from "@/lib/teamScope";
 
 interface AppSidebarProps {
@@ -15,6 +15,7 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
   const pathname = usePathname();
   const { data: session } = useSession();
   const isAdmin = useIsAdmin();
+  const canAccessSatisfactionMatching = useCanAccessSatisfactionMatching();
   const displayName = session?.user?.name || session?.user?.email || "";
   void teamScope;
   void label;
@@ -79,7 +80,9 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
           <div className="nav-section nav-section-locked">
             <div className="nav-section-title">데이터 관리</div>
             <Link className={isSyncAdminPage ? "active" : ""} data-icon="🔒" href="/admin/sync">데이터 동기화</Link>
-            <Link className={isSatisfactionPreviewPage ? "active" : ""} data-icon="🔒" href="/admin/satisfaction-preview">만족도 매칭</Link>
+            {canAccessSatisfactionMatching ? (
+              <Link className={isSatisfactionPreviewPage ? "active" : ""} data-icon="🔒" href="/admin/satisfaction-preview">만족도 매칭</Link>
+            ) : null}
             <Link className={isImportAdminPage ? "active" : ""} data-icon="🔒" href="/admin/imports">데이터 일괄 등록</Link>
             <Link className={isUsersAdminPage ? "active" : ""} data-icon="🔒" href="/admin/users">멤버 관리</Link>
             <Link className={isDatabaseAdminPage ? "active" : ""} data-icon="🔒" href="/admin/database">DB 조회</Link>

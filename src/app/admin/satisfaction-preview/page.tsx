@@ -1,11 +1,14 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SatisfactionMatchPreview } from "@/features/admin/SatisfactionMatchPreview";
 import { requireAdminSession } from "@/lib/auth/requireAdminSession";
+import { isSatisfactionMatchingEnabled } from "@/lib/auth/satisfactionMatchingAccess";
 
 export const dynamic = "force-dynamic";
 
 export default async function SatisfactionPreviewPage() {
+  if (!isSatisfactionMatchingEnabled()) notFound();
   await requireAdminSession();
 
   return (
