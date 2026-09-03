@@ -163,6 +163,25 @@ function buildHistory(operations: ReadonlyArray<OperationSession>): CompanyWikiH
 }
 
 /**
+ * 기업을 묶는 키. companyId(Company.id)가 있으면 그것을 쓴다 — 기업을 식별하는 값이라
+ * 운영 현황의 기업명 표기가 흔들려도 같은 기업으로 남는다.
+ *
+ * companyId가 없을 수도 있다(로컬 JSON 저장소, 외부 원천 병합 항목). 그때는 기업명으로
+ * 묶되 공백과 대소문자는 무시한다("삼성전자 DS" ↔ "삼성전자DS"). 공백 외의 차이는
+ * 합치지 않는다 — "KB"와 "KB국민은행"처럼 같은 곳인지 알 수 없는 쌍이 있어서,
+ * 임의로 묶으면 서로 다른 기업의 이력이 섞인다.
+ *
+ * 남은 한계: 이미 Company 행이 두 개로 갈려 있으면(예: 등록 당시 표기가 달랐다면)
+ * companyId도 둘이라 여기서 합쳐지지 않는다. 그건 운영 현황 표기를 통일해 원본에서
+ * 풀어야 한다.
+ */
+function companyGroupKey(operation: OperationSession, trimmedName: string): string {
+  const companyId = (operation.companyId ?? "").trim();
+  if (companyId) return `id:${companyId}`;
+  return `name:${trimmedName.replace(/\s+/g, "").toLowerCase()}`;
+}
+
+/**
  * 묶인 표기 중 화면에 쓸 이름. 회차가 가장 많은 표기를 대표로 쓴다.
  * 회차 수가 같으면 가나다순으로 앞선 것을 골라 결과가 흔들리지 않게 한다.
  */
@@ -189,16 +208,13 @@ function displayCompanyName(operations: ReadonlyArray<OperationSession>): string
  * 지어내지 않고 비워 둔다. 화면에서 "기록 없음"으로 보여 준다.
  */
 export function aggregateCompanies(operations: ReadonlyArray<OperationSession>): CompanyWikiEntry[] {
-  // 공백만 다른 표기는 같은 기업으로 묶는다("삼성전자 DS" 1회차 ↔ "삼성전자DS" 75회차).
-  // 공백 외의 차이는 합치지 않는다 — "KB"와 "KB국민은행"처럼 같은 곳인지 알 수 없는 쌍이 있다.
   const byCompany = new Map<string, OperationSession[]>();
   for (const operation of operations) {
     const name = (operation.companyName ?? "").trim();
     if (!name) continue; // 기업명이 없는 행은 위키에 세울 수 없다.
-    const key = name.replace(/\s+/g, "").toLowerCase();
-    const list = byCompany.get(key);
+    const list = byCompany.get(companyGroupKey(operation, name));
     if (list) list.push(operation);
-    else byCompany.set(key, [operation]);
+    else byCompany.set(companyGroupKey(operation, name), [operation]);
   }
 
   const entries: CompanyWikiEntry[] = [];

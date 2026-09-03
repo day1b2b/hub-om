@@ -67,6 +67,11 @@ export interface OperationSession {
   /** 코스ID 단위 라벨("코스ID명"). courseName("과정명")과 별도 테이블(CourseIdLabel)에 저장되며,
    * 같은 코스ID를 쓰는 모든 과정이 이 값을 공유한다. 아직 아무도 지정 안 했으면 빈 문자열. */
   courseIdLabel: string;
+  /**
+   * Company.id (내부 UUID PK). 기업을 식별하는 값이라 companyName 표기가 흔들려도
+   * 같은 기업으로 묶인다. 로컬 JSON 저장소나 외부 원천 병합 항목에는 없을 수 있어 optional.
+   */
+  companyId?: string;
   companyName: string;
   courseName: string;
   courseCategory: string;
