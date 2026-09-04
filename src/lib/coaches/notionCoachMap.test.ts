@@ -4,7 +4,7 @@ import { test } from "node:test";
 import { mapPageToCoachRecord, readEmployeeNo, readNotionNo } from "@/lib/coaches/notionCoachMap.ts";
 
 // 속성 타입은 실제 노션 코치 DB 스키마(2026-09-04 확인)를 그대로 따른다. 연결 키인 "ID"는 number가
-// 아니라 unique_id({ prefix: null, number: 230 })이고, 사번은 number다. 타입이 틀리면 값을 못 읽어도
+// 아니라 unique_id({ prefix: "CO", number: 230 })이고, 사번은 number다. 타입이 틀리면 값을 못 읽어도
 // 테스트는 통과해버리므로 여기서 실제 타입을 고정한다.
 // 값은 실제 코치 데이터를 쓰지 않고 가상 값으로 둔다.
 function samplePage(overrides: Record<string, unknown> = {}) {
@@ -12,7 +12,7 @@ function samplePage(overrides: Record<string, unknown> = {}) {
     id: "3b94576d-6ffa-8191-8ab8-ecc0d609d31f",
     properties: {
       // 노션 auto increment ID. 이 값이 노션↔사이트 연결 키다.
-      ID: { type: "unique_id", unique_id: { prefix: null, number: 230 } },
+      ID: { type: "unique_id", unique_id: { prefix: "CO", number: 230 } },
       // 사번. 키는 아니고 값으로만 담는다.
       사번: { type: "number", number: 91000176 },
       이름: { type: "title", title: [{ plain_text: "홍길동" }] },
@@ -48,12 +48,12 @@ test("사번이 텍스트로 적혀 있어도 숫자만 뽑는다", () => {
 });
 
 test("속성 이름이 'No ID'여도 연결 키로 읽는다", () => {
-  const page = samplePage({ ID: undefined, "No ID": { type: "unique_id", unique_id: { prefix: "CH", number: 77 } } });
+  const page = samplePage({ ID: undefined, "No ID": { type: "unique_id", unique_id: { prefix: "CO", number: 77 } } });
   assert.equal(mapPageToCoachRecord(page)?.notionNo, 77);
 });
 
 test("속성 이름이 후보에 없어도 unique_id 타입이면 읽는다", () => {
-  const page = samplePage({ ID: undefined, 코치번호: { type: "unique_id", unique_id: { prefix: "CH", number: 12 } } });
+  const page = samplePage({ ID: undefined, 코치번호: { type: "unique_id", unique_id: { prefix: "CO", number: 12 } } });
   assert.equal(mapPageToCoachRecord(page)?.notionNo, 12);
 });
 

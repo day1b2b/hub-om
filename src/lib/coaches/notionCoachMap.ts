@@ -13,7 +13,7 @@ const EXCLUDED_TYPE_TAGS = new Set(["기존", "신규", "취소"]);
 const EMPLOYEE_NO_PROPERTY_NAMES = ["사번", "사원번호"];
 
 // 노션 코치 DB의 auto increment ID를 담은 속성 후보. 연결 키다(강사 DB와 같은 방식).
-// 2026-09-04 연동 DB에 "ID" 속성을 만들어 66행 전부 값이 붙었다(225~290).
+// 2026-09-04 연동 DB에 "ID" 속성을 만들어 66행 전부 값이 붙었다(CO-225~CO-290).
 // 운영자가 화면에서 속성 이름을 바꿔도 끊기지 않게 후보를 두고, 그래도 못 찾으면
 // unique_id 타입 속성을 찾아 쓴다.
 const NOTION_NO_PROPERTY_NAMES = ["No ID", "ID", "NO", "No"];
@@ -95,7 +95,8 @@ export function readEmployeeNo(properties: JsonObject): string | null {
 
 /**
  * 노션 auto increment ID. API에서는 unique_id 타입으로 { prefix, number } 형태로 온다.
- * 강사 DB처럼 접두어 없이 숫자만 쓴다(접두어가 붙어도 숫자만 연결 키로 본다).
+ * 코치 DB는 prefix "CO" + number라서 화면에 "CO-225"로 보인다. 접두어는 표시용이고 숫자만 연결 키다.
+ * (접두어 CH는 레거시 코치 DB가 쓰고 있어 못 쓴다. 노션은 접두어를 워크스페이스에서 유일하게 관리한다.)
  */
 export function readNotionNo(properties: JsonObject): number | null {
   for (const key of NOTION_NO_PROPERTY_NAMES) {
