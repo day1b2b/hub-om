@@ -7107,6 +7107,16 @@ td span {
   outline: 2px solid rgba(117, 116, 111, 0.16);
 }
 
+.lecture-note-field input[aria-invalid="true"] {
+  border-color: var(--red);
+}
+
+.lecture-note-field > span.lecture-note-field-error {
+  color: var(--red);
+  font-size: 12px;
+  font-weight: 400;
+}
+
 .lecture-note-field-block {
   max-width: none;
   width: 100%;
