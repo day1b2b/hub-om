@@ -9551,19 +9551,6 @@ button.coach-doc-reserve-chip:disabled {
   padding: 14px;
 }
 
-/* 코스ID가 두 기업에 걸렸을 때 붙는 표기. 데이터 오류를 알리는 것이라 경고 색을 쓴다.
-   코스ID 값 옆에 놓이므로 작게. */
-.courseid-conflict {
-  background: var(--red-bg);
-  border-radius: 5px;
-  color: var(--red);
-  font-size: 11px;
-  font-weight: 700;
-  margin-left: 5px;
-  padding: 1px 5px;
-  white-space: nowrap;
-}
-
 .role-tag {
   background: var(--amber-bg);
   border-radius: 5px;
