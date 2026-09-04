@@ -5,6 +5,9 @@
 // 이름으로 찾는 경로는 아직 ID가 안 붙은 기존 코치 행을 이어 붙일 때만 쓴다.
 //
 // 사번은 키로 쓰지 않고 값으로만 담는다. 계약시트도 같은 사번을 쓰므로 나중에 원천을 이어 붙일 때 필요하다.
+//
+// 노션에 같은 사람이 두 행으로 등록된 경우(이름·연락처·생년월일 동일)는 이전 행(사번 있는 원본) ID를
+// 기준으로 두고 한 코치에 합친다. 자세한 규칙은 findCoach 주석에 있다.
 import { CoachStatus, type Prisma } from "@prisma/client";
 import { generateCoachAccessToken, normalizeCoachName } from "./accessToken";
 import { mapPageToCoachRecord, isObject, type JsonObject, type NotionCoachRecord } from "./notionCoachMap";
@@ -55,14 +58,21 @@ export async function syncNotionCoaches(dryRun: boolean): Promise<SyncResult> {
       }
 
       if (existing) {
+        // 노션 중복 행은 이전 행 값을 덮지 않는다. 어느 행이 먼저 처리되느냐에 따라 결과가 달라지면
+        // 안 되고, 기준은 이전 행(사번 있는 원본)이기 때문이다. 빈 칸만 채운다.
+        const isDuplicateRow = matched.by === "duplicateRow";
         await prisma.$transaction(async (tx) => {
           await tx.coach.update({
             where: { id: existing.id },
-            data: publicCoachUpdate(record)
+            data: isDuplicateRow ? fillEmptyCoachUpdate(existing, record) : publicCoachUpdate(record)
           });
-          await upsertPrivateProfile(tx, existing.id, record);
-          if (record.fields.length > 0) await replaceFields(tx, existing.id, record.fields);
-          if (record.curriculums.length > 0) await replaceCurriculums(tx, existing.id, record.curriculums);
+          await upsertPrivateProfile(tx, existing.id, record, isDuplicateRow ? existing.privateProfile : null);
+          if (record.fields.length > 0 && !(isDuplicateRow && existing.fields.length > 0)) {
+            await replaceFields(tx, existing.id, record.fields);
+          }
+          if (record.curriculums.length > 0 && !(isDuplicateRow && existing.curriculums.length > 0)) {
+            await replaceCurriculums(tx, existing.id, record.curriculums);
+          }
         });
         result.updated++;
         continue;
@@ -80,7 +90,7 @@ export async function syncNotionCoaches(dryRun: boolean): Promise<SyncResult> {
             ...publicCoachUpdate(record)
           }
         });
-        await upsertPrivateProfile(tx, coach.id, record);
+        await upsertPrivateProfile(tx, coach.id, record, null);
         if (record.fields.length > 0) await replaceFields(tx, coach.id, record.fields);
         if (record.curriculums.length > 0) await replaceCurriculums(tx, coach.id, record.curriculums);
       });
@@ -136,18 +146,25 @@ async function fetchAllNotionPages(config: { token: string; databaseId: string }
 
 interface CoachMatch {
   coach: ExistingCoach | null;
-  by: "notionNo" | "name";
-  // 못 찾았지만 같은 이름의 코치가 이미 있는 경우. 동명이인일 수도, 노션 중복 행일 수도 있어
-  // 미리보기에서 운영자가 판단할 수 있게 표시한다.
+  // notionNo: ID로 찾음 / name: 아직 ID가 안 붙은 동명 행에 이어 붙임 /
+  // duplicateRow: 노션에 같은 사람이 두 번 등록된 행이라 먼저 붙은 코치에 합침
+  by: "notionNo" | "name" | "duplicateRow";
+  // 못 찾았지만 같은 이름의 코치가 이미 있는 경우(동명이인으로 보고 새로 만든다).
   sameNameExists: boolean;
 }
 
 /**
- * 코치 1명을 찾는다. 노션 ID → 이름 순서다.
+ * 코치 1명을 찾는다. 노션 ID → 아직 ID 없는 동명 행 → 노션 중복 행 순서다.
  *
  * ID로 못 찾았을 때 이름으로 한 번 더 찾는 이유는 backfill이다. 기존 코치 행에는 아직 ID가 없으므로
  * 첫 동기화가 이름으로 찾아 ID를 채운다(별도 스크립트가 필요 없다). 이때 "아직 ID가 안 붙은 행"만
  * 보는 이유는, 이미 다른 ID가 붙은 행을 가져오면 남의 코치를 덮어쓰기 때문이다.
+ *
+ * 마지막 단계는 노션 자체의 중복 행 처리다. 노션 코치 DB에는 같은 사람이 두 행으로 등록된 경우가
+ * 있다(2026-09-04 확인: 5쌍. 8/11 원본 + 8/19 재등록, 쌍마다 연락처·생년월일이 동일). ID로는 서로
+ * 다른 사람이라 그대로 두면 코치가 2건 생기므로, 이름이 같고 연락처 또는 생년월일까지 같으면 같은
+ * 사람으로 보고 먼저 붙은 코치(사번이 있는 이전 행)에 합친다. 연락처가 다르면 진짜 동명이인이라
+ * 새 코치로 만든다.
  */
 async function findCoach(
   prisma: ReturnType<typeof getPrismaClient>,
@@ -159,7 +176,7 @@ async function findCoach(
   }
 
   const normalizedName = normalizeCoachName(record.name);
-  const coach = await prisma.coach.findFirst({
+  const unkeyed = await prisma.coach.findFirst({
     where: {
       normalizedName,
       ...(record.notionNo !== null ? { notionNo: null } : {})
@@ -167,7 +184,20 @@ async function findCoach(
     include: COACH_INCLUDE,
     orderBy: { createdAt: "asc" }
   });
-  if (coach) return { coach, by: "name", sameNameExists: true };
+  if (unkeyed) return { coach: unkeyed, by: "name", sameNameExists: true };
+
+  const identityFilters = [
+    ...(record.phone ? [{ phone: record.phone }] : []),
+    ...(record.birthDate ? [{ birthDate: record.birthDate }] : [])
+  ];
+  if (identityFilters.length > 0) {
+    const duplicate = await prisma.coach.findFirst({
+      where: { normalizedName, privateProfile: { is: { OR: identityFilters } } },
+      include: COACH_INCLUDE,
+      orderBy: { createdAt: "asc" }
+    });
+    if (duplicate) return { coach: duplicate, by: "duplicateRow", sameNameExists: true };
+  }
 
   const sameNameExists = (await prisma.coach.count({ where: { normalizedName } })) > 0;
   return { coach: null, by: "name", sameNameExists };
@@ -192,7 +222,14 @@ function publicCoachUpdate(record: NotionCoachRecord) {
   };
 }
 
-async function upsertPrivateProfile(tx: Prisma.TransactionClient, coachId: string, record: NotionCoachRecord) {
+// current를 주면(노션 중복 행) 이미 값이 있는 항목은 그대로 두고 빈 항목만 채운다.
+async function upsertPrivateProfile(
+  tx: Prisma.TransactionClient,
+  coachId: string,
+  record: NotionCoachRecord,
+  current: ExistingCoach["privateProfile"] | null
+) {
+  const fillEmptyOnly = current !== null;
   await tx.coachPrivateProfile.upsert({
     where: { coachId },
     create: {
@@ -205,12 +242,30 @@ async function upsertPrivateProfile(tx: Prisma.TransactionClient, coachId: strin
       affiliation: record.affiliation
     },
     update: {
-      ...(record.phone ? { phone: record.phone } : {}),
-      ...(record.email ? { email: record.email } : {}),
-      ...(record.birthDate ? { birthDate: record.birthDate } : {}),
-      ...(record.affiliation ? { affiliation: record.affiliation } : {})
+      ...(record.phone && !(fillEmptyOnly && current?.phone) ? { phone: record.phone } : {}),
+      ...(record.email && !(fillEmptyOnly && current?.email) ? { email: record.email } : {}),
+      ...(record.birthDate && !(fillEmptyOnly && current?.birthDate) ? { birthDate: record.birthDate } : {}),
+      ...(record.affiliation && !(fillEmptyOnly && current?.affiliation) ? { affiliation: record.affiliation } : {})
     }
   });
+}
+
+/**
+ * 노션 중복 행이 들어올 때의 코치 갱신 값. 연결 키(notionNo)는 이전 행 ID를 유지하려고 아예 넣지
+ * 않고, 나머지는 코치에 값이 없을 때만 채운다.
+ */
+function fillEmptyCoachUpdate(coach: ExistingCoach, record: NotionCoachRecord) {
+  const isEmpty = (value: string | null) => value === null || value === "";
+  return {
+    ...(record.employeeNo !== null && isEmpty(coach.employeeNo) ? { employeeNo: record.employeeNo } : {}),
+    ...(record.notionPageId && isEmpty(coach.notionPageId) ? { notionPageId: record.notionPageId } : {}),
+    ...(record.workType && isEmpty(coach.workType) ? { workType: record.workType } : {}),
+    ...(record.portfolioUrl && isEmpty(coach.portfolioUrl) ? { portfolioUrl: record.portfolioUrl } : {}),
+    ...(record.selfNote && isEmpty(coach.selfNote) ? { selfNote: record.selfNote } : {}),
+    ...(record.availabilityDetail && isEmpty(coach.availabilityDetail)
+      ? { availabilityDetail: record.availabilityDetail }
+      : {})
+  };
 }
 
 async function replaceFields(tx: Prisma.TransactionClient, coachId: string, fields: string[]) {
@@ -241,7 +296,10 @@ function describeDryRun(matched: CoachMatch, record: NotionCoachRecord): string 
 
   const parts: string[] = [];
   if (matched.by === "notionNo") parts.push(`${idText}로 연결`);
-  else if (record.notionNo !== null) parts.push(`${idText} 연결(이름으로 찾은 예전 행)`);
+  else if (matched.by === "duplicateRow") {
+    // 이전 행 ID를 그대로 쓰고 빈 칸만 채운다. 노션에서 중복 행을 지우면 이 줄이 사라진다.
+    parts.push(`노션 중복 행(${idText}) — 이전 행 ID ${existing.notionNo ?? "없음"} 코치에 합침(빈 칸만 채움)`);
+  } else if (record.notionNo !== null) parts.push(`${idText} 연결(이름으로 찾은 예전 행)`);
   else parts.push("이름으로 연결 (노션에 ID 없음)");
 
   if (existing.name !== record.name) {
