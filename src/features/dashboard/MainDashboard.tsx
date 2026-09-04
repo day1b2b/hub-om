@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
+import { sumRevenueByCourseId } from "@/lib/data/operationCalculations";
 import type { OperationSession } from "@/lib/data/operationTypes";
 import { splitPersonNames } from "@/lib/data/personNames";
 import { TEAM_OPTIONS, type TeamUser } from "@/lib/data/teamUsers/teamUserTypes";
@@ -66,6 +67,9 @@ export function MainDashboard({ operations, teamScope, teamUsers }: MainDashboar
     scopedCourses.flatMap((operation) => splitToolsList(operation.tools ?? "")),
     8
   );
+  // "/operations" 총 매출과 같은 기준(코스ID당 1번, 최댓값)으로 집계한다. scopedCourses(과정
+  // 단위)만으로는 같은 코스ID가 과정 여러 건에 걸친 경우를 걸러내지 못한다.
+  const totalRevenue = sumRevenueByCourseId(scopedOperations);
 
   return (
     <main className="dashboard-shell">
@@ -127,7 +131,7 @@ export function MainDashboard({ operations, teamScope, teamUsers }: MainDashboar
             label="완료"
             value={scopedCourses.filter((course) => courseStatus(course, coursePeriods, today) === "완료").length}
           />
-          <Metric label="총 매출" value={formatShortMoney(scopedCourses.reduce((sum, operation) => sum + (operation.revenue ?? 0), 0))} />
+          <Metric label="총 매출" value={formatShortMoney(totalRevenue)} />
           <Metric label="참여 기업" value={new Set(scopedOperations.map((operation) => operation.companyName)).size} />
           <Metric label="전체 과정" value={courseCount} />
         </section>
