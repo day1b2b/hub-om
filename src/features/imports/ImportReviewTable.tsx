@@ -242,38 +242,25 @@ function getIssueText(record: SourceRecordPreview, canPromoteRecords: boolean) {
   if (record.validationErrors.length > 0) return record.validationErrors.join(" / ");
   if (!canPromoteRecords) return "원천 검수 전용";
   if (isPromotionReady(record, canPromoteRecords)) return "반영 가능";
-  if (!record.linkedOperation) return "과정 연결 필요";
+  if (!record.linkedOperation) {
+    // "과정 연결 필요"만 보여 주면 무엇을 채워야 하는지 알 수 없다. 서버가 전체 필드로
+    // 계산한 부족 목록을 그대로 적는다. 코스ID를 넣으면 기존 과정에 자동으로 붙으니
+    // 그 길도 함께 알려 준다.
+    return record.missingRequiredFields.length > 0
+      ? `과정 연결 필요 — ${record.missingRequiredFields.join(", ")} 없음. 채우거나 코스ID를 넣어 주세요.`
+      : "과정 연결 필요 — 기존 과정과 짝이 안 맞습니다. 코스ID를 넣어 주세요.";
+  }
   return "기본 검증 통과";
 }
 
+/**
+ * 반영 가능한 행인가.
+ *
+ * 전에는 화면에 내려온 미리보기 필드를 훑어 판단했다. 그런데 미리보기는 앞 12개만
+ * 담기므로, 기업명이 13번째에 있으면 원천 파일에 값이 있어도 "없음"으로 봤다.
+ * 서버가 정규화된 전체 필드로 계산한 missingRequiredFields를 쓴다.
+ */
 function isPromotionReady(record: SourceRecordPreview, canPromoteRecords: boolean) {
-  return (
-    canPromoteRecords &&
-    record.reviewStatus === "적용 준비" &&
-    Boolean(
-      getFieldValue(record, ["companyName", "기업명", "고객사"]) !== "-" &&
-        getFieldValue(record, ["courseName", "과정명", "교육명"]) !== "-" &&
-        parseDateValue(getFieldValue(record, ["startDate", "시작일"])) &&
-        parseDateValue(getFieldValue(record, ["endDate", "종료일"]))
-    )
-  );
+  return canPromoteRecords && record.reviewStatus === "적용 준비" && record.missingRequiredFields.length === 0;
 }
 
-function parseDateValue(value: string) {
-  const normalized = value.trim().replace(/[./]/g, "-");
-  const match = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(normalized);
-
-  if (!match) return null;
-
-  const [, yearText, monthText, dayText] = match;
-  const year = Number(yearText);
-  const month = Number(monthText);
-  const day = Number(dayText);
-  const date = new Date(Date.UTC(year, month - 1, day));
-
-  if (date.getUTCFullYear() !== year || date.getUTCMonth() + 1 !== month || date.getUTCDate() !== day) {
-    return null;
-  }
-
-  return date;
-}

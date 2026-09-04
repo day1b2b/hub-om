@@ -32,6 +32,12 @@ export interface SourceRecordPreview {
   unmappedFields: SourceRecordFieldPreview[];
   rowSnapshotPreview: SourceRecordFieldPreview[];
   reviewStatus: SourceRecordReviewStatus;
+  /**
+   * 반영에 필요한데 비어 있는 필드의 라벨. 서버가 정규화된 전체 필드로 계산한다.
+   * 화면에 내려가는 mappedFields 미리보기는 앞 12개만 담기므로 그것으로 판단하면
+   * 기업명이 13번째에 있는 행이 "없음"으로 잘못 표시된다.
+   */
+  missingRequiredFields: string[];
   validationErrors: string[];
   createdAt: string;
 }
