@@ -48,6 +48,40 @@ export function normalizeCourseId(value: unknown): string {
     .replace(/\.0$/, "");
 }
 
+/**
+ * Sum revenue once per courseId - multiple course rows can share the same courseId,
+ * so a plain per-row sum double-counts.
+ *
+ * The dashboard used to aggregate per course record (Course.id) only; when one courseId
+ * was filled into several course rows, that revenue got counted once per row (confirmed
+ * 2026-09-04). "/operations" fixed this on 2026-09-01 by grouping on normalizeCourseId
+ * and taking the max value seen per key (order-independent, no double count) - both
+ * callers now share this same function so they can't drift apart again.
+ */
+export function sumRevenueByCourseId(operations: ReadonlyArray<Pick<OperationSession, "courseId" | "revenue">>): number {
+  const revenueByCourseId = new Map<string, number>();
+  let total = 0;
+
+  for (const operation of operations) {
+    const revenue = operation.revenue ?? 0;
+    const key = normalizeCourseId(operation.courseId);
+
+    if (!key) {
+      // No courseId to group by - add it standalone, same as before.
+      total += revenue;
+      continue;
+    }
+
+    revenueByCourseId.set(key, Math.max(revenueByCourseId.get(key) ?? 0, revenue));
+  }
+
+  for (const revenue of revenueByCourseId.values()) {
+    total += revenue;
+  }
+
+  return total;
+}
+
 export function normalizeEducationFormat(rawValue: string): EducationFormat {
   const value = rawValue.trim();
   if (value === "플랫폼(온라인운영)") return "비대면";
