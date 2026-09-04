@@ -182,11 +182,17 @@ export function OperationDashboard({
   const [companyFilter, setCompanyFilter] = useState("전체 기업");
   const [formatFilter, setFormatFilter] = useState<"전체 교육형태" | EducationFormat>("전체 교육형태");
   // 기본값 = 로그인한 사람. 자기 과정부터 보는 게 대부분의 목적이라 기본을 그쪽으로 둔다.
-  //   명단(omRoster)에 없는 이름이면 선택지에 없으니 전체로 둔다 — 빈 목록이 뜨는 것보다 낫다.
-  //   드롭다운에 자기 이름이 그대로 보이므로 "데이터가 안 나온다" 로 오해할 여지는 없다.
-  const [omFilter, setOmFilter] = useState(() =>
-    myOmName && omRoster.some((om) => om.name === myOmName) ? myOmName : 전체_OM
-  );
+  //
+  // ★단, 본인 건이 하나도 없으면 전체로 둔다.
+  //   처음 넣을 때는 "명단에 있으면 건다" 였는데, 그러면 담당 과정이 아직 없는 사람이
+  //   첫 접속에 빈 목록을 본다. 실측으로 등록 OM 29명 중 13명이 0건이었고, LD 가 OM 명단에
+  //   올라 있는 경우에도 같은 일이 난다(2026-09-02 LD 한 명이 아무것도 안 보인다고 제보).
+  //   빈 화면은 "권한이 없나" · "데이터가 사라졌나" 로 읽힌다 — 편의 기능이 그 값을 치를 수는 없다.
+  const [omFilter, setOmFilter] = useState(() => {
+    if (!myOmName || !omRoster.some((om) => om.name === myOmName)) return 전체_OM;
+    const hasOwnOperations = operations.some((operation) => splitPersonNames(operation.om).includes(myOmName));
+    return hasOwnOperations ? myOmName : 전체_OM;
+  });
   const [partFilter, setPartFilter] = useState(전체_파트);
   const [archiveOnly, setArchiveOnly] = useState(false);
   const [query, setQuery] = useState("");
