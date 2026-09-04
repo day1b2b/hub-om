@@ -126,3 +126,35 @@ test("기업명·과정명이 비어 있어도 터지지 않는다", () => {
   assert.equal(rows[0].ld, "미정");
   assert.equal(rows[0].instructor, "-");
 });
+
+test("연간·상시형 운영은 alwaysOn으로 표시한다", () => {
+  // 이 줄은 달 필터가 숨기지 않는다. 시작일이 3월이어도 9월에 챙길 일이 있다.
+  for (const type of ["연간", "상시형"]) {
+    const rows = buildMyCourseRows(
+      [],
+      [operation({ operationType: type as OperationSession["operationType"] })],
+      noneRepresented,
+      scheduleRange,
+      href
+    );
+    assert.equal(rows[0].alwaysOn, true, type);
+  }
+});
+
+test("그 밖의 운영유형은 alwaysOn이 아니다", () => {
+  for (const type of ["특강", "단기", "중기", "장기", "검토필요"]) {
+    const rows = buildMyCourseRows(
+      [],
+      [operation({ operationType: type as OperationSession["operationType"] })],
+      noneRepresented,
+      scheduleRange,
+      href
+    );
+    assert.equal(rows[0].alwaysOn, false, type);
+  }
+});
+
+test("담당 과정(업무요청)은 운영유형이 없어 alwaysOn이 아니다", () => {
+  const rows = buildMyCourseRows([request()], [], noneRepresented, scheduleRange, href);
+  assert.equal(rows[0].alwaysOn, false);
+});

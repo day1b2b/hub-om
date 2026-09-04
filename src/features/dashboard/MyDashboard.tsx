@@ -140,7 +140,11 @@ export function MyDashboard({ assignedRequests, diagnosis, omName, operations }:
   // 표에 실제로 보여 줄 줄. 일정이 없는 줄은 기간과 무관하게 남긴다(overlapsDateRange 참고).
   const courseRange =
     selectedMonth === null ? ALL_RANGE : getMonthRange(new Date(courseYear, selectedMonth, 1), 0);
-  const visibleCourseRows = courseRows.filter((row) => overlapsDateRange(row.start, row.end, courseRange));
+  // 연간·상시형 과정은 달과 상관없이 남긴다. 시작일이 3월이어도 9월에 챙길 일이 있는데,
+  // 달 필터가 숨기면 그 달에 그 과정을 잊는다.
+  const visibleCourseRows = courseRows.filter(
+    (row) => row.alwaysOn || overlapsDateRange(row.start, row.end, courseRange)
+  );
 
   // 요약 지표는 담당 전체 기준이다. 전에는 선택한 달에 "시작하는" 운영만 세서,
   // 운영 현황에 20건이 잡히는 담당자의 대시보드에 "전체 1"이 떴다.
@@ -367,6 +371,9 @@ export function MyDashboard({ assignedRequests, diagnosis, omName, operations }:
                         <Link className="course-link" href={row.href}>
                           <strong>{row.courseName}</strong>
                         </Link>
+                        {/* 시작일이 다른 달인데 이 달에 떠 있는 이유를 알려 준다.
+                            표기가 없으면 필터가 고장난 것으로 읽힌다. */}
+                        {row.alwaysOn ? <span className="role-tag">연중</span> : null}
                       </td>
                       <td>{row.totalSessions}</td>
                       <td>{row.ld}</td>
