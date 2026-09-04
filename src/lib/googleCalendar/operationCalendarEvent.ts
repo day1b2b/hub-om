@@ -133,8 +133,10 @@ function buildDescription(operation: OperationSession): string {
     lines.push(`교육일: ${formatEducationDatesCompact(educationDates)} (${educationDates.length}일)`);
   }
 
+  // 구글 캘린더 설명은 <a> 같은 기본 HTML을 렌더링한다. 긴 주소 대신 "링크" 글자에 주소를 심는다
+  // (2026-09-04 요청). 나머지 줄은 그대로 줄바꿈 텍스트다.
   const baseUrl = process.env.HUB_OM_BASE_URL?.trim().replace(/\/$/, "");
-  if (baseUrl) lines.push(`운영 상세: ${baseUrl}/operations/${operation.operationId}`);
+  if (baseUrl) lines.push(`운영 상세: <a href="${baseUrl}/operations/${operation.operationId}">링크</a>`);
 
   return lines.join("\n");
 }

@@ -158,6 +158,33 @@ test("설명 머리말이 실제 동작(수정 반영·삭제 무반영)을 안�
   assert.ok(description.includes("담당 OM: 김정선"));
 });
 
+test("운영 상세 주소는 '링크' 글자에 심는다(HTML 앵커)", () => {
+  const previous = process.env.HUB_OM_BASE_URL;
+  process.env.HUB_OM_BASE_URL = "https://hub-om.example.com/";
+
+  try {
+    const description = buildCalendarEventBody(operationFixture(), []).description ?? "";
+    assert.ok(description.includes('운영 상세: <a href="https://hub-om.example.com/operations/OP-1">링크</a>'));
+    // 주소가 맨몸으로 한 번 더 노출되지 않는다.
+    assert.equal(description.match(/https:\/\/hub-om\.example\.com/g)?.length, 1);
+  } finally {
+    if (previous === undefined) delete process.env.HUB_OM_BASE_URL;
+    else process.env.HUB_OM_BASE_URL = previous;
+  }
+});
+
+test("HUB_OM_BASE_URL이 없으면 운영 상세 줄 자체를 넣지 않는다", () => {
+  const previous = process.env.HUB_OM_BASE_URL;
+  delete process.env.HUB_OM_BASE_URL;
+
+  try {
+    const description = buildCalendarEventBody(operationFixture(), []).description ?? "";
+    assert.ok(!description.includes("운영 상세"));
+  } finally {
+    if (previous !== undefined) process.env.HUB_OM_BASE_URL = previous;
+  }
+});
+
 test("resolvePartCalendarId는 파트 키로 캘린더를 찾는다", () => {
   const previous = process.env.GOOGLE_CAL_PART_CALENDARS;
   process.env.GOOGLE_CAL_PART_CALENDARS = "1파트:one@group.calendar.google.com,2파트:two@group.calendar.google.com";
