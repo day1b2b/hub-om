@@ -6,6 +6,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { holidayName } from "@/features/dashboard/holidays";
 import type { OmAvailabilityRoster } from "@/lib/data/omAvailability/omAvailabilityTypes";
 import type { OmRequest } from "@/lib/data/omRequest/omRequestTypes";
+import { resolveOperationCalendarRuns } from "@/lib/data/operationCalculations";
 import type { OperationSession } from "@/lib/data/operationTypes";
 import { splitPersonNames } from "@/lib/data/personNames";
 import type { ResourceOwnerRoster } from "@/lib/data/teamMemberRepository";
@@ -356,9 +357,7 @@ function buildCalendarWeeks(
 ): CalendarWeek[] {
   const days = buildCalendarDays(anchorDate);
   const items = [
-    ...operations
-      .map((operation) => operationToCalendarItem(operation, teamQuery, ownerMap))
-      .filter((item): item is CalendarItem => item !== null),
+    ...operations.flatMap((operation) => operationToCalendarItems(operation, teamQuery, ownerMap)),
     ...calendarEvents
       .map((event) => sourceEventToCalendarItem(event, ownerMap))
       .filter((item): item is CalendarItem => item !== null),
@@ -457,25 +456,34 @@ function buildCalendarWeekSegments(days: CalendarDay[], items: CalendarItem[]) {
   });
 }
 
-function operationToCalendarItem(operation: OperationSession, teamQuery: string, ownerMap: Map<string, string>): CalendarItem | null {
-  const startDate = parseDate(operation.startDate);
-  const endDate = parseDate(operation.endDate);
-
-  if (!startDate || !endDate) return null;
-
+// 실제 교육일이 있으면 연속 구간마다 막대를 하나씩 그린다(교육 없는 날에 일정이 뜨지 않게).
+// 교육일이 없는 옛 회차는 시작일~종료일 막대 1개다. 단위는 resolveOperationCalendarRuns가 정한다.
+function operationToCalendarItems(
+  operation: OperationSession,
+  teamQuery: string,
+  ownerMap: Map<string, string>
+): CalendarItem[] {
   const ownerName = getCalendarOperationOwner(operation.om, ownerMap);
   const onsiteOwnerName = getCalendarOperationOwner(operation.onsiteOm, ownerMap);
 
-  return {
-    endDate,
-    href: `/operations/${operation.operationId}${teamQuery}`,
-    key: `operation-${operation.operationId}`,
-    onsiteOwnerName: onsiteOwnerName && onsiteOwnerName !== ownerName ? onsiteOwnerName : undefined,
-    ownerName,
-    startDate,
-    title: operation.courseName,
-    type: "operation"
-  };
+  return resolveOperationCalendarRuns(operation).flatMap((run) => {
+    const startDate = parseDate(run.start);
+    const endDate = parseDate(run.end);
+
+    if (!startDate || !endDate) return [];
+
+    return [{
+      endDate,
+      href: `/operations/${operation.operationId}${teamQuery}`,
+      // 한 회차가 막대 여러 개가 되므로 구간 시작일까지 키에 넣는다(레인 배치·확장 상태가 섞이지 않게).
+      key: `operation-${operation.operationId}-${run.start}`,
+      onsiteOwnerName: onsiteOwnerName && onsiteOwnerName !== ownerName ? onsiteOwnerName : undefined,
+      ownerName,
+      startDate,
+      title: operation.courseName,
+      type: "operation" as const
+    }];
+  });
 }
 
 function sourceEventToCalendarItem(event: CalendarResourceEvent, ownerMap: Map<string, string>): CalendarItem | null {
