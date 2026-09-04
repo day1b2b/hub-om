@@ -11,7 +11,6 @@ import type {
   OperationSession
 } from "@/lib/data/operationTypes";
 import { splitPersonNames } from "@/lib/data/personNames";
-import { findCourseIdConflicts } from "./courseIdConflicts";
 import { normalizePersonKey } from "@/lib/data/roleAssignees";
 import { satisfactionNumber } from "@/lib/data/satisfaction";
 import { getSeoulToday } from "@/lib/seoulDate";
@@ -62,12 +61,6 @@ function operationParts(operation: OperationSession, partByPersonKey: Record<str
  * 일이 반복돼서, 정규화 없이 묶으면 "255413" 과 "255413​" 가 다른 코스ID로 잡혀
  * 같은 매출이 두 번 더해진다.
  */
-/** 이 코스ID가 걸쳐 있는 기업 목록 문구. 겹치지 않으면 null. */
-function conflictCompaniesOf(courseId: string, conflicts: Map<string, string[]>): null | string {
-  const companies = conflicts.get(normalizeCourseId(courseId));
-  return companies ? companies.join(", ") : null;
-}
-
 function sumRevenueByCourseId(operations: ReadonlyArray<Pick<OperationSession, "courseId" | "revenue">>): number {
   const revenueByCourseId = new Map<string, number>();
   let total = 0;
@@ -211,8 +204,6 @@ export function OperationDashboard({
   const [pageInput, setPageInput] = useState("");
   const pageSize = 15;
   const teamOperations = operations;
-  // 한 코스ID가 두 기업에 걸린 경우. 필터로 한쪽이 빠지면 경고가 사라지므로 전체에서 찾는다.
-  const courseIdConflicts = useMemo(() => findCourseIdConflicts(operations), [operations]);
 
   const filterOptions = useMemo(() => {
     const omsInPart = partFilter === 전체_파트 ? omRoster : omRoster.filter((om) => om.team === partFilter);
@@ -558,20 +549,7 @@ export function OperationDashboard({
                     <tr key={group.key}>
                       <td>{(currentPage - 1) * pageSize + index + 1}</td>
                       <td>{summarizeText(group.operations, (operation) => operation.educationFormat)}</td>
-                      <td>
-                        {group.courseId || "검토필요"}
-                        {/* 코스ID는 한 기업 안에서만 쓰여야 한다. 두 기업에 걸리면 둘 중 하나가
-                            잘못 입력된 것이고, 매출이 코스ID별 최댓값으로 잡혀 작은 쪽이 총계에서
-                            빠진다. 어느 기업들과 겹치는지 title로 알려 준다. */}
-                        {conflictCompaniesOf(group.courseId, courseIdConflicts) ? (
-                          <span
-                            className="courseid-conflict"
-                            title={`이 코스ID가 ${conflictCompaniesOf(group.courseId, courseIdConflicts)}에 걸쳐 있습니다. 둘 중 하나가 잘못 입력된 것일 수 있고, 매출 합계에서 한쪽이 빠집니다.`}
-                          >
-                            중복
-                          </span>
-                        ) : null}
-                      </td>
+                      <td>{group.courseId || "검토필요"}</td>
                       <td><strong>{group.companyName}</strong></td>
                       <td>
                         <Link className="course-link" href={`/operations/${group.linkOperationId}${teamQuery}`}>

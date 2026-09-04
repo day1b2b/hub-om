@@ -27,8 +27,8 @@ interface LectureManagementNoteRowProps {
   value: string;
 }
 
-// 2026-08-24에 링크 단일 모드로 잠시 꺼뒀다가 2026-09-03에 텍스트 직접입력 모드를 다시 켰다.
-const SHOW_LECTURE_TEXT_MODE = true;
+// 2026-08-24에 링크 단일 모드로 껐다가 2026-09-03에 텍스트 직접입력 모드를 다시 켰고, 2026-09-04에 다시 껐다.
+const SHOW_LECTURE_TEXT_MODE = false;
 // 입력이 멈춘 뒤 이 시간이 지나면 자동 저장한다.
 const AUTOSAVE_DELAY_MS = 3000;
 // 저장 실패 후 다시 시도하는 간격. 실패가 반복되면 두 배씩 늘려 서버 복구 직후 요청이 몰리지 않게 한다.
