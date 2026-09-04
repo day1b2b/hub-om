@@ -369,6 +369,7 @@ export function OperationDetail({
                         <td>
                           <LectureManagementNoteRow
                             done={Boolean(courseOperation.lectureManagementNote.trim())}
+                            educationDates={courseOperation.educationDates}
                             operationId={courseOperation.operationId}
                             startDate={courseOperation.startDate}
                             value={courseOperation.lectureManagementNote}
