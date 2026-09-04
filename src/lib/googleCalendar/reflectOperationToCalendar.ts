@@ -79,15 +79,24 @@ async function reflectOperation(operation: OperationSession, trigger: ReflectTri
         );
 
         const result = await patchEvent(calendarId, link.eventId, plan.body, { notifyAttendees });
-
-        // 사람이 캘린더에서 지운 이벤트다. 다시 만들지 않는다 — 캘린더에서의 삭제는
-        // hub-om에 반영하지 않기로 했고(D8), 여기서 새로 만들면 그 결정이 뒤집힌다.
-        // 매핑은 그대로 남겨 둔다. 지우면 이 loop가 다음 번에 새 이벤트를 만든다.
-        if (result === "missing") {
-          logSkip(operation.operationId, `${plan.eventDate} 이벤트가 캘린더에 없음(사람이 지움) — 갱신 건너뜀`);
-        }
-
         sameCalendar.delete(plan.eventDate);
+
+        if (result !== "missing") continue;
+
+        // 사람이 캘린더에서 지운 이벤트다(D8: 캘린더 쪽 삭제는 운영현황에 반영하지 않는다).
+        // 10분마다 도는 역반영은 이런 이벤트를 되살리지 않지만, 여기는 사람이 hub-om에서
+        // 회차를 저장한 시점이다 — 잘못 지운 일정을 되살리는 길이 이것뿐이므로 다시 만든다
+        // (2026-09-04 결정). 초대 메일은 insert라 다시 나간다. 매핑은 새 eventId로 갈아 끼운다.
+        const recreatedId = await insertEvent(calendarId, plan.body);
+        await saveCalendarEventLink({
+          operationId: operation.operationId,
+          calendarId,
+          eventId: recreatedId,
+          eventDate: plan.eventDate
+        });
+        console.info(
+          `[gcal] ${operation.operationId} ${plan.eventDate} 이벤트가 캘린더에 없어 다시 만듦(hub-om 저장 시점) — event=${recreatedId}`
+        );
         continue;
       }
 

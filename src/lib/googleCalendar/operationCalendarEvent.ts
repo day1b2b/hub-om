@@ -15,6 +15,36 @@ import { extractPartKey } from "./calendarWriteConfig";
 
 const TIME_ZONE = "Asia/Seoul";
 
+/**
+ * hub-om이 이벤트에 마지막으로 쓴 날짜·시간을 남기는 확장 속성 키.
+ *
+ * 역반영은 이벤트의 현재 날짜·시간을 이 표식과 비교해 "사람이 고쳤는지"를 가른다.
+ * hub-om은 날짜·시간을 쓸 때마다 표식도 같은 patch로 갱신하므로, 둘이 다르면 그 뒤에
+ * 사람이 고친 것이다 — 언제 고쳤는지(시각 차)에 기대지 않는다. 시각 차 규칙은 hub-om
+ * 저장 직후 2분 안의 수정을 자기 잔향으로 오판해 조용히 되돌렸다(2026-09-04 실측).
+ */
+export const HUB_OM_SCHEDULE_PROPERTY = "hubOmSchedule";
+
+type EventDateTime = { date?: string; dateTime?: string };
+
+/** 종일/시간 지정 두 형태를 한 문자열로 만든다. 초·오프셋 표기 차이는 무시한다. 비교와 표식에 같은 값을 쓴다. */
+export function scheduleKey(start: EventDateTime, end: EventDateTime): string {
+  if (start.dateTime && end.dateTime) {
+    return `time:${start.dateTime.slice(0, 16)}~${end.dateTime.slice(0, 16)}`;
+  }
+
+  return `allday:${start.date ?? ""}~${end.date ?? ""}`;
+}
+
+function withScheduleMarker<T extends { start: EventDateTime; end: EventDateTime }>(
+  body: T
+): T & { extendedProperties: { private: Record<string, string> } } {
+  return {
+    ...body,
+    extendedProperties: { private: { [HUB_OM_SCHEDULE_PROPERTY]: scheduleKey(body.start, body.end) } }
+  };
+}
+
 // "09:00 ~ 13:00", "09:00-18:00", "09:00~18:00" 등 구분자만 다른 표기를 모두 받는다.
 const TIME_RANGE = /(\d{1,2}):(\d{2})\s*[~\-–]\s*(\d{1,2}):(\d{2})/;
 
@@ -116,7 +146,7 @@ export function buildCalendarEventBody(
         end: { date: nextDay(operation.endDate) }
       };
 
-  return {
+  return withScheduleMarker({
     summary: buildEventSummary(operation, partKey),
     description: buildDescription(operation),
     // 초대받은 매니저가 자기 회차 이벤트의 날짜·시간을 개인 캘린더에서 고칠 수 있게 한다(스펙 D6).
@@ -129,7 +159,7 @@ export function buildCalendarEventBody(
     ...(operation.region ? { location: operation.region } : {}),
     ...schedule,
     ...(attendeeEmails.length > 0 ? { attendees: attendeeEmails.map((email) => ({ email })) } : {})
-  };
+  });
 }
 
 export interface CalendarEventPlan {
@@ -161,7 +191,8 @@ export function buildCalendarEventBodies(
   return runs.map(({ start, end }) => ({
     eventDate: start,
     eventEndDate: end,
-    body: {
+    // 구간마다 날짜가 다르므로 표식도 구간 값으로 다시 찍는다.
+    body: withScheduleMarker({
       ...base,
       ...(times
         ? {
@@ -169,7 +200,7 @@ export function buildCalendarEventBodies(
             end: { dateTime: `${end}T${times.end}:00`, timeZone: TIME_ZONE }
           }
         : { start: { date: start }, end: { date: nextDay(end) } })
-    }
+    })
   }));
 }
 
