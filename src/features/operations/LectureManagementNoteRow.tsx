@@ -6,11 +6,11 @@ import { isNavigableHref, toHref } from "@/lib/links";
 import {
   blankTab,
   composeLectureNote,
-  containsNoteMarkers,
   isDateUsedByOtherTab,
+  mergePastedNote,
   parseLectureNote,
-  parseLectureNoteBody,
   prepareTabsForSave,
+  shouldSplitPastedNote,
   suggestNextLectureDate,
   type LectureNoteTab
 } from "./lectureNoteModel";
@@ -429,16 +429,13 @@ export function LectureManagementNoteRow({
 
   function handleSmartPaste(event: React.ClipboardEvent<HTMLInputElement | HTMLTextAreaElement>) {
     const pasted = event.clipboardData.getData("text");
-    if (!containsNoteMarkers(pasted)) return;
+    if (!shouldSplitPastedNote(pasted)) return;
 
+    // 날짜 제목이 여러 개면 날짜별 탭으로, 칸 제목만 있으면 지금 탭의 칸으로 나눠 넣는다.
     event.preventDefault();
-    const parsed = parseLectureNoteBody(pasted);
-    updateActiveTab({
-      courseSummary: parsed.courseSummary || activeTab.courseSummary,
-      issue: parsed.issue || activeTab.issue,
-      staffOpinion: parsed.staffOpinion || activeTab.staffOpinion,
-      studentCount: parsed.studentCount || activeTab.studentCount
-    });
+    setTabs((current) => mergePastedNote(current, activeTabIndex, pasted));
+    setDateError(null);
+    markEdited();
   }
 
   async function persist(noteValue: string): Promise<boolean> {

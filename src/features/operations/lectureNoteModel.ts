@@ -37,12 +37,16 @@ function splitDateBlocks(value: string): { date: string; body: string }[] {
 
   if (matches.length === 0) return [{ body: value, date: "" }];
 
-  return matches.map((match, index) => {
+  const blocks = matches.map((match, index) => {
     const start = (match.index ?? 0) + match[0].length;
     const end = index + 1 < matches.length ? matches[index + 1].index ?? value.length : value.length;
 
     return { body: value.slice(start, end).trim(), date: match[1].trim() };
   });
+
+  // 첫 날짜 제목 앞에 적힌 내용은 버리지 않고 날짜 없는 블록으로 남긴다.
+  const leading = value.slice(0, matches[0].index ?? 0).trim();
+  return leading ? [{ body: leading, date: "" }, ...blocks] : blocks;
 }
 
 export function parseLectureNoteBody(value: string): LectureNoteDraft {
@@ -154,4 +158,38 @@ function addDays(isoDate: string, days: number): string {
 
   const next = new Date(Date.UTC(year, month - 1, day + days));
   return next.toISOString().slice(0, 10);
+}
+
+/** 붙여넣은 글에 칸 제목이나 날짜 제목이 있어 칸/탭으로 나눠 넣어야 하는지. */
+export function shouldSplitPastedNote(pasted: string): boolean {
+  return containsNoteMarkers(pasted) || new RegExp(DATE_HEADER_PATTERN.source, "m").test(pasted);
+}
+
+/**
+ * 붙여넣은 글을 탭에 나눠 넣는다. 날짜 제목이 있는 블록은 같은 날짜 탭이 있으면 그 탭에, 없으면 새 탭에 넣고,
+ * 날짜 제목이 없는 블록은 지금 보고 있는 탭에 넣는다. 붙여넣은 값이 있는 칸은 붙여넣은 값이 우선한다.
+ */
+export function mergePastedNote(tabs: LectureNoteTab[], activeTabIndex: number, pasted: string): LectureNoteTab[] {
+  const next = tabs.map((tab) => ({ ...tab }));
+
+  for (const block of splitDateBlocks(pasted)) {
+    const parsed = parseLectureNoteBody(block.body);
+    const targetIndex = block.date ? next.findIndex((tab) => tab.date.trim() === block.date) : activeTabIndex;
+
+    if (targetIndex === -1) {
+      next.push({ ...blankTab(block.date), ...parsed });
+      continue;
+    }
+
+    const target = next[targetIndex] ?? blankTab(block.date);
+    next[targetIndex] = {
+      ...target,
+      courseSummary: parsed.courseSummary || target.courseSummary,
+      issue: parsed.issue || target.issue,
+      staffOpinion: parsed.staffOpinion || target.staffOpinion,
+      studentCount: parsed.studentCount || target.studentCount
+    };
+  }
+
+  return next;
 }
