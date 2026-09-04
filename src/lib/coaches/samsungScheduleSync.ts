@@ -64,6 +64,7 @@ export async function syncSamsungSchedule(dryRun: boolean): Promise<SyncResult> 
             id: `dry-run:${coachName}`,
             sourceCoachId: `samsung:${normalizeCoachName(coachName)}`,
             accessToken: null,
+            notionNo: null,
             name: coachName,
             normalizedName: normalizeCoachName(coachName),
             workType: mergeWorkTypeStrings("삼전 DS", contract?.workType),

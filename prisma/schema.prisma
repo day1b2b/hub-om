@@ -409,6 +409,10 @@ model Coach {
   availabilityDetail String? @map("availability_detail")
   managerNote    String?     @map("manager_note")
   dxTag          String?     @map("dx_tag")
+  // 노션 코치 DB의 ID(auto increment, 화면상 "No ID". 예: CH-51). 노션↔사이트 연결 키다.
+  // 이름은 노션에서 바뀔 수 있고 동명이인도 있어 키로 쓸 수 없다.
+  // 노션에 없는 코치(계약시트로만 들어온 행)는 null이며, 그 경우에만 이름으로 식별한다.
+  notionNo       Int?        @unique @map("notion_no")
   notionPageId   String?     @map("notion_page_id") // 노션 코치 DB의 해당 코치 페이지 ID (바로가기 링크용)
   isActive       Boolean     @default(true) @map("is_active") // hub-om 운영 노출 여부 (status와 의미 분리)
   displayOrder   Int?        @map("display_order")

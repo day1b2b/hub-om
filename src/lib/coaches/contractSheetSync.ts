@@ -81,6 +81,7 @@ export async function syncContractSheetEngagements(dryRun: boolean): Promise<Syn
           name: coachName,
           sourceCoachId: `sheet:${normalizeCoachName(coachName)}`,
           accessToken: null,
+          notionNo: null,
           normalizedName: normalizeCoachName(coachName),
           workType,
           status: CoachStatus.ACTIVE,
