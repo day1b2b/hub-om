@@ -16,6 +16,7 @@ const PUBLIC_PATHS = new Set([
 ]);
 
 const SYNC_API_PATHS = new Set([
+  "/api/admin/calendar/refresh-events",
   "/api/admin/sync-notion",
   "/api/reminders/lecture-followup",
   "/api/sync/calendar-events",
