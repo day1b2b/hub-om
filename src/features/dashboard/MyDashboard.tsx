@@ -6,14 +6,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { holidayName } from "./holidays";
 import { missingArchiveItems } from "@/lib/data/operationCalculations";
 import { buildMyCourseRows } from "./myCourseRows";
-import {
-  ALL_RANGE,
-  getMonthRange,
-  getQuarterRange,
-  getYearRange,
-  overlapsDateRange,
-  type DateRange
-} from "@/lib/dateRange";
+import { ALL_RANGE, getMonthRange, overlapsDateRange } from "@/lib/dateRange";
 import type { OmNameDiagnosis } from "./omNameDiagnosis";
 import { calendarLabel, isOnsiteSupportForViewer } from "./onsiteLabel";
 import { createRequestMatcher } from "./requestDedup";
@@ -35,10 +28,11 @@ interface MyDashboardProps {
 
 export function MyDashboard({ assignedRequests, diagnosis, omName, operations }: MyDashboardProps) {
   const today = useMemo(() => getSeoulToday(), []);
-  // 담당 과정 표의 기간 필터. 처음 들어오면 이번 달만 본다 — 과정이 쌓이면 전체는
-  // 너무 길어서, 지금 챙길 것부터 보이는 편이 낫다. 칩으로 넓힐 수 있다.
-  const [courseRange, setCourseRange] = useState<DateRange>(() => getMonthRange(today, 0));
-  const [rangeKey, setRangeKey] = useState<RangeKey>("thisMonth");
+  // 담당 과정 표의 달 필터. 처음 들어오면 이번 달만 본다 — 과정이 쌓이면 전체는
+  // 너무 길어서, 지금 챙길 것부터 보이는 편이 낫다. 칩으로 다른 달을 볼 수 있다.
+  // null이면 전체. 연도는 오늘 기준 한 해만 다룬다(아래 courseYear).
+  const [selectedMonth, setSelectedMonth] = useState<null | number>(() => today.getMonth());
+  const courseYear = today.getFullYear();
   const [openStage, setOpenStage] = useState<null | string>(null);
   // 담당 과정 표 접기/펼치기. 과정이 많으면 화면이 길어져 아래 패널이 멀어진다.
   const [coursesOpen, setCoursesOpen] = useState(true);
@@ -144,6 +138,8 @@ export function MyDashboard({ assignedRequests, diagnosis, omName, operations }:
     (request) => requestHref(request, operationIdByCourse)
   );
   // 표에 실제로 보여 줄 줄. 일정이 없는 줄은 기간과 무관하게 남긴다(overlapsDateRange 참고).
+  const courseRange =
+    selectedMonth === null ? ALL_RANGE : getMonthRange(new Date(courseYear, selectedMonth, 1), 0);
   const visibleCourseRows = courseRows.filter((row) => overlapsDateRange(row.start, row.end, courseRange));
 
   // 요약 지표는 담당 전체 기준이다. 전에는 선택한 달에 "시작하는" 운영만 세서,
@@ -315,23 +311,28 @@ export function MyDashboard({ assignedRequests, diagnosis, omName, operations }:
             </h2>
             <div className="dashboard-table-meta">
               <span>
-                {RANGE_LABELS[rangeKey]} {visibleCourseRows.length}건
-                {rangeKey === "all" ? null : <> · 전체 {courseRows.length}건</>}
+                {selectedMonth === null
+                  ? `전체 ${courseRows.length}건`
+                  : `${courseYear}년 ${selectedMonth + 1}월 ${visibleCourseRows.length}건 · 전체 ${courseRows.length}건`}
               </span>
-              {/* 기간 칩은 표의 내용을 바꾸는 것이라 접혀 있을 때는 숨긴다. */}
+              {/* 달 칩은 표의 내용을 바꾸는 것이라 접혀 있을 때는 숨긴다. */}
               {coursesOpen ? (
-                <div className="quick-range" role="group" aria-label="기간 선택">
-                  {RANGE_KEYS.map((key) => (
+                <div className="quick-range month-chips" role="group" aria-label={`${courseYear}년 달 선택`}>
+                  <button
+                    className={selectedMonth === null ? "selected" : ""}
+                    onClick={() => setSelectedMonth(null)}
+                    type="button"
+                  >
+                    전체
+                  </button>
+                  {MONTH_INDEXES.map((month) => (
                     <button
-                      className={rangeKey === key ? "selected" : ""}
-                      key={key}
-                      onClick={() => {
-                        setRangeKey(key);
-                        setCourseRange(rangeFor(key, today));
-                      }}
+                      className={selectedMonth === month ? "selected" : ""}
+                      key={month}
+                      onClick={() => setSelectedMonth(month)}
                       type="button"
                     >
-                      {RANGE_LABELS[key]}
+                      {month + 1}월
                     </button>
                   ))}
                 </div>
@@ -379,8 +380,8 @@ export function MyDashboard({ assignedRequests, diagnosis, omName, operations }:
                     <td className="empty-state" colSpan={8}>
                       {courseRows.length > 0 ? (
                         <>
-                          <strong>{RANGE_LABELS[rangeKey]}에 진행하는 담당 과정이 없습니다.</strong>
-                          <span>전체 {courseRows.length}건이 있습니다. 위 기간을 넓혀 보세요.</span>
+                          <strong>{courseYear}년 {(selectedMonth ?? 0) + 1}월에 진행하는 담당 과정이 없습니다.</strong>
+                          <span>전체 {courseRows.length}건이 있습니다. 위에서 다른 달이나 전체를 눌러 보세요.</span>
                         </>
                       ) : (
                         <>
@@ -794,25 +795,8 @@ function NameMismatchNotice({ diagnosis }: { diagnosis: OmNameDiagnosis }) {
   );
 }
 
-/** 담당 과정 표의 기간 칩. 운영 현황의 빠른 기간 선택과 같은 구성이다. */
-const RANGE_KEYS = ["all", "thisMonth", "nextMonth", "quarter", "year"] as const;
-type RangeKey = (typeof RANGE_KEYS)[number];
-
-const RANGE_LABELS: Record<RangeKey, string> = {
-  all: "전체",
-  thisMonth: "이번달",
-  nextMonth: "다음달",
-  quarter: "이번 분기",
-  year: "올해"
-};
-
-function rangeFor(key: RangeKey, today: Date): DateRange {
-  if (key === "thisMonth") return getMonthRange(today, 0);
-  if (key === "nextMonth") return getMonthRange(today, 1);
-  if (key === "quarter") return getQuarterRange(today);
-  if (key === "year") return getYearRange(today);
-  return ALL_RANGE;
-}
+/** 담당 과정 표의 달 칩. 0 = 1월. */
+const MONTH_INDEXES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] as const;
 
 function Metric({ label, value }: { label: string; value: number | string }) {
   return (
