@@ -5,6 +5,8 @@ import { BulkAddRoundsButton } from "./BulkAddRoundsButton";
 import { BulkEditRoundsButton } from "./BulkEditRoundsButton";
 import { BulkSaveRoundsButton } from "./BulkSaveRoundsButton";
 import { DeleteRoundButton } from "./DeleteRoundButton";
+import { RoundOrderCell } from "./RoundOrderCell";
+import { RoundReorderProvider } from "./RoundReorderProvider";
 import { EditAllRoundsProvider } from "./EditAllRoundsProvider";
 import { EditableCourseNameItem } from "./EditableCourseNameItem";
 import { EditableInfoItem } from "./EditableInfoItem";
@@ -28,7 +30,7 @@ import type {
   OperationCollaboration,
   OperationDiscussionItem
 } from "@/lib/data/operationCollaboration";
-import { availableRoundNumbers, isSameCourse } from "@/lib/data/operationCalculations";
+import { isSameCourse } from "@/lib/data/operationCalculations";
 import { COURSE_CATEGORY_GROUPS } from "@/lib/data/omRequest/omCourseCategoryOptions";
 import type { PersonOptions } from "@/lib/data/personOptions";
 import { displayRoleAssigneeText } from "@/lib/data/roleAssignees";
@@ -76,8 +78,7 @@ export function OperationDetail({
   const existingRoundNumbers = courseOperations
     .map((candidate) => Number(candidate.roundNo))
     .filter((roundNo) => Number.isFinite(roundNo));
-  // 비어 있는 앞 회차까지 고를 수 있게 한다(2~8회차만 있는 과정에 1회차를 넣는 경우).
-  const roundNoOptions = availableRoundNumbers(existingRoundNumbers).map(String);
+  const nextRoundNo = String(Math.max(0, ...existingRoundNumbers) + 1);
   const fallbackOperationId =
     courseOperations.find((candidate) => candidate.operationId !== operation.operationId)?.operationId ?? null;
   // 과정명(과정ID 단위)은 코스ID명(코스ID 단위)보다 좁다 — 같은 코스ID라도 커리큘럼이 다르면
@@ -265,7 +266,7 @@ export function OperationDetail({
                   baseRegion={operation.region}
                   baseTimeText={operation.timeText}
                   instructorOptions={instructorOptions}
-                  roundNoOptions={roundNoOptions}
+                  nextRoundNo={nextRoundNo}
                 />
                 <BulkAddRoundsButton
                   baseOperationId={operation.operationId}
@@ -275,6 +276,14 @@ export function OperationDetail({
                 {SHOW_BULK_EDIT_ROUNDS && courseOperations.length > 1 ? <BulkEditRoundsButton /> : null}
               </div>
             </div>
+            <RoundReorderProvider
+              baseOperationId={operation.operationId}
+              rounds={courseOperations.map((candidate, candidateIndex) => ({
+                label: roundLabel(candidate, candidateIndex),
+                operationId: candidate.operationId,
+                roundNo: candidate.roundNo
+              }))}
+            >
             <div className="session-table-wrap">
               <table className="session-table">
                 <thead>
@@ -300,11 +309,12 @@ export function OperationDetail({
                       className={courseOperation.operationId === operation.operationId ? "current-session" : undefined}
                       key={courseOperation.operationId}
                     >
-                      <td>
-                        <Link className="session-link" href={`/operations/${courseOperation.operationId}${teamQuery}`}>
-                          {roundLabel(courseOperation, index)}
-                        </Link>
-                      </td>
+                      <RoundOrderCell
+                        href={`/operations/${courseOperation.operationId}${teamQuery}`}
+                        label={roundLabel(courseOperation, index)}
+                        operationId={courseOperation.operationId}
+                        reorderable={courseOperations.length > 1}
+                      />
                       <td>{displayRoleAssigneeText(courseOperation.om, "배정필요")}</td>
                       <EditableOnsiteOmCell
                         om={courseOperation.om}
@@ -319,7 +329,7 @@ export function OperationDetail({
                           <DeleteRoundButton
                             fallbackOperationId={fallbackOperationId}
                             isCurrent={courseOperation.operationId === operation.operationId}
-                            isFirstRound={index === 0}
+                            isFirstRound={courseOperation.roundNo.trim() === "1"}
                             isLastRound={courseOperations.length === 1}
                             operationId={courseOperation.operationId}
                             roundLabel={roundLabel(courseOperation, index)}
@@ -382,6 +392,7 @@ export function OperationDetail({
                 </tbody>
               </table>
             </div>
+            </RoundReorderProvider>
             {SHOW_BULK_EDIT_ROUNDS ? <BulkSaveRoundsButton /> : null}
             </EditAllRoundsProvider>
           </section>
