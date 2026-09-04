@@ -27,7 +27,10 @@ const CALENDAR_RELEVANT_FIELDS: Array<keyof UpdateOperationInput> = [
   "region",
   "om",
   "onsiteOm",
-  "courseName"
+  "courseName",
+  // 회차 번호는 이벤트 제목에 들어간다("[기업] 과정_N회차"). 순서를 바꾸면 제목이 따라가야 한다.
+  // 참석자는 그대로라 초대 메일은 나가지 않는다(D11).
+  "roundNo"
 ];
 
 function touchesCalendar(input: UpdateOperationInput): boolean {

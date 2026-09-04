@@ -5,6 +5,8 @@ import { BulkAddRoundsButton } from "./BulkAddRoundsButton";
 import { BulkEditRoundsButton } from "./BulkEditRoundsButton";
 import { BulkSaveRoundsButton } from "./BulkSaveRoundsButton";
 import { DeleteRoundButton } from "./DeleteRoundButton";
+import { RoundOrderCell } from "./RoundOrderCell";
+import { RoundReorderProvider } from "./RoundReorderProvider";
 import { EditAllRoundsProvider } from "./EditAllRoundsProvider";
 import { EditableCourseNameItem } from "./EditableCourseNameItem";
 import { EditableInfoItem } from "./EditableInfoItem";
@@ -274,6 +276,14 @@ export function OperationDetail({
                 {SHOW_BULK_EDIT_ROUNDS && courseOperations.length > 1 ? <BulkEditRoundsButton /> : null}
               </div>
             </div>
+            <RoundReorderProvider
+              baseOperationId={operation.operationId}
+              rounds={courseOperations.map((candidate, candidateIndex) => ({
+                label: roundLabel(candidate, candidateIndex),
+                operationId: candidate.operationId,
+                roundNo: candidate.roundNo
+              }))}
+            >
             <div className="session-table-wrap">
               <table className="session-table">
                 <thead>
@@ -299,11 +309,12 @@ export function OperationDetail({
                       className={courseOperation.operationId === operation.operationId ? "current-session" : undefined}
                       key={courseOperation.operationId}
                     >
-                      <td>
-                        <Link className="session-link" href={`/operations/${courseOperation.operationId}${teamQuery}`}>
-                          {roundLabel(courseOperation, index)}
-                        </Link>
-                      </td>
+                      <RoundOrderCell
+                        href={`/operations/${courseOperation.operationId}${teamQuery}`}
+                        label={roundLabel(courseOperation, index)}
+                        operationId={courseOperation.operationId}
+                        reorderable={courseOperations.length > 1}
+                      />
                       <td>{displayRoleAssigneeText(courseOperation.om, "배정필요")}</td>
                       <EditableOnsiteOmCell
                         om={courseOperation.om}
@@ -318,7 +329,7 @@ export function OperationDetail({
                           <DeleteRoundButton
                             fallbackOperationId={fallbackOperationId}
                             isCurrent={courseOperation.operationId === operation.operationId}
-                            isFirstRound={index === 0}
+                            isFirstRound={courseOperation.roundNo.trim() === "1"}
                             isLastRound={courseOperations.length === 1}
                             operationId={courseOperation.operationId}
                             roundLabel={roundLabel(courseOperation, index)}
@@ -381,6 +392,7 @@ export function OperationDetail({
                 </tbody>
               </table>
             </div>
+            </RoundReorderProvider>
             {SHOW_BULK_EDIT_ROUNDS ? <BulkSaveRoundsButton /> : null}
             </EditAllRoundsProvider>
           </section>
