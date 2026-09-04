@@ -250,6 +250,7 @@ export class LocalJsonOperationRepository implements OperationRepository {
       profit: operation.revenue !== null && totalCost !== null ? operation.revenue - totalCost : null,
       region: normalizeOptionalText(input.region, operation.region),
       resultReportLink: normalizeOptionalText(input.resultReportLink, operation.resultReportLink),
+      roundNo: normalizeOptionalText(input.roundNo, operation.roundNo),
       sessionDurationDays,
       sessionDurationType: deriveSessionDurationType(sessionDurationDays),
       specialNotes: normalizeOptionalText(input.specialNotes, operation.specialNotes),

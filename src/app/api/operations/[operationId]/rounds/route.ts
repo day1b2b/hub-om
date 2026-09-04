@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
-import { availableRoundNumbers, isSameCourse, parseEducationDatesText } from "@/lib/data/operationCalculations";
+import { isSameCourse, parseEducationDatesText } from "@/lib/data/operationCalculations";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import type { CreateOperationInput } from "@/lib/data/operationTypes";
 
@@ -65,15 +65,14 @@ export async function POST(request: Request, { params }: RouteContext) {
   const existingRoundNumbers = sameCourseOperations
     .map((candidate) => Number(candidate.roundNo))
     .filter((value) => Number.isFinite(value));
-  // 빈 자리(앞 회차가 없는 경우)와 다음 번호만 허용한다. 최대+1을 넘는 번호는 오타 방지로 막는다.
-  const allowedRoundNumbers = availableRoundNumbers(existingRoundNumbers);
+  const nextRoundNo = existingRoundNumbers.length > 0 ? Math.max(...existingRoundNumbers) + 1 : 1;
   const parsedRoundNo = Number(roundNo);
 
-  if (!Number.isInteger(parsedRoundNo) || !allowedRoundNumbers.includes(parsedRoundNo)) {
+  if (!Number.isFinite(parsedRoundNo) || parsedRoundNo !== nextRoundNo) {
     return NextResponse.json(
       {
         ok: false,
-        error: `쓸 수 있는 회차는 ${allowedRoundNumbers.join(", ")}입니다 (입력값: ${roundNo}).`
+        error: `회차는 같은 과정 안에서 순차적으로 입력해야 합니다. 다음 회차는 ${nextRoundNo}입니다 (입력값: ${roundNo}).`
       },
       { status: 400 }
     );

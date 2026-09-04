@@ -203,6 +203,8 @@ export interface UpdateOperationInput {
   padletLink?: string;
   region?: string;
   resultReportLink?: string;
+  /** 회차 번호. 순서 바꾸기(드래그)만 이 값을 쓴다 — 다른 화면에는 회차 수정 칸이 없다. */
+  roundNo?: string;
   specialNotes?: string;
   startDate?: string;
   timeText?: string;

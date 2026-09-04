@@ -598,6 +598,7 @@ export class PrismaOperationRepository implements OperationRepository {
     if (input.padletLink !== undefined) data.padletLink = nullableText(input.padletLink);
     if (input.region !== undefined) data.region = nullableText(input.region);
     if (input.resultReportLink !== undefined) data.resultReportLink = nullableText(input.resultReportLink);
+    if (input.roundNo !== undefined) data.roundNo = nullableText(input.roundNo);
     if (input.specialNotes !== undefined) data.specialNotes = nullableText(input.specialNotes);
     if (input.timeText !== undefined) data.timeText = nullableText(input.timeText);
     if (input.totalCost !== undefined) data.totalCost = input.totalCost;
