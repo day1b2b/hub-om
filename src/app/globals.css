@@ -1449,6 +1449,22 @@ select {
   color: #ffffff;
 }
 
+/* 내 대시보드의 담당 과정 기간 칩. 같은 화면의 탭(.dashboard-tabs)과 같은 선택 표시를
+   써서 "지금 무엇으로 보고 있는지"가 한눈에 보이게 한다. 크기는 표 머리글 옆에
+   놓이므로 조금 작게. */
+.dashboard-page .dashboard-table-meta .quick-range button {
+  font-size: 12px;
+  min-height: 28px;
+  padding: 0 9px;
+}
+
+.dashboard-page .dashboard-table-meta .quick-range button.selected {
+  background: #203044;
+  border-color: #203044;
+  color: #ffffff;
+  font-weight: 700;
+}
+
 .team-tabs {
   align-items: center;
   display: flex;
@@ -10238,10 +10254,6 @@ button.coach-doc-reserve-chip:disabled {
   font-size: 13px;
   min-width: 92px;
   text-align: center;
-}
-
-.me-focus-row td {
-  background: var(--green-bg);
 }
 
 /* 개인 대시보드 — 단계별 현황 & 할 일 통합 */
