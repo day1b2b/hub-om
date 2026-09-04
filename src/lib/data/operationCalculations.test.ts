@@ -7,7 +7,9 @@ import {
   formatEducationDatesCompact,
   formatEducationDatesList,
   isArchiveComplete,
-  missingArchiveItems
+  availableRoundNumbers,
+  missingArchiveItems,
+  resolveOperationCalendarRuns
 } from "@/lib/data/operationCalculations.ts";
 
 // 아카이빙 완료 조건을 모두 채운 기준값. 각 테스트에서 한 가지만 비워 확인한다.
@@ -193,4 +195,81 @@ test("하루짜리는 날짜 하나만 쓴다", () => {
 test("빈 목록과 읽을 수 없는 값은 빈 문자열이다", () => {
   assert.equal(formatEducationDatesCompact([]), "");
   assert.equal(formatEducationDatesCompact(["없음"]), "");
+});
+
+// ── 화면 캘린더 막대 구간 (2026-09-04) ────────────────────────────
+test("교육일이 끊기면 막대가 구간마다 하나씩 나온다", () => {
+  // 제보 사례: 9/14~9/16, 9/18, 9/21~9/23. 기간 하나로 그리면 9/17·9/19·9/20까지 일정이 뜬다.
+  const runs = resolveOperationCalendarRuns({
+    startDate: "2026-09-14",
+    endDate: "2026-09-23",
+    educationDates: [
+      "2026-09-14", "2026-09-15", "2026-09-16",
+      "2026-09-18",
+      "2026-09-21", "2026-09-22", "2026-09-23"
+    ]
+  });
+
+  assert.deepEqual(runs, [
+    { start: "2026-09-14", end: "2026-09-16" },
+    { start: "2026-09-18", end: "2026-09-18" },
+    { start: "2026-09-21", end: "2026-09-23" }
+  ]);
+});
+
+test("교육일이 전부 연속이면 막대 하나로 묶인다", () => {
+  const runs = resolveOperationCalendarRuns({
+    startDate: "2026-09-14",
+    endDate: "2026-09-16",
+    educationDates: ["2026-09-14", "2026-09-15", "2026-09-16"]
+  });
+
+  assert.deepEqual(runs, [{ start: "2026-09-14", end: "2026-09-16" }]);
+});
+
+test("교육일이 없는 옛 회차는 시작일~종료일 한 구간으로 떨어진다", () => {
+  for (const educationDates of [[], undefined, null]) {
+    assert.deepEqual(
+      resolveOperationCalendarRuns({ startDate: "2026-09-14", endDate: "2026-09-23", educationDates }),
+      [{ start: "2026-09-14", end: "2026-09-23" }],
+      `educationDates=${JSON.stringify(educationDates)}`
+    );
+  }
+});
+
+test("형식이 틀린 교육일만 있으면 기간으로 떨어진다(조용히 빈 캘린더가 되지 않게)", () => {
+  assert.deepEqual(
+    resolveOperationCalendarRuns({
+      startDate: "2026-09-14",
+      endDate: "2026-09-23",
+      educationDates: ["9월 14일", "", "  "]
+    }),
+    [{ start: "2026-09-14", end: "2026-09-23" }]
+  );
+});
+
+// ── 새 회차로 쓸 수 있는 번호 (2026-09-04) ────────────────────────
+test("앞 회차가 비어 있으면 그 번호를 고를 수 있다", () => {
+  // 제보 사례: 2~8회차만 있는 과정. 1회차를 끼워넣어야 한다.
+  assert.deepEqual(availableRoundNumbers([2, 3, 4, 5, 6, 7, 8]), [1, 9]);
+});
+
+test("중간이 비어도 그 번호가 나온다", () => {
+  assert.deepEqual(availableRoundNumbers([1, 2, 5]), [3, 4, 6]);
+});
+
+test("빈 자리가 없으면 다음 번호 하나뿐이다", () => {
+  assert.deepEqual(availableRoundNumbers([1, 2, 3]), [4]);
+  assert.deepEqual(availableRoundNumbers([]), [1]);
+});
+
+test("최대+1을 넘는 번호는 주지 않는다(오타로 만든 회차는 고칠 방법이 없다)", () => {
+  const options = availableRoundNumbers([1, 2, 3]);
+
+  assert.ok(!options.includes(5));
+  assert.ok(!options.includes(22));
+});
+
+test("숫자가 아닌 회차·0·음수는 자리 계산에서 무시한다", () => {
+  assert.deepEqual(availableRoundNumbers([Number.NaN, 0, -1, 2]), [1, 3]);
 });

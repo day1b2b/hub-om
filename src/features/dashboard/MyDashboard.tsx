@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { holidayName } from "./holidays";
-import { missingArchiveItems } from "@/lib/data/operationCalculations";
+import { missingArchiveItems, resolveOperationCalendarRuns } from "@/lib/data/operationCalculations";
 import { buildMyCourseRows } from "./myCourseRows";
 import { ALL_RANGE, getMonthRange, overlapsDateRange } from "@/lib/dateRange";
 import type { OmNameDiagnosis } from "./omNameDiagnosis";
@@ -73,22 +73,27 @@ export function MyDashboard({ assignedRequests, diagnosis, omName, operations }:
   const calendarEvents: CalendarEvent[] = [
     ...operations.flatMap((operation) => {
       if (isRepresentedByRequest(operation)) return []; // 담당 과정의 차수 이벤트로 대체
-      const start = parseDate(operation.startDate);
-      const end = parseDate(operation.endDate) ?? start;
-      if (!start || !end) return [];
       // 현장운영지원 표기는 "내가 지원자로 들어간 건"에만 붙인다. 담당 OM인 과정에는
       // 현장에 가더라도 붙이지 않는다 — 그 표기의 목적이 담당 과정과의 구별이라서다.
       const onsite = isOnsiteSupportForViewer(operation, omName);
-      return [{
-        id: `op-${operation.operationId}`,
-        label: calendarLabel(operation.companyName, onsite),
-        company: operation.companyName,
-        course: operation.courseName,
-        start: stripTime(start),
-        end: stripTime(end),
-        href: `/operations/${operation.operationId}`,
-        onsite
-      }];
+
+      // 실제 교육일의 연속 구간마다 막대를 하나씩. 기간 하나로 그리면 쉬는 날까지 일정이 뜬다.
+      return resolveOperationCalendarRuns(operation).flatMap((run) => {
+        const start = parseDate(run.start);
+        const end = parseDate(run.end) ?? start;
+        if (!start || !end) return [];
+
+        return [{
+          id: `op-${operation.operationId}-${run.start}`,
+          label: calendarLabel(operation.companyName, onsite),
+          company: operation.companyName,
+          course: operation.courseName,
+          start: stripTime(start),
+          end: stripTime(end),
+          href: `/operations/${operation.operationId}`,
+          onsite
+        }];
+      });
     }),
     ...assignedRequests.flatMap((request) => {
       // 교육 일정 차수(세션)를 각 날짜에 개별 표시한다. 세션에 dateEnd가 있으면 그 기간만큼 막대로.
