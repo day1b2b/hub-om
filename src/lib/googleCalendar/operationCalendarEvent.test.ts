@@ -146,6 +146,18 @@ test("본문에 hub-om이 쓴 날짜·시간 표식(hubOmSchedule)이 함께 들
   assert.equal(allDay.extendedProperties?.private?.hubOmSchedule, "allday:2026-09-07~2026-09-09");
 });
 
+test("설명 머리말이 실제 동작(수정 반영·삭제 무반영)을 안내한다", () => {
+  const body = buildCalendarEventBody(operationFixture(), []);
+  const description = body.description ?? "";
+
+  // 2026-09-04 이전 문구. 캘린더 수정이 반영되는 지금과 어긋나므로 되살아나면 실패한다.
+  assert.ok(!description.includes("수정은 hub-om에서 해주세요"));
+  assert.ok(description.includes("날짜·시간을 여기서 옮기면"));
+  assert.ok(description.includes("삭제해도 hub-om에는 반영되지 않습니다"));
+  // 머리말 뒤에 기존 상세(담당 OM 등)가 그대로 붙는다.
+  assert.ok(description.includes("담당 OM: 김정선"));
+});
+
 test("resolvePartCalendarId는 파트 키로 캘린더를 찾는다", () => {
   const previous = process.env.GOOGLE_CAL_PART_CALENDARS;
   process.env.GOOGLE_CAL_PART_CALENDARS = "1파트:one@group.calendar.google.com,2파트:two@group.calendar.google.com";
