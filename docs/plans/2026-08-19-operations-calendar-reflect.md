@@ -41,11 +41,11 @@
 | 역반영 적용(D7) | **배포 완료** — `POST /api/sync/calendar-events`, `applyCalendarReverseSync.ts` |
 | 초대 메일 정책(D11) | **배포 완료** — 참석자가 달라진 patch만 메일 |
 | 자기 쓰기 잔향 방어(D12) | **배포 완료** — `CALENDAR_REVERSE_SYNC_MIN_LAG_SECONDS` 기본 120초 |
-| 게스트 수정 허용(D6) | **미적용** — `guestsCanModify: false` 그대로. 이걸 켜는 것이 마지막 단계다 |
-| Coolify 스케줄(`calendar-reverse-sync`) | **미등록** — POST를 주기 호출하는 작업. 지금은 이 미등록이 안전판 역할을 한다 |
+| 게스트 수정 허용(D6) | **적용(2026-09-04)** — `guestsCanModify: true`. 생성·수정·원복 patch가 같은 본문을 쓰므로 기존 이벤트도 다음 수정 반영 때 함께 바뀐다 |
+| Coolify 스케줄(`calendar-reverse-sync`) | **가동 중(2026-09-03~)** — `*/10 * * * *`, `wget --post-data=""` + `SYNC_API_SECRET` 베어러. 정상 실행 1~3초·JSON 응답. 실패는 Coolify 작업 화면의 Recent executions에서 본다 |
 
-> **남은 순서:** ①스케줄 등록(`*/10 * * * *`, POST) → 하루 정도 정상 동작 확인 → ②`guestsCanModify: true`.
-> `guestsCanModify`를 먼저 켜면 매니저의 수정이 운영현황으로 돌아오지 않아 정합성이 깨진 상태가 된다.
+> **순서(완료):** ①스케줄 등록(9/3) → 하루 관찰(20회 중 18회 정상, 2회 HTTP 500은 60분 lookback으로 흡수) → ②`guestsCanModify: true`(9/4).
+> `guestsCanModify`는 역반영 스케줄이 돌고 있을 때만 켜져 있어야 한다. 스케줄을 끄거나 지우면 이 값도 `false`로 되돌린다 — 안 그러면 매니저의 수정이 운영현황으로 돌아오지 않아 정합성이 깨진다.
 
 > **규칙을 바꾸는 배포 직후에는 자동 적용을 켜기 전에 반드시 GET 미리보기를 먼저 열어본다.**
 > 2026-09-03에 이벤트 단위를 하루 → 구간으로 바꾼 직후, 미리보기에서 교육일 하루를 지우려는 건이
@@ -181,7 +181,7 @@ D6/D7로 새로 생긴 경로. **날짜·시간만** 운영현황에 되돌린�
 3. **매핑 config**: 파트→calendarId(env), OM이름→email(`TeamUser`).
 4. **반영 훅**: 운영현황 write 경로(생성/수정/취소)에 이벤트 반영 연결. 생성 시 `guestsCanModify: true` + `extendedProperties` 포함.
 5. **사이트 색상**: 과정 캘린더 + 내 대시보드(필터+색).
-6. **역반영**(구현 완료): `GET/POST /api/sync/calendar-events`(+ `SYNC_API_PATHS` 등록) → 날짜·시간만 DB 반영, 그 외 필드 원복. **남은 것은 Coolify 스케줄 작업 등록과 `guestsCanModify: true`뿐이다.**
+6. **역반영**(구현·가동 완료): `GET/POST /api/sync/calendar-events`(+ `SYNC_API_PATHS` 등록) → 날짜·시간만 DB 반영, 그 외 필드 원복. Coolify 스케줄 `calendar-reverse-sync`(10분)와 `guestsCanModify: true` 모두 2026-09-04 기준 적용됨.
 7. **검증**: B2B 계정으로 생성→담당/현장 OM 개인 캘린더 초대 확인 / hub-om 수정→반영 / 취소→삭제 / **게스트가 개인 캘린더에서 시간 변경→운영현황 반영 확인** / **게스트가 제목·장소 변경→다음 동기화에 원복 확인** / 같은 변경이 왕복하지 않는지(에코) 확인.
 
 ---
