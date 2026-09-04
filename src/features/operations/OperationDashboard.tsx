@@ -623,7 +623,7 @@ const OPERATIONS_CSV_HEADERS = [
   "과정 카테고리 소분류",
   "사용 Tool",
   "총 회차",
-  "교육일수",
+  "총 교육일수",
   "싱크업",
   "OM",
   "LD",
@@ -649,7 +649,7 @@ function downloadOperationsCsv(courseGroups: CourseGroup[], today: Date) {
     summarizeText(group.operations, (operation) => operation.courseCategory),
     summarizeText(group.operations, (operation) => operation.tools),
     `${group.operations.length}`,
-    summarizeText(group.operations, resolveEducationDays),
+    sumEducationDays(group.operations),
     isSafeHttpUrl(group.operationDetail) ? group.operationDetail : "-",
     summarizeText(group.operations, (operation) => operation.om, "배정필요"),
     summarizeText(group.operations, (operation) => operation.ld, "미정"),
@@ -791,6 +791,14 @@ function summarizeText(
 function resolveEducationDays(operation: OperationSession): string {
   if (operation.educationDays.trim()) return operation.educationDays;
   return operation.sessionDurationDays !== null ? `${operation.sessionDurationDays}` : "";
+}
+
+function sumEducationDays(operations: OperationSession[]): string {
+  const total = operations.reduce((sum, operation) => {
+    const days = Number(resolveEducationDays(operation));
+    return Number.isFinite(days) ? sum + days : sum;
+  }, 0);
+  return `${total}`;
 }
 
 function summarizeInstructors(operations: OperationSession[]): string {
