@@ -1,9 +1,10 @@
 // 노션 코치 DB → coaches 동기화 (서버 실행). 매핑은 notionCoachMap이 담당한다.
 //
-// 연결 키는 ID다. 이름은 노션에서 바뀔 수 있고 동명이인도 있어 키로 쓸 수 없다.
-// 1순위 사번(현재 연동 DB "실습코치/운영조교 DB (26.08 ver)"의 사람 단위 ID, 계약시트와 같은 값),
-// 2순위 노션 "No ID"(레거시 코치 DB의 auto increment, 예: CH-51),
-// 둘 다 없는 행만 예전처럼 이름으로 찾는다.
+// 연결 키는 노션 코치 DB의 ID(auto increment, 강사 DB와 같은 방식)다. 이름은 노션에서 바뀔 수 있고
+// 동명이인도 있어 키로 쓸 수 없다. ID는 모든 행에 자동으로 붙으므로(2026-09-04 66행 전부 확인)
+// 이름으로 찾는 경로는 아직 ID가 안 붙은 기존 코치 행을 이어 붙일 때만 쓴다.
+//
+// 사번은 키로 쓰지 않고 값으로만 담는다. 계약시트도 같은 사번을 쓰므로 나중에 원천을 이어 붙일 때 필요하다.
 import { CoachStatus, type Prisma } from "@prisma/client";
 import { generateCoachAccessToken, normalizeCoachName } from "./accessToken";
 import { mapPageToCoachRecord, isObject, type JsonObject, type NotionCoachRecord } from "./notionCoachMap";
@@ -36,51 +37,60 @@ export async function syncNotionCoaches(dryRun: boolean): Promise<SyncResult> {
       continue;
     }
 
-    const matched = await findCoach(prisma, record);
-    const existing = matched.coach;
+    // 한 행이 실패해도 나머지는 계속 넣는다(강사 동기화와 같은 방식). 사번·ID unique 충돌처럼
+    // 노션 데이터 문제로 한 건이 막힐 때 동기화 전체가 죽으면 원인을 찾기 어렵다.
+    try {
+      const matched = await findCoach(prisma, record);
+      const existing = matched.coach;
 
-    if (dryRun) {
-      result.changes?.push({
-        coachName: record.name,
-        action: existing ? "update_notion" : "create_notion",
-        details: describeDryRun(matched, record)
-      });
-      if (existing) result.updated++;
-      else result.created++;
-      continue;
-    }
-
-    if (existing) {
-      await prisma.$transaction(async (tx) => {
-        await tx.coach.update({
-          where: { id: existing.id },
-          data: publicCoachUpdate(record)
+      if (dryRun) {
+        result.changes?.push({
+          coachName: record.name,
+          action: existing ? "update_notion" : "create_notion",
+          details: describeDryRun(matched, record)
         });
-        await upsertPrivateProfile(tx, existing.id, record);
-        if (record.fields.length > 0) await replaceFields(tx, existing.id, record.fields);
-        if (record.curriculums.length > 0) await replaceCurriculums(tx, existing.id, record.curriculums);
-      });
-      result.updated++;
-      continue;
-    }
+        if (existing) result.updated++;
+        else result.created++;
+        continue;
+      }
 
-    await prisma.$transaction(async (tx) => {
-      const coach = await tx.coach.create({
-        data: {
-          sourceCoachId: newSourceCoachId(record),
-          accessToken: generateCoachAccessToken(),
-          name: record.name,
-          normalizedName: normalizeCoachName(record.name),
-          status: CoachStatus.ACTIVE,
-          isActive: true,
-          ...publicCoachUpdate(record)
-        }
+      if (existing) {
+        await prisma.$transaction(async (tx) => {
+          await tx.coach.update({
+            where: { id: existing.id },
+            data: publicCoachUpdate(record)
+          });
+          await upsertPrivateProfile(tx, existing.id, record);
+          if (record.fields.length > 0) await replaceFields(tx, existing.id, record.fields);
+          if (record.curriculums.length > 0) await replaceCurriculums(tx, existing.id, record.curriculums);
+        });
+        result.updated++;
+        continue;
+      }
+
+      await prisma.$transaction(async (tx) => {
+        const coach = await tx.coach.create({
+          data: {
+            sourceCoachId: newSourceCoachId(record),
+            accessToken: generateCoachAccessToken(),
+            name: record.name,
+            normalizedName: normalizeCoachName(record.name),
+            status: CoachStatus.ACTIVE,
+            isActive: true,
+            ...publicCoachUpdate(record)
+          }
+        });
+        await upsertPrivateProfile(tx, coach.id, record);
+        if (record.fields.length > 0) await replaceFields(tx, coach.id, record.fields);
+        if (record.curriculums.length > 0) await replaceCurriculums(tx, coach.id, record.curriculums);
       });
-      await upsertPrivateProfile(tx, coach.id, record);
-      if (record.fields.length > 0) await replaceFields(tx, coach.id, record.fields);
-      if (record.curriculums.length > 0) await replaceCurriculums(tx, coach.id, record.curriculums);
-    });
-    result.created++;
+      result.created++;
+    } catch (error) {
+      result.errors++;
+      result.errorDetail.push(
+        `ID ${record.notionNo ?? "없음"} ${record.name}: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
   }
 
   return result;
@@ -124,55 +134,48 @@ async function fetchAllNotionPages(config: { token: string; databaseId: string }
   return pages;
 }
 
-type MatchedBy = "employeeNo" | "notionNo" | "name";
-
 interface CoachMatch {
   coach: ExistingCoach | null;
-  by: MatchedBy;
+  by: "notionNo" | "name";
+  // 못 찾았지만 같은 이름의 코치가 이미 있는 경우. 동명이인일 수도, 노션 중복 행일 수도 있어
+  // 미리보기에서 운영자가 판단할 수 있게 표시한다.
+  sameNameExists: boolean;
 }
 
 /**
- * 코치 1명을 찾는다. 사번 → No ID → 이름 순서다.
+ * 코치 1명을 찾는다. 노션 ID → 이름 순서다.
  *
- * ID로 못 찾았을 때 이름으로 한 번 더 찾는 이유는 backfill이다. 기존 행에는 아직 ID가 없으므로
- * 첫 동기화가 이름으로 찾아 ID를 채운다(별도 스크립트가 필요 없다). 이때는 "아직 ID가 안 붙은 행"만
- * 본다. 이미 다른 ID가 붙은 행을 가져오면 남의 코치를 덮어쓰기 때문이다.
- *
- * 노션 행에 ID가 아예 없으면(사번 발급 전) 예전처럼 이름만으로 찾는다. 이 조건을 빼면
- * 사번 있는 행과 사번 없는 행이 같은 이름으로 있을 때(2026-09-04 노션 5건) 같은 사람이
- * 코치 목록에 두 번 생긴다.
+ * ID로 못 찾았을 때 이름으로 한 번 더 찾는 이유는 backfill이다. 기존 코치 행에는 아직 ID가 없으므로
+ * 첫 동기화가 이름으로 찾아 ID를 채운다(별도 스크립트가 필요 없다). 이때 "아직 ID가 안 붙은 행"만
+ * 보는 이유는, 이미 다른 ID가 붙은 행을 가져오면 남의 코치를 덮어쓰기 때문이다.
  */
 async function findCoach(
   prisma: ReturnType<typeof getPrismaClient>,
   record: NotionCoachRecord
 ): Promise<CoachMatch> {
-  if (record.employeeNo !== null) {
-    const coach = await prisma.coach.findFirst({ where: { employeeNo: record.employeeNo }, include: COACH_INCLUDE });
-    if (coach) return { coach, by: "employeeNo" };
-  }
-
   if (record.notionNo !== null) {
     const coach = await prisma.coach.findFirst({ where: { notionNo: record.notionNo }, include: COACH_INCLUDE });
-    if (coach) return { coach, by: "notionNo" };
+    if (coach) return { coach, by: "notionNo", sameNameExists: false };
   }
 
-  const hasId = record.employeeNo !== null || record.notionNo !== null;
+  const normalizedName = normalizeCoachName(record.name);
   const coach = await prisma.coach.findFirst({
     where: {
-      normalizedName: normalizeCoachName(record.name),
-      ...(hasId ? { employeeNo: null, notionNo: null } : {})
+      normalizedName,
+      ...(record.notionNo !== null ? { notionNo: null } : {})
     },
     include: COACH_INCLUDE,
     orderBy: { createdAt: "asc" }
   });
-  return { coach, by: "name" };
+  if (coach) return { coach, by: "name", sameNameExists: true };
+
+  const sameNameExists = (await prisma.coach.count({ where: { normalizedName } })) > 0;
+  return { coach: null, by: "name", sameNameExists };
 }
 
 // 새로 만드는 코치의 sourceCoachId. ID가 있으면 이름이 바뀌어도 안 흔들리는 ID를 쓴다.
 function newSourceCoachId(record: NotionCoachRecord): string {
-  if (record.employeeNo !== null) return `notion:emp-${record.employeeNo}`;
-  if (record.notionNo !== null) return `notion:no-${record.notionNo}`;
-  return `notion:${normalizeCoachName(record.name)}`;
+  return record.notionNo === null ? `notion:${normalizeCoachName(record.name)}` : `notion:no-${record.notionNo}`;
 }
 
 function publicCoachUpdate(record: NotionCoachRecord) {
@@ -226,17 +229,20 @@ async function replaceCurriculums(tx: Prisma.TransactionClient, coachId: string,
   }
 }
 
-// 미리보기 문구. 무엇을 기준으로 연결됐는지(사번/No ID/이름)와 이름 차이를 운영자가 볼 수 있게 남긴다.
+// 미리보기 문구. 무엇을 기준으로 연결됐는지(ID/이름)와 이름 차이를 운영자가 볼 수 있게 남긴다.
 function describeDryRun(matched: CoachMatch, record: NotionCoachRecord): string {
   const existing = matched.coach;
-  if (!existing) return record.employeeNo === null ? "신규 코치 (사번 없음)" : `신규 코치 (사번 ${record.employeeNo})`;
+  const idText = record.notionNo === null ? "ID 없음" : `ID ${record.notionNo}`;
+
+  if (!existing) {
+    // 같은 이름이 이미 있는데 새로 만든다면 동명이인이거나 노션에 같은 사람이 두 행으로 있는 경우다.
+    return matched.sameNameExists ? `신규 코치 (${idText}) · 동명 코치 있음 — 노션 중복 행인지 확인` : `신규 코치 (${idText})`;
+  }
 
   const parts: string[] = [];
-  if (matched.by === "employeeNo") parts.push(`사번 ${record.employeeNo}로 연결`);
-  else if (matched.by === "notionNo") parts.push(`No ID ${record.notionNo}로 연결`);
-  else if (record.employeeNo !== null) parts.push(`사번 ${record.employeeNo} 연결(이름으로 찾은 예전 행)`);
-  else if (record.notionNo !== null) parts.push(`No ID ${record.notionNo} 연결(이름으로 찾은 예전 행)`);
-  else parts.push("이름으로 연결 (노션에 사번 없음)");
+  if (matched.by === "notionNo") parts.push(`${idText}로 연결`);
+  else if (record.notionNo !== null) parts.push(`${idText} 연결(이름으로 찾은 예전 행)`);
+  else parts.push("이름으로 연결 (노션에 ID 없음)");
 
   if (existing.name !== record.name) {
     parts.push(`노션 이름 ${existing.name} → ${record.name} (사이트 이름은 유지)`);
