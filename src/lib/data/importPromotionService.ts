@@ -30,6 +30,15 @@ export interface ImportPromotionResult {
   created: number;
   eligible: number;
   linkedExisting: number;
+  /**
+   * 전에 반영했다가 삭제된 운영을 같은 원천 행으로 되살린 건수.
+   *
+   * operationId가 원천 행 지문에서 결정적으로 만들어지고(stableOperationId) operation_id는
+   * @unique다. 그래서 지문이 같은 행을 다시 반영하면 같은 operationId가 나온다.
+   * 삭제된 운영은 행이 남아 있어(soft delete) 유니크 제약도 살아 있는데, 중복 검사가
+   * deletedAt: null만 보고 있어서 "없다"고 판단하고 만들려다 DB에 막혔다.
+   */
+  revived: number;
   sourceRows: number;
 }
 
@@ -111,6 +120,7 @@ export async function promoteReadyImportRows(importRunId: string): Promise<Impor
       created: 0,
       eligible: 0,
       linkedExisting: 0,
+      revived: 0,
       sourceRows: sourceRecords.length
     };
 
@@ -126,6 +136,29 @@ export async function promoteReadyImportRows(importRunId: string): Promise<Impor
 
       const existingByFingerprint = await findExistingSessionByFingerprint(tx, sourceRecord.sourceFingerprint);
       if (existingByFingerprint) {
+        if (existingByFingerprint.deletedAt) {
+          // 전에 반영했다가 삭제한 운영을 같은 원천 행으로 다시 올렸다. 되살린다.
+          // 새로 만들 수는 없다 — operationId가 지문에서 결정적으로 나오고 @unique라
+          // 유니크 충돌이 나면서 반영 전체가 실패한다.
+          // 원천 행을 고쳤다면 지문이 달라져 여기로 오지 않고 새 운영으로 반영된다.
+          await tx.operationSession.update({
+            data: {
+              ...buildOperationSessionValueData({
+                endDate: candidate.endDate,
+                fields: candidate.fields,
+                roleRoster,
+                startDate: candidate.startDate
+              }),
+              deletedAt: null,
+              deletedBy: null
+            },
+            where: { id: existingByFingerprint.id }
+          });
+          await linkSourceRecord(tx, sourceRecord.id, existingByFingerprint.id);
+          summary.revived += 1;
+          continue;
+        }
+
         await linkSourceRecord(tx, sourceRecord.id, existingByFingerprint.id);
         summary.linkedExisting += 1;
         continue;
@@ -238,15 +271,19 @@ function buildPromotionCandidate(mappedFields: Prisma.JsonValue | null, validati
   return { blockedReason: null, companyName, courseName, endDate, fields, startDate };
 }
 
+/**
+ * 같은 원천 행에서 만들어진 운영을 찾는다. **삭제된 것도 함께** 찾는다.
+ *
+ * 삭제된 것을 빼고 찾으면 "없다"고 판단해 새로 만들려 하는데, operationId가 지문에서
+ * 결정적으로 나오고 operation_id는 @unique라 유니크 충돌로 반영 전체가 실패한다.
+ * (실제로 "Unique constraint failed on the fields: (operation_id)"가 났다.)
+ */
 async function findExistingSessionByFingerprint(tx: Prisma.TransactionClient, sourceFingerprint: string | null) {
   if (!sourceFingerprint) return null;
 
   return tx.operationSession.findFirst({
-    where: {
-      deletedAt: null,
-      sourceFingerprint
-    },
-    select: { id: true }
+    where: { sourceFingerprint },
+    select: { deletedAt: true, id: true }
   });
 }
 
@@ -282,6 +319,10 @@ async function linkSourceRecord(tx: Prisma.TransactionClient, sourceRecordId: st
   });
 }
 
+/**
+ * 새로 만들 때 쓰는 데이터. 값 필드는 buildOperationSessionValueData가 만들고,
+ * 여기서는 바꿀 수 없는 것(과정 연결·operationId·지문)만 얹는다.
+ */
 function buildOperationSessionCreateData(input: {
   courseRecordId: string;
   endDate: Date;
@@ -291,6 +332,32 @@ function buildOperationSessionCreateData(input: {
   sourceTeam: SourceTeam;
   startDate: Date;
 }): Prisma.OperationSessionCreateInput {
+  return {
+    ...buildOperationSessionValueData({
+      endDate: input.endDate,
+      fields: input.fields,
+      roleRoster: input.roleRoster,
+      startDate: input.startDate
+    }),
+    course: { connect: { id: input.courseRecordId } },
+    operationId: stableOperationId(input.sourceTeam, input.sourceFingerprint),
+    sourceFingerprint: input.sourceFingerprint
+  };
+}
+
+/**
+ * 원천 행에서 읽는 값 필드. 만들 때와 되살릴 때 둘 다 쓴다.
+ *
+ * 과정 연결·operationId·지문은 여기 없다 — 되살릴 때 바꾸면 안 되는 값이다.
+ * (operationId는 지문에서 결정적으로 나오므로 지문이 같으면 값도 같고, 과정 연결도
+ *  같은 지문이면 같은 기업·과정이라 다시 이을 필요가 없다.)
+ */
+function buildOperationSessionValueData(input: {
+  endDate: Date;
+  fields: Record<string, string>;
+  roleRoster: TeamMemberRoleRoster;
+  startDate: Date;
+}) {
   const durationDays = dateDiffDays(input.startDate, input.endDate);
 
   return {
@@ -298,7 +365,6 @@ function buildOperationSessionCreateData(input: {
     coachText: nullableText(input.fields.coach),
     companyWikiLink: nullableText(input.fields.companyWikiLink),
     costRaw: nullableText(input.fields.costRaw),
-    course: { connect: { id: input.courseRecordId } },
     driveLink: nullableText(input.fields.driveLink),
     educationDays: nullableText(input.fields.educationDays),
     educationFormat: enumFromText(EDUCATION_FORMAT_BY_TEXT, input.fields.educationFormat, EducationFormat.NEEDS_REVIEW),
@@ -332,7 +398,6 @@ function buildOperationSessionCreateData(input: {
     ),
     operationCost: nullableNumber(input.fields.operationCost),
     operationDetail: nullableText(input.fields.operationDetail),
-    operationId: stableOperationId(input.sourceTeam, input.sourceFingerprint),
     operationIssue: nullableText(input.fields.operationIssue),
     operationMonth: formatOperationMonth(input.startDate),
     operationStatus: enumFromText(OPERATION_STATUS_BY_TEXT, input.fields.operationStatus, OperationStatus.ASSIGNMENT_NEEDED),
@@ -343,7 +408,6 @@ function buildOperationSessionCreateData(input: {
     roundNo: nullableText(input.fields.roundNo),
     sessionDurationDays: nullableInteger(input.fields.sessionDurationDays) ?? durationDays,
     sessionDurationType: enumFromText(OPERATION_TYPE_BY_TEXT, input.fields.sessionDurationType, OperationType.NEEDS_REVIEW),
-    sourceFingerprint: input.sourceFingerprint,
     specialNotes: nullableText(input.fields.specialNotes),
     startDate: input.startDate,
     timeText: nullableText(input.fields.timeText),
@@ -357,7 +421,16 @@ function addBlocked(summary: ImportPromotionResult, reason: string) {
   summary.blockedReasons[reason] = (summary.blockedReasons[reason] ?? 0) + 1;
 }
 
-function stableOperationId(sourceTeam: SourceTeam, sourceFingerprint: string | null) {
+/**
+ * 원천 행 지문에서 operationId를 만든다. **같은 지문이면 항상 같은 값**이다.
+ *
+ * 이 결정성이 재반영 시 "이미 있는 행"을 알아보게 해 주지만, operation_id가 @unique라
+ * 삭제된 운영과 같은 지문을 다시 반영하면 유니크 충돌이 난다. 그래서 반영 전 중복 검사가
+ * 삭제된 것까지 찾아야 한다(findExistingSessionByFingerprint).
+ *
+ * 지문이 없으면 임의값을 쓴다 — 그 경우는 재반영을 알아볼 수 없으므로 매번 새로 만든다.
+ */
+export function stableOperationId(sourceTeam: SourceTeam, sourceFingerprint: string | null) {
   const fingerprint = sourceFingerprint || randomUUID().replaceAll("-", "");
   return `SRC-${sourceTeam.replace("_", "").toUpperCase()}-${fingerprint.slice(0, 12).toUpperCase()}`;
 }

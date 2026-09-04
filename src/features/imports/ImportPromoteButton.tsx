@@ -15,6 +15,7 @@ interface PromotionPayload {
     created: number;
     eligible: number;
     linkedExisting: number;
+    revived: number;
     sourceRows: number;
   };
 }
@@ -41,8 +42,10 @@ export function ImportPromoteButton({ importRunId }: ImportPromoteButtonProps) {
         return;
       }
 
-      const { blocked, created, linkedExisting } = payload.result;
-      setMessage(`생성 ${created}건 · 기존 연결 ${linkedExisting}건 · 남김 ${blocked}건`);
+      const { blocked, created, linkedExisting, revived } = payload.result;
+      // 되살린 건은 0일 때 굳이 보여 주지 않는다 — 평소엔 없는 일이라 줄만 길어진다.
+      const revivedText = revived > 0 ? ` · 삭제됐던 과정 복원 ${revived}건` : "";
+      setMessage(`생성 ${created}건 · 기존 연결 ${linkedExisting}건${revivedText} · 남김 ${blocked}건`);
       startTransition(() => {
         router.refresh();
       });
