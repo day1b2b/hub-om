@@ -107,9 +107,21 @@ export function buildEventSummary(
   return suffix ? `${base}_${suffix}` : base;
 }
 
+/**
+ * 이벤트 설명 머리말. 매니저가 이 일정에서 할 수 있는 것과 없는 것을 그대로 적는다.
+ * 동작이 바뀌면(주기·반영 필드·삭제 정책) 이 문구도 같이 바꾼다 — 안내와 실제가 어긋나면
+ * "수정은 hub-om에서"라고 써 놓고 캘린더 수정이 반영되는 식으로 사람이 헷갈린다(2026-09-04).
+ */
+export const EVENT_DESCRIPTION_INTRO = [
+  "hub-om 운영현황과 연동된 일정입니다.",
+  "· 날짜·시간을 여기서 옮기면 5분 안에 hub-om에 반영됩니다.",
+  "· 제목·장소는 hub-om 값으로 되돌아갑니다. 바꿀 일이 있으면 hub-om에서 고쳐주세요.",
+  "· 이 일정을 삭제해도 hub-om에는 반영되지 않습니다. 회차 취소는 hub-om에서 해주세요."
+];
+
 /** 운영 상세로 돌아올 수 있게 본문에 hub-om 링크를 남긴다. HUB_OM_BASE_URL 미설정이면 생략. */
 function buildDescription(operation: OperationSession): string {
-  const lines: string[] = ["hub-om 운영현황에서 자동 생성된 일정입니다. 수정은 hub-om에서 해주세요."];
+  const lines: string[] = [...EVENT_DESCRIPTION_INTRO];
 
   if (operation.om) lines.push(`담당 OM: ${operation.om}`);
   if (operation.onsiteOm) lines.push(`현장운영: ${operation.onsiteOm}`);
