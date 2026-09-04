@@ -4,6 +4,7 @@ import { test } from "node:test";
 import {
   blankTab,
   composeLectureNote,
+  isDateUsedByOtherTab,
   parseLectureNote,
   prepareTabsForSave,
   suggestNextLectureDate
@@ -62,4 +63,37 @@ test("저장한 기록은 다시 열 때 같은 탭으로 돌아온다", () => {
   ];
 
   assert.deepEqual(parseLectureNote(composeLectureNote(tabs), "2026-09-01"), tabs);
+});
+
+test("날짜가 빈 기록을 채울 때 이미 쓰인 날짜는 피한다", () => {
+  // 옛 임시 보관본에는 날짜가 빈 탭이 남아 있을 수 있다. 시작일이 이미 쓰였으면 다음 교육일로 채운다.
+  const tabs = [
+    { ...blankTab("2026-09-01"), courseSummary: "1일차" },
+    { ...blankTab(), courseSummary: "날짜를 못 고른 기록" }
+  ];
+
+  assert.deepEqual(
+    prepareTabsForSave(tabs, "2026-09-01", ["2026-09-01", "2026-09-02"]).map((tab) => tab.date),
+    ["2026-09-01", "2026-09-02"]
+  );
+});
+
+test("날짜가 빈 기록이 여러 개면 서로 다른 날짜를 받는다", () => {
+  const tabs = [
+    { ...blankTab(), courseSummary: "a" },
+    { ...blankTab(), courseSummary: "b" }
+  ];
+
+  assert.deepEqual(
+    prepareTabsForSave(tabs, "2026-09-01", []).map((tab) => tab.date),
+    ["2026-09-01", "2026-09-02"]
+  );
+});
+
+test("다른 탭이 이미 쓰는 날짜인지 알려준다", () => {
+  const tabs = [blankTab("2026-09-01"), blankTab("2026-09-02")];
+
+  assert.equal(isDateUsedByOtherTab(tabs, 1, "2026-09-01"), true);
+  assert.equal(isDateUsedByOtherTab(tabs, 1, "2026-09-02"), false);
+  assert.equal(isDateUsedByOtherTab(tabs, 1, "2026-09-03"), false);
 });

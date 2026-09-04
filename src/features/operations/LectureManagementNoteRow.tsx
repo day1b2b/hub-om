@@ -7,6 +7,7 @@ import {
   blankTab,
   composeLectureNote,
   containsNoteMarkers,
+  isDateUsedByOtherTab,
   parseLectureNote,
   parseLectureNoteBody,
   prepareTabsForSave,
@@ -70,6 +71,7 @@ export function LectureManagementNoteRow({
   const [lastSavedValue, setLastSavedValue] = useState("");
   const [retryCount, setRetryCount] = useState(0);
   const [recoverableDraft, setRecoverableDraft] = useState<StoredDraft | null>(null);
+  const [dateError, setDateError] = useState<string | null>(null);
   const saveSequenceRef = useRef(0);
   const activeTab = tabs[activeTabIndex] ?? blankTab();
   const hasHref = isNavigableHref(value);
@@ -172,7 +174,10 @@ export function LectureManagementNoteRow({
                       <button
                         className={`lecture-note-tab ${index === activeTabIndex ? "active" : ""}`}
                         key={index}
-                        onClick={() => setActiveTabIndex(index)}
+                        onClick={() => {
+                          setActiveTabIndex(index);
+                          setDateError(null);
+                        }}
                         type="button"
                       >
                         {tab.date.trim() || `날짜 ${index + 1}`}
@@ -192,10 +197,12 @@ export function LectureManagementNoteRow({
                   <label className="lecture-note-field">
                     <span>교육 날짜</span>
                     <input
-                      onChange={(event) => updateActiveTab({ date: event.target.value })}
+                      aria-invalid={dateError ? true : undefined}
+                      onChange={(event) => changeActiveTabDate(event.target.value)}
                       type="date"
                       value={activeTab.date}
                     />
+                    {dateError ? <span className="lecture-note-field-error" role="alert">{dateError}</span> : null}
                   </label>
                   {tabs.length > 1 ? (
                     <button className="lecture-note-tab-remove" onClick={removeActiveTab} type="button">
@@ -296,6 +303,7 @@ export function LectureManagementNoteRow({
     setLinkDraft(initialLink);
     setSaveState("idle");
     setSavedAt(null);
+    setDateError(null);
     setEditVersion(0);
     setEditedMode(initialMode);
     setRetryCount(0);
@@ -369,7 +377,20 @@ export function LectureManagementNoteRow({
   }
 
   function withFallbackDates(source: LectureNoteTab[]): LectureNoteTab[] {
-    return prepareTabsForSave(source, startDate);
+    return prepareTabsForSave(source, startDate, educationDates);
+  }
+
+  function changeActiveTabDate(nextDate: string) {
+    // 날짜를 지우면 저장 때 임의 날짜로 채워지므로, 비우는 조작은 받지 않고 이전 날짜를 유지한다.
+    if (!nextDate.trim()) return;
+
+    if (isDateUsedByOtherTab(tabs, activeTabIndex, nextDate)) {
+      setDateError("이미 등록된 날짜입니다. 하루에 한 기록만 남길 수 있어요.");
+      return;
+    }
+
+    setDateError(null);
+    updateActiveTab({ date: nextDate });
   }
 
   function markEdited() {
@@ -382,6 +403,7 @@ export function LectureManagementNoteRow({
     const nextDate = suggestNextLectureDate(tabs.map((tab) => tab.date), educationDates, startDate);
     setTabs((current) => [...current, blankTab(nextDate)]);
     setActiveTabIndex(newIndex);
+    setDateError(null);
     markEdited();
   }
 
@@ -391,6 +413,7 @@ export function LectureManagementNoteRow({
     const removedIndex = activeTabIndex;
     setTabs((current) => current.filter((_, index) => index !== removedIndex));
     setActiveTabIndex((current) => Math.max(0, removedIndex <= current ? current - 1 : current));
+    setDateError(null);
     markEdited();
   }
 

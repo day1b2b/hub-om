@@ -106,13 +106,30 @@ function hasBodyContent(tab: LectureNoteTab): boolean {
 }
 
 /**
- * 저장 직전 탭 정리. 내용은 있는데 날짜가 빈 탭(날짜 표기 이전의 옛 기록)만 시작일로 채우고,
- * 내용도 날짜도 없는 빈 탭은 버린다. 빈 탭까지 시작일로 채우면 첫 탭과 같은 날짜가 두 번 저장된다.
+ * 저장 직전 탭 정리. 내용도 날짜도 없는 빈 탭은 버리고, 내용은 있는데 날짜가 빈 탭(날짜 표기 이전의 옛 기록,
+ * 옛 임시 보관본)은 아직 다른 탭이 쓰지 않는 날짜로 채운다. 시작일이 비어 있으면 시작일, 아니면 다음 교육일.
+ * 빈 탭까지 시작일로 채우면 첫 탭과 같은 날짜가 두 번 저장된다.
  */
-export function prepareTabsForSave(tabs: LectureNoteTab[], startDate: string): LectureNoteTab[] {
-  return tabs
-    .filter((tab) => tab.date.trim() || hasBodyContent(tab))
-    .map((tab) => ({ ...tab, date: tab.date.trim() || startDate }));
+export function prepareTabsForSave(tabs: LectureNoteTab[], startDate: string, educationDates: string[] = []): LectureNoteTab[] {
+  const kept = tabs.filter((tab) => tab.date.trim() || hasBodyContent(tab));
+  const usedDates = kept.map((tab) => tab.date.trim()).filter(Boolean);
+
+  return kept.map((tab) => {
+    const date = tab.date.trim();
+    if (date) return { ...tab, date };
+
+    const freeDate = usedDates.includes(startDate) ? suggestNextLectureDate(usedDates, educationDates, startDate) : startDate;
+    usedDates.push(freeDate);
+    return { ...tab, date: freeDate };
+  });
+}
+
+/** 같은 날짜 탭이 두 개 생기지 않도록, 고른 날짜를 다른 탭이 이미 쓰는지 확인한다. */
+export function isDateUsedByOtherTab(tabs: LectureNoteTab[], tabIndex: number, date: string): boolean {
+  const target = date.trim();
+  if (!target) return false;
+
+  return tabs.some((tab, index) => index !== tabIndex && tab.date.trim() === target);
 }
 
 /**
