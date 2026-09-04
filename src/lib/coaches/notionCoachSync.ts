@@ -1,7 +1,9 @@
 // 노션 코치 DB → coaches 동기화 (서버 실행). 매핑은 notionCoachMap이 담당한다.
 //
-// 연결 키는 노션 코치 DB의 "No ID"(auto increment, 예: CH-51)다. 이름은 노션에서 바뀔 수 있고
-// 동명이인도 있어 키로 쓸 수 없다. 노션 행에 No ID가 없을 때만 이름으로 찾는다.
+// 연결 키는 ID다. 이름은 노션에서 바뀔 수 있고 동명이인도 있어 키로 쓸 수 없다.
+// 1순위 사번(현재 연동 DB "실습코치/운영조교 DB (26.08 ver)"의 사람 단위 ID, 계약시트와 같은 값),
+// 2순위 노션 "No ID"(레거시 코치 DB의 auto increment, 예: CH-51),
+// 둘 다 없는 행만 예전처럼 이름으로 찾는다.
 import { CoachStatus, type Prisma } from "@prisma/client";
 import { generateCoachAccessToken, normalizeCoachName } from "./accessToken";
 import { mapPageToCoachRecord, isObject, type JsonObject, type NotionCoachRecord } from "./notionCoachMap";
@@ -34,29 +36,14 @@ export async function syncNotionCoaches(dryRun: boolean): Promise<SyncResult> {
       continue;
     }
 
-    // 1순위: No ID로 찾는다.
-    const matchedByNo =
-      record.notionNo === null
-        ? null
-        : await prisma.coach.findFirst({ where: { notionNo: record.notionNo }, include: COACH_INCLUDE });
-
-    // 2순위: No ID가 아직 안 붙은 행을 이름으로 찾아 이어 붙인다.
-    // 이렇게 첫 동기화가 스스로 backfill 하므로 별도 스크립트가 필요 없다.
-    // 노션 행에 No ID가 아예 없으면(예전 방식) 계속 이름으로만 찾는다.
-    const matchedByName = matchedByNo
-      ? null
-      : await prisma.coach.findFirst({
-          where: { normalizedName: normalizeCoachName(record.name), notionNo: null },
-          include: COACH_INCLUDE
-        });
-
-    const existing = matchedByNo ?? matchedByName;
+    const matched = await findCoach(prisma, record);
+    const existing = matched.coach;
 
     if (dryRun) {
       result.changes?.push({
         coachName: record.name,
         action: existing ? "update_notion" : "create_notion",
-        details: describeDryRun(existing, matchedByNo !== null, record)
+        details: describeDryRun(matched, record)
       });
       if (existing) result.updated++;
       else result.created++;
@@ -137,15 +124,62 @@ async function fetchAllNotionPages(config: { token: string; databaseId: string }
   return pages;
 }
 
-// 새로 만드는 코치의 sourceCoachId. No ID가 있으면 이름이 바뀌어도 안 흔들리는 No ID를 쓴다.
+type MatchedBy = "employeeNo" | "notionNo" | "name";
+
+interface CoachMatch {
+  coach: ExistingCoach | null;
+  by: MatchedBy;
+}
+
+/**
+ * 코치 1명을 찾는다. 사번 → No ID → 이름 순서다.
+ *
+ * ID로 못 찾았을 때 이름으로 한 번 더 찾는 이유는 backfill이다. 기존 행에는 아직 ID가 없으므로
+ * 첫 동기화가 이름으로 찾아 ID를 채운다(별도 스크립트가 필요 없다). 이때는 "아직 ID가 안 붙은 행"만
+ * 본다. 이미 다른 ID가 붙은 행을 가져오면 남의 코치를 덮어쓰기 때문이다.
+ *
+ * 노션 행에 ID가 아예 없으면(사번 발급 전) 예전처럼 이름만으로 찾는다. 이 조건을 빼면
+ * 사번 있는 행과 사번 없는 행이 같은 이름으로 있을 때(2026-09-04 노션 5건) 같은 사람이
+ * 코치 목록에 두 번 생긴다.
+ */
+async function findCoach(
+  prisma: ReturnType<typeof getPrismaClient>,
+  record: NotionCoachRecord
+): Promise<CoachMatch> {
+  if (record.employeeNo !== null) {
+    const coach = await prisma.coach.findFirst({ where: { employeeNo: record.employeeNo }, include: COACH_INCLUDE });
+    if (coach) return { coach, by: "employeeNo" };
+  }
+
+  if (record.notionNo !== null) {
+    const coach = await prisma.coach.findFirst({ where: { notionNo: record.notionNo }, include: COACH_INCLUDE });
+    if (coach) return { coach, by: "notionNo" };
+  }
+
+  const hasId = record.employeeNo !== null || record.notionNo !== null;
+  const coach = await prisma.coach.findFirst({
+    where: {
+      normalizedName: normalizeCoachName(record.name),
+      ...(hasId ? { employeeNo: null, notionNo: null } : {})
+    },
+    include: COACH_INCLUDE,
+    orderBy: { createdAt: "asc" }
+  });
+  return { coach, by: "name" };
+}
+
+// 새로 만드는 코치의 sourceCoachId. ID가 있으면 이름이 바뀌어도 안 흔들리는 ID를 쓴다.
 function newSourceCoachId(record: NotionCoachRecord): string {
-  return record.notionNo === null ? `notion:${normalizeCoachName(record.name)}` : `notion:no-${record.notionNo}`;
+  if (record.employeeNo !== null) return `notion:emp-${record.employeeNo}`;
+  if (record.notionNo !== null) return `notion:no-${record.notionNo}`;
+  return `notion:${normalizeCoachName(record.name)}`;
 }
 
 function publicCoachUpdate(record: NotionCoachRecord) {
   // 이름(name·normalizedName)은 노션 값으로 덮지 않는다. 계약시트 동기화가 코치를 이름으로 찾기 때문에
   // 여기서 이름을 바꾸면 시트 쪽에서 같은 사람을 새 코치로 또 만든다. 이름 차이는 미리보기에만 표시한다.
   return {
+    ...(record.employeeNo !== null ? { employeeNo: record.employeeNo } : {}),
     ...(record.notionNo !== null ? { notionNo: record.notionNo } : {}),
     ...(record.notionPageId ? { notionPageId: record.notionPageId } : {}),
     ...(record.workType ? { workType: record.workType } : {}),
@@ -160,7 +194,8 @@ async function upsertPrivateProfile(tx: Prisma.TransactionClient, coachId: strin
     where: { coachId },
     create: {
       coachId,
-      employeeId: null,
+      // 계약시트도 같은 사번을 여기에 담는다. 이미 값이 있으면 시트 쪽 값을 덮지 않는다(update에 없음).
+      employeeId: record.employeeNo,
       phone: record.phone,
       email: record.email,
       birthDate: record.birthDate,
@@ -191,14 +226,17 @@ async function replaceCurriculums(tx: Prisma.TransactionClient, coachId: string,
   }
 }
 
-// 미리보기 문구. 무엇을 기준으로 연결됐는지(No ID/이름)와 이름 차이를 운영자가 볼 수 있게 남긴다.
-function describeDryRun(existing: ExistingCoach | null, matchedByNo: boolean, record: NotionCoachRecord): string {
-  if (!existing) return record.notionNo === null ? "신규 코치" : `신규 코치 (No ID ${record.notionNo})`;
+// 미리보기 문구. 무엇을 기준으로 연결됐는지(사번/No ID/이름)와 이름 차이를 운영자가 볼 수 있게 남긴다.
+function describeDryRun(matched: CoachMatch, record: NotionCoachRecord): string {
+  const existing = matched.coach;
+  if (!existing) return record.employeeNo === null ? "신규 코치 (사번 없음)" : `신규 코치 (사번 ${record.employeeNo})`;
 
   const parts: string[] = [];
-  if (matchedByNo) parts.push(`No ID ${record.notionNo}로 연결`);
-  else if (record.notionNo !== null) parts.push(`No ID ${record.notionNo} 연결(예전 행)`);
-  else parts.push("이름으로 연결 (노션에 No ID 없음)");
+  if (matched.by === "employeeNo") parts.push(`사번 ${record.employeeNo}로 연결`);
+  else if (matched.by === "notionNo") parts.push(`No ID ${record.notionNo}로 연결`);
+  else if (record.employeeNo !== null) parts.push(`사번 ${record.employeeNo} 연결(이름으로 찾은 예전 행)`);
+  else if (record.notionNo !== null) parts.push(`No ID ${record.notionNo} 연결(이름으로 찾은 예전 행)`);
+  else parts.push("이름으로 연결 (노션에 사번 없음)");
 
   if (existing.name !== record.name) {
     parts.push(`노션 이름 ${existing.name} → ${record.name} (사이트 이름은 유지)`);

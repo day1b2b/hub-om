@@ -1,16 +1,19 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { mapPageToCoachRecord, readNotionNo } from "@/lib/coaches/notionCoachMap.ts";
+import { mapPageToCoachRecord, readEmployeeNo, readNotionNo } from "@/lib/coaches/notionCoachMap.ts";
 
-// 속성 타입은 실제 노션 코치 DB 스키마를 그대로 따른다. 특히 "No ID"는 number가 아니라
-// unique_id({ prefix: "CH", number: 51 })다. 타입이 틀리면 값을 못 읽어도 테스트는 통과해버리므로
-// 여기서 실제 타입을 고정한다. 값은 실제 코치 데이터를 쓰지 않고 가상 값으로 둔다.
+// 속성 타입은 실제 노션 코치 DB 스키마(2026-09-04 확인)를 그대로 따른다. 연동 DB "실습코치/운영조교
+// DB (26.08 ver)"는 사번이 number 타입이고, 레거시 DB의 "No ID"는 unique_id({ prefix: "CH",
+// number: 51 })다. 타입이 틀리면 값을 못 읽어도 테스트는 통과해버리므로 여기서 실제 타입을 고정한다.
+// 값은 실제 코치 데이터를 쓰지 않고 가상 값으로 둔다.
 function samplePage(overrides: Record<string, unknown> = {}) {
   return {
     id: "3b94576d-6ffa-8191-8ab8-ecc0d609d31f",
     properties: {
-      // 노션 auto increment ID("No ID"). 이 값이 노션↔사이트 연결 키다.
+      // 사번. 1순위 연결 키다.
+      사번: { type: "number", number: 91000176 },
+      // 노션 auto increment ID("No ID"). 레거시 DB의 2순위 연결 키다.
       ID: { type: "unique_id", unique_id: { prefix: "CH", number: 51 } },
       이름: { type: "title", title: [{ plain_text: "홍길동" }] },
       연락처: { type: "rich_text", rich_text: [{ plain_text: "010-0000-0000" }] },
@@ -25,10 +28,23 @@ function samplePage(overrides: Record<string, unknown> = {}) {
   };
 }
 
-test("No ID(unique_id)를 연결 키로 읽는다", () => {
+test("사번과 No ID를 연결 키로 읽는다", () => {
   const record = mapPageToCoachRecord(samplePage());
   assert.equal(record?.name, "홍길동");
+  assert.equal(record?.employeeNo, "91000176");
   assert.equal(record?.notionNo, 51);
+});
+
+test("사번 0과 공란은 키가 아니다(발급 전)", () => {
+  assert.equal(mapPageToCoachRecord(samplePage({ 사번: { type: "number", number: 0 } }))?.employeeNo, null);
+  assert.equal(mapPageToCoachRecord(samplePage({ 사번: { type: "number", number: null } }))?.employeeNo, null);
+  assert.equal(mapPageToCoachRecord(samplePage({ 사번: undefined }))?.employeeNo, null);
+});
+
+test("사번이 텍스트로 적혀 있어도 숫자만 뽑는다", () => {
+  // 계약시트와 같은 규칙: 재계약 차수(-2)와 괄호 메모는 떼어낸다.
+  const properties = { 사번: { type: "rich_text", rich_text: [{ plain_text: "91000176-2 (재계약)" }] } };
+  assert.equal(readEmployeeNo(properties), "91000176");
 });
 
 test("속성 이름이 'No ID'여도 읽는다", () => {

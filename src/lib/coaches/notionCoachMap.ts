@@ -8,13 +8,20 @@ export type JsonObject = Record<string, unknown>;
 
 const EXCLUDED_TYPE_TAGS = new Set(["기존", "신규", "취소"]);
 
-// 노션 코치 DB의 auto increment ID("No ID", 예: CH-51)를 담은 속성 후보.
+// 노션 코치 DB의 사번을 담은 속성 후보. 현재 연동 DB("실습코치/운영조교 DB (26.08 ver)")는
+// 사번이 사람 단위 ID다. 계약시트에도 같은 사번이 있어 원천 사이 공용 키로 쓸 수 있다.
+const EMPLOYEE_NO_PROPERTY_NAMES = ["사번", "사원번호"];
+
+// 노션 auto increment ID("No ID", 예: CH-51)를 담은 속성 후보. 레거시 코치 DB에는 이 값이 있다.
 // 운영자가 화면에서 속성 이름을 바꿔도 끊기지 않게 후보를 두고, 그래도 못 찾으면
 // unique_id 타입 속성을 찾아 쓴다.
-const NOTION_NO_PROPERTY_NAMES = ["No ID", "ID", "NO", "No", "번호"];
+const NOTION_NO_PROPERTY_NAMES = ["No ID", "ID", "NO", "No"];
 
 export interface NotionCoachRecord {
   name: string;
+  // 노션 코치 DB의 사번. 1순위 연결 키다. 계약시트의 사번과 같은 값이라 원천이 달라도 같은 사람으로 붙는다.
+  // 사번이 아직 없는 행(발급 전·"0")은 null이며, 그 경우에만 이름으로 식별한다.
+  employeeNo: string | null;
   // 노션 코치 DB의 ID(auto increment, 화면상 "No ID"). 노션↔사이트 연결 키다.
   // 이름은 노션에서 바뀔 수 있고 동명이인도 있어 키로 쓸 수 없다.
   // 노션 행에 ID가 없으면 null이며, 그 경우에만 이름으로 식별한다.
@@ -49,6 +56,7 @@ export function mapPageToCoachRecord(page: JsonObject): NotionCoachRecord | null
 
   return {
     name,
+    employeeNo: readEmployeeNo(properties),
     notionNo: readNotionNo(properties),
     notionPageId: typeof page.id === "string" ? page.id : null,
     phone: getText(properties["연락처"]) || null,
@@ -62,6 +70,26 @@ export function mapPageToCoachRecord(page: JsonObject): NotionCoachRecord | null
     selfNote: sanitizeHistoryNote(getText(properties[" 특이사항 / 히스토리"]) || getText(properties["특이사항 / 히스토리"])) || null,
     availabilityDetail: availabilityParts.join("\n") || null
   };
+}
+
+/**
+ * 사번. 노션에서는 number 타입이라 91000176처럼 온다. 문자열로 담아 DB 키로 쓴다.
+ * 0과 공란은 "아직 발급 안 됨"이라 키가 아니다(2026-09-04 확인: 66행 중 15행이 이 상태).
+ * "91000176-2"(재계약 차수)·"91000176 (취소)" 같은 표기는 계약시트와 같은 규칙으로 정리한다.
+ */
+export function readEmployeeNo(properties: JsonObject): string | null {
+  for (const key of EMPLOYEE_NO_PROPERTY_NAMES) {
+    const prop = properties[key];
+    if (!isObject(prop)) continue;
+    if (prop.type === "number") {
+      const value = prop.number;
+      if (typeof value === "number" && value > 0) return String(value);
+      continue;
+    }
+    const digits = getText(prop).replace(/\(.*?\)/g, "").trim().replace(/-\d+$/, "").trim();
+    if (/^\d+$/.test(digits) && Number(digits) > 0) return digits;
+  }
+  return null;
 }
 
 /**
