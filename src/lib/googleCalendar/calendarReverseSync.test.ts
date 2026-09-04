@@ -37,7 +37,10 @@ function linkFixture(eventDate = "2026-09-07"): CalendarEventLink {
   return { operationId: "OP-1", calendarId: "cal-1", eventId: "EV-1", eventDate };
 }
 
-/** 9/7~9/8 구간 계획과 일치하는 이벤트. 각 테스트에서 어긋나게 만들 부분만 덮어쓴다. */
+/** hub-om이 9/7~9/8 구간에 마지막으로 쓴 날짜·시간 표식. 이벤트가 이 값과 다르면 사람이 고친 것이다. */
+const HUB_OM_MARKER = "time:2026-09-07T10:00~2026-09-08T17:00";
+
+/** 9/7~9/8 구간 계획과 일치하는 이벤트(표식 포함). 각 테스트에서 어긋나게 만들 부분만 덮어쓴다. */
 function eventFixture(overrides: Partial<CalendarEventSnapshot> = {}): CalendarEventSnapshot {
   return {
     id: "EV-1",
@@ -47,6 +50,7 @@ function eventFixture(overrides: Partial<CalendarEventSnapshot> = {}): CalendarE
     start: { dateTime: "2026-09-07T10:00:00+09:00" },
     end: { dateTime: "2026-09-08T17:00:00+09:00" },
     updated: "2026-09-07T02:00:00.000Z",
+    hubOmSchedule: HUB_OM_MARKER,
     ...overrides
   };
 }
@@ -70,7 +74,7 @@ test("일치하면 할 일이 없다", () => {
   assert.equal(evaluation.kind, "none");
 });
 
-test("캘린더가 더 최신이고 구간이 옮겨졌으면 운영현황에 반영한다", () => {
+test("표식과 다른 구간으로 옮겨졌으면(사람이 고침) 운영현황에 반영한다", () => {
   const event = eventFixture({
     start: { dateTime: "2026-09-14T10:00:00+09:00" },
     end: { dateTime: "2026-09-15T17:00:00+09:00" }
@@ -86,7 +90,7 @@ test("캘린더가 더 최신이고 구간이 옮겨졌으면 운영현황에 �
   assert.equal(item.scheduleChange?.to.endDate, "2026-09-15");
 });
 
-test("시간만 바뀌어도 캘린더가 최신이면 반영 대상이다", () => {
+test("시간만 바뀌어도 표식과 다르면 반영 대상이다", () => {
   const event = eventFixture({
     start: { dateTime: "2026-09-07T13:00:00+09:00" },
     end: { dateTime: "2026-09-08T18:00:00+09:00" }
@@ -98,11 +102,14 @@ test("시간만 바뀌어도 캘린더가 최신이면 반영 대상이다", () 
   assert.equal(item.scheduleChange?.to.timeText, "13:00 ~ 18:00");
 });
 
-test("운영현황이 더 최신이면 캘린더를 되돌린다", () => {
+test("이벤트가 표식 그대로인데 운영현황과 다르면(hub-om 쓰기가 안 닿음) 캘린더를 되돌린다", () => {
+  // hub-om이 마지막으로 쓴 값(표식)과 이벤트가 같다 = 그 뒤 사람이 고치지 않았다.
+  // 그런데 운영현황은 다른 값이다 → 정방향 반영이 실패했거나 아직 안 닿은 것. 운영현황이 이긴다.
   const event = eventFixture({
     start: { dateTime: "2026-09-14T10:00:00+09:00" },
     end: { dateTime: "2026-09-15T17:00:00+09:00" },
-    updated: "2026-09-07T00:30:00.000Z"
+    hubOmSchedule: "time:2026-09-14T10:00~2026-09-15T17:00",
+    updated: "2026-09-07T05:00:00.000Z" // 시각으로는 캘린더가 훨씬 최신이지만 표식이 우선한다
   });
 
   const item = itemOf(evaluateEventAgainstOperation(operationFixture(), linkFixture(), event, OPERATION_UPDATED_AT));
@@ -111,7 +118,7 @@ test("운영현황이 더 최신이면 캘린더를 되돌린다", () => {
   assert.deepEqual(item.revertFields, ["날짜·시간"]);
 });
 
-test("회차 수정 시각을 모르면 운영현황을 덮어쓰지 않는다", () => {
+test("표식이 있으면 회차 수정 시각을 몰라도 사람의 수정을 반영한다", () => {
   const event = eventFixture({
     start: { dateTime: "2026-09-14T10:00:00+09:00" },
     end: { dateTime: "2026-09-15T17:00:00+09:00" }
@@ -119,7 +126,33 @@ test("회차 수정 시각을 모르면 운영현황을 덮어쓰지 않는다",
 
   const item = itemOf(evaluateEventAgainstOperation(operationFixture(), linkFixture(), event, null));
 
+  assert.equal(item.action, "운영현황 반영");
+});
+
+test("표식이 없는 옛 이벤트는 회차 수정 시각을 모르면 운영현황을 덮어쓰지 않는다", () => {
+  const event = eventFixture({
+    start: { dateTime: "2026-09-14T10:00:00+09:00" },
+    end: { dateTime: "2026-09-15T17:00:00+09:00" },
+    hubOmSchedule: null
+  });
+
+  const item = itemOf(evaluateEventAgainstOperation(operationFixture(), linkFixture(), event, null));
+
   assert.equal(item.action, "캘린더 원복");
+});
+
+test("표식이 없는 옛 이벤트는 운영현황이 더 최신이면 캘린더를 되돌린다(폴백)", () => {
+  const event = eventFixture({
+    start: { dateTime: "2026-09-14T10:00:00+09:00" },
+    end: { dateTime: "2026-09-15T17:00:00+09:00" },
+    hubOmSchedule: null,
+    updated: "2026-09-07T00:30:00.000Z"
+  });
+
+  const item = itemOf(evaluateEventAgainstOperation(operationFixture(), linkFixture(), event, OPERATION_UPDATED_AT));
+
+  assert.equal(item.action, "캘린더 원복");
+  assert.deepEqual(item.revertFields, ["날짜·시간"]);
 });
 
 test("제목·장소만 바뀌었으면 원복 대상이다", () => {
@@ -332,13 +365,30 @@ test("시간 지정 일정은 여러 날에 걸쳐도 시작·종료 날짜를 �
   });
 });
 
-// ── 자기 쓰기 잔향 방어 (최소 시차) ──────────────────────────────
-test("hub-om이 방금 쓴 잔향(1초 차이)은 사람의 수정으로 보지 않는다", () => {
+// ── 사람 수정 판정 (표식 우선, 시차는 폴백) ──────────────────────
+test("표식이 있으면 hub-om 저장 25초 뒤의 수정도 사람의 수정으로 반영한다 (2026-09-04 실측 재현)", () => {
+  // 실제로 겪은 상황: 회차 저장 02:44:24 → hub-om이 이벤트 생성 → 매니저가 02:44:49에 시간을 옮김.
+  // 시차 규칙(120초)으로는 잔향으로 오판돼 캘린더가 되돌아갔다. 표식 비교는 시각을 보지 않는다.
+  const operationUpdatedAt = new Date("2026-09-04T02:44:24.656Z");
+  const event = eventFixture({
+    start: { dateTime: "2026-09-07T13:30:00+09:00" },
+    end: { dateTime: "2026-09-08T23:00:00+09:00" },
+    updated: "2026-09-04T02:44:49.606Z"
+  });
+
+  const item = itemOf(evaluateEventAgainstOperation(operationFixture(), linkFixture(), event, operationUpdatedAt));
+
+  assert.equal(item.action, "운영현황 반영");
+  assert.equal(item.scheduleChange?.to.timeText, "13:30 ~ 23:00");
+});
+
+test("표식이 없는 옛 이벤트: hub-om이 방금 쓴 잔향(1초 차이)은 사람의 수정으로 보지 않는다", () => {
   const operationUpdatedAt = new Date("2026-09-03T06:27:26.598Z");
   const event = eventFixture({
     start: { dateTime: "2026-09-14T10:00:00+09:00" },
     end: { dateTime: "2026-09-15T17:00:00+09:00" },
-    updated: "2026-09-03T06:27:27.688Z"
+    updated: "2026-09-03T06:27:27.688Z",
+    hubOmSchedule: null
   });
 
   const item = itemOf(evaluateEventAgainstOperation(operationFixture(), linkFixture(), event, operationUpdatedAt));
@@ -347,15 +397,42 @@ test("hub-om이 방금 쓴 잔향(1초 차이)은 사람의 수정으로 보지 
   assert.equal(item.action, "캘린더 원복");
 });
 
-test("시차를 충분히 넘기면 사람의 수정으로 본다", () => {
+test("표식이 없는 옛 이벤트: 시차를 충분히 넘기면 사람의 수정으로 본다", () => {
   const operationUpdatedAt = new Date("2026-09-03T06:00:00.000Z");
   const event = eventFixture({
     start: { dateTime: "2026-09-14T10:00:00+09:00" },
     end: { dateTime: "2026-09-15T17:00:00+09:00" },
-    updated: "2026-09-03T06:10:00.000Z"
+    updated: "2026-09-03T06:10:00.000Z",
+    hubOmSchedule: null
   });
 
   const item = itemOf(evaluateEventAgainstOperation(operationFixture(), linkFixture(), event, operationUpdatedAt));
 
   assert.equal(item.action, "운영현황 반영");
+});
+
+test("종일 일정도 표식으로 판정한다", () => {
+  const operation = operationFixture({ timeText: "미정", educationDates: ["2026-09-07", "2026-09-08"] });
+  const moved = eventFixture({
+    start: { date: "2026-09-09" },
+    end: { date: "2026-09-11" },
+    hubOmSchedule: "allday:2026-09-07~2026-09-09",
+    updated: "2026-09-07T01:00:01.000Z" // 회차 저장 1초 뒤 — 시차로는 잔향이지만 표식이 다르다
+  });
+
+  const item = itemOf(evaluateEventAgainstOperation(operation, linkFixture(), moved, OPERATION_UPDATED_AT));
+
+  assert.equal(item.action, "운영현황 반영");
+  assert.deepEqual(item.scheduleChange?.to, { startDate: "2026-09-09", endDate: "2026-09-10", timeText: "" });
+});
+
+// ── 이벤트 본문의 표식 ─────────────────────────────────────────
+test("이벤트 본문마다 자기 구간의 날짜·시간 표식이 들어간다", () => {
+  const plans = buildCalendarEventBodies(
+    operationFixture({ educationDates: ["2026-09-07", "2026-09-08", "2026-09-09", "2026-09-11"] }),
+    []
+  );
+
+  assert.equal(plans[0].body.extendedProperties?.private?.hubOmSchedule, "time:2026-09-07T10:00~2026-09-09T17:00");
+  assert.equal(plans[1].body.extendedProperties?.private?.hubOmSchedule, "time:2026-09-11T10:00~2026-09-11T17:00");
 });

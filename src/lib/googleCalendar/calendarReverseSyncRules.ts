@@ -10,7 +10,7 @@
 import type { OperationSession } from "@/lib/data/operationTypes";
 import type { CalendarEventSnapshot } from "./calendarWriteClient";
 import { enumerateDateRange } from "@/lib/data/operationCalculations";
-import { buildCalendarEventBodies, normalizeEducationDates } from "./operationCalendarEvent";
+import { buildCalendarEventBodies, normalizeEducationDates, scheduleKey } from "./operationCalendarEvent";
 import type { CalendarEventLink } from "./calendarEventLinkRepository";
 
 export type ReverseSyncAction =
@@ -105,18 +105,18 @@ export function evaluateEventAgainstOperation(
 
   const expected = plan.body;
   base.eventEndDate = plan.eventEndDate;
-  const scheduleDiffers = normalizeSchedule(expected.start, expected.end) !== normalizeSchedule(event.start, event.end);
+  const scheduleDiffers = scheduleKey(expected.start, expected.end) !== scheduleKey(event.start, event.end);
   const revertFields: string[] = [];
   if (expected.summary !== event.summary) revertFields.push("제목");
   if ((expected.location ?? "") !== event.location) revertFields.push("장소");
 
   if (!scheduleDiffers && revertFields.length === 0) return { kind: "none" };
 
-  // 날짜·시간이 다를 때만 승자를 따진다. 캘린더가 더 최신이면 운영현황에 반영한다(D7).
-  const calendarIsNewer = isCalendarNewer(event.updated, operationUpdatedAt, minLagMs);
+  // 날짜·시간이 다를 때만 "사람이 고쳤는지"를 따진다. 사람이 고쳤으면 운영현황에 반영한다(D7).
+  const humanEdited = isHumanEdit(event, operationUpdatedAt, minLagMs);
   const nextSchedule = scheduleDiffers ? eventScheduleToSession(event) : null;
 
-  if (scheduleDiffers && calendarIsNewer && nextSchedule) {
+  if (scheduleDiffers && humanEdited && nextSchedule) {
     return {
       kind: "item",
       item: {
@@ -169,18 +169,6 @@ export function replaceEducationRun(
   return { dates: normalizeEducationDates([...kept, ...nextRun]), conflict: false };
 }
 
-/** 종일/시간 지정 두 형태를 한 문자열로 만들어 비교한다. 초·오프셋 표기 차이는 무시한다. */
-function normalizeSchedule(
-  start: { date?: string; dateTime?: string },
-  end: { date?: string; dateTime?: string }
-): string {
-  if (start.dateTime && end.dateTime) {
-    return `time:${start.dateTime.slice(0, 16)}~${end.dateTime.slice(0, 16)}`;
-  }
-
-  return `allday:${start.date ?? ""}~${end.date ?? ""}`;
-}
-
 /** 이벤트 일정 → 회차의 startDate·endDate·timeText. 종일 일정이면 시간 표기를 비운다. */
 export function eventScheduleToSession(event: CalendarEventSnapshot): null | ReverseSyncSchedule {
   if (event.start.dateTime && event.end.dateTime) {
@@ -207,12 +195,29 @@ function previousDay(date: string): string {
 }
 
 /**
- * "사람이 캘린더를 고쳤다"고 인정하는 최소 시차(기본 2분).
+ * 사람이 캘린더에서 날짜·시간을 고쳤는지(D12).
+ *
+ * 1순위: 표식 비교. hub-om은 날짜·시간을 쓸 때마다 같은 patch에 `hubOmSchedule`(자기가 쓴 값)을
+ * 함께 남긴다. 이벤트의 현재 날짜·시간이 그 표식과 다르면 hub-om이 쓴 뒤 누군가 고친 것이다 —
+ * **언제 고쳤든** 상관없다. 표식과 같으면 hub-om이 쓴 그대로이므로(운영현황과 다르다면 hub-om의
+ * 정방향 쓰기가 아직 안 닿았거나 실패한 것) 캘린더를 운영현황 값으로 되돌린다.
+ *
+ * 2순위(표식이 없는 옛 이벤트): 최소 시차 규칙. 아래 isCalendarNewer 참고. 표식은 다음 정방향
+ * 반영 때 붙으므로 이 폴백은 점점 안 쓰이게 된다.
+ */
+function isHumanEdit(event: CalendarEventSnapshot, operationUpdatedAt: Date | null, minLagMs: number): boolean {
+  if (event.hubOmSchedule !== null) return scheduleKey(event.start, event.end) !== event.hubOmSchedule;
+
+  return isCalendarNewer(event.updated, operationUpdatedAt, minLagMs);
+}
+
+/**
+ * 표식이 없는 옛 이벤트에만 쓰는 폴백. "사람이 캘린더를 고쳤다"고 인정하는 최소 시차(기본 2분).
  *
  * hub-om이 회차를 저장한 직후 자기 손으로 이벤트를 patch하기 때문에, 구글의 updated는
  * 회차 updatedAt보다 1~2초 늦게 찍힌다. 그 차이를 사람의 수정으로 오판하면 방금 밀어넣은
- * 값을 거꾸로 운영현황에 되돌려 쓴다 — 실제로 코드 규칙이 바뀐 직후(이벤트를 하루 단위에서
- * 구간 단위로 바꾼 배포) 교육일이 지워질 뻔했다. 시차를 두면 자기 쓰기의 잔향이 걸러진다.
+ * 값을 거꾸로 운영현황에 되돌려 쓴다. 대가로 hub-om 저장 뒤 2분 안의 사람 수정은 잔향으로
+ * 오판돼 되돌아간다(2026-09-04 실측) — 그래서 표식 비교를 1순위로 두었다.
  */
 const DEFAULT_MIN_LAG_MS = 120_000;
 
