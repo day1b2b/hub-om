@@ -122,6 +122,18 @@ test("시간 표기가 없으면 종일 일정이 되고 종료일은 배타적�
   assert.equal(body.attendees, undefined);
 });
 
+test("게스트는 일정을 고칠 수 있지만 참석자를 늘릴 수는 없다 (D6)", () => {
+  // guestsCanModify는 역반영 스케줄이 돌고 있을 때만 켜져 있어야 한다. 이 테스트는 그 상태를 고정한다 —
+  // 스케줄을 끄면서 이 값을 false로 되돌릴 때는 이 테스트도 같이 바꿔야 한다.
+  for (const body of [
+    buildCalendarEventBody(operationFixture(), ["om@day1company.co.kr"], "1파트"),
+    buildCalendarEventBody(operationFixture({ timeText: "" }), [])
+  ]) {
+    assert.equal(body.guestsCanModify, true);
+    assert.equal(body.guestsCanInviteOthers, false);
+  }
+});
+
 test("resolvePartCalendarId는 파트 키로 캘린더를 찾는다", () => {
   const previous = process.env.GOOGLE_CAL_PART_CALENDARS;
   process.env.GOOGLE_CAL_PART_CALENDARS = "1파트:one@group.calendar.google.com,2파트:two@group.calendar.google.com";

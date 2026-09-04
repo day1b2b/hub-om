@@ -119,10 +119,12 @@ export function buildCalendarEventBody(
   return {
     summary: buildEventSummary(operation, partKey),
     description: buildDescription(operation),
-    // 참석자가 일정을 고치거나 다른 사람을 초대하지 못하게 막는다(스펙 D5: 반영 대상은 읽기 전용).
-    // guestsCanModify는 기본값도 false지만, guestsCanInviteOthers는 기본이 true라
-    // 명시하지 않으면 OM이 임의로 참석자를 늘릴 수 있다. 둘 다 못 박는다.
-    guestsCanModify: false,
+    // 초대받은 매니저가 자기 회차 이벤트의 날짜·시간을 개인 캘린더에서 고칠 수 있게 한다(스펙 D6).
+    // 그 변경은 역반영(calendar-reverse-sync)이 운영현황으로 가져오고, 제목·장소 같은 나머지
+    // 필드는 다음 실행에서 hub-om 값으로 원복된다(D7). 역반영 스케줄이 돌고 있을 때만 켜야 한다 —
+    // 먼저 켜면 매니저의 수정이 운영현황으로 돌아오지 않아 두 쪽이 어긋난다.
+    // guestsCanInviteOthers는 기본이 true라 명시하지 않으면 OM이 임의로 참석자를 늘릴 수 있다. 계속 막는다.
+    guestsCanModify: true,
     guestsCanInviteOthers: false,
     ...(operation.region ? { location: operation.region } : {}),
     ...schedule,
