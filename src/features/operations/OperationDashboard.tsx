@@ -623,7 +623,7 @@ const OPERATIONS_CSV_HEADERS = [
   "과정 카테고리 소분류",
   "사용 Tool",
   "총 회차",
-  "교육일수",
+  "총 교육일수",
   "싱크업",
   "OM",
   "LD",
@@ -649,7 +649,7 @@ function downloadOperationsCsv(courseGroups: CourseGroup[], today: Date) {
     summarizeText(group.operations, (operation) => operation.courseCategory),
     summarizeText(group.operations, (operation) => operation.tools),
     `${group.operations.length}`,
-    summarizeText(group.operations, resolveEducationDays),
+    sumEducationDays(group.operations),
     isSafeHttpUrl(group.operationDetail) ? group.operationDetail : "-",
     summarizeText(group.operations, (operation) => operation.om, "배정필요"),
     summarizeText(group.operations, (operation) => operation.ld, "미정"),
@@ -657,13 +657,13 @@ function downloadOperationsCsv(courseGroups: CourseGroup[], today: Date) {
     group.endDate,
     summarizeInstructors(group.operations),
     summarizeText(group.operations, (operation) => operation.coach),
-    onsiteRequiredLabel(summarizeText(group.operations, (operation) => operation.onsiteRequired)),
-    summarizeText(group.operations, (operation) => operation.hasSatisfactionSurvey),
+    summarizeText(group.operations, (operation) => operation.onsiteRequired),
+    requiredLabel(summarizeText(group.operations, (operation) => operation.hasSatisfactionSurvey)),
     formatSatisfactionValue(average(satisfactionValues(group.operations, (operation) => operation.avgSatisfaction))),
     formatSatisfactionValue(
       average(satisfactionValues(group.operations, (operation) => operation.instructorSatisfaction))
     ),
-    summarizeText(group.operations, (operation) => operation.hasResultReport),
+    requiredLabel(summarizeText(group.operations, (operation) => operation.hasResultReport)),
     formatMoney(sumRevenueByCourseId(group.operations))
   ]);
 
@@ -682,11 +682,9 @@ function downloadOperationsCsv(courseGroups: CourseGroup[], today: Date) {
   URL.revokeObjectURL(url);
 }
 
-function onsiteRequiredLabel(value: string): string {
-  if (value === "Y") return "예";
-  if (value === "N") return "아니오";
-  if (value === "PARTIAL") return "일부";
-  if (value === "UNKNOWN") return "확인필요";
+function requiredLabel(value: string): string {
+  if (value === "불필요") return "N";
+  if (value === "확인필요" || value === "유" || value === "무") return "Y";
   return value;
 }
 
@@ -791,6 +789,14 @@ function summarizeText(
 function resolveEducationDays(operation: OperationSession): string {
   if (operation.educationDays.trim()) return operation.educationDays;
   return operation.sessionDurationDays !== null ? `${operation.sessionDurationDays}` : "";
+}
+
+function sumEducationDays(operations: OperationSession[]): string {
+  const total = operations.reduce((sum, operation) => {
+    const days = Number(resolveEducationDays(operation));
+    return Number.isFinite(days) ? sum + days : sum;
+  }, 0);
+  return `${total}`;
 }
 
 function summarizeInstructors(operations: OperationSession[]): string {
