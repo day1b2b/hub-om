@@ -13,13 +13,14 @@
 // 전체 시간이 바뀌고, 다른 교육일 이벤트도 다음 반영에서 같은 시간으로 맞춰진다.
 //
 // 사람이 캘린더에서 지운 이벤트는 여기서 다루지 않는다. 판정 단계가 무조치로 걸러내고
-// 로그만 남긴다(D8) — 되살리면 사람이 의도해서 지운 일정이 돌아온다.
+// 로그만 남긴다(D8) — 자동으로 되살리면 사람이 의도해서 지운 일정이 10분마다 돌아온다.
+// 되살리는 길은 hub-om에서 그 회차를 저장하는 것뿐이다(정방향 반영이 다시 만든다).
 //
 // 스펙: docs/plans/2026-08-19-operations-calendar-reflect.md (D7~D9, 5-B절)
 
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { patchEvent } from "./calendarWriteClient";
-import type { OperationSession } from "@/lib/data/operationTypes";
+import type { OperationSession, UpdateOperationInput } from "@/lib/data/operationTypes";
 import { moveCalendarEventLinkDate } from "./calendarEventLinkRepository";
 import { buildCalendarEventBodies } from "./operationCalendarEvent";
 import { planCalendarReverseSync, type ReverseSyncPlan } from "./calendarReverseSync";
@@ -95,19 +96,22 @@ async function applyScheduleToOperation(item: ReverseSyncItem): Promise<string> 
   // 사람이 날짜와 함께 제목·장소도 바꿨으면 그 필드만 되돌린다.
   // 날짜·시간은 방금 받아들인 값이므로 patch에 넣지 않는다.
   const revertFields = (item.revertFields ?? []).filter((field) => field !== "날짜·시간");
-  if (revertFields.length === 0) return detail;
 
+  // 표식(hubOmSchedule)은 받아들인 값으로 반드시 갱신한다(D12). 안 하면 표식이 옛 값에 머물러,
+  // 사람이 나중에 정확히 옛 날짜로 되돌려 놓았을 때 "hub-om이 쓴 그대로"로 오판해 되돌려 버린다.
   const refreshed = await findOperation(item.operationId);
   const expected = findPlanBody(refreshed, change.to.startDate, item.partKey);
   if (expected) {
     await patchEvent(item.calendarId, item.eventId, {
-      summary: expected.summary,
-      location: expected.location ?? ""
+      ...(revertFields.length > 0 ? { summary: expected.summary, location: expected.location ?? "" } : {}),
+      extendedProperties: expected.extendedProperties
     });
-    console.info(`[gcal-reverse] ${item.operationId} ${revertFields.join(", ")} 원복 (event=${item.eventId})`);
+    if (revertFields.length > 0) {
+      console.info(`[gcal-reverse] ${item.operationId} ${revertFields.join(", ")} 원복 (event=${item.eventId})`);
+    }
   }
 
-  return `${detail} + ${revertFields.join(", ")} 원복`;
+  return revertFields.length > 0 ? `${detail} + ${revertFields.join(", ")} 원복` : detail;
 }
 
 /** 연속 구간 이벤트: 그 이벤트가 담당하던 구간을 새 구간으로 옮긴다. */
@@ -132,14 +136,10 @@ async function applyEducationRunChange(
 
   const timeChanged = to.timeText !== "" && to.timeText !== operation.timeText;
 
-  await getOperationRepository().updateOperation(item.operationId, {
+  await updateOperationWithLinkMoved(item, to.startDate, {
     educationDates: dates,
     ...(timeChanged ? { timeText: to.timeText } : {})
   });
-
-  if (item.eventDate !== to.startDate) {
-    await moveCalendarEventLinkDate(item.operationId, item.eventDate, to.startDate);
-  }
 
   const before = item.eventDate === item.eventEndDate ? item.eventDate : `${item.eventDate}~${item.eventEndDate}`;
   const after = to.startDate === to.endDate ? to.startDate : `${to.startDate}~${to.endDate}`;
@@ -156,15 +156,11 @@ async function applyRangeChange(
   item: ReverseSyncItem,
   to: { startDate: string; endDate: string; timeText: string }
 ): Promise<string> {
-  await getOperationRepository().updateOperation(item.operationId, {
+  await updateOperationWithLinkMoved(item, to.startDate, {
     startDate: to.startDate,
     endDate: to.endDate,
     timeText: to.timeText
   });
-
-  if (item.eventDate !== to.startDate) {
-    await moveCalendarEventLinkDate(item.operationId, item.eventDate, to.startDate);
-  }
 
   const summary = `${to.startDate}~${to.endDate} ${to.timeText}`.trim();
   console.info(`[gcal-reverse] ${item.operationId} 기간 반영: ${summary} (event=${item.eventId})`);
@@ -186,13 +182,40 @@ async function revertEventToOperation(item: ReverseSyncItem): Promise<string> {
     summary: expected.summary,
     location: expected.location ?? "",
     start: expected.start,
-    end: expected.end
+    end: expected.end,
+    // 되돌린 날짜·시간을 표식으로 함께 남긴다. 표식 없이 되돌리면 다음 실행이 이 patch를 사람의 수정으로 본다.
+    extendedProperties: expected.extendedProperties
   });
 
   const fields = item.revertFields?.join(", ") ?? "";
   console.info(`[gcal-reverse] ${item.operationId} 원복: ${fields} (event=${item.eventId})`);
 
   return `캘린더 원복 (${fields})`;
+}
+
+/**
+ * 매핑의 교육일을 새 구간 시작일로 **먼저** 옮긴 뒤 운영현황을 쓴다.
+ *
+ * 저장소는 CalendarReflectingOperationRepository로 감싸여 있어, 시간(timeText)이나 기간이 바뀌면
+ * updateOperation 안에서 정방향 반영이 바로 돈다. 그때 매핑이 아직 옛 날짜에 있으면 정방향 반영은
+ * "새 구간에 이벤트 없음 → insert, 옛 구간 매핑은 교육일에서 빠짐 → delete"로 판단해 **매니저가 옮긴
+ * 이벤트를 지우고 새 이벤트를 만든다**(취소·초대 메일이 한 번씩 더 나간다). 매핑을 먼저 옮겨 두면
+ * 같은 이벤트를 patch만 하고 끝난다. 쓰기가 실패하면 매핑을 되돌려 원래 상태를 유지한다.
+ */
+async function updateOperationWithLinkMoved(
+  item: ReverseSyncItem,
+  nextStartDate: string,
+  input: UpdateOperationInput
+): Promise<void> {
+  const moved = item.eventDate !== nextStartDate;
+  if (moved) await moveCalendarEventLinkDate(item.operationId, item.eventDate, nextStartDate);
+
+  try {
+    await getOperationRepository().updateOperation(item.operationId, input);
+  } catch (error) {
+    if (moved) await moveCalendarEventLinkDate(item.operationId, nextStartDate, item.eventDate);
+    throw error;
+  }
 }
 
 function findPlanBody(operation: OperationSession, eventDate: string, partKey: null | string) {

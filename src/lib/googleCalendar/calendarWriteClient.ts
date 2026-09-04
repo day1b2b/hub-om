@@ -71,6 +71,8 @@ export interface CalendarEventBody {
   attendees?: CalendarEventAttendee[];
   guestsCanModify?: boolean;
   guestsCanInviteOthers?: boolean;
+  /** hub-om 전용 표식. private는 이 앱(클라이언트)만 읽고 쓴다. */
+  extendedProperties?: { private?: Record<string, string> };
 }
 
 async function callCalendar(path: string, init: RequestInit): Promise<Response> {
@@ -190,6 +192,8 @@ export interface CalendarEventSnapshot {
   start: { date?: string; dateTime?: string };
   end: { date?: string; dateTime?: string };
   updated: string;
+  /** hub-om이 마지막으로 쓴 날짜·시간 키(extendedProperties.private.hubOmSchedule). 표식 없는 옛 이벤트는 null. */
+  hubOmSchedule: null | string;
 }
 
 interface CalendarEventListResponse {
@@ -201,11 +205,12 @@ interface CalendarEventListResponse {
     start?: { date?: string; dateTime?: string };
     end?: { date?: string; dateTime?: string };
     updated?: string;
+    extendedProperties?: { private?: Record<string, string> };
   }[];
   nextPageToken?: string;
 }
 
-const EVENT_FIELDS = "nextPageToken,items(id,status,summary,location,start,end,updated)";
+const EVENT_FIELDS = "nextPageToken,items(id,status,summary,location,start,end,updated,extendedProperties)";
 const EVENT_PAGE_SIZE = 250;
 const MAX_PAGES = 10;
 
@@ -246,7 +251,8 @@ export async function listUpdatedEvents(calendarId: string, updatedMinIso: strin
         location: item.location ?? "",
         start: { date: item.start?.date, dateTime: item.start?.dateTime },
         end: { date: item.end?.date, dateTime: item.end?.dateTime },
-        updated: item.updated ?? ""
+        updated: item.updated ?? "",
+        hubOmSchedule: item.extendedProperties?.private?.hubOmSchedule ?? null
       });
     }
 

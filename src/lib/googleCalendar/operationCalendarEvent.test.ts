@@ -134,6 +134,18 @@ test("게스트는 일정을 고칠 수 있지만 참석자를 늘릴 수는 없
   }
 });
 
+test("본문에 hub-om이 쓴 날짜·시간 표식(hubOmSchedule)이 함께 들어간다", () => {
+  // 역반영이 "사람이 고쳤는지"를 이 표식과 비교해 가른다. 시간 지정·종일 두 형태 모두 표식이 있어야 한다.
+  const timed = buildCalendarEventBody(operationFixture(), []);
+  assert.equal(timed.extendedProperties?.private?.hubOmSchedule, "time:2026-09-07T09:00~2026-09-07T18:00");
+
+  const allDay = buildCalendarEventBody(
+    operationFixture({ timeText: "", startDate: "2026-09-07", endDate: "2026-09-08" }),
+    []
+  );
+  assert.equal(allDay.extendedProperties?.private?.hubOmSchedule, "allday:2026-09-07~2026-09-09");
+});
+
 test("resolvePartCalendarId는 파트 키로 캘린더를 찾는다", () => {
   const previous = process.env.GOOGLE_CAL_PART_CALENDARS;
   process.env.GOOGLE_CAL_PART_CALENDARS = "1파트:one@group.calendar.google.com,2파트:two@group.calendar.google.com";
