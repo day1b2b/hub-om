@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { missingPromotionFields } from "./importPromotionFields";
 import type {
   ImportRunDetail,
   ImportRunStatus,
@@ -149,6 +150,7 @@ function toSourceRecordPreview(record: {
     unmappedFieldCount: unmappedFields.length,
     unmappedFields,
     rowSnapshotPreview: getFieldPreview(record.rowSnapshot).slice(0, 8),
+    missingRequiredFields: missingPromotionFields(mappedFieldObject),
     reviewStatus: getReviewStatus({
       linkedOperation,
       mappedFields: mappedFieldObject,
@@ -251,32 +253,9 @@ function getReviewStatus(input: {
   return "적용 준비";
 }
 
+/** 반영 필수 필드가 다 채워졌는가. 부족한 목록 계산과 같은 함수를 써서 어긋나지 않게 한다. */
 function hasPromotionRequiredFields(fields: Record<string, string>) {
-  return Boolean(
-    fields.companyName?.trim() &&
-      fields.courseName?.trim() &&
-      parseDateValue(fields.startDate) &&
-      parseDateValue(fields.endDate)
-  );
-}
-
-function parseDateValue(value: string | undefined) {
-  const normalized = value?.trim().replace(/[./]/g, "-") ?? "";
-  const match = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(normalized);
-
-  if (!match) return null;
-
-  const [, yearText, monthText, dayText] = match;
-  const year = Number(yearText);
-  const month = Number(monthText);
-  const day = Number(dayText);
-  const date = new Date(Date.UTC(year, month - 1, day));
-
-  if (date.getUTCFullYear() !== year || date.getUTCMonth() + 1 !== month || date.getUTCDate() !== day) {
-    return null;
-  }
-
-  return date;
+  return missingPromotionFields(fields).length === 0;
 }
 
 const FIELD_LABELS: Record<string, string> = {
