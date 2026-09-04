@@ -40,6 +40,15 @@ export async function listCalendarEventLinks(operationId: string): Promise<Calen
   return rows.map(toLink);
 }
 
+/** 매핑 전부(관리자 일괄 도구용). 회차·교육일 순. */
+export async function listAllCalendarEventLinks(): Promise<CalendarEventLink[]> {
+  const rows = await getPrismaClient().calendarEventLink.findMany({
+    orderBy: [{ operationId: "asc" }, { eventDate: "asc" }]
+  });
+
+  return rows.map(toLink);
+}
+
 export async function saveCalendarEventLink(link: CalendarEventLink): Promise<void> {
   const eventDate = toDateOnly(link.eventDate);
 
