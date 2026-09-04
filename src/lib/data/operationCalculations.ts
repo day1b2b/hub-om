@@ -409,6 +409,26 @@ export function groupConsecutiveDateRuns(dates: string[]): { start: string; end:
   return runs.map(({ start, end }) => ({ start, end }));
 }
 
+/**
+ * 회차를 화면 캘린더에 그릴 **막대 구간 목록**으로 바꾼다.
+ *
+ * 실제 교육일(educationDates)이 있으면 연속 구간마다 하나씩이다. 9/14~9/16·9/18·9/21~9/23이면
+ * 막대 3개다 — 기간(9/14~9/23) 하나로 그리면 교육이 없는 9/17·9/19·9/20까지 일정이 잡힌 것처럼
+ * 보인다(2026-09-04 백희영님 제보). 구글 캘린더 이벤트 단위(D10)·알림 표기와 같은 묶음이다.
+ *
+ * 교육일이 없는 옛 회차는 예전처럼 시작일~종료일 한 구간으로 떨어진다.
+ */
+export function resolveOperationCalendarRuns(operation: {
+  educationDates?: null | string[];
+  endDate: string;
+  startDate: string;
+}): { start: string; end: string }[] {
+  const runs = groupConsecutiveDateRuns(operation.educationDates ?? []);
+  if (runs.length > 0) return runs;
+
+  return [{ start: operation.startDate, end: operation.endDate }];
+}
+
 /** 실제 교육일 목록에서 startDate/endDate(최소/최대)를 계산한다. 빈 목록이면 null. */
 export function deriveDateRangeFromEducationDates(
   dates: string[]
