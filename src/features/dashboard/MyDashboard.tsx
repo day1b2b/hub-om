@@ -6,6 +6,14 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { holidayName } from "./holidays";
 import { missingArchiveItems } from "@/lib/data/operationCalculations";
 import { buildMyCourseRows } from "./myCourseRows";
+import {
+  ALL_RANGE,
+  getMonthRange,
+  getQuarterRange,
+  getYearRange,
+  overlapsDateRange,
+  type DateRange
+} from "@/lib/dateRange";
 import type { OmNameDiagnosis } from "./omNameDiagnosis";
 import { calendarLabel, isOnsiteSupportForViewer } from "./onsiteLabel";
 import { createRequestMatcher } from "./requestDedup";
@@ -27,7 +35,10 @@ interface MyDashboardProps {
 
 export function MyDashboard({ assignedRequests, diagnosis, omName, operations }: MyDashboardProps) {
   const today = useMemo(() => getSeoulToday(), []);
-  const [monthView, setMonthView] = useState(() => ({ year: today.getFullYear(), month: today.getMonth() }));
+  // 담당 과정 표의 기간 필터. 처음 들어오면 이번 달만 본다 — 과정이 쌓이면 전체는
+  // 너무 길어서, 지금 챙길 것부터 보이는 편이 낫다. 칩으로 넓힐 수 있다.
+  const [courseRange, setCourseRange] = useState<DateRange>(() => getMonthRange(today, 0));
+  const [rangeKey, setRangeKey] = useState<RangeKey>("thisMonth");
   const [openStage, setOpenStage] = useState<null | string>(null);
   // 담당 과정 표 접기/펼치기. 과정이 많으면 화면이 길어져 아래 패널이 멀어진다.
   const [coursesOpen, setCoursesOpen] = useState(true);
@@ -55,16 +66,6 @@ export function MyDashboard({ assignedRequests, diagnosis, omName, operations }:
     );
   }
 
-  // 요약·분석은 선택한 달 기준(맨 위 화살표로 전월/차월 이동).
-  function moveMonth(delta: number) {
-    setMonthView((current) => {
-      const next = new Date(current.year, current.month + delta, 1);
-      return { year: next.getFullYear(), month: next.getMonth() };
-    });
-  }
-  // 담당 과정 표의 월 강조 범위. 그 달과 기간이 겹치는 줄만 강조한다.
-  const monthStartTime = stripTime(new Date(monthView.year, monthView.month, 1)).getTime();
-  const monthEndTime = stripTime(new Date(monthView.year, monthView.month + 1, 0)).getTime();
 
   // 밀린 작업 집계는 각 단계의 항목에서 직접 센다(아래 stages 참고).
   // 기간 필터는 걸지 않는다 — 지난달 미완 항목이 숨으면 안 된다.
@@ -142,13 +143,8 @@ export function MyDashboard({ assignedRequests, diagnosis, omName, operations }:
     scheduleRange,
     (request) => requestHref(request, operationIdByCourse)
   );
-  const isInMonth = (start: string, end: string) => {
-    const from = parseDate(start);
-    const to = parseDate(end) ?? from;
-    if (!from || !to) return false;
-    return stripTime(from).getTime() <= monthEndTime && stripTime(to).getTime() >= monthStartTime;
-  };
-  const focusRowKeys = new Set(courseRows.filter((row) => isInMonth(row.start, row.end)).map((row) => row.key));
+  // 표에 실제로 보여 줄 줄. 일정이 없는 줄은 기간과 무관하게 남긴다(overlapsDateRange 참고).
+  const visibleCourseRows = courseRows.filter((row) => overlapsDateRange(row.start, row.end, courseRange));
 
   // 요약 지표는 담당 전체 기준이다. 전에는 선택한 달에 "시작하는" 운영만 세서,
   // 운영 현황에 20건이 잡히는 담당자의 대시보드에 "전체 1"이 떴다.
@@ -318,13 +314,26 @@ export function MyDashboard({ assignedRequests, diagnosis, omName, operations }:
               </button>
             </h2>
             <div className="dashboard-table-meta">
-              <span>전체 {courseRows.length}건 · {monthView.month + 1}월 {focusRowKeys.size}건</span>
-              {/* 월 이동은 표의 강조 대상을 바꾸는 것이라 접혀 있을 때는 숨긴다. */}
+              <span>
+                {RANGE_LABELS[rangeKey]} {visibleCourseRows.length}건
+                {rangeKey === "all" ? null : <> · 전체 {courseRows.length}건</>}
+              </span>
+              {/* 기간 칩은 표의 내용을 바꾸는 것이라 접혀 있을 때는 숨긴다. */}
               {coursesOpen ? (
-                <div className="me-cal-nav" aria-label="월 이동">
-                  <button aria-label="이전 달" onClick={() => moveMonth(-1)} type="button">‹</button>
-                  <strong>{monthView.year}년 {monthView.month + 1}월</strong>
-                  <button aria-label="다음 달" onClick={() => moveMonth(1)} type="button">›</button>
+                <div className="quick-range" role="group" aria-label="기간 선택">
+                  {RANGE_KEYS.map((key) => (
+                    <button
+                      className={rangeKey === key ? "selected" : ""}
+                      key={key}
+                      onClick={() => {
+                        setRangeKey(key);
+                        setCourseRange(rangeFor(key, today));
+                      }}
+                      type="button"
+                    >
+                      {RANGE_LABELS[key]}
+                    </button>
+                  ))}
                 </div>
               ) : null}
             </div>
@@ -348,9 +357,9 @@ export function MyDashboard({ assignedRequests, diagnosis, omName, operations }:
                 </tr>
               </thead>
               <tbody>
-                {courseRows.length > 0 ? (
-                  courseRows.map((row, index) => (
-                    <tr className={focusRowKeys.has(row.key) ? "me-focus-row" : ""} key={row.key}>
+                {visibleCourseRows.length > 0 ? (
+                  visibleCourseRows.map((row, index) => (
+                    <tr key={row.key}>
                       <td>{index + 1}</td>
                       <td><strong>{row.company}</strong></td>
                       <td>
@@ -368,8 +377,17 @@ export function MyDashboard({ assignedRequests, diagnosis, omName, operations }:
                 ) : (
                   <tr>
                     <td className="empty-state" colSpan={8}>
-                      <strong>배정된 담당 과정이 없습니다.</strong>
-                      <span>업무 요청이나 운영 현황에서 담당으로 배정되면 여기에 표시됩니다.</span>
+                      {courseRows.length > 0 ? (
+                        <>
+                          <strong>{RANGE_LABELS[rangeKey]}에 진행하는 담당 과정이 없습니다.</strong>
+                          <span>전체 {courseRows.length}건이 있습니다. 위 기간을 넓혀 보세요.</span>
+                        </>
+                      ) : (
+                        <>
+                          <strong>배정된 담당 과정이 없습니다.</strong>
+                          <span>업무 요청이나 운영 현황에서 담당으로 배정되면 여기에 표시됩니다.</span>
+                        </>
+                      )}
                     </td>
                   </tr>
                 )}
@@ -774,6 +792,26 @@ function NameMismatchNotice({ diagnosis }: { diagnosis: OmNameDiagnosis }) {
       </div>
     </section>
   );
+}
+
+/** 담당 과정 표의 기간 칩. 운영 현황의 빠른 기간 선택과 같은 구성이다. */
+const RANGE_KEYS = ["all", "thisMonth", "nextMonth", "quarter", "year"] as const;
+type RangeKey = (typeof RANGE_KEYS)[number];
+
+const RANGE_LABELS: Record<RangeKey, string> = {
+  all: "전체",
+  thisMonth: "이번달",
+  nextMonth: "다음달",
+  quarter: "이번 분기",
+  year: "올해"
+};
+
+function rangeFor(key: RangeKey, today: Date): DateRange {
+  if (key === "thisMonth") return getMonthRange(today, 0);
+  if (key === "nextMonth") return getMonthRange(today, 1);
+  if (key === "quarter") return getQuarterRange(today);
+  if (key === "year") return getYearRange(today);
+  return ALL_RANGE;
 }
 
 function Metric({ label, value }: { label: string; value: number | string }) {
