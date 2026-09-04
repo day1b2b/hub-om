@@ -16,8 +16,7 @@ interface AddRoundButtonProps {
   baseRegion: string;
   baseTimeText: string;
   instructorOptions?: string[];
-  /** 쓸 수 있는 회차 번호(빈 자리 + 다음 번호). 오름차순. 마지막 값이 "다음 회차"다. */
-  roundNoOptions: string[];
+  nextRoundNo: string;
 }
 
 interface RoundDraft {
@@ -36,11 +35,8 @@ export function AddRoundButton({
   baseRegion,
   baseTimeText,
   instructorOptions = [],
-  roundNoOptions
+  nextRoundNo
 }: AddRoundButtonProps) {
-  // 빈 자리가 없으면 다음 번호 하나뿐이다. 그때는 예전처럼 고정 표시한다.
-  const nextRoundNo = roundNoOptions[roundNoOptions.length - 1] ?? "1";
-  const gapRoundNumbers = roundNoOptions.slice(0, -1);
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [draft, setDraft] = useState<RoundDraft>(() => toDraft());
@@ -74,26 +70,7 @@ export function AddRoundButton({
             <div className="lecture-note-body">
               <label className="lecture-note-field">
                 <span>회차</span>
-                {gapRoundNumbers.length > 0 ? (
-                  <>
-                    <select
-                      onChange={(event) => setDraft((current) => ({ ...current, roundNo: event.target.value }))}
-                      value={draft.roundNo}
-                    >
-                      {gapRoundNumbers.map((option) => (
-                        <option key={option} value={option}>
-                          {option}회차 (빈 자리)
-                        </option>
-                      ))}
-                      <option value={nextRoundNo}>{nextRoundNo}회차 (마지막에 추가)</option>
-                    </select>
-                    <small className="add-round-hint">
-                      비어 있는 회차: {gapRoundNumbers.join(", ")}회차
-                    </small>
-                  </>
-                ) : (
-                  <input readOnly type="text" value={draft.roundNo} />
-                )}
+                <input readOnly type="text" value={draft.roundNo} />
               </label>
 
               <div className="add-round-layout">

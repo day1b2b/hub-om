@@ -7,7 +7,6 @@ import {
   formatEducationDatesCompact,
   formatEducationDatesList,
   isArchiveComplete,
-  availableRoundNumbers,
   missingArchiveItems,
   resolveOperationCalendarRuns
 } from "@/lib/data/operationCalculations.ts";
@@ -246,30 +245,4 @@ test("형식이 틀린 교육일만 있으면 기간으로 떨어진다(조용�
     }),
     [{ start: "2026-09-14", end: "2026-09-23" }]
   );
-});
-
-// ── 새 회차로 쓸 수 있는 번호 (2026-09-04) ────────────────────────
-test("앞 회차가 비어 있으면 그 번호를 고를 수 있다", () => {
-  // 제보 사례: 2~8회차만 있는 과정. 1회차를 끼워넣어야 한다.
-  assert.deepEqual(availableRoundNumbers([2, 3, 4, 5, 6, 7, 8]), [1, 9]);
-});
-
-test("중간이 비어도 그 번호가 나온다", () => {
-  assert.deepEqual(availableRoundNumbers([1, 2, 5]), [3, 4, 6]);
-});
-
-test("빈 자리가 없으면 다음 번호 하나뿐이다", () => {
-  assert.deepEqual(availableRoundNumbers([1, 2, 3]), [4]);
-  assert.deepEqual(availableRoundNumbers([]), [1]);
-});
-
-test("최대+1을 넘는 번호는 주지 않는다(오타로 만든 회차는 고칠 방법이 없다)", () => {
-  const options = availableRoundNumbers([1, 2, 3]);
-
-  assert.ok(!options.includes(5));
-  assert.ok(!options.includes(22));
-});
-
-test("숫자가 아닌 회차·0·음수는 자리 계산에서 무시한다", () => {
-  assert.deepEqual(availableRoundNumbers([Number.NaN, 0, -1, 2]), [1, 3]);
 });
