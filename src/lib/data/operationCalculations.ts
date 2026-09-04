@@ -410,6 +410,25 @@ export function groupConsecutiveDateRuns(dates: string[]): { start: string; end:
 }
 
 /**
+ * 새 회차로 쓸 수 있는 번호. **비어 있는 자리 + 다음 번호**다.
+ *
+ * 2~8회차만 있는 과정에 1회차를 끼워넣을 수 없었다(2026-09-04 제보). 회차 추가가 "최대+1"만
+ * 받았기 때문이다. 원천 적재나 삭제로 앞 회차가 비는 일이 실제로 생기므로 빈 자리를 채울 수
+ * 있어야 한다.
+ *
+ * 최대+1보다 큰 번호는 일부러 뺐다 — 오타로 22회차 같은 걸 만들면 회차 번호는 나중에 고칠
+ * 방법이 없어서(수정 화면에 회차 칸이 없다) 지우고 다시 넣어야 한다.
+ */
+export function availableRoundNumbers(existingRoundNumbers: number[]): number[] {
+  const taken = new Set(
+    existingRoundNumbers.filter((value) => Number.isInteger(value) && value > 0)
+  );
+  const next = Math.max(0, ...taken) + 1;
+
+  return Array.from({ length: next }, (_, index) => index + 1).filter((value) => !taken.has(value));
+}
+
+/**
  * 회차를 화면 캘린더에 그릴 **막대 구간 목록**으로 바꾼다.
  *
  * 실제 교육일(educationDates)이 있으면 연속 구간마다 하나씩이다. 9/14~9/16·9/18·9/21~9/23이면

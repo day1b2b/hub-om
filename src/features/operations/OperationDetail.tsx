@@ -28,7 +28,7 @@ import type {
   OperationCollaboration,
   OperationDiscussionItem
 } from "@/lib/data/operationCollaboration";
-import { isSameCourse } from "@/lib/data/operationCalculations";
+import { availableRoundNumbers, isSameCourse } from "@/lib/data/operationCalculations";
 import { COURSE_CATEGORY_GROUPS } from "@/lib/data/omRequest/omCourseCategoryOptions";
 import type { PersonOptions } from "@/lib/data/personOptions";
 import { displayRoleAssigneeText } from "@/lib/data/roleAssignees";
@@ -76,7 +76,8 @@ export function OperationDetail({
   const existingRoundNumbers = courseOperations
     .map((candidate) => Number(candidate.roundNo))
     .filter((roundNo) => Number.isFinite(roundNo));
-  const nextRoundNo = String(Math.max(0, ...existingRoundNumbers) + 1);
+  // 비어 있는 앞 회차까지 고를 수 있게 한다(2~8회차만 있는 과정에 1회차를 넣는 경우).
+  const roundNoOptions = availableRoundNumbers(existingRoundNumbers).map(String);
   const fallbackOperationId =
     courseOperations.find((candidate) => candidate.operationId !== operation.operationId)?.operationId ?? null;
   // 과정명(과정ID 단위)은 코스ID명(코스ID 단위)보다 좁다 — 같은 코스ID라도 커리큘럼이 다르면
@@ -264,7 +265,7 @@ export function OperationDetail({
                   baseRegion={operation.region}
                   baseTimeText={operation.timeText}
                   instructorOptions={instructorOptions}
-                  nextRoundNo={nextRoundNo}
+                  roundNoOptions={roundNoOptions}
                 />
                 <BulkAddRoundsButton
                   baseOperationId={operation.operationId}
