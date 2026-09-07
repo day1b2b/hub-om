@@ -10,7 +10,7 @@ import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { listTeamUsers } from "@/lib/data/teamUsers/teamUserRepository";
 import { getSeoulToday } from "@/lib/seoulDate";
 import { isCalendarWriteEnabled, listPartCalendars, resolvePartCalendarId } from "./calendarWriteConfig";
-import { insertEvent, readCalendarAccessRole } from "./calendarWriteClient";
+import { insertOperationEvent, readCalendarAccessRole } from "./calendarWriteClient";
 import {
   listAllCalendarEventLinks,
   saveCalendarEventLink
@@ -270,7 +270,7 @@ export async function backfillMissingCalendarEvents(
 
     try {
       for (const eventPlan of item.plans) {
-        const eventId = await insertEvent(item.calendarId as string, eventPlan.body, { notifyAttendees });
+        const eventId = await insertOperationEvent(item.calendarId as string, eventPlan.body, { operationId: item.operationId, eventDate: eventPlan.eventDate, source: "backfill", occupiedEventIds: links.filter(entry => entry.calendarId === item.calendarId && entry.eventDate !== eventPlan.eventDate).map(entry => entry.eventId) }, { notifyAttendees });
         await saveCalendarEventLink({
           operationId: item.operationId,
           calendarId: item.calendarId as string,

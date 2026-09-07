@@ -1,6 +1,7 @@
 // 구글 캘린더 쓰기 클라이언트. refresh token으로 access token을 갱신하고
 // events.insert / patch / delete만 호출한다. 읽기는 sourceReads 쪽 reader가 담당한다.
 
+import { createHash } from "node:crypto";
 import { readCalendarWriteCredentials } from "./calendarWriteConfig";
 
 const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
@@ -63,6 +64,7 @@ export interface CalendarEventAttendee {
 }
 
 export interface CalendarEventBody {
+  id?: string;
   summary: string;
   description?: string;
   location?: string;
@@ -108,8 +110,8 @@ const SEND_UPDATES_SILENT = "sendUpdates=none";
  *
  * notifyAttendees=false면 메일 없이 이벤트만 만든다(sendUpdates=none). 기능 도입 전
  * 등록된 과정을 일괄 소급 생성할 때, 수십~수백 통의 초대 메일이 한꺼번에 나가는 것을
- * 막기 위한 스위치다. 메일을 눌러도 참석자 캘린더에는 일정이 뜬다(구글은 sendUpdates로
- * 메일만 끄고 참석자 추가는 그대로 한다). 소급 도구가 이 옵션을 쓴다.
+ * 막기 위한 스위치다. Google 문서상 none은 외부 캘린더 동기화에 영향을 줄 수 있으므로
+ * 참석자 캘린더 반영까지 보장하지 않는다. 소급 도구가 이 옵션을 쓴다.
  */
 export async function insertEvent(
   calendarId: string,
@@ -128,6 +130,53 @@ export async function insertEvent(
   if (!created.id) throw new Error("events.insert 응답에 eventId가 없습니다.");
 
   return created.id;
+}
+
+/** 동일 생성 요청은 프로세스가 재시작되어도 같은 Google ID를 사용한다. */
+export async function insertOperationEvent(
+  calendarId: string,
+  body: CalendarEventBody,
+  identity: { operationId: string; eventDate: string; source: "forward" | "backfill"; previousEventId?: string; occupiedEventIds?: string[] },
+  options?: { notifyAttendees?: boolean }
+): Promise<string> {
+  // source는 키에서 제외: 소급과 정방향이 동시에 실행되어도 같은 일정이다.
+  const seed = JSON.stringify([
+    "hub-om-calendar-v1", calendarId, identity.operationId, identity.eventDate, identity.previousEventId ?? ""
+  ]);
+  // 교육일을 제거했다가 다시 추가할 때 삭제된 ID는 재사용할 수 없다.
+  // 무작위 ID로 우회하지 않고 같은 세대 순서를 탐색해 재시도도 같은 ID에 도달한다.
+  for (let generation = 0; generation < 16; generation += 1) {
+    const id = createHash("sha256").update(JSON.stringify([seed, generation])).digest("hex");
+    if (identity.occupiedEventIds?.includes(id)) continue;
+    const privateProperties = {
+      ...body.extendedProperties?.private,
+      hubOmCreationKey: id,
+      hubOmCreationSource: identity.source
+    };
+    const sendUpdates = options?.notifyAttendees === false ? SEND_UPDATES_SILENT : SEND_UPDATES;
+    const response = await callCalendar(`/calendars/${encodeURIComponent(calendarId)}/events?${sendUpdates}`, {
+      method: "POST",
+      body: JSON.stringify({ ...body, id, extendedProperties: { private: privateProperties } })
+    });
+    if (response.ok) {
+      const created = await response.json() as { id?: string };
+      if (created.id !== id) throw new Error("events.insert 응답의 생성 식별자가 일치하지 않습니다.");
+      return id;
+    }
+    if (response.status !== 409) throw new Error(`events.insert 실패(${response.status})`);
+
+    // 409만으로 성공으로 간주하지 않는다. 실제 이벤트와 우리 생성 표식을 확인한다.
+    const existing = await callCalendar(`/calendars/${encodeURIComponent(calendarId)}/events/${id}`, { method: "GET" });
+    if (!existing.ok) throw new Error(`기존 생성 이벤트 확인 실패(${existing.status}). 같은 요청으로 재시도하세요.`);
+    const event = await existing.json() as { id?: string; status?: string; extendedProperties?: { private?: Record<string, string> } };
+    if (event.id !== id) throw new Error("기존 생성 이벤트의 식별자가 다릅니다.");
+    if (event.status === "cancelled") continue;
+    if (event.extendedProperties?.private?.hubOmCreationKey !== id) {
+      throw new Error("기존 이벤트의 생성 표식이 달라 자동 연결하지 않았습니다.");
+    }
+    return id;
+  }
+  throw new Error("삭제된 생성 식별자 탐색 상한에 도달했습니다. 관리자가 기존 연결을 확인해야 합니다.");
 }
 
 /**

@@ -10,7 +10,7 @@
 
 import type { OperationSession } from "@/lib/data/operationTypes";
 import { isCalendarWriteEnabled, resolvePartCalendarId } from "./calendarWriteConfig";
-import { deleteEvent, insertEvent, patchEvent, readEventAttendees } from "./calendarWriteClient";
+import { deleteEvent, insertOperationEvent, patchEvent, readEventAttendees } from "./calendarWriteClient";
 import { resolveCalendarTargets } from "./calendarParticipants";
 import { attendeesChanged, buildCalendarEventBodies } from "./operationCalendarEvent";
 import {
@@ -90,7 +90,7 @@ async function reflectOperation(operation: OperationSession, trigger: ReflectTri
         // 10분마다 도는 역반영은 이런 이벤트를 되살리지 않지만, 여기는 사람이 hub-om에서
         // 회차를 저장한 시점이다 — 잘못 지운 일정을 되살리는 길이 이것뿐이므로 다시 만든다
         // (2026-09-04 결정). 초대 메일은 insert라 다시 나간다. 매핑은 새 eventId로 갈아 끼운다.
-        const recreatedId = await insertEvent(calendarId, plan.body);
+        const recreatedId = await insertOperationEvent(calendarId, plan.body, { operationId: operation.operationId, eventDate: plan.eventDate, source: "forward", previousEventId: link.eventId });
         await saveCalendarEventLink({
           operationId: operation.operationId,
           calendarId,
@@ -103,7 +103,7 @@ async function reflectOperation(operation: OperationSession, trigger: ReflectTri
         continue;
       }
 
-      const eventId = await insertEvent(calendarId, plan.body);
+      const eventId = await insertOperationEvent(calendarId, plan.body, { operationId: operation.operationId, eventDate: plan.eventDate, source: "forward", occupiedEventIds: existing.filter(entry => entry.calendarId === calendarId && entry.eventDate !== plan.eventDate).map(entry => entry.eventId) });
       await saveCalendarEventLink({
         operationId: operation.operationId,
         calendarId,

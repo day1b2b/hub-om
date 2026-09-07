@@ -15,7 +15,7 @@ mock.module("./operationCalendarEvent", { namedExports: {
   buildCalendarEventBodies: () => [{ eventDate: "2026-09-07", body: { summary: "fixture", start: { date: "2026-09-07" }, end: { date: "2026-09-08" } } }]
 } });
 mock.module("./calendarWriteClient", { namedExports: {
-  insertEvent: async () => "new", readEventAttendees: async () => ["old@example.test"],
+  insertOperationEvent: async () => "new", readEventAttendees: async () => ["old@example.test"],
   patchEvent: async (_cal: string, _id: string, body: Record<string, unknown>, options: { notifyAttendees: boolean }) => { notifications.push(options.notifyAttendees); patched.push(body); return "updated"; },
   deleteEvent: async (_cal: string, id: string) => { if (id === deleteFailure) throw new Error("simulated failure"); removed.push(id); }
 } });
