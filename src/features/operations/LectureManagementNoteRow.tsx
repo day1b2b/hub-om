@@ -17,7 +17,7 @@ import {
 } from "./lectureNoteModel";
 
 type SaveState = "idle" | "saving" | "saved" | "failed";
-type NoteMode = "text" | "link";
+import { clearDraft, readDraft, writeDraft, type NoteMode, type StoredDraft } from "./lectureNoteDraftStorage";
 
 /**
  * 저장 실패의 종류. network는 잠시 뒤 다시 시도하면 될 수 있고, auth는 다른 탭에서 다시 로그인하면 풀린다.
@@ -44,11 +44,6 @@ const AUTOSAVE_DELAY_MS = 3000;
 // 저장 실패 후 다시 시도하는 간격. 실패가 반복되면 두 배씩 늘려 서버 복구 직후 요청이 몰리지 않게 한다.
 const RETRY_BASE_DELAY_MS = 30_000;
 const RETRY_MAX_DELAY_MS = 5 * 60_000;
-// 서버 저장이 안 될 때 입력 내용을 잃지 않도록 브라우저에도 같이 보관한다.
-const DRAFT_STORAGE_PREFIX = "hub-om:lecture-note-draft:";
-// 이보다 오래된 임시 보관본은 열 때 정리한다. 다시 열지 않은 회차의 보관본이 브라우저 저장 공간에 계속 쌓이지 않게 한다.
-const DRAFT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
-
 const NETWORK_FAILURE_MESSAGE = "서버에 저장하지 못했습니다. 내용은 이 브라우저에 보관되어 있고 잠시 후 자동으로 다시 시도합니다.";
 const AUTH_FAILURE_MESSAGE =
   "로그인이 만료되어 저장하지 못했습니다. 내용은 이 브라우저에 보관되어 있습니다. 다른 탭에서 다시 로그인하면 자동으로 다시 시도합니다.";
@@ -73,13 +68,6 @@ async function classifySaveResponse(response: Response): Promise<SaveFailure | n
   }
 
   return { kind: "network", message: NETWORK_FAILURE_MESSAGE };
-}
-
-interface StoredDraft {
-  linkDraft: string;
-  mode: NoteMode;
-  tabs: LectureNoteTab[];
-  updatedAt: string;
 }
 
 function resolveInitialMode(value: string): NoteMode {
@@ -418,7 +406,7 @@ export function LectureManagementNoteRow({
     setLastSavedValue(initialComposed);
 
     // 이전에 서버 저장이 안 된 채 닫힌 내용이 브라우저에 남아 있으면 복원할지 묻는다. 서버 값과 같으면 조용히 지운다.
-    pruneStaleDrafts();
+    // 미저장 기록은 유일한 사본일 수 있으므로 오래됐다는 이유로 삭제하지 않는다.
     const draft = readDraft(operationId);
     if (draft && composeDraftValue(draft) !== initialComposed) {
       setRecoverableDraft(draft);
@@ -554,78 +542,6 @@ export function LectureManagementNoteRow({
     setTabs((current) => mergePastedNote(current, activeTabIndex, pasted));
     setDateError(null);
     markEdited();
-  }
-}
-
-function draftStorageKey(operationId: string): string {
-  return `${DRAFT_STORAGE_PREFIX}${operationId}`;
-}
-
-function readDraft(operationId: string): StoredDraft | null {
-  try {
-    const raw = window.localStorage.getItem(draftStorageKey(operationId));
-    if (!raw) return null;
-
-    const parsed = JSON.parse(raw) as Partial<StoredDraft>;
-    if (!Array.isArray(parsed.tabs) || typeof parsed.updatedAt !== "string") return null;
-
-    return {
-      linkDraft: typeof parsed.linkDraft === "string" ? parsed.linkDraft : "",
-      mode: parsed.mode === "link" ? "link" : "text",
-      tabs: parsed.tabs.map((tab) => ({ ...blankTab(), ...tab })),
-      updatedAt: parsed.updatedAt
-    };
-  } catch {
-    return null;
-  }
-}
-
-function writeDraft(operationId: string, draft: StoredDraft) {
-  try {
-    window.localStorage.setItem(draftStorageKey(operationId), JSON.stringify(draft));
-  } catch {
-    // 시크릿 모드나 저장 공간 부족이면 보관만 건너뛴다. 서버 저장은 그대로 시도한다.
-  }
-}
-
-/** 오래된 임시 보관본을 지운다. 열려 있는 회차의 보관본은 이 뒤에 따로 읽으므로 여기서 함께 정리돼도 최신 것은 남는다. */
-function pruneStaleDrafts() {
-  try {
-    const cutoff = Date.now() - DRAFT_MAX_AGE_MS;
-    const staleKeys: string[] = [];
-
-    for (let index = 0; index < window.localStorage.length; index += 1) {
-      const key = window.localStorage.key(index);
-      if (!key || !key.startsWith(DRAFT_STORAGE_PREFIX)) continue;
-
-      // 시각을 읽을 수 없거나 JSON이 깨진 보관본은 복원할 수도 없으므로 함께 지운다.
-      // 한 항목이 깨졌다고 정리 전체가 멈추면 안 되므로 항목별로 실패를 잡는다.
-      if (readDraftUpdatedAt(window.localStorage.getItem(key)) < cutoff) staleKeys.push(key);
-    }
-
-    for (const key of staleKeys) window.localStorage.removeItem(key);
-  } catch {
-    // 저장 공간을 읽을 수 없으면 정리를 건너뛴다. 보관본 읽기/쓰기도 같은 이유로 건너뛰므로 동작에는 영향이 없다.
-  }
-}
-
-/** 보관본의 저장 시각(ms). 읽을 수 없으면 -Infinity를 돌려 정리 대상이 되게 한다. */
-function readDraftUpdatedAt(raw: string | null): number {
-  if (!raw) return Number.NEGATIVE_INFINITY;
-
-  try {
-    const updatedAt = Date.parse((JSON.parse(raw) as Partial<StoredDraft>).updatedAt ?? "");
-    return Number.isNaN(updatedAt) ? Number.NEGATIVE_INFINITY : updatedAt;
-  } catch {
-    return Number.NEGATIVE_INFINITY;
-  }
-}
-
-function clearDraft(operationId: string) {
-  try {
-    window.localStorage.removeItem(draftStorageKey(operationId));
-  } catch {
-    // 지우지 못해도 다음에 열 때 서버 값과 같으면 다시 정리된다.
   }
 }
 
