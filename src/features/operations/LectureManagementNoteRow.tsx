@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isNavigableHref, toHref } from "@/lib/links";
 import {
@@ -15,9 +15,10 @@ import {
   suggestNextLectureDate,
   type LectureNoteTab
 } from "./lectureNoteModel";
+import { flushLectureNote, type PendingLectureNote } from "./flushLectureNote";
+import { clearDraft, readDraft, writeDraft, type NoteMode, type StoredDraft } from "./lectureNoteDraftStorage";
 
 type SaveState = "idle" | "saving" | "saved" | "failed";
-import { clearDraft, readDraft, writeDraft, type NoteMode, type StoredDraft } from "./lectureNoteDraftStorage";
 
 /**
  * 저장 실패의 종류. network는 잠시 뒤 다시 시도하면 될 수 있고, auth는 다른 탭에서 다시 로그인하면 풀린다.
@@ -106,11 +107,12 @@ export function LectureManagementNoteRow({
   // 저장 요청이 진행 중인지. saveState는 렌더 시점 값이라 타이머 콜백이나 닫기 처리에서는 한 박자 늦을 수 있어 ref로도 본다.
   const inFlightRef = useRef(false);
   // 가장 최근 렌더의 저장 대상 값. 닫기 처리에서 await 뒤에 그동안 입력된 내용이 있는지 확인할 때 쓴다.
-  const latestPendingRef = useRef("");
+  const latestPendingRef = useRef<PendingLectureNote>({ value: "", editVersion: 0 });
 
   // operationId 외에는 setState와 ref만 쓰므로 참조가 바뀌지 않는다. 효과(effect) 의존성에 그대로 넣을 수 있다.
   const persist = useCallback(
     async (noteValue: string, editVersionAtRequest: number): Promise<boolean> => {
+      if (inFlightRef.current) return false;
       const sequence = ++saveSequenceRef.current;
       inFlightRef.current = true;
       setSaveState("saving");
@@ -160,9 +162,9 @@ export function LectureManagementNoteRow({
   const pendingValue = composeCurrentValue(editedMode);
   const hasUnsavedEdit = editVersion > 0 && pendingValue !== lastSavedValue;
 
-  useEffect(() => {
-    latestPendingRef.current = pendingValue;
-  }, [pendingValue]);
+  useLayoutEffect(() => {
+    latestPendingRef.current = { value: pendingValue, editVersion };
+  }, [pendingValue, editVersion]);
 
   // 저장 요청은 한 번에 하나만 보낸다. 앞 요청이 진행 중일 때 새 요청을 겹쳐 보내면 서버에 옛 값이 나중에
   // 도착해 최신 입력을 덮어쓸 수 있고, 화면은 최신 값이 저장된 줄 알고 임시 보관본까지 지운다.
@@ -461,16 +463,9 @@ export function LectureManagementNoteRow({
     }
 
     if (hasUnsavedEdit && !rejectedWithoutEdit) {
-      // 저장하는 동안에도 창은 열려 있어 입력이 이어질 수 있다. 저장이 끝난 뒤 그동안 바뀐 내용이 있으면
-      // 그것까지 저장하고 닫는다. 그렇지 않으면 화면은 저장됐다고 하는데 서버에는 마지막 입력이 빠진다.
-      let target = pendingValue;
-      for (let attempt = 0; attempt < 3; attempt += 1) {
-        const saved = await persist(target, editVersion);
-        // 저장에 실패하면 입력 내용을 잃지 않도록 창을 닫지 않는다.
-        if (!saved) return;
-        if (latestPendingRef.current === target) break;
-        target = latestPendingRef.current;
-      }
+      const saved = await flushLectureNote(() => latestPendingRef.current, persist);
+      // 재저장 상한에 도달해도 최신 입력이 아직 서버에 없으면 창을 유지한다.
+      if (!saved) return;
     }
 
     setIsOpen(false);
