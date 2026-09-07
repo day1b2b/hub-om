@@ -115,6 +115,15 @@
 - 교육일이 등록되지 않은 옛 회차는 기간 이벤트 1건이고 키는 회차 시작일이다.
 - 역반영용 별도 컬럼(`lastSynced*`·`syncToken`)은 **두지 않는다** — 아래 감지 방식이 저장 상태를 요구하지 않는다.
 
+### 소급 반영(백필) 관리자 도구 (2026-09-07)
+정방향 반영은 **"운영 생성" 때만** 이벤트를 만든다(`reflectOperation`의 `if (existing.length === 0 && trigger === "updated") return;`). 그래서 **캘린더 쓰기 기능이 켜지기 전에 등록된 회차는 구글에 생성된 적이 없고**, 이후 수정해도 소급 생성되지 않는다. `refresh-events`는 이미 매핑된 이벤트의 제목·설명만 patch하므로 없는 이벤트를 만들지 못한다. 이 빈틈을 메우는 도구가 `GET/POST /api/admin/calendar/backfill-events`다.
+
+- **동작:** 매핑(`calendar_event_link`)이 없는 교육일만 골라 **정방향과 같은 `buildCalendarEventBodies`로 `events.insert`**한다. 날짜 단위로 빠진 것만 채우므로 재실행·부분 소급에도 중복이 없다.
+- **GET = 미리보기(쓰기 없음):** 무엇이 몇 건 빠졌는지 파트별로 세고, **파트 캘린더별 쓰기 권한(`accessRole`)을 함께 진단**한다(`users/me/calendarList.get`). "2파트가 통째로 비는" 원인이 ①쓰기 권한(ACL) 미공유(`accessRole`=reader)인지 ②담당 OM 팀 표기가 `extractPartKey`로 파트를 못 뽑는지(→ `skipped`, `partKey=null`) ③그냥 도입 전 생성인지를 데이터로 가른다.
+- **POST = 적용:** 보수적 기본값 — **예정(오늘 KST 이후에 끝나는) 회차만**, **초대 메일 억제**(`insertEvent`에 `notifyAttendees=false` → `sendUpdates=none`, 참석자 캘린더엔 뜨되 메일 폭탄은 막음), **이벤트 상한**(기본 100, 회차 사이에서만 끊어 회차가 반쪽 나지 않게). 쓰기 불가 캘린더는 건너뛴다.
+- **파라미터:** `from`(YYYY-MM-DD 기준일, 미지정=오늘 KST, `all`=전체 기간) · `limit`(POST 상한) · `notify=true`(POST 메일 발송). 경로는 `SYNC_API_PATHS`에 등록.
+- **주의:** insert·메일은 되돌리기 어렵다. **반드시 GET으로 먼저 확인**하고, 실제 적용 범위·메일 여부는 운영자(유진님)가 결정한 뒤 POST한다.
+
 ---
 
 ## 5-B. 신규 작업 C — 구글 → 운영현황 역반영 (날짜·시간)

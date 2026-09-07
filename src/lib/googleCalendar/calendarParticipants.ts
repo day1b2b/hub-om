@@ -31,10 +31,15 @@ export interface CalendarTargets {
  * 담당 OM과 현장운영 OM을 초대 대상으로 모은다(스펙 D3).
  * 이메일이 없는 사람은 조용히 빼고 unresolvedNames로 돌려준다 — 한 명 때문에
  * 일정 자체가 안 만들어지면 더 나쁘기 때문이다(스펙 §6).
+ *
+ * 명단(TeamUser)을 미리 읽어 넘길 수 있게 순수 함수로 뽑았다. 일괄 소급 반영은
+ * 회차 수백 건을 한 번에 돌아서, 회차마다 listTeamUsers()를 다시 부르면 DB를 그만큼
+ * 두드린다. 소급 도구는 명단을 한 번만 읽어 이 함수에 넘긴다.
  */
-export async function resolveCalendarTargets(operation: OperationSession): Promise<CalendarTargets> {
-  const users = await listTeamUsers();
-
+export function resolveCalendarTargetsFromUsers(
+  operation: OperationSession,
+  users: TeamUser[]
+): CalendarTargets {
   const ownerNames = assigneeNames(operation.om);
   const onsiteNames = assigneeNames(operation.onsiteOm);
 
@@ -55,4 +60,8 @@ export async function resolveCalendarTargets(operation: OperationSession): Promi
     ownerNames.map((name) => extractPartKey(findTeamUser(users, name)?.team)).find(Boolean) ?? null;
 
   return { partKey, attendeeEmails, unresolvedNames };
+}
+
+export async function resolveCalendarTargets(operation: OperationSession): Promise<CalendarTargets> {
+  return resolveCalendarTargetsFromUsers(operation, await listTeamUsers());
 }
