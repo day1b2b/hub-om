@@ -35,11 +35,16 @@ export function readDraft(operationId: string, storage?: DraftStorage): StoredDr
   }
 }
 
-export function writeDraft(operationId: string, draft: StoredDraft, storage?: DraftStorage) {
+export function writeDraft(operationId: string, draft: StoredDraft, storage?: DraftStorage): boolean {
   try {
-    (storage ?? window.localStorage).setItem(draftStorageKey(operationId), JSON.stringify(draft));
+    const target = storage ?? window.localStorage;
+    const key = draftStorageKey(operationId);
+    const serialized = JSON.stringify(draft);
+    target.setItem(key, serialized);
+    return target.getItem(key) === serialized;
   } catch {
-    // 시크릿 모드나 저장 공간 부족이면 보관만 건너뛴다. 서버 저장은 그대로 시도한다.
+    // 서버 저장은 계속 시도하되, 닫기에서는 보관 실패를 확인해 입력을 보호한다.
+    return false;
   }
 }
 

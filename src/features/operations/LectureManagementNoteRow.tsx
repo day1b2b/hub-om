@@ -44,9 +44,9 @@ const AUTOSAVE_DELAY_MS = 3000;
 // 저장 실패 후 다시 시도하는 간격. 실패가 반복되면 두 배씩 늘려 서버 복구 직후 요청이 몰리지 않게 한다.
 const RETRY_BASE_DELAY_MS = 30_000;
 const RETRY_MAX_DELAY_MS = 5 * 60_000;
-const NETWORK_FAILURE_MESSAGE = "서버에 저장하지 못했습니다. 내용은 이 브라우저에 보관되어 있고 잠시 후 자동으로 다시 시도합니다.";
+const NETWORK_FAILURE_MESSAGE = "서버에 저장하지 못했습니다. 잠시 후 자동으로 다시 시도합니다. 저장될 때까지 창을 유지해 주세요.";
 const AUTH_FAILURE_MESSAGE =
-  "로그인이 만료되어 저장하지 못했습니다. 내용은 이 브라우저에 보관되어 있습니다. 다른 탭에서 다시 로그인하면 자동으로 다시 시도합니다.";
+  "로그인이 만료되어 저장하지 못했습니다. 이 창을 유지하고 다른 탭에서 다시 로그인하면 자동으로 다시 시도합니다.";
 
 /**
  * 저장 응답을 실패 종류로 나눈다. 성공이면 null.
@@ -64,7 +64,7 @@ async function classifySaveResponse(response: Response): Promise<SaveFailure | n
   // 4xx는 서버가 요청을 거절한 것이다. 사유가 있으면 그대로 보여 준다.
   if (response.status >= 400 && response.status < 500) {
     const reason = typeof payload?.error === "string" && payload.error.trim() ? payload.error.trim() : "서버가 요청을 받지 않았습니다.";
-    return { kind: "rejected", message: `저장하지 못했습니다: ${reason} 내용은 이 브라우저에 보관되어 있습니다.` };
+    return { kind: "rejected", message: `저장하지 못했습니다: ${reason} 내용을 복사해 보관하거나 다시 저장해 주세요.` };
   }
 
   return { kind: "network", message: NETWORK_FAILURE_MESSAGE };
@@ -446,8 +446,19 @@ export function LectureManagementNoteRow({
     if (inFlightRef.current) return;
 
     // 서버가 거절한 요청은 닫을 때 다시 보내도 결과가 같아 창이 영영 닫히지 않는다. 그 뒤 편집이 없었다면
-    // 내용은 이미 브라우저 임시 보관본에 있으므로 다시 보내지 않고 닫는다(다음에 열 때 복원을 묻는다).
+    // 현재 내용이 브라우저에 실제로 보관됐을 때만 닫는다(다음에 열 때 복원을 묻는다).
     const rejectedWithoutEdit = saveState === "failed" && saveFailure?.kind === "rejected" && failedAtEditVersion === editVersion;
+
+    if (hasUnsavedEdit && rejectedWithoutEdit) {
+      const backedUp = writeDraft(operationId, { linkDraft, mode: editedMode, tabs, updatedAt: new Date().toISOString() });
+      if (!backedUp) {
+        setSaveFailure({
+          kind: "rejected",
+          message: "브라우저에도 내용을 보관하지 못해 창을 닫을 수 없습니다. 내용을 복사해 보관하고 저장을 다시 시도해 주세요."
+        });
+        return;
+      }
+    }
 
     if (hasUnsavedEdit && !rejectedWithoutEdit) {
       // 저장하는 동안에도 창은 열려 있어 입력이 이어질 수 있다. 저장이 끝난 뒤 그동안 바뀐 내용이 있으면
