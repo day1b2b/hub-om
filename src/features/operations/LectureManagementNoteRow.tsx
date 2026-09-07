@@ -575,15 +575,26 @@ function pruneStaleDrafts() {
       const key = window.localStorage.key(index);
       if (!key || !key.startsWith(DRAFT_STORAGE_PREFIX)) continue;
 
-      const raw = window.localStorage.getItem(key);
-      const updatedAt = raw ? Date.parse((JSON.parse(raw) as Partial<StoredDraft>).updatedAt ?? "") : Number.NaN;
-      // 시각을 읽을 수 없는 보관본은 복원할 수도 없으므로 함께 지운다.
-      if (Number.isNaN(updatedAt) || updatedAt < cutoff) staleKeys.push(key);
+      // 시각을 읽을 수 없거나 JSON이 깨진 보관본은 복원할 수도 없으므로 함께 지운다.
+      // 한 항목이 깨졌다고 정리 전체가 멈추면 안 되므로 항목별로 실패를 잡는다.
+      if (readDraftUpdatedAt(window.localStorage.getItem(key)) < cutoff) staleKeys.push(key);
     }
 
     for (const key of staleKeys) window.localStorage.removeItem(key);
   } catch {
     // 저장 공간을 읽을 수 없으면 정리를 건너뛴다. 보관본 읽기/쓰기도 같은 이유로 건너뛰므로 동작에는 영향이 없다.
+  }
+}
+
+/** 보관본의 저장 시각(ms). 읽을 수 없으면 -Infinity를 돌려 정리 대상이 되게 한다. */
+function readDraftUpdatedAt(raw: string | null): number {
+  if (!raw) return Number.NEGATIVE_INFINITY;
+
+  try {
+    const updatedAt = Date.parse((JSON.parse(raw) as Partial<StoredDraft>).updatedAt ?? "");
+    return Number.isNaN(updatedAt) ? Number.NEGATIVE_INFINITY : updatedAt;
+  } catch {
+    return Number.NEGATIVE_INFINITY;
   }
 }
 

@@ -431,7 +431,7 @@ export class PrismaOperationRepository implements OperationRepository {
     return operation;
   }
 
-  async updateOperation(operationId: string, input: UpdateOperationInput): Promise<OperationSession> {
+  async updateOperation(operationId: string, input: UpdateOperationInput, updatedBy?: string): Promise<OperationSession> {
     const prisma = getPrismaClient();
     const data: Parameters<typeof prisma.operationSession.update>[0]["data"] = {};
 
@@ -626,6 +626,9 @@ export class PrismaOperationRepository implements OperationRepository {
     if (input.specialNotes !== undefined) data.specialNotes = nullableText(input.specialNotes);
     if (input.timeText !== undefined) data.timeText = nullableText(input.timeText);
     if (input.totalCost !== undefined) data.totalCost = input.totalCost;
+
+    // 수정자는 다른 값과 함께 올 때만 기록한다. 수정자만 있는 요청은 실제 변경이 없으므로 아래에서 그대로 반환된다.
+    if (Object.keys(data).length > 0 && updatedBy !== undefined) data.updatedBy = nullableText(updatedBy);
 
     if (Object.keys(data).length === 0) {
       const operation = await this.getOperationById(operationId);

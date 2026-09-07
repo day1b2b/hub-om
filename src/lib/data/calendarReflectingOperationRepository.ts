@@ -65,8 +65,8 @@ export class CalendarReflectingOperationRepository implements OperationRepositor
     return operation;
   }
 
-  async updateOperation(operationId: string, input: UpdateOperationInput): Promise<OperationSession> {
-    const operation = await this.inner.updateOperation(operationId, input);
+  async updateOperation(operationId: string, input: UpdateOperationInput, updatedBy?: string): Promise<OperationSession> {
+    const operation = await this.inner.updateOperation(operationId, input, updatedBy);
     if (touchesCalendar(input)) await reflectOperationUpdated(operation);
     return operation;
   }
