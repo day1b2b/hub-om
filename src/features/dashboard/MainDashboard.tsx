@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { extractIssueTagsFromNote } from "@/features/operations/lectureNoteModel";
 import { useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { sumRevenueByCourseId } from "@/lib/data/operationCalculations";
@@ -70,6 +71,11 @@ export function MainDashboard({ operations, teamScope, teamUsers }: MainDashboar
   // "/operations" 총 매출과 같은 기준(코스ID당 1번, 최댓값)으로 집계한다. scopedCourses(과정
   // 단위)만으로는 같은 코스ID가 과정 여러 건에 걸친 경우를 걸러내지 못한다.
   const totalRevenue = sumRevenueByCourseId(scopedOperations);
+
+  const issueTagCounts = topCounts(
+    scopedOperations.flatMap((operation) => extractIssueTagsFromNote(operation.lectureManagementNote)),
+    8
+  );
 
   return (
     <main className="dashboard-shell">
@@ -184,6 +190,13 @@ export function MainDashboard({ operations, teamScope, teamUsers }: MainDashboar
             </div>
             <MonthlyTrendChart items={monthlyCounts} />
           </section>
+          <section className="dashboard-panel dashboard-panel-wide">
+            <div className="section-title">
+              <h2>이슈 유형별 발생 빈도</h2>
+              <span>회차별 집계 · 같은 유형은 회차당 1회</span>
+            </div>
+            <BarList items={issueTagCounts} />
+          </section>
         </section>
 
         <section className="dashboard-panel">
@@ -208,6 +221,14 @@ export function MainDashboard({ operations, teamScope, teamUsers }: MainDashboar
                 </tr>
               </thead>
               <tbody>
+                {activeOrUpcoming.length === 0 ? (
+                  <tr>
+                    <td className="empty-state" colSpan={7}>
+                      <strong>선택한 범위에 예정되었거나 진행 중인 운영이 없습니다.</strong>
+                      <span>필터를 바꾸거나 운영 데이터를 확인하세요.</span>
+                    </td>
+                  </tr>
+                ) : null}
                 {activeOrUpcoming.slice(0, 10).map((operation) => (
                   <tr key={operation.operationId}>
                     <td>
@@ -297,6 +318,10 @@ function DonutChart({ items }: { items: Array<{ count: number; label: string }> 
 }
 
 function MonthlyTrendChart({ items }: { items: Array<{ count: number; label: string }> }) {
+  if (!items.some((item) => item.count > 0)) {
+    return <p className="dashboard-empty-note">선택한 범위에 올해 등록된 운영이 없습니다.</p>;
+  }
+
   const width = 720;
   const height = 150;
   const padding = { bottom: 28, left: 30, right: 18, top: 18 };

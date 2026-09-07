@@ -1,6 +1,19 @@
+export const ISSUE_TAG_OPTIONS = ["자료", "장비", "커뮤니케이션", "일정", "강사", "학습자", "시설/환경", "기타"] as const;
+
+/** 옛 초안의 누락/잘못된 타입을 허용하고, 미등록 태그도 보존한다. */
+export function normalizeIssueTags(value: unknown): string[] {
+  return Array.isArray(value) ? [...new Set(value.filter((tag): tag is string => typeof tag === "string").map((tag) => tag.trim()).filter(Boolean))] : [];
+}
+
+/** 하나의 회차에 같은 태그가 여러 날짜에 있어도 한 번만 센다. */
+export function extractIssueTagsFromNote(value: string): string[] {
+  return normalizeIssueTags(parseLectureNote(value, "").flatMap((tab) => normalizeIssueTags(tab.issueTags)));
+}
+
 export interface LectureNoteDraft {
   courseSummary: string;
   issue: string;
+  issueTags?: string[];
   staffOpinion: string;
   studentCount: string;
 }
@@ -12,6 +25,7 @@ export interface LectureNoteTab extends LectureNoteDraft {
 const COURSE_SUMMARY_MARKER = "[강의 요약]";
 const STAFF_OPINION_MARKER = "[운영진 의견]";
 const ISSUE_MARKER = "[이슈]";
+const ISSUE_TAGS_MARKER = "[이슈 유형]";
 // 날짜 제목은 "[날짜: …]"만 적힌 줄이다. 날짜 안에 "]"는 올 수 없게 해서 "[날짜: 2026.9.1] + [강의 요약]"처럼
 // 뒤에 다른 글이 붙은 줄을 날짜 제목으로 잘못 읽지 않게 한다.
 const DATE_HEADER_PATTERN = /^\[날짜:\s*([^\]\n]*)\]\s*$/gm;
@@ -21,7 +35,7 @@ export function blankTab(defaultDate: string = ""): LectureNoteTab {
 }
 
 export function containsNoteMarkers(value: string): boolean {
-  return value.includes(COURSE_SUMMARY_MARKER) || value.includes(STAFF_OPINION_MARKER) || value.includes(ISSUE_MARKER);
+  return value.includes(COURSE_SUMMARY_MARKER) || value.includes(STAFF_OPINION_MARKER) || value.includes(ISSUE_MARKER) || value.includes(ISSUE_TAGS_MARKER);
 }
 
 export function parseLectureNote(value: string, defaultDate: string): LectureNoteTab[] {
@@ -58,7 +72,7 @@ const STUDENT_COUNT_LINE_PATTERN = /^[^\S\n]*학습\s*인원\s*[:：][^\S\n]*(.*
  * 버리지 않고 강의 요약 앞에 붙인다. 버리면 저장할 때 그 글이 사라진다.
  */
 export function parseLectureNoteBody(value: string): LectureNoteDraft {
-  const firstMarkerIndex = [COURSE_SUMMARY_MARKER, STAFF_OPINION_MARKER, ISSUE_MARKER]
+  const firstMarkerIndex = [COURSE_SUMMARY_MARKER, STAFF_OPINION_MARKER, ISSUE_TAGS_MARKER, ISSUE_MARKER]
     .map((marker) => value.indexOf(marker))
     .filter((index) => index !== -1)
     .sort((a, b) => a - b)[0];
@@ -73,7 +87,8 @@ export function parseLectureNoteBody(value: string): LectureNoteDraft {
   const staffOpinion = extractSection(value, STAFF_OPINION_MARKER);
   const issue = extractSection(value, ISSUE_MARKER);
 
-  return { courseSummary, issue, staffOpinion, studentCount };
+  const issueTags = normalizeIssueTags(extractSection(value, ISSUE_TAGS_MARKER).split(/[,\n]/));
+  return { courseSummary, issue, staffOpinion, studentCount, ...(issueTags.length ? { issueTags } : {}) };
 }
 
 /** 칸 제목 뒤부터 다음 칸 제목 앞까지. 칸 순서가 뒤바뀐 글이라도 다른 칸의 글이 섞여 들어오지 않게 모든 제목에서 끊는다. */
@@ -82,7 +97,7 @@ function extractSection(value: string, marker: string): string {
   if (startIndex === -1) return "";
 
   const afterMarker = value.slice(startIndex + marker.length);
-  const endIndex = [COURSE_SUMMARY_MARKER, STAFF_OPINION_MARKER, ISSUE_MARKER]
+  const endIndex = [COURSE_SUMMARY_MARKER, STAFF_OPINION_MARKER, ISSUE_TAGS_MARKER, ISSUE_MARKER]
     .filter((other) => other !== marker)
     .map((other) => afterMarker.indexOf(other))
     .filter((index) => index !== -1)
@@ -114,6 +129,7 @@ function composeLectureNoteBody(draft: LectureNoteDraft): string {
     draft.studentCount.trim() ? `학습 인원: ${draft.studentCount.trim()}` : "",
     draft.courseSummary.trim() ? `${COURSE_SUMMARY_MARKER}\n${draft.courseSummary.trim()}` : "",
     draft.staffOpinion.trim() ? `${STAFF_OPINION_MARKER}\n${draft.staffOpinion.trim()}` : "",
+    normalizeIssueTags(draft.issueTags).length ? `${ISSUE_TAGS_MARKER}\n${normalizeIssueTags(draft.issueTags).join(", ")}` : "",
     draft.issue.trim() ? `${ISSUE_MARKER}\n${draft.issue.trim()}` : ""
   ].filter(Boolean);
 
@@ -122,7 +138,7 @@ function composeLectureNoteBody(draft: LectureNoteDraft): string {
 
 /** 날짜를 뺀 네 칸 중 하나라도 적혀 있는지. 날짜만 있는 탭은 hasTabContent로 따로 본다. */
 function hasBodyContent(tab: LectureNoteDraft): boolean {
-  return Boolean(tab.courseSummary.trim() || tab.staffOpinion.trim() || tab.issue.trim() || tab.studentCount.trim());
+  return normalizeIssueTags(tab.issueTags).length > 0 || Boolean(tab.courseSummary.trim() || tab.staffOpinion.trim() || tab.issue.trim() || tab.studentCount.trim());
 }
 
 /**
@@ -209,6 +225,8 @@ export function mergeTabsWithSameDate(tabs: LectureNoteTab[]): LectureNoteTab[] 
     existing.courseSummary = joinDistinct(existing.courseSummary, tab.courseSummary);
     existing.staffOpinion = joinDistinct(existing.staffOpinion, tab.staffOpinion);
     existing.issue = joinDistinct(existing.issue, tab.issue);
+    const tags = normalizeIssueTags([...normalizeIssueTags(existing.issueTags), ...normalizeIssueTags(tab.issueTags)]);
+    if (tags.length) existing.issueTags = tags;
     // 학습 인원은 한 줄 필드다. 서로 다른 원값은 모두 보여 주고, 재복원 시 같은 값은 늘리지 않는다.
     existing.studentCount = [...new Set(
       [existing.studentCount, tab.studentCount].flatMap((count) => count.split(" / ").map((part) => part.trim()).filter(Boolean))
@@ -260,6 +278,7 @@ export function mergePastedNote(tabs: LectureNoteTab[], activeTabIndex: number, 
       ...target,
       courseSummary: parsed.courseSummary || target.courseSummary,
       issue: parsed.issue || target.issue,
+      ...(normalizeIssueTags(parsed.issueTags).length ? { issueTags: normalizeIssueTags(parsed.issueTags) } : {}),
       staffOpinion: parsed.staffOpinion || target.staffOpinion,
       studentCount: parsed.studentCount || target.studentCount
     };
