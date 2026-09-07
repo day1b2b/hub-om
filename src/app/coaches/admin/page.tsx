@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { CoachAdminPage } from "@/features/coaches/CoachAdminPage";
 import { requireAdminSession } from "@/lib/auth/requireAdminSession";
 import { getPrismaClient } from "@/lib/data/prisma";
@@ -13,6 +14,7 @@ export default async function CoachAdminPageRoute({ searchParams }: CoachAdminPa
   await requireAdminSession();
 
   const params = await searchParams;
+  if (firstParam(params.tab) === "content") redirect("/changes#content");
   const selectedTab = resolveTab(firstParam(params.tab));
 
   const prisma = getPrismaClient();
@@ -26,7 +28,7 @@ function firstParam(value: string | string[] | undefined): string | undefined {
 }
 
 function resolveTab(value: string | undefined): CoachAdminTab {
-  if (value === "schedule-link" || value === "deleted" || value === "sync" || value === "content") {
+  if (value === "schedule-link" || value === "deleted" || value === "sync") {
     return value;
   }
   return "schedule-link";

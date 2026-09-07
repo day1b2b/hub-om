@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 interface FeedEntry {
   id: string;
@@ -22,13 +22,12 @@ interface FeedResponse {
   error?: string;
 }
 
-type FilterKey = "all" | "note" | "review" | "history";
+type FilterKey = "all" | "note" | "review";
 
 const FILTER_LABEL: Record<FilterKey, string> = {
   all: "전체",
   note: "메모",
-  review: "리뷰",
-  history: "수정이력"
+  review: "리뷰"
 };
 
 const KIND_LABEL: Record<FeedEntry["kind"], string> = {
@@ -37,7 +36,7 @@ const KIND_LABEL: Record<FeedEntry["kind"], string> = {
   history: "수정이력"
 };
 
-export function ContentManagementPanel() {
+export function ContentManagementPanel({ onChanged }: { onChanged?: () => void }) {
   const [entries, setEntries] = useState<FeedEntry[]>([]);
   const [filter, setFilter] = useState<FilterKey>("all");
   const [isLoading, setIsLoading] = useState(true);
@@ -45,24 +44,45 @@ export function ContentManagementPanel() {
   const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
   const [editRating, setEditRating] = useState(0);
   const [editFeedback, setEditFeedback] = useState("");
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editNote, setEditNote] = useState("");
+  const [mutationError, setMutationError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const saving = useRef(false);
+
+  async function mutate(url: string, init: RequestInit) {
+    if (saving.current) return false;
+    saving.current = true; setBusy(true); setMutationError("");
+    try {
+      const response = await fetch(url, init);
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error ?? "변경을 저장하지 못했습니다.");
+      onChanged?.();
+      return true;
+    } catch (reason) { setMutationError(reason instanceof Error ? reason.message : "저장 오류"); return false; }
+    finally { saving.current = false; setBusy(false); }
+  }
+
+  async function saveNote(entry: FeedEntry) {
+    if (!editNote.trim()) { setMutationError("메모 내용을 입력하세요."); return; }
+    if (!await mutate(`/api/coaches/${entry.coachId}/notes/${entry.id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ content: editNote }) })) return;
+    setEditingNoteId(null); await load();
+  }
 
   async function load() {
     setIsLoading(true);
     setError(null);
-    const response = await fetch("/api/admin/content-entries");
-    const payload = (await response.json().catch(() => ({ ok: false }))) as FeedResponse;
-    if (!response.ok || !payload.ok || !payload.entries) {
-      setError(payload.error ?? "콘텐츠를 불러오지 못했습니다.");
-      setIsLoading(false);
-      return;
-    }
-    setEntries(payload.entries);
-    setIsLoading(false);
+    try {
+      const response = await fetch("/api/admin/content-entries", { cache: "no-store" });
+      const payload = (await response.json().catch(() => ({ ok: false }))) as FeedResponse;
+      if (!response.ok || !payload.ok || !payload.entries) throw new Error(payload.error ?? "콘텐츠를 불러오지 못했습니다.");
+      setEntries(payload.entries);
+    } catch (reason) { setError(reason instanceof Error ? reason.message : "조회 오류"); }
+    finally { setIsLoading(false); }
   }
 
   useEffect(() => {
     // Data fetching is the external synchronization this panel needs on mount.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, []);
 
@@ -74,54 +94,58 @@ export function ContentManagementPanel() {
   async function handleNoteAction(coachId: string, entryId: string, action: "delete" | "warn") {
     if (action === "delete" && !window.confirm("이 메모를 삭제할까요?")) return;
 
-    await fetch(`/api/coaches/${coachId}/notes/${entryId}`, {
+    if (!await mutate(`/api/coaches/${coachId}/notes/${entryId}`, {
       method: action === "delete" ? "DELETE" : "PATCH",
       headers: action === "warn" ? { "content-type": "application/json" } : undefined,
       body: action === "warn" ? JSON.stringify({ toggleWarn: true }) : undefined
-    });
+    })) return;
     await load();
   }
 
   function startEditReview(entry: FeedEntry) {
     setEditingReviewId(entry.id);
+    setEditingNoteId(null);
     setEditRating(entry.rating ?? 0);
     setEditFeedback(entry.feedback ?? "");
   }
 
   async function saveReview(engagementId: string) {
-    await fetch(`/api/engagements/${engagementId}/review`, {
+    if (!await mutate(`/api/engagements/${engagementId}/review`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ rating: editRating || null, feedback: editFeedback })
-    });
+    })) return;
     setEditingReviewId(null);
     await load();
   }
 
   async function deleteReview(engagementId: string) {
     if (!window.confirm("이 리뷰(평점·한줄평)를 삭제할까요?")) return;
-    await fetch(`/api/engagements/${engagementId}/review`, {
+    if (!await mutate(`/api/engagements/${engagementId}/review`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ deleteReview: true })
-    });
+    })) return;
     await load();
   }
 
   async function toggleReviewFlag(engagementId: string) {
-    await fetch(`/api/engagements/${engagementId}/review`, {
+    if (!await mutate(`/api/engagements/${engagementId}/review`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ toggleFlag: true })
-    });
+    })) return;
     await load();
   }
 
   if (isLoading) return <div className="coach-doc-empty"><span>불러오는 중…</span></div>;
-  if (error) return <div className="coach-origin-empty-panel">{error}</div>;
+  if (error) return <div className="coach-origin-empty-panel" role="alert">{error}<button onClick={load}>다시 불러오기</button></div>;
 
   return (
     <div className="coach-content-panel">
+      <p>메모·리뷰 각각 최근 300건을 표시합니다. 시각은 한국 시간입니다.</p>
+      {mutationError ? <p role="alert">{mutationError}</p> : null}
+      <fieldset disabled={busy} style={{ border: 0, padding: 0, minWidth: 0 }}>
       <div className="coach-admin-schedule-filters">
         {(Object.keys(FILTER_LABEL) as FilterKey[]).map((key) => (
           <button
@@ -148,7 +172,7 @@ export function ContentManagementPanel() {
                 <time>{formatDateTime(entry.createdAt)}</time>
               </div>
 
-              {entry.kind === "review" && editingReviewId === entry.id ? (
+              {entry.kind === "note" && editingNoteId === entry.id ? <div className="coach-notes-edit"><textarea aria-label="메모 내용" value={editNote} onChange={e => setEditNote(e.target.value)} rows={4} /><button type="button" onClick={() => saveNote(entry)}>저장</button><button type="button" onClick={() => setEditingNoteId(null)}>취소</button></div> : entry.kind === "review" && editingReviewId === entry.id ? (
                 <div className="coach-notes-edit">
                   <div className="coach-review-rating-picker">
                     {[1, 2, 3, 4, 5].map((value) => (
@@ -163,6 +187,7 @@ export function ContentManagementPanel() {
                     ))}
                   </div>
                   <textarea
+                    aria-label="리뷰 내용"
                     onChange={(event) => setEditFeedback(event.target.value)}
                     rows={2}
                     value={editFeedback}
@@ -176,9 +201,9 @@ export function ContentManagementPanel() {
                 <p>{entry.content}</p>
               )}
 
-              {entry.kind === "note" ? (
+              {entry.kind === "note" && editingNoteId !== entry.id ? (
                 <div className="coach-notes-actions">
-                  <Link href={`/coaches/${entry.coachId}`}>수정</Link>
+                  <button type="button" onClick={() => { setEditingNoteId(entry.id); setEditNote(entry.content); setEditingReviewId(null); }}>수정</button>
                   <button onClick={() => handleNoteAction(entry.coachId, entry.id, "delete")} type="button">삭제</button>
                   <button onClick={() => handleNoteAction(entry.coachId, entry.id, "warn")} type="button">
                     {entry.flagged ? "경고 해제" : "경고"}
@@ -199,16 +224,11 @@ export function ContentManagementPanel() {
           ))}
         </ul>
       )}
+      </fieldset>
     </div>
   );
 }
 
 function formatDateTime(value: string): string {
-  const date = new Date(value);
-  const datePart = `${date.getFullYear()}. ${String(date.getMonth() + 1).padStart(2, "0")}. ${String(date.getDate()).padStart(2, "0")}.`;
-  const hours = date.getHours();
-  const period = hours < 12 ? "오전" : "오후";
-  const displayHour = hours % 12 === 0 ? 12 : hours % 12;
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${datePart} ${period} ${displayHour}:${minutes}`;
+  return new Intl.DateTimeFormat("ko-KR", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Seoul" }).format(new Date(value));
 }

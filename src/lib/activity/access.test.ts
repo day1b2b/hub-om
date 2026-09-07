@@ -10,3 +10,15 @@ test("activity API checks administrator access before querying or parsing filter
   assert.equal(response.status, 403);
   assert.equal(query.mock.callCount(), 0);
 });
+
+const { GET: usageGET } = await import("@/app/api/admin/activity/usage/route");
+test("usage metrics deny non-admins before parsing dates or reading data", async () => {
+  const response = await usageGET(new Request("http://localhost/api/admin/activity/usage?date=invalid"));
+  assert.equal(response.status, 403);
+  assert.equal(query.mock.callCount(), 0);
+});
+test("legacy history also uses the global administrator guard", async () => {
+  const response = await GET(new Request("http://localhost/api/admin/activity?source=legacy"));
+  assert.equal(response.status, 403);
+  assert.equal(query.mock.callCount(), 0);
+});
