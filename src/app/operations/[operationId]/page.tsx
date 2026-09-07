@@ -8,6 +8,7 @@ import { resolveOnsiteOmOptionsByEmail } from "@/lib/data/myOperations";
 import { listCustomTools } from "@/lib/data/omRequest/omCustomToolsLocalRepository";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { getInstructorNoteRepository } from "@/lib/data/instructorNoteRepositoryFactory";
+import { getCoachRepository } from "@/lib/data/coachRepositoryFactory";
 import type { OperationSession } from "@/lib/data/operationTypes";
 import { buildPersonOptions, buildRoleRosterFromOperations, mergeRoleRosters } from "@/lib/data/personOptions";
 import { getStoredTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFactory";
@@ -41,6 +42,17 @@ export default async function OperationDetailPage({ params, searchParams }: Oper
   const instructorOptions = Array.from(
     new Set(instructorNotes.map((n) => (n.displayName || n.instructorName || "").trim()).filter(Boolean))
   ).sort((a, b) => a.localeCompare(b, "ko"));
+  // 실습코치 드롭다운 추천용. coach-db(노션 실습코치 DB 동기화) 명단에서 가져온다.
+  // 로컬 dev 등 DB 미연결이면 조용히 생략(자유 입력 그대로 저장된다).
+  let coachOptions: string[] = [];
+  try {
+    const coaches = await getCoachRepository().listCoaches();
+    coachOptions = Array.from(new Set(coaches.map((coach) => coach.name.trim()).filter(Boolean))).sort((a, b) =>
+      a.localeCompare(b, "ko")
+    );
+  } catch {
+    coachOptions = [];
+  }
   const onsiteOmOptions = await resolveOnsiteOmOptionsByEmail(session.user?.email, personOptions.om);
   let operation = operations.find((candidate) => candidate.operationId === operationId);
   let allOperations = operations;
@@ -68,6 +80,7 @@ export default async function OperationDetailPage({ params, searchParams }: Oper
 
   return (
     <OperationDetail
+      coachOptions={coachOptions}
       collaboration={collaboration}
       extraTools={listCustomTools()}
       instructorOptions={instructorOptions}
