@@ -95,3 +95,10 @@ export async function findCalendarEventLinksByCalendar(calendarId: string): Prom
 
   return new Map(rows.map((row) => [row.eventId, toLink(row)]));
 }
+
+/** 조회한 이벤트와 여전히 일치하는 매핑만 제거한다. 교체·이동된 매핑은 보존한다. */
+export async function deleteMatchingCalendarEventLink(link: CalendarEventLink): Promise<void> {
+  await getPrismaClient().calendarEventLink.deleteMany({
+    where: { operationId: link.operationId, eventDate: toDateOnly(link.eventDate), calendarId: link.calendarId, eventId: link.eventId }
+  });
+}
