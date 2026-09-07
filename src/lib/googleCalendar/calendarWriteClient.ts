@@ -263,13 +263,17 @@ export async function readEventAttendees(calendarId: string, eventId: string): P
  * 이미 지워진 이벤트(404/410)는 목표 상태(없음)와 같으므로 성공으로 본다.
  * 매핑만 남고 이벤트가 사라진 경우에 정리를 막지 않기 위해서다.
  */
-export async function deleteEvent(calendarId: string, eventId: string): Promise<void> {
+export async function deleteEvent(calendarId: string, eventId: string, options?: { notifyAttendees?: boolean; expectedEtag?: string }): Promise<void> {
   const response = await callCalendar(
-    `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}?${SEND_UPDATES}`,
-    { method: "DELETE" }
+    `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}?${options?.notifyAttendees === false ? SEND_UPDATES_SILENT : SEND_UPDATES}`,
+    { method: "DELETE", headers: options?.expectedEtag ? { "If-Match": options.expectedEtag } : {} }
   );
 
-  if (response.ok || response.status === 404 || response.status === 410) return;
+  if (response.ok) return;
+  if (response.status === 404 || response.status === 410) {
+    if (options?.expectedEtag) await requireCalendarCleanupAccess(calendarId);
+    return;
+  }
 
   throw new Error(`events.delete 실패(${response.status}): ${await response.text()}`);
 }
@@ -363,4 +367,21 @@ export async function readCalendarEventVersion(calendarId: string, eventId: stri
   const event = await response.json() as { updated?: string; etag?: string; status?: string };
   if (!event.updated || !event.etag || event.status === "cancelled") throw new Error("이벤트가 삭제되었거나 버전 정보를 확인할 수 없습니다.");
   return { updated: event.updated, etag: event.etag, status: event.status ?? "confirmed" };
+}
+
+export async function readCalendarCreationProof(calendarId: string, eventId: string): Promise<null | { etag: string; status: string; source?: string; creationKey?: string }> {
+  const response = await callCalendar(`/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}?fields=id,etag,status,extendedProperties`, { method: "GET" });
+  if (response.status === 404 || response.status === 410) {
+    await requireCalendarCleanupAccess(calendarId);
+    return null;
+  }
+  if (!response.ok) throw new Error(`생성 출처 조회 실패(${response.status})`);
+  const event = await response.json() as { id?: string; etag?: string; status?: string; extendedProperties?: { private?: Record<string, string> } };
+  if (event.id !== eventId || !event.etag) throw new Error("Google 이벤트 식별자 또는 버전이 올바르지 않습니다.");
+  return { etag: event.etag, status: event.status ?? "confirmed", source: event.extendedProperties?.private?.hubOmCreationSource, creationKey: event.extendedProperties?.private?.hubOmCreationKey };
+}
+
+async function requireCalendarCleanupAccess(calendarId: string): Promise<void> {
+  const role = await readCalendarAccessRole(calendarId);
+  if (role !== "owner" && role !== "writer") throw new Error("이벤트 부재와 캘린더 접근 권한 상실을 구분할 수 없어 매핑을 보존합니다.");
 }
