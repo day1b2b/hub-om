@@ -12,7 +12,9 @@ export interface LectureNoteTab extends LectureNoteDraft {
 const COURSE_SUMMARY_MARKER = "[강의 요약]";
 const STAFF_OPINION_MARKER = "[운영진 의견]";
 const ISSUE_MARKER = "[이슈]";
-const DATE_HEADER_PATTERN = /^\[날짜:\s*(.*?)\]\s*$/gm;
+// 날짜 제목은 "[날짜: …]"만 적힌 줄이다. 날짜 안에 "]"는 올 수 없게 해서 "[날짜: 2026.9.1] + [강의 요약]"처럼
+// 뒤에 다른 글이 붙은 줄을 날짜 제목으로 잘못 읽지 않게 한다.
+const DATE_HEADER_PATTERN = /^\[날짜:\s*([^\]\n]*)\]\s*$/gm;
 
 export function blankTab(defaultDate: string = ""): LectureNoteTab {
   return { courseSummary: "", date: defaultDate, issue: "", staffOpinion: "", studentCount: "" };

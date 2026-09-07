@@ -237,3 +237,14 @@ test("임시 보관본에 같은 날짜 탭이 둘 있으면 글을 잃지 않�
     blankTab("2026-09-02")
   ]);
 });
+
+test("날짜 제목 뒤에 다른 글이 붙은 줄은 날짜 제목으로 읽지 않는다", () => {
+  // 운영자가 강의 요약 칸에 "[날짜: 2026.9.1] + [강의 요약]"이라고 적었을 때 그 줄 전체가 날짜 탭 이름이 되던 사례.
+  const typed = "[날짜: 2026.9.1] + [강의 요약]";
+
+  assert.equal(shouldSplitPastedNote(typed), true);
+  assert.deepEqual(mergePastedNote([blankTab("2026-09-01")], 0, typed), [
+    { ...blankTab("2026-09-01"), courseSummary: "[날짜: 2026.9.1] +", issue: "", staffOpinion: "", studentCount: "" }
+  ]);
+  assert.deepEqual(parseLectureNote(typed, "2026-09-01"), [{ ...blankTab(""), courseSummary: "[날짜: 2026.9.1] +" }]);
+});
