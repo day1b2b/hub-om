@@ -37,14 +37,23 @@ export class LocalJsonOperationRepository implements OperationRepository {
         throw new Error("Local operation data must be an array or an object with an operations array.");
       }
 
-      // educationDates 필드 추가 이전에 저장된 로컬 픽스처 데이터는 이 키가 아예 없다.
-      // Postgres는 마이그레이션이 기존 행을 빈 배열로 채워주지만, 로컬 JSON은 그런 백필이
-      // 없으니 읽을 때 직접 채워 화면 쪽에서 항상 배열이라고 가정할 수 있게 한다.
+      // 새 필드가 생기기 전에 저장된 로컬 픽스처 데이터에는 그 키가 아예 없다.
+      // Postgres는 마이그레이션이 기존 행을 기본값으로 채워주지만, 로컬 JSON은 그런 백필이
+      // 없으니 읽을 때 직접 채워 화면 쪽에서 항상 값이 있다고 가정할 수 있게 한다.
+      // (예: lectureManagementNote가 없으면 운영 상세의 .trim()에서 바로 500이 난다.)
       return [...operations]
         .map((operation) => ({
           ...operation,
+          companyId: operation.companyId ?? "",
+          courseCategory: operation.courseCategory ?? "",
           courseIdLabel: operation.courseIdLabel ?? "",
-          educationDates: operation.educationDates ?? []
+          courseRecordId: operation.courseRecordId ?? "",
+          educationDates: operation.educationDates ?? [],
+          hasSatisfactionSurvey: operation.hasSatisfactionSurvey ?? "확인필요",
+          lectureManagementNote: operation.lectureManagementNote ?? "",
+          onsiteOm: operation.onsiteOm ?? "",
+          processId: operation.processId ?? "",
+          tools: operation.tools ?? ""
         }))
         .sort(compareOperationSessions);
     } catch (error) {

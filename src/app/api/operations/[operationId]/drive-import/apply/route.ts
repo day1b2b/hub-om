@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { NextResponse } from "next/server.js";
+import { readLimitedJson, RequestBodyTooLargeError } from "@/lib/http/readLimitedJson";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { parseEducationDatesText } from "@/lib/data/operationCalculations";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
@@ -59,6 +60,14 @@ const APPLYABLE_FIELDS = [
 
 type ApplyableField = (typeof APPLYABLE_FIELDS)[number];
 
+// 한 필드에 받을 수 있는 글자 수 상한. 강의관리 기록처럼 긴 메모도 여러 날짜를 합쳐 수만 자를 넘기지 않는다.
+// 상한이 없으면 자동 저장 요청 하나로 아주 큰 본문을 계속 저장시켜 DB와 응답 크기를 부풀릴 수 있다.
+const MAX_TEXT_VALUE_LENGTH = 100_000;
+// 한 요청에 담을 수 있는 patch 수와 본문 전체 크기. 항목당 상한만 있으면 patch를 수백 개 담아 본문을 키울 수 있다.
+// 스트림을 읽는 동안 실제 바이트 수를 제한한다.
+const MAX_PATCH_COUNT = 50;
+const MAX_BODY_BYTES = 2_000_000;
+
 interface RouteContext {
   params: Promise<{
     operationId: string;
@@ -72,34 +81,55 @@ interface ApplyPatch {
 }
 
 export async function POST(request: Request, { params }: RouteContext) {
-  await requireWorkspaceSession();
+  const session = await requireWorkspaceSession();
+
+  let body: { patches?: ApplyPatch[] } | null;
+  try {
+    body = await readLimitedJson(request, MAX_BODY_BYTES) as { patches?: ApplyPatch[] } | null;
+  } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
+      return NextResponse.json({ ok: false, error: "요청이 너무 큽니다. 한 번에 저장하는 내용을 줄여 주세요." }, { status: 413 });
+    }
+    return NextResponse.json({ ok: false, error: "요청 본문을 읽을 수 없습니다. 다시 저장해 주세요." }, { status: 400 });
+  }
 
   const { operationId } = await params;
   const repository = getOperationRepository();
   const operation = await repository.getOperationById(operationId);
 
   if (!operation) {
-    return NextResponse.json({ ok: false, error: "Operation not found." }, { status: 404 });
+    return NextResponse.json({ ok: false, error: "회차를 찾을 수 없습니다. 지워졌거나 주소가 잘못되었습니다." }, { status: 404 });
   }
 
-  const body = (await request.json().catch(() => ({}))) as { patches?: ApplyPatch[] };
-  const patches = Array.isArray(body.patches) ? body.patches : [];
+  const patches = Array.isArray(body?.patches) ? body.patches : [];
   const update: UpdateOperationInput = {};
 
+  if (patches.length > MAX_PATCH_COUNT) {
+    return NextResponse.json({ ok: false, error: `한 번에 ${MAX_PATCH_COUNT}개 항목까지만 저장할 수 있습니다.` }, { status: 413 });
+  }
+
   for (const patch of patches) {
-    if (!isApplyableField(patch.field) || typeof patch.value !== "string") continue;
+    if (!patch || !isApplyableField(patch.field) || typeof patch.value !== "string") continue;
 
     const currentValue = currentOperationValue(operation, patch.field);
     const nextValue = patch.action === "append" ? appendText(currentValue, patch.value) : patch.value;
+
+    if (patch.value.length > MAX_TEXT_VALUE_LENGTH || nextValue.length > MAX_TEXT_VALUE_LENGTH) {
+      return NextResponse.json(
+        { ok: false, error: `입력이 너무 깁니다. 기존 내용을 포함해 한 항목은 ${MAX_TEXT_VALUE_LENGTH.toLocaleString("ko-KR")}자까지 저장할 수 있습니다.` },
+        { status: 413 }
+      );
+    }
 
     assignUpdateValue(update, patch.field, nextValue);
   }
 
   if (Object.keys(update).length === 0) {
-    return NextResponse.json({ ok: false, error: "No supported fields selected." }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "저장할 수 있는 항목이 없습니다." }, { status: 400 });
   }
 
-  const updatedOperation = await repository.updateOperation(operationId, update);
+  // 누가 고쳤는지 남긴다. 삭제(deletedBy)는 이미 기록하는데 수정만 빠져 있었다.
+  const updatedOperation = await repository.updateOperation(operationId, update, session.user?.email ?? undefined);
 
   return NextResponse.json({ ok: true, operation: updatedOperation });
 }

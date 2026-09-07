@@ -102,8 +102,22 @@ const SEND_UPDATES = "sendUpdates=all";
 // 나가는 시점이 insert가 아니라 patch다. 참석자가 달라진 patch만 메일을 보낸다.
 const SEND_UPDATES_SILENT = "sendUpdates=none";
 
-export async function insertEvent(calendarId: string, body: CalendarEventBody): Promise<string> {
-  const response = await callCalendar(`/calendars/${encodeURIComponent(calendarId)}/events?${SEND_UPDATES}`, {
+/**
+ * 새 이벤트를 만든다. 기본은 참석자에게 초대 메일을 보낸다(sendUpdates=all) — 정방향
+ * 생성은 담당·현장 OM이 새 일정을 알아야 하기 때문이다(D11).
+ *
+ * notifyAttendees=false면 메일 없이 이벤트만 만든다(sendUpdates=none). 기능 도입 전
+ * 등록된 과정을 일괄 소급 생성할 때, 수십~수백 통의 초대 메일이 한꺼번에 나가는 것을
+ * 막기 위한 스위치다. 메일을 눌러도 참석자 캘린더에는 일정이 뜬다(구글은 sendUpdates로
+ * 메일만 끄고 참석자 추가는 그대로 한다). 소급 도구가 이 옵션을 쓴다.
+ */
+export async function insertEvent(
+  calendarId: string,
+  body: CalendarEventBody,
+  options?: { notifyAttendees?: boolean }
+): Promise<string> {
+  const sendUpdates = options?.notifyAttendees === false ? SEND_UPDATES_SILENT : SEND_UPDATES;
+  const response = await callCalendar(`/calendars/${encodeURIComponent(calendarId)}/events?${sendUpdates}`, {
     method: "POST",
     body: JSON.stringify(body)
   });
@@ -114,6 +128,29 @@ export async function insertEvent(calendarId: string, body: CalendarEventBody): 
   if (!created.id) throw new Error("events.insert 응답에 eventId가 없습니다.");
 
   return created.id;
+}
+
+/**
+ * 이 B2B 계정이 파트 캘린더에 대해 가진 접근 권한(accessRole)을 읽는다.
+ * calendarList.get은 이 계정의 캘린더 목록에 등록된 캘린더의 권한을 돌려준다.
+ *  - "owner"·"writer" = 이벤트를 만들 수 있음
+ *  - "reader"·"freeBusyReader" = 읽기만 됨(insert는 403)
+ *  - 계정 목록에 없으면 404 → null. 공유가 아예 안 됐거나 목록에 추가되지 않은 상태다.
+ *
+ * "2파트 캘린더에 일정이 하나도 없다" 같은 문제에서, 원인이 쓰기 권한(ACL) 미공유인지
+ * 파트 매칭 실패인지 데이터로 가르기 위한 진단용이다. 쓰기는 하지 않는다.
+ */
+export async function readCalendarAccessRole(calendarId: string): Promise<string | null> {
+  const response = await callCalendar(
+    `/users/me/calendarList/${encodeURIComponent(calendarId)}?fields=accessRole`,
+    { method: "GET" }
+  );
+
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`calendarList.get 실패(${response.status}): ${await response.text()}`);
+
+  const payload = (await response.json()) as { accessRole?: string };
+  return payload.accessRole ?? null;
 }
 
 /**

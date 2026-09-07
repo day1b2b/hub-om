@@ -12,7 +12,9 @@ export interface LectureNoteTab extends LectureNoteDraft {
 const COURSE_SUMMARY_MARKER = "[강의 요약]";
 const STAFF_OPINION_MARKER = "[운영진 의견]";
 const ISSUE_MARKER = "[이슈]";
-const DATE_HEADER_PATTERN = /^\[날짜:\s*(.*?)\]\s*$/gm;
+// 날짜 제목은 "[날짜: …]"만 적힌 줄이다. 날짜 안에 "]"는 올 수 없게 해서 "[날짜: 2026.9.1] + [강의 요약]"처럼
+// 뒤에 다른 글이 붙은 줄을 날짜 제목으로 잘못 읽지 않게 한다.
+const DATE_HEADER_PATTERN = /^\[날짜:\s*([^\]\n]*)\]\s*$/gm;
 
 export function blankTab(defaultDate: string = ""): LectureNoteTab {
   return { courseSummary: "", date: defaultDate, issue: "", staffOpinion: "", studentCount: "" };
@@ -41,7 +43,7 @@ function splitDateBlocks(value: string): { date: string; body: string }[] {
     const start = (match.index ?? 0) + match[0].length;
     const end = index + 1 < matches.length ? matches[index + 1].index ?? value.length : value.length;
 
-    return { body: value.slice(start, end).trim(), date: match[1].trim() };
+    return { body: value.slice(start, end).trim(), date: normalizeNoteDate(match[1]) };
   });
 
   // 첫 날짜 제목 앞에 적힌 내용은 버리지 않고 날짜 없는 블록으로 남긴다.
@@ -49,27 +51,40 @@ function splitDateBlocks(value: string): { date: string; body: string }[] {
   return leading ? [{ body: leading, date: "" }, ...blocks] : blocks;
 }
 
-export function parseLectureNoteBody(value: string): LectureNoteDraft {
-  const studentCountMatch = value.match(/학습\s*인원\s*[:：]\s*(.*)/);
-  const studentCount = studentCountMatch ? studentCountMatch[1].trim() : "";
-  const courseSummary = extractSection(value, COURSE_SUMMARY_MARKER, [STAFF_OPINION_MARKER, ISSUE_MARKER]);
-  const staffOpinion = extractSection(value, STAFF_OPINION_MARKER, [ISSUE_MARKER]);
-  const issue = extractSection(value, ISSUE_MARKER, []);
+const STUDENT_COUNT_LINE_PATTERN = /^[^\S\n]*학습\s*인원\s*[:：][^\S\n]*(.*)$/m;
 
-  if (!studentCount && !courseSummary && !staffOpinion && !issue && value.trim()) {
-    return { courseSummary: value.trim(), issue: "", staffOpinion: "", studentCount: "" };
-  }
+/**
+ * 한 날짜 블록의 본문을 네 칸으로 나눈다. 칸 제목 앞에 적힌 글(옛 자유 메모, 학습 인원 줄 뒤의 메모)은
+ * 버리지 않고 강의 요약 앞에 붙인다. 버리면 저장할 때 그 글이 사라진다.
+ */
+export function parseLectureNoteBody(value: string): LectureNoteDraft {
+  const firstMarkerIndex = [COURSE_SUMMARY_MARKER, STAFF_OPINION_MARKER, ISSUE_MARKER]
+    .map((marker) => value.indexOf(marker))
+    .filter((index) => index !== -1)
+    .sort((a, b) => a - b)[0];
+  const preamble = firstMarkerIndex === undefined ? value : value.slice(0, firstMarkerIndex);
+
+  const studentCountMatch = preamble.match(STUDENT_COUNT_LINE_PATTERN);
+  const studentCount = studentCountMatch ? studentCountMatch[1].trim() : "";
+  const leadingText = (studentCountMatch ? preamble.replace(studentCountMatch[0], "") : preamble).trim();
+
+  const summarySection = extractSection(value, COURSE_SUMMARY_MARKER);
+  const courseSummary = [leadingText, summarySection].filter(Boolean).join("\n\n");
+  const staffOpinion = extractSection(value, STAFF_OPINION_MARKER);
+  const issue = extractSection(value, ISSUE_MARKER);
 
   return { courseSummary, issue, staffOpinion, studentCount };
 }
 
-function extractSection(value: string, marker: string, followingMarkers: string[]): string {
+/** 칸 제목 뒤부터 다음 칸 제목 앞까지. 칸 순서가 뒤바뀐 글이라도 다른 칸의 글이 섞여 들어오지 않게 모든 제목에서 끊는다. */
+function extractSection(value: string, marker: string): string {
   const startIndex = value.indexOf(marker);
   if (startIndex === -1) return "";
 
   const afterMarker = value.slice(startIndex + marker.length);
-  const endIndex = followingMarkers
-    .map((followingMarker) => afterMarker.indexOf(followingMarker))
+  const endIndex = [COURSE_SUMMARY_MARKER, STAFF_OPINION_MARKER, ISSUE_MARKER]
+    .filter((other) => other !== marker)
+    .map((other) => afterMarker.indexOf(other))
     .filter((index) => index !== -1)
     .sort((a, b) => a - b)[0];
 
@@ -91,7 +106,7 @@ export function composeLectureNote(tabs: LectureNoteTab[]): string {
 }
 
 export function hasTabContent(tab: LectureNoteTab): boolean {
-  return Boolean(tab.date.trim() || tab.courseSummary.trim() || tab.staffOpinion.trim() || tab.issue.trim() || tab.studentCount.trim());
+  return Boolean(tab.date.trim()) || hasBodyContent(tab);
 }
 
 function composeLectureNoteBody(draft: LectureNoteDraft): string {
@@ -105,7 +120,8 @@ function composeLectureNoteBody(draft: LectureNoteDraft): string {
   return sections.join("\n\n");
 }
 
-function hasBodyContent(tab: LectureNoteTab): boolean {
+/** 날짜를 뺀 네 칸 중 하나라도 적혀 있는지. 날짜만 있는 탭은 hasTabContent로 따로 본다. */
+function hasBodyContent(tab: LectureNoteDraft): boolean {
   return Boolean(tab.courseSummary.trim() || tab.staffOpinion.trim() || tab.issue.trim() || tab.studentCount.trim());
 }
 
@@ -150,6 +166,64 @@ export function suggestNextLectureDate(usedDates: string[], educationDates: stri
 
   const latest = [...used].sort().at(-1) ?? startDate;
   return addDays(latest, 1);
+}
+
+/**
+ * 날짜 제목의 표기를 yyyy-mm-dd로 맞춘다. 붙여넣은 글의 "2026.9.1", "2026/09/01"이 탭의 "2026-09-01"과
+ * 다른 글자로 남으면 같은 날 탭이 두 개 생긴다. 숫자 날짜가 아니면 적힌 대로 둔다.
+ */
+export function normalizeNoteDate(raw: string): string {
+  const trimmed = raw.trim();
+  const match = trimmed.match(/^(\d{4})\s*[-./년]\s*(\d{1,2})\s*[-./월]\s*(\d{1,2})\s*일?\s*[.]?$/);
+  if (!match) return trimmed;
+
+  const [, year, month, day] = match;
+  const iso = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+
+  // "2026-02-30"처럼 달력에 없는 날은 날짜 입력칸이 빈 칸으로 보여 운영자가 고칠 수 없다. 적힌 대로 두어 탭 제목으로만 남긴다.
+  return isCalendarDate(iso) ? iso : trimmed;
+}
+
+function isCalendarDate(iso: string): boolean {
+  const [year, month, day] = iso.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year && date.getUTCMonth() + 1 === month && date.getUTCDate() === day;
+}
+
+/**
+ * 같은 날짜 탭이 둘 이상이면 하나로 합친다. 날짜 입력칸은 겹치는 날짜를 막지만, 그 규칙이 생기기 전에 브라우저에
+ * 남은 임시 보관본에는 같은 날짜 탭이 들어 있을 수 있다. 두 탭에 다 글이 있으면 잃지 않도록 이어 붙인다.
+ */
+export function mergeTabsWithSameDate(tabs: LectureNoteTab[]): LectureNoteTab[] {
+  const merged: LectureNoteTab[] = [];
+
+  for (const tab of tabs) {
+    const date = normalizeNoteDate(tab.date);
+    const existing = date ? merged.find((candidate) => candidate.date === date) : undefined;
+
+    if (!existing) {
+      merged.push({ ...tab, date });
+      continue;
+    }
+
+    existing.courseSummary = joinDistinct(existing.courseSummary, tab.courseSummary);
+    existing.staffOpinion = joinDistinct(existing.staffOpinion, tab.staffOpinion);
+    existing.issue = joinDistinct(existing.issue, tab.issue);
+    // 학습 인원은 한 줄 필드다. 서로 다른 원값은 모두 보여 주고, 재복원 시 같은 값은 늘리지 않는다.
+    existing.studentCount = [...new Set(
+      [existing.studentCount, tab.studentCount].flatMap((count) => count.split(" / ").map((part) => part.trim()).filter(Boolean))
+    )].join(" / ");
+  }
+
+  return merged;
+}
+
+function joinDistinct(first: string, second: string): string {
+  const a = first.trim();
+  const b = second.trim();
+  if (!a) return b;
+  if (!b || a === b) return a;
+  return `${a}\n\n${b}`;
 }
 
 function addDays(isoDate: string, days: number): string {
