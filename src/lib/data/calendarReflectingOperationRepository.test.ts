@@ -3,6 +3,7 @@ import { beforeEach, mock, test } from "node:test";
 import type { OperationRepository } from "./operationRepository";
 import type { OperationSession, UpdateOperationInput } from "./operationTypes";
 const reflected = mock.fn(async () => {});
+mock.module("@/lib/googleCalendar/calendarOperationLock", { namedExports: { withoutCalendarReflection: async (run: () => Promise<unknown>) => run(), isCalendarReflectionSuppressed: () => false, calendarLockSignal: () => undefined, withCalendarOperationLock: async (_id: string, run: () => Promise<unknown>) => run() } });
 mock.module("@/lib/googleCalendar/reflectOperationToCalendar", { namedExports: {
   reflectOperationCreated: async () => {}, reflectOperationUpdated: reflected, reflectOperationDelete: async () => {}
 } });

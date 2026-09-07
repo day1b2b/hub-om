@@ -1,3 +1,6 @@
+import { reflectOperationUpdated } from "./reflectOperationToCalendar";
+import { withCalendarOperationLock, withoutCalendarReflection } from "./calendarOperationLock";
+import { calendarOperationRevision } from "./calendarOperationRevision";
 // 역반영 계획을 실제로 적용한다(calendarReverseSync.ts가 만든 계획을 받아 실행).
 //
 // 쓰기 범위를 좁게 고정한다(db-write-safety):
@@ -19,9 +22,9 @@
 // 스펙: docs/plans/2026-08-19-operations-calendar-reflect.md (D7~D9, 5-B절)
 
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
-import { patchEvent } from "./calendarWriteClient";
+import { patchEvent, readCalendarEventVersion } from "./calendarWriteClient";
 import type { OperationSession, UpdateOperationInput } from "@/lib/data/operationTypes";
-import { moveCalendarEventLinkDate } from "./calendarEventLinkRepository";
+import { moveCalendarEventLinkDate, listCalendarEventLinks } from "./calendarEventLinkRepository";
 import { buildCalendarEventBodies } from "./operationCalendarEvent";
 import { planCalendarReverseSync, type ReverseSyncPlan } from "./calendarReverseSync";
 import { replaceEducationRun, type ReverseSyncItem } from "./calendarReverseSyncRules";
@@ -63,7 +66,19 @@ export async function applyCalendarReverseSync(): Promise<ReverseSyncApplyResult
 
   for (const item of plan.items) {
     try {
-      const detail = await applyItem(item);
+      const detail = await withCalendarOperationLock(item.operationId, async () => {
+        const operation = await findOperation(item.operationId);
+        if (!item.operationRevision || calendarOperationRevision(operation) !== item.operationRevision) {
+          throw new Error("역반영 계획 후 회차가 변경되어 적용하지 않았습니다. 다시 계획을 생성하세요.");
+        }
+        const links = await listCalendarEventLinks(item.operationId);
+        if (!links.some(link => link.eventDate === item.eventDate && link.calendarId === item.calendarId && link.eventId === item.eventId)) {
+          throw new Error("역반영 계획 후 매핑이 변경되어 적용하지 않았습니다.");
+        }
+        const event = await readCalendarEventVersion(item.calendarId, item.eventId);
+        if (event.updated !== item.eventUpdatedAt) throw new Error("역반영 계획 후 Google 일정이 변경되었습니다.");
+        return applyItem(item, event.etag);
+      });
       outcomes.push({ item, applied: true, detail });
       appliedCount += 1;
     } catch (error) {
@@ -77,14 +92,14 @@ export async function applyCalendarReverseSync(): Promise<ReverseSyncApplyResult
   return { ...base, ok: failedCount === 0, appliedCount, failedCount, outcomes };
 }
 
-async function applyItem(item: ReverseSyncItem): Promise<string> {
-  if (item.action === "운영현황 반영") return applyScheduleToOperation(item);
+async function applyItem(item: ReverseSyncItem, etag: string): Promise<string> {
+  if (item.action === "운영현황 반영") return applyScheduleToOperation(item, etag);
 
-  return revertEventToOperation(item);
+  return revertEventToOperation(item, etag);
 }
 
 /** 캘린더에서 바뀐 날짜·시간을 운영현황에 쓴다. 그 외 필드는 캘린더 쪽을 되돌린다. */
-async function applyScheduleToOperation(item: ReverseSyncItem): Promise<string> {
+async function applyScheduleToOperation(item: ReverseSyncItem, etag: string): Promise<string> {
   const change = item.scheduleChange;
   if (!change) throw new Error("날짜·시간 변경 내용이 없습니다.");
 
@@ -105,11 +120,14 @@ async function applyScheduleToOperation(item: ReverseSyncItem): Promise<string> 
     await patchExistingEvent(item.calendarId, item.eventId, {
       ...(revertFields.length > 0 ? { summary: expected.summary, location: expected.location ?? "" } : {}),
       extendedProperties: expected.extendedProperties
-    });
+    }, { expectedEtag: etag });
     if (revertFields.length > 0) {
       console.info(`[gcal-reverse] ${item.operationId} ${revertFields.join(", ")} 원복 (event=${item.eventId})`);
     }
   }
+
+  if (!expected) throw new Error("변경한 교육일의 이벤트 본문을 만들 수 없습니다. DB 반영 여부를 확인하세요.");
+  await reflectOperationUpdated(refreshed, item.eventId);
 
   return revertFields.length > 0 ? `${detail} + ${revertFields.join(", ")} 원복` : detail;
 }
@@ -173,7 +191,7 @@ async function applyRangeChange(
  * attendees는 절대 함께 보내지 않는다 — 초대를 거절하거나 자기 캘린더에서 지운 사람을
  * 다시 초대하지 않기로 했다(D9).
  */
-async function revertEventToOperation(item: ReverseSyncItem): Promise<string> {
+async function revertEventToOperation(item: ReverseSyncItem, etag: string): Promise<string> {
   const operation = await findOperation(item.operationId);
   const expected = findPlanBody(operation, item.eventDate, item.partKey);
   if (!expected) throw new Error(`운영현황에 없는 교육일(${item.eventDate})입니다.`);
@@ -185,7 +203,7 @@ async function revertEventToOperation(item: ReverseSyncItem): Promise<string> {
     end: expected.end,
     // 되돌린 날짜·시간을 표식으로 함께 남긴다. 표식 없이 되돌리면 다음 실행이 이 patch를 사람의 수정으로 본다.
     extendedProperties: expected.extendedProperties
-  });
+  }, { expectedEtag: etag });
 
   const fields = item.revertFields?.join(", ") ?? "";
   console.info(`[gcal-reverse] ${item.operationId} 원복: ${fields} (event=${item.eventId})`);
@@ -208,12 +226,12 @@ async function updateOperationWithLinkMoved(
   input: UpdateOperationInput
 ): Promise<void> {
   const moved = item.eventDate !== nextStartDate;
-  if (moved) await moveCalendarEventLinkDate(item.operationId, item.eventDate, nextStartDate);
+  if (moved) await moveCalendarEventLinkDate(item, nextStartDate);
 
   try {
-    await getOperationRepository().updateOperation(item.operationId, input);
+    await withoutCalendarReflection(() => getOperationRepository().updateOperation(item.operationId, input));
   } catch (error) {
-    if (moved) await moveCalendarEventLinkDate(item.operationId, nextStartDate, item.eventDate);
+    if (moved) await moveCalendarEventLinkDate({ ...item, eventDate: nextStartDate }, item.eventDate);
     throw error;
   }
 }

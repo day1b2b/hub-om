@@ -1,3 +1,5 @@
+import { calendarOperationRevision } from "./calendarOperationRevision";
+import { withCalendarOperationLock } from "./calendarOperationLock";
 // 매핑 없는 예정 회차를 구글 캘린더에 소급 생성하는 관리자 도구의 오케스트레이터.
 //
 // GET(dryRun) = 무엇이 빠졌는지 미리보기(쓰기 없음) + 파트 캘린더 쓰기 권한 진단.
@@ -13,6 +15,7 @@ import { isCalendarWriteEnabled, listPartCalendars, resolvePartCalendarId } from
 import { insertOperationEvent, readCalendarAccessRole } from "./calendarWriteClient";
 import {
   listAllCalendarEventLinks,
+  listCalendarEventLinks,
   saveCalendarEventLink
 } from "./calendarEventLinkRepository";
 import { planCalendarBackfill, type BackfillPlanItem } from "./backfillCalendarEventsRules";
@@ -269,8 +272,16 @@ export async function backfillMissingCalendarEvents(
     }
 
     try {
+      await withCalendarOperationLock(item.operationId, async () => {
+      const current = await getOperationRepository().getOperationById(item.operationId);
+      const plannedOperation = operations.find(operation => operation.operationId === item.operationId);
+      if (!current || !plannedOperation || calendarOperationRevision(current) !== calendarOperationRevision(plannedOperation)) {
+        throw new Error("소급 계획 후 회차가 변경되어 적용하지 않았습니다. 다시 미리보기를 실행하세요.");
+      }
+      const currentLinks = await listCalendarEventLinks(item.operationId);
       for (const eventPlan of item.plans) {
-        const eventId = await insertOperationEvent(item.calendarId as string, eventPlan.body, { operationId: item.operationId, eventDate: eventPlan.eventDate, source: "backfill", occupiedEventIds: links.filter(entry => entry.calendarId === item.calendarId && entry.eventDate !== eventPlan.eventDate).map(entry => entry.eventId) }, { notifyAttendees });
+        if (currentLinks.some(link => link.eventDate === eventPlan.eventDate)) continue;
+        const eventId = await insertOperationEvent(item.calendarId as string, eventPlan.body, { operationId: item.operationId, eventDate: eventPlan.eventDate, source: "backfill", occupiedEventIds: currentLinks.filter(entry => entry.calendarId === item.calendarId && entry.eventDate !== eventPlan.eventDate).map(entry => entry.eventId) }, { notifyAttendees });
         await saveCalendarEventLink({
           operationId: item.operationId,
           calendarId: item.calendarId as string,
@@ -279,6 +290,7 @@ export async function backfillMissingCalendarEvents(
         });
         insertedEvents += 1;
       }
+      });
       outcomes.push(toOutcome(item, "inserted"));
     } catch (error) {
       failedOperations += 1;
