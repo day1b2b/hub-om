@@ -93,6 +93,13 @@ const RESULT_REPORT_STATUS_BY_TEXT: Record<string, ResultReportStatus> = {
   "검토필요": ResultReportStatus.NEEDS_REVIEW
 };
 
+const ONSITE_REQUIRED_BY_TEXT: Record<string, OnsiteRequired> = {
+  y: OnsiteRequired.Y,
+  n: OnsiteRequired.N,
+  일부: OnsiteRequired.PARTIAL,
+  일부필요: OnsiteRequired.PARTIAL
+};
+
 export async function promoteReadyImportRows(importRunId: string): Promise<ImportPromotionResult> {
   const prisma = getPrismaClient();
   const roleRoster = await new PrismaTeamMemberRepository().listRoleRosters();
@@ -352,7 +359,7 @@ function buildOperationSessionCreateData(input: {
  * (operationId는 지문에서 결정적으로 나오므로 지문이 같으면 값도 같고, 과정 연결도
  *  같은 지문이면 같은 기업·과정이라 다시 이을 필요가 없다.)
  */
-function buildOperationSessionValueData(input: {
+export function buildOperationSessionValueData(input: {
   endDate: Date;
   fields: Record<string, string>;
   roleRoster: TeamMemberRoleRoster;
@@ -383,7 +390,7 @@ function buildOperationSessionValueData(input: {
     lectureManagementLink: nullableText(input.fields.lectureManagementLink),
     omName: nullableText(resolveAssigneeText(input.fields.om, "om", input.roleRoster)),
     omUpdate: nullableText(input.fields.omUpdate),
-    onsiteRequired: OnsiteRequired.UNKNOWN,
+    onsiteRequired: enumFromText(ONSITE_REQUIRED_BY_TEXT, input.fields.onsiteText, OnsiteRequired.UNKNOWN),
     onsiteText: nullableText(input.fields.onsiteText),
     operationChannel: enumFromText(
       {

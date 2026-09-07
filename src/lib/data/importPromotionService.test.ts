@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { SourceTeam } from "@prisma/client";
-import { stableOperationId } from "@/lib/data/importPromotionService.ts";
+import { OnsiteRequired, SourceTeam } from "@prisma/client";
+import { buildOperationSessionValueData, stableOperationId } from "@/lib/data/importPromotionService.ts";
 
 test("같은 지문이면 항상 같은 operationId가 나온다", () => {
   // 이 결정성이 재반영을 알아보게 해 주지만, operation_id가 @unique라서
@@ -36,3 +36,19 @@ test("지문이 없으면 매번 다른 값이 나온다", () => {
   assert.notEqual(a, b);
   assert.match(a, /^SRC-TEAM1-[0-9A-F]{12}$/);
 });
+
+for (const [raw, expected] of [
+  ["Y", OnsiteRequired.Y], [" y ", OnsiteRequired.Y],
+  ["N", OnsiteRequired.N], ["n", OnsiteRequired.N],
+  ["일부", OnsiteRequired.PARTIAL], ["일부필요", OnsiteRequired.PARTIAL],
+  ["", OnsiteRequired.UNKNOWN], ["확인필요", OnsiteRequired.UNKNOWN],
+  ["unexpected", OnsiteRequired.UNKNOWN]
+] as const) {
+  test(`신규·복원 공통 저장 데이터가 현장투입 ${JSON.stringify(raw)}를 보존한다`, () => {
+    const data = buildOperationSessionValueData({
+      startDate: new Date("2026-09-01"), endDate: new Date("2026-09-02"),
+      fields: { onsiteText: raw }, roleRoster: { om: {}, ld: {} }
+    });
+    assert.equal(data.onsiteRequired, expected);
+  });
+}
