@@ -164,9 +164,10 @@ export function EditableSessionRow({
                       <label className="lecture-note-field">
                         <span>실습코치</span>
                         <NameCombobox
+                          multiple
                           options={coachOptions}
                           onChange={(value) => setDraft((current) => ({ ...current, coach: value }))}
-                          placeholder="실습코치명"
+                          placeholder="실습코치명 (여러 명은 콤마로 구분)"
                           unmatchedHint="등록된 실습코치 명단과 이름이 달라요. 실습코치DB 노션을 확인해주세요."
                           value={draft.coach}
                         />
@@ -229,8 +230,8 @@ export function EditableSessionRow({
       return false;
     }
 
-    const coachName = draft.coach.trim();
-    if (coachName && !coachOptions.some((name) => name.toLowerCase() === coachName.toLowerCase())) {
+    const coachNames = draft.coach.split(",").map((name) => name.trim()).filter(Boolean);
+    if (coachNames.some((name) => !coachOptions.some((option) => option.toLowerCase() === name.toLowerCase()))) {
       setError("등록된 실습코치 명단과 이름이 달라요. 실습코치DB 노션을 확인해주세요.");
       return false;
     }
@@ -250,7 +251,7 @@ export function EditableSessionRow({
       { field: "educationDates", action: "replace" as const, value: draft.educationDates.join(", ") },
       { field: "timeText", action: "replace" as const, value: draft.timeText.trim() },
       { field: "instructors", action: "replace" as const, value: draft.instructors.trim() },
-      { field: "coach", action: "replace" as const, value: draft.coach.trim() },
+      { field: "coach", action: "replace" as const, value: coachNames.join(", ") },
       { field: "region", action: "replace" as const, value: draft.region.trim() }
     ];
 
