@@ -30,7 +30,7 @@ export function SatisfactionAnalysisButton() {
             <div className="drive-review-header">
               <div>
                 <h2 id="satisfaction-analysis-title">만족도 분석</h2>
-                <p>내 PC에서 실행 중인 만족도 분석 사이트를 새 탭에서 엽니다.</p>
+                <p>만족도 조사 결과를 분석하고 이 회차에 반영합니다.</p>
               </div>
               <button aria-label="만족도 분석 닫기" onClick={closeDialog} type="button">
                 닫기
@@ -38,18 +38,25 @@ export function SatisfactionAnalysisButton() {
             </div>
 
             <div className="lecture-note-body satisfaction-analysis-guide">
-              <p>설치하셨으면 아래 &lsquo;분석 사이트 열기&rsquo;를 눌러주세요.</p>
-              <p className="satisfaction-analysis-note">
-                처음이시면 <b>설치하기</b>를 눌러주세요. 프로그램과 설정 파일이 한 파일로 받아집니다. 설치하면
-                바탕화면에 <code>분석 사이트 열기</code> 아이콘이 생깁니다.
-              </p>
+              <ol>
+                <li>
+                  처음이시면 아래 <b>설치하기</b>를 눌러주세요.
+                  <ol>
+                    <li>프로그램과 설정 파일이 zip 파일로 받아집니다.</li>
+                    <li>압축을 푸신 후 설치해주세요.</li>
+                    <li>
+                      설치가 완료되면 바탕화면에 <code>분석 사이트 열기</code> 아이콘이 생깁니다.
+                    </li>
+                  </ol>
+                </li>
+                <li>
+                  설치하셨으면 아래 <b>분석 사이트 열기</b>를 눌러주세요.
+                </li>
+              </ol>
             </div>
 
             <div className="lecture-note-footer">
               <div className="lecture-note-actions">
-                <button onClick={closeDialog} type="button">
-                  닫기
-                </button>
                 <a
                   className="satisfaction-analysis-install"
                   href={INSTALL_URL}
