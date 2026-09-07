@@ -208,6 +208,14 @@ export function MainDashboard({ operations, teamScope, teamUsers }: MainDashboar
                 </tr>
               </thead>
               <tbody>
+                {activeOrUpcoming.length === 0 ? (
+                  <tr>
+                    <td className="empty-state" colSpan={7}>
+                      <strong>선택한 범위에 예정되었거나 진행 중인 운영이 없습니다.</strong>
+                      <span>필터를 바꾸거나 운영 데이터를 확인하세요.</span>
+                    </td>
+                  </tr>
+                ) : null}
                 {activeOrUpcoming.slice(0, 10).map((operation) => (
                   <tr key={operation.operationId}>
                     <td>
@@ -297,6 +305,10 @@ function DonutChart({ items }: { items: Array<{ count: number; label: string }> 
 }
 
 function MonthlyTrendChart({ items }: { items: Array<{ count: number; label: string }> }) {
+  if (!items.some((item) => item.count > 0)) {
+    return <p className="dashboard-empty-note">선택한 범위에 올해 등록된 운영이 없습니다.</p>;
+  }
+
   const width = 720;
   const height = 150;
   const padding = { bottom: 28, left: 30, right: 18, top: 18 };
