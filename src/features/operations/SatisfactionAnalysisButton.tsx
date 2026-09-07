@@ -45,7 +45,7 @@ export function SatisfactionAnalysisButton() {
                     <li>프로그램과 설정 파일이 zip 파일로 받아집니다.</li>
                     <li>압축을 푸신 후 설치해주세요.</li>
                     <li>
-                      설치가 완료되면 바탕화면에 <code>분석 사이트 열기</code> 아이콘이 생깁니다.
+                      설치가 완료되면 바탕화면에 <b>분석 사이트 열기</b> 아이콘이 생깁니다.
                     </li>
                   </ol>
                 </li>

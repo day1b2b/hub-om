@@ -1,3 +1,5 @@
+import { calendarOperationRevision } from "./calendarOperationRevision";
+import { withCalendarOperationLock } from "./calendarOperationLock";
 // 매핑 없는 예정 회차를 구글 캘린더에 소급 생성하는 관리자 도구의 오케스트레이터.
 //
 // GET(dryRun) = 무엇이 빠졌는지 미리보기(쓰기 없음) + 파트 캘린더 쓰기 권한 진단.
@@ -10,8 +12,12 @@ import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { listTeamUsers } from "@/lib/data/teamUsers/teamUserRepository";
 import { getSeoulToday } from "@/lib/seoulDate";
 import { isCalendarWriteEnabled, listPartCalendars, resolvePartCalendarId } from "./calendarWriteConfig";
-import { insertEvent, readCalendarAccessRole } from "./calendarWriteClient";
-import { listAllCalendarEventLinks, saveCalendarEventLink } from "./calendarEventLinkRepository";
+import { insertOperationEvent, readCalendarAccessRole } from "./calendarWriteClient";
+import {
+  listAllCalendarEventLinks,
+  listCalendarEventLinks,
+  saveCalendarEventLink
+} from "./calendarEventLinkRepository";
 import { planCalendarBackfill, type BackfillPlanItem } from "./backfillCalendarEventsRules";
 
 /** 한 번의 apply에서 만들 이벤트 수 상한 기본값. 실수로 대량 생성되는 것을 막는 안전선. */
@@ -79,6 +85,8 @@ export interface BackfillCalendarResult {
     operationsScanned: number;
     inScope: number;
     alreadyComplete: number;
+    /** 교육일 미등록으로 소급에서 제외한 회차 수(기간 통블록 방지). */
+    excludedNoEducationDates: number;
     plannedOperations: number;
     plannedEvents: number;
     insertedEvents: number;
@@ -142,6 +150,7 @@ export async function backfillMissingCalendarEvents(
       operationsScanned: 0,
       inScope: 0,
       alreadyComplete: 0,
+      excludedNoEducationDates: 0,
       plannedOperations: 0,
       plannedEvents: 0,
       insertedEvents: 0,
@@ -263,8 +272,16 @@ export async function backfillMissingCalendarEvents(
     }
 
     try {
+      await withCalendarOperationLock(item.operationId, async () => {
+      const current = await getOperationRepository().getOperationById(item.operationId);
+      const plannedOperation = operations.find(operation => operation.operationId === item.operationId);
+      if (!current || !plannedOperation || calendarOperationRevision(current) !== calendarOperationRevision(plannedOperation)) {
+        throw new Error("소급 계획 후 회차가 변경되어 적용하지 않았습니다. 다시 미리보기를 실행하세요.");
+      }
+      const currentLinks = await listCalendarEventLinks(item.operationId);
       for (const eventPlan of item.plans) {
-        const eventId = await insertEvent(item.calendarId as string, eventPlan.body, { notifyAttendees });
+        if (currentLinks.some(link => link.eventDate === eventPlan.eventDate)) continue;
+        const eventId = await insertOperationEvent(item.calendarId as string, eventPlan.body, { operationId: item.operationId, eventDate: eventPlan.eventDate, source: "backfill", occupiedEventIds: currentLinks.filter(entry => entry.calendarId === item.calendarId && entry.eventDate !== eventPlan.eventDate).map(entry => entry.eventId) }, { notifyAttendees });
         await saveCalendarEventLink({
           operationId: item.operationId,
           calendarId: item.calendarId as string,
@@ -273,6 +290,7 @@ export async function backfillMissingCalendarEvents(
         });
         insertedEvents += 1;
       }
+      });
       outcomes.push(toOutcome(item, "inserted"));
     } catch (error) {
       failedOperations += 1;
@@ -297,6 +315,7 @@ export async function backfillMissingCalendarEvents(
       operationsScanned: operations.length,
       inScope: plan.inScope,
       alreadyComplete: plan.alreadyComplete,
+      excludedNoEducationDates: plan.excludedNoEducationDates,
       plannedOperations,
       plannedEvents,
       insertedEvents,

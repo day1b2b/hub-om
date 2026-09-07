@@ -1,3 +1,4 @@
+import { withCalendarOperationLock, isCalendarReflectionSuppressed } from "@/lib/googleCalendar/calendarOperationLock";
 // 운영현황 저장소를 감싸 구글 캘린더 반영을 붙인다.
 //
 // 라우트별로 훅을 거는 대신 저장소를 감싼 이유: 쓰기 경로가 운영 생성 API, 차수 추가,
@@ -23,6 +24,8 @@ import {
 const CALENDAR_RELEVANT_FIELDS: Array<keyof UpdateOperationInput> = [
   "startDate",
   "endDate",
+  "educationDates",
+  "instructors",
   "timeText",
   "region",
   "om",
@@ -38,7 +41,11 @@ function touchesCalendar(input: UpdateOperationInput): boolean {
 }
 
 export class CalendarReflectingOperationRepository implements OperationRepository {
-  constructor(private readonly inner: OperationRepository) {}
+  private readonly inner: OperationRepository;
+
+  constructor(inner: OperationRepository) {
+    this.inner = inner;
+  }
 
   listOperations(): Promise<OperationSession[]> {
     return this.inner.listOperations();
@@ -69,13 +76,17 @@ export class CalendarReflectingOperationRepository implements OperationRepositor
   }
 
   async updateOperation(operationId: string, input: UpdateOperationInput, updatedBy?: string): Promise<OperationSession> {
-    const operation = await this.inner.updateOperation(operationId, input, updatedBy);
-    if (touchesCalendar(input)) await reflectOperationUpdated(operation);
-    return operation;
+    return withCalendarOperationLock(operationId, async () => {
+      const operation = await this.inner.updateOperation(operationId, input, updatedBy);
+      if (touchesCalendar(input) && !isCalendarReflectionSuppressed()) await reflectOperationUpdated(operation);
+      return operation;
+    });
   }
 
   async deleteOperation(operationId: string, deletedBy?: string): Promise<void> {
-    await this.inner.deleteOperation(operationId, deletedBy);
-    await reflectOperationDelete(operationId);
+    await withCalendarOperationLock(operationId, async () => {
+      await this.inner.deleteOperation(operationId, deletedBy);
+      await reflectOperationDelete(operationId);
+    });
   }
 }

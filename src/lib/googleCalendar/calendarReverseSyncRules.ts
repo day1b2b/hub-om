@@ -26,6 +26,7 @@ export interface ReverseSyncSchedule {
 }
 
 export interface ReverseSyncItem {
+  operationRevision?: string;
   action: ReverseSyncAction;
   operationId: string;
   calendarId: string;

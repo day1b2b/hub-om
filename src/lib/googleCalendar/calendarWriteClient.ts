@@ -1,6 +1,8 @@
 // 구글 캘린더 쓰기 클라이언트. refresh token으로 access token을 갱신하고
 // events.insert / patch / delete만 호출한다. 읽기는 sourceReads 쪽 reader가 담당한다.
 
+import { calendarLockSignal } from "./calendarOperationLock";
+import { createHash } from "node:crypto";
 import { readCalendarWriteCredentials } from "./calendarWriteConfig";
 
 const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
@@ -21,6 +23,7 @@ async function getAccessToken(): Promise<string> {
 
   const response = await fetch(TOKEN_ENDPOINT, {
     method: "POST",
+    signal: requestSignal(),
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       client_id: credentials.clientId,
@@ -63,6 +66,7 @@ export interface CalendarEventAttendee {
 }
 
 export interface CalendarEventBody {
+  id?: string;
   summary: string;
   description?: string;
   location?: string;
@@ -75,11 +79,17 @@ export interface CalendarEventBody {
   extendedProperties?: { private?: Record<string, string> };
 }
 
+function requestSignal(): AbortSignal {
+  const lockSignal = calendarLockSignal();
+  return lockSignal ? AbortSignal.any([lockSignal, AbortSignal.timeout(30000)]) : AbortSignal.timeout(30000);
+}
+
 async function callCalendar(path: string, init: RequestInit): Promise<Response> {
   const accessToken = await getAccessToken();
 
   return fetch(`${CALENDAR_API}${path}`, {
     ...init,
+    signal: requestSignal(),
     headers: {
       ...(init.headers ?? {}),
       Authorization: `Bearer ${accessToken}`,
@@ -108,8 +118,8 @@ const SEND_UPDATES_SILENT = "sendUpdates=none";
  *
  * notifyAttendees=false면 메일 없이 이벤트만 만든다(sendUpdates=none). 기능 도입 전
  * 등록된 과정을 일괄 소급 생성할 때, 수십~수백 통의 초대 메일이 한꺼번에 나가는 것을
- * 막기 위한 스위치다. 메일을 눌러도 참석자 캘린더에는 일정이 뜬다(구글은 sendUpdates로
- * 메일만 끄고 참석자 추가는 그대로 한다). 소급 도구가 이 옵션을 쓴다.
+ * 막기 위한 스위치다. Google 문서상 none은 외부 캘린더 동기화에 영향을 줄 수 있으므로
+ * 참석자 캘린더 반영까지 보장하지 않는다. 소급 도구가 이 옵션을 쓴다.
  */
 export async function insertEvent(
   calendarId: string,
@@ -128,6 +138,53 @@ export async function insertEvent(
   if (!created.id) throw new Error("events.insert 응답에 eventId가 없습니다.");
 
   return created.id;
+}
+
+/** 동일 생성 요청은 프로세스가 재시작되어도 같은 Google ID를 사용한다. */
+export async function insertOperationEvent(
+  calendarId: string,
+  body: CalendarEventBody,
+  identity: { operationId: string; eventDate: string; source: "forward" | "backfill"; previousEventId?: string; occupiedEventIds?: string[] },
+  options?: { notifyAttendees?: boolean }
+): Promise<string> {
+  // source는 키에서 제외: 소급과 정방향이 동시에 실행되어도 같은 일정이다.
+  const seed = JSON.stringify([
+    "hub-om-calendar-v1", calendarId, identity.operationId, identity.eventDate, identity.previousEventId ?? ""
+  ]);
+  // 교육일을 제거했다가 다시 추가할 때 삭제된 ID는 재사용할 수 없다.
+  // 무작위 ID로 우회하지 않고 같은 세대 순서를 탐색해 재시도도 같은 ID에 도달한다.
+  for (let generation = 0; generation < 16; generation += 1) {
+    const id = createHash("sha256").update(JSON.stringify([seed, generation])).digest("hex");
+    if (identity.occupiedEventIds?.includes(id)) continue;
+    const privateProperties = {
+      ...body.extendedProperties?.private,
+      hubOmCreationKey: id,
+      hubOmCreationSource: identity.source
+    };
+    const sendUpdates = options?.notifyAttendees === false ? SEND_UPDATES_SILENT : SEND_UPDATES;
+    const response = await callCalendar(`/calendars/${encodeURIComponent(calendarId)}/events?${sendUpdates}`, {
+      method: "POST",
+      body: JSON.stringify({ ...body, id, extendedProperties: { private: privateProperties } })
+    });
+    if (response.ok) {
+      const created = await response.json() as { id?: string };
+      if (created.id !== id) throw new Error("events.insert 응답의 생성 식별자가 일치하지 않습니다.");
+      return id;
+    }
+    if (response.status !== 409) throw new Error(`events.insert 실패(${response.status})`);
+
+    // 409만으로 성공으로 간주하지 않는다. 실제 이벤트와 우리 생성 표식을 확인한다.
+    const existing = await callCalendar(`/calendars/${encodeURIComponent(calendarId)}/events/${id}`, { method: "GET" });
+    if (!existing.ok) throw new Error(`기존 생성 이벤트 확인 실패(${existing.status}). 같은 요청으로 재시도하세요.`);
+    const event = await existing.json() as { id?: string; status?: string; extendedProperties?: { private?: Record<string, string> } };
+    if (event.id !== id) throw new Error("기존 생성 이벤트의 식별자가 다릅니다.");
+    if (event.status === "cancelled") continue;
+    if (event.extendedProperties?.private?.hubOmCreationKey !== id) {
+      throw new Error("기존 이벤트의 생성 표식이 달라 자동 연결하지 않았습니다.");
+    }
+    return id;
+  }
+  throw new Error("삭제된 생성 식별자 탐색 상한에 도달했습니다. 관리자가 기존 연결을 확인해야 합니다.");
 }
 
 /**
@@ -165,13 +222,13 @@ export async function patchEvent(
   calendarId: string,
   eventId: string,
   body: Partial<CalendarEventBody>,
-  options?: { notifyAttendees?: boolean }
+  options?: { notifyAttendees?: boolean; expectedEtag?: string }
 ): Promise<"updated" | "missing"> {
   const response = await callCalendar(
     `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}?${
       options?.notifyAttendees ? SEND_UPDATES : SEND_UPDATES_SILENT
     }`,
-    { method: "PATCH", body: JSON.stringify(body) }
+    { method: "PATCH", body: JSON.stringify(body), headers: options?.expectedEtag ? { "If-Match": options.expectedEtag } : {} }
   );
 
   if (response.status === 404 || response.status === 410) return "missing";
@@ -206,13 +263,17 @@ export async function readEventAttendees(calendarId: string, eventId: string): P
  * 이미 지워진 이벤트(404/410)는 목표 상태(없음)와 같으므로 성공으로 본다.
  * 매핑만 남고 이벤트가 사라진 경우에 정리를 막지 않기 위해서다.
  */
-export async function deleteEvent(calendarId: string, eventId: string): Promise<void> {
+export async function deleteEvent(calendarId: string, eventId: string, options?: { notifyAttendees?: boolean; expectedEtag?: string }): Promise<void> {
   const response = await callCalendar(
-    `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}?${SEND_UPDATES}`,
-    { method: "DELETE" }
+    `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}?${options?.notifyAttendees === false ? SEND_UPDATES_SILENT : SEND_UPDATES}`,
+    { method: "DELETE", headers: options?.expectedEtag ? { "If-Match": options.expectedEtag } : {} }
   );
 
-  if (response.ok || response.status === 404 || response.status === 410) return;
+  if (response.ok) return;
+  if (response.status === 404 || response.status === 410) {
+    if (options?.expectedEtag) await requireCalendarCleanupAccess(calendarId);
+    return;
+  }
 
   throw new Error(`events.delete 실패(${response.status}): ${await response.text()}`);
 }
@@ -293,9 +354,34 @@ export async function listUpdatedEvents(calendarId: string, updatedMinIso: strin
       });
     }
 
-    if (!payload.nextPageToken) break;
+    if (!payload.nextPageToken) return events;
     pageToken = payload.nextPageToken;
   }
 
-  return events;
+  throw new Error(`events.list 페이지 상한(${MAX_PAGES})에 도달했습니다. 일부 결과를 전체 조회로 처리하지 않습니다.`);
+}
+
+export async function readCalendarEventVersion(calendarId: string, eventId: string): Promise<{ updated: string; etag: string; status: string }> {
+  const response = await callCalendar(`/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}?fields=updated,etag,status`, { method: "GET" });
+  if (!response.ok) throw new Error(`이벤트 최신 상태 조회 실패(${response.status})`);
+  const event = await response.json() as { updated?: string; etag?: string; status?: string };
+  if (!event.updated || !event.etag || event.status === "cancelled") throw new Error("이벤트가 삭제되었거나 버전 정보를 확인할 수 없습니다.");
+  return { updated: event.updated, etag: event.etag, status: event.status ?? "confirmed" };
+}
+
+export async function readCalendarCreationProof(calendarId: string, eventId: string): Promise<null | { etag: string; status: string; source?: string; creationKey?: string }> {
+  const response = await callCalendar(`/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}?fields=id,etag,status,extendedProperties`, { method: "GET" });
+  if (response.status === 404 || response.status === 410) {
+    await requireCalendarCleanupAccess(calendarId);
+    return null;
+  }
+  if (!response.ok) throw new Error(`생성 출처 조회 실패(${response.status})`);
+  const event = await response.json() as { id?: string; etag?: string; status?: string; extendedProperties?: { private?: Record<string, string> } };
+  if (event.id !== eventId || !event.etag) throw new Error("Google 이벤트 식별자 또는 버전이 올바르지 않습니다.");
+  return { etag: event.etag, status: event.status ?? "confirmed", source: event.extendedProperties?.private?.hubOmCreationSource, creationKey: event.extendedProperties?.private?.hubOmCreationKey };
+}
+
+async function requireCalendarCleanupAccess(calendarId: string): Promise<void> {
+  const role = await readCalendarAccessRole(calendarId);
+  if (role !== "owner" && role !== "writer") throw new Error("이벤트 부재와 캘린더 접근 권한 상실을 구분할 수 없어 매핑을 보존합니다.");
 }
