@@ -1,5 +1,6 @@
+import { readLimitedJson, RequestBodyTooLargeError } from "@/lib/http/readLimitedJson";
+import { previewBackfilledCalendarCleanup, applyBackfilledCalendarCleanup } from "@/lib/googleCalendar/cleanupBackfilledCalendarEvents";
 import { withActivity } from "@/lib/activity/request";
-import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
 import { backfillMissingCalendarEvents, type BackfillCalendarOptions } from "@/lib/googleCalendar/backfillCalendarEvents";
 
@@ -21,9 +22,13 @@ async function activityGET(request: Request) {
   try {
     await requireBackfillAccess(request);
 
-    return NextResponse.json(await backfillMissingCalendarEvents({ dryRun: true, ...parseOptions(request) }));
+    const params = new URL(request.url).searchParams;
+    if (params.get("mode") === "cleanup") {
+      return Response.json(await previewBackfilledCalendarCleanup((params.get("operationIds") ?? "").split(",").map(id => id.trim()).filter(Boolean)));
+    }
+    return Response.json(await backfillMissingCalendarEvents({ dryRun: true, ...parseOptions(request) }));
   } catch (error) {
-    return NextResponse.json(
+    return Response.json(
       { ok: false, error: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
@@ -34,9 +39,9 @@ async function activityPOST(request: Request) {
   try {
     await requireBackfillAccess(request);
 
-    return NextResponse.json(await backfillMissingCalendarEvents({ dryRun: false, ...parseOptions(request) }));
+    return Response.json(await backfillMissingCalendarEvents({ dryRun: false, ...parseOptions(request) }));
   } catch (error) {
-    return NextResponse.json(
+    return Response.json(
       { ok: false, error: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
@@ -78,3 +83,18 @@ async function requireBackfillAccess(request: Request): Promise<string> {
 export const GET = withActivity("/api/admin/calendar/backfill-events", "GET", activityGET);
 
 export const POST = withActivity("/api/admin/calendar/backfill-events", "POST", activityPOST);
+
+async function activityDELETE(request: Request) {
+  try { await requireBackfillAccess(request); }
+  catch { return Response.json({ ok: false, error: "관리자 인증이 필요합니다." }, { status: 403 }); }
+  try {
+    const body = await readLimitedJson(request, 1_200_000) as null | { tokens?: unknown };
+    if (!body || !Array.isArray(body.tokens) || body.tokens.some(token => typeof token !== "string")) {
+      return Response.json({ ok: false, error: "미리보기에서 받은 tokens 배열이 필요합니다." }, { status: 400 });
+    }
+    return Response.json(await applyBackfilledCalendarCleanup(body.tokens));
+  } catch (error) {
+    return Response.json({ ok: false, error: error instanceof Error ? error.message : String(error) }, { status: error instanceof RequestBodyTooLargeError ? 413 : 400 });
+  }
+}
+export const DELETE = withActivity("/api/admin/calendar/backfill-events", "DELETE", activityDELETE);
