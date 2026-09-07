@@ -441,7 +441,11 @@ export function LectureManagementNoteRow({
   async function closeDialog() {
     if (saveState === "saving") return;
 
-    if (hasUnsavedEdit) {
+    // 서버가 거절한 요청은 닫을 때 다시 보내도 결과가 같아 창이 영영 닫히지 않는다. 그 뒤 편집이 없었다면
+    // 내용은 이미 브라우저 임시 보관본에 있으므로 다시 보내지 않고 닫는다(다음에 열 때 복원을 묻는다).
+    const rejectedWithoutEdit = saveState === "failed" && saveFailure?.kind === "rejected" && failedAtEditVersion === editVersion;
+
+    if (hasUnsavedEdit && !rejectedWithoutEdit) {
       const saved = await persist(pendingValue, editVersion);
       // 저장에 실패하면 입력 내용을 잃지 않도록 창을 닫지 않는다.
       if (!saved) return;
