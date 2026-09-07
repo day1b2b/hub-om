@@ -1,6 +1,7 @@
 // 구글 캘린더 쓰기 클라이언트. refresh token으로 access token을 갱신하고
 // events.insert / patch / delete만 호출한다. 읽기는 sourceReads 쪽 reader가 담당한다.
 
+import { calendarLockSignal } from "./calendarOperationLock";
 import { createHash } from "node:crypto";
 import { readCalendarWriteCredentials } from "./calendarWriteConfig";
 
@@ -22,6 +23,7 @@ async function getAccessToken(): Promise<string> {
 
   const response = await fetch(TOKEN_ENDPOINT, {
     method: "POST",
+    signal: requestSignal(),
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       client_id: credentials.clientId,
@@ -77,11 +79,17 @@ export interface CalendarEventBody {
   extendedProperties?: { private?: Record<string, string> };
 }
 
+function requestSignal(): AbortSignal {
+  const lockSignal = calendarLockSignal();
+  return lockSignal ? AbortSignal.any([lockSignal, AbortSignal.timeout(30000)]) : AbortSignal.timeout(30000);
+}
+
 async function callCalendar(path: string, init: RequestInit): Promise<Response> {
   const accessToken = await getAccessToken();
 
   return fetch(`${CALENDAR_API}${path}`, {
     ...init,
+    signal: requestSignal(),
     headers: {
       ...(init.headers ?? {}),
       Authorization: `Bearer ${accessToken}`,
@@ -214,13 +222,13 @@ export async function patchEvent(
   calendarId: string,
   eventId: string,
   body: Partial<CalendarEventBody>,
-  options?: { notifyAttendees?: boolean }
+  options?: { notifyAttendees?: boolean; expectedEtag?: string }
 ): Promise<"updated" | "missing"> {
   const response = await callCalendar(
     `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}?${
       options?.notifyAttendees ? SEND_UPDATES : SEND_UPDATES_SILENT
     }`,
-    { method: "PATCH", body: JSON.stringify(body) }
+    { method: "PATCH", body: JSON.stringify(body), headers: options?.expectedEtag ? { "If-Match": options.expectedEtag } : {} }
   );
 
   if (response.status === 404 || response.status === 410) return "missing";
@@ -347,4 +355,12 @@ export async function listUpdatedEvents(calendarId: string, updatedMinIso: strin
   }
 
   throw new Error(`events.list 페이지 상한(${MAX_PAGES})에 도달했습니다. 일부 결과를 전체 조회로 처리하지 않습니다.`);
+}
+
+export async function readCalendarEventVersion(calendarId: string, eventId: string): Promise<{ updated: string; etag: string; status: string }> {
+  const response = await callCalendar(`/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}?fields=updated,etag,status`, { method: "GET" });
+  if (!response.ok) throw new Error(`이벤트 최신 상태 조회 실패(${response.status})`);
+  const event = await response.json() as { updated?: string; etag?: string; status?: string };
+  if (!event.updated || !event.etag || event.status === "cancelled") throw new Error("이벤트가 삭제되었거나 버전 정보를 확인할 수 없습니다.");
+  return { updated: event.updated, etag: event.etag, status: event.status ?? "confirmed" };
 }

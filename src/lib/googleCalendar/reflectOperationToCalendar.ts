@@ -1,3 +1,5 @@
+import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
+import { withCalendarOperationLock } from "./calendarOperationLock";
 // 운영현황 변경을 구글 캘린더에 반영한다(hub-om → 구글).
 //
 // 이 모듈의 함수는 절대 throw하지 않는다. 운영현황 저장은 이미 끝난 뒤에 불리는
@@ -32,7 +34,7 @@ function logSkip(operationId: string, reason: string): void {
  */
 type ReflectTrigger = "created" | "updated";
 
-async function reflectOperation(operation: OperationSession, trigger: ReflectTrigger): Promise<void> {
+async function reflectOperationUnlocked(operation: OperationSession, trigger: ReflectTrigger, skipEventId?: string): Promise<void> {
   try {
     if (!isCalendarWriteEnabled()) return;
 
@@ -68,6 +70,7 @@ async function reflectOperation(operation: OperationSession, trigger: ReflectTri
     for (const plan of buildCalendarEventBodies(operation, targets.attendeeEmails, targets.partKey)) {
       const link = sameCalendar.get(plan.eventDate);
 
+      if (skipEventId && link?.eventId === skipEventId) { sameCalendar.delete(plan.eventDate); continue; }
       if (link) {
         // 참석자가 달라진 수정만 메일을 보낸다. 이 서비스는 요청 접수 시 이벤트를 먼저
         // 만들고 나중에 OM을 배정하므로, 초대 메일이 실제로 나가는 시점이 이 patch다.
@@ -122,18 +125,31 @@ async function reflectOperation(operation: OperationSession, trigger: ReflectTri
   }
 }
 
+async function reflectOperation(operation: OperationSession, trigger: ReflectTrigger, skipEventId?: string): Promise<void> {
+  try {
+    await withCalendarOperationLock(operation.operationId, async () => {
+      if (!isCalendarWriteEnabled()) return;
+      const current = await getOperationRepository().getOperationById(operation.operationId);
+      if (!current) return; // 생성 직후 취소·삭제된 회차를 오래된 객체로 되살리지 않는다.
+      await reflectOperationUnlocked(current, trigger, skipEventId);
+    });
+  } catch (error) {
+    console.error(`[gcal] ${operation.operationId} 반영 잠금 실패:`, error);
+  }
+}
+
 /** 운영 생성. 교육일마다 일정을 만들고 담당·현장 OM을 초대한다. */
 export function reflectOperationCreated(operation: OperationSession): Promise<void> {
   return reflectOperation(operation, "created");
 }
 
 /** 운영 수정. 이미 캘린더에 올라간 과정만 갱신한다. */
-export function reflectOperationUpdated(operation: OperationSession): Promise<void> {
-  return reflectOperation(operation, "updated");
+export function reflectOperationUpdated(operation: OperationSession, skipEventId?: string): Promise<void> {
+  return reflectOperation(operation, "updated", skipEventId);
 }
 
 /** 취소·삭제. 회차에 걸린 이벤트를 모두 지우고 매핑도 정리한다(스펙 D4). */
-export async function reflectOperationDelete(operationId: string): Promise<void> {
+async function reflectOperationDeleteUnlocked(operationId: string): Promise<void> {
   try {
     if (!isCalendarWriteEnabled()) return;
 
@@ -147,4 +163,9 @@ export async function reflectOperationDelete(operationId: string): Promise<void>
   } catch (error) {
     console.error(`[gcal] ${operationId} 삭제 반영 실패:`, error);
   }
+}
+
+export async function reflectOperationDelete(operationId: string): Promise<void> {
+  try { await withCalendarOperationLock(operationId, () => reflectOperationDeleteUnlocked(operationId)); }
+  catch (error) { console.error(`[gcal] ${operationId} 삭제 잠금 실패:`, error); }
 }

@@ -1,3 +1,4 @@
+import { calendarOperationRevision } from "./calendarOperationRevision";
 // 구글 캘린더 → 운영현황 역반영의 "무엇을 바꿀지" 계산 단계.
 //
 // 이 모듈은 읽기만 한다. 실제 DB 쓰기·캘린더 patch는 이 계획을 받아 다음 단계에서 한다.
@@ -126,7 +127,7 @@ export async function planCalendarReverseSync(options?: { now?: Date }): Promise
       readMinLagMs()
     );
 
-    if (evaluation.kind === "item") items.push(evaluation.item);
+    if (evaluation.kind === "item") items.push({ ...evaluation.item, operationRevision: calendarOperationRevision(operation) });
     if (evaluation.kind === "skip") {
       // 사람이 원본을 지운 건 아무 처리도 하지 않으므로 로그가 유일한 흔적이다.
       // 응답의 skipped는 스케줄 실행에서 아무도 읽지 않는다.
