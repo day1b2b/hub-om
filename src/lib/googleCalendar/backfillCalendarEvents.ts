@@ -11,7 +11,10 @@ import { listTeamUsers } from "@/lib/data/teamUsers/teamUserRepository";
 import { getSeoulToday } from "@/lib/seoulDate";
 import { isCalendarWriteEnabled, listPartCalendars, resolvePartCalendarId } from "./calendarWriteConfig";
 import { insertEvent, readCalendarAccessRole } from "./calendarWriteClient";
-import { listAllCalendarEventLinks, saveCalendarEventLink } from "./calendarEventLinkRepository";
+import {
+  listAllCalendarEventLinks,
+  saveCalendarEventLink
+} from "./calendarEventLinkRepository";
 import { planCalendarBackfill, type BackfillPlanItem } from "./backfillCalendarEventsRules";
 
 /** 한 번의 apply에서 만들 이벤트 수 상한 기본값. 실수로 대량 생성되는 것을 막는 안전선. */
@@ -79,6 +82,8 @@ export interface BackfillCalendarResult {
     operationsScanned: number;
     inScope: number;
     alreadyComplete: number;
+    /** 교육일 미등록으로 소급에서 제외한 회차 수(기간 통블록 방지). */
+    excludedNoEducationDates: number;
     plannedOperations: number;
     plannedEvents: number;
     insertedEvents: number;
@@ -142,6 +147,7 @@ export async function backfillMissingCalendarEvents(
       operationsScanned: 0,
       inScope: 0,
       alreadyComplete: 0,
+      excludedNoEducationDates: 0,
       plannedOperations: 0,
       plannedEvents: 0,
       insertedEvents: 0,
@@ -297,6 +303,7 @@ export async function backfillMissingCalendarEvents(
       operationsScanned: operations.length,
       inScope: plan.inScope,
       alreadyComplete: plan.alreadyComplete,
+      excludedNoEducationDates: plan.excludedNoEducationDates,
       plannedOperations,
       plannedEvents,
       insertedEvents,
