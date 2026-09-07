@@ -59,6 +59,10 @@ const APPLYABLE_FIELDS = [
 
 type ApplyableField = (typeof APPLYABLE_FIELDS)[number];
 
+// 한 필드에 받을 수 있는 글자 수 상한. 강의관리 기록처럼 긴 메모도 여러 날짜를 합쳐 수만 자를 넘기지 않는다.
+// 상한이 없으면 자동 저장 요청 하나로 아주 큰 본문을 계속 저장시켜 DB와 응답 크기를 부풀릴 수 있다.
+const MAX_TEXT_VALUE_LENGTH = 100_000;
+
 interface RouteContext {
   params: Promise<{
     operationId: string;
@@ -88,6 +92,13 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   for (const patch of patches) {
     if (!isApplyableField(patch.field) || typeof patch.value !== "string") continue;
+
+    if (patch.value.length > MAX_TEXT_VALUE_LENGTH) {
+      return NextResponse.json(
+        { ok: false, error: `입력이 너무 깁니다. 한 항목은 ${MAX_TEXT_VALUE_LENGTH.toLocaleString("ko-KR")}자까지 저장할 수 있습니다.` },
+        { status: 413 }
+      );
+    }
 
     const currentValue = currentOperationValue(operation, patch.field);
     const nextValue = patch.action === "append" ? appendText(currentValue, patch.value) : patch.value;
