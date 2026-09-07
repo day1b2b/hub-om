@@ -198,11 +198,11 @@ export function mergeTabsWithSameDate(tabs: LectureNoteTab[]): LectureNoteTab[] 
   const merged: LectureNoteTab[] = [];
 
   for (const tab of tabs) {
-    const date = tab.date.trim();
-    const existing = date ? merged.find((candidate) => candidate.date.trim() === date) : undefined;
+    const date = normalizeNoteDate(tab.date);
+    const existing = date ? merged.find((candidate) => candidate.date === date) : undefined;
 
     if (!existing) {
-      merged.push({ ...tab });
+      merged.push({ ...tab, date });
       continue;
     }
 
