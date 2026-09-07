@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { listTeamUsers } from "@/lib/data/teamUsers/teamUserRepository";
 
@@ -27,7 +28,7 @@ function readRequestToken(request: Request, url: URL): string {
   return bearer || (request.headers.get("x-lookup-token") ?? "").trim() || (url.searchParams.get("token") ?? "").trim();
 }
 
-export async function GET(request: Request) {
+async function activityGET(request: Request) {
   const url = new URL(request.url);
 
   const expectedToken = process.env.COURSE_LOOKUP_TOKEN?.trim() ?? "";
@@ -57,3 +58,5 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, error: "멤버 목록을 읽지 못했습니다." }, { status: 500 });
   }
 }
+
+export const GET = withActivity("/api/team-users/lookup", "GET", activityGET);

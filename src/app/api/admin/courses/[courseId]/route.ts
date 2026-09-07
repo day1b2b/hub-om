@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
 import { getPrismaClient } from "@/lib/data/prisma";
@@ -10,7 +11,7 @@ interface RouteContext {
   }>;
 }
 
-export async function DELETE(_request: Request, { params }: RouteContext) {
+async function activityDELETE(_request: Request, { params }: RouteContext) {
   const session = await assertAdminSession();
   const { courseId } = await params;
 
@@ -28,3 +29,5 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
 
   return NextResponse.json({ ok: true, deletedCount: result.count });
 }
+
+export const DELETE = withActivity("/api/admin/courses/[courseId]", "DELETE", activityDELETE);

@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
 import { backfillMissingCalendarEvents, type BackfillCalendarOptions } from "@/lib/googleCalendar/backfillCalendarEvents";
@@ -16,7 +17,7 @@ export const dynamic = "force-dynamic";
 //
 // 경로는 src/auth.ts의 SYNC_API_PATHS에 등록돼 있다(베어러 요청이 로그인 화면으로 리다이렉트되지 않게).
 
-export async function GET(request: Request) {
+async function activityGET(request: Request) {
   try {
     await requireBackfillAccess(request);
 
@@ -29,7 +30,7 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+async function activityPOST(request: Request) {
   try {
     await requireBackfillAccess(request);
 
@@ -73,3 +74,7 @@ async function requireBackfillAccess(request: Request): Promise<string> {
   const session = await assertAdminSession();
   return session.user?.email ?? "admin-session";
 }
+
+export const GET = withActivity("/api/admin/calendar/backfill-events", "GET", activityGET);
+
+export const POST = withActivity("/api/admin/calendar/backfill-events", "POST", activityPOST);

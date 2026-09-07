@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
 import { getPrismaClient } from "@/lib/data/prisma";
@@ -7,7 +8,7 @@ import { announcementContentToPlainText, sanitizeAnnouncementContent } from "@/l
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+async function activityGET() {
   await assertAdminSession();
 
   const prisma = getPrismaClient();
@@ -36,7 +37,7 @@ export async function GET() {
   return NextResponse.json({ ok: true, announcements });
 }
 
-export async function POST(request: Request) {
+async function activityPOST(request: Request) {
   const session = await assertAdminSession();
 
   const formData = await request.formData();
@@ -104,3 +105,7 @@ export async function POST(request: Request) {
 function stringValue(value: FormDataEntryValue | null): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
+
+export const GET = withActivity("/api/announcements", "GET", activityGET);
+
+export const POST = withActivity("/api/announcements", "POST", activityPOST);

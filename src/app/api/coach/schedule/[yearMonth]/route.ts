@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { CoachEngagementStatus } from "@prisma/client";
 import { extractCoachToken, validateCoachToken } from "@/lib/coaches/coachTokenAuth";
@@ -17,7 +18,7 @@ interface ScheduleInput {
   endTime: unknown;
 }
 
-export async function GET(request: Request, { params }: RouteContext) {
+async function activityGET(request: Request, { params }: RouteContext) {
   const coach = await validateCoachToken(extractCoachToken(request));
   if (!coach) {
     return NextResponse.json({ ok: false, error: "코치 정보를 찾을 수 없습니다." }, { status: 401 });
@@ -136,7 +137,7 @@ export async function GET(request: Request, { params }: RouteContext) {
   });
 }
 
-export async function PUT(request: Request, { params }: RouteContext) {
+async function activityPUT(request: Request, { params }: RouteContext) {
   const coach = await validateCoachToken(extractCoachToken(request));
   if (!coach) {
     return NextResponse.json({ ok: false, error: "코치 정보를 찾을 수 없습니다." }, { status: 401 });
@@ -243,3 +244,7 @@ function parseDate(value: string): Date {
 function toDateString(value: Date): string {
   return value.toISOString().slice(0, 10);
 }
+
+export const GET = withActivity("/api/coach/schedule/[yearMonth]", "GET", activityGET);
+
+export const PUT = withActivity("/api/coach/schedule/[yearMonth]", "PUT", activityPUT);

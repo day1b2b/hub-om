@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
@@ -11,7 +12,7 @@ interface RouteContext {
   }>;
 }
 
-export async function POST(_request: Request, { params }: RouteContext) {
+async function activityPOST(_request: Request, { params }: RouteContext) {
   await requireWorkspaceSession();
 
   const { operationId } = await params;
@@ -26,3 +27,5 @@ export async function POST(_request: Request, { params }: RouteContext) {
 
   return NextResponse.json({ ok: true, result });
 }
+
+export const POST = withActivity("/api/operations/[operationId]/drive-import/folders", "POST", activityPOST);

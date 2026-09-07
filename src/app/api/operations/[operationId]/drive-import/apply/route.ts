@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server.js";
 import { readLimitedJson, RequestBodyTooLargeError } from "@/lib/http/readLimitedJson";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
@@ -80,7 +81,7 @@ interface ApplyPatch {
   action?: DriveImportCandidateAction;
 }
 
-export async function POST(request: Request, { params }: RouteContext) {
+async function activityPOST(request: Request, { params }: RouteContext) {
   const session = await requireWorkspaceSession();
 
   let body: { patches?: ApplyPatch[] } | null;
@@ -261,3 +262,5 @@ function appendText(currentValue: string, nextValue: string): string {
 
   return `${current}\n\n${next}`;
 }
+
+export const POST = withActivity("/api/operations/[operationId]/drive-import/apply", "POST", activityPOST);

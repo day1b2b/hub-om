@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { isAdminEmail } from "@/lib/auth/requireAdminSession";
@@ -18,7 +19,7 @@ async function resolveRequestEmail(): Promise<string | undefined> {
   return session?.user?.email ?? undefined;
 }
 
-export async function PATCH(request: Request, { params }: Props) {
+async function activityPATCH(request: Request, { params }: Props) {
   try {
     const { id } = await params;
     const existing = await getOmRequest(id);
@@ -43,7 +44,7 @@ export async function PATCH(request: Request, { params }: Props) {
   }
 }
 
-export async function DELETE(_request: Request, { params }: Props) {
+async function activityDELETE(_request: Request, { params }: Props) {
   try {
     const { id } = await params;
     const existing = await getOmRequest(id);
@@ -66,3 +67,7 @@ export async function DELETE(_request: Request, { params }: Props) {
     return NextResponse.json({ error: "삭제 실패" }, { status: 500 });
   }
 }
+
+export const PATCH = withActivity("/api/om-request/[id]", "PATCH", activityPATCH);
+
+export const DELETE = withActivity("/api/om-request/[id]", "DELETE", activityDELETE);

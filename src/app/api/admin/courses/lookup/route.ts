@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
 import { formatProcessId } from "@/lib/data/operationCalculations";
@@ -13,7 +14,7 @@ function parseProcessSeq(rawProcessId: string): number | null {
   return Number.isInteger(processSeq) ? processSeq : null;
 }
 
-export async function GET(request: Request) {
+async function activityGET(request: Request) {
   await assertAdminSession();
 
   const processId = new URL(request.url).searchParams.get("processId") ?? "";
@@ -50,3 +51,5 @@ export async function GET(request: Request) {
     }
   });
 }
+
+export const GET = withActivity("/api/admin/courses/lookup", "GET", activityGET);

@@ -1,10 +1,11 @@
+import { withActivity } from "@/lib/activity/request";
 import { requireInstructorSyncAccess, syncNotionInstructors } from "@/lib/instructors/notionInstructorSync";
 import { syncJsonResponse } from "@/lib/coaches/syncRouteResponse";
 
 export const dynamic = "force-dynamic";
 
 // 미리보기(저장 안 함).
-export async function GET(request: Request) {
+async function activityGET(request: Request) {
   return syncJsonResponse(async () => {
     await requireInstructorSyncAccess(request);
     const result = await syncNotionInstructors(true);
@@ -13,10 +14,14 @@ export async function GET(request: Request) {
 }
 
 // 실제 반영.
-export async function POST(request: Request) {
+async function activityPOST(request: Request) {
   return syncJsonResponse(async () => {
     await requireInstructorSyncAccess(request);
     const result = await syncNotionInstructors(false);
     return { ok: true, result };
   });
 }
+
+export const GET = withActivity("/api/admin/sync-notion-instructors", "GET", activityGET);
+
+export const POST = withActivity("/api/admin/sync-notion-instructors", "POST", activityPOST);

@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { generateCoachAccessToken } from "@/lib/coaches/accessToken";
@@ -11,7 +12,7 @@ interface RouteContext {
   }>;
 }
 
-export async function POST(_request: Request, { params }: RouteContext) {
+async function activityPOST(_request: Request, { params }: RouteContext) {
   await requireWorkspaceSession();
 
   const { id } = await params;
@@ -24,3 +25,5 @@ export async function POST(_request: Request, { params }: RouteContext) {
 
   return NextResponse.json({ ok: true, accessToken: coach.accessToken });
 }
+
+export const POST = withActivity("/api/coaches/[id]/regenerate-token", "POST", activityPOST);

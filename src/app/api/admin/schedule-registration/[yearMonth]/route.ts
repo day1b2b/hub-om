@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { CoachStatus } from "@prisma/client";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
@@ -14,7 +15,7 @@ interface RouteContext {
 
 export type ScheduleRegistrationStatus = "completed" | "accessedOnly" | "notAccessed";
 
-export async function GET(_request: Request, { params }: RouteContext) {
+async function activityGET(_request: Request, { params }: RouteContext) {
   await requireWorkspaceSession();
 
   const { yearMonth } = await params;
@@ -59,3 +60,5 @@ export async function GET(_request: Request, { params }: RouteContext) {
 
   return NextResponse.json({ ok: true, yearMonth, counts, coaches: rows });
 }
+
+export const GET = withActivity("/api/admin/schedule-registration/[yearMonth]", "GET", activityGET);

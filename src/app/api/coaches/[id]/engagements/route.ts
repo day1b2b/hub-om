@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import {
@@ -19,7 +20,7 @@ interface RouteContext {
   }>;
 }
 
-export async function GET(_request: Request, { params }: RouteContext) {
+async function activityGET(_request: Request, { params }: RouteContext) {
   await requireWorkspaceSession();
 
   const { id } = await params;
@@ -46,7 +47,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
   });
 }
 
-export async function POST(request: Request, { params }: RouteContext) {
+async function activityPOST(request: Request, { params }: RouteContext) {
   await requireWorkspaceSession();
 
   const { id } = await params;
@@ -91,3 +92,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   return NextResponse.json({ ok: true, engagement }, { status: 201 });
 }
+
+export const GET = withActivity("/api/coaches/[id]/engagements", "GET", activityGET);
+
+export const POST = withActivity("/api/coaches/[id]/engagements", "POST", activityPOST);

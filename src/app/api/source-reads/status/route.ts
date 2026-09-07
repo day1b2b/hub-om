@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { isAllowedWorkspaceEmail } from "@/lib/auth/workspaceAccess";
@@ -5,7 +6,7 @@ import { readSourceStatuses } from "@/lib/sourceReads";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+async function activityGET() {
   const session = await auth();
 
   if (!session?.user?.email || !isAllowedWorkspaceEmail(session.user.email)) {
@@ -19,3 +20,5 @@ export async function GET() {
     sources
   });
 }
+
+export const GET = withActivity("/api/source-reads/status", "GET", activityGET);

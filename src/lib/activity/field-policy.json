@@ -1,0 +1,318 @@
+{
+  "companies": {
+    "values": [
+      "name"
+    ],
+    "changeOnly": []
+  },
+  "courses": {
+    "values": [
+      "company_id",
+      "course_id",
+      "course_name",
+      "operation_type",
+      "course_category",
+      "revenue"
+    ],
+    "changeOnly": [
+      "process_seq",
+      "tools",
+      "revenue_raw"
+    ]
+  },
+  "course_id_labels": {
+    "values": [
+      "company_id",
+      "course_id",
+      "label"
+    ],
+    "changeOnly": []
+  },
+  "operation_sessions": {
+    "values": [
+      "operation_id",
+      "course_record_id",
+      "operation_status",
+      "archive_status",
+      "education_format",
+      "operation_channel",
+      "round_no",
+      "education_days",
+      "start_date",
+      "end_date",
+      "education_dates",
+      "operation_month",
+      "session_duration_days",
+      "session_duration_type",
+      "time_text",
+      "om_name",
+      "ld_name",
+      "instructors_text",
+      "coach_text",
+      "onsite_required",
+      "onsite_om_name",
+      "total_cost",
+      "instructor_cost",
+      "operation_cost",
+      "avg_satisfaction",
+      "instructor_satisfaction",
+      "has_satisfaction_survey",
+      "has_result_report",
+      "om_user_id",
+      "ld_user_id"
+    ],
+    "changeOnly": [
+      "education_format_raw",
+      "region",
+      "onsite_text",
+      "special_notes",
+      "operation_issue",
+      "om_update",
+      "drive_link",
+      "operation_detail",
+      "company_wiki_link",
+      "instructor_wiki_link",
+      "cost_raw",
+      "profit_raw",
+      "result_report_link",
+      "lecture_management_link",
+      "lecture_management_note",
+      "padlet_link",
+      "deleted_at"
+    ]
+  },
+  "members": {
+    "values": [
+      "name",
+      "role",
+      "source_team"
+    ],
+    "changeOnly": [
+      "role_title",
+      "calendar_id",
+      "is_active",
+      "display_order"
+    ]
+  },
+  "coaches": {
+    "values": [
+      "name",
+      "work_type",
+      "status",
+      "return_date",
+      "dx_tag",
+      "is_active",
+      "display_order"
+    ],
+    "changeOnly": [
+      "source_coach_id",
+      "access_token",
+      "status_note",
+      "self_note",
+      "portfolio_url",
+      "availability_detail",
+      "manager_note",
+      "employee_no",
+      "notion_no",
+      "notion_page_id",
+      "deleted_at"
+    ]
+  },
+  "coach_content_entries": {
+    "values": [
+      "coach_id",
+      "kind",
+      "flagged_at"
+    ],
+    "changeOnly": [
+      "content",
+      "author_email",
+      "author_name",
+      "source_field",
+      "deleted_at"
+    ]
+  },
+  "coach_private_profiles": {
+    "values": [],
+    "changeOnly": [
+      "coach_id",
+      "employee_id",
+      "phone",
+      "email",
+      "birth_date",
+      "affiliation"
+    ]
+  },
+  "coach_field_masters": {
+    "values": [
+      "name"
+    ],
+    "changeOnly": []
+  },
+  "coach_curriculum_masters": {
+    "values": [
+      "name"
+    ],
+    "changeOnly": []
+  },
+  "coach_fields": {
+    "values": [
+      "coach_id",
+      "tag_id"
+    ],
+    "changeOnly": []
+  },
+  "coach_curriculums": {
+    "values": [
+      "coach_id",
+      "tag_id"
+    ],
+    "changeOnly": []
+  },
+  "coach_schedules": {
+    "values": [
+      "coach_id",
+      "date",
+      "start_time",
+      "end_time"
+    ],
+    "changeOnly": [
+      "source_schedule_id"
+    ]
+  },
+  "coach_day_reservations": {
+    "values": [
+      "coach_id",
+      "date",
+      "reserved_by_email",
+      "reserved_by_name",
+      "confirmed_engagement_id",
+      "cancelled_at"
+    ],
+    "changeOnly": []
+  },
+  "coach_engagements": {
+    "values": [
+      "coach_id",
+      "operation_session_id",
+      "course_name",
+      "status",
+      "source",
+      "start_date",
+      "end_date",
+      "start_time",
+      "end_time",
+      "rating",
+      "rehire",
+      "review_flagged_at"
+    ],
+    "changeOnly": [
+      "source_engagement_id",
+      "feedback",
+      "hired_by_id",
+      "hired_by_text"
+    ]
+  },
+  "coach_engagement_schedules": {
+    "values": [
+      "engagement_id",
+      "coach_id",
+      "date",
+      "start_time",
+      "end_time",
+      "cancelled_at"
+    ],
+    "changeOnly": [
+      "source_engagement_schedule_id"
+    ]
+  },
+  "team_users": {
+    "values": [
+      "name",
+      "email",
+      "team",
+      "role"
+    ],
+    "changeOnly": [
+      "slack_id"
+    ]
+  },
+  "om_requests": {
+    "values": [
+      "status",
+      "assigned_om",
+      "ld_email",
+      "operation_id",
+      "team",
+      "ld",
+      "company",
+      "training_type",
+      "course_id",
+      "course_name",
+      "course_category_major",
+      "course_category",
+      "instructor_name",
+      "skillflo_setup",
+      "skillmatch_setup",
+      "onsite_operation",
+      "coach_request",
+      "total_sessions"
+    ],
+    "changeOnly": [
+      "slack_channel",
+      "slack_thread_ts",
+      "business_number",
+      "tools",
+      "syncup_link",
+      "drive_link",
+      "sessions",
+      "notes"
+    ]
+  },
+  "announcements": {
+    "values": [],
+    "changeOnly": [
+      "title",
+      "content",
+      "author_email",
+      "author_name",
+      "deleted_at"
+    ]
+  },
+  "announcement_attachments": {
+    "values": [
+      "announcement_id",
+      "mime_type",
+      "size"
+    ],
+    "changeOnly": [
+      "file_name",
+      "data"
+    ]
+  },
+  "instructor_notes": {
+    "values": [
+      "instructor_name",
+      "display_name",
+      "recruit_avoid"
+    ],
+    "changeOnly": [
+      "notion_no",
+      "notion_id",
+      "partner_id",
+      "notes",
+      "notion_profile",
+      "notion_synced_at"
+    ]
+  },
+  "calendar_event_links": {
+    "values": [
+      "operation_id",
+      "event_date"
+    ],
+    "changeOnly": [
+      "calendar_id",
+      "event_id"
+    ]
+  }
+}

@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
 import { refreshCalendarEventTexts } from "@/lib/googleCalendar/refreshCalendarEventTexts";
@@ -8,7 +9,7 @@ export const dynamic = "force-dynamic";
 // GET = 대상 미리보기(쓰기 없음), POST = 적용(구글 patch만, DB 쓰기 없음, 참석자 메일 없음).
 // 문구·제목 규칙을 바꾼 배포 뒤 한 번 실행한다. 경로는 src/auth.ts의 SYNC_API_PATHS에 등록돼 있다.
 
-export async function GET(request: Request) {
+async function activityGET(request: Request) {
   try {
     await requireRefreshAccess(request);
 
@@ -21,7 +22,7 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+async function activityPOST(request: Request) {
   try {
     await requireRefreshAccess(request);
 
@@ -46,3 +47,7 @@ async function requireRefreshAccess(request: Request): Promise<string> {
   const session = await assertAdminSession();
   return session.user?.email ?? "admin-session";
 }
+
+export const GET = withActivity("/api/admin/calendar/refresh-events", "GET", activityGET);
+
+export const POST = withActivity("/api/admin/calendar/refresh-events", "POST", activityPOST);

@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { CoachContentEntryKind } from "@prisma/client";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
@@ -10,7 +11,7 @@ interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
-export async function GET(_request: Request, { params }: RouteContext) {
+async function activityGET(_request: Request, { params }: RouteContext) {
   await requireWorkspaceSession();
   const { id } = await params;
 
@@ -24,7 +25,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
   return NextResponse.json({ ok: true, notes });
 }
 
-export async function POST(request: Request, { params }: RouteContext) {
+async function activityPOST(request: Request, { params }: RouteContext) {
   const session = await requireWorkspaceSession();
   const { id } = await params;
 
@@ -39,3 +40,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   return NextResponse.json({ ok: true, note });
 }
+
+export const GET = withActivity("/api/coaches/[id]/notes", "GET", activityGET);
+
+export const POST = withActivity("/api/coaches/[id]/notes", "POST", activityPOST);

@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { parseGoogleSpreadsheetUrl, readGoogleSheetRows } from "@/lib/data/googleSheetsImport";
@@ -7,7 +8,7 @@ import type { SourceTeam } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(request: Request) {
+async function activityPOST(request: Request) {
   const session = await requireWorkspaceSession();
   const accessToken = session.googleAccessToken;
 
@@ -81,3 +82,5 @@ function parseSourceTeam(value: string | undefined): SourceTeam {
   if (value === "team_2" || value === "2팀") return "TEAM_2";
   return "UNKNOWN";
 }
+
+export const POST = withActivity("/api/admin/imports/google-sheets/import", "POST", activityPOST);

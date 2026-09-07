@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { isSameCourse } from "@/lib/data/operationCalculations";
@@ -11,7 +12,7 @@ interface RouteContext {
   }>;
 }
 
-export async function DELETE(_request: Request, { params }: RouteContext) {
+async function activityDELETE(_request: Request, { params }: RouteContext) {
   const session = await requireWorkspaceSession();
   const { operationId } = await params;
   const repository = getOperationRepository();
@@ -48,3 +49,5 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
 
   return NextResponse.json({ ok: true });
 }
+
+export const DELETE = withActivity("/api/operations/[operationId]", "DELETE", activityDELETE);

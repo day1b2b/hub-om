@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { isSameCourse, parseEducationDatesText } from "@/lib/data/operationCalculations";
@@ -23,7 +24,7 @@ interface CreateRoundBody {
   timeText?: unknown;
 }
 
-export async function POST(request: Request, { params }: RouteContext) {
+async function activityPOST(request: Request, { params }: RouteContext) {
   const session = await requireWorkspaceSession();
   const { operationId } = await params;
   const repository = getOperationRepository();
@@ -126,3 +127,5 @@ export async function POST(request: Request, { params }: RouteContext) {
 function textValue(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
+
+export const POST = withActivity("/api/operations/[operationId]/rounds", "POST", activityPOST);

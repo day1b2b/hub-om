@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { authorizeSatisfactionMatching } from "@/lib/auth/satisfactionMatchingAccess";
 import { parseGoogleSpreadsheetUrl, readGoogleSheetRows } from "@/lib/data/googleSheetsImport";
@@ -18,7 +19,7 @@ export const dynamic = "force-dynamic";
  *     ★이미 값이 있는 회차는 건드리지 않는다(사람이 넣은 값 보호).
  *   - 물리 삭제·스키마 변경 없음. 수정 필드는 avgSatisfaction 하나뿐.
  */
-export async function POST(request: Request) {
+async function activityPOST(request: Request) {
   const access = await authorizeSatisfactionMatching();
   if (!access.ok) return access.response;
   const { session } = access;
@@ -100,3 +101,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
+
+export const POST = withActivity("/api/admin/satisfaction/link", "POST", activityPOST);

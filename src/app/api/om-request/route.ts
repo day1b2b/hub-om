@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { addCustomTools, listCustomTools } from "@/lib/data/omRequest/omCustomToolsLocalRepository";
@@ -7,7 +8,7 @@ import type { OmRequestInput } from "@/lib/data/omRequest/omRequestTypes";
 import { extractUnknownTools } from "@/lib/data/omRequest/omToolOptions";
 import { notifyOmRequestCreated } from "@/lib/slack/notifySlack";
 
-export async function POST(request: Request) {
+async function activityPOST(request: Request) {
   try {
     let ldEmail: string | undefined;
     if (process.env.DEV_AUTH_BYPASS === "true" && process.env.NODE_ENV !== "production") {
@@ -79,3 +80,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "저장 실패" }, { status: 500 });
   }
 }
+
+export const POST = withActivity("/api/om-request", "POST", activityPOST);
