@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { extractIssueTagsFromNote } from "@/features/operations/lectureNoteModel";
 import { useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { sumRevenueByCourseId } from "@/lib/data/operationCalculations";
@@ -70,6 +71,11 @@ export function MainDashboard({ operations, teamScope, teamUsers }: MainDashboar
   // "/operations" 총 매출과 같은 기준(코스ID당 1번, 최댓값)으로 집계한다. scopedCourses(과정
   // 단위)만으로는 같은 코스ID가 과정 여러 건에 걸친 경우를 걸러내지 못한다.
   const totalRevenue = sumRevenueByCourseId(scopedOperations);
+
+  const issueTagCounts = topCounts(
+    scopedOperations.flatMap((operation) => extractIssueTagsFromNote(operation.lectureManagementNote)),
+    8
+  );
 
   return (
     <main className="dashboard-shell">
@@ -183,6 +189,13 @@ export function MainDashboard({ operations, teamScope, teamUsers }: MainDashboar
               <span>연간 추이</span>
             </div>
             <MonthlyTrendChart items={monthlyCounts} />
+          </section>
+          <section className="dashboard-panel dashboard-panel-wide">
+            <div className="section-title">
+              <h2>이슈 유형별 발생 빈도</h2>
+              <span>회차별 집계 · 같은 유형은 회차당 1회</span>
+            </div>
+            <BarList items={issueTagCounts} />
           </section>
         </section>
 
