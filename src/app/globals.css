@@ -5015,8 +5015,17 @@ td span {
 }
 
 .satisfaction-analysis-guide ol {
-  margin: 8px 0 0;
+  margin: 0;
   padding-left: 20px;
+}
+
+/* 안쪽 목록은 '설치하기를 누른 뒤 벌어지는 일'이라 바깥 항목에 붙여 둔다. */
+.satisfaction-analysis-guide ol ol {
+  margin-top: 4px;
+}
+
+.satisfaction-analysis-guide li + li {
+  margin-top: 4px;
 }
 
 .satisfaction-analysis-guide code {
@@ -5024,12 +5033,6 @@ td span {
   border-radius: 4px;
   font-size: 12px;
   padding: 1px 5px;
-}
-
-.satisfaction-analysis-note {
-  color: var(--muted);
-  font-size: 12px;
-  margin-top: 12px;
 }
 
 .lecture-note-actions a.satisfaction-analysis-open {
