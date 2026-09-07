@@ -293,9 +293,9 @@ export async function listUpdatedEvents(calendarId: string, updatedMinIso: strin
       });
     }
 
-    if (!payload.nextPageToken) break;
+    if (!payload.nextPageToken) return events;
     pageToken = payload.nextPageToken;
   }
 
-  return events;
+  throw new Error(`events.list 페이지 상한(${MAX_PAGES})에 도달했습니다. 일부 결과를 전체 조회로 처리하지 않습니다.`);
 }
