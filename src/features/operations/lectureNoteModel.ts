@@ -198,18 +198,21 @@ export function mergeTabsWithSameDate(tabs: LectureNoteTab[]): LectureNoteTab[] 
   const merged: LectureNoteTab[] = [];
 
   for (const tab of tabs) {
-    const date = tab.date.trim();
-    const existing = date ? merged.find((candidate) => candidate.date.trim() === date) : undefined;
+    const date = normalizeNoteDate(tab.date);
+    const existing = date ? merged.find((candidate) => candidate.date === date) : undefined;
 
     if (!existing) {
-      merged.push({ ...tab });
+      merged.push({ ...tab, date });
       continue;
     }
 
     existing.courseSummary = joinDistinct(existing.courseSummary, tab.courseSummary);
     existing.staffOpinion = joinDistinct(existing.staffOpinion, tab.staffOpinion);
     existing.issue = joinDistinct(existing.issue, tab.issue);
-    existing.studentCount = existing.studentCount.trim() ? existing.studentCount : tab.studentCount;
+    // 학습 인원은 한 줄 필드다. 서로 다른 원값은 모두 보여 주고, 재복원 시 같은 값은 늘리지 않는다.
+    existing.studentCount = [...new Set(
+      [existing.studentCount, tab.studentCount].flatMap((count) => count.split(" / ").map((part) => part.trim()).filter(Boolean))
+    )].join(" / ");
   }
 
   return merged;

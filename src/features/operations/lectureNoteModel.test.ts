@@ -233,7 +233,7 @@ test("임시 보관본에 같은 날짜 탭이 둘 있으면 글을 잃지 않�
   ];
 
   assert.deepEqual(mergeTabsWithSameDate(tabs), [
-    { ...blankTab("2026-09-01"), courseSummary: "앞\n\n뒤", issue: "이슈", studentCount: "20명" },
+    { ...blankTab("2026-09-01"), courseSummary: "앞\n\n뒤", issue: "이슈", studentCount: "20명 / 21명" },
     blankTab("2026-09-02")
   ]);
 });
@@ -247,4 +247,42 @@ test("날짜 제목 뒤에 다른 글이 붙은 줄은 날짜 제목으로 읽�
     { ...blankTab("2026-09-01"), courseSummary: "[날짜: 2026.9.1] +", issue: "", staffOpinion: "", studentCount: "" }
   ]);
   assert.deepEqual(parseLectureNote(typed, "2026-09-01"), [{ ...blankTab(""), courseSummary: "[날짜: 2026.9.1] +" }]);
+});
+
+test("같은 날짜의 서로 다른 학습 인원은 병합·저장·재복원 후에도 모두 남는다", () => {
+  const a = { ...blankTab("2026-09-01"), studentCount: "20명" };
+  const b = { ...blankTab("2026-09-01"), studentCount: "30명" };
+  const merged = mergeTabsWithSameDate([a, b]);
+  assert.equal(merged[0].studentCount, "20명 / 30명");
+  const loaded = parseLectureNote(composeLectureNote(merged), "2026-09-01");
+  assert.deepEqual(loaded, merged);
+  assert.deepEqual(mergeTabsWithSameDate([...loaded, b, a]), merged);
+});
+
+test("학습 인원이 비었거나 같으면 불필요한 구분자를 추가하지 않는다", () => {
+  const dated = blankTab("2026-09-01");
+  assert.equal(mergeTabsWithSameDate([dated, { ...dated, studentCount: "20명" }, { ...dated, studentCount: "20명" }])[0].studentCount, "20명");
+});
+
+test("옛 보관본의 점·슬래시·한글 날짜는 정규화한 뒤 한 탭으로 복원한다", () => {
+  const tabs = ["2026.9.1", "2026/09/01", "2026년 9월 1일", "2026-09-01"].map((date, index) => ({
+    ...blankTab(date), courseSummary: `메모${index}`
+  }));
+  const merged = mergeTabsWithSameDate(tabs);
+  assert.equal(merged.length, 1);
+  assert.equal(merged[0].date, "2026-09-01");
+  assert.equal(merged[0].courseSummary, "메모0\n\n메모1\n\n메모2\n\n메모3");
+  assert.deepEqual(parseLectureNote(composeLectureNote(merged), "2026-09-01"), merged);
+  assert.deepEqual(mergeTabsWithSameDate(merged), merged);
+  assert.equal(tabs[0].date, "2026.9.1");
+});
+
+test("날짜가 없는 기록끼리는 합치지 않고 잘못된 날짜 제목도 보존한다", () => {
+  const tabs = [
+    { ...blankTab(), courseSummary: "날짜 미상1" },
+    { ...blankTab(), courseSummary: "날짜 미상2" },
+    { ...blankTab("2026.2.30"), courseSummary: "잘못된 날짜" },
+    { ...blankTab("첫날"), courseSummary: "자유 제목" }
+  ];
+  assert.deepEqual(mergeTabsWithSameDate(tabs), tabs);
 });

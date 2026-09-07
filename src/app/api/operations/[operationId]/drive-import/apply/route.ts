@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { NextResponse } from "next/server.js";
+import { readLimitedJson, RequestBodyTooLargeError } from "@/lib/http/readLimitedJson";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { parseEducationDatesText } from "@/lib/data/operationCalculations";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
@@ -63,7 +64,7 @@ type ApplyableField = (typeof APPLYABLE_FIELDS)[number];
 // 상한이 없으면 자동 저장 요청 하나로 아주 큰 본문을 계속 저장시켜 DB와 응답 크기를 부풀릴 수 있다.
 const MAX_TEXT_VALUE_LENGTH = 100_000;
 // 한 요청에 담을 수 있는 patch 수와 본문 전체 크기. 항목당 상한만 있으면 patch를 수백 개 담아 본문을 키울 수 있다.
-// 본문은 request.json()이 통째로 메모리에 올리므로 파싱 전에 Content-Length로 먼저 거른다.
+// 스트림을 읽는 동안 실제 바이트 수를 제한한다.
 const MAX_PATCH_COUNT = 50;
 const MAX_BODY_BYTES = 2_000_000;
 
@@ -82,9 +83,14 @@ interface ApplyPatch {
 export async function POST(request: Request, { params }: RouteContext) {
   const session = await requireWorkspaceSession();
 
-  const declaredBytes = Number(request.headers.get("content-length") ?? "0");
-  if (Number.isFinite(declaredBytes) && declaredBytes > MAX_BODY_BYTES) {
-    return NextResponse.json({ ok: false, error: "요청이 너무 큽니다. 한 번에 저장하는 내용을 줄여 주세요." }, { status: 413 });
+  let body: { patches?: ApplyPatch[] } | null;
+  try {
+    body = await readLimitedJson(request, MAX_BODY_BYTES) as { patches?: ApplyPatch[] } | null;
+  } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
+      return NextResponse.json({ ok: false, error: "요청이 너무 큽니다. 한 번에 저장하는 내용을 줄여 주세요." }, { status: 413 });
+    }
+    return NextResponse.json({ ok: false, error: "요청 본문을 읽을 수 없습니다. 다시 저장해 주세요." }, { status: 400 });
   }
 
   const { operationId } = await params;
@@ -95,8 +101,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     return NextResponse.json({ ok: false, error: "회차를 찾을 수 없습니다. 지워졌거나 주소가 잘못되었습니다." }, { status: 404 });
   }
 
-  const body = (await request.json().catch(() => ({}))) as { patches?: ApplyPatch[] };
-  const patches = Array.isArray(body.patches) ? body.patches : [];
+  const patches = Array.isArray(body?.patches) ? body.patches : [];
   const update: UpdateOperationInput = {};
 
   if (patches.length > MAX_PATCH_COUNT) {
@@ -104,17 +109,17 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
 
   for (const patch of patches) {
-    if (!isApplyableField(patch.field) || typeof patch.value !== "string") continue;
-
-    if (patch.value.length > MAX_TEXT_VALUE_LENGTH) {
-      return NextResponse.json(
-        { ok: false, error: `입력이 너무 깁니다. 한 항목은 ${MAX_TEXT_VALUE_LENGTH.toLocaleString("ko-KR")}자까지 저장할 수 있습니다.` },
-        { status: 413 }
-      );
-    }
+    if (!patch || !isApplyableField(patch.field) || typeof patch.value !== "string") continue;
 
     const currentValue = currentOperationValue(operation, patch.field);
     const nextValue = patch.action === "append" ? appendText(currentValue, patch.value) : patch.value;
+
+    if (patch.value.length > MAX_TEXT_VALUE_LENGTH || nextValue.length > MAX_TEXT_VALUE_LENGTH) {
+      return NextResponse.json(
+        { ok: false, error: `입력이 너무 깁니다. 기존 내용을 포함해 한 항목은 ${MAX_TEXT_VALUE_LENGTH.toLocaleString("ko-KR")}자까지 저장할 수 있습니다.` },
+        { status: 413 }
+      );
+    }
 
     assignUpdateValue(update, patch.field, nextValue);
   }
