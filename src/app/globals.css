@@ -13746,17 +13746,6 @@ button.coach-doc-reserve-chip:disabled {
   padding: 8px 10px;
 }
 
-.round-reorder-note {
-  color: var(--muted);
-  font-size: 12px;
-  margin: 12px 0 0;
-}
-
-.round-reorder-error {
-  color: var(--red);
-  font-size: 13px;
-  margin: 8px 0 0;
-}
 
 
 /* 과정명 되돌리기 화면 */
@@ -13906,4 +13895,16 @@ button.coach-doc-reserve-chip:disabled {
   list-style: none;
   margin: 0;
   padding: 0;
+}
+
+.round-reorder-note {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 12px 0 0;
+}
+
+.round-reorder-error {
+  color: var(--red);
+  font-size: 13px;
+  margin: 8px 0 0;
 }
