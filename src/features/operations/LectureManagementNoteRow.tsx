@@ -8,6 +8,7 @@ import {
   composeLectureNote,
   isDateUsedByOtherTab,
   mergePastedNote,
+  mergeTabsWithSameDate,
   parseLectureNote,
   prepareTabsForSave,
   shouldSplitPastedNote,
@@ -114,11 +115,16 @@ export function LectureManagementNoteRow({
   const [failedAtEditVersion, setFailedAtEditVersion] = useState<number | null>(null);
   const [saveFailure, setSaveFailure] = useState<SaveFailure | null>(null);
   const saveSequenceRef = useRef(0);
+  // 저장 요청이 진행 중인지. saveState는 렌더 시점 값이라 타이머 콜백이나 닫기 처리에서는 한 박자 늦을 수 있어 ref로도 본다.
+  const inFlightRef = useRef(false);
+  // 가장 최근 렌더의 저장 대상 값. 닫기 처리에서 await 뒤에 그동안 입력된 내용이 있는지 확인할 때 쓴다.
+  const latestPendingRef = useRef("");
 
   // operationId 외에는 setState와 ref만 쓰므로 참조가 바뀌지 않는다. 효과(effect) 의존성에 그대로 넣을 수 있다.
   const persist = useCallback(
     async (noteValue: string, editVersionAtRequest: number): Promise<boolean> => {
       const sequence = ++saveSequenceRef.current;
+      inFlightRef.current = true;
       setSaveState("saving");
 
       const patches = [{ field: "lectureManagementNote", action: "replace" as const, value: noteValue }];
@@ -139,6 +145,8 @@ export function LectureManagementNoteRow({
 
       // 더 최신 저장 요청이 이미 나갔으면 이 결과로 화면 상태를 덮어쓰지 않는다.
       if (sequence !== saveSequenceRef.current) return failure === null;
+
+      inFlightRef.current = false;
 
       if (failure) {
         setSaveFailure(failure);
@@ -164,6 +172,10 @@ export function LectureManagementNoteRow({
   const pendingValue = composeCurrentValue(editedMode);
   const hasUnsavedEdit = editVersion > 0 && pendingValue !== lastSavedValue;
 
+  useEffect(() => {
+    latestPendingRef.current = pendingValue;
+  }, [pendingValue]);
+
   // 저장 요청은 한 번에 하나만 보낸다. 앞 요청이 진행 중일 때 새 요청을 겹쳐 보내면 서버에 옛 값이 나중에
   // 도착해 최신 입력을 덮어쓸 수 있고, 화면은 최신 값이 저장된 줄 알고 임시 보관본까지 지운다.
   // 앞 요청이 끝나면 saveState가 바뀌어 이 효과가 다시 돌고, 그때 남은 변경을 이어서 저장한다.
@@ -173,6 +185,7 @@ export function LectureManagementNoteRow({
     if (saveState === "failed" && failedAtEditVersion === editVersion) return;
 
     const timer = window.setTimeout(() => {
+      if (inFlightRef.current) return;
       void persist(pendingValue, editVersion);
     }, AUTOSAVE_DELAY_MS);
 
@@ -187,6 +200,7 @@ export function LectureManagementNoteRow({
 
     const delay = Math.min(RETRY_BASE_DELAY_MS * 2 ** Math.max(0, retryCount - 1), RETRY_MAX_DELAY_MS);
     const timer = window.setTimeout(() => {
+      if (inFlightRef.current) return;
       void persist(pendingValue, editVersion);
     }, delay);
 
@@ -419,7 +433,9 @@ export function LectureManagementNoteRow({
   function restoreDraft() {
     if (!recoverableDraft) return;
 
-    setTabs(recoverableDraft.tabs.length > 0 ? recoverableDraft.tabs : [blankTab(startDate)]);
+    // 날짜 겹침을 막는 규칙이 생기기 전 보관본에는 같은 날짜 탭이 둘 있을 수 있어 복원할 때 합친다.
+    const restoredTabs = mergeTabsWithSameDate(recoverableDraft.tabs);
+    setTabs(restoredTabs.length > 0 ? restoredTabs : [blankTab(startDate)]);
     setActiveTabIndex(0);
     setLinkDraft(recoverableDraft.linkDraft);
     setMode(recoverableDraft.mode);
@@ -439,16 +455,23 @@ export function LectureManagementNoteRow({
   }
 
   async function closeDialog() {
-    if (saveState === "saving") return;
+    if (inFlightRef.current) return;
 
     // 서버가 거절한 요청은 닫을 때 다시 보내도 결과가 같아 창이 영영 닫히지 않는다. 그 뒤 편집이 없었다면
     // 내용은 이미 브라우저 임시 보관본에 있으므로 다시 보내지 않고 닫는다(다음에 열 때 복원을 묻는다).
     const rejectedWithoutEdit = saveState === "failed" && saveFailure?.kind === "rejected" && failedAtEditVersion === editVersion;
 
     if (hasUnsavedEdit && !rejectedWithoutEdit) {
-      const saved = await persist(pendingValue, editVersion);
-      // 저장에 실패하면 입력 내용을 잃지 않도록 창을 닫지 않는다.
-      if (!saved) return;
+      // 저장하는 동안에도 창은 열려 있어 입력이 이어질 수 있다. 저장이 끝난 뒤 그동안 바뀐 내용이 있으면
+      // 그것까지 저장하고 닫는다. 그렇지 않으면 화면은 저장됐다고 하는데 서버에는 마지막 입력이 빠진다.
+      let target = pendingValue;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const saved = await persist(target, editVersion);
+        // 저장에 실패하면 입력 내용을 잃지 않도록 창을 닫지 않는다.
+        if (!saved) return;
+        if (latestPendingRef.current === target) break;
+        target = latestPendingRef.current;
+      }
     }
 
     setIsOpen(false);

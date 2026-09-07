@@ -92,7 +92,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   const operation = await repository.getOperationById(operationId);
 
   if (!operation) {
-    return NextResponse.json({ ok: false, error: "Operation not found." }, { status: 404 });
+    return NextResponse.json({ ok: false, error: "회차를 찾을 수 없습니다. 지워졌거나 주소가 잘못되었습니다." }, { status: 404 });
   }
 
   const body = (await request.json().catch(() => ({}))) as { patches?: ApplyPatch[] };
@@ -120,7 +120,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   }
 
   if (Object.keys(update).length === 0) {
-    return NextResponse.json({ ok: false, error: "No supported fields selected." }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "저장할 수 있는 항목이 없습니다." }, { status: 400 });
   }
 
   // 누가 고쳤는지 남긴다. 삭제(deletedBy)는 이미 기록하는데 수정만 빠져 있었다.

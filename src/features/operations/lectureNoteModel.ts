@@ -176,7 +176,49 @@ export function normalizeNoteDate(raw: string): string {
   if (!match) return trimmed;
 
   const [, year, month, day] = match;
-  return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+  const iso = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+
+  // "2026-02-30"처럼 달력에 없는 날은 날짜 입력칸이 빈 칸으로 보여 운영자가 고칠 수 없다. 적힌 대로 두어 탭 제목으로만 남긴다.
+  return isCalendarDate(iso) ? iso : trimmed;
+}
+
+function isCalendarDate(iso: string): boolean {
+  const [year, month, day] = iso.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year && date.getUTCMonth() + 1 === month && date.getUTCDate() === day;
+}
+
+/**
+ * 같은 날짜 탭이 둘 이상이면 하나로 합친다. 날짜 입력칸은 겹치는 날짜를 막지만, 그 규칙이 생기기 전에 브라우저에
+ * 남은 임시 보관본에는 같은 날짜 탭이 들어 있을 수 있다. 두 탭에 다 글이 있으면 잃지 않도록 이어 붙인다.
+ */
+export function mergeTabsWithSameDate(tabs: LectureNoteTab[]): LectureNoteTab[] {
+  const merged: LectureNoteTab[] = [];
+
+  for (const tab of tabs) {
+    const date = tab.date.trim();
+    const existing = date ? merged.find((candidate) => candidate.date.trim() === date) : undefined;
+
+    if (!existing) {
+      merged.push({ ...tab });
+      continue;
+    }
+
+    existing.courseSummary = joinDistinct(existing.courseSummary, tab.courseSummary);
+    existing.staffOpinion = joinDistinct(existing.staffOpinion, tab.staffOpinion);
+    existing.issue = joinDistinct(existing.issue, tab.issue);
+    existing.studentCount = existing.studentCount.trim() ? existing.studentCount : tab.studentCount;
+  }
+
+  return merged;
+}
+
+function joinDistinct(first: string, second: string): string {
+  const a = first.trim();
+  const b = second.trim();
+  if (!a) return b;
+  if (!b || a === b) return a;
+  return `${a}\n\n${b}`;
 }
 
 function addDays(isoDate: string, days: number): string {

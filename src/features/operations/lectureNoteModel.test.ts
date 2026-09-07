@@ -6,6 +6,7 @@ import {
   composeLectureNote,
   isDateUsedByOtherTab,
   mergePastedNote,
+  mergeTabsWithSameDate,
   normalizeNoteDate,
   parseLectureNote,
   parseLectureNoteBody,
@@ -216,4 +217,23 @@ test("날짜 제목의 표기가 달라도 같은 날로 읽어 탭이 두 개 �
 
   const merged = mergePastedNote([{ ...blankTab("2026-09-01"), issue: "기존 이슈" }], 0, "[날짜: 2026.9.1]\n[강의 요약]\n요약");
   assert.deepEqual(merged, [{ ...blankTab("2026-09-01"), courseSummary: "요약", issue: "기존 이슈" }]);
+});
+
+test("달력에 없는 날짜는 yyyy-mm-dd로 바꾸지 않고 적힌 대로 둔다", () => {
+  assert.equal(normalizeNoteDate("2026-02-30"), "2026-02-30");
+  assert.equal(normalizeNoteDate("2026.13.45"), "2026.13.45");
+  assert.equal(normalizeNoteDate("2028-02-29"), "2028-02-29");
+});
+
+test("임시 보관본에 같은 날짜 탭이 둘 있으면 글을 잃지 않고 하나로 합친다", () => {
+  const tabs = [
+    { ...blankTab("2026-09-01"), courseSummary: "앞", studentCount: "20명" },
+    blankTab("2026-09-02"),
+    { ...blankTab("2026-09-01"), courseSummary: "뒤", issue: "이슈", studentCount: "21명" }
+  ];
+
+  assert.deepEqual(mergeTabsWithSameDate(tabs), [
+    { ...blankTab("2026-09-01"), courseSummary: "앞\n\n뒤", issue: "이슈", studentCount: "20명" },
+    blankTab("2026-09-02")
+  ]);
 });
