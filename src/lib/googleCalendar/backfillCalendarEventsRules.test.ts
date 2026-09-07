@@ -68,6 +68,22 @@ test("매핑이 없는 예정 회차는 교육일 구간마다 이벤트를 계�
   );
 });
 
+test("교육일이 없는 회차는 소급에서 제외한다(기간 통블록 방지)", () => {
+  const plan = planCalendarBackfill({
+    // endDate는 미래라 날짜 기준엔 들지만, 교육일이 비어 기간 통블록이 될 회차
+    operations: [operationFixture({ educationDates: [] })],
+    mappedDatesByOperation: new Map(),
+    users: [user()],
+    from: "2026-09-07",
+    resolveCalendarId,
+    writableCalendarIds: null
+  });
+
+  assert.equal(plan.inScope, 1);
+  assert.equal(plan.excludedNoEducationDates, 1);
+  assert.equal(plan.items.length, 0);
+});
+
 test("이미 매핑된 교육일은 빼고 빠진 날짜만 계획한다(부분 소급·재실행 안전)", () => {
   const plan = planCalendarBackfill({
     operations: [operationFixture()],
