@@ -10,8 +10,8 @@ import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { listTeamUsers } from "@/lib/data/teamUsers/teamUserRepository";
 import { getSeoulToday } from "@/lib/seoulDate";
 import { isCalendarWriteEnabled, listPartCalendars, resolvePartCalendarId } from "./calendarWriteConfig";
-import { insertEvent, readCalendarAccessRole } from "./calendarWriteClient";
-import { listAllCalendarEventLinks, saveCalendarEventLink } from "./calendarEventLinkRepository";
+import { deleteEvent, insertEvent, readCalendarAccessRole } from "./calendarWriteClient";
+import { listAllCalendarEventLinks, saveCalendarEventLink, listCalendarEventLinks, deleteCalendarEventLinks } from "./calendarEventLinkRepository";
 import { planCalendarBackfill, type BackfillPlanItem } from "./backfillCalendarEventsRules";
 
 /** 한 번의 apply에서 만들 이벤트 수 상한 기본값. 실수로 대량 생성되는 것을 막는 안전선. */
@@ -306,4 +306,84 @@ export async function backfillMissingCalendarEvents(
     },
     outcomes
   };
+}
+
+export interface BackfillCleanupOutcome {
+  operationId: string;
+  deletedEvents: number;
+  result: "deleted" | "failed";
+  detail?: string;
+}
+
+export interface BackfillCleanupResult {
+  ok: boolean;
+  enabled: boolean;
+  notifyAttendees: boolean;
+  requestedOperations: number;
+  deletedEvents: number;
+  failedOperations: number;
+  outcomes: BackfillCleanupOutcome[];
+  warning?: string;
+}
+
+/**
+ * 소급으로 만든 이벤트를 되돌린다(정리용). **명시한 회차(operationId)만** 지운다 —
+ * 전체 삭제는 없다. 회차별로 매핑된 이벤트를 모두 지우고 매핑도 함께 정리한다.
+ * 기본은 메일 억제(취소 통지 없음) — 조용히 만든 것을 조용히 되돌린다.
+ *
+ * 예: 규칙을 바꾸기 전에 만들어진 부적절한 이벤트(교육일 없는 기간 통블록 등)를 걷어낼 때.
+ * 주의: 매핑을 모두 지우면 수정 시 정방향 반영이 건너뛴다. 자동 복구를 보장하지 않는다.
+ */
+export async function deleteBackfilledCalendarEvents(
+  operationIds: string[],
+  options?: { notifyAttendees?: boolean }
+): Promise<BackfillCleanupResult> {
+  const notifyAttendees = options?.notifyAttendees === true;
+  const requested = [...new Set(operationIds.map((id) => id.trim()).filter(Boolean))];
+
+  const base: BackfillCleanupResult = {
+    ok: true,
+    enabled: true,
+    notifyAttendees,
+    requestedOperations: requested.length,
+    deletedEvents: 0,
+    failedOperations: 0,
+    outcomes: []
+  };
+
+  if (!isCalendarWriteEnabled()) {
+    return { ...base, enabled: false, warning: "구글 캘린더 연동이 꺼져 있습니다(GOOGLE_CAL_OAUTH_*·GOOGLE_CAL_PART_CALENDARS 확인)." };
+  }
+
+  const outcomes: BackfillCleanupOutcome[] = [];
+  let deletedEvents = 0;
+  let failedOperations = 0;
+
+  for (const operationId of requested) {
+    const links = await listCalendarEventLinks(operationId);
+    if (links.length === 0) {
+      outcomes.push({ operationId, deletedEvents: 0, result: "deleted", detail: "매핑된 이벤트 없음" });
+      continue;
+    }
+
+    try {
+      for (const link of links) {
+        await deleteEvent(link.calendarId, link.eventId, { notifyAttendees });
+        deletedEvents += 1;
+      }
+      await deleteCalendarEventLinks(operationId);
+      outcomes.push({ operationId, deletedEvents: links.length, result: "deleted" });
+    } catch (error) {
+      failedOperations += 1;
+      const detail = error instanceof Error ? error.message : String(error);
+      outcomes.push({ operationId, deletedEvents: 0, result: "failed", detail });
+      console.error(`[gcal-backfill] ${operationId} 소급 이벤트 정리 실패:`, detail);
+    }
+  }
+
+  console.info(
+    `[gcal-backfill] 소급 정리: ${deletedEvents}건 삭제, ${failedOperations}건 실패, 메일=${notifyAttendees ? "발송" : "억제"}`
+  );
+
+  return { ...base, ok: failedOperations === 0, deletedEvents, failedOperations, outcomes };
 }
