@@ -49,27 +49,40 @@ function splitDateBlocks(value: string): { date: string; body: string }[] {
   return leading ? [{ body: leading, date: "" }, ...blocks] : blocks;
 }
 
-export function parseLectureNoteBody(value: string): LectureNoteDraft {
-  const studentCountMatch = value.match(/학습\s*인원\s*[:：]\s*(.*)/);
-  const studentCount = studentCountMatch ? studentCountMatch[1].trim() : "";
-  const courseSummary = extractSection(value, COURSE_SUMMARY_MARKER, [STAFF_OPINION_MARKER, ISSUE_MARKER]);
-  const staffOpinion = extractSection(value, STAFF_OPINION_MARKER, [ISSUE_MARKER]);
-  const issue = extractSection(value, ISSUE_MARKER, []);
+const STUDENT_COUNT_LINE_PATTERN = /^[^\S\n]*학습\s*인원\s*[:：][^\S\n]*(.*)$/m;
 
-  if (!studentCount && !courseSummary && !staffOpinion && !issue && value.trim()) {
-    return { courseSummary: value.trim(), issue: "", staffOpinion: "", studentCount: "" };
-  }
+/**
+ * 한 날짜 블록의 본문을 네 칸으로 나눈다. 칸 제목 앞에 적힌 글(옛 자유 메모, 학습 인원 줄 뒤의 메모)은
+ * 버리지 않고 강의 요약 앞에 붙인다. 버리면 저장할 때 그 글이 사라진다.
+ */
+export function parseLectureNoteBody(value: string): LectureNoteDraft {
+  const firstMarkerIndex = [COURSE_SUMMARY_MARKER, STAFF_OPINION_MARKER, ISSUE_MARKER]
+    .map((marker) => value.indexOf(marker))
+    .filter((index) => index !== -1)
+    .sort((a, b) => a - b)[0];
+  const preamble = firstMarkerIndex === undefined ? value : value.slice(0, firstMarkerIndex);
+
+  const studentCountMatch = preamble.match(STUDENT_COUNT_LINE_PATTERN);
+  const studentCount = studentCountMatch ? studentCountMatch[1].trim() : "";
+  const leadingText = (studentCountMatch ? preamble.replace(studentCountMatch[0], "") : preamble).trim();
+
+  const summarySection = extractSection(value, COURSE_SUMMARY_MARKER);
+  const courseSummary = [leadingText, summarySection].filter(Boolean).join("\n\n");
+  const staffOpinion = extractSection(value, STAFF_OPINION_MARKER);
+  const issue = extractSection(value, ISSUE_MARKER);
 
   return { courseSummary, issue, staffOpinion, studentCount };
 }
 
-function extractSection(value: string, marker: string, followingMarkers: string[]): string {
+/** 칸 제목 뒤부터 다음 칸 제목 앞까지. 칸 순서가 뒤바뀐 글이라도 다른 칸의 글이 섞여 들어오지 않게 모든 제목에서 끊는다. */
+function extractSection(value: string, marker: string): string {
   const startIndex = value.indexOf(marker);
   if (startIndex === -1) return "";
 
   const afterMarker = value.slice(startIndex + marker.length);
-  const endIndex = followingMarkers
-    .map((followingMarker) => afterMarker.indexOf(followingMarker))
+  const endIndex = [COURSE_SUMMARY_MARKER, STAFF_OPINION_MARKER, ISSUE_MARKER]
+    .filter((other) => other !== marker)
+    .map((other) => afterMarker.indexOf(other))
     .filter((index) => index !== -1)
     .sort((a, b) => a - b)[0];
 

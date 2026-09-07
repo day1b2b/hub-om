@@ -7,6 +7,7 @@ import {
   isDateUsedByOtherTab,
   mergePastedNote,
   parseLectureNote,
+  parseLectureNoteBody,
   prepareTabsForSave,
   shouldSplitPastedNote,
   suggestNextLectureDate
@@ -158,4 +159,48 @@ test("붙여넣기 분리가 필요한 글인지 판단한다", () => {
   assert.equal(shouldSplitPastedNote("그냥 메모"), false);
   assert.equal(shouldSplitPastedNote("[강의 요약]\n요약"), true);
   assert.equal(shouldSplitPastedNote("[날짜: 2026-09-01]\n메모"), true);
+});
+
+test("칸 제목 앞에 적힌 글은 버리지 않고 강의 요약 앞에 붙인다", () => {
+  // 날짜 표기 이전의 옛 기록은 "학습 인원: 20명" 줄 뒤에 자유 메모가 이어지기도 했다. 저장할 때 그 메모가 사라지면 안 된다.
+  assert.deepEqual(parseLectureNoteBody("학습 인원: 20명\n오전은 이론, 오후는 실습"), {
+    courseSummary: "오전은 이론, 오후는 실습",
+    issue: "",
+    staffOpinion: "",
+    studentCount: "20명"
+  });
+
+  assert.deepEqual(parseLectureNoteBody("메모\n[강의 요약]\n요약"), {
+    courseSummary: "메모\n\n요약",
+    issue: "",
+    staffOpinion: "",
+    studentCount: ""
+  });
+});
+
+test("칸 제목이 없는 글은 통째로 강의 요약이 된다", () => {
+  assert.deepEqual(parseLectureNoteBody("  그냥 메모  "), { courseSummary: "그냥 메모", issue: "", staffOpinion: "", studentCount: "" });
+  assert.deepEqual(parseLectureNoteBody(""), { courseSummary: "", issue: "", staffOpinion: "", studentCount: "" });
+});
+
+test("칸 제목이 뒤바뀐 글도 다른 칸의 글이 섞여 두 번 저장되지 않는다", () => {
+  const parsed = parseLectureNoteBody("[이슈]\n프로젠터 지연\n[강의 요약]\n요약\n[운영진 의견]\n의견");
+
+  assert.deepEqual(parsed, { courseSummary: "요약", issue: "프로젠터 지연", staffOpinion: "의견", studentCount: "" });
+});
+
+test("학습 인원 줄은 칸 제목 앞에서만 읽고 본문 안의 같은 표현은 요약에 그대로 둔다", () => {
+  const parsed = parseLectureNoteBody("[강의 요약]\n학습 인원: 30명 참석, 오전 이론");
+
+  assert.deepEqual(parsed, { courseSummary: "학습 인원: 30명 참석, 오전 이론", issue: "", staffOpinion: "", studentCount: "" });
+});
+
+test("저장 형식 그대로 다시 읽으면 칸 내용이 늘거나 줄지 않는다", () => {
+  const tabs = [
+    { ...blankTab("2026-09-01"), courseSummary: "1일차\n\n둘째 줄", issue: "이슈", staffOpinion: "의견", studentCount: "27명" }
+  ];
+
+  const roundTripped = parseLectureNote(composeLectureNote(tabs), "2026-09-01");
+  assert.deepEqual(roundTripped, tabs);
+  assert.equal(composeLectureNote(roundTripped), composeLectureNote(tabs));
 });

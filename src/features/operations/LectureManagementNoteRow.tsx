@@ -120,15 +120,18 @@ export function LectureManagementNoteRow({
   const pendingValue = composeCurrentValue(editedMode);
   const hasUnsavedEdit = editVersion > 0 && pendingValue !== lastSavedValue;
 
+  // 저장 요청은 한 번에 하나만 보낸다. 앞 요청이 진행 중일 때 새 요청을 겹쳐 보내면 서버에 옛 값이 나중에
+  // 도착해 최신 입력을 덮어쓸 수 있고, 화면은 최신 값이 저장된 줄 알고 임시 보관본까지 지운다.
+  // 앞 요청이 끝나면 saveState가 바뀌어 이 효과가 다시 돌고, 그때 남은 변경을 이어서 저장한다.
   useEffect(() => {
-    if (!isOpen || !hasUnsavedEdit) return;
+    if (!isOpen || !hasUnsavedEdit || saveState === "saving") return;
 
     const timer = window.setTimeout(() => {
       void persist(pendingValue);
     }, AUTOSAVE_DELAY_MS);
 
     return () => window.clearTimeout(timer);
-  }, [isOpen, hasUnsavedEdit, pendingValue, editVersion, persist]);
+  }, [isOpen, hasUnsavedEdit, pendingValue, editVersion, saveState, persist]);
 
   // 저장에 실패한 동안에만 간격을 늘려 가며 다시 시도한다. 평소에는 아무 요청도 보내지 않는다.
   useEffect(() => {
