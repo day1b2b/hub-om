@@ -6,9 +6,11 @@ let links: CalendarEventLink[] = [];
 let unresolvedNames: string[] = [];
 let deleteFailure = "";
 let creates = 0;
+let exists = true;
 const removed: string[] = [];
 const patched: Record<string, unknown>[] = [];
 const notifications: boolean[] = [];
+mock.module("@/lib/data/operationRepositoryFactory", { namedExports: { getOperationRepository: () => ({ getOperationById: async () => exists ? operation : null }) } });
 mock.module("./calendarOperationLock", { namedExports: { calendarLockSignal: () => undefined, withCalendarOperationLock: async (_id: string, run: () => Promise<unknown>) => run() } });
 mock.module("./calendarWriteConfig", { namedExports: { isCalendarWriteEnabled: () => true, resolvePartCalendarId: () => "cal" } });
 mock.module("./calendarParticipants", { namedExports: { resolveCalendarTargets: async () => ({ partKey: "1파트", attendeeEmails: [], unresolvedNames }) } });
@@ -28,7 +30,7 @@ mock.module("./calendarEventLinkRepository", { namedExports: {
 const { reflectOperationCreated, reflectOperationUpdated, reflectOperationDelete } = await import("./reflectOperationToCalendar");
 const operation = { operationId: "fixture" } as OperationSession;
 const first = { operationId: "fixture", calendarId: "cal", eventId: "first", eventDate: "2026-09-07" };
-beforeEach(() => { creates = 0; links = [first]; unresolvedNames = []; deleteFailure = ""; removed.length = 0; patched.length = 0; notifications.length = 0; });
+beforeEach(() => { exists = true; creates = 0; links = [first]; unresolvedNames = []; deleteFailure = ""; removed.length = 0; patched.length = 0; notifications.length = 0; });
 test("장소와 담당자를 비우면 Google PATCH에도 빈 값을 전달한다", async () => {
   await reflectOperationUpdated(operation);
   assert.equal(patched[0].location, ""); assert.deepEqual(patched[0].attendees, []);
@@ -53,4 +55,8 @@ test("매핑 없는 신규 회차는 잠금 도입 후에도 생성된다", asyn
 test("역반영 직후 원본 이벤트는 다시 덮어쓰지 않는다", async () => {
   await reflectOperationUpdated(operation, "first");
   assert.equal(patched.length, 0); assert.equal(creates, 0); assert.equal(removed.length, 0);
+});
+
+test("생성 후 삭제된 회차를 오래된 객체로 다시 생성하지 않는다", async () => {
+  exists = false; links = []; await reflectOperationCreated(operation); assert.equal(creates, 0);
 });

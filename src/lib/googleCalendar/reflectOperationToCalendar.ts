@@ -1,3 +1,4 @@
+import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { withCalendarOperationLock } from "./calendarOperationLock";
 // 운영현황 변경을 구글 캘린더에 반영한다(hub-om → 구글).
 //
@@ -126,7 +127,12 @@ async function reflectOperationUnlocked(operation: OperationSession, trigger: Re
 
 async function reflectOperation(operation: OperationSession, trigger: ReflectTrigger, skipEventId?: string): Promise<void> {
   try {
-    await withCalendarOperationLock(operation.operationId, () => reflectOperationUnlocked(operation, trigger, skipEventId));
+    await withCalendarOperationLock(operation.operationId, async () => {
+      if (!isCalendarWriteEnabled()) return;
+      const current = await getOperationRepository().getOperationById(operation.operationId);
+      if (!current) return; // 생성 직후 취소·삭제된 회차를 오래된 객체로 되살리지 않는다.
+      await reflectOperationUnlocked(current, trigger, skipEventId);
+    });
   } catch (error) {
     console.error(`[gcal] ${operation.operationId} 반영 잠금 실패:`, error);
   }
