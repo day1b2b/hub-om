@@ -119,11 +119,10 @@
 정방향 반영은 **"운영 생성" 때만** 이벤트를 만든다(`reflectOperation`의 `if (existing.length === 0 && trigger === "updated") return;`). 그래서 **캘린더 쓰기 기능이 켜지기 전에 등록된 회차는 구글에 생성된 적이 없고**, 이후 수정해도 소급 생성되지 않는다. `refresh-events`는 이미 매핑된 이벤트의 제목·설명만 patch하므로 없는 이벤트를 만들지 못한다. 이 빈틈을 메우는 도구가 `GET/POST /api/admin/calendar/backfill-events`다.
 
 - **동작:** 매핑(`calendar_event_link`)이 없는 교육일만 골라 **정방향과 같은 `buildCalendarEventBodies`로 `events.insert`**한다. 날짜 단위로 빠진 것만 채우므로 재실행·부분 소급에도 중복이 없다.
-- **교육일 있는 회차만(2026-09-07 결정):** 교육일(세부 날짜)이 등록되지 않은 회차는 소급 대상에서 **제외**한다. 정방향은 교육일 없는 회차를 `시작일~종료일` 기간 이벤트 1건으로 만드는데, 연간·상시형·위탁처럼 기간이 길면 캘린더에 **1년짜리 통블록**이 깔려 쓸모가 없다(실측: KB국민은행 2025-12-18~2026-12-30). 소급은 교육일이 실제로 있는 회차만 만든다(제외 수는 `totals.excludedNoEducationDates`). **정방향 반영은 종전대로** 기간 이벤트를 만든다 — 이 규칙은 과거 일괄 소급에만 적용.
+- **교육일 있는 회차만(2026-09-07 결정):** 교육일(세부 날짜)이 등록되지 않은 회차는 소급 대상에서 **제외**한다. 정방향은 교육일 없는 회차를 `시작일~종료일` 기간 이벤트 1건으로 만드는데, 연간·상시형·위탁처럼 기간이 길면 캘린더에 **1년짜리 통블록**이 깔려 쓸모가 없다. 소급은 교육일이 실제로 있는 회차만 만든다(제외 수는 `totals.excludedNoEducationDates`). **정방향 반영은 종전대로** 기간 이벤트를 만든다 — 이 규칙은 과거 일괄 소급에만 적용.
 - **GET = 미리보기(쓰기 없음):** 무엇이 몇 건 빠졌는지 파트별로 세고, **파트 캘린더별 쓰기 권한(`accessRole`)을 함께 진단**한다(`users/me/calendarList.get`). "2파트가 통째로 비는" 원인이 ①쓰기 권한(ACL) 미공유(`accessRole`=reader)인지 ②담당 OM 팀 표기가 `extractPartKey`로 파트를 못 뽑는지(→ `skipped`, `partKey=null`) ③그냥 도입 전 생성인지를 데이터로 가른다. (2026-09-07 실측 결론: 세 파트 모두 `accessRole=owner`라 ①제외, 2파트 예정건이 전부 `partKey=2파트`로 정상 해석돼 ②제외 → **③ 순수 미생성**.)
 - **POST = 적용:** 보수적 기본값 — **예정(오늘 KST 이후에 끝나는) 회차만**, **초대 메일 억제**(`insertEvent`에 `notifyAttendees=false` → `sendUpdates=none`, 참석자 캘린더엔 뜨되 메일 폭탄은 막음), **이벤트 상한**(기본 100, 회차 사이에서만 끊어 회차가 반쪽 나지 않게). 쓰기 불가 캘린더는 건너뛴다.
-- **DELETE = 정리:** 소급으로 만든 이벤트를 되돌린다. `?operationIds=`로 **명시한 회차만** 지운다(전체 삭제 없음). `deleteEvent`도 `notifyAttendees=false`로 취소 메일을 억제한다 — 조용히 만든 것을 조용히 되돌린다. 규칙 바꾸기 전에 만들어진 부적절한 이벤트(통블록 등)를 걷어낼 때.
-- **파라미터:** `from`(YYYY-MM-DD 기준일, 미지정=오늘 KST, `all`=전체 기간) · `limit`(POST 상한) · `notify=true`(POST·DELETE 메일) · `operationIds`(DELETE 대상). 경로는 `SYNC_API_PATHS`에 등록.
+- **파라미터:** `from`(YYYY-MM-DD 기준일, 미지정=오늘 KST, `all`=전체 기간) · `limit`(POST 상한) · `notify=true`(POST 메일). 경로는 `SYNC_API_PATHS`에 등록.
 - **주의:** insert·메일은 되돌리기 어렵다. **반드시 GET으로 먼저 확인**하고, 실제 적용 범위·메일 여부는 운영자(유진님)가 결정한 뒤 POST한다.
 
 ---
@@ -224,3 +223,5 @@ D6/D7로 새로 생긴 경로. **날짜·시간만** 운영현황에 되돌린�
 - 담당 OM/이메일·파트 매핑 재사용: OM 슬랙 알림 기능(env `SLACK_OM_REQUEST_*`), `TeamUser`.
 - 이전 타당성 검토: 서비스계정 초대 불가(DWD 필요) → B2B OAuth 채택으로 회피.
 - 배포 흐름: feature 브랜치 → dev PR → 머지 → dev→main 승격 PR → Coolify(자동배포 webhook).
+
+소급 이벤트 삭제 기능은 생성 출처 확인·개별 이벤트 지정·부분 실패 및 동시 실행 검증을 보완하는 별도 PR로 분리한다. 현재 이 경로는 DELETE를 제공하지 않는다.
