@@ -23,6 +23,8 @@ import {
 const CALENDAR_RELEVANT_FIELDS: Array<keyof UpdateOperationInput> = [
   "startDate",
   "endDate",
+  "educationDates",
+  "instructors",
   "timeText",
   "region",
   "om",
@@ -38,7 +40,11 @@ function touchesCalendar(input: UpdateOperationInput): boolean {
 }
 
 export class CalendarReflectingOperationRepository implements OperationRepository {
-  constructor(private readonly inner: OperationRepository) {}
+  private readonly inner: OperationRepository;
+
+  constructor(inner: OperationRepository) {
+    this.inner = inner;
+  }
 
   listOperations(): Promise<OperationSession[]> {
     return this.inner.listOperations();
