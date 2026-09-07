@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isNavigableHref, toHref } from "@/lib/links";
 import {
@@ -73,6 +73,48 @@ export function LectureManagementNoteRow({
   const [recoverableDraft, setRecoverableDraft] = useState<StoredDraft | null>(null);
   const [dateError, setDateError] = useState<string | null>(null);
   const saveSequenceRef = useRef(0);
+
+  // operationId 외에는 setState와 ref만 쓰므로 참조가 바뀌지 않는다. 효과(effect) 의존성에 그대로 넣을 수 있다.
+  const persist = useCallback(
+    async (noteValue: string): Promise<boolean> => {
+      const sequence = ++saveSequenceRef.current;
+      setSaveState("saving");
+
+      const patches = [{ field: "lectureManagementNote", action: "replace" as const, value: noteValue }];
+      let ok = false;
+
+      try {
+        const response = await fetch(`/api/operations/${encodeURIComponent(operationId)}/drive-import/apply`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json"
+          },
+          body: JSON.stringify({ patches })
+        });
+        const payload = (await response.json().catch(() => ({}))) as { ok?: boolean };
+        ok = response.ok && Boolean(payload.ok);
+      } catch {
+        ok = false;
+      }
+
+      // 더 최신 저장 요청이 이미 나갔으면 이 결과로 화면 상태를 덮어쓰지 않는다.
+      if (sequence !== saveSequenceRef.current) return ok;
+
+      if (!ok) {
+        setSaveState("failed");
+        setRetryCount((current) => current + 1);
+        return false;
+      }
+
+      setLastSavedValue(noteValue);
+      setSavedAt(new Date());
+      setSaveState("saved");
+      setRetryCount(0);
+      return true;
+    },
+    [operationId]
+  );
+
   const activeTab = tabs[activeTabIndex] ?? blankTab();
   const hasHref = isNavigableHref(value);
   const pendingValue = composeCurrentValue(editedMode);
@@ -86,9 +128,7 @@ export function LectureManagementNoteRow({
     }, AUTOSAVE_DELAY_MS);
 
     return () => window.clearTimeout(timer);
-    // persist는 렌더마다 새로 만들어지므로 의존성에서 제외한다. 값이 바뀔 때만 타이머를 다시 잡는다.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, hasUnsavedEdit, pendingValue, editVersion]);
+  }, [isOpen, hasUnsavedEdit, pendingValue, editVersion, persist]);
 
   // 저장에 실패한 동안에만 간격을 늘려 가며 다시 시도한다. 평소에는 아무 요청도 보내지 않는다.
   useEffect(() => {
@@ -100,8 +140,7 @@ export function LectureManagementNoteRow({
     }, delay);
 
     return () => window.clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, saveState, hasUnsavedEdit, pendingValue, retryCount]);
+  }, [isOpen, saveState, hasUnsavedEdit, pendingValue, retryCount, persist]);
 
   // 편집 중인 내용은 브라우저에도 보관하고, 서버 저장이 끝나면 지운다.
   useEffect(() => {
@@ -436,43 +475,6 @@ export function LectureManagementNoteRow({
     setTabs((current) => mergePastedNote(current, activeTabIndex, pasted));
     setDateError(null);
     markEdited();
-  }
-
-  async function persist(noteValue: string): Promise<boolean> {
-    const sequence = ++saveSequenceRef.current;
-    setSaveState("saving");
-
-    const patches = [{ field: "lectureManagementNote", action: "replace" as const, value: noteValue }];
-    let ok = false;
-
-    try {
-      const response = await fetch(`/api/operations/${encodeURIComponent(operationId)}/drive-import/apply`, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json"
-        },
-        body: JSON.stringify({ patches })
-      });
-      const payload = (await response.json().catch(() => ({}))) as { ok?: boolean };
-      ok = response.ok && Boolean(payload.ok);
-    } catch {
-      ok = false;
-    }
-
-    // 더 최신 저장 요청이 이미 나갔으면 이 결과로 화면 상태를 덮어쓰지 않는다.
-    if (sequence !== saveSequenceRef.current) return ok;
-
-    if (!ok) {
-      setSaveState("failed");
-      setRetryCount((current) => current + 1);
-      return false;
-    }
-
-    setLastSavedValue(noteValue);
-    setSavedAt(new Date());
-    setSaveState("saved");
-    setRetryCount(0);
-    return true;
   }
 }
 

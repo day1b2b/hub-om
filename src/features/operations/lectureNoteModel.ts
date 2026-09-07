@@ -91,7 +91,7 @@ export function composeLectureNote(tabs: LectureNoteTab[]): string {
 }
 
 export function hasTabContent(tab: LectureNoteTab): boolean {
-  return Boolean(tab.date.trim() || tab.courseSummary.trim() || tab.staffOpinion.trim() || tab.issue.trim() || tab.studentCount.trim());
+  return Boolean(tab.date.trim()) || hasBodyContent(tab);
 }
 
 function composeLectureNoteBody(draft: LectureNoteDraft): string {
@@ -105,7 +105,8 @@ function composeLectureNoteBody(draft: LectureNoteDraft): string {
   return sections.join("\n\n");
 }
 
-function hasBodyContent(tab: LectureNoteTab): boolean {
+/** 날짜를 뺀 네 칸 중 하나라도 적혀 있는지. 날짜만 있는 탭은 hasTabContent로 따로 본다. */
+function hasBodyContent(tab: LectureNoteDraft): boolean {
   return Boolean(tab.courseSummary.trim() || tab.staffOpinion.trim() || tab.issue.trim() || tab.studentCount.trim());
 }
 
