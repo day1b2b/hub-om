@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isNavigableHref, toHref } from "@/lib/links";
 import {
@@ -8,6 +8,7 @@ import {
   composeLectureNote,
   isDateUsedByOtherTab,
   mergePastedNote,
+  mergeTabsWithSameDate,
   parseLectureNote,
   prepareTabsForSave,
   shouldSplitPastedNote,
@@ -17,6 +18,15 @@ import {
 
 type SaveState = "idle" | "saving" | "saved" | "failed";
 type NoteMode = "text" | "link";
+
+/**
+ * 저장 실패의 종류. network는 잠시 뒤 다시 시도하면 될 수 있고, auth는 다른 탭에서 다시 로그인하면 풀린다.
+ * rejected는 서버가 요청 자체를 거절한 것(회차가 지워짐, 내용이 너무 김 등)이라 같은 요청을 반복해도 소용없다.
+ */
+interface SaveFailure {
+  kind: "auth" | "network" | "rejected";
+  message: string;
+}
 
 interface LectureManagementNoteRowProps {
   done: boolean;
@@ -36,6 +46,34 @@ const RETRY_BASE_DELAY_MS = 30_000;
 const RETRY_MAX_DELAY_MS = 5 * 60_000;
 // 서버 저장이 안 될 때 입력 내용을 잃지 않도록 브라우저에도 같이 보관한다.
 const DRAFT_STORAGE_PREFIX = "hub-om:lecture-note-draft:";
+// 이보다 오래된 임시 보관본은 열 때 정리한다. 다시 열지 않은 회차의 보관본이 브라우저 저장 공간에 계속 쌓이지 않게 한다.
+const DRAFT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
+const NETWORK_FAILURE_MESSAGE = "서버에 저장하지 못했습니다. 내용은 이 브라우저에 보관되어 있고 잠시 후 자동으로 다시 시도합니다.";
+const AUTH_FAILURE_MESSAGE =
+  "로그인이 만료되어 저장하지 못했습니다. 내용은 이 브라우저에 보관되어 있습니다. 다른 탭에서 다시 로그인하면 자동으로 다시 시도합니다.";
+
+/**
+ * 저장 응답을 실패 종류로 나눈다. 성공이면 null.
+ * 로그인이 만료되면 API가 로그인 페이지로 돌려보내 HTML이 오는데, 이를 일반 실패로 뭉개면 운영자는 왜 안 되는지 알 수 없다.
+ */
+async function classifySaveResponse(response: Response): Promise<SaveFailure | null> {
+  if (response.redirected || response.status === 401 || response.status === 403) {
+    return { kind: "auth", message: AUTH_FAILURE_MESSAGE };
+  }
+
+  const payload = (await response.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+
+  if (response.ok && payload?.ok) return null;
+
+  // 4xx는 서버가 요청을 거절한 것이다. 사유가 있으면 그대로 보여 준다.
+  if (response.status >= 400 && response.status < 500) {
+    const reason = typeof payload?.error === "string" && payload.error.trim() ? payload.error.trim() : "서버가 요청을 받지 않았습니다.";
+    return { kind: "rejected", message: `저장하지 못했습니다: ${reason} 내용은 이 브라우저에 보관되어 있습니다.` };
+  }
+
+  return { kind: "network", message: NETWORK_FAILURE_MESSAGE };
+}
 
 interface StoredDraft {
   linkDraft: string;
@@ -72,36 +110,102 @@ export function LectureManagementNoteRow({
   const [retryCount, setRetryCount] = useState(0);
   const [recoverableDraft, setRecoverableDraft] = useState<StoredDraft | null>(null);
   const [dateError, setDateError] = useState<string | null>(null);
+  // 마지막으로 실패한 저장 요청이 담고 있던 editVersion. 그 뒤로 편집이 없으면 재시도 효과(백오프)에 맡기고
+  // 3초 자동 저장은 쉰다. 편집이 있었으면 사용자가 보고 있는 중이니 바로 다시 시도한다.
+  const [failedAtEditVersion, setFailedAtEditVersion] = useState<number | null>(null);
+  const [saveFailure, setSaveFailure] = useState<SaveFailure | null>(null);
   const saveSequenceRef = useRef(0);
+  // 저장 요청이 진행 중인지. saveState는 렌더 시점 값이라 타이머 콜백이나 닫기 처리에서는 한 박자 늦을 수 있어 ref로도 본다.
+  const inFlightRef = useRef(false);
+  // 가장 최근 렌더의 저장 대상 값. 닫기 처리에서 await 뒤에 그동안 입력된 내용이 있는지 확인할 때 쓴다.
+  const latestPendingRef = useRef("");
+
+  // operationId 외에는 setState와 ref만 쓰므로 참조가 바뀌지 않는다. 효과(effect) 의존성에 그대로 넣을 수 있다.
+  const persist = useCallback(
+    async (noteValue: string, editVersionAtRequest: number): Promise<boolean> => {
+      const sequence = ++saveSequenceRef.current;
+      inFlightRef.current = true;
+      setSaveState("saving");
+
+      const patches = [{ field: "lectureManagementNote", action: "replace" as const, value: noteValue }];
+      let failure: SaveFailure | null = null;
+
+      try {
+        const response = await fetch(`/api/operations/${encodeURIComponent(operationId)}/drive-import/apply`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json"
+          },
+          body: JSON.stringify({ patches })
+        });
+        failure = await classifySaveResponse(response);
+      } catch {
+        failure = { kind: "network", message: NETWORK_FAILURE_MESSAGE };
+      }
+
+      // 더 최신 저장 요청이 이미 나갔으면 이 결과로 화면 상태를 덮어쓰지 않는다.
+      if (sequence !== saveSequenceRef.current) return failure === null;
+
+      inFlightRef.current = false;
+
+      if (failure) {
+        setSaveFailure(failure);
+        setFailedAtEditVersion(editVersionAtRequest);
+        setSaveState("failed");
+        setRetryCount((current) => current + 1);
+        return false;
+      }
+
+      setSaveFailure(null);
+      setFailedAtEditVersion(null);
+      setLastSavedValue(noteValue);
+      setSavedAt(new Date());
+      setSaveState("saved");
+      setRetryCount(0);
+      return true;
+    },
+    [operationId]
+  );
+
   const activeTab = tabs[activeTabIndex] ?? blankTab();
   const hasHref = isNavigableHref(value);
   const pendingValue = composeCurrentValue(editedMode);
   const hasUnsavedEdit = editVersion > 0 && pendingValue !== lastSavedValue;
 
   useEffect(() => {
-    if (!isOpen || !hasUnsavedEdit) return;
+    latestPendingRef.current = pendingValue;
+  }, [pendingValue]);
+
+  // 저장 요청은 한 번에 하나만 보낸다. 앞 요청이 진행 중일 때 새 요청을 겹쳐 보내면 서버에 옛 값이 나중에
+  // 도착해 최신 입력을 덮어쓸 수 있고, 화면은 최신 값이 저장된 줄 알고 임시 보관본까지 지운다.
+  // 앞 요청이 끝나면 saveState가 바뀌어 이 효과가 다시 돌고, 그때 남은 변경을 이어서 저장한다.
+  useEffect(() => {
+    if (!isOpen || !hasUnsavedEdit || saveState === "saving") return;
+    // 실패 뒤 편집이 없으면 3초마다 같은 요청을 반복하지 않는다.
+    if (saveState === "failed" && failedAtEditVersion === editVersion) return;
 
     const timer = window.setTimeout(() => {
-      void persist(pendingValue);
+      if (inFlightRef.current) return;
+      void persist(pendingValue, editVersion);
     }, AUTOSAVE_DELAY_MS);
 
     return () => window.clearTimeout(timer);
-    // persist는 렌더마다 새로 만들어지므로 의존성에서 제외한다. 값이 바뀔 때만 타이머를 다시 잡는다.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, hasUnsavedEdit, pendingValue, editVersion]);
+  }, [isOpen, hasUnsavedEdit, pendingValue, editVersion, saveState, failedAtEditVersion, persist]);
 
   // 저장에 실패한 동안에만 간격을 늘려 가며 다시 시도한다. 평소에는 아무 요청도 보내지 않는다.
   useEffect(() => {
     if (!isOpen || saveState !== "failed" || !hasUnsavedEdit) return;
+    // 서버가 거절한 요청은 같은 내용으로 다시 보내도 결과가 같다. 사용자가 고친 뒤 "다시 저장"을 누르거나 편집하면 다시 시도한다.
+    if (saveFailure?.kind === "rejected") return;
 
     const delay = Math.min(RETRY_BASE_DELAY_MS * 2 ** Math.max(0, retryCount - 1), RETRY_MAX_DELAY_MS);
     const timer = window.setTimeout(() => {
-      void persist(pendingValue);
+      if (inFlightRef.current) return;
+      void persist(pendingValue, editVersion);
     }, delay);
 
     return () => window.clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, saveState, hasUnsavedEdit, pendingValue, retryCount]);
+  }, [isOpen, saveState, hasUnsavedEdit, pendingValue, editVersion, retryCount, saveFailure, persist]);
 
   // 편집 중인 내용은 브라우저에도 보관하고, 서버 저장이 끝나면 지운다.
   useEffect(() => {
@@ -277,7 +381,7 @@ export function LectureManagementNoteRow({
               </div>
               <div className="lecture-note-actions">
                 {saveState === "failed" ? (
-                  <button onClick={() => void persist(pendingValue)} type="button">
+                  <button onClick={() => void persist(pendingValue, editVersion)} type="button">
                     다시 저장
                   </button>
                 ) : null}
@@ -307,11 +411,14 @@ export function LectureManagementNoteRow({
     setEditVersion(0);
     setEditedMode(initialMode);
     setRetryCount(0);
+    setFailedAtEditVersion(null);
+    setSaveFailure(null);
     // 열자마자 저장이 걸리지 않도록, 현재 값을 화면 형식으로 다시 조합한 결과를 "저장된 값"으로 둔다.
     const initialComposed = initialMode === "link" ? initialLink.trim() : composeLectureNote(withFallbackDates(initialTabs));
     setLastSavedValue(initialComposed);
 
     // 이전에 서버 저장이 안 된 채 닫힌 내용이 브라우저에 남아 있으면 복원할지 묻는다. 서버 값과 같으면 조용히 지운다.
+    pruneStaleDrafts();
     const draft = readDraft(operationId);
     if (draft && composeDraftValue(draft) !== initialComposed) {
       setRecoverableDraft(draft);
@@ -326,7 +433,9 @@ export function LectureManagementNoteRow({
   function restoreDraft() {
     if (!recoverableDraft) return;
 
-    setTabs(recoverableDraft.tabs.length > 0 ? recoverableDraft.tabs : [blankTab(startDate)]);
+    // 날짜 겹침을 막는 규칙이 생기기 전 보관본에는 같은 날짜 탭이 둘 있을 수 있어 복원할 때 합친다.
+    const restoredTabs = mergeTabsWithSameDate(recoverableDraft.tabs);
+    setTabs(restoredTabs.length > 0 ? restoredTabs : [blankTab(startDate)]);
     setActiveTabIndex(0);
     setLinkDraft(recoverableDraft.linkDraft);
     setMode(recoverableDraft.mode);
@@ -346,12 +455,23 @@ export function LectureManagementNoteRow({
   }
 
   async function closeDialog() {
-    if (saveState === "saving") return;
+    if (inFlightRef.current) return;
 
-    if (hasUnsavedEdit) {
-      const saved = await persist(pendingValue);
-      // 저장에 실패하면 입력 내용을 잃지 않도록 창을 닫지 않는다.
-      if (!saved) return;
+    // 서버가 거절한 요청은 닫을 때 다시 보내도 결과가 같아 창이 영영 닫히지 않는다. 그 뒤 편집이 없었다면
+    // 내용은 이미 브라우저 임시 보관본에 있으므로 다시 보내지 않고 닫는다(다음에 열 때 복원을 묻는다).
+    const rejectedWithoutEdit = saveState === "failed" && saveFailure?.kind === "rejected" && failedAtEditVersion === editVersion;
+
+    if (hasUnsavedEdit && !rejectedWithoutEdit) {
+      // 저장하는 동안에도 창은 열려 있어 입력이 이어질 수 있다. 저장이 끝난 뒤 그동안 바뀐 내용이 있으면
+      // 그것까지 저장하고 닫는다. 그렇지 않으면 화면은 저장됐다고 하는데 서버에는 마지막 입력이 빠진다.
+      let target = pendingValue;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const saved = await persist(target, editVersion);
+        // 저장에 실패하면 입력 내용을 잃지 않도록 창을 닫지 않는다.
+        if (!saved) return;
+        if (latestPendingRef.current === target) break;
+        target = latestPendingRef.current;
+      }
     }
 
     setIsOpen(false);
@@ -364,9 +484,7 @@ export function LectureManagementNoteRow({
 
   function renderSaveStatus() {
     if (saveState === "saving") return "저장 중…";
-    if (saveState === "failed") {
-      return "서버에 저장하지 못했습니다. 내용은 이 브라우저에 보관되어 있고 잠시 후 자동으로 다시 시도합니다.";
-    }
+    if (saveState === "failed") return saveFailure?.message ?? NETWORK_FAILURE_MESSAGE;
     if (hasUnsavedEdit) return "입력 중… 잠시 후 자동 저장됩니다.";
     if (saveState === "saved" && savedAt) return `자동 저장됨 ${formatClock(savedAt)}`;
     return "";
@@ -437,43 +555,6 @@ export function LectureManagementNoteRow({
     setDateError(null);
     markEdited();
   }
-
-  async function persist(noteValue: string): Promise<boolean> {
-    const sequence = ++saveSequenceRef.current;
-    setSaveState("saving");
-
-    const patches = [{ field: "lectureManagementNote", action: "replace" as const, value: noteValue }];
-    let ok = false;
-
-    try {
-      const response = await fetch(`/api/operations/${encodeURIComponent(operationId)}/drive-import/apply`, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json"
-        },
-        body: JSON.stringify({ patches })
-      });
-      const payload = (await response.json().catch(() => ({}))) as { ok?: boolean };
-      ok = response.ok && Boolean(payload.ok);
-    } catch {
-      ok = false;
-    }
-
-    // 더 최신 저장 요청이 이미 나갔으면 이 결과로 화면 상태를 덮어쓰지 않는다.
-    if (sequence !== saveSequenceRef.current) return ok;
-
-    if (!ok) {
-      setSaveState("failed");
-      setRetryCount((current) => current + 1);
-      return false;
-    }
-
-    setLastSavedValue(noteValue);
-    setSavedAt(new Date());
-    setSaveState("saved");
-    setRetryCount(0);
-    return true;
-  }
 }
 
 function draftStorageKey(operationId: string): string {
@@ -504,6 +585,39 @@ function writeDraft(operationId: string, draft: StoredDraft) {
     window.localStorage.setItem(draftStorageKey(operationId), JSON.stringify(draft));
   } catch {
     // 시크릿 모드나 저장 공간 부족이면 보관만 건너뛴다. 서버 저장은 그대로 시도한다.
+  }
+}
+
+/** 오래된 임시 보관본을 지운다. 열려 있는 회차의 보관본은 이 뒤에 따로 읽으므로 여기서 함께 정리돼도 최신 것은 남는다. */
+function pruneStaleDrafts() {
+  try {
+    const cutoff = Date.now() - DRAFT_MAX_AGE_MS;
+    const staleKeys: string[] = [];
+
+    for (let index = 0; index < window.localStorage.length; index += 1) {
+      const key = window.localStorage.key(index);
+      if (!key || !key.startsWith(DRAFT_STORAGE_PREFIX)) continue;
+
+      // 시각을 읽을 수 없거나 JSON이 깨진 보관본은 복원할 수도 없으므로 함께 지운다.
+      // 한 항목이 깨졌다고 정리 전체가 멈추면 안 되므로 항목별로 실패를 잡는다.
+      if (readDraftUpdatedAt(window.localStorage.getItem(key)) < cutoff) staleKeys.push(key);
+    }
+
+    for (const key of staleKeys) window.localStorage.removeItem(key);
+  } catch {
+    // 저장 공간을 읽을 수 없으면 정리를 건너뛴다. 보관본 읽기/쓰기도 같은 이유로 건너뛰므로 동작에는 영향이 없다.
+  }
+}
+
+/** 보관본의 저장 시각(ms). 읽을 수 없으면 -Infinity를 돌려 정리 대상이 되게 한다. */
+function readDraftUpdatedAt(raw: string | null): number {
+  if (!raw) return Number.NEGATIVE_INFINITY;
+
+  try {
+    const updatedAt = Date.parse((JSON.parse(raw) as Partial<StoredDraft>).updatedAt ?? "");
+    return Number.isNaN(updatedAt) ? Number.NEGATIVE_INFINITY : updatedAt;
+  } catch {
+    return Number.NEGATIVE_INFINITY;
   }
 }
 

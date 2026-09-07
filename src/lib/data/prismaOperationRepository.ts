@@ -147,6 +147,96 @@ const PRISMA_OPERATION_TYPE: Record<OperationType, PrismaOperationType> = {
   "검토필요": PrismaOperationType.NEEDS_REVIEW
 };
 
+const OPERATION_SESSION_INCLUDE = {
+  course: {
+    include: {
+      company: true
+    }
+  },
+  sourceRecords: {
+    orderBy: { createdAt: "desc" },
+    take: 1
+  }
+} satisfies Prisma.OperationSessionInclude;
+
+type OperationSessionRow = Prisma.OperationSessionGetPayload<{ include: typeof OPERATION_SESSION_INCLUDE }>;
+
+/** DB 행을 화면이 쓰는 표준 OperationSession으로 바꾼다. 목록 읽기와 단건 읽기가 같은 매핑을 쓴다. */
+function toOperationSession(session: OperationSessionRow, courseIdLabel: string): OperationSession {
+  const revenue = decimalToNumber(session.course.revenue);
+  const totalCost = decimalToNumber(session.totalCost);
+
+  return {
+    id: session.id,
+    operationId: session.operationId,
+    sourceTeam: session.sourceRecords[0]?.sourceTeam ? SOURCE_TEAM[session.sourceRecords[0].sourceTeam] : "미분류",
+    processId: formatProcessId(session.course.processSeq),
+    courseRecordId: session.course.id,
+    courseId: session.course.courseId,
+    courseIdLabel,
+    companyId: session.course.companyId,
+    companyName: session.course.company.name,
+    courseName: session.course.name,
+    courseCategory: session.course.courseCategory ?? "",
+    tools: session.course.tools ?? "",
+    om: session.omName ?? "",
+    ld: session.ldName ?? "",
+    onsiteOm: session.onsiteOmName ?? "",
+    operationStatus: OPERATION_STATUS[session.operationStatus],
+    archiveStatus: deriveArchiveStatus(toDateString(session.endDate), {
+      courseId: session.course.courseId ?? "",
+      lectureManagementNote: session.lectureManagementNote ?? "",
+      avgSatisfaction: session.avgSatisfaction ?? "",
+      hasSatisfactionSurvey: SATISFACTION_SURVEY_STATUS[session.hasSatisfactionSurvey],
+      hasResultReport: RESULT_REPORT_STATUS[session.hasResultReport],
+      resultReportLink: session.resultReportLink ?? ""
+    }),
+    educationFormat: EDUCATION_FORMAT[session.educationFormat],
+    educationFormatRaw: session.educationFormatRaw ?? "",
+    operationChannel: OPERATION_CHANNEL[session.operationChannel],
+    operationType: OPERATION_TYPE[session.course.operationType],
+    operationTypeRaw: OPERATION_TYPE[session.course.operationType],
+    roundNo: session.roundNo ?? "",
+    educationDays: session.educationDays ?? "",
+    educationDates: session.educationDates.map((date) => toDateString(date)),
+    startDate: toDateString(session.startDate),
+    endDate: toDateString(session.endDate),
+    operationMonth: session.operationMonth ?? "",
+    sessionDurationDays: session.sessionDurationDays,
+    sessionDurationType: session.sessionDurationType ? OPERATION_TYPE[session.sessionDurationType] : "검토필요",
+    timeText: session.timeText ?? "",
+    instructors: session.instructorsText ?? "",
+    coach: session.coachText ?? "",
+    region: session.region ?? "",
+    onsiteRequired: session.onsiteRequired as OnsiteRequired,
+    onsiteText: session.onsiteText ?? "",
+    specialNotes: session.specialNotes ?? "",
+    operationIssue: session.operationIssue ?? "",
+    omUpdate: session.omUpdate ?? "",
+    driveLink: session.driveLink ?? "",
+    operationDetail: session.operationDetail ?? "",
+    companyWikiLink: session.companyWikiLink ?? "",
+    instructorWikiLink: session.instructorWikiLink ?? "",
+    revenue,
+    costRaw: session.costRaw ?? "",
+    profitRaw: session.profitRaw ?? "",
+    totalCost,
+    instructorCost: decimalToNumber(session.instructorCost),
+    operationCost: decimalToNumber(session.operationCost),
+    profit: deriveProfit(revenue, totalCost),
+    avgSatisfaction: session.avgSatisfaction ?? "",
+    instructorSatisfaction: session.instructorSatisfaction ?? "",
+    hasSatisfactionSurvey: SATISFACTION_SURVEY_STATUS[session.hasSatisfactionSurvey],
+    hasResultReport: RESULT_REPORT_STATUS[session.hasResultReport],
+    resultReportLink: session.resultReportLink ?? "",
+    lectureManagementLink: session.lectureManagementLink ?? "",
+    lectureManagementNote: session.lectureManagementNote ?? "",
+    padletLink: session.padletLink ?? "",
+    validationStatus: getValidationErrors(session.validationErrors).length > 0 ? "검토필요" : "정상",
+    validationErrors: getValidationErrors(session.validationErrors)
+  };
+}
+
 export class PrismaOperationRepository implements OperationRepository {
   /**
    * 코스ID로 과정을 찾는다. 운영현황(hub-om DB)이 원천이므로 세일즈맵 딜을 긁지 않고 바로 답한다.
@@ -184,17 +274,7 @@ export class PrismaOperationRepository implements OperationRepository {
     const [sessions, courseIdLabels] = await Promise.all([
       prisma.operationSession.findMany({
         where: { deletedAt: null },
-        include: {
-          course: {
-            include: {
-              company: true
-            }
-          },
-          sourceRecords: {
-            orderBy: { createdAt: "desc" },
-            take: 1
-          }
-        },
+        include: OPERATION_SESSION_INCLUDE,
         orderBy: [{ startDate: "asc" }, { operationId: "asc" }]
       }),
       prisma.courseIdLabel.findMany()
@@ -203,85 +283,30 @@ export class PrismaOperationRepository implements OperationRepository {
       courseIdLabels.map((row) => [courseIdLabelKey(row.companyId, row.courseId), row.label])
     );
 
-    return sessions.map((session) => {
-      const revenue = decimalToNumber(session.course.revenue);
-      const totalCost = decimalToNumber(session.totalCost);
-
-      return {
-        id: session.id,
-        operationId: session.operationId,
-        sourceTeam: session.sourceRecords[0]?.sourceTeam ? SOURCE_TEAM[session.sourceRecords[0].sourceTeam] : "미분류",
-        processId: formatProcessId(session.course.processSeq),
-        courseRecordId: session.course.id,
-        courseId: session.course.courseId,
-        courseIdLabel: courseIdLabelByKey.get(courseIdLabelKey(session.course.companyId, session.course.courseId)) ?? "",
-        companyId: session.course.companyId,
-        companyName: session.course.company.name,
-        courseName: session.course.name,
-        courseCategory: session.course.courseCategory ?? "",
-        tools: session.course.tools ?? "",
-        om: session.omName ?? "",
-        ld: session.ldName ?? "",
-        onsiteOm: session.onsiteOmName ?? "",
-        operationStatus: OPERATION_STATUS[session.operationStatus],
-        archiveStatus: deriveArchiveStatus(toDateString(session.endDate), {
-          courseId: session.course.courseId ?? "",
-          lectureManagementNote: session.lectureManagementNote ?? "",
-          avgSatisfaction: session.avgSatisfaction ?? "",
-          hasSatisfactionSurvey: SATISFACTION_SURVEY_STATUS[session.hasSatisfactionSurvey],
-          hasResultReport: RESULT_REPORT_STATUS[session.hasResultReport],
-          resultReportLink: session.resultReportLink ?? ""
-        }),
-        educationFormat: EDUCATION_FORMAT[session.educationFormat],
-        educationFormatRaw: session.educationFormatRaw ?? "",
-        operationChannel: OPERATION_CHANNEL[session.operationChannel],
-        operationType: OPERATION_TYPE[session.course.operationType],
-        operationTypeRaw: OPERATION_TYPE[session.course.operationType],
-        roundNo: session.roundNo ?? "",
-        educationDays: session.educationDays ?? "",
-        educationDates: session.educationDates.map((date) => toDateString(date)),
-        startDate: toDateString(session.startDate),
-        endDate: toDateString(session.endDate),
-        operationMonth: session.operationMonth ?? "",
-        sessionDurationDays: session.sessionDurationDays,
-        sessionDurationType: session.sessionDurationType ? OPERATION_TYPE[session.sessionDurationType] : "검토필요",
-        timeText: session.timeText ?? "",
-        instructors: session.instructorsText ?? "",
-        coach: session.coachText ?? "",
-        region: session.region ?? "",
-        onsiteRequired: session.onsiteRequired as OnsiteRequired,
-        onsiteText: session.onsiteText ?? "",
-        specialNotes: session.specialNotes ?? "",
-        operationIssue: session.operationIssue ?? "",
-        omUpdate: session.omUpdate ?? "",
-        driveLink: session.driveLink ?? "",
-        operationDetail: session.operationDetail ?? "",
-        companyWikiLink: session.companyWikiLink ?? "",
-        instructorWikiLink: session.instructorWikiLink ?? "",
-        revenue,
-        costRaw: session.costRaw ?? "",
-        profitRaw: session.profitRaw ?? "",
-        totalCost,
-        instructorCost: decimalToNumber(session.instructorCost),
-        operationCost: decimalToNumber(session.operationCost),
-        profit: deriveProfit(revenue, totalCost),
-        avgSatisfaction: session.avgSatisfaction ?? "",
-        instructorSatisfaction: session.instructorSatisfaction ?? "",
-        hasSatisfactionSurvey: SATISFACTION_SURVEY_STATUS[session.hasSatisfactionSurvey],
-        hasResultReport: RESULT_REPORT_STATUS[session.hasResultReport],
-        resultReportLink: session.resultReportLink ?? "",
-        lectureManagementLink: session.lectureManagementLink ?? "",
-        lectureManagementNote: session.lectureManagementNote ?? "",
-        padletLink: session.padletLink ?? "",
-        validationStatus: getValidationErrors(session.validationErrors).length > 0 ? "검토필요" : "정상",
-        validationErrors: getValidationErrors(session.validationErrors)
-      };
-    });
+    return sessions.map((session) =>
+      toOperationSession(session, courseIdLabelByKey.get(courseIdLabelKey(session.course.companyId, session.course.courseId)) ?? "")
+    );
   }
 
+  /**
+   * 회차 하나만 읽는다. 예전에는 전체 목록을 다 읽어 그중 하나를 골랐는데, 강의관리 자동 저장처럼
+   * 몇 초마다 부르는 경로에서는 저장 한 번에 전체 회차를 두 번(저장 전 확인, 저장 후 반환) 읽게 되어
+   * 회차 수에 비례해 느려졌다. 매핑은 listOperations와 같은 함수를 쓰므로 결과 형태는 같다.
+   */
   async getOperationById(operationId: string): Promise<OperationSession | null> {
-    const operations = await this.listOperations();
-    return operations.find((operation) => operation.operationId === operationId) ?? null;
+    const prisma = getPrismaClient();
+    const session = await prisma.operationSession.findFirst({
+      where: { operationId, deletedAt: null },
+      include: OPERATION_SESSION_INCLUDE
+    });
+
+    if (!session) return null;
+
+    const courseIdLabel = await prisma.courseIdLabel.findUnique({
+      where: { companyId_courseId: { companyId: session.course.companyId, courseId: session.course.courseId } }
+    });
+
+    return toOperationSession(session, courseIdLabel?.label ?? "");
   }
 
   async createOperation(input: CreateOperationInput): Promise<OperationSession> {
@@ -406,7 +431,7 @@ export class PrismaOperationRepository implements OperationRepository {
     return operation;
   }
 
-  async updateOperation(operationId: string, input: UpdateOperationInput): Promise<OperationSession> {
+  async updateOperation(operationId: string, input: UpdateOperationInput, updatedBy?: string): Promise<OperationSession> {
     const prisma = getPrismaClient();
     const data: Parameters<typeof prisma.operationSession.update>[0]["data"] = {};
 
@@ -602,6 +627,9 @@ export class PrismaOperationRepository implements OperationRepository {
     if (input.specialNotes !== undefined) data.specialNotes = nullableText(input.specialNotes);
     if (input.timeText !== undefined) data.timeText = nullableText(input.timeText);
     if (input.totalCost !== undefined) data.totalCost = input.totalCost;
+
+    // 수정자는 다른 값과 함께 올 때만 기록한다. 수정자만 있는 요청은 실제 변경이 없으므로 아래에서 그대로 반환된다.
+    if (Object.keys(data).length > 0 && updatedBy !== undefined) data.updatedBy = nullableText(updatedBy);
 
     if (Object.keys(data).length === 0) {
       const operation = await this.getOperationById(operationId);

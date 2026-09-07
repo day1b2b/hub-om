@@ -6,7 +6,10 @@ import {
   composeLectureNote,
   isDateUsedByOtherTab,
   mergePastedNote,
+  mergeTabsWithSameDate,
+  normalizeNoteDate,
   parseLectureNote,
+  parseLectureNoteBody,
   prepareTabsForSave,
   shouldSplitPastedNote,
   suggestNextLectureDate
@@ -158,4 +161,90 @@ test("붙여넣기 분리가 필요한 글인지 판단한다", () => {
   assert.equal(shouldSplitPastedNote("그냥 메모"), false);
   assert.equal(shouldSplitPastedNote("[강의 요약]\n요약"), true);
   assert.equal(shouldSplitPastedNote("[날짜: 2026-09-01]\n메모"), true);
+});
+
+test("칸 제목 앞에 적힌 글은 버리지 않고 강의 요약 앞에 붙인다", () => {
+  // 날짜 표기 이전의 옛 기록은 "학습 인원: 20명" 줄 뒤에 자유 메모가 이어지기도 했다. 저장할 때 그 메모가 사라지면 안 된다.
+  assert.deepEqual(parseLectureNoteBody("학습 인원: 20명\n오전은 이론, 오후는 실습"), {
+    courseSummary: "오전은 이론, 오후는 실습",
+    issue: "",
+    staffOpinion: "",
+    studentCount: "20명"
+  });
+
+  assert.deepEqual(parseLectureNoteBody("메모\n[강의 요약]\n요약"), {
+    courseSummary: "메모\n\n요약",
+    issue: "",
+    staffOpinion: "",
+    studentCount: ""
+  });
+});
+
+test("칸 제목이 없는 글은 통째로 강의 요약이 된다", () => {
+  assert.deepEqual(parseLectureNoteBody("  그냥 메모  "), { courseSummary: "그냥 메모", issue: "", staffOpinion: "", studentCount: "" });
+  assert.deepEqual(parseLectureNoteBody(""), { courseSummary: "", issue: "", staffOpinion: "", studentCount: "" });
+});
+
+test("칸 제목이 뒤바뀐 글도 다른 칸의 글이 섞여 두 번 저장되지 않는다", () => {
+  const parsed = parseLectureNoteBody("[이슈]\n프로젠터 지연\n[강의 요약]\n요약\n[운영진 의견]\n의견");
+
+  assert.deepEqual(parsed, { courseSummary: "요약", issue: "프로젠터 지연", staffOpinion: "의견", studentCount: "" });
+});
+
+test("학습 인원 줄은 칸 제목 앞에서만 읽고 본문 안의 같은 표현은 요약에 그대로 둔다", () => {
+  const parsed = parseLectureNoteBody("[강의 요약]\n학습 인원: 30명 참석, 오전 이론");
+
+  assert.deepEqual(parsed, { courseSummary: "학습 인원: 30명 참석, 오전 이론", issue: "", staffOpinion: "", studentCount: "" });
+});
+
+test("저장 형식 그대로 다시 읽으면 칸 내용이 늘거나 줄지 않는다", () => {
+  const tabs = [
+    { ...blankTab("2026-09-01"), courseSummary: "1일차\n\n둘째 줄", issue: "이슈", staffOpinion: "의견", studentCount: "27명" }
+  ];
+
+  const roundTripped = parseLectureNote(composeLectureNote(tabs), "2026-09-01");
+  assert.deepEqual(roundTripped, tabs);
+  assert.equal(composeLectureNote(roundTripped), composeLectureNote(tabs));
+});
+
+test("날짜 제목의 표기가 달라도 같은 날로 읽어 탭이 두 개 생기지 않는다", () => {
+  assert.equal(normalizeNoteDate("2026.9.1"), "2026-09-01");
+  assert.equal(normalizeNoteDate("2026/09/01"), "2026-09-01");
+  assert.equal(normalizeNoteDate("2026년 9월 1일"), "2026-09-01");
+  assert.equal(normalizeNoteDate(" 2026-09-01 "), "2026-09-01");
+  // 숫자 날짜가 아니면 적힌 대로 둔다.
+  assert.equal(normalizeNoteDate("첫날"), "첫날");
+
+  const merged = mergePastedNote([{ ...blankTab("2026-09-01"), issue: "기존 이슈" }], 0, "[날짜: 2026.9.1]\n[강의 요약]\n요약");
+  assert.deepEqual(merged, [{ ...blankTab("2026-09-01"), courseSummary: "요약", issue: "기존 이슈" }]);
+});
+
+test("달력에 없는 날짜는 yyyy-mm-dd로 바꾸지 않고 적힌 대로 둔다", () => {
+  assert.equal(normalizeNoteDate("2026-02-30"), "2026-02-30");
+  assert.equal(normalizeNoteDate("2026.13.45"), "2026.13.45");
+  assert.equal(normalizeNoteDate("2028-02-29"), "2028-02-29");
+});
+
+test("임시 보관본에 같은 날짜 탭이 둘 있으면 글을 잃지 않고 하나로 합친다", () => {
+  const tabs = [
+    { ...blankTab("2026-09-01"), courseSummary: "앞", studentCount: "20명" },
+    blankTab("2026-09-02"),
+    { ...blankTab("2026-09-01"), courseSummary: "뒤", issue: "이슈", studentCount: "21명" }
+  ];
+
+  assert.deepEqual(mergeTabsWithSameDate(tabs), [
+    { ...blankTab("2026-09-01"), courseSummary: "앞\n\n뒤", issue: "이슈", studentCount: "20명" },
+    blankTab("2026-09-02")
+  ]);
+});
+
+test("날짜 제목 뒤에 다른 글이 붙은 줄은 날짜 제목으로 읽지 않는다", () => {
+  // 운영자가 강의 요약 칸에 "[날짜: 2026.9.1] + [강의 요약]"이라고 적었을 때 그 줄 전체가 날짜 탭 이름이 되던 사례.
+  const typed = "[날짜: 2026.9.1] + [강의 요약]";
+
+  assert.equal(shouldSplitPastedNote(typed), true);
+  assert.deepEqual(mergePastedNote([blankTab("2026-09-01")], 0, typed), [
+    { ...blankTab("2026-09-01"), courseSummary: "[날짜: 2026.9.1] +", issue: "", staffOpinion: "", studentCount: "" }
+  ]);
+  assert.deepEqual(parseLectureNote(typed, "2026-09-01"), [{ ...blankTab(""), courseSummary: "[날짜: 2026.9.1] +" }]);
 });
