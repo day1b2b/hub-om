@@ -5028,13 +5028,6 @@ td span {
   margin-top: 4px;
 }
 
-.satisfaction-analysis-guide code {
-  background: var(--surface-hover, #f4f5f7);
-  border-radius: 4px;
-  font-size: 12px;
-  padding: 1px 5px;
-}
-
 .lecture-note-actions a.satisfaction-analysis-open {
   align-items: center;
   background: #ffffff;
