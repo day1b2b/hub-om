@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import {
   ArchiveStatus,
@@ -36,7 +37,7 @@ const ENUM_VALUES: Record<string, readonly string[]> = {
   sourceTeam: ["", ...Object.values(SourceTeam)]
 };
 
-export async function PATCH(request: Request) {
+async function activityPATCH(request: Request) {
   const session = await requireAdminSession();
   const body = (await request.json().catch(() => ({}))) as RequestBody;
 
@@ -190,3 +191,5 @@ function parseEditableValue(field: AdminEditableField, value: unknown):
 function normalizeName(value: string) {
   return value.trim().replace(/\s+/g, " ").toLowerCase();
 }
+
+export const PATCH = withActivity("/api/admin/database/cell", "PATCH", activityPATCH);

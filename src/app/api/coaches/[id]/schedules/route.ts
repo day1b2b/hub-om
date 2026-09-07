@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { CoachEngagementStatus } from "@prisma/client";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
@@ -11,7 +12,7 @@ interface RouteContext {
   }>;
 }
 
-export async function GET(request: Request, { params }: RouteContext) {
+async function activityGET(request: Request, { params }: RouteContext) {
   await requireWorkspaceSession();
 
   const { id } = await params;
@@ -105,3 +106,5 @@ function parseMonthRange(yearMonth: string): { start: Date; end: Date } | null {
 function toDateString(value: Date): string {
   return value.toISOString().slice(0, 10);
 }
+
+export const GET = withActivity("/api/coaches/[id]/schedules", "GET", activityGET);

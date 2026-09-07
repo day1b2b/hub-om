@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { CoachStatus, type Prisma } from "@prisma/client";
@@ -25,7 +26,7 @@ interface CoachWriteBody {
   workType?: unknown;
 }
 
-export async function GET(request: Request) {
+async function activityGET(request: Request) {
   await requireWorkspaceSession();
 
   const { searchParams } = new URL(request.url);
@@ -97,7 +98,7 @@ export async function GET(request: Request) {
   });
 }
 
-export async function POST(request: Request) {
+async function activityPOST(request: Request) {
   await requireWorkspaceSession();
 
   const body = (await request.json().catch(() => ({}))) as CoachWriteBody;
@@ -192,3 +193,7 @@ function dateValue(value: unknown): Date | null {
 function toDateString(value: Date): string {
   return value.toISOString().slice(0, 10);
 }
+
+export const GET = withActivity("/api/coaches", "GET", activityGET);
+
+export const POST = withActivity("/api/coaches", "POST", activityPOST);

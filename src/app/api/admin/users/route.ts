@@ -1,17 +1,18 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 // 명단은 남의 대시보드를 바꾸는 권한의 뿌리다. 로그인만으로는 부족하다.
 import { denyIfNotAdmin } from "@/lib/auth/apiAdminGuard";
 import { createTeamUser, DuplicateTeamUserEmailError, listTeamUsers } from "@/lib/data/teamUsers/teamUserRepository";
 import type { TeamUserInput } from "@/lib/data/teamUsers/teamUserTypes";
 
-export async function GET() {
+async function activityGET() {
   const denied = await denyIfNotAdmin();
   if (denied) return denied;
 
   return NextResponse.json(await listTeamUsers());
 }
 
-export async function POST(request: Request) {
+async function activityPOST(request: Request) {
   const denied = await denyIfNotAdmin();
   if (denied) return denied;
 
@@ -50,3 +51,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "저장 실패" }, { status: 500 });
   }
 }
+
+export const GET = withActivity("/api/admin/users", "GET", activityGET);
+
+export const POST = withActivity("/api/admin/users", "POST", activityPOST);

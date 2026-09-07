@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import type { SourceTeam } from "@prisma/client";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
@@ -6,7 +7,7 @@ import { readNotionDatabaseImport } from "@/lib/data/notionImport";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(request: Request) {
+async function activityPOST(request: Request) {
   const session = await requireWorkspaceSession();
   const token = process.env.NOTION_TOKEN ?? process.env.NOTION_API_KEY;
 
@@ -88,3 +89,5 @@ function getConfiguredNotionDatabase(sourceTeam: SourceTeam) {
 
   return process.env.NOTION_IMPORT_DATABASE_ID || process.env.NOTION_IMPORT_DATABASE_URL;
 }
+
+export const POST = withActivity("/api/admin/imports/notion/import", "POST", activityPOST);

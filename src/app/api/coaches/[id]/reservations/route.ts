@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getPrismaClient } from "@/lib/data/prisma";
@@ -26,7 +27,7 @@ function toDbDate(date: string): Date {
 // 코치·날짜 조합 하나(단일 선택 화면)부터 여러 날짜(다중 선택 화면)까지 한 번에 예약/취소한다.
 // 요청한 날짜별로 "최종적으로 누가 예약 중인지"를 항상 돌려줘서, 화면은 성공/충돌을 구분해
 // 별도로 알릴 필요 없이 그 값을 그대로 표시에 반영하면 된다.
-export async function POST(request: Request, { params }: RouteContext) {
+async function activityPOST(request: Request, { params }: RouteContext) {
   const session = await requireWorkspaceSession();
   const { id } = await params;
   const body = (await request.json().catch(() => ({}))) as { dates?: unknown };
@@ -75,7 +76,7 @@ export async function POST(request: Request, { params }: RouteContext) {
   return NextResponse.json({ ok: true, results });
 }
 
-export async function DELETE(request: Request, { params }: RouteContext) {
+async function activityDELETE(request: Request, { params }: RouteContext) {
   const session = await requireWorkspaceSession();
   const { id } = await params;
   const body = (await request.json().catch(() => ({}))) as { dates?: unknown };
@@ -103,3 +104,7 @@ export async function DELETE(request: Request, { params }: RouteContext) {
 
   return NextResponse.json({ ok: true, cancelledDates: ownRows.map((row) => row.date.toISOString().slice(0, 10)) });
 }
+
+export const POST = withActivity("/api/coaches/[id]/reservations", "POST", activityPOST);
+
+export const DELETE = withActivity("/api/coaches/[id]/reservations", "DELETE", activityDELETE);

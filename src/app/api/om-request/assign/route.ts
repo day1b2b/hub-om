@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { getOmRequest, updateOmRequestAssignment } from "@/lib/data/omRequest/omRequestLocalRepository";
@@ -16,7 +17,7 @@ async function resolveCurrentUser(): Promise<{ name: string; email?: string | nu
   };
 }
 
-export async function PATCH(request: Request) {
+async function activityPATCH(request: Request) {
   try {
     const { id, assignedOm } = (await request.json()) as { id: string; assignedOm: string | null };
     if (!id) return NextResponse.json({ error: "id 필요" }, { status: 400 });
@@ -68,3 +69,5 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "저장 실패" }, { status: 500 });
   }
 }
+
+export const PATCH = withActivity("/api/om-request/assign", "PATCH", activityPATCH);

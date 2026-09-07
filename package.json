@@ -31,7 +31,8 @@
     "drive:import:dry-run": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/run-drive-import-dry-run.mjs",
     "export:feedback": "node scripts/export-feedback-pages.mjs",
     "satisfaction:dry-run": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/dry-run-satisfaction-sheet.ts",
-    "salesmap:dry-run": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/dry-run-salesmap-deals.ts"
+    "salesmap:dry-run": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/dry-run-salesmap-deals.ts",
+    "activity:prune": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/prune-activity.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",

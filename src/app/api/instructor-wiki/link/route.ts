@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
 import {
@@ -14,7 +15,7 @@ import {
  * 연결값은 노션 강사명이 아니라 그 강사의 **노션 페이지 ID**로 저장한다. 이름은 바뀔 수 있고
  * 동명이인도 있어서, 조인 키는 ID여야 안전하다.
  */
-export async function POST(request: Request) {
+async function activityPOST(request: Request) {
   try {
     await assertAdminSession();
   } catch {
@@ -59,3 +60,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "저장 실패" }, { status: 500 });
   }
 }
+
+export const POST = withActivity("/api/instructor-wiki/link", "POST", activityPOST);

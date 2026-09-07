@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { requireCoachSyncAccess } from "@/lib/coaches/syncAuth";
 import { syncContractSheetEngagements } from "@/lib/coaches/contractSheetSync";
 import { syncNotionCoaches } from "@/lib/coaches/notionCoachSync";
@@ -8,7 +9,7 @@ import { syncJsonResponse } from "@/lib/coaches/syncRouteResponse";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: Request) {
+async function activityGET(request: Request) {
   return syncJsonResponse(async () => {
     await requireCoachSyncAccess(request);
     const result = await runAll(true);
@@ -16,7 +17,7 @@ export async function GET(request: Request) {
   });
 }
 
-export async function POST(request: Request) {
+async function activityPOST(request: Request) {
   return syncJsonResponse(async () => {
     const triggeredBy = await requireCoachSyncAccess(request);
     const result = await runCoachSyncWithLog("all", triggeredBy, () => runAll(false));
@@ -38,3 +39,7 @@ async function runAll(dryRun: boolean): Promise<SyncResult> {
     changes: dryRun ? [...(notion.changes ?? []), ...(engagements.changes ?? []), ...(samsung.changes ?? [])] : undefined
   };
 }
+
+export const GET = withActivity("/api/sync/all", "GET", activityGET);
+
+export const POST = withActivity("/api/sync/all", "POST", activityPOST);

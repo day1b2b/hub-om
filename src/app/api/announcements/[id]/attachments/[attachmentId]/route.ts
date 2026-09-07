@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
 import { getPrismaClient } from "@/lib/data/prisma";
@@ -11,7 +12,7 @@ interface RouteContext {
   }>;
 }
 
-export async function GET(_request: Request, { params }: RouteContext) {
+async function activityGET(_request: Request, { params }: RouteContext) {
   await assertAdminSession();
 
   const { id, attachmentId } = await params;
@@ -33,3 +34,5 @@ export async function GET(_request: Request, { params }: RouteContext) {
     }
   });
 }
+
+export const GET = withActivity("/api/announcements/[id]/attachments/[attachmentId]", "GET", activityGET);

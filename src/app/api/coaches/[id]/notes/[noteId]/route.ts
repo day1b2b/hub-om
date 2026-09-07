@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { deleteNote, toggleNoteWarning, updateNote } from "@/lib/coaches/contentEntries";
@@ -8,7 +9,7 @@ interface RouteContext {
   params: Promise<{ id: string; noteId: string }>;
 }
 
-export async function PATCH(request: Request, { params }: RouteContext) {
+async function activityPATCH(request: Request, { params }: RouteContext) {
   const session = await requireWorkspaceSession();
   const { id, noteId } = await params;
   const author = { email: session.user?.email ?? "", name: session.user?.name ?? session.user?.email ?? "매니저" };
@@ -29,7 +30,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   return NextResponse.json({ ok: true, note });
 }
 
-export async function DELETE(_request: Request, { params }: RouteContext) {
+async function activityDELETE(_request: Request, { params }: RouteContext) {
   const session = await requireWorkspaceSession();
   const { id, noteId } = await params;
   const author = { email: session.user?.email ?? "", name: session.user?.name ?? session.user?.email ?? "매니저" };
@@ -37,3 +38,7 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
   await deleteNote(id, noteId, author);
   return NextResponse.json({ ok: true });
 }
+
+export const PATCH = withActivity("/api/coaches/[id]/notes/[noteId]", "PATCH", activityPATCH);
+
+export const DELETE = withActivity("/api/coaches/[id]/notes/[noteId]", "DELETE", activityDELETE);

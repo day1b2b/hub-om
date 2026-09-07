@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import {
@@ -15,7 +16,7 @@ interface RouteContext {
   }>;
 }
 
-export async function POST(request: Request, { params }: RouteContext) {
+async function activityPOST(request: Request, { params }: RouteContext) {
   // 로그인·워크스페이스 도메인 확인은 그대로 둔다. 세션 값 자체는 더 이상 쓰지 않는다.
   await requireWorkspaceSession();
 
@@ -65,3 +66,5 @@ function parseRefreshSource(value: unknown): OperationDiscussionRefreshSource {
 
   return "all";
 }
+
+export const POST = withActivity("/api/operations/[operationId]/source-reads/refresh", "POST", activityPOST);

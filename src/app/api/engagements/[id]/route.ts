@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import {
@@ -17,7 +18,7 @@ interface RouteContext {
   }>;
 }
 
-export async function PUT(request: Request, { params }: RouteContext) {
+async function activityPUT(request: Request, { params }: RouteContext) {
   await requireWorkspaceSession();
 
   const { id } = await params;
@@ -67,3 +68,5 @@ export async function PUT(request: Request, { params }: RouteContext) {
 
   return NextResponse.json({ ok: true, engagement: updated });
 }
+
+export const PUT = withActivity("/api/engagements/[id]", "PUT", activityPUT);

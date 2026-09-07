@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
 import { planCalendarReverseSync } from "@/lib/googleCalendar/calendarReverseSync";
@@ -11,7 +12,7 @@ export const dynamic = "force-dynamic";
 // 경로를 src/auth.ts의 SYNC_API_PATHS에도 등록해야 베어러 요청이 로그인 화면으로
 // 리다이렉트되지 않는다(마무리 알림에서 겪은 사고).
 
-export async function GET(request: Request) {
+async function activityGET(request: Request) {
   try {
     await requireCalendarSyncAccess(request);
 
@@ -24,7 +25,7 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+async function activityPOST(request: Request) {
   try {
     await requireCalendarSyncAccess(request);
 
@@ -49,3 +50,7 @@ async function requireCalendarSyncAccess(request: Request): Promise<string> {
   const session = await assertAdminSession();
   return session.user?.email ?? "admin-session";
 }
+
+export const GET = withActivity("/api/sync/calendar-events", "GET", activityGET);
+
+export const POST = withActivity("/api/sync/calendar-events", "POST", activityPOST);

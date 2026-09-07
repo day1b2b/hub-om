@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
@@ -11,7 +12,7 @@ interface RouteContext {
   }>;
 }
 
-export async function POST(request: Request, { params }: RouteContext) {
+async function activityPOST(request: Request, { params }: RouteContext) {
   await requireWorkspaceSession();
 
   const { operationId } = await params;
@@ -36,3 +37,5 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   return NextResponse.json({ ok: true, result });
 }
+
+export const POST = withActivity("/api/operations/[operationId]/drive-import/candidates", "POST", activityPOST);

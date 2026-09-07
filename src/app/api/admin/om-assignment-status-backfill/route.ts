@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { OperationStatus as PrismaOperationStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
@@ -23,7 +24,7 @@ const PLACEHOLDER_OM_VALUES = ["", ...Array.from(ASSIGNMENT_NEEDED_VALUES)];
  *   - OM 값이 실제 이름이 아니라 "배정필요" 같은 플레이스홀더 텍스트인 건은 대상에서 제외한다.
  *   - 소프트 삭제(deletedAt)된 행은 대상에서 제외한다.
  */
-export async function GET() {
+async function activityGET() {
   await assertAdminSession();
 
   const prisma = getPrismaClient();
@@ -38,7 +39,7 @@ export async function GET() {
   return NextResponse.json({ ok: true, targetCount });
 }
 
-export async function POST() {
+async function activityPOST() {
   const session = await assertAdminSession();
 
   const prisma = getPrismaClient();
@@ -55,3 +56,7 @@ export async function POST() {
 
   return NextResponse.json({ ok: true, updatedCount: result.count });
 }
+
+export const GET = withActivity("/api/admin/om-assignment-status-backfill", "GET", activityGET);
+
+export const POST = withActivity("/api/admin/om-assignment-status-backfill", "POST", activityPOST);

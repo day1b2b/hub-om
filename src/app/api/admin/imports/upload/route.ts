@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { storeParsedImport } from "@/lib/data/importStagingWriter";
@@ -8,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
-export async function POST(request: Request) {
+async function activityPOST(request: Request) {
   const session = await requireWorkspaceSession();
   const importedBy = session.user?.email ?? "";
   const formData = await request.formData();
@@ -95,3 +96,5 @@ function inferSourceType(fileName: string) {
   if (extension === "xlsx" || extension === "xls") return "spreadsheet";
   return "upload";
 }
+
+export const POST = withActivity("/api/admin/imports/upload", "POST", activityPOST);

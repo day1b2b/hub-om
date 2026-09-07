@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { requireCoachSyncAccess } from "@/lib/coaches/syncAuth";
 import { runCoachSyncWithLog } from "@/lib/coaches/syncLog";
 import { syncContractSheetEngagements } from "@/lib/coaches/contractSheetSync";
@@ -5,7 +6,7 @@ import { syncJsonResponse } from "@/lib/coaches/syncRouteResponse";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: Request) {
+async function activityGET(request: Request) {
   return syncJsonResponse(async () => {
     await requireCoachSyncAccess(request);
     const result = await syncContractSheetEngagements(true);
@@ -13,10 +14,14 @@ export async function GET(request: Request) {
   });
 }
 
-export async function POST(request: Request) {
+async function activityPOST(request: Request) {
   return syncJsonResponse(async () => {
     const triggeredBy = await requireCoachSyncAccess(request);
     const result = await runCoachSyncWithLog("engagements", triggeredBy, () => syncContractSheetEngagements(false));
     return { ok: true, result };
   });
 }
+
+export const GET = withActivity("/api/sync/engagements", "GET", activityGET);
+
+export const POST = withActivity("/api/sync/engagements", "POST", activityPOST);

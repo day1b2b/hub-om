@@ -85,6 +85,7 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
             ) : null}
             <Link className={isImportAdminPage ? "active" : ""} data-icon="🔒" href="/admin/imports">데이터 일괄 등록</Link>
             <Link className={isUsersAdminPage ? "active" : ""} data-icon="🔒" href="/admin/users">멤버 관리</Link>
+            <Link className={pathname === "/activity" || pathname?.startsWith("/admin/activity") ? "active" : ""} data-icon="🔒" href="/activity">활동 기록</Link>
             <Link className={isDatabaseAdminPage ? "active" : ""} data-icon="🔒" href="/admin/database">DB 조회</Link>
           </div>
         ) : null}

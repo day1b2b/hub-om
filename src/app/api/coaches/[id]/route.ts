@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { CoachStatus, type Prisma } from "@prisma/client";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
@@ -13,7 +14,7 @@ interface RouteContext {
   }>;
 }
 
-export async function PATCH(request: Request, { params }: RouteContext) {
+async function activityPATCH(request: Request, { params }: RouteContext) {
   await requireWorkspaceSession();
 
   const { id } = await params;
@@ -54,7 +55,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   });
 }
 
-export async function GET(_request: Request, { params }: RouteContext) {
+async function activityGET(_request: Request, { params }: RouteContext) {
   await requireWorkspaceSession();
 
   const { id } = await params;
@@ -122,7 +123,7 @@ const PROFILE_FIELD_KEYS = [
   "curriculums"
 ] as const;
 
-export async function PUT(request: Request, { params }: RouteContext) {
+async function activityPUT(request: Request, { params }: RouteContext) {
   const session = await requireWorkspaceSession();
 
   const { id } = await params;
@@ -211,7 +212,7 @@ export async function PUT(request: Request, { params }: RouteContext) {
   return NextResponse.json({ ok: true, coach: updated });
 }
 
-export async function DELETE(_request: Request, { params }: RouteContext) {
+async function activityDELETE(_request: Request, { params }: RouteContext) {
   const session = await requireWorkspaceSession();
   const { id } = await params;
   const prisma = getPrismaClient();
@@ -284,3 +285,11 @@ function dateValue(value: unknown): Date | null {
 function toDateString(value: Date): string {
   return value.toISOString().slice(0, 10);
 }
+
+export const PATCH = withActivity("/api/coaches/[id]", "PATCH", activityPATCH);
+
+export const GET = withActivity("/api/coaches/[id]", "GET", activityGET);
+
+export const PUT = withActivity("/api/coaches/[id]", "PUT", activityPUT);
+
+export const DELETE = withActivity("/api/coaches/[id]", "DELETE", activityDELETE);

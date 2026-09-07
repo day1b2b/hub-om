@@ -1,8 +1,9 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { saveInstructorNote, type InstructorNote } from "@/lib/data/instructorWikiStore";
 
 // 강사위키 OM 입력값 저장. 강사명 기준으로 부분 병합.
-export async function POST(request: Request) {
+async function activityPOST(request: Request) {
   try {
     const body = (await request.json()) as { name?: string } & InstructorNote;
     const { name, ...patch } = body;
@@ -15,3 +16,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "저장 실패" }, { status: 500 });
   }
 }
+
+export const POST = withActivity("/api/instructor-wiki/save", "POST", activityPOST);

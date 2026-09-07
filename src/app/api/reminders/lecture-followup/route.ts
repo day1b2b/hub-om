@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
 import { runLectureFollowUpReminders } from "@/lib/reminders/lectureFollowUpReminder";
@@ -7,14 +8,14 @@ export const dynamic = "force-dynamic";
 // GET  = 미리보기(발송 안 함). 관리자가 브라우저로 열어 대상과 문구를 확인한다.
 // POST = 실제 DM 발송. Coolify 스케줄 작업이 SYNC_API_SECRET 베어러로 호출한다.
 
-export async function GET(request: Request) {
+async function activityGET(request: Request) {
   return reminderJsonResponse(async () => {
     await requireReminderAccess(request);
     return runLectureFollowUpReminders({ dryRun: true });
   });
 }
 
-export async function POST(request: Request) {
+async function activityPOST(request: Request) {
   return reminderJsonResponse(async () => {
     await requireReminderAccess(request);
     return runLectureFollowUpReminders({ dryRun: false });
@@ -47,3 +48,7 @@ async function reminderJsonResponse(handler: () => Promise<unknown>) {
     );
   }
 }
+
+export const GET = withActivity("/api/reminders/lecture-followup", "GET", activityGET);
+
+export const POST = withActivity("/api/reminders/lecture-followup", "POST", activityPOST);
