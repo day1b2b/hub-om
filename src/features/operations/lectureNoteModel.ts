@@ -41,7 +41,7 @@ function splitDateBlocks(value: string): { date: string; body: string }[] {
     const start = (match.index ?? 0) + match[0].length;
     const end = index + 1 < matches.length ? matches[index + 1].index ?? value.length : value.length;
 
-    return { body: value.slice(start, end).trim(), date: match[1].trim() };
+    return { body: value.slice(start, end).trim(), date: normalizeNoteDate(match[1]) };
   });
 
   // 첫 날짜 제목 앞에 적힌 내용은 버리지 않고 날짜 없는 블록으로 남긴다.
@@ -164,6 +164,19 @@ export function suggestNextLectureDate(usedDates: string[], educationDates: stri
 
   const latest = [...used].sort().at(-1) ?? startDate;
   return addDays(latest, 1);
+}
+
+/**
+ * 날짜 제목의 표기를 yyyy-mm-dd로 맞춘다. 붙여넣은 글의 "2026.9.1", "2026/09/01"이 탭의 "2026-09-01"과
+ * 다른 글자로 남으면 같은 날 탭이 두 개 생긴다. 숫자 날짜가 아니면 적힌 대로 둔다.
+ */
+export function normalizeNoteDate(raw: string): string {
+  const trimmed = raw.trim();
+  const match = trimmed.match(/^(\d{4})\s*[-./년]\s*(\d{1,2})\s*[-./월]\s*(\d{1,2})\s*일?\s*[.]?$/);
+  if (!match) return trimmed;
+
+  const [, year, month, day] = match;
+  return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
 }
 
 function addDays(isoDate: string, days: number): string {

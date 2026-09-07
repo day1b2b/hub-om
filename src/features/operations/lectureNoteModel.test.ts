@@ -6,6 +6,7 @@ import {
   composeLectureNote,
   isDateUsedByOtherTab,
   mergePastedNote,
+  normalizeNoteDate,
   parseLectureNote,
   parseLectureNoteBody,
   prepareTabsForSave,
@@ -203,4 +204,16 @@ test("저장 형식 그대로 다시 읽으면 칸 내용이 늘거나 줄지 �
   const roundTripped = parseLectureNote(composeLectureNote(tabs), "2026-09-01");
   assert.deepEqual(roundTripped, tabs);
   assert.equal(composeLectureNote(roundTripped), composeLectureNote(tabs));
+});
+
+test("날짜 제목의 표기가 달라도 같은 날로 읽어 탭이 두 개 생기지 않는다", () => {
+  assert.equal(normalizeNoteDate("2026.9.1"), "2026-09-01");
+  assert.equal(normalizeNoteDate("2026/09/01"), "2026-09-01");
+  assert.equal(normalizeNoteDate("2026년 9월 1일"), "2026-09-01");
+  assert.equal(normalizeNoteDate(" 2026-09-01 "), "2026-09-01");
+  // 숫자 날짜가 아니면 적힌 대로 둔다.
+  assert.equal(normalizeNoteDate("첫날"), "첫날");
+
+  const merged = mergePastedNote([{ ...blankTab("2026-09-01"), issue: "기존 이슈" }], 0, "[날짜: 2026.9.1]\n[강의 요약]\n요약");
+  assert.deepEqual(merged, [{ ...blankTab("2026-09-01"), courseSummary: "요약", issue: "기존 이슈" }]);
 });

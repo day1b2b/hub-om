@@ -72,11 +72,14 @@ export function LectureManagementNoteRow({
   const [retryCount, setRetryCount] = useState(0);
   const [recoverableDraft, setRecoverableDraft] = useState<StoredDraft | null>(null);
   const [dateError, setDateError] = useState<string | null>(null);
+  // 마지막으로 실패한 저장 요청이 담고 있던 editVersion. 그 뒤로 편집이 없으면 재시도 효과(백오프)에 맡기고
+  // 3초 자동 저장은 쉰다. 편집이 있었으면 사용자가 보고 있는 중이니 바로 다시 시도한다.
+  const [failedAtEditVersion, setFailedAtEditVersion] = useState<number | null>(null);
   const saveSequenceRef = useRef(0);
 
   // operationId 외에는 setState와 ref만 쓰므로 참조가 바뀌지 않는다. 효과(effect) 의존성에 그대로 넣을 수 있다.
   const persist = useCallback(
-    async (noteValue: string): Promise<boolean> => {
+    async (noteValue: string, editVersionAtRequest: number): Promise<boolean> => {
       const sequence = ++saveSequenceRef.current;
       setSaveState("saving");
 
@@ -101,11 +104,13 @@ export function LectureManagementNoteRow({
       if (sequence !== saveSequenceRef.current) return ok;
 
       if (!ok) {
+        setFailedAtEditVersion(editVersionAtRequest);
         setSaveState("failed");
         setRetryCount((current) => current + 1);
         return false;
       }
 
+      setFailedAtEditVersion(null);
       setLastSavedValue(noteValue);
       setSavedAt(new Date());
       setSaveState("saved");
@@ -125,13 +130,15 @@ export function LectureManagementNoteRow({
   // 앞 요청이 끝나면 saveState가 바뀌어 이 효과가 다시 돌고, 그때 남은 변경을 이어서 저장한다.
   useEffect(() => {
     if (!isOpen || !hasUnsavedEdit || saveState === "saving") return;
+    // 실패 뒤 편집이 없으면 3초마다 같은 요청을 반복하지 않는다.
+    if (saveState === "failed" && failedAtEditVersion === editVersion) return;
 
     const timer = window.setTimeout(() => {
-      void persist(pendingValue);
+      void persist(pendingValue, editVersion);
     }, AUTOSAVE_DELAY_MS);
 
     return () => window.clearTimeout(timer);
-  }, [isOpen, hasUnsavedEdit, pendingValue, editVersion, saveState, persist]);
+  }, [isOpen, hasUnsavedEdit, pendingValue, editVersion, saveState, failedAtEditVersion, persist]);
 
   // 저장에 실패한 동안에만 간격을 늘려 가며 다시 시도한다. 평소에는 아무 요청도 보내지 않는다.
   useEffect(() => {
@@ -139,11 +146,11 @@ export function LectureManagementNoteRow({
 
     const delay = Math.min(RETRY_BASE_DELAY_MS * 2 ** Math.max(0, retryCount - 1), RETRY_MAX_DELAY_MS);
     const timer = window.setTimeout(() => {
-      void persist(pendingValue);
+      void persist(pendingValue, editVersion);
     }, delay);
 
     return () => window.clearTimeout(timer);
-  }, [isOpen, saveState, hasUnsavedEdit, pendingValue, retryCount, persist]);
+  }, [isOpen, saveState, hasUnsavedEdit, pendingValue, editVersion, retryCount, persist]);
 
   // 편집 중인 내용은 브라우저에도 보관하고, 서버 저장이 끝나면 지운다.
   useEffect(() => {
@@ -319,7 +326,7 @@ export function LectureManagementNoteRow({
               </div>
               <div className="lecture-note-actions">
                 {saveState === "failed" ? (
-                  <button onClick={() => void persist(pendingValue)} type="button">
+                  <button onClick={() => void persist(pendingValue, editVersion)} type="button">
                     다시 저장
                   </button>
                 ) : null}
@@ -349,6 +356,7 @@ export function LectureManagementNoteRow({
     setEditVersion(0);
     setEditedMode(initialMode);
     setRetryCount(0);
+    setFailedAtEditVersion(null);
     // 열자마자 저장이 걸리지 않도록, 현재 값을 화면 형식으로 다시 조합한 결과를 "저장된 값"으로 둔다.
     const initialComposed = initialMode === "link" ? initialLink.trim() : composeLectureNote(withFallbackDates(initialTabs));
     setLastSavedValue(initialComposed);
@@ -391,7 +399,7 @@ export function LectureManagementNoteRow({
     if (saveState === "saving") return;
 
     if (hasUnsavedEdit) {
-      const saved = await persist(pendingValue);
+      const saved = await persist(pendingValue, editVersion);
       // 저장에 실패하면 입력 내용을 잃지 않도록 창을 닫지 않는다.
       if (!saved) return;
     }
