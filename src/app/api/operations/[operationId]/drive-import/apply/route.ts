@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse } from "next/server.js";
 import { readLimitedJson, RequestBodyTooLargeError } from "@/lib/http/readLimitedJson";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { parseEducationDatesText } from "@/lib/data/operationCalculations";
@@ -111,15 +111,15 @@ export async function POST(request: Request, { params }: RouteContext) {
   for (const patch of patches) {
     if (!patch || !isApplyableField(patch.field) || typeof patch.value !== "string") continue;
 
-    if (patch.value.length > MAX_TEXT_VALUE_LENGTH) {
+    const currentValue = currentOperationValue(operation, patch.field);
+    const nextValue = patch.action === "append" ? appendText(currentValue, patch.value) : patch.value;
+
+    if (patch.value.length > MAX_TEXT_VALUE_LENGTH || nextValue.length > MAX_TEXT_VALUE_LENGTH) {
       return NextResponse.json(
-        { ok: false, error: `입력이 너무 깁니다. 한 항목은 ${MAX_TEXT_VALUE_LENGTH.toLocaleString("ko-KR")}자까지 저장할 수 있습니다.` },
+        { ok: false, error: `입력이 너무 깁니다. 기존 내용을 포함해 한 항목은 ${MAX_TEXT_VALUE_LENGTH.toLocaleString("ko-KR")}자까지 저장할 수 있습니다.` },
         { status: 413 }
       );
     }
-
-    const currentValue = currentOperationValue(operation, patch.field);
-    const nextValue = patch.action === "append" ? appendText(currentValue, patch.value) : patch.value;
 
     assignUpdateValue(update, patch.field, nextValue);
   }
