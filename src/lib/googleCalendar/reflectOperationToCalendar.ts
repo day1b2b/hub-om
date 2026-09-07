@@ -1,3 +1,5 @@
+import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
+import { withCalendarOperationLock } from "./calendarOperationLock";
 // 운영현황 변경을 구글 캘린더에 반영한다(hub-om → 구글).
 //
 // 이 모듈의 함수는 절대 throw하지 않는다. 운영현황 저장은 이미 끝난 뒤에 불리는
@@ -10,12 +12,11 @@
 
 import type { OperationSession } from "@/lib/data/operationTypes";
 import { isCalendarWriteEnabled, resolvePartCalendarId } from "./calendarWriteConfig";
-import { deleteEvent, insertEvent, patchEvent, readEventAttendees } from "./calendarWriteClient";
+import { deleteEvent, insertOperationEvent, patchEvent, readEventAttendees } from "./calendarWriteClient";
 import { resolveCalendarTargets } from "./calendarParticipants";
 import { attendeesChanged, buildCalendarEventBodies } from "./operationCalendarEvent";
 import {
-  deleteCalendarEventLink,
-  deleteCalendarEventLinks,
+  deleteMatchingCalendarEventLink,
   listCalendarEventLinks,
   saveCalendarEventLink,
   type CalendarEventLink
@@ -33,7 +34,7 @@ function logSkip(operationId: string, reason: string): void {
  */
 type ReflectTrigger = "created" | "updated";
 
-async function reflectOperation(operation: OperationSession, trigger: ReflectTrigger): Promise<void> {
+async function reflectOperationUnlocked(operation: OperationSession, trigger: ReflectTrigger, skipEventId?: string): Promise<void> {
   try {
     if (!isCalendarWriteEnabled()) return;
 
@@ -63,22 +64,27 @@ async function reflectOperation(operation: OperationSession, trigger: ReflectTri
       }
 
       await deleteEvent(link.calendarId, link.eventId);
-      await deleteCalendarEventLink(operation.operationId, link.eventDate);
+      await deleteMatchingCalendarEventLink(link);
     }
 
     for (const plan of buildCalendarEventBodies(operation, targets.attendeeEmails, targets.partKey)) {
       const link = sameCalendar.get(plan.eventDate);
 
+      if (skipEventId && link?.eventId === skipEventId) { sameCalendar.delete(plan.eventDate); continue; }
       if (link) {
         // 참석자가 달라진 수정만 메일을 보낸다. 이 서비스는 요청 접수 시 이벤트를 먼저
         // 만들고 나중에 OM을 배정하므로, 초대 메일이 실제로 나가는 시점이 이 patch다.
         // 담당·현장 OM이 같은 사람이면 목록이 그대로여서 메일이 중복으로 가지 않는다.
-        const notifyAttendees = attendeesChanged(
+        const notifyAttendees = targets.unresolvedNames.length === 0 && attendeesChanged(
           await readEventAttendees(calendarId, link.eventId),
           plan.body.attendees?.map((attendee) => attendee.email) ?? []
         );
 
-        const result = await patchEvent(calendarId, link.eventId, plan.body, { notifyAttendees });
+        const patchBody = { ...plan.body, location: plan.body.location ?? "" };
+        // 이메일을 해석하지 못한 상태는 담당자 해제로 간주하지 않는다.
+        if (targets.unresolvedNames.length === 0) patchBody.attendees = plan.body.attendees ?? [];
+        else delete patchBody.attendees;
+        const result = await patchEvent(calendarId, link.eventId, patchBody, { notifyAttendees });
         sameCalendar.delete(plan.eventDate);
 
         if (result !== "missing") continue;
@@ -87,7 +93,7 @@ async function reflectOperation(operation: OperationSession, trigger: ReflectTri
         // 10분마다 도는 역반영은 이런 이벤트를 되살리지 않지만, 여기는 사람이 hub-om에서
         // 회차를 저장한 시점이다 — 잘못 지운 일정을 되살리는 길이 이것뿐이므로 다시 만든다
         // (2026-09-04 결정). 초대 메일은 insert라 다시 나간다. 매핑은 새 eventId로 갈아 끼운다.
-        const recreatedId = await insertEvent(calendarId, plan.body);
+        const recreatedId = await insertOperationEvent(calendarId, plan.body, { operationId: operation.operationId, eventDate: plan.eventDate, source: "forward", previousEventId: link.eventId });
         await saveCalendarEventLink({
           operationId: operation.operationId,
           calendarId,
@@ -100,7 +106,7 @@ async function reflectOperation(operation: OperationSession, trigger: ReflectTri
         continue;
       }
 
-      const eventId = await insertEvent(calendarId, plan.body);
+      const eventId = await insertOperationEvent(calendarId, plan.body, { operationId: operation.operationId, eventDate: plan.eventDate, source: "forward", occupiedEventIds: existing.filter(entry => entry.calendarId === calendarId && entry.eventDate !== plan.eventDate).map(entry => entry.eventId) });
       await saveCalendarEventLink({
         operationId: operation.operationId,
         calendarId,
@@ -110,12 +116,25 @@ async function reflectOperation(operation: OperationSession, trigger: ReflectTri
     }
 
     // 남은 매핑 = 교육일에서 빠진 날. 이벤트와 매핑을 함께 정리한다.
-    for (const [eventDate, link] of sameCalendar) {
+    for (const link of sameCalendar.values()) {
       await deleteEvent(link.calendarId, link.eventId);
-      await deleteCalendarEventLink(operation.operationId, eventDate);
+      await deleteMatchingCalendarEventLink(link);
     }
   } catch (error) {
     console.error(`[gcal] ${operation.operationId} 반영 실패:`, error);
+  }
+}
+
+async function reflectOperation(operation: OperationSession, trigger: ReflectTrigger, skipEventId?: string): Promise<void> {
+  try {
+    await withCalendarOperationLock(operation.operationId, async () => {
+      if (!isCalendarWriteEnabled()) return;
+      const current = await getOperationRepository().getOperationById(operation.operationId);
+      if (!current) return; // 생성 직후 취소·삭제된 회차를 오래된 객체로 되살리지 않는다.
+      await reflectOperationUnlocked(current, trigger, skipEventId);
+    });
+  } catch (error) {
+    console.error(`[gcal] ${operation.operationId} 반영 잠금 실패:`, error);
   }
 }
 
@@ -125,12 +144,12 @@ export function reflectOperationCreated(operation: OperationSession): Promise<vo
 }
 
 /** 운영 수정. 이미 캘린더에 올라간 과정만 갱신한다. */
-export function reflectOperationUpdated(operation: OperationSession): Promise<void> {
-  return reflectOperation(operation, "updated");
+export function reflectOperationUpdated(operation: OperationSession, skipEventId?: string): Promise<void> {
+  return reflectOperation(operation, "updated", skipEventId);
 }
 
 /** 취소·삭제. 회차에 걸린 이벤트를 모두 지우고 매핑도 정리한다(스펙 D4). */
-export async function reflectOperationDelete(operationId: string): Promise<void> {
+async function reflectOperationDeleteUnlocked(operationId: string): Promise<void> {
   try {
     if (!isCalendarWriteEnabled()) return;
 
@@ -139,10 +158,14 @@ export async function reflectOperationDelete(operationId: string): Promise<void>
 
     for (const link of existing) {
       await deleteEvent(link.calendarId, link.eventId);
+      await deleteMatchingCalendarEventLink(link);
     }
-
-    await deleteCalendarEventLinks(operationId);
   } catch (error) {
     console.error(`[gcal] ${operationId} 삭제 반영 실패:`, error);
   }
+}
+
+export async function reflectOperationDelete(operationId: string): Promise<void> {
+  try { await withCalendarOperationLock(operationId, () => reflectOperationDeleteUnlocked(operationId)); }
+  catch (error) { console.error(`[gcal] ${operationId} 삭제 잠금 실패:`, error); }
 }

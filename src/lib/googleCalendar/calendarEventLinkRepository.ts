@@ -76,14 +76,14 @@ export async function deleteCalendarEventLinks(operationId: string): Promise<voi
  * 같은 이벤트가 새 교육일을 담당하도록 키를 맞춘다.
  */
 export async function moveCalendarEventLinkDate(
-  operationId: string,
-  fromDate: string,
+  link: CalendarEventLink,
   toDate: string
 ): Promise<void> {
-  await getPrismaClient().calendarEventLink.updateMany({
-    where: { operationId, eventDate: toDateOnly(fromDate) },
+  const result = await getPrismaClient().calendarEventLink.updateMany({
+    where: { operationId: link.operationId, eventDate: toDateOnly(link.eventDate), calendarId: link.calendarId, eventId: link.eventId },
     data: { eventDate: toDateOnly(toDate) }
   });
+  if (result.count !== 1) throw new Error("이동할 캘린더 매핑이 변경되었습니다.");
 }
 
 /**
@@ -94,4 +94,11 @@ export async function findCalendarEventLinksByCalendar(calendarId: string): Prom
   const rows = await getPrismaClient().calendarEventLink.findMany({ where: { calendarId } });
 
   return new Map(rows.map((row) => [row.eventId, toLink(row)]));
+}
+
+/** 조회한 이벤트와 여전히 일치하는 매핑만 제거한다. 교체·이동된 매핑은 보존한다. */
+export async function deleteMatchingCalendarEventLink(link: CalendarEventLink): Promise<void> {
+  await getPrismaClient().calendarEventLink.deleteMany({
+    where: { operationId: link.operationId, eventDate: toDateOnly(link.eventDate), calendarId: link.calendarId, eventId: link.eventId }
+  });
 }

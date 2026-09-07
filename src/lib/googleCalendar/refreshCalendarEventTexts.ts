@@ -1,3 +1,5 @@
+import { withCalendarOperationLock } from "./calendarOperationLock";
+import { calendarOperationRevision } from "./calendarOperationRevision";
 // 이미 캘린더에 올라간 이벤트의 **설명·제목만** 현재 규칙으로 다시 쓴다(관리자 도구).
 //
 // 설명 문구나 제목 규칙이 바뀌면 새 이벤트는 바로 새 규칙을 따르지만, 기존 이벤트는
@@ -13,8 +15,8 @@
 
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { isCalendarWriteEnabled } from "./calendarWriteConfig";
-import { patchEvent } from "./calendarWriteClient";
-import { listAllCalendarEventLinks } from "./calendarEventLinkRepository";
+import { patchEvent, readCalendarEventVersion } from "./calendarWriteClient";
+import { listAllCalendarEventLinks, listCalendarEventLinks } from "./calendarEventLinkRepository";
 import { resolveCalendarTargets } from "./calendarParticipants";
 import { buildTextPatch } from "./refreshCalendarEventTextsRules";
 
@@ -99,7 +101,16 @@ export async function refreshCalendarEventTexts(options: { dryRun: boolean }): P
     }
 
     try {
-      outcome.result = await patchEvent(link.calendarId, link.eventId, patch);
+      outcome.result = await withCalendarOperationLock(link.operationId, async () => {
+        const current = await getOperationRepository().getOperationById(link.operationId);
+        const currentLinks = await listCalendarEventLinks(link.operationId);
+        if (!current || calendarOperationRevision(current) !== calendarOperationRevision(operation) ||
+            !currentLinks.some(entry => entry.eventId === link.eventId && entry.calendarId === link.calendarId && entry.eventDate === link.eventDate)) {
+          throw new Error("갱신 계획 후 회차 또는 매핑이 변경되었습니다.");
+        }
+        const event = await readCalendarEventVersion(link.calendarId, link.eventId);
+        return patchEvent(link.calendarId, link.eventId, patch, { expectedEtag: event.etag });
+      });
       if (outcome.result === "missing") outcome.detail = "이벤트가 캘린더에 없음(사람이 지움) — hub-om 저장 시 재생성";
     } catch (error) {
       outcome.result = "failed";
