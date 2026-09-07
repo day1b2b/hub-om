@@ -4,6 +4,8 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { useRouter } from "next/navigation";
 import { isNavigableHref, toHref } from "@/lib/links";
 import {
+  ISSUE_TAG_OPTIONS,
+  normalizeIssueTags,
   blankTab,
   composeLectureNote,
   isDateUsedByOtherTab,
@@ -337,6 +339,24 @@ export function LectureManagementNoteRow({
                     value={activeTab.staffOpinion}
                   />
                 </label>
+
+                <div className="lecture-note-field lecture-note-field-block">
+                  <span>이슈 유형</span>
+                  <div aria-label="이슈 유형 선택" className="lecture-note-issue-tags" role="group">
+                    {[...new Set([...ISSUE_TAG_OPTIONS, ...normalizeIssueTags(activeTab.issueTags)])].map((tag) => (
+                      <button
+                        aria-pressed={normalizeIssueTags(activeTab.issueTags).includes(tag)}
+                        className="lecture-note-tag-toggle"
+                        key={tag}
+                        onClick={() => {
+                          const tags = normalizeIssueTags(activeTab.issueTags);
+                          updateActiveTab({ issueTags: tags.includes(tag) ? tags.filter((item) => item !== tag) : [...tags, tag] });
+                        }}
+                        type="button"
+                      >{tag}</button>
+                    ))}
+                  </div>
+                </div>
 
                 <label className="lecture-note-field lecture-note-field-block">
                   <span>이슈</span>

@@ -13757,3 +13757,8 @@ button.coach-doc-reserve-chip:disabled {
   font-size: 13px;
   margin: 8px 0 0;
 }
+
+/* 강의관리 텍스트 모드의 이슈 태그 */
+.lecture-note-issue-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+.lecture-note-tag-toggle { padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 16px; background: white; color: #334155; cursor: pointer; }
+.lecture-note-tag-toggle[aria-pressed="true"] { background: #e8f0e3; border-color: #6b875a; color: #324b24; }
