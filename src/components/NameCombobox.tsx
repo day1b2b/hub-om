@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { nameComboboxSegments } from "./nameComboboxRules";
 
 // 이름 목록에서 고르되 자유 입력도 허용하는 콤보박스. om-request의 기업명 콤보박스와 동일한 패턴.
 // 목록에 없는 값도 그대로 저장되지만(신규 강사 등 아직 동기화 전일 수 있음), 있으면 hint로 알려준다.
@@ -37,7 +38,7 @@ export function NameCombobox({
   const containerRef = useCloseOnOutsideClick(open, () => setOpen(false));
 
   // multiple일 때는 마지막 콤마 이전 이름들은 이미 선택 완료된 것으로 보고, 마지막 조각만 검색어로 쓴다.
-  const segments = value.split(",");
+  const segments = nameComboboxSegments(value, multiple);
   const committedNames = multiple ? segments.slice(0, -1).map((s) => s.trim()).filter(Boolean) : [];
   const q = segments[segments.length - 1].trim().toLowerCase();
   const matches = options.filter((o) => {
@@ -45,8 +46,7 @@ export function NameCombobox({
     return q ? o.toLowerCase().includes(q) : true;
   });
 
-  const allNames = value
-    .split(",")
+  const allNames = segments
     .map((s) => s.trim())
     .filter(Boolean);
   const isUnmatched =
