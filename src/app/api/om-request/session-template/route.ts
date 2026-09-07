@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
@@ -5,7 +6,7 @@ import { buildSessionSheetWorkbook, SESSION_SHEET_FILE_NAME } from "@/lib/data/o
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+async function activityGET() {
   await requireWorkspaceSession();
 
   const workbook = buildSessionSheetWorkbook();
@@ -18,3 +19,5 @@ export async function GET() {
     }
   });
 }
+
+export const GET = withActivity("/api/om-request/session-template", "GET", activityGET);

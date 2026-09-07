@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { parseEducationDatesText } from "@/lib/data/operationCalculations";
@@ -32,7 +33,7 @@ interface CreateCourseBody {
   trainingType?: unknown;
 }
 
-export async function POST(request: Request) {
+async function activityPOST(request: Request) {
   const session = await requireWorkspaceSession();
   const repository = getOperationRepository();
   const body = (await request.json().catch(() => ({}))) as CreateCourseBody;
@@ -120,3 +121,5 @@ function educationFormatOf(value: unknown): EducationFormat {
   }
   return "검토필요";
 }
+
+export const POST = withActivity("/api/operations", "POST", activityPOST);

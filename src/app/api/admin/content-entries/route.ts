@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { CoachContentEntryKind } from "@prisma/client";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
@@ -18,7 +19,7 @@ interface FeedRow {
   feedback?: string | null;
 }
 
-export async function GET() {
+async function activityGET() {
   await requireWorkspaceSession();
 
   const prisma = getPrismaClient();
@@ -88,3 +89,5 @@ export async function GET() {
 
   return NextResponse.json({ ok: true, entries: rows });
 }
+
+export const GET = withActivity("/api/admin/content-entries", "GET", activityGET);

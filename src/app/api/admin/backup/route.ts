@@ -1,10 +1,11 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertCoachPiiAccess } from "@/lib/auth/requireAdminSession";
 import { getPrismaClient } from "@/lib/data/prisma";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(request: Request) {
+async function activityPOST(request: Request) {
   const authorizedBySecret = isAuthorizedBySecret(request);
   if (!authorizedBySecret) {
     await assertCoachPiiAccess();
@@ -90,3 +91,5 @@ function isAuthorizedBySecret(request: Request): boolean {
   const authorization = request.headers.get("authorization");
   return authorization === `Bearer ${configured}`;
 }
+
+export const POST = withActivity("/api/admin/backup", "POST", activityPOST);

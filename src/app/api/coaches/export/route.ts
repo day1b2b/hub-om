@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertCoachPiiAccess } from "@/lib/auth/requireAdminSession";
 import { buildSkillfloCoachUrl } from "@/lib/coaches/skillfloCoachUrl";
@@ -5,7 +6,7 @@ import { getPrismaClient } from "@/lib/data/prisma";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(request: Request) {
+async function activityPOST(request: Request) {
   const session = await assertCoachPiiAccess();
 
   const body = (await request.json().catch(() => ({}))) as {
@@ -96,3 +97,5 @@ function toCsv(rows: Array<Record<string, string>>): string {
 function escapeCsv(value: string): string {
   return `"${value.replaceAll("\"", "\"\"")}"`;
 }
+
+export const POST = withActivity("/api/coaches/export", "POST", activityPOST);

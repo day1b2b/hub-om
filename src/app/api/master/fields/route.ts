@@ -1,17 +1,18 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getPrismaClient } from "@/lib/data/prisma";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+async function activityGET() {
   await requireWorkspaceSession();
   const prisma = getPrismaClient();
   const fields = await prisma.coachFieldMaster.findMany({ orderBy: { name: "asc" } });
   return NextResponse.json({ ok: true, fields });
 }
 
-export async function POST(request: Request) {
+async function activityPOST(request: Request) {
   await requireWorkspaceSession();
   const body = (await request.json().catch(() => ({}))) as { name?: unknown };
   const name = typeof body.name === "string" ? body.name.trim() : "";
@@ -29,3 +30,7 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ ok: true, field }, { status: 201 });
 }
+
+export const GET = withActivity("/api/master/fields", "GET", activityGET);
+
+export const POST = withActivity("/api/master/fields", "POST", activityPOST);

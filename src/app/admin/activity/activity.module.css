@@ -1,0 +1,23 @@
+.panel { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-width: 0; }
+.tabs { display: flex; gap: 8px; }
+.panel button { padding: 9px 14px; border: 1px solid #d4dce5; border-radius: 8px; background: white; color: #243448; cursor: pointer; }
+.tabs button[aria-pressed="true"] { background: #243448; color: white; border-color: #243448; }
+.panel button:disabled { opacity: .45; cursor: default; }
+.note { color: #556577; font-size: 14px; line-height: 1.7; margin: 0; }
+.filters { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; background: #f5f7fa; padding: 16px; border-radius: 12px; }
+.filters label { display: grid; gap: 6px; font-size: 13px; color: #384b60; }
+.filters input, .filters select { min-height: 38px; max-width: 230px; padding: 7px 10px; background: white; border: 1px solid #c8d2de; border-radius: 6px; color: #243448; }
+.tableWrap { min-width: 0; max-width: 100%; overflow-x: auto; border: 1px solid #dce3eb; border-radius: 10px; }
+.panel table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.panel th { background: #f5f7fa; text-align: left; white-space: nowrap; }
+.panel th, .panel td { padding: 13px; border-bottom: 1px solid #e7ebf0; vertical-align: top; }
+.panel td { overflow-wrap: anywhere; min-width: 125px; }
+.panel small { display: block; margin-top: 5px; color: #617185; font-size: 11px; }
+.panel summary { cursor: pointer; white-space: nowrap; }
+.panel dl { min-width: 240px; max-width: 550px; }
+.panel dt { font-weight: 600; margin-top: 12px; }
+.panel dd { margin: 5px 0 0; white-space: pre-wrap; }
+.metadata { font-size: 11px; color: #617185; }
+.error { color: #b42318; }
+.empty { padding: 36px 12px; text-align: center; color: #617185; }
+.pagination { display: flex; align-items: center; justify-content: flex-end; gap: 14px; font-size: 13px; }

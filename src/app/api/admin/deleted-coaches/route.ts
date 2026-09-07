@@ -1,10 +1,11 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
 import { getPrismaClient } from "@/lib/data/prisma";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+async function activityGET() {
   await assertAdminSession();
 
   const prisma = getPrismaClient();
@@ -31,7 +32,7 @@ export async function GET() {
   });
 }
 
-export async function PUT(request: Request) {
+async function activityPUT(request: Request) {
   await assertAdminSession();
 
   const body = (await request.json().catch(() => ({}))) as { id?: unknown };
@@ -49,7 +50,7 @@ export async function PUT(request: Request) {
   return NextResponse.json({ ok: true, coach });
 }
 
-export async function DELETE(request: Request) {
+async function activityDELETE(request: Request) {
   await assertAdminSession();
 
   const body = (await request.json().catch(() => ({}))) as { id?: unknown };
@@ -70,3 +71,9 @@ export async function DELETE(request: Request) {
   await prisma.coach.delete({ where: { id: body.id } });
   return NextResponse.json({ ok: true });
 }
+
+export const GET = withActivity("/api/admin/deleted-coaches", "GET", activityGET);
+
+export const PUT = withActivity("/api/admin/deleted-coaches", "PUT", activityPUT);
+
+export const DELETE = withActivity("/api/admin/deleted-coaches", "DELETE", activityDELETE);

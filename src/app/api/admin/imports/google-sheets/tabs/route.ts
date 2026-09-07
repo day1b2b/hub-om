@@ -1,10 +1,11 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { listGoogleSheetTabs, parseGoogleSpreadsheetUrl } from "@/lib/data/googleSheetsImport";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(request: Request) {
+async function activityPOST(request: Request) {
   const session = await requireWorkspaceSession();
   const accessToken = session.googleAccessToken;
 
@@ -33,3 +34,5 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export const POST = withActivity("/api/admin/imports/google-sheets/tabs", "POST", activityPOST);

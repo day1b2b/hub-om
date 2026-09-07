@@ -1,10 +1,11 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
 import { getPrismaClient } from "@/lib/data/prisma";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+async function activityGET() {
   await assertAdminSession();
 
   const prisma = getPrismaClient();
@@ -35,7 +36,7 @@ export async function GET() {
   });
 }
 
-export async function PUT(request: Request) {
+async function activityPUT(request: Request) {
   await assertAdminSession();
 
   const body = (await request.json().catch(() => ({}))) as { operationId?: unknown };
@@ -52,3 +53,7 @@ export async function PUT(request: Request) {
 
   return NextResponse.json({ ok: true, operation: session });
 }
+
+export const GET = withActivity("/api/admin/deleted-operations", "GET", activityGET);
+
+export const PUT = withActivity("/api/admin/deleted-operations", "PUT", activityPUT);

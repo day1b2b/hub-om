@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import * as XLSX from "xlsx";
@@ -107,7 +108,7 @@ const EXAMPLE_ROWS = [
   ]
 ];
 
-export async function GET() {
+async function activityGET() {
   await requireWorkspaceSession();
 
   const worksheet = XLSX.utils.aoa_to_sheet([GUIDE_ROW, HEADER_ROW, ...EXAMPLE_ROWS]);
@@ -124,3 +125,5 @@ export async function GET() {
     }
   });
 }
+
+export const GET = withActivity("/api/admin/imports/template", "GET", activityGET);

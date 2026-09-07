@@ -1,3 +1,4 @@
+import { withActivityDatabase } from "@/lib/activity/database";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 
@@ -13,8 +14,10 @@ export function getPrismaClient(): PrismaClient {
   }
 
   if (!globalForPrisma.prisma) {
-    const adapter = new PrismaPg(databaseUrl);
-    globalForPrisma.prisma = new PrismaClient({ adapter });
+    // adapter-pg serializes timestamps without an offset. Keep every pooled
+    // connection in UTC so timestamptz reads, writes and date filters agree.
+    const adapter = new PrismaPg({ connectionString: databaseUrl, options: "-c timezone=UTC" });
+    globalForPrisma.prisma = withActivityDatabase(new PrismaClient({ adapter }));
   }
 
   return globalForPrisma.prisma;

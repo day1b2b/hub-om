@@ -856,3 +856,43 @@ model CalendarEventLink {
   @@index([calendarId, eventId])
   @@map("calendar_event_links")
 }
+
+// API metadata only. Never store payloads, credentials, IP addresses or raw URLs.
+model ActivityRequest {
+  id         String   @id @db.Uuid
+  occurredAt DateTime @default(dbgenerated("clock_timestamp()")) @map("occurred_at") @db.Timestamptz(3)
+  actorEmail String?  @map("actor_email")
+  actorName  String?  @map("actor_name")
+  actorType  String   @map("actor_type")
+  route      String
+  method     String
+  status     Int
+  durationMs Int      @map("duration_ms")
+
+  @@index([occurredAt, id])
+  @@index([actorEmail, occurredAt, id])
+  @@map("activity_requests")
+}
+
+// Database triggers write this in the same transaction as the affected business row.
+// No relation to the target or request: deleting either must not delete this history.
+model ActivityChange {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  occurredAt DateTime @default(dbgenerated("clock_timestamp()")) @map("occurred_at") @db.Timestamptz(3)
+  requestId  String   @map("request_id") @db.Uuid
+  actorEmail String?  @map("actor_email")
+  actorName  String?  @map("actor_name")
+  actorType  String   @map("actor_type")
+  route      String
+  method     String
+  targetType String   @map("target_type")
+  targetId   String   @map("target_id")
+  action     String
+  changes    Json
+
+  @@index([occurredAt, id])
+  @@index([actorEmail, occurredAt, id])
+  @@index([targetType, targetId, occurredAt, id])
+  @@index([requestId])
+  @@map("activity_changes")
+}

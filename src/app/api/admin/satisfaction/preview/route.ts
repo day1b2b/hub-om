@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { authorizeSatisfactionMatching } from "@/lib/auth/satisfactionMatchingAccess";
 import { parseGoogleSpreadsheetUrl, readGoogleSheetRows } from "@/lib/data/googleSheetsImport";
@@ -13,7 +14,7 @@ export const dynamic = "force-dynamic";
  * DB에 아무것도 쓰지 않고, 매칭/모호/미매칭 결과만 반환한다.
  * 활성화된 경우에만 관리자가 B2B 공용 계정 권한으로 시트를 읽는다.
  */
-export async function POST(request: Request) {
+async function activityPOST(request: Request) {
   const access = await authorizeSatisfactionMatching();
   if (!access.ok) return access.response;
 
@@ -125,3 +126,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
+
+export const POST = withActivity("/api/admin/satisfaction/preview", "POST", activityPOST);

@@ -13,6 +13,8 @@ mock.module("@/lib/data/operationRepositoryFactory", {
     updateOperation: update
   }) }
 });
+// Request attribution is tested separately; these tests exercise body limits and merging.
+mock.module("@/lib/activity/request", { namedExports: { withActivity: (_route: string, _method: string, handler: unknown) => handler } });
 const { POST } = await import("./route");
 
 beforeEach(() => { currentNote = ""; update.mock.resetCalls(); });

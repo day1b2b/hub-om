@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
 import { type MultiDealMode, type SalesRevenueSyncResult, runSalesRevenueSync } from "@/lib/data/salesRevenueSync";
@@ -11,11 +12,11 @@ export const dynamic = "force-dynamic";
  * 사람이 화면에서 여는 경우는 admin 세션, 월초 자동 동기화(Coolify 스케줄)는 SYNC_API_SECRET 베어러로 호출한다.
  * 자동 호출(POST)이 실패·미반영이면 SALES_SYNC_ALERT_EMAILS 대상에게 슬랙 DM으로만 알린다(성공은 조용히 넘어간다).
  */
-export async function GET(request: Request) {
+async function activityGET(request: Request) {
   return handle(false, request);
 }
 
-export async function POST(request: Request) {
+async function activityPOST(request: Request) {
   return handle(true, request);
 }
 
@@ -127,3 +128,7 @@ async function handle(apply: boolean, request?: Request) {
     );
   }
 }
+
+export const GET = withActivity("/api/admin/sales-revenue", "GET", activityGET);
+
+export const POST = withActivity("/api/admin/sales-revenue", "POST", activityPOST);

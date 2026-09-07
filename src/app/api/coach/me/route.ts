@@ -1,10 +1,11 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { extractCoachToken, validateCoachToken } from "@/lib/coaches/coachTokenAuth";
 import { getPrismaClient } from "@/lib/data/prisma";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: Request) {
+async function activityGET(request: Request) {
   const coach = await validateCoachToken(extractCoachToken(request));
   if (!coach) {
     return NextResponse.json({ ok: false, error: "코치 정보를 찾을 수 없습니다." }, { status: 401 });
@@ -54,3 +55,5 @@ export async function GET(request: Request) {
 function stringOrNull(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value : null;
 }
+
+export const GET = withActivity("/api/coach/me", "GET", activityGET);

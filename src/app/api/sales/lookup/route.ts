@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { resolveCourseLookup } from "@/lib/data/courseLookup";
 import { normalizeCourseId } from "@/lib/data/operationCalculations";
@@ -54,7 +55,7 @@ function readRequestToken(request: Request, url: URL): string {
   return bearer || (request.headers.get("x-lookup-token") ?? "").trim() || (url.searchParams.get("token") ?? "").trim();
 }
 
-export async function GET(request: Request) {
+async function activityGET(request: Request) {
   const url = new URL(request.url);
 
   const expectedToken = process.env.COURSE_LOOKUP_TOKEN?.trim() ?? "";
@@ -215,3 +216,5 @@ function deriveCompanyAndCourse(
     courseName: derivedCourse || rawCourseName
   };
 }
+
+export const GET = withActivity("/api/sales/lookup", "GET", activityGET);

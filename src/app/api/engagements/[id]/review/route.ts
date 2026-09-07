@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { logReviewEdit } from "@/lib/coaches/contentEntries";
@@ -12,7 +13,7 @@ interface RouteContext {
   }>;
 }
 
-export async function PATCH(request: Request, { params }: RouteContext) {
+async function activityPATCH(request: Request, { params }: RouteContext) {
   const session = await requireWorkspaceSession();
   const author = { email: session.user?.email ?? "", name: session.user?.name ?? session.user?.email ?? "매니저" };
 
@@ -56,3 +57,5 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 
   return NextResponse.json({ ok: true, engagement });
 }
+
+export const PATCH = withActivity("/api/engagements/[id]/review", "PATCH", activityPATCH);

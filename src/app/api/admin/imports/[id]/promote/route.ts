@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
@@ -11,7 +12,7 @@ interface RouteContext {
   }>;
 }
 
-export async function POST(_request: Request, { params }: RouteContext) {
+async function activityPOST(_request: Request, { params }: RouteContext) {
   await requireWorkspaceSession();
 
   const { id } = await params;
@@ -35,3 +36,5 @@ export async function POST(_request: Request, { params }: RouteContext) {
     );
   }
 }
+
+export const POST = withActivity("/api/admin/imports/[id]/promote", "POST", activityPOST);

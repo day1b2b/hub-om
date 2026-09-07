@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { matchSatisfactionRow, toSatisfactionSheetRow } from "@/lib/data/satisfactionSheet";
@@ -55,7 +56,7 @@ interface RoundApplyBody {
   manager?: string;
 }
 
-export async function POST(request: Request) {
+async function activityPOST(request: Request) {
   const url = new URL(request.url);
 
   const expectedToken = process.env.COURSE_LOOKUP_TOKEN?.trim() ?? "";
@@ -154,3 +155,5 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export const POST = withActivity("/api/satisfaction/round-apply", "POST", activityPOST);

@@ -82,6 +82,9 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       const { pathname } = request.nextUrl;
       const isSignedIn = Boolean(session?.user?.email && isAllowedWorkspaceEmail(session.user.email));
 
+      // Dedicated read-only feed authenticates its own server key in the handler.
+      if (pathname === "/api/activity-feed") return true;
+
       if (PUBLIC_PATHS.has(pathname)) {
         return true;
       }

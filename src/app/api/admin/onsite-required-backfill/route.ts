@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { OnsiteRequired } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
@@ -14,7 +15,7 @@ export const dynamic = "force-dynamic";
  *   - 완료/아카이빙 건을 포함해 소프트 삭제(deletedAt)되지 않은 전체 행이 대상이다.
  *   - 수정 필드는 onsiteRequired 하나뿐. 물리 삭제·스키마 변경 없음.
  */
-export async function GET() {
+async function activityGET() {
   await assertAdminSession();
 
   const prisma = getPrismaClient();
@@ -25,7 +26,7 @@ export async function GET() {
   return NextResponse.json({ ok: true, targetCount });
 }
 
-export async function POST() {
+async function activityPOST() {
   const session = await assertAdminSession();
 
   const prisma = getPrismaClient();
@@ -38,3 +39,7 @@ export async function POST() {
 
   return NextResponse.json({ ok: true, updatedCount: result.count });
 }
+
+export const GET = withActivity("/api/admin/onsite-required-backfill", "GET", activityGET);
+
+export const POST = withActivity("/api/admin/onsite-required-backfill", "POST", activityPOST);

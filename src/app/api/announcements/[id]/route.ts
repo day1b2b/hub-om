@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
 import { getPrismaClient } from "@/lib/data/prisma";
@@ -12,7 +13,7 @@ interface RouteContext {
   }>;
 }
 
-export async function GET(_request: Request, { params }: RouteContext) {
+async function activityGET(_request: Request, { params }: RouteContext) {
   await assertAdminSession();
 
   const { id } = await params;
@@ -48,7 +49,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
   });
 }
 
-export async function PUT(request: Request, { params }: RouteContext) {
+async function activityPUT(request: Request, { params }: RouteContext) {
   await assertAdminSession();
 
   const { id } = await params;
@@ -124,7 +125,7 @@ export async function PUT(request: Request, { params }: RouteContext) {
   });
 }
 
-export async function DELETE(_request: Request, { params }: RouteContext) {
+async function activityDELETE(_request: Request, { params }: RouteContext) {
   const session = await assertAdminSession();
   const { id } = await params;
   const prisma = getPrismaClient();
@@ -148,3 +149,9 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
 function stringValue(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
+
+export const GET = withActivity("/api/announcements/[id]", "GET", activityGET);
+
+export const PUT = withActivity("/api/announcements/[id]", "PUT", activityPUT);
+
+export const DELETE = withActivity("/api/announcements/[id]", "DELETE", activityDELETE);
