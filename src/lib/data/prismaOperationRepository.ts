@@ -628,8 +628,11 @@ export class PrismaOperationRepository implements OperationRepository {
     if (input.timeText !== undefined) data.timeText = nullableText(input.timeText);
     if (input.totalCost !== undefined) data.totalCost = input.totalCost;
 
-    // 수정자는 다른 값과 함께 올 때만 기록한다. 수정자만 있는 요청은 실제 변경이 없으므로 아래에서 그대로 반환된다.
-    if (Object.keys(data).length > 0 && updatedBy !== undefined) data.updatedBy = nullableText(updatedBy);
+    // 코스ID명·분류·도구는 위에서 관련 테이블을 이미 수정했다. 회차 필드가 비어 있어도 수정자를 남긴다.
+    const updatedRelatedRecord = input.courseIdLabel !== undefined || input.courseCategory !== undefined || input.tools !== undefined;
+    if ((Object.keys(data).length > 0 || updatedRelatedRecord) && updatedBy !== undefined) {
+      data.updatedBy = nullableText(updatedBy);
+    }
 
     if (Object.keys(data).length === 0) {
       const operation = await this.getOperationById(operationId);
