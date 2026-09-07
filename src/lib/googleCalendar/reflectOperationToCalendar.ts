@@ -14,8 +14,7 @@ import { deleteEvent, insertEvent, patchEvent, readEventAttendees } from "./cale
 import { resolveCalendarTargets } from "./calendarParticipants";
 import { attendeesChanged, buildCalendarEventBodies } from "./operationCalendarEvent";
 import {
-  deleteCalendarEventLink,
-  deleteCalendarEventLinks,
+  deleteMatchingCalendarEventLink,
   listCalendarEventLinks,
   saveCalendarEventLink,
   type CalendarEventLink
@@ -63,7 +62,7 @@ async function reflectOperation(operation: OperationSession, trigger: ReflectTri
       }
 
       await deleteEvent(link.calendarId, link.eventId);
-      await deleteCalendarEventLink(operation.operationId, link.eventDate);
+      await deleteMatchingCalendarEventLink(link);
     }
 
     for (const plan of buildCalendarEventBodies(operation, targets.attendeeEmails, targets.partKey)) {
@@ -73,12 +72,16 @@ async function reflectOperation(operation: OperationSession, trigger: ReflectTri
         // 참석자가 달라진 수정만 메일을 보낸다. 이 서비스는 요청 접수 시 이벤트를 먼저
         // 만들고 나중에 OM을 배정하므로, 초대 메일이 실제로 나가는 시점이 이 patch다.
         // 담당·현장 OM이 같은 사람이면 목록이 그대로여서 메일이 중복으로 가지 않는다.
-        const notifyAttendees = attendeesChanged(
+        const notifyAttendees = targets.unresolvedNames.length === 0 && attendeesChanged(
           await readEventAttendees(calendarId, link.eventId),
           plan.body.attendees?.map((attendee) => attendee.email) ?? []
         );
 
-        const result = await patchEvent(calendarId, link.eventId, plan.body, { notifyAttendees });
+        const patchBody = { ...plan.body, location: plan.body.location ?? "" };
+        // 이메일을 해석하지 못한 상태는 담당자 해제로 간주하지 않는다.
+        if (targets.unresolvedNames.length === 0) patchBody.attendees = plan.body.attendees ?? [];
+        else delete patchBody.attendees;
+        const result = await patchEvent(calendarId, link.eventId, patchBody, { notifyAttendees });
         sameCalendar.delete(plan.eventDate);
 
         if (result !== "missing") continue;
@@ -110,9 +113,9 @@ async function reflectOperation(operation: OperationSession, trigger: ReflectTri
     }
 
     // 남은 매핑 = 교육일에서 빠진 날. 이벤트와 매핑을 함께 정리한다.
-    for (const [eventDate, link] of sameCalendar) {
+    for (const link of sameCalendar.values()) {
       await deleteEvent(link.calendarId, link.eventId);
-      await deleteCalendarEventLink(operation.operationId, eventDate);
+      await deleteMatchingCalendarEventLink(link);
     }
   } catch (error) {
     console.error(`[gcal] ${operation.operationId} 반영 실패:`, error);
@@ -139,9 +142,8 @@ export async function reflectOperationDelete(operationId: string): Promise<void>
 
     for (const link of existing) {
       await deleteEvent(link.calendarId, link.eventId);
+      await deleteMatchingCalendarEventLink(link);
     }
-
-    await deleteCalendarEventLinks(operationId);
   } catch (error) {
     console.error(`[gcal] ${operationId} 삭제 반영 실패:`, error);
   }
