@@ -18,6 +18,15 @@ import {
 type SaveState = "idle" | "saving" | "saved" | "failed";
 type NoteMode = "text" | "link";
 
+/**
+ * 저장 실패의 종류. network는 잠시 뒤 다시 시도하면 될 수 있고, auth는 다른 탭에서 다시 로그인하면 풀린다.
+ * rejected는 서버가 요청 자체를 거절한 것(회차가 지워짐, 내용이 너무 김 등)이라 같은 요청을 반복해도 소용없다.
+ */
+interface SaveFailure {
+  kind: "auth" | "network" | "rejected";
+  message: string;
+}
+
 interface LectureManagementNoteRowProps {
   done: boolean;
   /** 실제 교육일(yyyy-mm-dd) 목록. 새 날짜 탭의 기본 날짜를 고를 때 쓴다. */
@@ -38,6 +47,32 @@ const RETRY_MAX_DELAY_MS = 5 * 60_000;
 const DRAFT_STORAGE_PREFIX = "hub-om:lecture-note-draft:";
 // 이보다 오래된 임시 보관본은 열 때 정리한다. 다시 열지 않은 회차의 보관본이 브라우저 저장 공간에 계속 쌓이지 않게 한다.
 const DRAFT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
+const NETWORK_FAILURE_MESSAGE = "서버에 저장하지 못했습니다. 내용은 이 브라우저에 보관되어 있고 잠시 후 자동으로 다시 시도합니다.";
+const AUTH_FAILURE_MESSAGE =
+  "로그인이 만료되어 저장하지 못했습니다. 내용은 이 브라우저에 보관되어 있습니다. 다른 탭에서 다시 로그인하면 자동으로 다시 시도합니다.";
+
+/**
+ * 저장 응답을 실패 종류로 나눈다. 성공이면 null.
+ * 로그인이 만료되면 API가 로그인 페이지로 돌려보내 HTML이 오는데, 이를 일반 실패로 뭉개면 운영자는 왜 안 되는지 알 수 없다.
+ */
+async function classifySaveResponse(response: Response): Promise<SaveFailure | null> {
+  if (response.redirected || response.status === 401 || response.status === 403) {
+    return { kind: "auth", message: AUTH_FAILURE_MESSAGE };
+  }
+
+  const payload = (await response.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+
+  if (response.ok && payload?.ok) return null;
+
+  // 4xx는 서버가 요청을 거절한 것이다. 사유가 있으면 그대로 보여 준다.
+  if (response.status >= 400 && response.status < 500) {
+    const reason = typeof payload?.error === "string" && payload.error.trim() ? payload.error.trim() : "서버가 요청을 받지 않았습니다.";
+    return { kind: "rejected", message: `저장하지 못했습니다: ${reason} 내용은 이 브라우저에 보관되어 있습니다.` };
+  }
+
+  return { kind: "network", message: NETWORK_FAILURE_MESSAGE };
+}
 
 interface StoredDraft {
   linkDraft: string;
@@ -77,6 +112,7 @@ export function LectureManagementNoteRow({
   // 마지막으로 실패한 저장 요청이 담고 있던 editVersion. 그 뒤로 편집이 없으면 재시도 효과(백오프)에 맡기고
   // 3초 자동 저장은 쉰다. 편집이 있었으면 사용자가 보고 있는 중이니 바로 다시 시도한다.
   const [failedAtEditVersion, setFailedAtEditVersion] = useState<number | null>(null);
+  const [saveFailure, setSaveFailure] = useState<SaveFailure | null>(null);
   const saveSequenceRef = useRef(0);
 
   // operationId 외에는 setState와 ref만 쓰므로 참조가 바뀌지 않는다. 효과(effect) 의존성에 그대로 넣을 수 있다.
@@ -86,7 +122,7 @@ export function LectureManagementNoteRow({
       setSaveState("saving");
 
       const patches = [{ field: "lectureManagementNote", action: "replace" as const, value: noteValue }];
-      let ok = false;
+      let failure: SaveFailure | null = null;
 
       try {
         const response = await fetch(`/api/operations/${encodeURIComponent(operationId)}/drive-import/apply`, {
@@ -96,22 +132,23 @@ export function LectureManagementNoteRow({
           },
           body: JSON.stringify({ patches })
         });
-        const payload = (await response.json().catch(() => ({}))) as { ok?: boolean };
-        ok = response.ok && Boolean(payload.ok);
+        failure = await classifySaveResponse(response);
       } catch {
-        ok = false;
+        failure = { kind: "network", message: NETWORK_FAILURE_MESSAGE };
       }
 
       // 더 최신 저장 요청이 이미 나갔으면 이 결과로 화면 상태를 덮어쓰지 않는다.
-      if (sequence !== saveSequenceRef.current) return ok;
+      if (sequence !== saveSequenceRef.current) return failure === null;
 
-      if (!ok) {
+      if (failure) {
+        setSaveFailure(failure);
         setFailedAtEditVersion(editVersionAtRequest);
         setSaveState("failed");
         setRetryCount((current) => current + 1);
         return false;
       }
 
+      setSaveFailure(null);
       setFailedAtEditVersion(null);
       setLastSavedValue(noteValue);
       setSavedAt(new Date());
@@ -145,6 +182,8 @@ export function LectureManagementNoteRow({
   // 저장에 실패한 동안에만 간격을 늘려 가며 다시 시도한다. 평소에는 아무 요청도 보내지 않는다.
   useEffect(() => {
     if (!isOpen || saveState !== "failed" || !hasUnsavedEdit) return;
+    // 서버가 거절한 요청은 같은 내용으로 다시 보내도 결과가 같다. 사용자가 고친 뒤 "다시 저장"을 누르거나 편집하면 다시 시도한다.
+    if (saveFailure?.kind === "rejected") return;
 
     const delay = Math.min(RETRY_BASE_DELAY_MS * 2 ** Math.max(0, retryCount - 1), RETRY_MAX_DELAY_MS);
     const timer = window.setTimeout(() => {
@@ -152,7 +191,7 @@ export function LectureManagementNoteRow({
     }, delay);
 
     return () => window.clearTimeout(timer);
-  }, [isOpen, saveState, hasUnsavedEdit, pendingValue, editVersion, retryCount, persist]);
+  }, [isOpen, saveState, hasUnsavedEdit, pendingValue, editVersion, retryCount, saveFailure, persist]);
 
   // 편집 중인 내용은 브라우저에도 보관하고, 서버 저장이 끝나면 지운다.
   useEffect(() => {
@@ -359,6 +398,7 @@ export function LectureManagementNoteRow({
     setEditedMode(initialMode);
     setRetryCount(0);
     setFailedAtEditVersion(null);
+    setSaveFailure(null);
     // 열자마자 저장이 걸리지 않도록, 현재 값을 화면 형식으로 다시 조합한 결과를 "저장된 값"으로 둔다.
     const initialComposed = initialMode === "link" ? initialLink.trim() : composeLectureNote(withFallbackDates(initialTabs));
     setLastSavedValue(initialComposed);
@@ -417,9 +457,7 @@ export function LectureManagementNoteRow({
 
   function renderSaveStatus() {
     if (saveState === "saving") return "저장 중…";
-    if (saveState === "failed") {
-      return "서버에 저장하지 못했습니다. 내용은 이 브라우저에 보관되어 있고 잠시 후 자동으로 다시 시도합니다.";
-    }
+    if (saveState === "failed") return saveFailure?.message ?? NETWORK_FAILURE_MESSAGE;
     if (hasUnsavedEdit) return "입력 중… 잠시 후 자동 저장됩니다.";
     if (saveState === "saved" && savedAt) return `자동 저장됨 ${formatClock(savedAt)}`;
     return "";
