@@ -46,6 +46,7 @@ const SHOW_BULK_EDIT_ROUNDS = false;
 const EDUCATION_FORMAT_OPTIONS = ["오프라인", "비대면", "블렌디드", "플립러닝", "검토필요"];
 
 interface OperationDetailProps {
+  coachOptions?: string[];
   collaboration: OperationCollaboration;
   extraTools?: string[];
   instructorOptions?: string[];
@@ -58,6 +59,7 @@ interface OperationDetailProps {
 }
 
 export function OperationDetail({
+  coachOptions = [],
   collaboration,
   extraTools = [],
   instructorOptions = [],
@@ -265,6 +267,7 @@ export function OperationDetail({
                   baseOperationId={operation.operationId}
                   baseRegion={operation.region}
                   baseTimeText={operation.timeText}
+                  coachOptions={coachOptions}
                   instructorOptions={instructorOptions}
                   nextRoundNo={nextRoundNo}
                 />
@@ -325,6 +328,7 @@ export function OperationDetail({
                       />
                       <EditableSessionRow
                         coach={courseOperation.coach}
+                        coachOptions={coachOptions}
                         deleteButton={
                           <DeleteRoundButton
                             fallbackOperationId={fallbackOperationId}

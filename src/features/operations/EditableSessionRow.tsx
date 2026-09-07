@@ -13,6 +13,7 @@ type SaveState = "idle" | "saving" | "failed";
 interface EditableSessionRowProps {
   children?: ReactNode;
   coach: string;
+  coachOptions?: string[];
   deleteButton?: ReactNode;
   educationDates: string[];
   endDate: string;
@@ -35,6 +36,7 @@ interface SessionDraft {
 export function EditableSessionRow({
   children,
   coach,
+  coachOptions = [],
   deleteButton,
   educationDates,
   endDate,
@@ -161,10 +163,11 @@ export function EditableSessionRow({
                       </label>
                       <label className="lecture-note-field">
                         <span>실습코치</span>
-                        <input
-                          onChange={(event) => setDraft((current) => ({ ...current, coach: event.target.value }))}
+                        <NameCombobox
+                          options={coachOptions}
+                          onChange={(value) => setDraft((current) => ({ ...current, coach: value }))}
                           placeholder="실습코치명"
-                          type="text"
+                          unmatchedHint="등록된 실습코치 명단과 이름이 달라요. 실습코치DB 노션을 확인해주세요."
                           value={draft.coach}
                         />
                       </label>
@@ -223,6 +226,12 @@ export function EditableSessionRow({
     const instructorName = draft.instructors.trim();
     if (instructorName && !instructorOptions.some((name) => name.toLowerCase() === instructorName.toLowerCase())) {
       setError("등록된 강사 명단과 이름이 달라요. 강사DB 노션을 확인해주세요.");
+      return false;
+    }
+
+    const coachName = draft.coach.trim();
+    if (coachName && !coachOptions.some((name) => name.toLowerCase() === coachName.toLowerCase())) {
+      setError("등록된 실습코치 명단과 이름이 달라요. 실습코치DB 노션을 확인해주세요.");
       return false;
     }
 
