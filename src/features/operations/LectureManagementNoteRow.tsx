@@ -36,6 +36,8 @@ const RETRY_BASE_DELAY_MS = 30_000;
 const RETRY_MAX_DELAY_MS = 5 * 60_000;
 // 서버 저장이 안 될 때 입력 내용을 잃지 않도록 브라우저에도 같이 보관한다.
 const DRAFT_STORAGE_PREFIX = "hub-om:lecture-note-draft:";
+// 이보다 오래된 임시 보관본은 열 때 정리한다. 다시 열지 않은 회차의 보관본이 브라우저 저장 공간에 계속 쌓이지 않게 한다.
+const DRAFT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
 interface StoredDraft {
   linkDraft: string;
@@ -362,6 +364,7 @@ export function LectureManagementNoteRow({
     setLastSavedValue(initialComposed);
 
     // 이전에 서버 저장이 안 된 채 닫힌 내용이 브라우저에 남아 있으면 복원할지 묻는다. 서버 값과 같으면 조용히 지운다.
+    pruneStaleDrafts();
     const draft = readDraft(operationId);
     if (draft && composeDraftValue(draft) !== initialComposed) {
       setRecoverableDraft(draft);
@@ -517,6 +520,28 @@ function writeDraft(operationId: string, draft: StoredDraft) {
     window.localStorage.setItem(draftStorageKey(operationId), JSON.stringify(draft));
   } catch {
     // 시크릿 모드나 저장 공간 부족이면 보관만 건너뛴다. 서버 저장은 그대로 시도한다.
+  }
+}
+
+/** 오래된 임시 보관본을 지운다. 열려 있는 회차의 보관본은 이 뒤에 따로 읽으므로 여기서 함께 정리돼도 최신 것은 남는다. */
+function pruneStaleDrafts() {
+  try {
+    const cutoff = Date.now() - DRAFT_MAX_AGE_MS;
+    const staleKeys: string[] = [];
+
+    for (let index = 0; index < window.localStorage.length; index += 1) {
+      const key = window.localStorage.key(index);
+      if (!key || !key.startsWith(DRAFT_STORAGE_PREFIX)) continue;
+
+      const raw = window.localStorage.getItem(key);
+      const updatedAt = raw ? Date.parse((JSON.parse(raw) as Partial<StoredDraft>).updatedAt ?? "") : Number.NaN;
+      // 시각을 읽을 수 없는 보관본은 복원할 수도 없으므로 함께 지운다.
+      if (Number.isNaN(updatedAt) || updatedAt < cutoff) staleKeys.push(key);
+    }
+
+    for (const key of staleKeys) window.localStorage.removeItem(key);
+  } catch {
+    // 저장 공간을 읽을 수 없으면 정리를 건너뛴다. 보관본 읽기/쓰기도 같은 이유로 건너뛰므로 동작에는 영향이 없다.
   }
 }
 
