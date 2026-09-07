@@ -28,7 +28,8 @@ const SYNC_SOURCES: SyncSource[] = [
     id: "notion",
     name: "노션 코치 동기화",
     endpoint: "/api/admin/sync-notion",
-    description: "노션 2026 DB에서 코치 정보(연락처, 이메일, 유형, 분야, 커리큘럼 등)를 가져옵니다."
+    description:
+      "노션 2026 DB에서 코치 정보(연락처, 이메일, 유형, 분야, 커리큘럼 등)를 가져옵니다. 연결 기준은 노션 \"ID\" 속성(예: CO-225)이라서 노션에서 이름이 바뀌어도 같은 코치로 인식합니다."
   },
   {
     id: "notion-instructors",
