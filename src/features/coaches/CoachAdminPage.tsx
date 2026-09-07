@@ -1,11 +1,10 @@
 import Link from "next/link";
 import { AppSidebar } from "@/components/AppSidebar";
 import { CoachSyncDashboard } from "@/features/admin/CoachSyncDashboard";
-import { ContentManagementPanel } from "./ContentManagementPanel";
 import { DeletedCoachesPanel } from "./DeletedCoachesPanel";
 import { ScheduleLinkPanel } from "./ScheduleLinkPanel";
 
-export type CoachAdminTab = "schedule-link" | "deleted" | "sync" | "content";
+export type CoachAdminTab = "schedule-link" | "deleted" | "sync";
 
 interface CoachAdminPageProps {
   selectedTab: CoachAdminTab;
@@ -16,8 +15,7 @@ export function CoachAdminPage({ selectedTab, deletedCount }: CoachAdminPageProp
   const TABS: Array<{ tab: CoachAdminTab; label: string }> = [
     { tab: "schedule-link", label: "일정 등록 링크" },
     { tab: "deleted", label: `삭제 내역 (${deletedCount})` },
-    { tab: "sync", label: "동기화" },
-    { tab: "content", label: "콘텐츠 관리" }
+    { tab: "sync", label: "동기화" }
   ];
 
   return (
@@ -75,9 +73,5 @@ function AdminTabPanel({ selectedTab }: { selectedTab: CoachAdminTab }) {
     );
   }
 
-  return (
-    <section className="dashboard-panel">
-      <ContentManagementPanel />
-    </section>
-  );
+  return null;
 }

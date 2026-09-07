@@ -77,6 +77,12 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
           <Link className={isOperationsPage ? "active" : ""} data-icon="⭐" href="/operations">운영 현황</Link>
         </div>
 
+        {isAdmin ? <div className="nav-section nav-section-locked">
+          <div className="nav-section-title">전체 활동</div>
+          <Link className={pathname === "/usage" ? "active" : ""} data-icon="📊" href="/usage">오늘의 이용 현황</Link>
+          <Link className={pathname === "/changes" ? "active" : ""} data-icon="📝" href="/changes">전체 변경 이력</Link>
+        </div> : null}
+
         {isAdmin ? (
           <div className="nav-section nav-section-locked">
             <div className="nav-section-title">데이터 관리</div>
@@ -86,7 +92,6 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
             ) : null}
             <Link className={isImportAdminPage ? "active" : ""} data-icon="🔒" href="/admin/imports">데이터 일괄 등록</Link>
             <Link className={isUsersAdminPage ? "active" : ""} data-icon="🔒" href="/admin/users">멤버 관리</Link>
-            <Link className={pathname === "/activity" || pathname?.startsWith("/admin/activity") ? "active" : ""} data-icon="🔒" href="/activity">활동 기록</Link>
             <Link className={isDatabaseAdminPage ? "active" : ""} data-icon="🔒" href="/admin/database">DB 조회</Link>
             <Link className={isCourseNameRestorePage ? "active" : ""} data-icon="🔒" href="/admin/course-name-restore">과정명 되돌리기</Link>
           </div>

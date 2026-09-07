@@ -27,10 +27,7 @@ async function activityGET() {
   const [entries, reviewedEngagements] = await Promise.all([
     prisma.coachContentEntry.findMany({
       where: {
-        OR: [
-          { kind: CoachContentEntryKind.EDIT_HISTORY },
-          { kind: CoachContentEntryKind.NOTE, deletedAt: null }
-        ]
+        kind: CoachContentEntryKind.NOTE, deletedAt: null
       },
       orderBy: { createdAt: "desc" },
       take: 300,
