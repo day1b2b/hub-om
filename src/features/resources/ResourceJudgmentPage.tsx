@@ -165,7 +165,7 @@ export function ResourceJudgmentPage({
       <section className="content resource-content">
         <header className="resource-page-header">
           <div>
-            <h1>리소스</h1>
+            <h1>과정 캘린더</h1>
             <p className="lede">
               달력을 보며 실제로 추가 요청을 받을 수 있는지 확인합니다.
             </p>
