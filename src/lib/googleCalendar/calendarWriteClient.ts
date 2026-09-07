@@ -205,10 +205,19 @@ export async function readEventAttendees(calendarId: string, eventId: string): P
 /**
  * 이미 지워진 이벤트(404/410)는 목표 상태(없음)와 같으므로 성공으로 본다.
  * 매핑만 남고 이벤트가 사라진 경우에 정리를 막지 않기 위해서다.
+ *
+ * 기본은 참석자에게 취소 메일을 보낸다(sendUpdates=all) — 회차 취소는 알려야 하기 때문이다(D4).
+ * notifyAttendees=false면 메일 없이 지운다(sendUpdates=none). 소급으로 조용히 만든 이벤트를
+ * 되돌릴 때, 취소 메일이 나가면 만든 적도 없는 일정의 취소 통지를 받게 되므로 억제한다.
  */
-export async function deleteEvent(calendarId: string, eventId: string): Promise<void> {
+export async function deleteEvent(
+  calendarId: string,
+  eventId: string,
+  options?: { notifyAttendees?: boolean }
+): Promise<void> {
+  const sendUpdates = options?.notifyAttendees === false ? SEND_UPDATES_SILENT : SEND_UPDATES;
   const response = await callCalendar(
-    `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}?${SEND_UPDATES}`,
+    `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}?${sendUpdates}`,
     { method: "DELETE" }
   );
 

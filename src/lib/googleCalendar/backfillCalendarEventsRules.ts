@@ -64,6 +64,8 @@ export interface BackfillPlan {
   alreadyComplete: number;
   /** 날짜 기준 안에 든 회차 수(매핑 유무 무관). */
   inScope: number;
+  /** 교육일(세부 날짜)이 없어 소급에서 제외한 회차 수(기간 통블록 방지). */
+  excludedNoEducationDates: number;
 }
 
 /**
@@ -74,12 +76,22 @@ export function planCalendarBackfill(params: PlanBackfillParams): BackfillPlan {
   const items: BackfillPlanItem[] = [];
   let alreadyComplete = 0;
   let inScope = 0;
+  let excludedNoEducationDates = 0;
 
   for (const operation of params.operations) {
     const lastDate = operationLastDate(operation);
     // 날짜가 아예 없거나 마지막 날짜가 기준일보다 이르면 지난 회차 → 소급 대상 아님.
     if (!lastDate || lastDate < params.from) continue;
     inScope += 1;
+
+    // 교육일(세부 날짜)이 없는 회차는 정방향에선 시작~종료 "기간 이벤트 1건"이 되는데,
+    // 연간·상시형·위탁처럼 기간이 길면 캘린더에 1년짜리 통블록이 깔려 쓸모가 없다.
+    // 소급에서는 교육일이 실제로 등록된 회차만 만든다(2026-09-07 유진님 결정 "교육일 있는 과정만").
+    // 정방향 반영은 종전대로 기간 이벤트를 만든다 — 여기(과거 일괄 소급)만의 규칙이다.
+    if (normalizeEducationDates(operation.educationDates).length === 0) {
+      excludedNoEducationDates += 1;
+      continue;
+    }
 
     const targets = resolveCalendarTargetsFromUsers(operation, params.users);
     const calendarId = params.resolveCalendarId(targets.partKey) || null;
@@ -132,5 +144,5 @@ export function planCalendarBackfill(params: PlanBackfillParams): BackfillPlan {
     items.push({ ...base, plans: missingPlans, status: "planned" });
   }
 
-  return { items, alreadyComplete, inScope };
+  return { items, alreadyComplete, inScope, excludedNoEducationDates };
 }
