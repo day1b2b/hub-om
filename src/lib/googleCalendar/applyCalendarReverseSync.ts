@@ -45,7 +45,7 @@ export async function applyCalendarReverseSync(): Promise<ReverseSyncApplyResult
   const plan = await planCalendarReverseSync();
   const base: ReverseSyncApplyResult = { ...plan, dryRun: false, appliedCount: 0, failedCount: 0, outcomes: [] };
 
-  if (!plan.enabled || plan.items.length === 0) return base;
+  if (!plan.ok || !plan.enabled || plan.items.length === 0) return base;
 
   const maxApply = readMaxApply();
   if (plan.items.length > maxApply) {
@@ -74,7 +74,7 @@ export async function applyCalendarReverseSync(): Promise<ReverseSyncApplyResult
     }
   }
 
-  return { ...base, appliedCount, failedCount, outcomes };
+  return { ...base, ok: failedCount === 0, appliedCount, failedCount, outcomes };
 }
 
 async function applyItem(item: ReverseSyncItem): Promise<string> {
@@ -102,7 +102,7 @@ async function applyScheduleToOperation(item: ReverseSyncItem): Promise<string> 
   const refreshed = await findOperation(item.operationId);
   const expected = findPlanBody(refreshed, change.to.startDate, item.partKey);
   if (expected) {
-    await patchEvent(item.calendarId, item.eventId, {
+    await patchExistingEvent(item.calendarId, item.eventId, {
       ...(revertFields.length > 0 ? { summary: expected.summary, location: expected.location ?? "" } : {}),
       extendedProperties: expected.extendedProperties
     });
@@ -134,7 +134,7 @@ async function applyEducationRunChange(
     );
   }
 
-  const timeChanged = to.timeText !== "" && to.timeText !== operation.timeText;
+  const timeChanged = to.timeText !== operation.timeText;
 
   await updateOperationWithLinkMoved(item, to.startDate, {
     educationDates: dates,
@@ -178,7 +178,7 @@ async function revertEventToOperation(item: ReverseSyncItem): Promise<string> {
   const expected = findPlanBody(operation, item.eventDate, item.partKey);
   if (!expected) throw new Error(`운영현황에 없는 교육일(${item.eventDate})입니다.`);
 
-  await patchEvent(item.calendarId, item.eventId, {
+  await patchExistingEvent(item.calendarId, item.eventId, {
     summary: expected.summary,
     location: expected.location ?? "",
     start: expected.start,
@@ -233,4 +233,10 @@ function readMaxApply(): number {
   const parsed = Number(process.env.CALENDAR_REVERSE_SYNC_MAX_APPLY?.trim());
 
   return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : DEFAULT_MAX_APPLY;
+}
+
+async function patchExistingEvent(...args: Parameters<typeof patchEvent>): Promise<void> {
+  if (await patchEvent(...args) === "missing") {
+    throw new Error("캘린더 이벤트가 없어 갱신하지 못했습니다. 기존 DB 반영 여부를 확인하세요.");
+  }
 }
