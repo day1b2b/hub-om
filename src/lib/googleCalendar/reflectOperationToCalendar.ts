@@ -14,6 +14,7 @@ import type { OperationSession } from "@/lib/data/operationTypes";
 import { isCalendarWriteEnabled, resolvePartCalendarId } from "./calendarWriteConfig";
 import { deleteEvent, insertOperationEvent, patchEvent, readEventAttendees } from "./calendarWriteClient";
 import { resolveCalendarTargets } from "./calendarParticipants";
+import { notifyCalendarReflectSkip } from "./notifyCalendarReflectSkip";
 import { attendeesChanged, buildCalendarEventBodies } from "./operationCalendarEvent";
 import {
   deleteMatchingCalendarEventLink,
@@ -47,6 +48,14 @@ async function reflectOperationUnlocked(operation: OperationSession, trigger: Re
     const calendarId = resolvePartCalendarId(targets.partKey);
     if (!calendarId) {
       logSkip(operation.operationId, `파트 캘린더를 찾지 못함(파트=${targets.partKey ?? "없음"})`);
+      // 무음 누락 방지: 파트를 못 정하면(담당 OM 미배정 + 요청 LD 소속이 파트 아님) 담당자에게
+      // DM으로 알린다. 생성 시점만 알린다 — 같은 과정을 다시 저장할 때마다 반복 알림이 가지 않게.
+      if (trigger === "created") {
+        await notifyCalendarReflectSkip(
+          operation,
+          `파트를 못 정함(담당 OM·요청 LD 소속이 파트(1/2/3)가 아님, 파트=${targets.partKey ?? "없음"})`
+        );
+      }
       return;
     }
 
