@@ -1,5 +1,6 @@
 // 운영 1건에서 "어느 파트 캘린더에 넣을지"와 "누구를 초대할지"를 뽑는다.
-// 운영 레코드에 파트 필드가 없으므로 담당 OM의 소속 파트(TeamUser.team)로 역산한다.
+// 운영 레코드에 파트 필드가 없으므로 담당 OM의 소속 파트(TeamUser.team)로 역산하고,
+// 담당 OM이 아직 없으면(접수 직후) 요청 LD의 소속 파트로 정한다(아래 partKey 산출 참고).
 
 import { splitPersonNames } from "@/lib/data/personNames";
 import { listTeamUsers } from "@/lib/data/teamUsers/teamUserRepository";
@@ -56,8 +57,22 @@ export function resolveCalendarTargetsFromUsers(
   }
 
   // 파트는 담당 OM 기준이다. 담당 OM이 여럿이면 파트를 찾은 첫 사람을 따른다.
-  const partKey =
+  const ownerPartKey =
     ownerNames.map((name) => extractPartKey(findTeamUser(users, name)?.team)).find(Boolean) ?? null;
+
+  // 담당 OM으로 파트를 못 정하면 요청 LD의 소속 파트로 정한다.
+  // om-request로 접수된 과정은 생성 시점에 OM이 비어 있어(나중에 배정) 파트를 못 뽑고,
+  // 그러면 생성 반영이 통째로 빠진다. 그 뒤 OM을 지정해도 매핑이 없어 "수정" 반영이 skip돼
+  // (reflectOperationToCalendar의 existing.length===0 && trigger==="updated" 가드) 영구 누락된다.
+  // 파트별 캘린더인데 파트를 담당자에게만 의존한 게 원인이다. LD(operation.ld)는 접수 시점부터
+  // 있으므로, OM 배정 전에도 LD 소속 파트로 캘린더를 정해 생성 시점에 이벤트·매핑을 만든다
+  // (그러면 나중 OM 지정 때 매핑이 있어 정상 반영된다). LD 소속이 파트(1/2/3)가 아니면 못 뽑는다.
+  // LD는 파트 판정에만 쓰고 초대 대상(attendeeEmails)에는 넣지 않는다 — 초대는 담당·현장 OM만(D3).
+  const partKey =
+    ownerPartKey ??
+    (assigneeNames(operation.ld)
+      .map((name) => extractPartKey(findTeamUser(users, name)?.team))
+      .find(Boolean) ?? null);
 
   return { partKey, attendeeEmails, unresolvedNames };
 }
