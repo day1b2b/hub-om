@@ -84,7 +84,7 @@ function requestSignal(): AbortSignal {
   return lockSignal ? AbortSignal.any([lockSignal, AbortSignal.timeout(30000)]) : AbortSignal.timeout(30000);
 }
 
-async function callCalendar(path: string, init: RequestInit): Promise<Response> {
+async function sendCalendarRequest(path: string, init: RequestInit): Promise<Response> {
   const accessToken = await getAccessToken();
 
   return fetch(`${CALENDAR_API}${path}`, {
@@ -96,6 +96,50 @@ async function callCalendar(path: string, init: RequestInit): Promise<Response> 
       "Content-Type": "application/json"
     }
   });
+}
+
+/** 구글이 한 번 딸꾹질한 것으로 보는 응답. 설정·권한 문제(4xx)는 다시 불러도 같다. */
+export function shouldRetryCalendarRead(status: number): boolean {
+  return status === 429 || status >= 500;
+}
+
+const READ_RETRY_DELAY_MS = 800;
+
+/**
+ * 읽기만 한 번 다시 시도한다.
+ *
+ * 역반영 스케줄은 5분마다 events.list를 부르는데, 구글이 순간적으로 5xx를 주거나
+ * 응답이 끊기면 그대로 위로 던져져 라우트가 500이 되고 실패 알림이 나간다. 실제로
+ * 2026-09-09 11:50 실행이 이렇게 한 번 죽었고, 앞뒤 19회는 정상이었다. 기능은 다음
+ * 실행이 따라잡지만(조회 창이 60분이라 겹친다) 알림만 시끄럽다.
+ *
+ * 쓰기는 절대 다시 부르지 않는다. insert가 실제로는 성공했는데 응답만 실패한 경우
+ * 다시 부르면 같은 일정이 두 개 만들어진다.
+ *
+ * 지속적인 고장(토큰 만료·설정 오류·권한 없음)은 재시도해도 같은 결과라 여전히
+ * 500으로 올라가 알림이 나간다 — 안전망은 그대로 두고 일시 오류만 흡수한다.
+ */
+async function callCalendar(path: string, init: RequestInit): Promise<Response> {
+  const isRead = (init.method ?? "GET").toUpperCase() === "GET";
+  if (!isRead) return sendCalendarRequest(path, init);
+
+  try {
+    const response = await sendCalendarRequest(path, init);
+    if (!shouldRetryCalendarRead(response.status)) return response;
+
+    // 쓰지 않을 응답의 본문은 닫아준다. 열어두면 연결이 남는다.
+    void response.body?.cancel();
+    console.warn(`[gcal] 구글 일시 오류(${response.status}) — ${READ_RETRY_DELAY_MS}ms 후 한 번 다시 읽습니다`);
+  } catch (error) {
+    // 잠금으로 끊긴 요청은 의도된 중단이므로 다시 부르지 않는다.
+    if (calendarLockSignal()?.aborted) throw error;
+
+    console.warn(`[gcal] 구글 요청이 끊겨 한 번 다시 읽습니다:`, error instanceof Error ? error.message : error);
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, READ_RETRY_DELAY_MS));
+
+  return sendCalendarRequest(path, init);
 }
 
 // 새 일정과 취소는 참석자가 반드시 알아야 하므로 메일을 보낸다(sendUpdates=all).
