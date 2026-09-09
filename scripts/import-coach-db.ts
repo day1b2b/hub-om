@@ -1,3 +1,4 @@
+import { assertLegacyStorage } from "./assert-legacy-storage.mjs";
 /**
  * coach-db → hub-om import 스크립트.
  *
@@ -99,6 +100,7 @@ async function main(): Promise<void> {
   // --- 타깃: 운영 후보 조회 + (apply 시) 쓰기 ---
   const target = new Client({ connectionString: targetUrl });
   await target.connect();
+  await assertLegacyStorage(target);
 
   const startedAt = new Date();
   const summary: Summary = {

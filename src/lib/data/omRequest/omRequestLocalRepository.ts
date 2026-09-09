@@ -1,3 +1,4 @@
+import { encodePrivateJson, decodePrivateJson } from "@/lib/privacy/crypto";
 import fs from "fs";
 import path from "path";
 import type { Prisma } from "@prisma/client";
@@ -17,14 +18,14 @@ function hasDatabaseUrl(): boolean {
 function readAll(): OmRequest[] {
   if (!fs.existsSync(DATA_FILE)) return [];
   try {
-    return JSON.parse(fs.readFileSync(DATA_FILE, "utf-8")) as OmRequest[];
+    return decodePrivateJson(fs.readFileSync(DATA_FILE, "utf-8"), "local:om-requests") as OmRequest[];
   } catch {
-    return [];
+    throw new Error("개인정보 파일을 읽지 못했습니다. 암호화 키와 변환 상태를 확인하세요.");
   }
 }
 
 function writeAll(requests: OmRequest[]) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(requests, null, 2), "utf-8");
+  fs.writeFileSync(DATA_FILE, encodePrivateJson(requests, "local:om-requests"), { encoding: "utf-8", mode: 0o600 });
 }
 
 // ── Prisma row ↔ OmRequest 매핑 ────────────────────────────────────

@@ -1,3 +1,4 @@
+import { assertLegacyStorage } from "./assert-legacy-storage.mjs";
 import { randomUUID } from "node:crypto";
 import { config } from "dotenv";
 import pg from "pg";
@@ -80,6 +81,7 @@ async function main() {
 
   const client = new Client({ connectionString: databaseUrl });
   await client.connect();
+  await assertLegacyStorage(client);
 
   try {
     const roleAssignees = await loadRoleAssignees(client);

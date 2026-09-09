@@ -20,20 +20,13 @@ async function activityGET(request: Request) {
         curriculums: { select: { tag: { select: { id: true, name: true } } } }
       }
     }),
-    prisma.$queryRaw<Array<{ row_data: Record<string, unknown> | null }>>`
-      SELECT ar.row_data
-      FROM coachdb_archive_rows ar
-      JOIN coachdb_archive_snapshots s ON s.id = ar.snapshot_id
-      WHERE s.status = 'completed'
-        AND ar.table_schema = 'public'
-        AND ar.table_name = 'coaches'
-        AND ar.row_key = ${coach.sourceCoachId}
-      ORDER BY s.started_at DESC
-      LIMIT 1
-    `
+    prisma.coachdbArchiveRow.findMany({
+      where: { snapshot: { status: "completed" }, tableSchema: "public", tableName: "coaches", rowKey: coach.sourceCoachId },
+      orderBy: { snapshot: { startedAt: "desc" } }, take: 1, select: { rowData: true }
+    })
   ]);
 
-  const archived = archivedRows[0]?.row_data ?? {};
+  const archived = (archivedRows[0]?.rowData ?? {}) as Record<string, unknown>;
 
   return NextResponse.json({
     ok: true,

@@ -1,0 +1,1043 @@
+{
+  "OperationSession": {
+    "table": "operation_sessions",
+    "fields": {
+      "validationErrors": {
+        "column": "validation_errors",
+        "type": "Json",
+        "nullable": true
+      },
+      "educationFormatRaw": {
+        "column": "education_format_raw",
+        "type": "String",
+        "nullable": true,
+        "index": "educationFormatRawPiiIndex",
+        "indexColumn": "education_format_raw_pii_index"
+      },
+      "omName": {
+        "column": "om_name",
+        "type": "String",
+        "nullable": true,
+        "index": "omNamePiiIndex",
+        "indexColumn": "om_name_pii_index"
+      },
+      "ldName": {
+        "column": "ld_name",
+        "type": "String",
+        "nullable": true,
+        "index": "ldNamePiiIndex",
+        "indexColumn": "ld_name_pii_index"
+      },
+      "instructorsText": {
+        "column": "instructors_text",
+        "type": "String",
+        "nullable": true,
+        "index": "instructorsTextPiiIndex",
+        "indexColumn": "instructors_text_pii_index"
+      },
+      "coachText": {
+        "column": "coach_text",
+        "type": "String",
+        "nullable": true,
+        "index": "coachTextPiiIndex",
+        "indexColumn": "coach_text_pii_index"
+      },
+      "region": {
+        "column": "region",
+        "type": "String",
+        "nullable": true,
+        "index": "regionPiiIndex",
+        "indexColumn": "region_pii_index"
+      },
+      "onsiteText": {
+        "column": "onsite_text",
+        "type": "String",
+        "nullable": true,
+        "index": "onsiteTextPiiIndex",
+        "indexColumn": "onsite_text_pii_index"
+      },
+      "onsiteOmName": {
+        "column": "onsite_om_name",
+        "type": "String",
+        "nullable": true,
+        "index": "onsiteOmNamePiiIndex",
+        "indexColumn": "onsite_om_name_pii_index"
+      },
+      "specialNotes": {
+        "column": "special_notes",
+        "type": "String",
+        "nullable": true,
+        "index": "specialNotesPiiIndex",
+        "indexColumn": "special_notes_pii_index"
+      },
+      "operationIssue": {
+        "column": "operation_issue",
+        "type": "String",
+        "nullable": true,
+        "index": "operationIssuePiiIndex",
+        "indexColumn": "operation_issue_pii_index"
+      },
+      "omUpdate": {
+        "column": "om_update",
+        "type": "String",
+        "nullable": true,
+        "index": "omUpdatePiiIndex",
+        "indexColumn": "om_update_pii_index"
+      },
+      "driveLink": {
+        "column": "drive_link",
+        "type": "String",
+        "nullable": true,
+        "index": "driveLinkPiiIndex",
+        "indexColumn": "drive_link_pii_index"
+      },
+      "operationDetail": {
+        "column": "operation_detail",
+        "type": "String",
+        "nullable": true,
+        "index": "operationDetailPiiIndex",
+        "indexColumn": "operation_detail_pii_index"
+      },
+      "companyWikiLink": {
+        "column": "company_wiki_link",
+        "type": "String",
+        "nullable": true,
+        "index": "companyWikiLinkPiiIndex",
+        "indexColumn": "company_wiki_link_pii_index"
+      },
+      "instructorWikiLink": {
+        "column": "instructor_wiki_link",
+        "type": "String",
+        "nullable": true,
+        "index": "instructorWikiLinkPiiIndex",
+        "indexColumn": "instructor_wiki_link_pii_index"
+      },
+      "costRaw": {
+        "column": "cost_raw",
+        "type": "String",
+        "nullable": true,
+        "index": "costRawPiiIndex",
+        "indexColumn": "cost_raw_pii_index"
+      },
+      "profitRaw": {
+        "column": "profit_raw",
+        "type": "String",
+        "nullable": true,
+        "index": "profitRawPiiIndex",
+        "indexColumn": "profit_raw_pii_index"
+      },
+      "avgSatisfaction": {
+        "column": "avg_satisfaction",
+        "type": "String",
+        "nullable": true,
+        "index": "avgSatisfactionPiiIndex",
+        "indexColumn": "avg_satisfaction_pii_index"
+      },
+      "instructorSatisfaction": {
+        "column": "instructor_satisfaction",
+        "type": "String",
+        "nullable": true,
+        "index": "instructorSatisfactionPiiIndex",
+        "indexColumn": "instructor_satisfaction_pii_index"
+      },
+      "resultReportLink": {
+        "column": "result_report_link",
+        "type": "String",
+        "nullable": true,
+        "index": "resultReportLinkPiiIndex",
+        "indexColumn": "result_report_link_pii_index"
+      },
+      "lectureManagementLink": {
+        "column": "lecture_management_link",
+        "type": "String",
+        "nullable": true,
+        "index": "lectureManagementLinkPiiIndex",
+        "indexColumn": "lecture_management_link_pii_index"
+      },
+      "lectureManagementNote": {
+        "column": "lecture_management_note",
+        "type": "String",
+        "nullable": true,
+        "index": "lectureManagementNotePiiIndex",
+        "indexColumn": "lecture_management_note_pii_index"
+      },
+      "padletLink": {
+        "column": "padlet_link",
+        "type": "String",
+        "nullable": true,
+        "index": "padletLinkPiiIndex",
+        "indexColumn": "padlet_link_pii_index"
+      },
+      "createdBy": {
+        "column": "created_by",
+        "type": "String",
+        "nullable": true,
+        "index": "createdByPiiIndex",
+        "indexColumn": "created_by_pii_index"
+      },
+      "updatedBy": {
+        "column": "updated_by",
+        "type": "String",
+        "nullable": true,
+        "index": "updatedByPiiIndex",
+        "indexColumn": "updated_by_pii_index"
+      },
+      "omUserId": {
+        "column": "om_user_id",
+        "type": "String",
+        "nullable": true,
+        "index": "omUserIdPiiIndex",
+        "indexColumn": "om_user_id_pii_index"
+      },
+      "ldUserId": {
+        "column": "ld_user_id",
+        "type": "String",
+        "nullable": true,
+        "index": "ldUserIdPiiIndex",
+        "indexColumn": "ld_user_id_pii_index"
+      },
+      "deletedBy": {
+        "column": "deleted_by",
+        "type": "String",
+        "nullable": true,
+        "index": "deletedByPiiIndex",
+        "indexColumn": "deleted_by_pii_index"
+      }
+    },
+    "primaryKey": "id",
+    "compoundKeys": []
+  },
+  "DriveImportRun": {
+    "table": "drive_import_runs",
+    "fields": {
+      "summary": {
+        "column": "summary",
+        "type": "Json",
+        "nullable": true
+      },
+      "notes": {
+        "column": "notes",
+        "type": "String",
+        "nullable": true,
+        "index": "notesPiiIndex",
+        "indexColumn": "notes_pii_index"
+      }
+    },
+    "primaryKey": "id",
+    "compoundKeys": []
+  },
+  "DriveImportResult": {
+    "table": "drive_import_results",
+    "fields": {
+      "inputValue": {
+        "column": "input_value",
+        "type": "String",
+        "nullable": true,
+        "index": "inputValuePiiIndex",
+        "indexColumn": "input_value_pii_index"
+      },
+      "folderId": {
+        "column": "folder_id",
+        "type": "String",
+        "nullable": true,
+        "index": "folderIdPiiIndex",
+        "indexColumn": "folder_id_pii_index"
+      },
+      "folderTitle": {
+        "column": "folder_title",
+        "type": "String",
+        "nullable": true,
+        "index": "folderTitlePiiIndex",
+        "indexColumn": "folder_title_pii_index"
+      },
+      "folderUrl": {
+        "column": "folder_url",
+        "type": "String",
+        "nullable": true,
+        "index": "folderUrlPiiIndex",
+        "indexColumn": "folder_url_pii_index"
+      },
+      "keyCandidates": {
+        "column": "key_candidates",
+        "type": "Json",
+        "nullable": true
+      },
+      "folderCandidates": {
+        "column": "folder_candidates",
+        "type": "Json",
+        "nullable": true
+      },
+      "issues": {
+        "column": "issues",
+        "type": "Json",
+        "nullable": true
+      },
+      "error": {
+        "column": "error",
+        "type": "String",
+        "nullable": true,
+        "index": "errorPiiIndex",
+        "indexColumn": "error_pii_index"
+      }
+    },
+    "primaryKey": "id",
+    "compoundKeys": []
+  },
+  "Member": {
+    "table": "members",
+    "fields": {
+      "name": {
+        "column": "name",
+        "type": "String",
+        "nullable": false,
+        "index": "namePiiIndex",
+        "indexColumn": "name_pii_index"
+      },
+      "normalizedName": {
+        "column": "normalized_name",
+        "type": "String",
+        "nullable": false,
+        "index": "normalizedNamePiiIndex",
+        "indexColumn": "normalized_name_pii_index"
+      },
+      "roleTitle": {
+        "column": "role_title",
+        "type": "String",
+        "nullable": true,
+        "index": "roleTitlePiiIndex",
+        "indexColumn": "role_title_pii_index"
+      },
+      "calendarId": {
+        "column": "calendar_id",
+        "type": "String",
+        "nullable": true,
+        "index": "calendarIdPiiIndex",
+        "indexColumn": "calendar_id_pii_index"
+      }
+    },
+    "primaryKey": "id",
+    "compoundKeys": [
+      [
+        "role",
+        "sourceTeam",
+        "normalizedName"
+      ]
+    ]
+  },
+  "DataImportRun": {
+    "table": "data_import_runs",
+    "fields": {
+      "sourceName": {
+        "column": "source_name",
+        "type": "String",
+        "nullable": false,
+        "index": "sourceNamePiiIndex",
+        "indexColumn": "source_name_pii_index"
+      },
+      "workbookName": {
+        "column": "workbook_name",
+        "type": "String",
+        "nullable": true,
+        "index": "workbookNamePiiIndex",
+        "indexColumn": "workbook_name_pii_index"
+      },
+      "fileName": {
+        "column": "file_name",
+        "type": "String",
+        "nullable": true,
+        "index": "fileNamePiiIndex",
+        "indexColumn": "file_name_pii_index"
+      },
+      "importedBy": {
+        "column": "imported_by",
+        "type": "String",
+        "nullable": true,
+        "index": "importedByPiiIndex",
+        "indexColumn": "imported_by_pii_index"
+      },
+      "notes": {
+        "column": "notes",
+        "type": "String",
+        "nullable": true,
+        "index": "notesPiiIndex",
+        "indexColumn": "notes_pii_index"
+      },
+      "validationLogs": {
+        "column": "validation_logs",
+        "type": "Json",
+        "nullable": true
+      }
+    },
+    "primaryKey": "id",
+    "compoundKeys": []
+  },
+  "OperationSourceRecord": {
+    "table": "operation_source_records",
+    "fields": {
+      "sourceWorkbook": {
+        "column": "source_workbook",
+        "type": "String",
+        "nullable": false,
+        "index": "sourceWorkbookPiiIndex",
+        "indexColumn": "source_workbook_pii_index"
+      },
+      "sourceSheet": {
+        "column": "source_sheet",
+        "type": "String",
+        "nullable": false,
+        "index": "sourceSheetPiiIndex",
+        "indexColumn": "source_sheet_pii_index"
+      },
+      "rowSnapshot": {
+        "column": "row_snapshot",
+        "type": "Json",
+        "nullable": false
+      },
+      "mappedFields": {
+        "column": "mapped_fields",
+        "type": "Json",
+        "nullable": true
+      },
+      "unmappedFields": {
+        "column": "unmapped_fields",
+        "type": "Json",
+        "nullable": true
+      },
+      "validationErrors": {
+        "column": "validation_errors",
+        "type": "Json",
+        "nullable": true
+      }
+    },
+    "primaryKey": "id",
+    "compoundKeys": [
+      [
+        "importRunId",
+        "sourceSheet",
+        "sourceRowNumber"
+      ]
+    ]
+  },
+  "Coach": {
+    "table": "coaches",
+    "fields": {
+      "sourceCoachId": {
+        "column": "source_coach_id",
+        "type": "String",
+        "nullable": false,
+        "index": "sourceCoachIdPiiIndex",
+        "indexColumn": "source_coach_id_pii_index"
+      },
+      "accessToken": {
+        "column": "access_token",
+        "type": "String",
+        "nullable": true,
+        "index": "accessTokenPiiIndex",
+        "indexColumn": "access_token_pii_index"
+      },
+      "name": {
+        "column": "name",
+        "type": "String",
+        "nullable": false,
+        "index": "namePiiIndex",
+        "indexColumn": "name_pii_index"
+      },
+      "normalizedName": {
+        "column": "normalized_name",
+        "type": "String",
+        "nullable": false,
+        "index": "normalizedNamePiiIndex",
+        "indexColumn": "normalized_name_pii_index"
+      },
+      "workType": {
+        "column": "work_type",
+        "type": "String",
+        "nullable": true,
+        "index": "workTypePiiIndex",
+        "indexColumn": "work_type_pii_index"
+      },
+      "statusNote": {
+        "column": "status_note",
+        "type": "String",
+        "nullable": true,
+        "index": "statusNotePiiIndex",
+        "indexColumn": "status_note_pii_index"
+      },
+      "returnDate": {
+        "column": "return_date",
+        "type": "DateTime",
+        "nullable": true,
+        "storage": "returnDateEncrypted",
+        "storageColumn": "return_date_encrypted"
+      },
+      "selfNote": {
+        "column": "self_note",
+        "type": "String",
+        "nullable": true,
+        "index": "selfNotePiiIndex",
+        "indexColumn": "self_note_pii_index"
+      },
+      "portfolioUrl": {
+        "column": "portfolio_url",
+        "type": "String",
+        "nullable": true,
+        "index": "portfolioUrlPiiIndex",
+        "indexColumn": "portfolio_url_pii_index"
+      },
+      "availabilityDetail": {
+        "column": "availability_detail",
+        "type": "String",
+        "nullable": true,
+        "index": "availabilityDetailPiiIndex",
+        "indexColumn": "availability_detail_pii_index"
+      },
+      "managerNote": {
+        "column": "manager_note",
+        "type": "String",
+        "nullable": true,
+        "index": "managerNotePiiIndex",
+        "indexColumn": "manager_note_pii_index"
+      },
+      "dxTag": {
+        "column": "dx_tag",
+        "type": "String",
+        "nullable": true,
+        "index": "dxTagPiiIndex",
+        "indexColumn": "dx_tag_pii_index"
+      },
+      "employeeNo": {
+        "column": "employee_no",
+        "type": "String",
+        "nullable": true,
+        "index": "employeeNoPiiIndex",
+        "indexColumn": "employee_no_pii_index"
+      },
+      "notionPageId": {
+        "column": "notion_page_id",
+        "type": "String",
+        "nullable": true,
+        "index": "notionPageIdPiiIndex",
+        "indexColumn": "notion_page_id_pii_index"
+      },
+      "deletedBy": {
+        "column": "deleted_by",
+        "type": "String",
+        "nullable": true,
+        "index": "deletedByPiiIndex",
+        "indexColumn": "deleted_by_pii_index"
+      }
+    },
+    "primaryKey": "id",
+    "compoundKeys": []
+  },
+  "CoachContentEntry": {
+    "table": "coach_content_entries",
+    "fields": {
+      "content": {
+        "column": "content",
+        "type": "String",
+        "nullable": false,
+        "index": "contentPiiIndex",
+        "indexColumn": "content_pii_index"
+      },
+      "authorEmail": {
+        "column": "author_email",
+        "type": "String",
+        "nullable": true,
+        "index": "authorEmailPiiIndex",
+        "indexColumn": "author_email_pii_index"
+      },
+      "authorName": {
+        "column": "author_name",
+        "type": "String",
+        "nullable": true,
+        "index": "authorNamePiiIndex",
+        "indexColumn": "author_name_pii_index"
+      }
+    },
+    "primaryKey": "id",
+    "compoundKeys": []
+  },
+  "CoachPrivateAccessLog": {
+    "table": "coach_private_access_logs",
+    "fields": {
+      "accessedByEmail": {
+        "column": "accessed_by_email",
+        "type": "String",
+        "nullable": false,
+        "index": "accessedByEmailPiiIndex",
+        "indexColumn": "accessed_by_email_pii_index"
+      }
+    },
+    "primaryKey": "id",
+    "compoundKeys": []
+  },
+  "CoachPrivateProfile": {
+    "table": "coach_private_profiles",
+    "fields": {
+      "employeeId": {
+        "column": "employee_id",
+        "type": "String",
+        "nullable": true,
+        "index": "employeeIdPiiIndex",
+        "indexColumn": "employee_id_pii_index"
+      },
+      "phone": {
+        "column": "phone",
+        "type": "String",
+        "nullable": true,
+        "index": "phonePiiIndex",
+        "indexColumn": "phone_pii_index"
+      },
+      "email": {
+        "column": "email",
+        "type": "String",
+        "nullable": true,
+        "index": "emailPiiIndex",
+        "indexColumn": "email_pii_index"
+      },
+      "birthDate": {
+        "column": "birth_date",
+        "type": "DateTime",
+        "nullable": true,
+        "storage": "birthDateEncrypted",
+        "storageColumn": "birth_date_encrypted"
+      },
+      "affiliation": {
+        "column": "affiliation",
+        "type": "String",
+        "nullable": true,
+        "index": "affiliationPiiIndex",
+        "indexColumn": "affiliation_pii_index"
+      }
+    },
+    "primaryKey": "coach_id",
+    "compoundKeys": []
+  },
+  "CoachDayReservation": {
+    "table": "coach_day_reservations",
+    "fields": {
+      "reservedByEmail": {
+        "column": "reserved_by_email",
+        "type": "String",
+        "nullable": false,
+        "index": "reservedByEmailPiiIndex",
+        "indexColumn": "reserved_by_email_pii_index"
+      },
+      "reservedByName": {
+        "column": "reserved_by_name",
+        "type": "String",
+        "nullable": false,
+        "index": "reservedByNamePiiIndex",
+        "indexColumn": "reserved_by_name_pii_index"
+      }
+    },
+    "primaryKey": "id",
+    "compoundKeys": []
+  },
+  "CoachEngagement": {
+    "table": "coach_engagements",
+    "fields": {
+      "feedback": {
+        "column": "feedback",
+        "type": "String",
+        "nullable": true,
+        "index": "feedbackPiiIndex",
+        "indexColumn": "feedback_pii_index"
+      },
+      "hiredById": {
+        "column": "hired_by_id",
+        "type": "String",
+        "nullable": true,
+        "index": "hiredByIdPiiIndex",
+        "indexColumn": "hired_by_id_pii_index"
+      },
+      "hiredByText": {
+        "column": "hired_by_text",
+        "type": "String",
+        "nullable": true,
+        "index": "hiredByTextPiiIndex",
+        "indexColumn": "hired_by_text_pii_index"
+      }
+    },
+    "primaryKey": "id",
+    "compoundKeys": []
+  },
+  "CoachImportRun": {
+    "table": "coach_import_runs",
+    "fields": {
+      "summary": {
+        "column": "summary",
+        "type": "Json",
+        "nullable": true
+      },
+      "notes": {
+        "column": "notes",
+        "type": "String",
+        "nullable": true,
+        "index": "notesPiiIndex",
+        "indexColumn": "notes_pii_index"
+      }
+    },
+    "primaryKey": "id",
+    "compoundKeys": []
+  },
+  "CoachSyncLog": {
+    "table": "coach_sync_logs",
+    "fields": {
+      "errorDetail": {
+        "column": "error_detail",
+        "type": "String",
+        "nullable": true,
+        "index": "errorDetailPiiIndex",
+        "indexColumn": "error_detail_pii_index"
+      },
+      "triggeredBy": {
+        "column": "triggered_by",
+        "type": "String",
+        "nullable": false,
+        "index": "triggeredByPiiIndex",
+        "indexColumn": "triggered_by_pii_index"
+      }
+    },
+    "primaryKey": "id",
+    "compoundKeys": []
+  },
+  "SalesRevenueSyncLog": {
+    "table": "sales_revenue_sync_logs",
+    "fields": {
+      "triggeredBy": {
+        "column": "triggered_by",
+        "type": "String",
+        "nullable": false,
+        "index": "triggeredByPiiIndex",
+        "indexColumn": "triggered_by_pii_index"
+      },
+      "detail": {
+        "column": "detail",
+        "type": "Json",
+        "nullable": true
+      }
+    },
+    "primaryKey": "id",
+    "compoundKeys": []
+  },
+  "TeamUser": {
+    "table": "team_users",
+    "fields": {
+      "name": {
+        "column": "name",
+        "type": "String",
+        "nullable": false,
+        "index": "namePiiIndex",
+        "indexColumn": "name_pii_index"
+      },
+      "email": {
+        "column": "email",
+        "type": "String",
+        "nullable": false,
+        "index": "emailPiiIndex",
+        "indexColumn": "email_pii_index"
+      },
+      "slackId": {
+        "column": "slack_id",
+        "type": "String",
+        "nullable": false,
+        "index": "slackIdPiiIndex",
+        "indexColumn": "slack_id_pii_index"
+      }
+    },
+    "primaryKey": "id",
+    "compoundKeys": []
+  },
+  "OmRequest": {
+    "table": "om_requests",
+    "fields": {
+      "assignedOm": {
+        "column": "assigned_om",
+        "type": "String",
+        "nullable": true,
+        "index": "assignedOmPiiIndex",
+        "indexColumn": "assigned_om_pii_index"
+      },
+      "ldEmail": {
+        "column": "ld_email",
+        "type": "String",
+        "nullable": true,
+        "index": "ldEmailPiiIndex",
+        "indexColumn": "ld_email_pii_index"
+      },
+      "ld": {
+        "column": "ld",
+        "type": "String",
+        "nullable": false,
+        "index": "ldPiiIndex",
+        "indexColumn": "ld_pii_index"
+      },
+      "businessNumber": {
+        "column": "business_number",
+        "type": "String",
+        "nullable": true,
+        "index": "businessNumberPiiIndex",
+        "indexColumn": "business_number_pii_index"
+      },
+      "instructorName": {
+        "column": "instructor_name",
+        "type": "String",
+        "nullable": false,
+        "index": "instructorNamePiiIndex",
+        "indexColumn": "instructor_name_pii_index"
+      },
+      "syncupLink": {
+        "column": "syncup_link",
+        "type": "String",
+        "nullable": false,
+        "index": "syncupLinkPiiIndex",
+        "indexColumn": "syncup_link_pii_index"
+      },
+      "driveLink": {
+        "column": "drive_link",
+        "type": "String",
+        "nullable": false,
+        "index": "driveLinkPiiIndex",
+        "indexColumn": "drive_link_pii_index"
+      },
+      "sessions": {
+        "column": "sessions",
+        "type": "Json",
+        "nullable": false
+      },
+      "notes": {
+        "column": "notes",
+        "type": "String",
+        "nullable": false,
+        "index": "notesPiiIndex",
+        "indexColumn": "notes_pii_index"
+      }
+    },
+    "primaryKey": "id",
+    "compoundKeys": []
+  },
+  "Announcement": {
+    "table": "announcements",
+    "fields": {
+      "title": {
+        "column": "title",
+        "type": "String",
+        "nullable": false,
+        "index": "titlePiiIndex",
+        "indexColumn": "title_pii_index"
+      },
+      "content": {
+        "column": "content",
+        "type": "String",
+        "nullable": false,
+        "index": "contentPiiIndex",
+        "indexColumn": "content_pii_index"
+      },
+      "authorEmail": {
+        "column": "author_email",
+        "type": "String",
+        "nullable": false,
+        "index": "authorEmailPiiIndex",
+        "indexColumn": "author_email_pii_index"
+      },
+      "authorName": {
+        "column": "author_name",
+        "type": "String",
+        "nullable": true,
+        "index": "authorNamePiiIndex",
+        "indexColumn": "author_name_pii_index"
+      },
+      "deletedBy": {
+        "column": "deleted_by",
+        "type": "String",
+        "nullable": true,
+        "index": "deletedByPiiIndex",
+        "indexColumn": "deleted_by_pii_index"
+      }
+    },
+    "primaryKey": "id",
+    "compoundKeys": []
+  },
+  "AnnouncementAttachment": {
+    "table": "announcement_attachments",
+    "fields": {
+      "fileName": {
+        "column": "file_name",
+        "type": "String",
+        "nullable": false,
+        "index": "fileNamePiiIndex",
+        "indexColumn": "file_name_pii_index"
+      },
+      "data": {
+        "column": "data",
+        "type": "Bytes",
+        "nullable": false
+      }
+    },
+    "primaryKey": "id",
+    "compoundKeys": []
+  },
+  "CoachdbArchiveSnapshot": {
+    "table": "coachdb_archive_snapshots",
+    "fields": {
+      "errorMessage": {
+        "column": "error_message",
+        "type": "String",
+        "nullable": true,
+        "index": "errorMessagePiiIndex",
+        "indexColumn": "error_message_pii_index"
+      }
+    },
+    "primaryKey": "id",
+    "compoundKeys": []
+  },
+  "CoachdbArchiveRow": {
+    "table": "coachdb_archive_rows",
+    "fields": {
+      "rowKey": {
+        "column": "row_key",
+        "type": "String",
+        "nullable": false,
+        "index": "rowKeyPiiIndex",
+        "indexColumn": "row_key_pii_index"
+      },
+      "rowData": {
+        "column": "row_data",
+        "type": "Json",
+        "nullable": false
+      }
+    },
+    "primaryKey": "id",
+    "compoundKeys": [
+      [
+        "snapshotId",
+        "tableSchema",
+        "tableName",
+        "rowKey"
+      ]
+    ]
+  },
+  "InstructorNote": {
+    "table": "instructor_notes",
+    "fields": {
+      "instructorName": {
+        "column": "instructor_name",
+        "type": "String",
+        "nullable": false,
+        "index": "instructorNamePiiIndex",
+        "indexColumn": "instructor_name_pii_index"
+      },
+      "displayName": {
+        "column": "display_name",
+        "type": "String",
+        "nullable": true,
+        "index": "displayNamePiiIndex",
+        "indexColumn": "display_name_pii_index"
+      },
+      "notionId": {
+        "column": "notion_id",
+        "type": "String",
+        "nullable": true,
+        "index": "notionIdPiiIndex",
+        "indexColumn": "notion_id_pii_index"
+      },
+      "partnerId": {
+        "column": "partner_id",
+        "type": "String",
+        "nullable": true,
+        "index": "partnerIdPiiIndex",
+        "indexColumn": "partner_id_pii_index"
+      },
+      "notes": {
+        "column": "notes",
+        "type": "String",
+        "nullable": true,
+        "index": "notesPiiIndex",
+        "indexColumn": "notes_pii_index"
+      },
+      "notionProfile": {
+        "column": "notion_profile",
+        "type": "Json",
+        "nullable": true
+      }
+    },
+    "primaryKey": "id",
+    "compoundKeys": []
+  },
+  "CalendarEventLink": {
+    "table": "calendar_event_links",
+    "fields": {
+      "calendarId": {
+        "column": "calendar_id",
+        "type": "String",
+        "nullable": false,
+        "index": "calendarIdPiiIndex",
+        "indexColumn": "calendar_id_pii_index"
+      },
+      "eventId": {
+        "column": "event_id",
+        "type": "String",
+        "nullable": false,
+        "index": "eventIdPiiIndex",
+        "indexColumn": "event_id_pii_index"
+      }
+    },
+    "primaryKey": "id",
+    "compoundKeys": [
+      [
+        "operationId",
+        "eventDate"
+      ]
+    ]
+  },
+  "ActivityRequest": {
+    "table": "activity_requests",
+    "fields": {
+      "actorEmail": {
+        "column": "actor_email",
+        "type": "String",
+        "nullable": true,
+        "index": "actorEmailPiiIndex",
+        "indexColumn": "actor_email_pii_index"
+      },
+      "actorName": {
+        "column": "actor_name",
+        "type": "String",
+        "nullable": true,
+        "index": "actorNamePiiIndex",
+        "indexColumn": "actor_name_pii_index"
+      }
+    },
+    "primaryKey": "id",
+    "compoundKeys": []
+  },
+  "ActivityChange": {
+    "table": "activity_changes",
+    "fields": {
+      "actorEmail": {
+        "column": "actor_email",
+        "type": "String",
+        "nullable": true,
+        "index": "actorEmailPiiIndex",
+        "indexColumn": "actor_email_pii_index"
+      },
+      "actorName": {
+        "column": "actor_name",
+        "type": "String",
+        "nullable": true,
+        "index": "actorNamePiiIndex",
+        "indexColumn": "actor_name_pii_index"
+      },
+      "changes": {
+        "column": "changes",
+        "type": "Json",
+        "nullable": false,
+        "allowAuditMetadata": true
+      }
+    },
+    "primaryKey": "id",
+    "compoundKeys": []
+  }
+}

@@ -1,3 +1,4 @@
+import { encodePrivateJson, decodePrivateJson } from "@/lib/privacy/crypto";
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -30,7 +31,7 @@ export class LocalJsonOperationRepository implements OperationRepository {
 
     try {
       const raw = await readFile(absolutePath, "utf8");
-      const parsed = JSON.parse(raw) as LocalOperationPayload | OperationSession[];
+      const parsed = decodePrivateJson(raw.trimEnd(), "local:operations") as LocalOperationPayload | OperationSession[];
       const operations = Array.isArray(parsed) ? parsed : parsed.operations;
 
       if (!Array.isArray(operations)) {
@@ -201,7 +202,7 @@ export class LocalJsonOperationRepository implements OperationRepository {
     const { absolutePath, localDir } = this.getLocalFilePath();
 
     await mkdir(localDir, { recursive: true });
-    await writeFile(absolutePath, `${JSON.stringify({ operations: [...operations, operation] }, null, 2)}\n`, "utf8");
+    await writeFile(absolutePath, encodePrivateJson({ operations: [...operations, operation] }, "local:operations"), { encoding: "utf8", mode: 0o600 });
 
     return operation;
   }
@@ -286,7 +287,7 @@ export class LocalJsonOperationRepository implements OperationRepository {
     const { absolutePath, localDir } = this.getLocalFilePath();
 
     await mkdir(localDir, { recursive: true });
-    await writeFile(absolutePath, `${JSON.stringify({ operations: nextOperations }, null, 2)}\n`, "utf8");
+    await writeFile(absolutePath, encodePrivateJson({ operations: nextOperations }, "local:operations"), { encoding: "utf8", mode: 0o600 });
 
     return updatedOperation;
   }
@@ -297,7 +298,7 @@ export class LocalJsonOperationRepository implements OperationRepository {
     const { absolutePath, localDir } = this.getLocalFilePath();
 
     await mkdir(localDir, { recursive: true });
-    await writeFile(absolutePath, `${JSON.stringify({ operations: nextOperations }, null, 2)}\n`, "utf8");
+    await writeFile(absolutePath, encodePrivateJson({ operations: nextOperations }, "local:operations"), { encoding: "utf8", mode: 0o600 });
   }
 
   async getSummary() {

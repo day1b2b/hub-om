@@ -45,21 +45,12 @@
       "session_duration_days",
       "session_duration_type",
       "time_text",
-      "om_name",
-      "ld_name",
-      "instructors_text",
-      "coach_text",
       "onsite_required",
-      "onsite_om_name",
       "total_cost",
       "instructor_cost",
       "operation_cost",
-      "avg_satisfaction",
-      "instructor_satisfaction",
       "has_satisfaction_survey",
-      "has_result_report",
-      "om_user_id",
-      "ld_user_id"
+      "has_result_report"
     ],
     "changeOnly": [
       "education_format_raw",
@@ -78,12 +69,48 @@
       "lecture_management_link",
       "lecture_management_note",
       "padlet_link",
-      "deleted_at"
+      "deleted_at",
+      "om_name",
+      "ld_name",
+      "instructors_text",
+      "coach_text",
+      "onsite_om_name",
+      "avg_satisfaction",
+      "instructor_satisfaction",
+      "om_user_id",
+      "ld_user_id",
+      "education_format_raw_pii_index",
+      "om_name_pii_index",
+      "ld_name_pii_index",
+      "instructors_text_pii_index",
+      "coach_text_pii_index",
+      "region_pii_index",
+      "onsite_text_pii_index",
+      "onsite_om_name_pii_index",
+      "special_notes_pii_index",
+      "operation_issue_pii_index",
+      "om_update_pii_index",
+      "drive_link_pii_index",
+      "operation_detail_pii_index",
+      "company_wiki_link_pii_index",
+      "instructor_wiki_link_pii_index",
+      "cost_raw_pii_index",
+      "profit_raw_pii_index",
+      "avg_satisfaction_pii_index",
+      "instructor_satisfaction_pii_index",
+      "result_report_link_pii_index",
+      "lecture_management_link_pii_index",
+      "lecture_management_note_pii_index",
+      "padlet_link_pii_index",
+      "created_by_pii_index",
+      "updated_by_pii_index",
+      "om_user_id_pii_index",
+      "ld_user_id_pii_index",
+      "deleted_by_pii_index"
     ]
   },
   "members": {
     "values": [
-      "name",
       "role",
       "source_team"
     ],
@@ -91,16 +118,17 @@
       "role_title",
       "calendar_id",
       "is_active",
-      "display_order"
+      "display_order",
+      "name",
+      "name_pii_index",
+      "normalized_name_pii_index",
+      "role_title_pii_index",
+      "calendar_id_pii_index"
     ]
   },
   "coaches": {
     "values": [
-      "name",
-      "work_type",
       "status",
-      "return_date",
-      "dx_tag",
       "is_active",
       "display_order"
     ],
@@ -115,7 +143,26 @@
       "employee_no",
       "notion_no",
       "notion_page_id",
-      "deleted_at"
+      "deleted_at",
+      "name",
+      "work_type",
+      "return_date",
+      "dx_tag",
+      "source_coach_id_pii_index",
+      "access_token_pii_index",
+      "name_pii_index",
+      "normalized_name_pii_index",
+      "work_type_pii_index",
+      "status_note_pii_index",
+      "return_date_encrypted",
+      "self_note_pii_index",
+      "portfolio_url_pii_index",
+      "availability_detail_pii_index",
+      "manager_note_pii_index",
+      "dx_tag_pii_index",
+      "employee_no_pii_index",
+      "notion_page_id_pii_index",
+      "deleted_by_pii_index"
     ]
   },
   "coach_content_entries": {
@@ -129,7 +176,10 @@
       "author_email",
       "author_name",
       "source_field",
-      "deleted_at"
+      "deleted_at",
+      "content_pii_index",
+      "author_email_pii_index",
+      "author_name_pii_index"
     ]
   },
   "coach_private_profiles": {
@@ -140,7 +190,12 @@
       "phone",
       "email",
       "birth_date",
-      "affiliation"
+      "affiliation",
+      "employee_id_pii_index",
+      "phone_pii_index",
+      "email_pii_index",
+      "birth_date_encrypted",
+      "affiliation_pii_index"
     ]
   },
   "coach_field_masters": {
@@ -184,12 +239,15 @@
     "values": [
       "coach_id",
       "date",
-      "reserved_by_email",
-      "reserved_by_name",
       "confirmed_engagement_id",
       "cancelled_at"
     ],
-    "changeOnly": []
+    "changeOnly": [
+      "reserved_by_email",
+      "reserved_by_name",
+      "reserved_by_email_pii_index",
+      "reserved_by_name_pii_index"
+    ]
   },
   "coach_engagements": {
     "values": [
@@ -210,7 +268,10 @@
       "source_engagement_id",
       "feedback",
       "hired_by_id",
-      "hired_by_text"
+      "hired_by_text",
+      "feedback_pii_index",
+      "hired_by_id_pii_index",
+      "hired_by_text_pii_index"
     ]
   },
   "coach_engagement_schedules": {
@@ -228,30 +289,29 @@
   },
   "team_users": {
     "values": [
-      "name",
-      "email",
       "team",
       "role"
     ],
     "changeOnly": [
-      "slack_id"
+      "slack_id",
+      "name",
+      "email",
+      "name_pii_index",
+      "email_pii_index",
+      "slack_id_pii_index"
     ]
   },
   "om_requests": {
     "values": [
       "status",
-      "assigned_om",
-      "ld_email",
       "operation_id",
       "team",
-      "ld",
       "company",
       "training_type",
       "course_id",
       "course_name",
       "course_category_major",
       "course_category",
-      "instructor_name",
       "skillflo_setup",
       "skillmatch_setup",
       "onsite_operation",
@@ -266,7 +326,19 @@
       "syncup_link",
       "drive_link",
       "sessions",
-      "notes"
+      "notes",
+      "assigned_om",
+      "ld_email",
+      "ld",
+      "instructor_name",
+      "assigned_om_pii_index",
+      "ld_email_pii_index",
+      "ld_pii_index",
+      "business_number_pii_index",
+      "instructor_name_pii_index",
+      "syncup_link_pii_index",
+      "drive_link_pii_index",
+      "notes_pii_index"
     ]
   },
   "announcements": {
@@ -276,7 +348,12 @@
       "content",
       "author_email",
       "author_name",
-      "deleted_at"
+      "deleted_at",
+      "title_pii_index",
+      "content_pii_index",
+      "author_email_pii_index",
+      "author_name_pii_index",
+      "deleted_by_pii_index"
     ]
   },
   "announcement_attachments": {
@@ -287,13 +364,12 @@
     ],
     "changeOnly": [
       "file_name",
-      "data"
+      "data",
+      "file_name_pii_index"
     ]
   },
   "instructor_notes": {
     "values": [
-      "instructor_name",
-      "display_name",
       "recruit_avoid"
     ],
     "changeOnly": [
@@ -302,7 +378,14 @@
       "partner_id",
       "notes",
       "notion_profile",
-      "notion_synced_at"
+      "notion_synced_at",
+      "instructor_name",
+      "display_name",
+      "instructor_name_pii_index",
+      "display_name_pii_index",
+      "notion_id_pii_index",
+      "partner_id_pii_index",
+      "notes_pii_index"
     ]
   },
   "calendar_event_links": {
@@ -312,7 +395,9 @@
     ],
     "changeOnly": [
       "calendar_id",
-      "event_id"
+      "event_id",
+      "calendar_id_pii_index",
+      "event_id_pii_index"
     ]
   }
 }

@@ -1,3 +1,4 @@
+import { withPrivacyDatabase } from "../src/lib/privacy/database";
 /**
  * 로컬 개발용 마이페이지 "지난 과정" 샘플 데이터 시드.
  *
@@ -23,7 +24,7 @@ if (!databaseUrl) {
   process.exit(1);
 }
 
-const prisma = new PrismaClient({ adapter: new PrismaPg(databaseUrl) });
+const prisma = withPrivacyDatabase(new PrismaClient({ adapter: new PrismaPg(databaseUrl) }));
 
 const MY_EMAIL = process.env.SEED_MY_PAGE_EMAIL || "hyeonjeong.lee@day1company.co.kr";
 const MY_NAME = "이현정";

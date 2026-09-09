@@ -1,3 +1,4 @@
+import { assertLegacyStorage } from "./assert-legacy-storage.mjs";
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -35,6 +36,7 @@ const members = normalizeMembers(payload.members ?? []);
 
 const client = new pg.Client({ connectionString: databaseUrl });
 await client.connect();
+  await assertLegacyStorage(client);
 
 try {
   await client.query("BEGIN");

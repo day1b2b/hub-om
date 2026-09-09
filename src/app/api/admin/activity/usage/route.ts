@@ -17,7 +17,7 @@ export async function GET(request: Request) {
         tx.activityRequest.count({ where: { AND: [filters.human, { status: { gte: 400 } }] } }),
         tx.activityRequest.count({ where: filters.automated }),
         tx.activityChange.count({ where: { occurredAt: filters.occurredAt, actorType: "user" } }),
-        tx.activityRequest.groupBy({ by: ["actorEmail"], where: { AND: [filters.human, { actorEmail: { not: null } }] }, _count: { _all: true } })
+        tx.activityRequest.groupBy({ by: ["actorEmailPiiIndex"], where: { AND: [filters.human, { actorEmail: { not: null } }] }, _count: { _all: true } })
       ]);
       return { requests, errors, automatedRequests, changes, users: users.length };
     }, { isolationLevel: "RepeatableRead", timeout: 8000 });
