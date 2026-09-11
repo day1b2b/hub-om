@@ -33,7 +33,9 @@
     "export:feedback": "node scripts/export-feedback-pages.mjs",
     "satisfaction:dry-run": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/dry-run-satisfaction-sheet.ts",
     "salesmap:dry-run": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/dry-run-salesmap-deals.ts",
-    "activity:prune": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/prune-activity.ts"
+    "activity:prune": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/prune-activity.ts",
+    "privacy:migrate": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/encrypt-personal-data.ts",
+    "privacy:migrate-file": "node --env-file-if-exists=.env --env-file-if-exists=.env.local --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/encrypt-private-file.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",

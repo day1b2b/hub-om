@@ -1,3 +1,4 @@
+import { assertLegacyStorage } from "./assert-legacy-storage.mjs";
 // .local/instructor-wiki.json → instructor_notes 테이블로 적재한다.
 // 강사명 기준 upsert이고, 노션 스냅샷(notion_profile)만 갱신한다.
 // 사람이 입력한 값은 파일 쪽에 값이 있을 때만 덮어쓴다(COALESCE). 비어 있으면 DB 값을 유지한다.
@@ -61,6 +62,7 @@ async function main() {
 
   const client = new Client({ connectionString: process.env.DATABASE_URL });
   await client.connect();
+  await assertLegacyStorage(client);
 
   let inserted = 0;
   let updated = 0;

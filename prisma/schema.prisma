@@ -237,6 +237,36 @@ model OperationSession {
   @@index([omUserId])
   @@index([ldUserId])
   @@map("operation_sessions")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  educationFormatRawPiiIndex String? @map("education_format_raw_pii_index")
+  omNamePiiIndex String? @map("om_name_pii_index")
+  ldNamePiiIndex String? @map("ld_name_pii_index")
+  instructorsTextPiiIndex String? @map("instructors_text_pii_index")
+  coachTextPiiIndex String? @map("coach_text_pii_index")
+  regionPiiIndex String? @map("region_pii_index")
+  onsiteTextPiiIndex String? @map("onsite_text_pii_index")
+  onsiteOmNamePiiIndex String? @map("onsite_om_name_pii_index")
+  specialNotesPiiIndex String? @map("special_notes_pii_index")
+  operationIssuePiiIndex String? @map("operation_issue_pii_index")
+  omUpdatePiiIndex String? @map("om_update_pii_index")
+  driveLinkPiiIndex String? @map("drive_link_pii_index")
+  operationDetailPiiIndex String? @map("operation_detail_pii_index")
+  companyWikiLinkPiiIndex String? @map("company_wiki_link_pii_index")
+  instructorWikiLinkPiiIndex String? @map("instructor_wiki_link_pii_index")
+  costRawPiiIndex String? @map("cost_raw_pii_index")
+  profitRawPiiIndex String? @map("profit_raw_pii_index")
+  avgSatisfactionPiiIndex String? @map("avg_satisfaction_pii_index")
+  instructorSatisfactionPiiIndex String? @map("instructor_satisfaction_pii_index")
+  resultReportLinkPiiIndex String? @map("result_report_link_pii_index")
+  lectureManagementLinkPiiIndex String? @map("lecture_management_link_pii_index")
+  lectureManagementNotePiiIndex String? @map("lecture_management_note_pii_index")
+  padletLinkPiiIndex String? @map("padlet_link_pii_index")
+  createdByPiiIndex String? @map("created_by_pii_index")
+  updatedByPiiIndex String? @map("updated_by_pii_index")
+  omUserIdPiiIndex String? @map("om_user_id_pii_index")
+  ldUserIdPiiIndex String? @map("ld_user_id_pii_index")
+  deletedByPiiIndex String? @map("deleted_by_pii_index")
 }
 
 model DriveImportRun {
@@ -264,6 +294,9 @@ model DriveImportRun {
   @@index([startedAt])
   @@index([status])
   @@map("drive_import_runs")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  notesPiiIndex String? @map("notes_pii_index")
 }
 
 model DriveImportResult {
@@ -297,6 +330,13 @@ model DriveImportResult {
   @@index([operationId])
   @@index([resultKind])
   @@map("drive_import_results")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  inputValuePiiIndex String? @map("input_value_pii_index")
+  folderIdPiiIndex String? @map("folder_id_pii_index")
+  folderTitlePiiIndex String? @map("folder_title_pii_index")
+  folderUrlPiiIndex String? @map("folder_url_pii_index")
+  errorPiiIndex String? @map("error_pii_index")
 }
 
 model Member {
@@ -316,6 +356,13 @@ model Member {
   @@index([sourceTeam, isActive])
   @@index([role, sourceTeam, isActive])
   @@map("members")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  namePiiIndex String? @map("name_pii_index")
+  normalizedNamePiiIndex String? @map("normalized_name_pii_index")
+  roleTitlePiiIndex String? @map("role_title_pii_index")
+  calendarIdPiiIndex String? @map("calendar_id_pii_index")
+  @@unique([role, sourceTeam, normalizedNamePiiIndex])
 }
 
 model DataImportRun {
@@ -341,6 +388,13 @@ model DataImportRun {
   @@index([sourceType])
   @@index([startedAt])
   @@map("data_import_runs")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  sourceNamePiiIndex String? @map("source_name_pii_index")
+  workbookNamePiiIndex String? @map("workbook_name_pii_index")
+  fileNamePiiIndex String? @map("file_name_pii_index")
+  importedByPiiIndex String? @map("imported_by_pii_index")
+  notesPiiIndex String? @map("notes_pii_index")
 }
 
 model OperationSourceRecord {
@@ -368,6 +422,11 @@ model OperationSourceRecord {
   @@index([sourceSheet])
   @@index([sourceFingerprint])
   @@map("operation_source_records")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  sourceWorkbookPiiIndex String? @map("source_workbook_pii_index")
+  sourceSheetPiiIndex String? @map("source_sheet_pii_index")
+  @@unique([importRunId, sourceSheetPiiIndex, sourceRowNumber])
 }
 
 enum CoachStatus {
@@ -395,6 +454,7 @@ enum CoachEngagementSource {
 }
 
 model Coach {
+  @@index([normalizedNamePiiIndex])
   id             String      @id @default(uuid()) @db.Uuid
   sourceCoachId  String      @unique @map("source_coach_id")
   accessToken    String?     @unique @map("access_token")
@@ -438,6 +498,23 @@ model Coach {
   @@index([normalizedName])
   @@index([status, isActive])
   @@map("coaches")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  sourceCoachIdPiiIndex String? @unique @map("source_coach_id_pii_index")
+  accessTokenPiiIndex String? @unique @map("access_token_pii_index")
+  namePiiIndex String? @map("name_pii_index")
+  normalizedNamePiiIndex String? @map("normalized_name_pii_index")
+  workTypePiiIndex String? @map("work_type_pii_index")
+  statusNotePiiIndex String? @map("status_note_pii_index")
+  returnDateEncrypted String? @map("return_date_encrypted")
+  selfNotePiiIndex String? @map("self_note_pii_index")
+  portfolioUrlPiiIndex String? @map("portfolio_url_pii_index")
+  availabilityDetailPiiIndex String? @map("availability_detail_pii_index")
+  managerNotePiiIndex String? @map("manager_note_pii_index")
+  dxTagPiiIndex String? @map("dx_tag_pii_index")
+  employeeNoPiiIndex String? @unique @map("employee_no_pii_index")
+  notionPageIdPiiIndex String? @map("notion_page_id_pii_index")
+  deletedByPiiIndex String? @map("deleted_by_pii_index")
 }
 
 enum CoachContentEntryKind {
@@ -463,6 +540,11 @@ model CoachContentEntry {
   @@index([coachId])
   @@index([kind])
   @@map("coach_content_entries")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  contentPiiIndex String? @map("content_pii_index")
+  authorEmailPiiIndex String? @map("author_email_pii_index")
+  authorNamePiiIndex String? @map("author_name_pii_index")
 }
 
 model CoachPrivateAccessLog {
@@ -476,6 +558,9 @@ model CoachPrivateAccessLog {
   @@index([coachId, accessedAt])
   @@index([accessedByEmail, accessedAt])
   @@map("coach_private_access_logs")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  accessedByEmailPiiIndex String? @map("accessed_by_email_pii_index")
 }
 
 model CoachPrivateProfile {
@@ -491,6 +576,13 @@ model CoachPrivateProfile {
   coach Coach @relation(fields: [coachId], references: [id], onDelete: Cascade)
 
   @@map("coach_private_profiles")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  employeeIdPiiIndex String? @map("employee_id_pii_index")
+  phonePiiIndex String? @map("phone_pii_index")
+  emailPiiIndex String? @map("email_pii_index")
+  birthDateEncrypted String? @map("birth_date_encrypted")
+  affiliationPiiIndex String? @map("affiliation_pii_index")
 }
 
 model CoachFieldMaster {
@@ -565,6 +657,10 @@ model CoachDayReservation {
   @@index([coachId, date])
   @@index([confirmedEngagementId])
   @@map("coach_day_reservations")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  reservedByEmailPiiIndex String? @map("reserved_by_email_pii_index")
+  reservedByNamePiiIndex String? @map("reserved_by_name_pii_index")
 }
 
 model CoachScheduleAccessLog {
@@ -610,6 +706,11 @@ model CoachEngagement {
   @@index([coachId])
   @@index([operationSessionId])
   @@map("coach_engagements")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  feedbackPiiIndex String? @map("feedback_pii_index")
+  hiredByIdPiiIndex String? @map("hired_by_id_pii_index")
+  hiredByTextPiiIndex String? @map("hired_by_text_pii_index")
 }
 
 model CoachEngagementSchedule {
@@ -646,6 +747,9 @@ model CoachImportRun {
 
   @@index([startedAt])
   @@map("coach_import_runs")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  notesPiiIndex String? @map("notes_pii_index")
 }
 
 model CoachSyncLog {
@@ -664,6 +768,10 @@ model CoachSyncLog {
 
   @@index([type, startedAt])
   @@map("coach_sync_logs")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  errorDetailPiiIndex String? @map("error_detail_pii_index")
+  triggeredByPiiIndex String? @map("triggered_by_pii_index")
 }
 
 model SalesRevenueSyncLog {
@@ -684,6 +792,9 @@ model SalesRevenueSyncLog {
 
   @@index([startedAt])
   @@map("sales_revenue_sync_logs")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  triggeredByPiiIndex String? @map("triggered_by_pii_index")
 }
 
 model TeamUser {
@@ -696,6 +807,11 @@ model TeamUser {
   createdAt DateTime    @default(now()) @map("created_at")
 
   @@map("team_users")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  namePiiIndex String? @map("name_pii_index")
+  emailPiiIndex String? @map("email_pii_index")
+  slackIdPiiIndex String? @map("slack_id_pii_index")
 }
 
 // OM 업무 요청. 과거 로컬 JSON 파일(om-requests.json) 저장에서 Postgres로 이관.
@@ -735,6 +851,16 @@ model OmRequest {
   @@index([createdAt])
   @@index([operationId])
   @@map("om_requests")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  assignedOmPiiIndex String? @map("assigned_om_pii_index")
+  ldEmailPiiIndex String? @map("ld_email_pii_index")
+  ldPiiIndex String? @map("ld_pii_index")
+  businessNumberPiiIndex String? @map("business_number_pii_index")
+  instructorNamePiiIndex String? @map("instructor_name_pii_index")
+  syncupLinkPiiIndex String? @map("syncup_link_pii_index")
+  driveLinkPiiIndex String? @map("drive_link_pii_index")
+  notesPiiIndex String? @map("notes_pii_index")
 }
 
 model Announcement {
@@ -752,6 +878,13 @@ model Announcement {
 
   @@index([deletedAt, createdAt])
   @@map("announcements")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  titlePiiIndex String? @map("title_pii_index")
+  contentPiiIndex String? @map("content_pii_index")
+  authorEmailPiiIndex String? @map("author_email_pii_index")
+  authorNamePiiIndex String? @map("author_name_pii_index")
+  deletedByPiiIndex String? @map("deleted_by_pii_index")
 }
 
 model AnnouncementAttachment {
@@ -767,6 +900,9 @@ model AnnouncementAttachment {
 
   @@index([announcementId])
   @@map("announcement_attachments")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  fileNamePiiIndex String? @map("file_name_pii_index")
 }
 
 // coach-db 원본 보관용 테이블. 데이터 적재는 scripts/archive-coach-db.ts로만 한다.
@@ -786,6 +922,9 @@ model CoachdbArchiveSnapshot {
   rows CoachdbArchiveRow[]
 
   @@map("coachdb_archive_snapshots")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  errorMessagePiiIndex String? @map("error_message_pii_index")
 }
 
 model CoachdbArchiveRow {
@@ -804,6 +943,10 @@ model CoachdbArchiveRow {
   @@index([snapshotId], map: "coachdb_archive_rows_snapshot_idx")
   @@index([rowData(ops: JsonbOps)], map: "coachdb_archive_rows_data_gin_idx", type: Gin)
   @@map("coachdb_archive_rows")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  rowKeyPiiIndex String? @map("row_key_pii_index")
+  @@unique([snapshotId, tableSchema, tableName, rowKeyPiiIndex])
 }
 
 // 강사위키에서 OM이 입력하는 값과 노션 강사 DB 스냅샷을 강사명 기준으로 보관한다.
@@ -812,6 +955,7 @@ model CoachdbArchiveRow {
 // notionProfile은 노션에서 가져온 읽기 전용 스냅샷이라 OM 입력 컬럼과 분리해 둔다.
 // 같은 컬럼에 섞으면 재수집 때 OM 수정분이 덮이거나 노션 값이 OM 값으로 굳는다.
 model InstructorNote {
+  @@index([instructorNamePiiIndex])
   id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   // 노션 강사 DB의 ID(auto increment, 화면상 "NO"). 노션↔사이트 연결 키다.
   // 강사명은 노션에서 바뀔 수 있고 동명이인(같은 이름의 서로 다른 강사)도 있어 키로 쓸 수 없다.
@@ -834,6 +978,13 @@ model InstructorNote {
   @@index([recruitAvoid], map: "instructor_notes_recruit_avoid_idx")
   @@index([instructorName], map: "instructor_notes_instructor_name_idx")
   @@map("instructor_notes")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  instructorNamePiiIndex String? @map("instructor_name_pii_index")
+  displayNamePiiIndex String? @map("display_name_pii_index")
+  notionIdPiiIndex String? @map("notion_id_pii_index")
+  partnerIdPiiIndex String? @map("partner_id_pii_index")
+  notesPiiIndex String? @map("notes_pii_index")
 }
 
 // 운영 1건(OperationSession.operationId)의 **실제 교육일 1일 ↔ 구글 이벤트 1건** 매핑.
@@ -855,10 +1006,15 @@ model CalendarEventLink {
   @@index([operationId])
   @@index([calendarId, eventId])
   @@map("calendar_event_links")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  calendarIdPiiIndex String? @map("calendar_id_pii_index")
+  eventIdPiiIndex String? @map("event_id_pii_index")
 }
 
 // API metadata only. Never store payloads, credentials, IP addresses or raw URLs.
 model ActivityRequest {
+  @@index([actorEmailPiiIndex])
   id         String   @id @db.Uuid
   occurredAt DateTime @default(dbgenerated("clock_timestamp()")) @map("occurred_at") @db.Timestamptz(3)
   actorEmail String?  @map("actor_email")
@@ -872,11 +1028,16 @@ model ActivityRequest {
   @@index([occurredAt, id])
   @@index([actorEmail, occurredAt, id])
   @@map("activity_requests")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  actorEmailPiiIndex String? @map("actor_email_pii_index")
+  actorNamePiiIndex String? @map("actor_name_pii_index")
 }
 
 // Database triggers write this in the same transaction as the affected business row.
 // No relation to the target or request: deleting either must not delete this history.
 model ActivityChange {
+  @@index([actorEmailPiiIndex])
   id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   occurredAt DateTime @default(dbgenerated("clock_timestamp()")) @map("occurred_at") @db.Timestamptz(3)
   requestId  String   @map("request_id") @db.Uuid
@@ -895,4 +1056,8 @@ model ActivityChange {
   @@index([targetType, targetId, occurredAt, id])
   @@index([requestId])
   @@map("activity_changes")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  actorEmailPiiIndex String? @map("actor_email_pii_index")
+  actorNamePiiIndex String? @map("actor_name_pii_index")
 }

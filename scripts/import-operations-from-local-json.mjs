@@ -1,3 +1,4 @@
+import { assertLegacyStorage } from "./assert-legacy-storage.mjs";
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -87,6 +88,7 @@ async function main() {
   const operations = await readOperations(options.file);
   const client = new Client({ connectionString: databaseUrl });
   await client.connect();
+  await assertLegacyStorage(client);
 
   const summary = {
     dryRun: options.dryRun,

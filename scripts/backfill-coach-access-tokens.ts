@@ -1,3 +1,4 @@
+import { assertLegacyStorage } from "./assert-legacy-storage.mjs";
 /**
  * 최신 coach-db 아카이브에서 코치 입력 토큰(access_token)을 hub-om coaches 테이블로 백필한다.
  *
@@ -27,6 +28,7 @@ async function main(): Promise<void> {
 
   const client = new Client({ connectionString: targetUrl });
   await client.connect();
+  await assertLegacyStorage(client);
 
   try {
     const summary = await client.query<{

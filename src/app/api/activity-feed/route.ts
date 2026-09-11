@@ -25,7 +25,7 @@ export async function GET(request: Request) {
           tx.activityRequest.count({ where }),
           tx.activityChange.count({ where: filters.summary.changes }),
           tx.activityRequest.count({ where: { AND: [where, { status: { gte: 400 } }] } }),
-          tx.activityRequest.groupBy({ by: ["actorEmail"], where: { AND: [where, { actorEmail: { not: null } }] } })
+          tx.activityRequest.groupBy({ by: ["actorEmailPiiIndex"], where: { AND: [where, { actorEmail: { not: null } }] } })
         ]);
         summary = { requests, changes, errors, users: users.length };
       }

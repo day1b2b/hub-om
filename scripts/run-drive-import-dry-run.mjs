@@ -1,3 +1,4 @@
+import { assertLegacyStorage } from "./assert-legacy-storage.mjs";
 import fs from "node:fs";
 import { Client } from "pg";
 import { scanOperationDriveFolder, searchOperationDriveFolders } from "../src/lib/driveImports/googleDriveOperationScanner.ts";
@@ -227,6 +228,7 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
   const client = new Client({ connectionString: process.env.DATABASE_URL });
   await client.connect();
+  await assertLegacyStorage(client);
 
   const operations = await loadOperations(client, args.limit);
   const runId = await insertRun(client, args, operations.length);

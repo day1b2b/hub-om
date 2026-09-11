@@ -1,3 +1,4 @@
+import { assertLegacyStorage } from "./assert-legacy-storage.mjs";
 /**
  * 최신 coach-db 아카이브에서 hub-om 서비스 컬럼으로 승격된 코치 운영 데이터와
  * 스케줄 접속 로그를 백필한다.
@@ -28,6 +29,7 @@ async function main(): Promise<void> {
 
   const client = new Client({ connectionString: targetUrl });
   await client.connect();
+  await assertLegacyStorage(client);
 
   try {
     const summary = await client.query<{
