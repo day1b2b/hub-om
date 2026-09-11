@@ -25,6 +25,8 @@ export interface OmRosterEntry {
 }
 
 interface OperationDashboardProps {
+  /** LD·관리자용 파트 필터 기본값(멤버관리 등록 파트). 해당 없으면 null → 전체 파트 유지. */
+  defaultPartFilter: null | string;
   /** 로그인한 사람의 OM 이름(명단에 없으면 null) — OM 필터 기본값으로 쓴다. */
   myOmName: null | string;
   omRoster: OmRosterEntry[];
@@ -130,6 +132,7 @@ function compareGroups(a: CourseGroup, b: CourseGroup, key: SortKey, dir: "asc" 
 }
 
 export function OperationDashboard({
+  defaultPartFilter,
   myOmName,
   omRoster,
   operations,
@@ -152,7 +155,9 @@ export function OperationDashboard({
     const hasOwnOperations = operations.some((operation) => splitPersonNames(operation.om).includes(myOmName));
     return hasOwnOperations ? myOmName : 전체_OM;
   });
-  const [partFilter, setPartFilter] = useState(전체_파트);
+  // 기본값 = LD·관리자는 본인 소속 파트(defaultPartFilter), 그 외(OM 등)는 전체.
+  // OM은 본인 담당 과정 기준(omFilter)이 이미 더 구체적인 기본값을 맡고 있어 파트는 건드리지 않는다.
+  const [partFilter, setPartFilter] = useState(defaultPartFilter ?? 전체_파트);
   const [archiveOnly, setArchiveOnly] = useState(false);
   const [query, setQuery] = useState("");
   // 기본 날짜 필터는 "전체"(빈 범위 = 전체 조회). 사용자가 필요할 때 좁힌다.
