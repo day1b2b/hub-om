@@ -155,8 +155,9 @@ export function OperationDashboard({
     const hasOwnOperations = operations.some((operation) => splitPersonNames(operation.om).includes(myOmName));
     return hasOwnOperations ? myOmName : 전체_OM;
   });
-  // 기본값 = LD·관리자는 본인 소속 파트(defaultPartFilter), 그 외(OM 등)는 전체.
-  // OM은 본인 담당 과정 기준(omFilter)이 이미 더 구체적인 기본값을 맡고 있어 파트는 건드리지 않는다.
+  // 기본값 = LD·관리자는 본인 소속 파트(defaultPartFilter), 그 외(순수 OM)는 전체.
+  // 관리자 권한이 최우선이라, OM으로 등록돼 있어도 관리자 계정이면 파트 필터가 적용된다
+  // (defaultPartFilter 계산은 page.tsx의 resolveDefaultPartFilter 참고).
   const [partFilter, setPartFilter] = useState(defaultPartFilter ?? 전체_파트);
   const [archiveOnly, setArchiveOnly] = useState(false);
   const [query, setQuery] = useState("");

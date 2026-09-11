@@ -50,17 +50,15 @@ export default async function OperationsPage({ searchParams }: OperationsPagePro
  * OM은 기존대로 "본인 담당 과정" 기준 기본값을 쓰고(OperationDashboard 내부 로직),
  * LD와 관리자는 담당 과정 명의가 없거나 의미가 없어 파트 단위로 보는 게 자연스럽다.
  * 그래서 로그인한 사람이 멤버관리에 LD로 등록돼 있거나 관리자 계정이면, 본인 소속 파트를
- * 파트 필터 기본값으로 돌려준다. OM으로 등록된 사람은(관리자를 겸하더라도) 본인 과정 기준을
- * 우선한다 — 더 구체적인 정보이기 때문이다. 소속 파트를 모르면 null(=전체 파트 유지)을 돌려준다.
+ * 파트 필터 기본값으로 돌려준다. 관리자 권한이 최우선이라, OM으로 등록돼 있어도 관리자
+ * 계정이면 파트 필터를 우선 적용한다. 소속 파트를 모르면 null(=전체 파트 유지)을 돌려준다.
  */
 function resolveDefaultPartFilter(teamUsers: TeamUser[], email: null | string | undefined): null | string {
   const target = (email ?? "").trim().toLowerCase();
   if (!target) return null;
 
   const myTeamUser = teamUsers.find((user) => user.email.trim().toLowerCase() === target);
-  if (myTeamUser?.role === "om") return null;
-
-  const shouldDefaultToPart = myTeamUser?.role === "ld" || isAdminEmail(email);
+  const shouldDefaultToPart = isAdminEmail(email) || myTeamUser?.role === "ld";
   return shouldDefaultToPart ? myTeamUser?.team ?? null : null;
 }
 
