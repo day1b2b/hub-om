@@ -129,7 +129,7 @@ export default async function OmRequestDetailPage({ params }: Props) {
 
             <div className="operation-form-section">
               <div className="section-title"><h2>세팅 및 운영</h2></div>
-              <div className="operation-form-grid">
+              <div className="operation-form-grid compact">
                 <YNField label="스킬플로 세팅" value={request.skillfloSetup} />
                 <YNField label="스킬매치 세팅" value={request.skillmatchSetup} />
                 <YNField label="현장 운영" value={request.onSiteOperation} />
