@@ -33,6 +33,7 @@ export async function createLinkedOperationForOmRequest(request: OmRequest): Pro
 
   const repository = getOperationRepository();
   let firstOperationId: string | null = null;
+  const createdOperationIds: string[] = [];
 
   for (const [index, session] of sessions.entries()) {
     // 세션에 실제 교육일을 따로 적어뒀으면(예: 9/3, 9/4, 9/7) 그 값을 우선한다 — date~dateEnd는
@@ -82,6 +83,16 @@ export async function createLinkedOperationForOmRequest(request: OmRequest): Pro
 
     const operation = await repository.createOperation(input);
     if (!firstOperationId) firstOperationId = operation.operationId;
+    createdOperationIds.push(operation.operationId);
+  }
+
+  // createOperation()은 결과보고서 여부를 항상 "확인필요"로 만든다 — om-request에서
+  // "결과보고서: N"으로 접수됐으면(불필요) 별도 patch로 덮어써 운영현황과 값을 맞춘다.
+  // /operations/new(OperationCreateForm)의 동일 패턴을 그대로 따른 것.
+  if (request.resultReportNeeded === "N") {
+    for (const operationId of createdOperationIds) {
+      await repository.updateOperation(operationId, { hasResultReport: "불필요" });
+    }
   }
 
   return firstOperationId;
