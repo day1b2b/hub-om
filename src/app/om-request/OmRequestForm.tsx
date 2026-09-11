@@ -297,6 +297,7 @@ export function OmRequestForm({
       skillmatchSetup: "N",
       onSiteOperation: "N",
       coachRequest: "N",
+      resultReportNeeded: "N",
       totalSessions: 1,
       sessions: [emptySession()],
       notes: ""
@@ -572,7 +573,7 @@ export function OmRequestForm({
           </label>
 
           <label>
-            <span>싱크업 링크<RequiredMark /></span>
+            <span>싱크업 시트 링크<RequiredMark /></span>
             <input
               required
               type="text"
@@ -618,12 +619,16 @@ export function OmRequestForm({
           <YNToggle label="스킬매치 세팅" value={form.skillmatchSetup} onChange={(v) => setField("skillmatchSetup", v)} />
           <YNToggle required label="현장 운영" value={form.onSiteOperation} onChange={(v) => setField("onSiteOperation", v)} />
           <YNToggle required label="실습 코치 요청" value={form.coachRequest} onChange={(v) => setField("coachRequest", v)} />
+          <YNToggle required label="결과보고서" value={form.resultReportNeeded} onChange={(v) => setField("resultReportNeeded", v)} />
         </div>
       </div>
 
       {/* 교육 일정 */}
       <div className="operation-form-section">
-        <div className="section-title"><h2>교육 일정</h2></div>
+        <div className="section-title">
+          <h2>교육 일정</h2>
+          <p className="om-field-hint">일정이 확정되지 않았다면, 가일정으로 선택해주시면 됩니다(여러 일자 선택 가능).</p>
+        </div>
 
         <div className="om-session-toolbar">
           <label className="om-session-count-field">
@@ -751,7 +756,7 @@ export function OmRequestForm({
               required
               rows={5}
               value={form.notes}
-              placeholder="예) 결과보고서 유무, 다과 유무, 이전 요청 사항 등"
+              placeholder="예) 고객사 특성, 과정 특성, 특이 사항 등"
               onChange={(e) => setField("notes", e.target.value)}
             />
           </label>

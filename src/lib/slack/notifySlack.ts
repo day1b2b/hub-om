@@ -197,7 +197,7 @@ export async function notifyOmRequestCreated(params: {
     `*3. 기업명*\n${params.company}\n` +
     `*4. 교육형태*\n${params.trainingType}\n` +
     `*5. 과정명*\n${params.courseName}\n` +
-    `*6. 싱크업 링크*\n${params.syncupLink}\n` +
+    `*6. 싱크업 시트 링크*\n${params.syncupLink}\n` +
     `*7. 세팅*\n스킬플로: ${params.skillfloSetup} / 현장운영: ${params.onSiteOperation} / 코치 요청: ${params.coachRequest}\n` +
     `*8. 총 회차*\n${params.totalSessions}회\n` +
     `*9. 일정*\n${sessionLines}\n` +
