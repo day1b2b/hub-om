@@ -256,6 +256,7 @@
       "skillmatch_setup",
       "onsite_operation",
       "coach_request",
+      "result_report_needed",
       "total_sessions"
     ],
     "changeOnly": [
