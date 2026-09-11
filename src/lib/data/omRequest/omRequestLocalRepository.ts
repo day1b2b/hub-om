@@ -53,6 +53,7 @@ interface OmRequestRow {
   skillmatchSetup: string;
   onSiteOperation: string;
   coachRequest: string;
+  resultReportNeeded: string;
   totalSessions: number;
   sessions: unknown;
   notes: string;
@@ -86,6 +87,7 @@ function toOmRequest(row: OmRequestRow): OmRequest {
     skillmatchSetup: row.skillmatchSetup as YN,
     onSiteOperation: row.onSiteOperation as YN,
     coachRequest: row.coachRequest as YN,
+    resultReportNeeded: (row.resultReportNeeded as YN | undefined) ?? "N",
     totalSessions: row.totalSessions,
     sessions: (row.sessions as OmRequestSession[] | null) ?? [],
     notes: row.notes,
@@ -112,6 +114,7 @@ function toInputData(input: OmRequestInput) {
     skillmatchSetup: input.skillmatchSetup,
     onSiteOperation: input.onSiteOperation,
     coachRequest: input.coachRequest,
+    resultReportNeeded: input.resultReportNeeded,
     totalSessions: input.totalSessions,
     sessions: input.sessions as unknown as Prisma.InputJsonValue,
     notes: input.notes,

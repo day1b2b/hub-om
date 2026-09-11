@@ -727,6 +727,7 @@ model OmRequest {
   skillmatchSetup     String   @map("skillmatch_setup")
   onSiteOperation     String   @map("onsite_operation")
   coachRequest        String   @map("coach_request")
+  resultReportNeeded  String   @default("N") @map("result_report_needed")
   totalSessions       Int      @map("total_sessions")
   sessions            Json
   notes               String
