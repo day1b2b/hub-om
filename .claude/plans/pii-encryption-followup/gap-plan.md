@@ -2,7 +2,7 @@
 
 | 항목 | 유형 | 다음 행동 | 머지 차단 |
 |---|---|---|---|
-| 브라우저 강의관리·종료회고·Drive 초안 평문 | 제품/구현 | 사용자 확정: 저장 위치/localStorage/보존·복구 유지. 오프라인 암호화·키 관리·계정 간 접근 보호는 추후 별도 검증 | 이번 서버 구현 차단 아님; 전체 보호 완료 주장 불가 |
+| 브라우저 강의관리·종료회고·Drive 초안 평문 | 제품/구현 | 최신 정정으로 전체 완료 조건에 포함. 독립 암호화/오프라인 prototype 완료, 별도 잠금 암호 사용자 결정 후 제품 통합·실제 legacy 처리 | 전체 완료 차단; 제품 적용 대기 |
 | 격리 PostgreSQL 최신 migration/검색/정렬/백필/롤백 | verification | 승인된 별도 환경에서 실행; 현재 로컬 DB 실행 금지 유지 | 예 |
 | 키 보관/복원/백필/제약/중단 전환/화면 | validation/배포 | 기술 책임자 계획·실행 검증 | 예 |
 | 광범위 20,000행 초과 검색·정렬 | 제품/성능 | 기간/상태 후보 좁히기 또는 정확 검색. 필요시 token index 누출/비용 별도 결정 | 책임자 수용 필요 |
@@ -13,3 +13,5 @@
 | PostgreSQL 암호화 전환 vs MongoDB 이관 일정 | 운영 의사결정 | 공유 crypto/field policy 먼저 확정, 실제 전환 순서 결정 | 예 |
 
 재개: docs/operations/personal-data-encryption.md → plan-v2.md → execution-review.md → alignment-review.md 순서로 읽고 승인된 검증 범위를 확인한다.
+
+DB 교체 담당 인계의 최신 계약 및 결정 유형은 `docs/operations/privacy-adapter-contract.md`를 따른다. 공통 runtime/manifest 구조는 변경하지 않았다.

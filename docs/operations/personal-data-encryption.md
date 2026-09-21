@@ -79,3 +79,5 @@ Node.js `crypto`의 AES-256-GCM, 매 저장마다 무작위 12바이트 nonce, 1
 암호화 코어·분류·키 정책 합의는 MongoDB adapter 설계의 입력으로 먼저 공유한다. 이번 PostgreSQL 후속 보완과 DB 없는 테스트는 MongoDB 전환을 기다리지 않고 진행할 수 있다. 실제 PostgreSQL 백필을 먼저 배포할지, MongoDB 이관 시 함께 암호화할지는 운영 전환 책임자가 결정해야 하며 두 전환을 이번 작업에서 수행하지 않는다.
 
 후속 로컬 검증 결과: `npm test` 528개 중 524개 통과/실패 0/DB 의존 4개 건너뜀(개인정보 DB 전환, 활동 로그 DB, 과정명 복원 DB, 캘린더 잠금 DB). `npm run typecheck`, `npm run build`, `npm run db:validate`, `git diff --check` 통과. `npm run lint` 오류 0/기존 경고 7. 새 의존성 추가 없음. 이 결과는 실제 DB·브라우저 검증의 대체가 아니다.
+
+DB adapter 교체 시 재사용 경계와 암호문/AAD/HMAC 불변 조건은 [서버 암호화 adapter 인계 계약](privacy-adapter-contract.md)을 따른다.
