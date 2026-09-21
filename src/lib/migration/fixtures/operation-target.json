@@ -1,0 +1,194 @@
+{
+  "companies": [
+    {
+      "_id": "00000000-0000-4000-8000-000000000001",
+      "name": "Fixture Company",
+      "normalizedName": "fixturecompany",
+      "createdAt": {
+        "$date": {
+          "$numberLong": "1789952523004"
+        }
+      },
+      "updatedAt": {
+        "$date": {
+          "$numberLong": "1789952523004"
+        }
+      }
+    }
+  ],
+  "courses": [
+    {
+      "_id": "00000000-0000-4000-8000-000000000002",
+      "processSeq": {
+        "$numberInt": "17"
+      },
+      "companyId": "00000000-0000-4000-8000-000000000001",
+      "courseId": "fixture-course",
+      "name": "Fixture Course",
+      "operationType": "LECTURE",
+      "courseCategory": null,
+      "tools": null,
+      "revenue": {
+        "$numberDecimal": "999999999999.99"
+      },
+      "revenueRaw": null,
+      "createdAt": {
+        "$date": {
+          "$numberLong": "1789952523004"
+        }
+      },
+      "updatedAt": {
+        "$date": {
+          "$numberLong": "1789952523004"
+        }
+      }
+    }
+  ],
+  "operation_sessions": [
+    {
+      "_id": "00000000-0000-4000-8000-000000000004",
+      "operationId": "fixture-operation",
+      "courseRecordId": "00000000-0000-4000-8000-000000000002",
+      "sourceFingerprint": null,
+      "validationErrors": {
+        "__pii": "pii:v1:fixture:AgICAgICAgICAgIC:3fBaztaE3IOfNFDyJQEQ0g:aaOlJQ"
+      },
+      "operationStatus": "ASSIGNMENT_NEEDED",
+      "archiveStatus": "NOT_READY",
+      "educationFormat": "OFFLINE",
+      "educationFormatRaw": null,
+      "educationFormatRawPiiIndex": null,
+      "operationChannel": "ONSITE",
+      "roundNo": null,
+      "educationDays": null,
+      "startDate": {
+        "$date": {
+          "$numberLong": "1709164800000"
+        }
+      },
+      "endDate": {
+        "$date": {
+          "$numberLong": "1709510400000"
+        }
+      },
+      "educationDates": [
+        {
+          "$date": {
+            "$numberLong": "1709164800000"
+          }
+        },
+        {
+          "$date": {
+            "$numberLong": "1709510400000"
+          }
+        }
+      ],
+      "operationMonth": null,
+      "sessionDurationDays": null,
+      "sessionDurationType": null,
+      "timeText": null,
+      "omName": null,
+      "omNamePiiIndex": null,
+      "ldName": null,
+      "ldNamePiiIndex": null,
+      "instructorsText": null,
+      "instructorsTextPiiIndex": null,
+      "coachText": null,
+      "coachTextPiiIndex": null,
+      "region": null,
+      "regionPiiIndex": null,
+      "onsiteRequired": "Y",
+      "onsiteText": null,
+      "onsiteTextPiiIndex": null,
+      "onsiteOmName": null,
+      "onsiteOmNamePiiIndex": null,
+      "specialNotes": "pii:v1:fixture:AgICAgICAgICAgIC:0Xxe-mLJuRaZLZay9tM0Sw:",
+      "specialNotesPiiIndex": "233c6e71b0a1202d128e39ab9be48dbe0cc77b31146341c5fe5191dcaa6180d7",
+      "operationIssue": null,
+      "operationIssuePiiIndex": null,
+      "omUpdate": null,
+      "omUpdatePiiIndex": null,
+      "driveLink": null,
+      "driveLinkPiiIndex": null,
+      "operationDetail": null,
+      "operationDetailPiiIndex": null,
+      "companyWikiLink": null,
+      "companyWikiLinkPiiIndex": null,
+      "instructorWikiLink": null,
+      "instructorWikiLinkPiiIndex": null,
+      "costRaw": null,
+      "costRawPiiIndex": null,
+      "profitRaw": null,
+      "profitRawPiiIndex": null,
+      "totalCost": {
+        "$numberDecimal": "-0.01"
+      },
+      "instructorCost": {
+        "$numberDecimal": "0.00"
+      },
+      "operationCost": {
+        "$numberDecimal": "1.20"
+      },
+      "avgSatisfaction": null,
+      "avgSatisfactionPiiIndex": null,
+      "instructorSatisfaction": null,
+      "instructorSatisfactionPiiIndex": null,
+      "hasSatisfactionSurvey": "NOT_REQUIRED",
+      "hasResultReport": "YES",
+      "resultReportLink": null,
+      "resultReportLinkPiiIndex": null,
+      "lectureManagementLink": null,
+      "lectureManagementLinkPiiIndex": null,
+      "lectureManagementNote": null,
+      "lectureManagementNotePiiIndex": null,
+      "padletLink": null,
+      "padletLinkPiiIndex": null,
+      "createdBy": null,
+      "createdByPiiIndex": null,
+      "updatedBy": null,
+      "updatedByPiiIndex": null,
+      "omUserId": null,
+      "omUserIdPiiIndex": null,
+      "ldUserId": null,
+      "ldUserIdPiiIndex": null,
+      "deletedAt": null,
+      "deletedBy": null,
+      "deletedByPiiIndex": null,
+      "createdAt": {
+        "$date": {
+          "$numberLong": "1789952523004"
+        }
+      },
+      "updatedAt": {
+        "$date": {
+          "$numberLong": "1789952523004"
+        }
+      }
+    }
+  ],
+  "calendar_event_links": [
+    {
+      "_id": "00000000-0000-4000-8000-000000000006",
+      "operationId": "fixture-operation",
+      "calendarId": "pii:v1:fixture:AgICAgICAgICAgIC:kDxCYt33keinJfggga2u0Q:Yb-xPT8lpNCwrdCtMsOjwOvR",
+      "calendarIdPiiIndex": "7c8c9a02ea80c35803df3d4ac963922f534d837c6c4f64ade64473a76ff8490b",
+      "eventId": "pii:v1:fixture:AgICAgICAgICAgIC:jhJj9Hs3vXz2nIwQC9T77g:Yb-xPT8lpNC2utmmKO6m",
+      "eventIdPiiIndex": "93739182cb73cf90cd41bc073a9572a993c852452dc620532f9a9644ef4ffe54",
+      "eventDate": {
+        "$date": {
+          "$numberLong": "1709164800000"
+        }
+      },
+      "createdAt": {
+        "$date": {
+          "$numberLong": "1789952523004"
+        }
+      },
+      "updatedAt": {
+        "$date": {
+          "$numberLong": "1789952523004"
+        }
+      }
+    }
+  ]
+}
