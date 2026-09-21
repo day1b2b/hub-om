@@ -1,3 +1,4 @@
+import { browserDrafts } from "@/lib/privacy/browserDraftRuntime";
 import { blankTab, type LectureNoteTab } from "./lectureNoteModel";
 
 export type NoteMode = "text" | "link";
@@ -7,52 +8,37 @@ export interface StoredDraft {
   tabs: LectureNoteTab[];
   updatedAt: string;
 }
-
-type DraftStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
-const DRAFT_STORAGE_PREFIX = "hub-om:lecture-note-draft:";
-
-// 미저장 기록은 기간과 무관하게 보존한다. 서버 저장 확인 또는 명시적인 버리기로만 삭제한다.
-function draftStorageKey(operationId: string): string {
-  return `${DRAFT_STORAGE_PREFIX}${operationId}`;
+export interface LectureDraftPort {
+  read<T>(kind: string, id: string): Promise<T | null>;
+  write(kind: string, id: string, value: unknown): Promise<void>;
+  remove(kind: string, id: string): Promise<void>;
 }
+export const lectureLegacyDraftKey = (operationId: string) => `hub-om:lecture-note-draft:${operationId}`;
 
-export function readDraft(operationId: string, storage?: DraftStorage): StoredDraft | null {
-  try {
-    const raw = (storage ?? window.localStorage).getItem(draftStorageKey(operationId));
-    if (!raw) return null;
-
-    const parsed = JSON.parse(raw) as Partial<StoredDraft>;
-    if (!Array.isArray(parsed.tabs) || typeof parsed.updatedAt !== "string") return null;
-
-    return {
-      linkDraft: typeof parsed.linkDraft === "string" ? parsed.linkDraft : "",
-      mode: parsed.mode === "link" ? "link" : "text",
-      tabs: parsed.tabs.map((tab) => ({ ...blankTab(), ...tab })),
-      updatedAt: parsed.updatedAt
-    };
-  } catch {
-    return null;
-  }
+export function validateLectureDraft(value: unknown): StoredDraft {
+  if (!value || typeof value !== "object") throw new Error("강의관리 초안 형식을 확인할 수 없습니다.");
+  const parsed = value as Partial<StoredDraft>;
+  if (!Array.isArray(parsed.tabs) || typeof parsed.updatedAt !== "string" || typeof parsed.linkDraft !== "string" || !["text", "link"].includes(parsed.mode ?? "")) throw new Error("강의관리 초안 형식을 확인할 수 없습니다.");
+  const tabs = parsed.tabs.map(tab => {
+    if (!tab || typeof tab !== "object") throw new Error("강의관리 초안 형식을 확인할 수 없습니다.");
+    const defaults = blankTab();
+    for (const [field, defaultValue] of Object.entries(defaults)) {
+      const stored = tab[field as keyof LectureNoteTab];
+      if (stored !== undefined && typeof defaultValue === "string" && typeof stored !== "string") throw new Error("강의관리 초안 형식을 확인할 수 없습니다.");
+    }
+    if (tab.issueTags !== undefined && (!Array.isArray(tab.issueTags) || !tab.issueTags.every(tag => typeof tag === "string"))) throw new Error("강의관리 초안 형식을 확인할 수 없습니다.");
+    return { ...defaults, ...tab };
+  });
+  return { linkDraft: parsed.linkDraft, mode: parsed.mode as NoteMode, tabs, updatedAt: parsed.updatedAt };
 }
-
-export function writeDraft(operationId: string, draft: StoredDraft, storage?: DraftStorage): boolean {
-  try {
-    const target = storage ?? window.localStorage;
-    const key = draftStorageKey(operationId);
-    const serialized = JSON.stringify(draft);
-    target.setItem(key, serialized);
-    return target.getItem(key) === serialized;
-  } catch {
-    // 서버 저장은 계속 시도하되, 닫기에서는 보관 실패를 확인해 입력을 보호한다.
-    return false;
-  }
+export async function readDraft(operationId: string, storage: LectureDraftPort = browserDrafts): Promise<StoredDraft | null> {
+  const value = await storage.read<unknown>("lecture-note", operationId);
+  return value === null ? null : validateLectureDraft(value);
 }
-
-export function clearDraft(operationId: string, storage?: DraftStorage) {
-  try {
-    (storage ?? window.localStorage).removeItem(draftStorageKey(operationId));
-  } catch {
-    // 지우지 못해도 다음에 열 때 서버 값과 같으면 다시 정리된다.
-  }
+export async function writeDraft(operationId: string, draft: StoredDraft, storage: LectureDraftPort = browserDrafts): Promise<boolean> {
+  try { await storage.write("lecture-note", operationId, validateLectureDraft(draft)); return true; }
+  catch { return false; }
 }
-
+export async function clearDraft(operationId: string, storage: LectureDraftPort = browserDrafts): Promise<void> {
+  await storage.remove("lecture-note", operationId);
+}

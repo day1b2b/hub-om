@@ -1,5 +1,7 @@
 # 브라우저 초안 암호화 후속 계획
 
+> 최신 정책: 사용자가 별도 잠금 암호를 거절하고 기존 로그인 기반 서버 계정키 방식을 승인했다. 아래 passphrase 내용은 과거 독립 실험 기록이며 제품에 적용하지 않는다. 현재 계약은 `docs/operations/browser-draft-integration.md`를 따른다. owner 미정 legacy 전환은 별도 결정 대기다.
+
 사용자 최신 정정에 따라 서버와 브라우저 초안 모두 완료 조건이다. 앞선 pii-encryption-followup 문서의 브라우저 범위 제외는 철회되었다. 기존 서버 구현은 유지한다.
 
 1. 공식 Web Crypto/WebAuthn/Storage 문서로 키 대안 비교. 별도 사용자 암호 wrapping 추천. 사용자 암호 UI 결정은 총괄 질의 대기이며 승인 전 실제 폼/기존 초안 변경 금지.

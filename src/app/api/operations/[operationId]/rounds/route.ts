@@ -1,5 +1,7 @@
+import { operationSubmissionSubjectConflict } from "@/lib/auth/operationSubmissionSubject";
+import { operationCreationIdentity, creationOperationId, OperationCreationConflict } from "@/lib/data/operationCreationIdentity";
 import { withActivity } from "@/lib/activity/request";
-import { NextResponse } from "next/server";
+import { NextResponse } from "next/server.js";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { isSameCourse, parseEducationDatesText } from "@/lib/data/operationCalculations";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
@@ -26,15 +28,31 @@ interface CreateRoundBody {
 
 async function activityPOST(request: Request, { params }: RouteContext) {
   const session = await requireWorkspaceSession();
+  const subjectConflict = operationSubmissionSubjectConflict(request, session);
+  if (subjectConflict) return subjectConflict;
   const { operationId } = await params;
   const repository = getOperationRepository();
+  const body = (await request.json().catch(() => ({}))) as CreateRoundBody;
+  let creationIdentity;
+  try {
+    creationIdentity = operationCreationIdentity(request.headers.get("Idempotency-Key"), session.user?.email,
+      `/api/operations/${operationId}/rounds`, body);
+  } catch {
+    return NextResponse.json({ ok: false, error: "등록 요청 키와 로그인 정보를 확인해주세요." }, { status: 400 });
+  }
+  const replay = async () => {
+    if (!creationIdentity) return null;
+    const existing = await repository.getOperationById(creationOperationId(creationIdentity));
+    return existing ? NextResponse.json({ ok: true, operation: { ...existing, creationReplayed: true } }) : null;
+  };
+  const previousResponse = await replay();
+  if (previousResponse) return previousResponse;
   const baseOperation = await repository.getOperationById(operationId);
 
   if (!baseOperation) {
     return NextResponse.json({ ok: false, error: "Operation not found." }, { status: 404 });
   }
 
-  const body = (await request.json().catch(() => ({}))) as CreateRoundBody;
   const roundNo = textValue(body.roundNo);
   const startDate = textValue(body.startDate);
   const endDate = textValue(body.endDate);
@@ -57,6 +75,8 @@ async function activityPOST(request: Request, { params }: RouteContext) {
   const duplicateRound = sameCourseOperations.some((candidate) => candidate.roundNo === roundNo);
 
   if (duplicateRound) {
+    const concurrentResponse = await replay();
+    if (concurrentResponse) return concurrentResponse;
     return NextResponse.json(
       { ok: false, error: `이미 등록된 회차입니다 (${roundNo}회차). 엑셀 내용을 확인한 뒤 다시 시도해주세요.` },
       { status: 409 }
@@ -81,6 +101,7 @@ async function activityPOST(request: Request, { params }: RouteContext) {
 
   try {
     const operation = await repository.createOperation({
+      creationIdentity,
       archiveStatus: "아카이빙전",
       coach: textValue(body.coach) || baseOperation.coach,
       companyName: baseOperation.companyName,
@@ -120,7 +141,7 @@ async function activityPOST(request: Request, { params }: RouteContext) {
     return NextResponse.json({ ok: true, operation });
   } catch (error) {
     const message = error instanceof Error ? error.message : "회차를 추가하지 못했습니다.";
-    return NextResponse.json({ ok: false, error: message }, { status: 400 });
+    return NextResponse.json({ ok: false, error: message }, { status: error instanceof OperationCreationConflict ? 409 : 400 });
   }
 }
 

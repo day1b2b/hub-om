@@ -1,0 +1,93 @@
+- heading "실제 초안 컴포넌트 합성 검증" [level=1]
+- paragraph: 제품 컴포넌트·Provider·runtime·IndexedDB를 사용하며 로그인과 업무 API만 가짜입니다. 실제 데이터는 입력하지 않습니다.
+- button "가상 A 로그인"
+- button "가상 B 로그인"
+- button "현재 계정 재연결"
+- button "모든 탭 로그아웃"
+- button "세션 조회 네트워크 실패 모의"
+- button "현재 가짜 초안 검사"
+- button "다음 생성 실패"
+- button "다음 생성 응답 유실"
+- button "가상 생성 통계" [active]
+- button "실제 IDB 동시 저장 충돌 검사"
+- button "영속 암호문 검사"
+- paragraph: /operations/fixture-1?team=team_1
+- generic "합성 검사 결과": "{\"behavior\":\"normal\",\"attempts\":3,\"created\":2,\"receipts\":[{\"key\":\"A:397c2618-36c2-4ccb-84de-f58867df1f17:0\",\"body\":\"{\\\"coach\\\":\\\"가상코치\\\",\\\"educationDates\\\":\\\"2026-09-21\\\",\\\"endDate\\\":\\\"2026-09-21\\\",\\\"instructors\\\":\\\"가상강사\\\",\\\"roundNo\\\":\\\"1\\\",\\\"startDate\\\":\\\"2026-09-21\\\",\\\"timeText\\\":\\\"09:30 ~ 17:30\\\",\\\"region\\\":\\\"서울\\\",\\\"companyName\\\":\\\"가상기업\\\",\\\"courseId\\\":\\\"\\\",\\\"courseName\\\":\\\"합성비밀 재개 검증\\\",\\\"driveLink\\\":\\\"\\\",\\\"educationDays\\\":\\\"\\\",\\\"ld\\\":\\\"\\\",\\\"om\\\":\\\"\\\",\\\"onsiteRequired\\\":\\\"N\\\",\\\"operationDetail\\\":\\\"\\\",\\\"trainingType\\\":\\\"오프라인\\\"}\",\"operationId\":\"fixture-1\"},{\"key\":\"A:397c2618-36c2-4ccb-84de-f58867df1f17:1\",\"body\":\"{\\\"coach\\\":\\\"가상코치\\\",\\\"educationDates\\\":\\\"2026-09-22\\\",\\\"endDate\\\":\\\"2026-09-22\\\",\\\"instructors\\\":\\\"가상강사\\\",\\\"roundNo\\\":\\\"2\\\",\\\"startDate\\\":\\\"2026-09-22\\\",\\\"timeText\\\":\\\"09:30 ~ 17:30\\\",\\\"region\\\":\\\"부산\\\"}\",\"operationId\":\"fixture-2\"}]}"
+- status:
+  - paragraph: 가상기업 · 합성비밀 재개 검증 · 2개 회차 등록이 진행 중입니다.
+  - paragraph: 중복 등록을 막기 위해 입력을 잠갔습니다. 원래 등록 계속하기를 누르면 저장된 회차를 확인하고 남은 등록을 이어갑니다. 오류가 반복되면 본인 계정으로 로그인한 뒤 다시 시도하거나 담당자에게 문의해주세요.
+- heading "기본 정보" [level=2]
+- text: 기업명
+- textbox "기업명" [disabled]: 가상기업
+- text: 코스ID
+- textbox "코스ID" [disabled]:
+  - /placeholder: 없으면 비워둠
+- text: 과정명
+- textbox "과정명" [disabled]: 합성비밀 재개 검증
+- text: 교육형태
+- combobox "교육형태" [disabled]:
+  - option "오프라인" [disabled] [selected]
+  - option "블렌디드" [disabled]
+  - option "비대면" [disabled]
+  - option "해커톤" [disabled]
+- text: 현장 투입
+- combobox "현장 투입" [disabled]:
+  - option "Y" [disabled]
+  - option "N" [disabled] [selected]
+- text: 결과보고서 여부
+- combobox "결과보고서 여부" [disabled]:
+  - option "Y" [disabled] [selected]
+  - option "N" [disabled]
+- text: OM
+- combobox "OM 1" [disabled]:
+  - option "선택" [disabled] [selected]
+  - option "가상 OM" [disabled]
+- button "+" [disabled]
+- text: LD
+- combobox "LD 1" [disabled]:
+  - option "선택" [disabled] [selected]
+  - option "가상 LD" [disabled]
+- button "+" [disabled]
+- heading "회차 등록" [level=2]
+- button "양식 다운로드 (엑셀)" [disabled]
+- text: 양식을 채운 뒤 회차~실제교육일 8개 열을 복사해 아래에 붙여넣으세요.
+- text: 붙여넣기 (회차 / 시작일 / 종료일 / 시간 / 강사 / 실습코치 / 지역 / 실제교육일(선택))
+- textbox "붙여넣기 (회차 / 시작일 / 종료일 / 시간 / 강사 / 실습코치 / 지역 / 실제교육일(선택))" [disabled]: 1 2026-09-21 2026-09-21 09:30 ~ 17:30 가상강사 가상코치 서울 2026-09-21 2 2026-09-22 2026-09-22 09:30 ~ 17:30 가상강사 가상코치 부산 2026-09-22
+- table:
+  - rowgroup:
+    - row "회차 시작일 종료일 시간 강사 실습코치 실제교육일 상태":
+      - columnheader "회차"
+      - columnheader "시작일"
+      - columnheader "종료일"
+      - columnheader "시간"
+      - columnheader "강사"
+      - columnheader "실습코치"
+      - columnheader "실제교육일"
+      - columnheader "상태"
+  - rowgroup:
+    - row "1 2026-09-21 2026-09-21 09:30 ~ 17:30 가상강사 가상코치 2026-09-21 달력에서 고르기 등록 대기":
+      - cell "1"
+      - cell "2026-09-21"
+      - cell "2026-09-21"
+      - cell "09:30 ~ 17:30"
+      - cell "가상강사"
+      - cell "가상코치"
+      - cell "2026-09-21 달력에서 고르기":
+        - text: 2026-09-21
+        - button "달력에서 고르기" [disabled]
+      - cell "등록 대기"
+    - row "2 2026-09-22 2026-09-22 09:30 ~ 17:30 가상강사 가상코치 2026-09-22 달력에서 고르기 등록 대기":
+      - cell "2"
+      - cell "2026-09-22"
+      - cell "2026-09-22"
+      - cell "09:30 ~ 17:30"
+      - cell "가상강사"
+      - cell "가상코치"
+      - cell "2026-09-22 달력에서 고르기":
+        - text: 2026-09-22
+        - button "달력에서 고르기" [disabled]
+      - cell "등록 대기"
+- generic: 총 2행 · 정상 2행 · 오류 0행
+- link "취소":
+  - /url: /operations?team=team_1
+- button "등록 중" [disabled]

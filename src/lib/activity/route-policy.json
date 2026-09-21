@@ -44,6 +44,7 @@
   "POST /api/announcements": "tracked",
   "GET /api/auth/[...nextauth]": "excluded: NextAuth 로그인·토큰 프로토콜은 공통 업무 요청 로그에서 제외",
   "POST /api/auth/[...nextauth]": "excluded: NextAuth 로그인·토큰 프로토콜은 공통 업무 요청 로그에서 제외",
+  "POST /api/browser-drafts/keyring": "excluded: 인증된 계정의 초안 복호화 키 응답은 공통 활동 수집에서 제외",
   "POST /api/calendar/test-event": "excluded: 기존 미추적 캘린더 개발용 파일은 이번 변경에서 수정하지 않음",
   "DELETE /api/calendar/test-event": "excluded: 기존 미추적 캘린더 개발용 파일은 이번 변경에서 수정하지 않음",
   "GET /api/coach/me": "tracked",

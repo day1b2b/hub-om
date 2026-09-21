@@ -1,5 +1,7 @@
+import { operationSubmissionSubjectConflict } from "@/lib/auth/operationSubmissionSubject";
+import { operationCreationIdentity, OperationCreationConflict } from "@/lib/data/operationCreationIdentity";
 import { withActivity } from "@/lib/activity/request";
-import { NextResponse } from "next/server";
+import { NextResponse } from "next/server.js";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { parseEducationDatesText } from "@/lib/data/operationCalculations";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
@@ -35,6 +37,8 @@ interface CreateCourseBody {
 
 async function activityPOST(request: Request) {
   const session = await requireWorkspaceSession();
+  const subjectConflict = operationSubmissionSubjectConflict(request, session);
+  if (subjectConflict) return subjectConflict;
   const repository = getOperationRepository();
   const body = (await request.json().catch(() => ({}))) as CreateCourseBody;
 
@@ -48,22 +52,29 @@ async function activityPOST(request: Request) {
   const parsedEducationDates = educationDatesText ? parseEducationDatesText(educationDatesText) : null;
 
   if (!companyName || !courseName) {
-    return NextResponse.json({ ok: false, error: "기업명과 과정명은 필수입니다." }, { status: 400 });
+    return NextResponse.json({ ok: false, creationNotStarted: true, error: "기업명과 과정명은 필수입니다." }, { status: 400 });
   }
 
   if (!roundNo || !startDate || !endDate) {
-    return NextResponse.json({ ok: false, error: "회차, 시작일, 종료일은 필수입니다." }, { status: 400 });
+    return NextResponse.json({ ok: false, creationNotStarted: true, error: "회차, 시작일, 종료일은 필수입니다." }, { status: 400 });
   }
 
   if (parsedEducationDates && parsedEducationDates.errors.length > 0) {
     return NextResponse.json(
-      { ok: false, error: `실제 교육일을 확인해주세요: ${parsedEducationDates.errors.join(", ")}` },
+      { ok: false, creationNotStarted: true, error: `실제 교육일을 확인해주세요: ${parsedEducationDates.errors.join(", ")}` },
       { status: 400 }
     );
   }
 
+  // 이 검증은 어떤 저장도 시작하기 전이다. commit 뒤의 예외에는 이 표식을 붙이지 않는다.
+  const effectiveDates = parsedEducationDates?.dates.length ? [...parsedEducationDates.dates].sort() : [startDate, endDate];
+  if (effectiveDates.some((value) => !isValidDate(value)) || effectiveDates[0] > effectiveDates[effectiveDates.length - 1]) {
+    return NextResponse.json({ ok: false, creationNotStarted: true, error: "시작일과 종료일을 확인해주세요. 종료일은 시작일보다 빠를 수 없습니다." }, { status: 400 });
+  }
+
   try {
     const operation = await repository.createOperation({
+      creationIdentity: operationCreationIdentity(request.headers.get("Idempotency-Key"), session.user?.email, "/api/operations", body),
       archiveStatus: "아카이빙전",
       coach: textValue(body.coach),
       companyName,
@@ -103,8 +114,14 @@ async function activityPOST(request: Request) {
     return NextResponse.json({ ok: true, operation });
   } catch (error) {
     const message = error instanceof Error ? error.message : "과정을 등록하지 못했습니다.";
-    return NextResponse.json({ ok: false, error: message }, { status: 400 });
+    return NextResponse.json({ ok: false, error: message }, { status: error instanceof OperationCreationConflict ? 409 : 400 });
   }
+}
+
+function isValidDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
 
 function textValue(value: unknown): string {

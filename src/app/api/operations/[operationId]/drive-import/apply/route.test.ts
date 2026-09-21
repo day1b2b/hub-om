@@ -3,13 +3,15 @@ import { beforeEach, mock, test } from "node:test";
 import type { UpdateOperationInput } from "@/lib/data/operationTypes";
 
 let currentNote = "";
+let subject: string | undefined = "google:fixture-a";
+const lookup = mock.fn(async () => ({ lectureManagementNote: currentNote }));
 const update = mock.fn(async (_id: string, input: UpdateOperationInput, _actor?: string) => { void _actor; return input; });
 mock.module("@/lib/auth/requireWorkspaceSession", {
-  namedExports: { requireWorkspaceSession: async () => ({ user: { email: "review@example.test" } }) }
+  namedExports: { requireWorkspaceSession: async () => ({ user: { email: "review@example.test" }, browserDraftSubject: subject }) }
 });
 mock.module("@/lib/data/operationRepositoryFactory", {
   namedExports: { getOperationRepository: () => ({
-    getOperationById: async () => ({ lectureManagementNote: currentNote }),
+    getOperationById: lookup,
     updateOperation: update
   }) }
 });
@@ -17,7 +19,7 @@ mock.module("@/lib/data/operationRepositoryFactory", {
 mock.module("@/lib/activity/request", { namedExports: { withActivity: (_route: string, _method: string, handler: unknown) => handler } });
 const { POST } = await import("./route");
 
-beforeEach(() => { currentNote = ""; update.mock.resetCalls(); });
+beforeEach(() => { currentNote = ""; subject = "google:fixture-a"; lookup.mock.resetCalls(); update.mock.resetCalls(); });
 function post(body: unknown, headers: Record<string, string> = {}) {
   return POST(new Request("http://localhost/test", { method: "POST", body: JSON.stringify(body), headers }), {
     params: Promise.resolve({ operationId: "OP-review" })
@@ -73,4 +75,22 @@ test("null 본문과 null patch는 500 대신 400으로 반환한다", async () 
   assert.equal((await post(null)).status, 400);
   assert.equal((await post({ patches: [null] })).status, 400);
   assert.equal(update.mock.callCount(), 0);
+});
+
+
+test("재개 계정이 바뀌었거나 실제 subject가 없으면 Drive 적용 조회/쓰기 전409이다", async () => {
+  for (const actual of ["google:fixture-b", undefined, ""]) {
+    subject = actual;
+    const response = await post({ patches: [patch("fixture", "replace")] }, { "X-Operation-Submission-Subject": "google:fixture-a" });
+    assert.equal(response.status, 409);
+    assert.equal((await response.json()).error, "로그인 계정이 변경되었습니다. 원래 계정으로 로그인한 뒤 등록을 재개해주세요.");
+    assert.equal(lookup.mock.callCount(), 0);
+    assert.equal(update.mock.callCount(), 0);
+  }
+});
+test("일치하는 재개 헤더와 헤더 없는 기존 Drive 적용은 모두 지원한다", async () => {
+  assert.equal((await post({ patches: [patch("fixture", "replace")] }, { "X-Operation-Submission-Subject": "google:fixture-a" })).status, 200);
+  subject = undefined;
+  assert.equal((await post({ patches: [patch("legacy", "replace")] })).status, 200);
+  assert.equal(update.mock.callCount(), 2);
 });

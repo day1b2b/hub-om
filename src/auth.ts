@@ -83,7 +83,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       const isSignedIn = Boolean(session?.user?.email && isAllowedWorkspaceEmail(session.user.email));
 
       // Dedicated read-only feed authenticates its own server key in the handler.
-      if (pathname === "/api/activity-feed") return true;
+      if (pathname === "/api/activity-feed" || pathname === "/api/browser-drafts/keyring") return true;
 
       if (PUBLIC_PATHS.has(pathname)) {
         return true;
@@ -111,6 +111,10 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       return isAllowedWorkspaceEmail(email) && hostedDomainAllowed;
     },
     async jwt({ account, token }) {
+      // Bind draft ownership to the authenticated Google account, never an email.
+      if (account?.provider === "google" && account.providerAccountId) {
+        token.browserDraftSubject = `google:${account.providerAccountId}`;
+      }
       if (account?.access_token) {
         token.googleAccessToken = account.access_token;
         token.googleRefreshToken = account.refresh_token ?? token.googleRefreshToken;
@@ -137,6 +141,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       return refreshGoogleAccessToken(token);
     },
     session({ session, token }) {
+      session.browserDraftSubject = typeof token.browserDraftSubject === "string" ? token.browserDraftSubject : undefined;
       session.googleAccessToken = typeof token.googleAccessToken === "string" ? token.googleAccessToken : undefined;
       session.googleSheetsReadGranted = token.googleSheetsReadGranted === true;
       session.googleTokenError = typeof token.googleTokenError === "string" ? token.googleTokenError : undefined;

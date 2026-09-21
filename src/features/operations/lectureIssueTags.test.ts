@@ -37,12 +37,16 @@ test("태그 없는 붙여넣기는 기존 태그를 지우지 않고 다른 탭
   assert.equal(original[0].courseSummary, "");
 });
 
-test("구버전 초안과 태그 포함 초안을 모두 복원한다", () => {
-  const values = new Map<string, string>();
-  const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); }, removeItem: (key: string) => { values.delete(key); } };
+test("구버전 초안과 태그 포함 초안을 모두 복원한다", async () => {
+  const values = new Map<string, unknown>();
+  const storage = {
+    async read<T>(kind: string, id: string) { return (values.get(`${kind}:${id}`) ?? null) as T | null; },
+    async write(kind: string, id: string, value: unknown) { values.set(`${kind}:${id}`, value); },
+    async remove(kind: string, id: string) { values.delete(`${kind}:${id}`); }
+  };
   for (const tabs of [[blankTab()], [{ ...blankTab(), issueTags: ["자료"] }]]) {
-    assert.equal(writeDraft("TEST", { tabs, linkDraft: "", mode: "text", updatedAt: "2020-01-01" }, storage), true);
-    assert.deepEqual(normalizeIssueTags(readDraft("TEST", storage)?.tabs[0].issueTags), normalizeIssueTags(tabs[0].issueTags));
+    assert.equal(await writeDraft("TEST", { tabs, linkDraft: "", mode: "text", updatedAt: "2020-01-01" }, storage), true);
+    assert.deepEqual(normalizeIssueTags((await readDraft("TEST", storage))?.tabs[0].issueTags), normalizeIssueTags(tabs[0].issueTags));
   }
   assert.deepEqual(normalizeIssueTags(null), []);
   assert.deepEqual(normalizeIssueTags([" 자료 ", 12, "자료"]), ["자료"]);
