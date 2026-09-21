@@ -4,6 +4,7 @@ import { test } from "node:test";
 import ts from "typescript";
 import * as submission from "@/features/operations/operationSubmission";
 import { operationSubmissionStore } from "@/features/operations/operationSubmissionStore";
+import * as legacySources from "@/lib/privacy/legacyDraftSources";
 import * as rounds from "@/features/operations/parsePastedRounds";
 
 type Element = { type: unknown; props: Record<string, unknown> };
@@ -72,6 +73,7 @@ function harness(options: { pending?: submission.OperationSubmission; readFailur
     "@/features/operations/operationCreateTemplate": { buildOperationCreateTemplateCsv: () => "" },
     "@/features/operations/operationSubmission": submission,
     "@/features/operations/operationSubmissionStore": { operationSubmissionStore },
+    "@/lib/privacy/legacyDraftSources": legacySources,
     "@/lib/privacy/browserDraftRuntime": { browserDrafts: runtime },
     "@/components/BrowserDraftProvider": { useBrowserDraftSession: () => session },
     "@/components/MultiDateCalendar": { MultiDateCalendar: "calendar" },
@@ -87,7 +89,9 @@ function harness(options: { pending?: submission.OperationSubmission; readFailur
     return options.request ? options.request(calls.length) : Response.json({ ok: true, operation: { operationId: `fixture-${calls.length}` } });
   };
   const sessionStorage = { length: options.legacy ? 1 : 0, key: () => "hub-om:operation-submission:v1:legacy:team_1", getItem: () => { plaintextReads++; throw new Error("legacy values must not be read"); }, removeItem: () => { throw new Error("legacy must not be deleted"); } };
-  new Function("require", "exports", "fetch", "window", "crypto", javascript)((name: string) => { if (!(name in modules)) throw new Error(`unexpected import ${name}`); return modules[name]; }, exports, fetch, { sessionStorage, localStorage: { length: 0, key: () => null }, addEventListener() {}, removeEventListener() {} }, { randomUUID: () => "fixture-new-submission-12345" });
+  const listeners = new Map<string, Set<(event: { key: string | null }) => void>>();
+  function dispatch(type: string, key: string | null = null) { listeners.get(type)?.forEach(listener => listener({ key })); }
+  new Function("require", "exports", "fetch", "window", "crypto", javascript)((name: string) => { if (!(name in modules)) throw new Error(`unexpected import ${name}`); return modules[name]; }, exports, fetch, { sessionStorage, localStorage: { length: 0, key: () => null }, addEventListener(type: string, listener: (event: { key: string | null }) => void) { if (!listeners.has(type)) listeners.set(type, new Set()); listeners.get(type)!.add(listener); }, removeEventListener(type: string, listener: (event: { key: string | null }) => void) { listeners.get(type)?.delete(listener); } }, { randomUUID: () => "fixture-new-submission-12345" });
   function render() {
     cursor = 0; dirty = false;
     tree = exports.OperationCreateForm!({ expectedSubject: options.expectedSubject === null ? undefined : options.expectedSubject ?? "google:fixture", initialValues: { companyName: "가상기업", courseName: "입력과정", startDate: "2026-09-21", endDate: "2026-09-21" }, personOptions: { om: [], ld: [] }, teamScope: "team_1" });
@@ -98,7 +102,7 @@ function harness(options: { pending?: submission.OperationSubmission; readFailur
   function text(node: unknown): string { if (Array.isArray(node)) return node.map(text).join(""); if (node && typeof node === "object" && "props" in node) return text((node as Element).props.children); return typeof node === "string" || typeof node === "number" ? String(node) : ""; }
   function button(label: string) { const found = elements(tree).find((element) => element.type === "button" && text(element) === label); assert.ok(found, label); return found; }
   render();
-  return { settle, calls, writes, removals, locations, button, click: (label: string) => (button(label).props.onClick as () => Promise<void>)(), text: () => text(tree), inputValues: () => elements(tree).filter((element) => element.type === "input").map((element) => element.props.value), subject: (next: string) => { subject = next; dirty = true; }, session: (next: Partial<Session>) => { session = { ...session, ...next }; dirty = true; }, otherTabWrite: () => { revision = "fixture-other-tab-revision"; ciphertext = "other-tab-encrypted-fixture"; }, ciphertext: () => ciphertext, reads: () => reads, plaintextReads: () => plaintextReads };
+  return { dispatch, editCourse: (value: string) => { const input = elements(tree).find(element => element.type === "input" && element.props.value === "입력과정"); assert.ok(input); (input.props.onChange as (event: { target: { value: string } }) => void)({ target: { value } }); }, settle, calls, writes, removals, locations, button, click: (label: string) => (button(label).props.onClick as () => Promise<void>)(), text: () => text(tree), inputValues: () => elements(tree).filter((element) => element.type === "input").map((element) => element.props.value), subject: (next: string) => { subject = next; dirty = true; }, session: (next: Partial<Session>) => { session = { ...session, ...next }; dirty = true; }, otherTabWrite: (pending?: submission.OperationSubmission) => { if (pending) storedValue = pending; revision = "fixture-other-tab-revision"; ciphertext = "other-tab-encrypted-fixture"; }, ciphertext: () => ciphertext, reads: () => reads, plaintextReads: () => plaintextReads };
 }
 
 test("신규등록 UI는 암호화 write commit을 기다린 뒤에만 첫 POST를 시작한다", async () => {
@@ -198,4 +202,34 @@ test("서버 성공 후 clear 충돌은 다른 탭 암호문을 삭제하지 않
   assert.equal(ui.ciphertext(), "other-tab-encrypted-fixture");
   assert.match(ui.text(), /다른 탭의 등록 정보가 변경되었습니다/);
   assert.equal(ui.locations.length, 0);
+});
+
+
+test("무관한 storage 이벤트는 다른 탭의 pending snapshot으로 작성 중 입력을 덮어쓰지 않는다", async () => {
+  const ui = harness(); await ui.settle();
+  ui.editCourse("아직 제출하지 않은 과정"); await ui.settle();
+  const reads = ui.reads();
+  ui.otherTabWrite(snapshot());
+  for (const key of ["unrelated-preference", "hub-om:browser-draft-revision:v1"]) {
+    ui.dispatch("storage", key); await ui.settle();
+    assert.equal(ui.reads(), reads);
+    assert.ok(ui.inputValues().includes("아직 제출하지 않은 과정"));
+    assert.equal(ui.text().includes("복구과정"), false);
+  }
+  await ui.click("저장"); await ui.settle();
+  assert.equal(ui.calls.length, 0);
+  assert.match(ui.text(), /다른 탭의 등록 정보가 변경되었습니다/);
+  assert.ok(ui.inputValues().includes("아직 제출하지 않은 과정"));
+});
+
+test("legacy 네 prefix·미확정 표시·storage clear와 사용자 정의 전환 이벤트는 재확인한다", async () => {
+  const ui = harness(); await ui.settle();
+  for (const key of [...legacySources.LEGACY_DRAFT_PREFIXES.map(prefix => `${prefix}fixture`), legacySources.LEGACY_REGISTRATION_UNRESOLVED, null]) {
+    const before = ui.reads();
+    ui.dispatch("storage", key); await ui.settle();
+    assert.ok(ui.reads() > before, `legacy event ${key}`);
+  }
+  const before = ui.reads();
+  ui.dispatch("hub-om:legacy-transition-updated"); await ui.settle();
+  assert.ok(ui.reads() > before);
 });

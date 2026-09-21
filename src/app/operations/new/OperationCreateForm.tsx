@@ -4,6 +4,7 @@ import Link from "next/link";
 import { buildOperationCreateTemplateCsv } from "@/features/operations/operationCreateTemplate";
 import { clearOperationSubmission, hasLegacyOperationSubmission, OperationSubmissionValidationError, persistOperationSubmission, readOperationSubmission, submitOperationSnapshot, type OperationSubmission, type OperationSubmissionStore } from "@/features/operations/operationSubmission";
 import { operationSubmissionStore } from "@/features/operations/operationSubmissionStore";
+import { LEGACY_DRAFT_PREFIXES, LEGACY_REGISTRATION_UNRESOLVED } from "@/lib/privacy/legacyDraftSources";
 import { browserDrafts } from "@/lib/privacy/browserDraftRuntime";
 import { useBrowserDraftSession } from "@/components/BrowserDraftProvider";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -80,11 +81,15 @@ export function OperationCreateForm({ expectedSubject, initialValues = {}, perso
   const [legacyRevision, setLegacyRevision] = useState(0);
   useEffect(() => {
     const refreshLegacy = () => setLegacyRevision(value => value + 1);
+    const onStorage = (event: StorageEvent) => {
+      const key = event.key;
+      if (key === null || key === LEGACY_REGISTRATION_UNRESOLVED || LEGACY_DRAFT_PREFIXES.some(prefix => key.startsWith(prefix))) refreshLegacy();
+    };
     window.addEventListener("hub-om:legacy-transition-updated", refreshLegacy);
-    window.addEventListener("storage", refreshLegacy);
+    window.addEventListener("storage", onStorage);
     return () => {
       window.removeEventListener("hub-om:legacy-transition-updated", refreshLegacy);
-      window.removeEventListener("storage", refreshLegacy);
+      window.removeEventListener("storage", onStorage);
     };
   }, []);
 
