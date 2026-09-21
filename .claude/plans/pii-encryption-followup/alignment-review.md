@@ -7,8 +7,9 @@
 - 마지막 완료: 검색/정렬 정확성 반례 보완, CLI/직원파일 및 audit migration, 전체 검증.
 - 증거: execution-review.md, database.test.ts, coachAccessTokenBackfill.test.ts, localJsonTeamMemberRepository.test.ts, privacy/coverage.test.ts.
 - 산출물 상태: 코드 reviewable, 미검증/gap 명시. UI/DB 완료 증거 없음.
-- Do Next: 기술 책임자에게 필드 분류·키/백필·복구·CLI 사용·브라우저 정책과 PostgreSQL/MongoDB 전환 순서를 확인하고 승인된 격리 DB에서 검증. 로컬 변경은 커밋 후 총괄 인계, push하지 않음.
+- Do Next: 기술 책임자에게 필드 분류·키/백필·복구·CLI 사용과 PostgreSQL/MongoDB 전환 순서를 확인하고 승인된 격리 DB에서 검증. 로컬 변경은 커밋 후 총괄 인계, push하지 않음.
 - Do Not: 기존 worktree/미저장 초안/과거 백업/외부 원천 변경, 운영/로컬 DB 임의 시작, 실제 키 생성/교체, 배포, push, 원격 merge.
 - Resume action: run_validation (DB 사용 승인과 책임자 결정 후).
 - MongoDB: crypto.ts/envelope/AAD/key policy 및 논리 field 분류 공유 가능. Prisma sentinel/DMMF/SQL trigger/index/migration은 PostgreSQL adapter. 이 작업에서 MongoDB 구현 없음.
+- 확정된 브라우저 범위: 기존 localStorage/보존/복구 유지. 평문 저장과 계정 간 접근 보호는 미해결/미검증이며 후속 오프라인 암호화·키 관리 검증 대상. 이번 서버 구현은 차단하지 않음.
 - 잔여 위험 및 적용: gap-plan.md 전 항목 총괄 인계, 현재 머지 차단 유지. 문서 반영 완료.
