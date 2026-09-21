@@ -14,6 +14,47 @@ const relation = (model: string, field: string) => models.get(model)?.fields.fin
 const hidden = (model: string) => new Set(Object.values(fieldPolicies(model)).flatMap(p => [p.index, p.storage].filter((v): v is string => !!v)));
 const delegateFor = (client: object, model: string) => Reflect.get(client, model[0].toLowerCase() + model.slice(1)) as Delegate;
 const MAX_SCAN = 20_000;
+const MAX_SCAN_BYTES = 32 * 1024 * 1024;
+
+// A necessary condition only: never narrow the result by partially negating a
+// private predicate. Relations/compound keys are deliberately not optimized.
+function concreteFilter(value: unknown): boolean {
+  if (value === undefined) return false;
+  if (Array.isArray(value)) return value.length > 0 && value.every(concreteFilter);
+  if (record(value)) return Object.keys(value).length > 0 && Object.values(value).every(concreteFilter);
+  return true;
+}
+function candidateWhere(model: string, value: unknown): Row {
+  if (!record(value)) return {};
+  const result: Row = {};
+  for (const [field, filter] of Object.entries(value)) {
+    if (filter === undefined) continue;
+    if (field === "AND") {
+      const children = array(filter).map(v => candidateWhere(model, v)).filter(v => Object.keys(v).length > 0);
+      if (children.length) result.AND = children;
+    }
+    else if (field === "OR") {
+      const branches = array(filter).map(v => candidateWhere(model, v));
+      if (branches.every(v => Object.keys(v).length > 0)) result.OR = branches;
+    } else if (field === "NOT") {
+      // Keep each NOT conjunct only when its entire expression is unchanged.
+      const safe = array(filter).filter(v => Object.keys(candidateWhere(model, v)).length > 0 && JSON.stringify(candidateWhere(model, v)) === JSON.stringify(v));
+      if (safe.length) result.NOT = safe;
+    } else if (concreteFilter(filter) && !fieldPolicies(model)[field] && models.get(model)?.fields.some(f => f.name === field && f.kind !== "object")) {
+      result[field] = filter;
+    }
+  }
+  return result;
+}
+
+function assertScanBudget(rows: Row[], message: string) {
+  if (rows.length > MAX_SCAN) throw new Error(message);
+  let bytes = 0;
+  for (const row of rows) {
+    bytes += Buffer.byteLength(JSON.stringify(row));
+    if (bytes > MAX_SCAN_BYTES) throw new Error("Personal-data scan exceeds the supported byte limit; narrow the filter.");
+  }
+}
 
 export function encryptData(model: string, input: unknown): unknown {
   if (Array.isArray(input)) return input.map(row => encryptData(model, row));
@@ -73,7 +114,7 @@ export function decryptRow(model: string, value: unknown): unknown {
   return result;
 }
 
-async function privateFilter(client: object, model: string, field: string, filter: unknown): Promise<Row> {
+async function privateFilter(client: object, model: string, field: string, filter: unknown, scope: Row): Promise<Row> {
   const policy = fieldPolicies(model)[field];
   if (filter === undefined) return {};
   if (filter === null) return { [policy.storage ?? field]: null };
@@ -89,7 +130,7 @@ async function privateFilter(client: object, model: string, field: string, filte
       if (operator === "not" && record(value)) {
         // A nested scalar NOT can include substring predicates.
         const remaining = Object.fromEntries(Object.entries(filter).filter(([key]) => key !== "not"));
-        return { AND: [await privateFilter(client, model, field, remaining), { NOT: await privateFilter(client, model, field, value) }] };
+        return { AND: [await privateFilter(client, model, field, remaining, scope), { NOT: await privateFilter(client, model, field, value, scope) }] };
       }
       next[operator] = Array.isArray(value) ? value.map(v => indexField(model, field, v)) : indexField(model, field, value);
     }
@@ -97,8 +138,8 @@ async function privateFilter(client: object, model: string, field: string, filte
   }
   // Substring/case-insensitive searches require authorized server-side decryption.
   // Bound the scan and fail explicitly, never silently truncate search results.
-  const rows = await delegateFor(client, model).findMany({ select: { [field]: true }, take: MAX_SCAN + 1 }) as Row[];
-  if (rows.length > MAX_SCAN) throw new Error("Personal-data search is too broad; use an exact-match filter.");
+  const rows = await delegateFor(client, model).findMany({ where: scope, select: { [field]: true }, take: MAX_SCAN + 1 }) as Row[];
+  assertScanBudget(rows, "Personal-data search is too broad; narrow the filter or use an exact match.");
   const matches = rows.filter(row => matchesString(decryptField(model, field, row[field]), filter)).map(row => row[field]);
   return { [field]: { in: matches.filter(v => v !== null) } };
 }
@@ -120,17 +161,17 @@ function matchesString(input: unknown, filter: Row): boolean {
   }
   return true;
 }
-async function whereInput(client: object, model: string, value: unknown): Promise<unknown> {
-  if (Array.isArray(value)) return Promise.all(value.map(v => whereInput(client, model, v)));
+async function whereInput(client: object, model: string, value: unknown, scope = candidateWhere(model, value)): Promise<unknown> {
+  if (Array.isArray(value)) return Promise.all(value.map(v => whereInput(client, model, v, scope)));
   if (!record(value)) return value;
   const result: Row = {};
   for (const [field, filter] of Object.entries(value)) {
     if (["AND", "OR", "NOT"].includes(field)) {
-      const rewritten = await whereInput(client, model, filter);
+      const rewritten = await whereInput(client, model, filter, scope);
       result[field] = field === "AND" && result.AND ? [...array(result.AND), ...array(rewritten)] : rewritten;
     }
     else if (fieldPolicies(model)[field]) {
-      const fragment = await privateFilter(client, model, field, filter);
+      const fragment = await privateFilter(client, model, field, filter, scope);
       if ("AND" in fragment) result.AND = [...array(result.AND ?? []), ...array(fragment.AND)];
       else Object.assign(result, fragment);
     }
@@ -246,6 +287,51 @@ async function rewriteNestedWhere(client: object, model: string, input: unknown)
   return result;
 }
 
+// Top-level sorted reads keep large JSON/attachments out of the candidate set.
+// A repeatable-read transaction on the root client keeps the two reads consistent.
+async function sortedRead(client: object, model: string, original: Row, op: string): Promise<unknown> {
+  const primaryColumn = privacyFields[model]?.primaryKey;
+  const primary = models.get(model)?.fields.find(f => (f.dbName ?? f.name) === primaryColumn)?.name;
+  if (!primary) throw new Error("Encrypted ordering requires a single primary key.");
+  const select: Row = { [primary]: true };
+  for (const order of array(original.orderBy)) {
+    if (!record(order)) throw new Error("Unsupported encrypted ordering.");
+    for (const [field, direction] of Object.entries(order)) {
+      if (!["asc", "desc"].includes(String(direction)) || relation(model, field)) throw new Error("Unsupported encrypted ordering.");
+      select[field] = true;
+    }
+  }
+  const candidateArgs = await prepareArgs(client, model, { ...original, select, include: undefined, omit: undefined });
+  const delegate = delegateFor(client, model);
+  const candidates = await delegate.findMany(candidateArgs) as Row[];
+  assertScanBudget(candidates, "Personal-data ordering exceeds the supported scan limit; narrow the filter.");
+  const page = finish(model, { ...original, select: undefined, include: undefined }, decryptRow(model, candidates)) as Row[];
+  const ids = (op.startsWith("findFirst") ? page.slice(0, 1) : page).map(row => row[primary]);
+  if (!ids.length) {
+    if (op.endsWith("OrThrow")) throw new Prisma.PrismaClientKnownRequestError("Record not found", { code: "P2025", clientVersion: Prisma.prismaVersion.client });
+    return op.startsWith("findFirst") ? null : [];
+  }
+  const payloadArgs = await prepareArgs(client, model, { ...original, where: undefined, orderBy: undefined, take: undefined, skip: undefined });
+  payloadArgs.where = { AND: [candidateArgs.where ?? {}, { [primary]: { in: ids } }] };
+  if (record(payloadArgs.select)) payloadArgs.select[primary] = true;
+  if (record(payloadArgs.omit)) payloadArgs.omit[primary] = false;
+  const payload = finish(model, { ...original, orderBy: undefined }, decryptRow(model, await delegate.findMany(payloadArgs))) as Row[];
+  const byId = new Map(payload.map(row => [row[primary], row]));
+  const result = ids.flatMap(id => {
+    const row = byId.get(id);
+    if (!row) return [];
+    if ((record(original.select) && !original.select[primary]) || (record(original.omit) && original.omit[primary])) {
+      const projected = { ...row }; delete projected[primary]; return [projected];
+    }
+    return [row];
+  });
+  if (op.startsWith("findFirst")) {
+    if (!result.length && op.endsWith("OrThrow")) throw new Prisma.PrismaClientKnownRequestError("Record not found", { code: "P2025", clientVersion: Prisma.prismaVersion.client });
+    return result[0] ?? null;
+  }
+  return result;
+}
+
 export function withPrivacyDatabase<T extends object>(client: T): T {
   const delegates = new Map<string, unknown>();
   return new Proxy(client, {
@@ -263,6 +349,14 @@ export function withPrivacyDatabase<T extends object>(client: T): T {
           if (typeof fn !== "function") return fn;
           return async (original: Row = {}) => {
             const op = String(operation);
+            if (["findMany", "findFirst", "findFirstOrThrow"].includes(op) && privateOrdering(model, original)) {
+              const transaction = Reflect.get(target, "$transaction");
+              if (typeof transaction === "function") {
+                return transaction.call(target, (tx: object) => sortedRead(tx, model, original, op), { isolationLevel: "RepeatableRead" });
+              }
+              // Inside a caller-owned transaction retain the single payload read;
+              // its isolation level may not guarantee a stable second snapshot.
+            }
             const args = await prepareArgs(target, model, original);
             if (original.distinct && array(original.distinct).some(f => fieldPolicies(model)[String(f)])) throw new Error("Use blind indexes for encrypted distinct queries.");
             if (op === "groupBy" && array(original.by).some(f => fieldPolicies(model)[String(f)])) throw new Error("Use blind indexes for encrypted groupBy queries.");

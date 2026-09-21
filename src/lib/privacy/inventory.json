@@ -359,6 +359,7 @@
     "skillmatchSetup": "operational",
     "onSiteOperation": "operational",
     "coachRequest": "operational",
+    "resultReportNeeded": "operational",
     "totalSessions": "operational",
     "sessions": "encrypted",
     "notes": "encrypted",

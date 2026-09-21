@@ -7,7 +7,7 @@ async function main() {
   const file = args.find(a => a.startsWith("--file="))?.slice(7);
   const purpose = args.find(a => a.startsWith("--purpose="))?.slice(10);
   const apply = args.includes("--apply");
-  if (!file || !purpose || !["operations", "team-users", "om-requests", "instructor-wiki", "reminder-sent"].includes(purpose)) throw new Error("Specify --file=PATH and a supported --purpose.");
+  if (!file || !purpose || !["operations", "team-users", "team-members", "om-requests", "instructor-wiki", "reminder-sent"].includes(purpose)) throw new Error("Specify --file=PATH and a supported --purpose.");
   if (apply && !args.includes("--backup-confirmed")) throw new Error("Confirm a recoverable backup before replacing a file.");
   assertPrivacyConfiguration();
   const context = `local:${purpose}`;

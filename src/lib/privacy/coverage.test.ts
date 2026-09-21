@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { privacyFields } from "./fields";
+import activityPolicy from "../activity/field-policy.json" with { type: "json" };
 import inventory from "./inventory.json" with { type: "json" };
 
 test("every persisted scalar has an explicit encryption classification", () => {
@@ -18,5 +19,17 @@ test("every persisted scalar has an explicit encryption classification", () => {
       assert.equal(classification === "encrypted", !!privacyFields[model]?.fields[field], `${model}.${field}`);
     }
     assert.deepEqual(seen.sort(), Object.keys(expected).sort());
+  }
+});
+
+// Classification alone is not enough: later activity migrations must not restore
+// protected values into the audit allow-list. activity/coverage also checks SQL.
+test("encrypted fields never enter activity value allow-lists", () => {
+  for (const policy of Object.values(privacyFields)) {
+    const activity = (activityPolicy as Record<string, { values: string[] }>)[policy.table];
+    if (!activity) continue;
+    for (const field of Object.values(policy.fields)) {
+      assert.ok(!activity.values.includes(field.column), `${policy.table}.${field.column}`);
+    }
   }
 });

@@ -11,11 +11,12 @@ process.env.PII_ENCRYPTION_KEYS = JSON.stringify({ test: randomBytes(32).toStrin
 process.env.PII_ACTIVE_KEY_ID = "test";
 process.env.PII_INDEX_KEY = randomBytes(32).toString("base64");
 process.env.PII_ALLOW_PLAINTEXT_READS = "false";
-test("local-file migration is read-only by default, atomic, private and repeatable", () => {
+for (const purpose of ["team-users", "team-members"]) test(`local-file ${purpose} migration is read-only by default, atomic, private and repeatable`, () => {
   const directory = mkdtempSync(path.join(tmpdir(), "hub-om-pii-file-test-"));
   const file = path.join(directory, "fixture.json");
-  const data = [{ name: "가상 사용자", email: "test@example.test" }];
-  const args = ["--experimental-strip-types", "--experimental-loader", "./scripts/ts-loader.mjs", "scripts/encrypt-private-file.ts", `--file=${file}`, "--purpose=team-users"];
+  const members = [{ name: "가상 사용자", email: "test@example.test" }];
+  const data = purpose === "team-members" ? { members } : members;
+  const args = ["--experimental-strip-types", "--experimental-loader", "./scripts/ts-loader.mjs", "scripts/encrypt-private-file.ts", `--file=${file}`, `--purpose=${purpose}`];
   try {
     writeFileSync(file, JSON.stringify(data));
     execFileSync(process.execPath, [...args], { stdio: "pipe" });
@@ -24,7 +25,7 @@ test("local-file migration is read-only by default, atomic, private and repeatab
     execFileSync(process.execPath, [...args, "--apply", "--backup-confirmed"], { stdio: "pipe" });
     const encrypted = readFileSync(file, "utf8");
     assert.ok(!encrypted.includes("test@example.test"));
-    assert.deepEqual(decodePrivateJson(encrypted, "local:team-users"), data);
+    assert.deepEqual(decodePrivateJson(encrypted, `local:${purpose}`), data);
     assert.equal(statSync(file).mode & 0o777, 0o600);
     execFileSync(process.execPath, [...args, "--apply", "--backup-confirmed"], { stdio: "pipe" });
     assert.equal(readFileSync(file, "utf8"), encrypted);
