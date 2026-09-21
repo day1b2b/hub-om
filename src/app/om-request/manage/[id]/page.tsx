@@ -122,18 +122,19 @@ export default async function OmRequestDetailPage({ params }: Props) {
                 <Field label="과정 카테고리 대분류" value={request.courseCategoryMajor || getCourseCategoryMajor(request.courseCategory)} />
                 <Field label="과정 카테고리 소분류" value={request.courseCategory} />
                 <Field label="사용 tool" value={request.tools} />
-                <Field wide label="싱크업 링크" value={request.syncupLink} />
+                <Field wide label="싱크업 시트 링크" value={request.syncupLink} />
                 <Field wide label="드라이브 링크" value={request.driveLink} />
               </div>
             </div>
 
             <div className="operation-form-section">
               <div className="section-title"><h2>세팅 및 운영</h2></div>
-              <div className="operation-form-grid">
+              <div className="operation-form-grid wide">
                 <YNField label="스킬플로 세팅" value={request.skillfloSetup} />
                 <YNField label="스킬매치 세팅" value={request.skillmatchSetup} />
                 <YNField label="현장 운영" value={request.onSiteOperation} />
                 <YNField label="실습 코치 요청" value={request.coachRequest} />
+                <YNField label="결과보고서" value={request.resultReportNeeded} />
               </div>
             </div>
 

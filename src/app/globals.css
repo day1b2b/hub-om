@@ -1672,6 +1672,10 @@ select {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.operation-form-grid.wide {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
 .operation-form-grid label,
 .om-session-toolbar label,
 .name-select-field {
@@ -10749,7 +10753,8 @@ button.coach-doc-reserve-chip:disabled {
   }
 
   .operation-form-grid,
-  .operation-form-grid.compact {
+  .operation-form-grid.compact,
+  .operation-form-grid.wide {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -11014,6 +11019,7 @@ button.coach-doc-reserve-chip:disabled {
 
   .operation-form-grid,
   .operation-form-grid.compact,
+  .operation-form-grid.wide,
   .operation-form-actions {
     grid-template-columns: 1fr;
   }

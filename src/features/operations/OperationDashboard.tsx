@@ -25,11 +25,15 @@ export interface OmRosterEntry {
 }
 
 interface OperationDashboardProps {
+  /** LD·관리자용 파트 필터 기본값(멤버관리 등록 파트). 해당 없으면 null → 전체 파트 유지. */
+  defaultPartFilter: null | string;
   /** 로그인한 사람의 OM 이름(명단에 없으면 null) — OM 필터 기본값으로 쓴다. */
   myOmName: null | string;
   omRoster: OmRosterEntry[];
   operations: OperationSession[];
   partByPersonKey: Record<string, string>;
+  /** true면 관리자·LD — 파트 필터를 우선하고, OM 필터는 본인 이름으로 좁히지 않는다(전체 OM 유지). */
+  preferPartFilter: boolean;
   teamScope: TeamScope;
 }
 
@@ -130,10 +134,12 @@ function compareGroups(a: CourseGroup, b: CourseGroup, key: SortKey, dir: "asc" 
 }
 
 export function OperationDashboard({
+  defaultPartFilter,
   myOmName,
   omRoster,
   operations,
   partByPersonKey,
+  preferPartFilter,
   teamScope
 }: OperationDashboardProps) {
   const today = useMemo(() => getSeoulToday(), []);
@@ -147,12 +153,19 @@ export function OperationDashboard({
   //   첫 접속에 빈 목록을 본다. 실측으로 등록 OM 29명 중 13명이 0건이었고, LD 가 OM 명단에
   //   올라 있는 경우에도 같은 일이 난다(2026-09-02 LD 한 명이 아무것도 안 보인다고 제보).
   //   빈 화면은 "권한이 없나" · "데이터가 사라졌나" 로 읽힌다 — 편의 기능이 그 값을 치를 수는 없다.
+  //
+  // ★단, 관리자·LD(preferPartFilter)는 파트 필터만 적용하고 OM 필터는 건드리지 않는다.
+  //   관리자 겸 OM이 본인 담당 과정으로 좁혀지면 관리자로서 파트 전체를 보려는 목적과 어긋난다.
   const [omFilter, setOmFilter] = useState(() => {
+    if (preferPartFilter) return 전체_OM;
     if (!myOmName || !omRoster.some((om) => om.name === myOmName)) return 전체_OM;
     const hasOwnOperations = operations.some((operation) => splitPersonNames(operation.om).includes(myOmName));
     return hasOwnOperations ? myOmName : 전체_OM;
   });
-  const [partFilter, setPartFilter] = useState(전체_파트);
+  // 기본값 = LD·관리자는 본인 소속 파트(defaultPartFilter), 그 외(순수 OM)는 전체.
+  // 관리자 권한이 최우선이라, OM으로 등록돼 있어도 관리자 계정이면 파트 필터가 적용된다
+  // (defaultPartFilter/preferPartFilter 계산은 page.tsx 참고).
+  const [partFilter, setPartFilter] = useState(defaultPartFilter ?? 전체_파트);
   const [archiveOnly, setArchiveOnly] = useState(false);
   const [query, setQuery] = useState("");
   // 기본 날짜 필터는 "전체"(빈 범위 = 전체 조회). 사용자가 필요할 때 좁힌다.

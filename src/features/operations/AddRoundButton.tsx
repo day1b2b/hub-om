@@ -106,9 +106,10 @@ export function AddRoundButton({
                   <label className="lecture-note-field">
                     <span>강사</span>
                     <NameCombobox
+                      multiple
                       options={instructorOptions}
                       onChange={(value) => setDraft((current) => ({ ...current, instructors: value }))}
-                      placeholder="강사명"
+                      placeholder="강사명 (여러 명은 콤마로 구분)"
                       unmatchedHint="등록된 강사 명단과 이름이 달라요. 강사DB 노션을 확인해주세요."
                       value={draft.instructors}
                     />
@@ -180,8 +181,8 @@ export function AddRoundButton({
       return;
     }
 
-    const instructorName = draft.instructors.trim();
-    if (instructorName && !instructorOptions.some((name) => name.toLowerCase() === instructorName.toLowerCase())) {
+    const instructorNames = draft.instructors.split(",").map((name) => name.trim()).filter(Boolean);
+    if (instructorNames.some((name) => !instructorOptions.some((option) => option.toLowerCase() === name.toLowerCase()))) {
       setError("등록된 강사 명단과 이름이 달라요. 강사DB 노션을 확인해주세요.");
       return;
     }
@@ -199,6 +200,7 @@ export function AddRoundButton({
     const normalizedDraft = {
       ...draft,
       coach: coachNames.join(", "),
+      instructors: instructorNames.join(", "),
       educationDates: draft.educationDates.join(", "),
       startDate: range.startDate,
       endDate: range.endDate,

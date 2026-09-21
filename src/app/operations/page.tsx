@@ -1,10 +1,12 @@
 import { OperationDashboard, type OmRosterEntry } from "@/features/operations/OperationDashboard";
+import { isAdminEmail } from "@/lib/auth/requireAdminSession";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { resolveOmNameByEmail } from "@/lib/data/myOperations";
 import { normalizePersonKey } from "@/lib/data/roleAssignees";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { getStoredTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFactory";
 import { listTeamUsers } from "@/lib/data/teamUsers/teamUserRepository";
+import type { TeamUser } from "@/lib/data/teamUsers/teamUserTypes";
 import { filterOperationsByTeamScope, resolveTeamScope } from "@/lib/teamScope";
 
 export const dynamic = "force-dynamic";
@@ -30,16 +32,29 @@ export default async function OperationsPage({ searchParams }: OperationsPagePro
   const scopedOperations = filterOperationsByTeamScope(operations, teamScope, ownerRoster);
   const partByPersonKey = buildPartByPersonKey(teamUsers);
   const omRoster = buildOmRoster(teamUsers);
+  const myTeamUser = findMyTeamUser(teamUsers, session.user?.email);
+  // 관리자·LD는 "본인 파트" 기준으로 보는 게 자연스럽고, OM 담당 과정 명의는 의미가 없다
+  // (관리자 겸 OM이어도 관리자 권한이 우선). 그 외(순수 OM)는 기존처럼 본인 담당 과정 기준.
+  const preferPartFilter = isAdminEmail(session.user?.email) || myTeamUser?.role === "ld";
+  const defaultPartFilter = preferPartFilter ? myTeamUser?.team ?? null : null;
 
   return (
     <OperationDashboard
+      defaultPartFilter={defaultPartFilter}
       myOmName={myOmName}
       omRoster={omRoster}
       operations={scopedOperations}
       partByPersonKey={partByPersonKey}
+      preferPartFilter={preferPartFilter}
       teamScope={teamScope}
     />
   );
+}
+
+function findMyTeamUser(teamUsers: TeamUser[], email: null | string | undefined): TeamUser | undefined {
+  const target = (email ?? "").trim().toLowerCase();
+  if (!target) return undefined;
+  return teamUsers.find((user) => user.email.trim().toLowerCase() === target);
 }
 
 /**

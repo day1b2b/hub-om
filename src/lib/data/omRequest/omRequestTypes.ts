@@ -49,6 +49,7 @@ export interface OmRequest {
   skillmatchSetup: YN;
   onSiteOperation: YN;
   coachRequest: YN;
+  resultReportNeeded: YN;
   totalSessions: number;
   sessions: OmRequestSession[];
   notes: string;

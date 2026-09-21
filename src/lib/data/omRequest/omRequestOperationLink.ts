@@ -1,7 +1,13 @@
-import { parseEducationDatesText } from "../operationCalculations";
+import { ASSIGNMENT_NEEDED_VALUES, isSameCourse, parseEducationDatesText } from "../operationCalculations";
 import { getOperationRepository } from "../operationRepositoryFactory";
 import type { CreateOperationInput } from "../operationTypes";
 import type { OmRequest } from "./omRequestTypes";
+
+const PLACEHOLDER_OM_VALUES = new Set(["", ...Array.from(ASSIGNMENT_NEEDED_VALUES)]);
+
+function needsOmAssignment(om: string): boolean {
+  return PLACEHOLDER_OM_VALUES.has(om.trim());
+}
 
 export const EDUCATION_FORMAT_BY_TRAINING_TYPE: Record<OmRequest["trainingType"], CreateOperationInput["educationFormat"]> = {
   "오프라인": "오프라인",
@@ -33,6 +39,7 @@ export async function createLinkedOperationForOmRequest(request: OmRequest): Pro
 
   const repository = getOperationRepository();
   let firstOperationId: string | null = null;
+  const createdOperationIds: string[] = [];
 
   for (const [index, session] of sessions.entries()) {
     // 세션에 실제 교육일을 따로 적어뒀으면(예: 9/3, 9/4, 9/7) 그 값을 우선한다 — date~dateEnd는
@@ -82,6 +89,16 @@ export async function createLinkedOperationForOmRequest(request: OmRequest): Pro
 
     const operation = await repository.createOperation(input);
     if (!firstOperationId) firstOperationId = operation.operationId;
+    createdOperationIds.push(operation.operationId);
+  }
+
+  // createOperation()은 결과보고서 여부를 항상 "확인필요"로 만든다 — om-request에서
+  // "결과보고서: N"으로 접수됐으면(불필요) 별도 patch로 덮어써 운영현황과 값을 맞춘다.
+  // /operations/new(OperationCreateForm)의 동일 패턴을 그대로 따른 것.
+  if (request.resultReportNeeded === "N") {
+    for (const operationId of createdOperationIds) {
+      await repository.updateOperation(operationId, { hasResultReport: "불필요" });
+    }
   }
 
   return firstOperationId;
@@ -95,14 +112,33 @@ export async function createLinkedOperationForOmRequest(request: OmRequest): Pro
  * 대시보드 등 화면에는 계속 "배정필요"로 남아있던 문제(2026-08-19 제보)가 있었다.
  * 아직 "배정필요" 단계인 건에 한해서만 "배정예정"으로 한 단계 진행시키고,
  * 다른 경로(관리자 DB 편집 등)로 이미 상태가 더 진행된 건은 되돌리지 않는다.
+ *
+ * createLinkedOperationForOmRequest는 om-request의 회차마다 별도 OperationSession을
+ * 만드는데, 이 함수는 그중 대표 회차(operationId, 보통 1회차) 하나만 갱신했다. 그래서
+ * 같은 요청으로 같이 생성된 나머지 회차는 OM이 계속 비어있는("배정필요") 채로 남아
+ * 관리자가 회차별로 수동 보정해야 하는 문제(2026-09-18 제보)가 있었다. 같은 과정
+ * (courseId+courseName+companyName)의 회차 중 아직 OM이 비어있거나 플레이스홀더인
+ * 회차에도 함께 반영해서, 이미 다른 값으로 개별 지정된 회차는 건드리지 않는다.
  */
 export async function syncAssignedOmToLinkedOperation(operationId: string, assignedOm: string): Promise<void> {
   const repository = getOperationRepository();
   const operation = await repository.getOperationById(operationId);
-  const nextStatus = operation?.operationStatus === "배정필요" ? "배정예정" : undefined;
+  if (!operation) return;
 
-  await repository.updateOperation(operationId, {
-    om: assignedOm,
-    ...(nextStatus ? { operationStatus: nextStatus } : {})
-  });
+  const allOperations = await repository.listOperations();
+  const sameCourseOperations = allOperations.filter(
+    (candidate) => candidate.operationId === operationId || isSameCourse(candidate, operation)
+  );
+
+  await Promise.all(
+    sameCourseOperations
+      .filter((candidate) => candidate.operationId === operationId || needsOmAssignment(candidate.om))
+      .map((candidate) => {
+        const nextStatus = candidate.operationStatus === "배정필요" ? "배정예정" : undefined;
+        return repository.updateOperation(candidate.operationId, {
+          om: assignedOm,
+          ...(nextStatus ? { operationStatus: nextStatus } : {})
+        });
+      })
+  );
 }

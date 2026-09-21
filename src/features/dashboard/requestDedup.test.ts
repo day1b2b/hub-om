@@ -23,6 +23,7 @@ function request(overrides: Partial<OmRequest> = {}): OmRequest {
     skillmatchSetup: "N",
     onSiteOperation: "N",
     coachRequest: "N",
+    resultReportNeeded: "N",
     totalSessions: 1,
     sessions: [],
     notes: "",
