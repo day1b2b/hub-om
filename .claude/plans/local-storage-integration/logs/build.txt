@@ -1,0 +1,147 @@
+
+> hub-om@0.1.0 build
+> next build
+
+▲ Next.js 16.3.4 (Turbopack)
+✓ Running next.config.ts took 11ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 773ms
+  Running TypeScript ...
+  Finished TypeScript in 1301ms ...
+  Collecting page data using 11 workers ...
+  Generating static pages using 11 workers (0/17) ...
+  Generating static pages using 11 workers (4/17)
+  Generating static pages using 11 workers (8/17)
+  Generating static pages using 11 workers (12/17)
+✓ Generating static pages using 11 workers (17/17) in 68ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ƒ /_not-found
+├ ƒ /activity
+├ ƒ /admin/activity
+├ ƒ /admin/course-name-restore
+├ ƒ /admin/database
+├ ƒ /admin/imports
+├ ƒ /admin/imports/[id]
+├ ƒ /admin/satisfaction-preview
+├ ƒ /admin/sync
+├ ƒ /admin/users
+├ ƒ /announcements
+├ ƒ /announcements/[id]
+├ ƒ /announcements/[id]/edit
+├ ƒ /announcements/new
+├ ƒ /api/activity-feed
+├ ƒ /api/admin/activity
+├ ƒ /api/admin/activity/usage
+├ ƒ /api/admin/backup
+├ ƒ /api/admin/calendar/backfill-events
+├ ƒ /api/admin/calendar/refresh-events
+├ ƒ /api/admin/content-entries
+├ ƒ /api/admin/course-name-restore
+├ ƒ /api/admin/courses/[courseId]
+├ ƒ /api/admin/courses/lookup
+├ ƒ /api/admin/database/cell
+├ ƒ /api/admin/deleted-coaches
+├ ƒ /api/admin/deleted-operations
+├ ƒ /api/admin/imports/[id]/promote
+├ ƒ /api/admin/imports/google-sheets/import
+├ ƒ /api/admin/imports/google-sheets/tabs
+├ ƒ /api/admin/imports/notion/import
+├ ƒ /api/admin/imports/template
+├ ƒ /api/admin/imports/upload
+├ ƒ /api/admin/om-assignment-status-backfill
+├ ƒ /api/admin/onsite-required-backfill
+├ ƒ /api/admin/sales-revenue
+├ ƒ /api/admin/satisfaction/apply
+├ ƒ /api/admin/satisfaction/link
+├ ƒ /api/admin/satisfaction/preview
+├ ƒ /api/admin/schedule-registration/[yearMonth]
+├ ƒ /api/admin/sync-notion
+├ ƒ /api/admin/sync-notion-instructors
+├ ƒ /api/admin/users
+├ ƒ /api/admin/users/delete
+├ ƒ /api/admin/users/role
+├ ƒ /api/admin/users/team
+├ ƒ /api/announcements
+├ ƒ /api/announcements/[id]
+├ ƒ /api/announcements/[id]/attachments/[attachmentId]
+├ ƒ /api/auth/[...nextauth]
+├ ƒ /api/coach/me
+├ ƒ /api/coach/schedule/[yearMonth]
+├ ƒ /api/coaches
+├ ƒ /api/coaches/[id]
+├ ƒ /api/coaches/[id]/engagements
+├ ƒ /api/coaches/[id]/notes
+├ ƒ /api/coaches/[id]/notes/[noteId]
+├ ƒ /api/coaches/[id]/regenerate-token
+├ ƒ /api/coaches/[id]/reservations
+├ ƒ /api/coaches/[id]/schedules
+├ ƒ /api/coaches/export
+├ ƒ /api/engagements/[id]
+├ ƒ /api/engagements/[id]/review
+├ ƒ /api/health
+├ ƒ /api/hubbot/message
+├ ƒ /api/instructor-wiki/link
+├ ƒ /api/instructor-wiki/save
+├ ƒ /api/master/curriculums
+├ ƒ /api/master/fields
+├ ƒ /api/om-request
+├ ƒ /api/om-request/[id]
+├ ƒ /api/om-request/assign
+├ ƒ /api/om-request/session-template
+├ ƒ /api/operations
+├ ƒ /api/operations/[operationId]
+├ ƒ /api/operations/[operationId]/drive-import/apply
+├ ƒ /api/operations/[operationId]/drive-import/candidates
+├ ƒ /api/operations/[operationId]/drive-import/folders
+├ ƒ /api/operations/[operationId]/rounds
+├ ƒ /api/operations/[operationId]/rounds/reorder
+├ ƒ /api/operations/[operationId]/source-reads/refresh
+├ ƒ /api/reminders/lecture-followup
+├ ƒ /api/sales/lookup
+├ ƒ /api/satisfaction/round-apply
+├ ƒ /api/schedules/[yearMonth]/status
+├ ƒ /api/source-reads/status
+├ ƒ /api/sync/all
+├ ƒ /api/sync/calendar-events
+├ ƒ /api/sync/engagements
+├ ƒ /api/sync/samsung-schedule
+├ ƒ /api/team-users/lookup
+├ ƒ /changes
+├ ƒ /coach
+├ ƒ /coaches
+├ ƒ /coaches/[id]
+├ ƒ /coaches/[id]/engagements
+├ ƒ /coaches/admin
+├ ƒ /coaches/my-page
+├ ƒ /coaches/schedule
+├ ƒ /company-wiki
+├ ƒ /dashboard
+├ ƒ /drive-import-runs
+├ ƒ /instructor-wiki
+├ ƒ /instructor-wiki/[id]
+├ ƒ /me
+├ ƒ /om-request
+├ ƒ /om-request/complete
+├ ƒ /om-request/manage
+├ ƒ /om-request/manage/[id]
+├ ƒ /om-request/manage/[id]/edit
+├ ƒ /operations
+├ ƒ /operations/[operationId]
+├ ƒ /operations/new
+├ ƒ /preview-operation-detail
+├ ƒ /privacy
+├ ƒ /quick-links
+├ ƒ /resources
+├ ƒ /resources/coaches
+├ ƒ /sign-in
+├ ƒ /terms
+└ ƒ /usage
+
+
+ƒ Proxy (Middleware)
+
+ƒ  (Dynamic)  server-rendered on demand
