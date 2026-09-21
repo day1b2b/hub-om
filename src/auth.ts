@@ -83,7 +83,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       const isSignedIn = Boolean(session?.user?.email && isAllowedWorkspaceEmail(session.user.email));
 
       // Dedicated read-only feed authenticates its own server key in the handler.
-      if (pathname === "/api/activity-feed" || pathname === "/api/browser-drafts/keyring") return true;
+      if (pathname === "/api/activity-feed" || pathname === "/api/browser-drafts/keyring" || pathname === "/api/browser-drafts/quarantine/seal" || pathname === "/api/browser-drafts/quarantine/verify") return true;
 
       if (PUBLIC_PATHS.has(pathname)) {
         return true;

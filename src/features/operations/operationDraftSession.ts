@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { browserDrafts } from "@/lib/privacy/browserDraftRuntime";
 
-export const LEGACY_DRAFT_NOTICE = "이전 방식의 초안이 남아 있습니다. 소유 확인 전에는 불러오거나 삭제하지 않습니다.";
+export const LEGACY_DRAFT_NOTICE = "이전 방식의 초안이 감지되었습니다. 화면 위쪽의 이전 초안 보호 절차를 진행한 뒤 새로고침해주세요. 소유 확인 전에는 편집 화면으로 불러오지 않습니다.";
 export const LOCKED_DRAFT_NOTICE = "개인 초안 보관함을 준비하는 중입니다. 로그인과 연결 상태를 확인해 주세요.";
 
 /** Inspect key names only; legacy values have no verified owner. */

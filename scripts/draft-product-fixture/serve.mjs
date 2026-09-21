@@ -9,7 +9,11 @@ if (![41876, 41877].includes(port)) throw new Error("Reserved fixture port requi
 const transpile = source => ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText;
 const serverModule = transpile(await readFile(path.join(sourceRoot, "src/lib/privacy/browserDraftKeyring.server.ts"), "utf8"));
 const { deriveBrowserDraftKeyring } = await import(`data:text/javascript;base64,${Buffer.from(serverModule).toString("base64")}`);
+const quarantineTypes = `data:text/javascript;base64,${Buffer.from(transpile(await readFile(path.join(sourceRoot, "src/lib/privacy/legacyDraftQuarantine.ts"), "utf8"))).toString("base64")}`;
+const quarantineModule = transpile(await readFile(path.join(sourceRoot, "src/lib/privacy/legacyDraftQuarantine.server.ts"), "utf8")).replace('"./legacyDraftQuarantine"', JSON.stringify(quarantineTypes));
+const { sealLegacyDraftQuarantine, verifyLegacyDraftQuarantine } = await import(`data:text/javascript;base64,${Buffer.from(quarantineModule).toString("base64")}`);
 const fakeEnvironment = { BROWSER_DRAFT_ACTIVE_KEY_ID: "fixture", BROWSER_DRAFT_MASTER_KEYS: JSON.stringify({ fixture: Buffer.alloc(32, 31).toString("base64") }), BROWSER_DRAFT_OWNER_KEY: Buffer.alloc(32, 32).toString("base64") };
+const quarantineEnvironment = { BROWSER_DRAFT_QUARANTINE_ACTIVE_KEY_ID: "fixture", BROWSER_DRAFT_QUARANTINE_KEYS: JSON.stringify({ fixture: Buffer.alloc(32, 33).toString("base64") }) };
 const fixtureCookie = `fixtureAccount${port}`;
 const fixtureAccount = req => new RegExp(`(?:^|;\\s*)${fixtureCookie}=([AB])(?:;|$)`).exec(req.headers.cookie ?? "")?.[1];
 const receipts = new Map();
@@ -21,6 +25,18 @@ http.createServer(async (req, res) => {
   res.setHeader("Cache-Control", "no-store");
   if (url.pathname === "/fixture-mode" && req.method === "POST") { behavior = url.searchParams.get("mode") ?? "normal"; sendJson(res, { behavior }); return; }
   if (url.pathname === "/fixture-stats") { sendJson(res, { behavior, attempts, created: receipts.size, receipts: [...receipts].map(([key, value]) => ({ key, ...value })) }); return; }
+  if (url.pathname.startsWith("/api/browser-drafts/quarantine/")) {
+    const account = fixtureAccount(req);
+    if (!account || req.method !== "POST") { sendJson(res, { ok: false }, 401); return; }
+    try {
+      let body = ""; for await (const chunk of req) body += chunk;
+      const data = JSON.parse(body);
+      if (url.pathname.endsWith("/seal")) sendJson(res, { record: sealLegacyDraftQuarantine(data.snapshot, `google:fixture-${account}`, quarantineEnvironment) });
+      else if (behavior === "fail-quarantine-verify") sendJson(res, { ok: false }, 503);
+      else sendJson(res, verifyLegacyDraftQuarantine(data.record, data.snapshot, `google:fixture-${account}`, quarantineEnvironment));
+    } catch { sendJson(res, { ok: false }, 400); }
+    return;
+  }
   if (url.pathname === "/api/operations" || /^\/api\/operations\/[^/]+\/rounds$/.test(url.pathname)) {
     if (req.method !== "POST") { sendJson(res, { ok: false }, 503); return; }
     const account = fixtureAccount(req);

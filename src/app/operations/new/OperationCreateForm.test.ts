@@ -87,7 +87,7 @@ function harness(options: { pending?: submission.OperationSubmission; readFailur
     return options.request ? options.request(calls.length) : Response.json({ ok: true, operation: { operationId: `fixture-${calls.length}` } });
   };
   const sessionStorage = { length: options.legacy ? 1 : 0, key: () => "hub-om:operation-submission:v1:legacy:team_1", getItem: () => { plaintextReads++; throw new Error("legacy values must not be read"); }, removeItem: () => { throw new Error("legacy must not be deleted"); } };
-  new Function("require", "exports", "fetch", "window", "crypto", javascript)((name: string) => { if (!(name in modules)) throw new Error(`unexpected import ${name}`); return modules[name]; }, exports, fetch, { sessionStorage }, { randomUUID: () => "fixture-new-submission-12345" });
+  new Function("require", "exports", "fetch", "window", "crypto", javascript)((name: string) => { if (!(name in modules)) throw new Error(`unexpected import ${name}`); return modules[name]; }, exports, fetch, { sessionStorage, localStorage: { length: 0, key: () => null }, addEventListener() {}, removeEventListener() {} }, { randomUUID: () => "fixture-new-submission-12345" });
   function render() {
     cursor = 0; dirty = false;
     tree = exports.OperationCreateForm!({ expectedSubject: options.expectedSubject === null ? undefined : options.expectedSubject ?? "google:fixture", initialValues: { companyName: "가상기업", courseName: "입력과정", startDate: "2026-09-21", endDate: "2026-09-21" }, personOptions: { om: [], ld: [] }, teamScope: "team_1" });
@@ -147,7 +147,7 @@ test("회차 요청 사이 runtime owner/status/generation 변경은 다음 POST
 test("legacy 키 존재 시 값 읽기·삭제·암호화 draft 조회 없이 신규등록을 차단한다", async () => {
   const ui = harness({ legacy: true }); await ui.settle();
   assert.equal(ui.button("저장").props.disabled, true);
-  assert.match(ui.text(), /자동으로 가져오거나 삭제하지 않았습니다/);
+  assert.match(ui.text(), /서버 반영 여부가 미확정/);
   assert.equal(ui.plaintextReads(), 0); assert.equal(ui.reads(), 0); assert.equal(ui.removals.length, 0); assert.equal(ui.calls.length, 0);
 });
 

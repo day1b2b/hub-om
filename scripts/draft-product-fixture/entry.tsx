@@ -8,6 +8,8 @@ import { OperationCreateForm } from "../../src/app/operations/new/OperationCreat
 import type { OperationSession } from "../../src/lib/data/operationTypes";
 import { BrowserDraftRuntime, browserDrafts, lockBrowserDrafts } from "../../src/lib/privacy/browserDraftRuntime";
 import { fixtureSession } from "./auth-mock";
+import { countLegacyDrafts, LEGACY_DRAFT_PREFIXES, LEGACY_REGISTRATION_UNRESOLVED } from "../../src/lib/privacy/legacyDraftSources";
+import { IndexedDbLegacyQuarantineStore } from "../../src/lib/privacy/legacyDraftQuarantineStore";
 const operation = new Proxy({ operationId: "synthetic-product-op", startDate: "2026-09-21", educationDates: ["2026-09-21"], specialNotes: "", operationIssue: "", omUpdate: "", driveLink: "" }, { get: (target, field) => field in target ? target[field as keyof typeof target] : "" }) as OperationSession;
 function App() {
   const [report, setReport] = useState("");
@@ -22,6 +24,32 @@ function App() {
     <button onClick={async () => { await fetch("/fixture-mode?mode=fail-next", { method: "POST" }); setReport("다음 생성 요청503"); }}>다음 생성 실패</button>
     <button onClick={async () => { await fetch("/fixture-mode?mode=lose-next-response", { method: "POST" }); setReport("다음 생성 commit 후 응답유실"); }}>다음 생성 응답 유실</button>
     <button onClick={async () => { setReport(JSON.stringify(await (await fetch("/fixture-stats")).json())); }}>가상 생성 통계</button>
+    <button onClick={() => {
+      for (const prefix of LEGACY_DRAFT_PREFIXES.slice(0, 3)) localStorage.setItem(`${prefix}synthetic`, "합성격리비밀-local");
+      sessionStorage.setItem(`${LEGACY_DRAFT_PREFIXES[3]}synthetic@example.invalid:team_1`, "합성격리비밀-session");
+      window.dispatchEvent(new Event("focus")); setReport("합성 이전 초안 준비 완료");
+    }}>합성 이전 초안 준비</button>
+    <button onClick={async () => { await fetch("/fixture-mode?mode=fail-quarantine-verify", { method: "POST" }); setReport("합성 격리 검증 실패 모드"); }}>격리 검증 실패 모의</button>
+    <button onClick={async () => { await fetch("/fixture-mode?mode=normal", { method: "POST" }); setReport("합성 격리 검증 정상 모드"); }}>격리 검증 정상 복구</button>
+    <button onClick={() => {
+      const original = IDBDatabase.prototype.transaction;
+      IDBDatabase.prototype.transaction = function (...args) {
+        if (this.name === "hub-om-legacy-quarantine-v1" && args[1] === "readwrite") { IDBDatabase.prototype.transaction = original; throw new DOMException("Synthetic quota", "QuotaExceededError"); }
+        return original.apply(this, args);
+      };
+      setReport("다음 격리 저장 실패 모의");
+    }}>격리 저장 실패 모의</button>
+    <button onClick={async () => {
+      const request = indexedDB.open("hub-om-legacy-quarantine-v1", 1);
+      const records: unknown[] = await new Promise((resolve, reject) => { request.onerror = reject; request.onsuccess = () => {
+        const db = request.result; const tx = db.transaction("records"); const get = tx.objectStore("records").getAll(); let rows: unknown[] = [];
+        get.onsuccess = () => { rows = get.result; }; tx.oncomplete = () => { db.close(); resolve(rows); }; tx.onabort = reject;
+      }; });
+      const text = JSON.stringify(records);
+      let immutable = true;
+      if (records.length) { try { await new IndexedDbLegacyQuarantineStore().add(records[0] as Parameters<IndexedDbLegacyQuarantineStore["add"]>[0]); immutable = false; } catch { /* Existing immutable id must reject. */ } }
+      setReport(JSON.stringify({ sources: countLegacyDrafts(), records: records.length, plaintextPresent: text.includes("합성격리비밀"), sourceKeyPresent: text.includes("example.invalid") || text.includes("hub-om:"), immutable, unresolved: localStorage.getItem(LEGACY_REGISTRATION_UNRESOLVED) !== null }));
+    }}>격리 결과 검사</button>
     <button onClick={async () => {
       const second = new BrowserDraftRuntime(); await second.unlock(browserDrafts.getSubject()!);
       const id = `cas-${crypto.randomUUID()}`;

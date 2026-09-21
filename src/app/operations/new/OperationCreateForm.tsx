@@ -77,6 +77,16 @@ export function OperationCreateForm({ expectedSubject, initialValues = {}, perso
   const [restoredStore, setRestoredStore] = useState<OperationSubmissionStore | null>(null);
   const storageReady = draftStore !== null && restoredStore === draftStore;
   const submittingRef = useRef(false);
+  const [legacyRevision, setLegacyRevision] = useState(0);
+  useEffect(() => {
+    const refreshLegacy = () => setLegacyRevision(value => value + 1);
+    window.addEventListener("hub-om:legacy-transition-updated", refreshLegacy);
+    window.addEventListener("storage", refreshLegacy);
+    return () => {
+      window.removeEventListener("hub-om:legacy-transition-updated", refreshLegacy);
+      window.removeEventListener("storage", refreshLegacy);
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -87,8 +97,8 @@ export function OperationCreateForm({ expectedSubject, initialValues = {}, perso
     if (!originalOwner) setOriginalOwner(draftStore.owner);
     async function restore() {
       try {
-        if (hasLegacyOperationSubmission(window.sessionStorage)) {
-          throw new Error("이 브라우저에 소유자를 확인할 수 없는 이전 등록 정보가 있습니다. 자동으로 가져오거나 삭제하지 않았습니다. 중복 등록 방지를 위해 담당자에게 복구를 문의해주세요.");
+        if (hasLegacyOperationSubmission(window.sessionStorage) || hasLegacyOperationSubmission(window.localStorage)) {
+          throw new Error("서버 반영 여부가 미확정인 이전 등록 정보가 있습니다. 화면 위쪽의 이전 초안 보호 절차를 진행하고 운영 현황을 확인한 뒤 새 등록을 허용해주세요.");
         }
         const pending = await readOperationSubmission(draftStore!, teamScope);
         if (!active) return;
@@ -116,7 +126,7 @@ export function OperationCreateForm({ expectedSubject, initialValues = {}, perso
     }
     void restore();
     return () => { active = false; };
-  }, [draftStore, teamScope, originalOwner]);
+  }, [draftStore, teamScope, originalOwner, legacyRevision]);
 
   const validCount = rows.filter((row) => row.errors.length === 0).length;
 
@@ -342,6 +352,11 @@ export function OperationCreateForm({ expectedSubject, initialValues = {}, perso
     submittingRef.current = true;
     setSubmitState("saving");
     try {
+      const assertRegistrationCurrent = () => {
+        storage.assertCurrent();
+        if (hasLegacyOperationSubmission(window.sessionStorage) || hasLegacyOperationSubmission(window.localStorage)) throw new Error("이전 등록의 반영 여부를 먼저 확인해주세요. 현재 등록 정보는 보존했습니다.");
+      };
+      assertRegistrationCurrent();
       let snapshot = pendingSubmission;
       if (snapshot && (snapshot.owner !== storage.owner || snapshot.expectedSubject !== storage.expectedSubject || snapshot.team !== teamScope)) throw new Error("등록 정보의 계정 또는 팀이 달라 저장을 중단했습니다.");
       if (!snapshot) {
@@ -369,7 +384,7 @@ export function OperationCreateForm({ expectedSubject, initialValues = {}, perso
         await persistOperationSubmission(storage, snapshot);
         setPendingSubmission(snapshot);
       }
-      const operationId = await submitOperationSnapshot(snapshot, fetch, storage.assertCurrent);
+      const operationId = await submitOperationSnapshot(snapshot, fetch, assertRegistrationCurrent);
       await clearOperationSubmission(storage);
       router.push(`/operations/${encodeURIComponent(operationId)}${teamQuery}`);
     } catch (reason) {

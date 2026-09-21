@@ -1,4 +1,5 @@
 import { parseEducationDatesText } from "@/lib/data/operationCalculations";
+import { isLegacyRegistrationKey, LEGACY_REGISTRATION_UNRESOLVED } from "@/lib/privacy/legacyDraftSources";
 
 export interface OperationSubmission {
   version: 2;
@@ -24,10 +25,11 @@ export class OperationSubmissionValidationError extends Error {
   override name = "OperationSubmissionValidationError";
 }
 
-/** Legacy records are not read, assigned to the current account, or removed. */
+/** A quarantined registration stays unresolved; copying it never proves server outcome or ownership. */
 export function hasLegacyOperationSubmission(storage: Pick<Storage, "length" | "key">): boolean {
   for (let index = 0; index < storage.length; index++) {
-    if (storage.key(index)?.startsWith("hub-om:operation-submission:v1:")) return true;
+    const key = storage.key(index);
+    if (key && (isLegacyRegistrationKey(key) || key === LEGACY_REGISTRATION_UNRESOLVED)) return true;
   }
   return false;
 }
