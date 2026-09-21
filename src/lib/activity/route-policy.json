@@ -79,6 +79,7 @@
   "PATCH /api/om-request/[id]": "tracked",
   "DELETE /api/om-request/[id]": "tracked",
   "PATCH /api/om-request/assign": "tracked",
+  "POST /api/om-request/assign": "tracked",
   "POST /api/om-request": "tracked",
   "GET /api/om-request/session-template": "tracked",
   "POST /api/operations/[operationId]/drive-import/apply": "tracked",
