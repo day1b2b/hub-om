@@ -17,3 +17,6 @@ Coach 관리 route·Team facade·Instructor save·요청/개인정보 감사의 
 
 ## 코치 접근 경계 후속
 코치 token/본인조회/export/재발급의 명시Mongo경계와 실제권한/감사검증 완료. 다음 Task는 일정등록/예약/취소. 최신근거 ../mongodb-coach-access/handoff.md. 전체runtime/실제데이터/배포는 진행중.
+
+## 일정·예약 총괄 통합
+1601e60의 일정등록/관리조회/예약/본인취소 구현을 총괄feature에 fast-forward 통합하고 전체회귀837pass16skip 재확인했다. 최신검토는 ../mongodb-coach-schedules/integration-review.md. 다음 Task는 engagement 확정/예약자동취소/관련동기화writer의 공통원자성이다. 예약없는시점의확정과신규예약경쟁을 공통guard/재검사로검증하며 기존삭제·확정이력정책을임의로바꾸지않는다. 전체운영이전은진행중.
