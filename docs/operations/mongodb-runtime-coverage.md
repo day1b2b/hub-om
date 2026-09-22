@@ -143,3 +143,5 @@
 ## 코치 시트 동기화 후속 경계 (2026-09-22)
 
 [정책과 저장 경계](mongodb-coach-sheet-sync.md). contract/Samsung 서비스와 로그는 명시 Mongo context를 지원하고 PG 기본을 유지한다. source 주입, catalog→정렬 coach 잠금, 기존 단계별 commit 및 삼성 Cascade/SetNull을 검증한다. Notion/all은 Mongo scope에서 외부 읽기 전에 차단하는 미완료 gate다. 전체 생산 전환은 완료되지 않았다.
+
+총괄 통합 회귀864pass18skip0fail 및 독립 검토 완료. 이름이 포함될 수 있는 `sourceEngagementId`/`sourceEngagementScheduleId` 평문 저장은 전체 개인정보 암호화 목표의 필수 보완 항목이다. 기존 operational 분류를 암호화 제외 승인으로 해석하지 않는다. Notion 저장 경계 다음에 암호화·검색/고유키·기존 데이터 변환의 일관성을 보완하며 운영 전환 전에 해결한다.

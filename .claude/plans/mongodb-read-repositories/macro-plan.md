@@ -23,3 +23,6 @@ Coach 관리 route·Team facade·Instructor save·요청/개인정보 감사의 
 
 ## 섭외·자동취소 총괄 통합
 71ed7d8을 총괄feature에 fast-forward하여 전체848pass17skip 재확인, 별도독립통합검토통과. 최신근거 ../mongodb-coach-engagements/integration-review.md. 다음은 contractSheetSync/samsungScheduleSync의 원천adapter·실제저장경계와 공통guard, 다중코치잠금순서·기존Cascade/SetNull 계약 검증. 전체운영이전은계속진행중.
+
+## 시트 동기화 총괄 통합
+47b9ba6을 통합하여 전체864pass18skip0fail 재확인, 독립 통합 검토 통과. 근거는 ../mongodb-coach-sheet-sync/integration-review.md. 다음은 Notion 코치 sync 저장 경계와 catalog 잠금 참여, 실제 sync/all 합성 검증이다. 그 직후 이름을 포함하는 sourceEngagementId/sourceEngagementScheduleId 평문 저장을 암호화 정책·고유키·조회·snapshot/runtime·이전 도구까지 함께 보완한다. 해당 평문은 전체 암호화/운영 전환 차단 항목이며 허용된 제외 범위가 아니다. 이후 runtime-coverage의 미전환 기능을 계속 진행한다.
