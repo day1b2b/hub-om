@@ -9,6 +9,15 @@ const allowed: Record<string, Set<string>> = {
   Company: new Set(["name"]),
   Course: new Set(["companyId", "courseId", "name", "operationType", "courseCategory", "revenue"]),
   CourseIdLabel: new Set(["companyId", "courseId", "label"]),
+  Coach: new Set(["name", "workType", "status", "returnDate", "dxTag", "isActive", "displayOrder"]),
+  CoachContentEntry: new Set(["coachId", "kind", "flaggedAt"]),
+  CoachPrivateProfile: new Set(),
+  CoachFieldMaster: new Set(["name"]),
+  CoachCurriculumMaster: new Set(["name"]),
+  CoachField: new Set(["coachId", "tagId"]),
+  CoachCurriculum: new Set(["coachId", "tagId"]),
+  TeamUser: new Set(["name", "email", "team", "role"]),
+  InstructorNote: new Set(["instructorName", "displayName", "recruitAvoid"]),
   OperationSession: new Set(["operationId", "courseRecordId", "operationStatus", "archiveStatus", "educationFormat", "operationChannel", "roundNo", "educationDays", "startDate", "endDate", "educationDates", "operationMonth", "sessionDurationDays", "sessionDurationType", "timeText", "onsiteRequired", "totalCost", "instructorCost", "operationCost", "hasSatisfactionSurvey", "hasResultReport"])
 };
 function column(model: string, field: string) {
@@ -25,22 +34,27 @@ function safeValue(value: unknown, model: string, field: string): unknown {
   return text.length > 500 ? { truncated: true, preview: text.slice(0, 500) } : JSON.parse(text);
 }
 /** Compare authenticated logical values, never randomized ciphertext. */
-export function operationAuditRow(model: string, before: MongoRow | null, after: MongoRow): MongoRow | null {
+export function operationAuditRow(model: string, before: MongoRow | null, after: MongoRow | null): MongoRow | null {
   const context = activityContext.getStore();
-  if (!context) return null;
+  const row = after ?? before;
+  if (!context || !row) return null;
+  if (model === "CoachContentEntry" && row.kind === "EDIT_HISTORY") return null;
   const privacy = (policies as Record<string, { fields: Record<string, unknown> }>)[model]?.fields ?? {};
   const changes: MongoRow = {};
-  for (const field of Object.keys(after)) {
+  for (const field of new Set([...Object.keys(before ?? {}), ...Object.keys(after ?? {})])) {
     if (excluded.has(field) || field.endsWith("PiiIndex") || field.endsWith("Encrypted")) continue;
-    if (stableMongoValue(before?.[field]) === stableMongoValue(after[field])) continue;
+    if (stableMongoValue(before?.[field]) === stableMongoValue(after?.[field])) continue;
     changes[column(model, field)] = allowed[model]?.has(field) && !privacy[field]
-      ? { before: safeValue(before?.[field], model, field), after: safeValue(after[field], model, field) }
+      ? { before: safeValue(before?.[field], model, field), after: safeValue(after?.[field], model, field) }
       : { redacted: true };
   }
-  if (before && Object.keys(changes).length === 0) return null;
-  const action = !before ? "create" : !before.deletedAt && after.deletedAt ? "delete" : before.deletedAt && !after.deletedAt ? "restore" : "update";
+  if (before && after && Object.keys(changes).length === 0) return null;
+  const action = !before ? "create" : !after || !before.deletedAt && after.deletedAt ? "delete" : before.deletedAt && !after.deletedAt ? "restore" : "update";
+  const contract = mongoRuntimeContracts[model];
+  const targetId = contract.primaryKey.length === 1 ? String(row[contract.primaryKey[0]])
+    : `[${contract.primaryKey.map(key => JSON.stringify(row[key])).join(", ")}]`;
   return completeMongoRow("ActivityChange", {
     id: randomUUID(), occurredAt: new Date(), ...context,
-    targetType: mongoRuntimeContracts[model].collection, targetId: after.id, action, changes
+    targetType: contract.collection, targetId, action, changes
   });
 }

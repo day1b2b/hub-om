@@ -1,12 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { Long, MongoServerError, type ClientSession } from "mongodb";
+import { operationAuditRow } from "../mongoOperationAudit";
 import { encodeMongoRuntimeDocument } from "../mongoRuntimeCodec";
 import { assertMongoReadStoreReady, prepareMongoReadStore } from "../mongoReadStore";
 import { assertMongo, MONGO_SCAN_ROWS, MongoOperationError, MongoOperationStore, type MongoOperationOptions, type MongoRow, stableMongoValue } from "../mongoOperationStore";
-import { DuplicateTeamUserEmailError } from "./teamUserRepository";
+import { DuplicateTeamUserEmailError } from "./teamUserErrors";
+import type { TeamUserRepository } from "./teamUserRepositoryContract";
 import type { TeamUser, TeamUserInput, TeamUserRole } from "./teamUserTypes";
 
-export const MONGO_TEAM_USER_MODELS = ["TeamUser"] as const;
+export const MONGO_TEAM_USER_MODELS = ["TeamUser", "ActivityChange"] as const;
 export type MongoTeamUserOptions = MongoOperationOptions & { allowShadowWrites?: true };
 const guardValidator = { $jsonSchema: { bsonType: "object", required: ["_id", "version"], additionalProperties: false, properties: { _id: { enum: ["TeamUser"] }, version: { bsonType: "long", minimum: 0 } } } };
 function guardCollection(store: MongoOperationStore) { return store.db.collection<{ _id: string; version: Long }>(`${store.namespace}___teamUserWriteGuard`, { promoteLongs: false }); }
@@ -55,7 +57,7 @@ async function safely<T>(work: () => Promise<T>): Promise<T> {
  * Every writer must participate in the guard; direct imports/writes remain a cutover gate.
  * Physical deletion is deliberately blocked pending an approved deletion contract.
  */
-export class MongoTeamUserRepository {
+export class MongoTeamUserRepository implements TeamUserRepository {
   private readonly store: MongoOperationStore;
   private readonly allowWrites: boolean;
   private constructor(store: MongoOperationStore, allowWrites: boolean) { this.store = store; this.allowWrites = allowWrites; }
@@ -83,6 +85,10 @@ export class MongoTeamUserRepository {
       } finally { await session.endSession(); }
     });
   }
+  private async audit(previous: MongoRow | null, next: MongoRow, session: ClientSession): Promise<void> {
+    const row = operationAuditRow("TeamUser", previous, next);
+    if (row) await this.store.collection("ActivityChange").insertOne(encodeMongoRuntimeDocument("ActivityChange", row), { session });
+  }
   async listTeamUsers(): Promise<TeamUser[]> {
     return safely(async () => {
       const rows = await this.store.scan("TeamUser");
@@ -107,6 +113,7 @@ export class MongoTeamUserRepository {
       if (existing.length) throw new MongoDuplicateTeamUserEmailError();
       const row = { id: randomUUID(), name: input.name, email: input.email, slackId: input.slackId, team: input.team ?? null, role: input.role ? roleToDatabase[input.role] : null, createdAt: new Date() };
       await this.store.collection("TeamUser").insertOne(encodeMongoRuntimeDocument("TeamUser", row), { session });
+      await this.audit(null, row, session);
       return toTeamUser(row);
     });
   }
@@ -119,6 +126,7 @@ export class MongoTeamUserRepository {
       const next = { ...previous, team };
       const result = await this.store.collection("TeamUser").replaceOne({ _id: id }, encodeMongoRuntimeDocument("TeamUser", next), { session });
       assertMongo(result.matchedCount === 1, "TEAM_USER_ROW_DISAPPEARED");
+      await this.audit(previous, next, session);
       return toTeamUser(next);
     });
   }
@@ -128,8 +136,10 @@ export class MongoTeamUserRepository {
       if (ids.length === 0) return 0;
       const rows = await this.store.scan("TeamUser", { _id: { $in: [...new Set(ids)] } }, session);
       for (const previous of rows) {
-        const result = await this.store.collection("TeamUser").replaceOne({ _id: previous.id as string }, encodeMongoRuntimeDocument("TeamUser", { ...previous, role: roleToDatabase[role] }), { session });
+        const next = { ...previous, role: roleToDatabase[role] };
+        const result = await this.store.collection("TeamUser").replaceOne({ _id: previous.id as string }, encodeMongoRuntimeDocument("TeamUser", next), { session });
         assertMongo(result.matchedCount === 1, "TEAM_USER_ROW_DISAPPEARED");
+        await this.audit(previous, next, session);
       }
       return rows.length;
     });

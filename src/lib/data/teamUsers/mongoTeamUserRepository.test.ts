@@ -2,9 +2,10 @@ import assert from "node:assert/strict";
 import { randomBytes, randomUUID } from "node:crypto";
 import test from "node:test";
 import { Long } from "mongodb";
+import { activityContext } from "../../activity/context";
 import { decodeMongoRuntimeDocument, encodeMongoRuntimeDocument } from "../mongoRuntimeCodec";
 import { MongoOperationError, type MongoOperationStore, type MongoRow } from "../mongoOperationStore";
-import { DuplicateTeamUserEmailError } from "./teamUserRepository";
+import { DuplicateTeamUserEmailError } from "./teamUserErrors";
 import { MongoTeamUserRepository, prepareMongoTeamUserStore } from "./mongoTeamUserRepository";
 
 function keys() {
@@ -18,12 +19,14 @@ function fixture(patch: MongoRow = {}) { return { id: randomUUID(), name: "Synth
 function mock(initial: MongoRow[] = [], allowWrites = true) {
   const documents = new Map(initial.map(row => [row.id as string, encodeMongoRuntimeDocument("TeamUser", row)]));
   const calls: string[] = [];
+  const audits: ReturnType<typeof encodeMongoRuntimeDocument>[] = [];
+  let auditFailure = false;
   let guardMatches = 1, failReplaceAt = 0, replaceCount = 0, version = 0;
   const session = {
     async withTransaction(work: () => Promise<unknown>, options: unknown) {
       assert.deepEqual(options, { readConcern: { level: "snapshot" }, writeConcern: { w: "majority", j: true }, readPreference: "primary", timeoutMS: 30_000 });
-      const previous = new Map(documents), previousVersion = version;
-      try { return await work(); } catch (error) { documents.clear(); for (const [id, doc] of previous) documents.set(id, doc); version = previousVersion; throw error; }
+      const previous = new Map(documents), previousVersion = version, previousAudits = [...audits];
+      try { return await work(); } catch (error) { documents.clear(); for (const [id, doc] of previous) documents.set(id, doc); version = previousVersion; audits.splice(0, audits.length, ...previousAudits); throw error; }
     },
     async endSession() { calls.push("endSession"); }
   };
@@ -43,7 +46,11 @@ function mock(initial: MongoRow[] = [], allowWrites = true) {
       assert.equal(model, "TeamUser"); if (options) assert.equal(options, session); calls.push("scan");
       return [...documents.entries()].filter(([id]) => !filter?._id || filter._id.$in.includes(id)).map(([, doc]) => decodeMongoRuntimeDocument(model, doc));
     },
-    collection(model: string) { assert.equal(model, "TeamUser"); return {
+    collection(model: string) {
+      if (model === "ActivityChange") return { async insertOne(doc: ReturnType<typeof encodeMongoRuntimeDocument>, options: { session: unknown }) {
+        assert.equal(options.session, session); calls.push("audit"); if (auditFailure) throw new Error("Synthetic audit failure"); audits.push(doc);
+      } };
+      assert.equal(model, "TeamUser"); return {
       async insertOne(doc: ReturnType<typeof encodeMongoRuntimeDocument>, options: { session: unknown }) { assert.equal(options.session, session); calls.push("insert"); documents.set(String(doc._id), doc); },
       async replaceOne(filter: { _id: string }, doc: ReturnType<typeof encodeMongoRuntimeDocument>, options: { session: unknown }) {
         assert.equal(options.session, session); calls.push("replace"); replaceCount++;
@@ -54,7 +61,7 @@ function mock(initial: MongoRow[] = [], allowWrites = true) {
     }; }
   };
   const Constructor = MongoTeamUserRepository as unknown as new (store: MongoOperationStore, allow: boolean) => MongoTeamUserRepository;
-  return { repository: new Constructor(store as unknown as MongoOperationStore, allowWrites), calls, documents,
+  return { repository: new Constructor(store as unknown as MongoOperationStore, allowWrites), calls, documents, audits, failAudit() { auditFailure = true; },
     guardMissing() { guardMatches = 0; }, failSecondReplace() { failReplaceAt = 2; }, get version() { return version; } };
 }
 
@@ -124,5 +131,33 @@ test("TeamUser ciphertext tampering aborts before replacement and validates role
     await assert.rejects(state.repository.updateTeamUserTeam(row.id, "AX 2파트"), /TEAM_USER_ACCESS_FAILED/); assert.ok(!state.calls.includes("replace"));
     await assert.rejects(state.repository.updateTeamUserTeam("wrong", "x"), /INVALID_TEAM_USER_INPUT/);
     await assert.rejects(state.repository.updateTeamUsersRole([row.id], "admin" as never), /INVALID_TEAM_USER_INPUT/);
+  } finally { restore(); }
+});
+
+const auditContext = { requestId: "00000000-0000-4000-8000-000000000001", route: "/api/admin/users", method: "POST", actorEmail: "actor@example.invalid", actorName: "Synthetic actor", actorType: "user" as const };
+test("TeamUser writes audit redacted values in the same transaction and roll back when audit fails", async () => {
+  const restore = keys();
+  try {
+    const state = mock();
+    const created = await activityContext.run(auditContext, () => state.repository.createTeamUser({ name: "Synthetic private", email: "private@example.invalid", slackId: "private-slack" }));
+    assert.equal(state.audits.length, 1);
+    const audit = decodeMongoRuntimeDocument("ActivityChange", state.audits[0]);
+    assert.equal(audit.targetType, "team_users"); assert.equal(audit.targetId, created.id); assert.equal(audit.action, "create");
+    assert.equal(audit.requestId, auditContext.requestId);
+    assert.deepEqual((audit.changes as Record<string, unknown>).name, { redacted: true });
+    assert.deepEqual((audit.changes as Record<string, unknown>).email, { redacted: true });
+    assert.deepEqual((audit.changes as Record<string, unknown>).slack_id, { redacted: true });
+    assert.ok(!JSON.stringify(state.audits).includes("private@example.invalid")); assert.ok(!JSON.stringify(state.audits).includes(auditContext.actorEmail));
+    await activityContext.run(auditContext, () => state.repository.updateTeamUserTeam(created.id, "AX 2파트"));
+    await activityContext.run(auditContext, () => state.repository.updateTeamUsersRole([created.id], "om"));
+    assert.equal(state.audits.length, 3);
+    const teamAudit = decodeMongoRuntimeDocument("ActivityChange", state.audits[1]);
+    const roleAudit = decodeMongoRuntimeDocument("ActivityChange", state.audits[2]);
+    assert.deepEqual((teamAudit.changes as Record<string, unknown>).team, { before: null, after: "AX 2파트" });
+    assert.deepEqual((roleAudit.changes as Record<string, unknown>).role, { before: null, after: "om" });
+    const before = [...state.documents.entries()], beforeAudits = [...state.audits], beforeVersion = state.version;
+    state.failAudit();
+    await assert.rejects(activityContext.run(auditContext, () => state.repository.updateTeamUserTeam(created.id, "AX 3파트")), /TEAM_USER_ACCESS_FAILED/);
+    assert.deepEqual([...state.documents.entries()], before); assert.deepEqual(state.audits, beforeAudits); assert.equal(state.version, beforeVersion);
   } finally { restore(); }
 });

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { randomBytes, randomUUID } from "node:crypto";
 import { mock, test } from "node:test";
 import { registerHooks } from "node:module";
+import { activityContext } from "../activity/context";
 import { MongoServerError, type MongoClient } from "mongodb";
 import * as readStore from "./mongoReadStore";
 import { decodeMongoRuntimeDocument, type MongoRuntimeDocument } from "./mongoRuntimeCodec";
@@ -19,6 +20,7 @@ function fakeClient() {
     const model = modelOf(collectionName);
     return {
       findOne: async (filter: MongoRow) => records.get(model)?.find(row => matches(row, filter)) ?? null,
+      find: (filter: MongoRow) => ({ limit() { return this; }, async *[Symbol.asyncIterator]() { yield* (records.get(model) ?? []).filter(row => matches(row, filter)); }, close: async () => {} }),
       insertOne: async (row: MongoRuntimeDocument) => {
         if (model === failModel) throw new Error("synthetic-private-value-should-not-escape");
         if (model === "CoachFieldMaster" && duplicateMasterOnce) { duplicateMasterOnce = false; throw new MongoServerError({ code: 11000, message: "synthetic collision" }); }
@@ -128,5 +130,31 @@ test("Mongo coach transaction rolls back profile, private fields, tags and audit
     fake.fail(""); const current = fake.rows("Coach")[0]; current.name = "broken-envelope";
     await assert.rejects(repository.updateCoachStatus(created.id, "active"), /COACH_WRITE_FAILED/);
     assert.equal(fake.counts().ended, fake.counts().attempts);
+  } finally { for (const name of names) { const value = saved.get(name); if (value === undefined) delete process.env[name]; else process.env[name] = value; } }
+});
+
+
+test("Mongo coach changes audit shares transaction, covers profile and tag deletion, and omits duplicate history events", async () => {
+  const saved = new Map(names.map(name => [name, process.env[name]]));
+  process.env.PII_ENCRYPTION_KEYS = JSON.stringify({ fixture: randomBytes(32).toString("base64") }); process.env.PII_ACTIVE_KEY_ID = "fixture"; process.env.PII_INDEX_KEY = randomBytes(32).toString("base64"); process.env.PII_ALLOW_PLAINTEXT_READS = "false";
+  const fake = fakeClient(), options = { client: fake.client, databaseName: "hub_om_shadow_coach_writes", namespace: "shadow_unit", allowShadowWrites: true as const };
+  try {
+    const repository = await MongoCoachWriteRepository.open(options);
+    await activityContext.run({ requestId: randomUUID(), route: "/api/coaches", method: "POST", actorType: "user", actorEmail: "actor@example.invalid", actorName: "Synthetic actor" }, async () => {
+      const coach = await repository.createCoach({ name: "Synthetic audit", email: "private@example.invalid", fields: ["Audited tag"] });
+      const first = fake.plain("ActivityChange");
+      assert.deepEqual(first.map(row => row.targetType).sort(), ["coach_field_masters", "coach_fields", "coach_private_profiles", "coaches"]);
+      assert.equal(first.find(row => row.targetType === "coach_private_profiles")?.targetId, coach.id);
+      assert.ok(!JSON.stringify(first.map(row => row.changes)).includes("private@example.invalid"));
+      const oldLink = fake.plain("CoachField")[0];
+      await repository.updateCoach(coach.id, { name: "Updated audit", fields: [] }, { email: "actor@example.invalid", name: "Synthetic actor" });
+      const audits = fake.plain("ActivityChange"), deletedLink = audits.find(row => row.targetType === "coach_fields" && row.action === "delete");
+      assert.ok(deletedLink); assert.equal(deletedLink.targetId, `["${coach.id}", "${oldLink.tagId}"]`);
+      assert.equal(audits.filter(row => row.targetType === "coach_content_entries").length, 0, "EDIT_HISTORY is not audited a second time");
+      const before = JSON.stringify(COACH_WRITE_MODELS.map(model => fake.rows(model)));
+      fake.fail("ActivityChange");
+      await assert.rejects(repository.updateCoach(coach.id, { email: "must-rollback@example.invalid", managerNote: "rollback" }, { email: "actor@example.invalid", name: "Synthetic actor" }), /COACH_WRITE_FAILED/);
+      assert.equal(JSON.stringify(COACH_WRITE_MODELS.map(model => fake.rows(model))), before);
+    });
   } finally { for (const name of names) { const value = saved.get(name); if (value === undefined) delete process.env[name]; else process.env[name] = value; } }
 });

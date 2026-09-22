@@ -4,6 +4,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash } from "node:crypto";
 import { Pool } from "pg";
 import { isCalendarWriteEnabled } from "./calendarWriteConfig";
+import { assertDefaultDatabaseAccess } from "../data/dataRepositoryContext";
 
 const context = new AsyncLocalStorage<{ operationId: string; controller: AbortController; suppressReflection?: boolean }>();
 const globalPool = globalThis as unknown as { calendarLockPool?: Pool };
@@ -19,6 +20,7 @@ export function calendarLockSignal(): AbortSignal | undefined {
   return context.getStore()?.controller.signal;
 }
 export async function withCalendarOperationLock<T>(operationId: string, run: () => Promise<T>): Promise<T> {
+  assertDefaultDatabaseAccess();
   if (!isCalendarWriteEnabled()) return run();
   const held = context.getStore();
   if (held) {

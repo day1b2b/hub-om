@@ -2,9 +2,10 @@ import assert from "node:assert/strict";
 import { randomBytes, randomUUID } from "node:crypto";
 import test from "node:test";
 import { Long, MongoClient } from "mongodb";
-import { encodeMongoRuntimeDocument } from "../mongoRuntimeCodec";
+import { activityContext } from "../../activity/context";
+import { decodeMongoRuntimeDocument, encodeMongoRuntimeDocument } from "../mongoRuntimeCodec";
 import { MongoOperationStore, operationMongoValidator } from "../mongoOperationStore";
-import { DuplicateTeamUserEmailError } from "./teamUserRepository";
+import { DuplicateTeamUserEmailError } from "./teamUserErrors";
 import { MONGO_TEAM_USER_MODELS, MongoTeamUserRepository, prepareMongoTeamUserStore } from "./mongoTeamUserRepository";
 const uri = process.env.MONGODB_TEAM_USER_TEST_URI;
 
@@ -36,7 +37,8 @@ test("TeamUser native transactions: concurrent normalized create, merged updates
     assert.ok(commands.includes("find"));
     assert.deepEqual(commands.filter(command => ["insert", "update", "delete", "create", "collMod", "createIndexes", "findAndModify"].includes(command)), []);
     const base = { name: "Synthetic Team name", email: "user@example.invalid", slackId: "Synthetic slack" };
-    const attempts = await Promise.allSettled(["user@example.invalid", " USER@EXAMPLE.INVALID ", "User@example.invalid", "user@EXAMPLE.invalid"].map((email, i) => (i % 2 ? repository : second).createTeamUser({ ...base, email })));
+    const creationActivity = { requestId: "00000000-0000-4000-8000-000000000001", route: "/api/admin/users", method: "POST", actorEmail: "synthetic.actor@example.invalid", actorName: "Synthetic actor", actorType: "user" as const };
+    const attempts = await Promise.allSettled(["user@example.invalid", " USER@EXAMPLE.INVALID ", "User@example.invalid", "user@EXAMPLE.invalid"].map((email, i) => activityContext.run(creationActivity, () => (i % 2 ? repository : second).createTeamUser({ ...base, email }))));
     const successes = attempts.filter(result => result.status === "fulfilled");
     assert.equal(successes.length, 1, "Shared guard must prevent duplicates even when roster starts empty");
     for (const failure of attempts.filter(result => result.status === "rejected")) {
@@ -45,6 +47,13 @@ test("TeamUser native transactions: concurrent normalized create, merged updates
     const created = (await repository.listTeamUsers())[0];
     assert.equal((await repository.findTeamUsersByEmail(" USER@example.INVALID ")).length, 1);
     const store = new MongoOperationStore(options, MONGO_TEAM_USER_MODELS);
+    const createAuditDoc = await store.collection("ActivityChange").findOne({ targetId: created.id, action: "create" }); assert.ok(createAuditDoc);
+    const createAudit = decodeMongoRuntimeDocument("ActivityChange", createAuditDoc);
+    assert.equal(createAudit.requestId, creationActivity.requestId);
+    assert.deepEqual((createAudit.changes as Record<string, unknown>).name, { redacted: true });
+    assert.deepEqual((createAudit.changes as Record<string, unknown>).email, { redacted: true });
+    assert.ok(!JSON.stringify(createAuditDoc).includes(base.name)); assert.ok(!JSON.stringify(createAuditDoc).includes(creationActivity.actorEmail));
+    assert.equal(await store.collection("ActivityChange").countDocuments(), 1, "Rejected duplicate transactions must not leave audit rows");
     const doc = await store.collection("TeamUser").findOne({ _id: created.id }); assert.ok(doc);
     assert.ok(!JSON.stringify(doc).includes("@example.invalid")); assert.ok(!JSON.stringify(doc).includes(base.name)); assert.ok(!JSON.stringify(doc).includes(base.slackId));
     await Promise.all([repository.updateTeamUserTeam(created.id, "AX 2파트"), second.updateTeamUsersRole([created.id], "ld")]);
@@ -70,6 +79,18 @@ test("TeamUser native transactions: concurrent normalized create, merged updates
       assert.deepEqual(await store.collection("TeamUser").find().sort({ _id: 1 }).toArray(), before);
       assert.deepEqual(await guard.findOne({ _id: "TeamUser" }), beforeGuard);
     } finally { rollbackCollection = null; await store.db.command({ collMod: store.collection("TeamUser").collectionName, validator: operationMongoValidator("TeamUser") }); }
+    const activity = { requestId: "00000000-0000-4000-8000-000000000002", route: "/api/admin/users/team", method: "POST", actorEmail: "synthetic.actor@example.invalid", actorName: "Synthetic actor", actorType: "user" as const };
+    await activityContext.run(activity, () => repository.updateTeamUserTeam(created.id, "AX 1파트"));
+    const auditDoc = await store.collection("ActivityChange").findOne({ targetId: created.id, action: "update" }); assert.ok(auditDoc);
+    const audit = decodeMongoRuntimeDocument("ActivityChange", auditDoc); assert.equal(audit.requestId, activity.requestId); assert.deepEqual((audit.changes as Record<string, unknown>).team, { before: "AX 2파트", after: "AX 1파트" });
+    assert.ok(!JSON.stringify(auditDoc).includes(activity.actorEmail));
+    const beforeAuditFailure = await store.collection("TeamUser").findOne({ _id: created.id });
+    await store.db.command({ collMod: store.collection("ActivityChange").collectionName, validator: { $and: [operationMongoValidator("ActivityChange"), { targetType: { $ne: "team_users" } }] } });
+    try {
+      await assert.rejects(activityContext.run(activity, () => repository.updateTeamUsersRole([created.id], "ld")), /TEAM_USER_ACCESS_FAILED/);
+      assert.deepEqual(await store.collection("TeamUser").findOne({ _id: created.id }), beforeAuditFailure);
+      assert.equal(await store.collection("ActivityChange").countDocuments(), 2);
+    } finally { await store.db.command({ collMod: store.collection("ActivityChange").collectionName, validator: operationMongoValidator("ActivityChange") }); }
     const disabled = await MongoTeamUserRepository.open({ ...options, allowShadowWrites: undefined });
     await assert.rejects(disabled.createTeamUser(base), /SHADOW_WRITE_GATE/); await assert.rejects(disabled.updateTeamUserTeam(created.id, null), /SHADOW_WRITE_GATE/);
     await assert.rejects(repository.deleteTeamUsers([created.id]), /TEAM_USER_DELETE_POLICY_REQUIRED/);

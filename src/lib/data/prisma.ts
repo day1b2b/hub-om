@@ -3,12 +3,14 @@ import { withPrivacyDatabase } from "@/lib/privacy/database";
 import { withActivityDatabase } from "@/lib/activity/database";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
+import { assertDefaultDatabaseAccess } from "./dataRepositoryContext";
 
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;
 };
 
 export function getPrismaClient(): PrismaClient {
+  assertDefaultDatabaseAccess();
   assertPrivacyConfiguration();
   const databaseUrl = process.env.DATABASE_URL;
 

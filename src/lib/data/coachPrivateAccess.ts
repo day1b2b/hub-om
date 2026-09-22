@@ -2,6 +2,7 @@ import { assertCoachPiiAccess } from "@/lib/auth/requireAdminSession";
 import type { CoachEngagementFeedbackView, CoachPrivateProfileView } from "./coachTypes";
 import { getCoachPrivateRepository } from "./coachPrivateRepositoryFactory";
 import { getPrismaClient } from "./prisma";
+import { getDataRepositoryOverride } from "./dataRepositoryContext";
 
 /**
  * 코치 민감정보(PII) 접근의 단일 진입점.
@@ -19,6 +20,8 @@ async function recordPrivateAccess(
   accessedByEmail: string,
   context: string
 ): Promise<void> {
+  const override = getDataRepositoryOverride("coachPrivateAccessLog");
+  if (override) return override.recordAccess(coachId, accessedByEmail, context);
   const prisma = getPrismaClient();
   await prisma.coachPrivateAccessLog.create({
     data: { coachId, accessedByEmail, context }

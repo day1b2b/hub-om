@@ -4,10 +4,16 @@ import { auth } from "@/auth";
 import { isAllowedWorkspaceEmail } from "@/lib/auth/workspaceAccess";
 import { getPrismaClient } from "@/lib/data/prisma";
 import { activityContext, type ActivityContext } from "./context";
+import { getDataRepositoryOverride, type RequestActivityRepository } from "../data/dataRepositoryContext";
 
 let lastPruned = 0;
 
-async function recordRequest(context: ActivityContext, status: number, durationMs: number) {
+async function recordRequest(context: ActivityContext, status: number, durationMs: number, override?: RequestActivityRepository) {
+  if (override) {
+    try { await override.recordRequest(context, status, durationMs); }
+    catch { console.error("[activity] API request log write failed"); }
+    return;
+  }
   if (!process.env.DATABASE_URL) return;
   try {
     const prisma = getPrismaClient();
@@ -38,6 +44,9 @@ async function recordRequest(context: ActivityContext, status: number, durationM
 
 export function withActivity<Args extends unknown[]>(route: string, method: string, handler: (...args: Args) => Promise<Response>) {
   return async (...args: Args): Promise<Response> => {
+    // Validate shadow logging before any business side effect. Runtime log failures remain
+    // best-effort like PostgreSQL; they must never fall back to the default database.
+    const requestActivity = getDataRepositoryOverride("requestActivity");
     const started = performance.now();
     const request = args[0] instanceof Request ? args[0] : undefined;
     const context: ActivityContext = {
@@ -76,7 +85,7 @@ export function withActivity<Args extends unknown[]>(route: string, method: stri
         if (redirectStatus) status = Number(redirectStatus[1]);
         throw error;
       } finally {
-        await recordRequest(context, status, Math.max(0, Math.round(performance.now() - started)));
+        await recordRequest(context, status, Math.max(0, Math.round(performance.now() - started)), requestActivity);
       }
     });
   };

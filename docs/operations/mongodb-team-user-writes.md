@@ -1,6 +1,6 @@
 # MongoDB 팀 명단 쓰기 준비
 
-`MongoTeamUserRepository`는 격리 shadow 저장소에서 팀 명단을 조회·등록·수정하는 어댑터다. 현재 서비스 라우트와 PostgreSQL 함수에는 연결하지 않았다. 인증, 역할 변경 권한, 호출자 활동 기록은 기존 호출 계층 책임이며 이 어댑터가 권한을 부여하지 않는다.
+`MongoTeamUserRepository`는 격리 shadow 저장소에서 팀 명단을 조회·등록·수정하는 어댑터다. 현재 서비스의 공개 함수 경계에는 요청 단위 주입 경로를 연결했다. 운영 기본 선택은 계속 기존 local/PostgreSQL이고 MongoDB를 자동 선택하지 않는다. 인증과 역할 변경 권한은 기존 호출 계층 책임이며 이 어댑터가 권한을 부여하지 않는다. 활동 context가 있으면 변경 감사 기록을 동일한 Mongo 트랜잭션에서 저장한다.
 
 ## 제공 기능과 호환성
 
@@ -41,3 +41,15 @@ guard가 사라지거나 Long 최대값에 도달하면 write를 차단한다. o
 
 ## 총괄 실제 엔진 검증 (2026-09-22)
 MongoDB 7.0.43 격리 replica set에서 이 native suite를 실행해 통과했다(신규3suite 전체3pass/0fail/0skip). 실행근거는 `.claude/plans/mongodb-write-repositories/execution-manifest.md`. 대상8.0/실제데이터/생산API 연결 검증은 별도다.
+
+## 요청 단위 연결과 감사 기록 보완 (2026-09-22)
+
+기존 `teamUserRepository.ts`의 함수6개는 유지했다. `getDataRepositoryOverride("teamUsers")`가 있으면 해당 구현을 호출하고, context 자체가 없을 때만 `legacyTeamUserRepository.ts`를 지연 로딩한다. 기존 local/Prisma 선택과 DTO·쿼리는 legacy adapter로 이동해 보존했다. 부분 context에 TeamUser가 빠지거나 주입 구현이 실패하면 PostgreSQL로 우회하지 않는다.
+
+기존 admin users·팀·역할·삭제 API, lookup, OM 요청 배정 권한 확인 등이 같은 공개 함수를 호출하므로 요청 context의 같은 명단을 읽는다. 기존 라우트의 관리자·lookup 토큰 검사와 OM 권한 로직은 바꾸지 않았다. context 주입은 별도 호출자가 수행해야 하며 모든 앱 기능의 Mongo 전환 완료를 의미하지 않는다.
+
+`TeamUserRepository` interface와 `teamUserErrors.ts`로 계약·오류를 분리했다. 기존 오류 export는 facade에서 재수출한다. Mongo 구현은 오류 파일만 가져오므로 PG/local adapter를 가져오지 않는다.
+
+Mongo 준비 대상에는 `ActivityChange`를 추가했다. create/team/role 변경 후 `operationAuditRow`로 만든 감사행을 같은 session에 암호화 삽입한다. 이름·이메일·Slack ID 같은 개인정보 값은 redacted이고 팀·역할은 기존 감사 계약에 따라 before/after로 남는다. actor 식별 정보와 감사 changes 저장값은 암호화된다. audit 삽입 실패 시 업무 변경과 guard 증가가 함께 rollback된다. 기존 helper와 동일하게 활동 context가 없는 직접 호출은 감사행을 만들지 않으므로 실제 요청 경로에서 context 전달을 반드시 검증한다.
+
+추가 검증: TeamUsers 전체 및 기존 OM 배정 권한 테스트 **26개 통과, native 1개 생략**, 전체 `tsc --noEmit` 통과. 새 tests는 façade 모든 함수 전달, 동시 요청 격리, partial/실패 context의 fallback 차단, no-context Prisma 선택, 기존 OM 권한 helper까지의 주입 전달, 기존 admin/lookup 핸들러의 인증 선행을 확인한다. 라우트 검사는 실제 핸들러 원문을 실행하되 activity wrapper와 인증 응답을 대역으로 주입한 검사이며 브라우저 실사용·실제 인증 서버·Mongo 엔진 검증과 구분한다. native 검사에 감사행 암호화와 감사 삽입 실패 rollback을 추가했으며 이번 로컬 실행에서는 URI가 없어 실행하지 않았다.

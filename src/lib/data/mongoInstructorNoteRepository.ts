@@ -5,8 +5,9 @@ import { stripPiiFromNote } from "./instructorNotePii";
 import { encodeMongoRuntimeDocument, MongoDbNull } from "./mongoRuntimeCodec";
 import { assertMongo, completeMongoRow, MongoOperationError, MongoOperationStore, type MongoOperationOptions, type MongoRow } from "./mongoOperationStore";
 import { assertMongoReadStoreReady } from "./mongoReadStore";
+import { operationAuditRow } from "./mongoOperationAudit";
 
-export const INSTRUCTOR_NOTE_MODELS = ["InstructorNote"] as const;
+export const INSTRUCTOR_NOTE_MODELS = ["InstructorNote", "ActivityChange"] as const;
 
 function toNote(row: MongoRow | null): InstructorNote {
   if (!row) return {};
@@ -112,6 +113,8 @@ export class MongoInstructorNoteRepository implements InstructorNoteRepository {
       const result = await this.store.collection("InstructorNote").replaceOne({ _id: previous.id as string }, document, { session });
       assertMongo(result.matchedCount === 1, "ROW_DISAPPEARED");
     } else await this.store.collection("InstructorNote").insertOne(document, { session });
+    const audit = operationAuditRow("InstructorNote", previous, row);
+    if (audit) await this.store.collection("ActivityChange").insertOne(encodeMongoRuntimeDocument("ActivityChange", audit), { session });
     return toNote(row);
   }
 

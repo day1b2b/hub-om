@@ -4,8 +4,9 @@ import { generateCoachAccessToken, normalizeCoachName } from "../coaches/accessT
 import { encodeMongoRuntimeDocument } from "./mongoRuntimeCodec";
 import { assertMongo, completeMongoRow, MongoOperationError, MongoOperationStore, type MongoOperationOptions, type MongoRow } from "./mongoOperationStore";
 import { assertMongoReadStoreReady, prepareMongoReadStore } from "./mongoReadStore";
+import { operationAuditRow } from "./mongoOperationAudit";
 
-export const COACH_WRITE_MODELS = ["Coach", "CoachPrivateProfile", "CoachField", "CoachFieldMaster", "CoachCurriculum", "CoachCurriculumMaster", "CoachContentEntry"] as const;
+export const COACH_WRITE_MODELS = ["Coach", "CoachPrivateProfile", "CoachField", "CoachFieldMaster", "CoachCurriculum", "CoachCurriculumMaster", "CoachContentEntry", "ActivityChange"] as const;
 export type MongoCoachWriteOptions = MongoOperationOptions & { allowShadowWrites: true };
 export interface CoachWriteAuthor { email: string; name: string }
 const PROFILE_FIELDS = ["name", "workType", "statusNote", "returnDate", "selfNote", "portfolioUrl", "availabilityDetail", "managerNote", "dxTag", "isActive", "fields", "curriculums"] as const;
@@ -68,10 +69,13 @@ export class MongoCoachWriteRepository {
   }
   private async write(model: string, fields: MongoRow, exists: boolean, session: ClientSession): Promise<MongoRow> {
     const row = completeMongoRow(model, fields), document = encodeMongoRuntimeDocument(model, row);
+    const previous = exists ? await this.store.one(model, { _id: document._id }, session) : null;
     if (exists) {
       const result = await this.store.collection(model).replaceOne({ _id: document._id }, document, { session });
       assertMongo(result.matchedCount === 1, "COACH_ROW_DISAPPEARED");
     } else await this.store.collection(model).insertOne(document, { session });
+    const audit = operationAuditRow(model, previous, row);
+    if (audit) await this.store.collection("ActivityChange").insertOne(encodeMongoRuntimeDocument("ActivityChange", audit), { session });
     return row;
   }
   private async existing(coachId: string, session: ClientSession): Promise<MongoRow> {
@@ -81,7 +85,12 @@ export class MongoCoachWriteRepository {
   }
   private async tags(coachId: string, type: "fields" | "curriculums", names: string[], session: ClientSession): Promise<void> {
     const link = type === "fields" ? "CoachField" : "CoachCurriculum", master = `${link}Master`;
+    const previousLinks = await this.store.scan(link, { coachId }, session);
     await this.store.collection(link).deleteMany({ coachId }, { session });
+    for (const previous of previousLinks) {
+      const audit = operationAuditRow(link, previous, null);
+      if (audit) await this.store.collection("ActivityChange").insertOne(encodeMongoRuntimeDocument("ActivityChange", audit), { session });
+    }
     for (const name of names) {
       let tag = await this.store.one(master, { name }, session);
       if (!tag) tag = await this.write(master, { id: randomUUID(), name }, false, session);
