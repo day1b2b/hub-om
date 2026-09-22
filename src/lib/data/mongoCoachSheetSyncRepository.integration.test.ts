@@ -115,18 +115,18 @@ test("actual sheet sync services and handlers against an isolated Mongo replica 
         readContract:async () => { sheetReads++; throw new Error("Sheet source must remain untouched by blocked all-sync"); },
         readSamsung:async () => { sheetReads++; throw new Error("Sheet source must remain untouched by blocked all-sync"); }
       };
-      // The real Notion service asserts the scoped boundary before reading config or calling fetch.
+      // The real handler requires Notion repositories before reading config, fetching, or logging a run.
       // This additional fence makes an accidental future ordering regression unable to reach the network.
       const fetchPatch = mock.method(globalThis,"fetch",async () => { fetchCalls++; throw new Error("External fetch forbidden in scoped Notion test"); });
       try {
         for(const [route,path] of [[notionRoute,"/api/admin/sync-notion"],[allSyncRoute,"/api/sync/all"]] as const) for(const method of ["GET","POST"] as const) {
           const response = await runWithDataRepositories({ ...f.scope,coachSheetSource:input },() => actors.run(managerA,() => route[method](request(path,method))));
-          assert.equal(response.status,500); assert.deepEqual(await response.json(),{ ok:false,error:"DEFAULT_DATABASE_ACCESS_BLOCKED" });
+          assert.equal(response.status,500); assert.deepEqual(await response.json(),{ ok:false,error:"DATA_REPOSITORY_NOT_CONFIGURED: coachNotionSync" });
           assert.deepEqual(await snapshot(f.store),before); assert.deepEqual(await guardSnapshot(),guards);
         }
       } finally { fetchPatch.mock.restore(); }
       assert.equal(fetchCalls,0); assert.equal(sheetReads,0); assert.equal(externalReads,0);
-      const logs = await f.store.scan("CoachSyncLog",{}); assert.equal(logs.length,2); assert.deepEqual(logs.map(row => row.type).sort(),["all","notion"]); assert.ok(logs.every(row => row.status === "failed"));
+      const logs = await f.store.scan("CoachSyncLog",{}); assert.equal(logs.length,0);
       assert.equal(await f.store.collection("ActivityRequest").countDocuments({ status:500 }),4);
     });
 

@@ -1,6 +1,6 @@
 # MongoDB 전환 범위와 남은 PostgreSQL 의존성
 
-확인 기준: `7ebb24f` 이후 코치 투입·평가 경계 작업 트리, 2026-09-22. `src`의 테스트 외 소스에서 실제 연결 생성·Prisma delegate 호출·raw SQL·repository factory와 간접 호출을 읽어 구분했다. 이 문서는 코드 경로 조사이며 운영 DB 접속이나 운영 데이터 검증 결과가 아니다. 아래 진행 상태는 이 기준 시점의 기록이다.
+최초 전체 경로 조사: `7ebb24f` 이후 코치 투입·평가 경계, 2026-09-22. 이후 시트·Notion 작업의 변경 경계를 표와 후속 기록에 누적 반영했다. `src`의 테스트 외 소스에서 실제 연결 생성·Prisma delegate 호출·raw SQL·repository factory와 간접 호출을 읽어 구분했다. 이 문서는 코드 경로 조사이며 운영 DB 접속이나 운영 데이터 검증 결과가 아니다. 아래 진행 상태는 이 기준 시점의 기록이다.
 
 **35개 모델의 복사/codec 지원은 앱 전체 전환 완료를 의미하지 않는다. 생산 factory와 직접 API는 여전히 PostgreSQL을 사용한다.** 기존 Mongo 구현은 별도 shadow DB/namespace에서 직접 여는 병렬 검증용이다. 환경변수 이름만 바꾸거나 기존 factory 몇 개를 바꾸는 것으로 아래 직접·간접 경로가 함께 전환되지 않는다.
 
@@ -14,8 +14,8 @@
 | InstructorNote 조회·쓰기 | shadow 구현과 Mongo8.0.30 실제 save handler 검증 완료 | factory는 명시 context 우선, 기본 local/Prisma 유지. Notion 직접 PG 경로 별도 |
 | Coach CRUD | shadow 구현과 Mongo8.0.30 관리 API 경계 검증 완료. 업무/ActivityChange 실패 rollback 확인 | 두 관리 API는 repository 호출로 변경. 명시 context 외 기본 PG 유지. 일정/섭외/마스터·토큰·복원은 별도 |
 | TeamUser 생성·팀/역할 수정 | shadow 구현과 Mongo8.0.30 합성 검증 완료. guard 중복 경쟁·감사 실패 rollback 확인. 물리삭제는 정책 충돌로 차단 | 기존 export 함수는 context 우선 facade. 기본 legacy PG/local 유지. 모든 writer의 guard 참여 필요 |
-| 코치 월간 일정·예약 | `MongoCoachScheduleRepository` 및 실제handler 합성검증 경계. 월 교체/접근 로그/예약 선점·자기취소, active unique·transaction·암호화·감사 | 지정 3개 API는 context 우선/기본 Prisma. 투입·시트 writer와 coach guard 공유, Notion은 별도 |
-| 코치 투입·평가 | `MongoCoachEngagementRepository`, 슬롯 교체·예약 자동취소·평가 이력 원자화와 공통 scheduling guard | 3개 API context 경계/기본 PG. contract/Samsung도 catalog→coach guard 참여, Notion은 미완료 gate |
+| 코치 월간 일정·예약 | `MongoCoachScheduleRepository` 및 실제handler 합성검증 경계. 월 교체/접근 로그/예약 선점·자기취소, active unique·transaction·암호화·감사 | 지정 3개 API는 context 우선/기본 Prisma. 투입·시트·Notion writer와 coach guard 공유 |
+| 코치 투입·평가 | `MongoCoachEngagementRepository`, 슬롯 교체·예약 자동취소·평가 이력 원자화와 공통 scheduling guard | 3개 API context 경계/기본 PG. contract/Samsung/Notion도 catalog→coach guard 참여, 생산 전환은 별도 |
 | 전체 모델 암호화 snapshot export/import | 35개 모델 codec·일관된 PG 읽기 snapshot·사본 대조·참조 검증 지원 | 운영 서비스 선택·실시간 변경 동기화·최종 freeze/cutover·복구 승인은 별도 |
 
 ## 남은 기능군별 실제 경로
@@ -30,9 +30,9 @@
 | 팀 사용자 관리 | `lib/data/teamUsers/teamUserRepository.ts` → 기본 `legacyTeamUserRepository.ts` → TeamUser delegate | TeamUser; local JSON은 개발 분기 | 명단/권한 호출부는 facade를 유지하며 context 주입 검증. 생산 선택과 전체 writer 일치 필요. Member 조회는 별도 |
 | 코치 CRUD·태그 마스터 | `api/coaches`, `api/coaches/[id]`, `api/coaches/[id]/regenerate-token`, `api/master/fields`, `api/master/curriculums`, `api/admin/deleted-coaches` | Coach, CoachPrivateProfile, CoachField/Curriculum, 두 Master | 두 CRUD API는 context/기본 Prisma adapter로 연결. 토큰 재발급도 context 경계 연결. 마스터 API·삭제 복원 경로 미전환 |
 | 코치 인증·본인 페이지·개인정보 열람 | `lib/coaches/coachTokenAuth.ts`, `lib/data/coachMyPage.ts`, `coachPrivateAccess.ts`, `coachAccessTokenBackfill.ts`, `api/coach/me`, `api/coaches/export` | Coach, CoachPrivateProfile, CoachPrivateAccessLog, CoachdbArchiveRow, 예약·섭외 | 토큰 lookup/본인 API/export는 명시context 연결 및 합성검증. 기본PG이며 manager coachMyPage·backfill은 별도 미전환 |
-| 가용 일정·예약·섭외 | `api/coaches/[id]/schedules`, `/reservations`, `/engagements`, `api/coach/schedule/[yearMonth]`, `api/engagements/[id]`, `/review`; `lib/coaches/engagementApi.ts`, `reservationAutoCancel.ts` | CoachSchedule, CoachScheduleAccessLog, CoachDayReservation, CoachEngagement, CoachEngagementSchedule, Coach | 월일정 GET/PUT·예약 POST/DELETE·매니저일정 GET은 context 경계. 수동 섭외확정/자동취소/평가는 context 경계 및 일정·예약 공통 guard. contract/Samsung 동기화·삭제 관계 transaction은 별도 시트 경계에서 구현. Notion은 남음 |
+| 가용 일정·예약·섭외 | `api/coaches/[id]/schedules`, `/reservations`, `/engagements`, `api/coach/schedule/[yearMonth]`, `api/engagements/[id]`, `/review`; `lib/coaches/engagementApi.ts`, `reservationAutoCancel.ts` | CoachSchedule, CoachScheduleAccessLog, CoachDayReservation, CoachEngagement, CoachEngagementSchedule, Coach | 월일정 GET/PUT·예약 POST/DELETE·매니저일정 GET은 context 경계. 수동 섭외확정/자동취소/평가는 context 경계 및 일정·예약 공통 guard. contract/Samsung 동기화·삭제 관계 transaction은 별도 시트 경계에서 구현. Notion도 별도 동기화 경계 구현 |
 | 코치 메모·콘텐츠·관리 조회 | `lib/coaches/contentEntries.ts`, `api/coaches/[id]/notes`, `api/admin/content-entries`, `api/admin/schedule-registration/[yearMonth]`, `api/schedules/[yearMonth]/status`, `app/coaches/admin/page.tsx` | CoachContentEntry, CoachEngagement, CoachScheduleAccessLog, Coach | 메모 생성·관리·검토·등록 현황 및 직접 페이지 조회 |
-| 코치 외부 동기화 | `lib/coaches/notionCoachSync.ts`, `samsungScheduleSync.ts`, `contractSheetSync.ts`, `syncLog.ts` | Coach, PrivateProfile, Field/Curriculum/Master, Engagement/Schedule, CoachSyncLog | contract/Samsung 및 로그는 명시 Mongo context, 합성 source와 실제 handler 검증. Notion/all은 scope에서 외부 읽기 전 차단하며 기본 PG 유지 |
+| 코치 외부 동기화 | `lib/coaches/notionCoachSync.ts`, `samsungScheduleSync.ts`, `contractSheetSync.ts`, `syncLog.ts` | Coach, PrivateProfile, Field/Curriculum/Master, Engagement/Schedule, CoachSyncLog | contract/Samsung/Notion 및 로그는 명시 Mongo context, 합성 source로 실제 handler 검증. Notion/all은 전체 scope 선행 검사 후 실행하며 기본 PG 유지 |
 | 강사 위키·노션 동기화 | `lib/data/prismaInstructorNoteRepository.ts`, `lib/instructors/notionInstructorSync.ts` | InstructorNote | 실제 save route의 명시 context 검증 완료. 기본 factory와 직접 Notion upsert는 여전히 PG |
 | 가져오기·staging·승격·Drive 기록 | `lib/data/prismaImportRepository.ts`, `importStagingWriter.ts`, `importPromotionService.ts`, `lib/driveImports/driveImportResults.ts`; `api/admin/imports/{upload,google-sheets/import,notion/import}`; `app/admin/imports/**` | DataImportRun, OperationSourceRecord, Company, Course, OperationSession, DriveImportRun, DriveImportResult | staging 오류 보존·승격·중복 식별·일괄 원자성·관리 페이지. 외부 소스 읽기 자체와 PG 적재 구분 |
 | 매출 동기화 | `lib/data/salesRevenueSync.ts` | Course, SalesRevenueSyncLog | 금액/동기화 전후 값·감사·재시도, 실제 운영 쓰기 승인 별도 |
@@ -93,7 +93,7 @@
 | `src/lib/admin/databaseDashboard.ts` | Company, Course, OperationSession, DriveImportRun, DriveImportResult, Member, DataImportRun, OperationSourceRecord |
 | `src/lib/coaches/contentEntries.ts` | CoachContentEntry |
 | `src/lib/data/prismaCoachSheetSyncRepository.ts` | Coach, CoachPrivateProfile, CoachEngagement, CoachEngagementSchedule, CoachDayReservation; catalog→coach locks |
-| `src/lib/coaches/notionCoachSync.ts` | Coach, CoachPrivateProfile, CoachFieldMaster, CoachCurriculumMaster, CoachField, CoachCurriculum |
+| `src/lib/data/prismaCoachNotionSyncRepository.ts` | Coach, CoachPrivateProfile, CoachFieldMaster, CoachCurriculumMaster, CoachField, CoachCurriculum; catalog→coach locks |
 | `src/lib/data/coachSyncLogRepositoryFactory.ts` | CoachSyncLog PG default adapter |
 | `src/lib/data/coachAccessTokenBackfill.ts` | Coach, CoachdbArchiveRow |
 | `src/lib/data/coachMyPage.ts` | Coach, CoachDayReservation, CoachEngagement, CoachEngagementSchedule |
@@ -145,3 +145,7 @@
 [정책과 저장 경계](mongodb-coach-sheet-sync.md). contract/Samsung 서비스와 로그는 명시 Mongo context를 지원하고 PG 기본을 유지한다. source 주입, catalog→정렬 coach 잠금, 기존 단계별 commit 및 삼성 Cascade/SetNull을 검증한다. Notion/all은 Mongo scope에서 외부 읽기 전에 차단하는 미완료 gate다. 전체 생산 전환은 완료되지 않았다.
 
 총괄 통합 회귀864pass18skip0fail 및 독립 검토 완료. 이름이 포함될 수 있는 `sourceEngagementId`/`sourceEngagementScheduleId` 평문 저장은 전체 개인정보 암호화 목표의 필수 보완 항목이다. 기존 operational 분류를 암호화 제외 승인으로 해석하지 않는다. Notion 저장 경계 다음에 암호화·검색/고유키·기존 데이터 변환의 일관성을 보완하며 운영 전환 전에 해결한다.
+
+## Notion 코치 동기화 후속 경계 (2026-09-22)
+
+[정책과 저장 경계](mongodb-coach-notion-sync.md). Notion/all의 기존 차단 gate를 명시 source/repository 주입 실행으로 전환한다. 기존 identity·deleted 매칭·regular overwrite와 duplicate 빈값 보충·행별 commit을 유지한다. 다음 필수 작업은 이름 포함 투입/슬롯 source ID 암호화이며, 나머지 미전환 runtime·운영 리허설·배포는 별도로 남는다.
