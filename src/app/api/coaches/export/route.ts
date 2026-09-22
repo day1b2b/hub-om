@@ -2,7 +2,8 @@ import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertCoachPiiAccess } from "@/lib/auth/requireAdminSession";
 import { buildSkillfloCoachUrl } from "@/lib/coaches/skillfloCoachUrl";
-import { getPrismaClient } from "@/lib/data/prisma";
+import { createCoachExportRepository } from "@/lib/data/coachExportRepositoryFactory";
+import { toCoachExportCsv } from "@/lib/coaches/coachExportCsv";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,7 @@ async function activityPOST(request: Request) {
     type?: unknown;
   };
   const coachIds = Array.isArray(body.coachIds)
-    ? body.coachIds.filter((id): id is string => typeof id === "string")
+    ? [...new Set(body.coachIds.filter((id): id is string => typeof id === "string").map(id => id.toLowerCase()))]
     : [];
   const type = body.type === "email" || body.type === "mail-merge" ? body.type : "phone";
 
@@ -22,33 +23,11 @@ async function activityPOST(request: Request) {
     return NextResponse.json({ ok: false, error: "내보낼 코치를 선택해주세요." }, { status: 400 });
   }
 
-  const prisma = getPrismaClient();
-  const coaches = await prisma.coach.findMany({
-    where: {
-      id: { in: coachIds },
-      deletedAt: null
-    },
-    select: {
-      id: true,
-      name: true,
-      accessToken: true,
-      privateProfile: {
-        select: {
-          phone: true,
-          email: true
-        }
-      }
-    },
-    orderBy: { normalizedName: "asc" }
-  });
+  if (coachIds.length > 20_000 || coachIds.some(id => !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))) {
+    return NextResponse.json({ ok: false, error: "내보낼 코치 목록을 확인해주세요. 한 번에 최대 20,000명까지 선택할 수 있습니다." }, { status: 400 });
+  }
 
-  await prisma.coachPrivateAccessLog.createMany({
-    data: coaches.map((coach) => ({
-      coachId: coach.id,
-      accessedByEmail: session.user!.email!,
-      context: `coach_export:${type}`
-    }))
-  });
+  const coaches = await createCoachExportRepository().exportCoaches(coachIds, type, session.user!.email!);
 
   const rows = coaches.map<Record<string, string>>((coach) => {
     if (type === "mail-merge") {
@@ -73,29 +52,16 @@ async function activityPOST(request: Request) {
     return row;
   });
 
-  const csv = toCsv(rows);
+  const csv = toCoachExportCsv(rows);
   const label = type === "mail-merge" ? "mail_merge" : type === "email" ? "emails" : "phones";
 
   return new NextResponse(csv, {
     headers: {
       "content-type": "text/csv; charset=utf-8",
+      "cache-control": "private, no-store",
       "content-disposition": `attachment; filename="coaches_${label}_${new Date().toISOString().slice(0, 10)}.csv"`
     }
   });
-}
-
-function toCsv(rows: Array<Record<string, string>>): string {
-  if (rows.length === 0) return "\uFEFF";
-  const headers = Object.keys(rows[0]);
-  const lines = [
-    headers.map(escapeCsv).join(","),
-    ...rows.map((row) => headers.map((header) => escapeCsv(row[header] ?? "")).join(","))
-  ];
-  return `\uFEFF${lines.join("\n")}`;
-}
-
-function escapeCsv(value: string): string {
-  return `"${value.replaceAll("\"", "\"\"")}"`;
 }
 
 export const POST = withActivity("/api/coaches/export", "POST", activityPOST);

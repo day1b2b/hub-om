@@ -1,3 +1,6 @@
+import type { CoachExportRepository } from "./coachExportRepository";
+import type { CoachTokenRepository } from "./coachTokenRepository";
+import type { CoachTokenRotationRepository } from "./coachTokenRotationRepository";
 import { AsyncLocalStorage } from "node:async_hooks";
 import type { CoachManagementRepository } from "./coachManagementRepository";
 import type { TeamUserRepository } from "./teamUsers/teamUserRepositoryContract";
@@ -12,6 +15,9 @@ export interface CoachPrivateAccessLogRepository {
   recordAccess(coachId: string, accessedByEmail: string, context: string): Promise<void>;
 }
 export interface DataRepositories {
+  coachExport: CoachExportRepository;
+  coachToken: CoachTokenRepository;
+  coachTokenRotation: CoachTokenRotationRepository;
   coachManagement: CoachManagementRepository;
   teamUsers: TeamUserRepository;
   instructorNote: InstructorNoteRepository;

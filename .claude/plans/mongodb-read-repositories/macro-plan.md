@@ -14,3 +14,6 @@
 
 ## 2026-09-22 API 경계 후속
 Coach 관리 route·Team facade·Instructor save·요청/개인정보 감사의 명시 Mongo context와 PG 진입 차단 구현. 로컬 Mongo8.0.30 합성 검증 완료. feature 원격 보관 연결 문제 해소. 전체 runtime Wave는 진행 중이며 다음 Task는 코치 토큰/본인/개인정보 export 경계. 최신 증거·gap은 ../mongodb-api-boundaries/handoff.md를 따른다.
+
+## 코치 접근 경계 후속
+코치 token/본인조회/export/재발급의 명시Mongo경계와 실제권한/감사검증 완료. 다음 Task는 일정등록/예약/취소. 최신근거 ../mongodb-coach-access/handoff.md. 전체runtime/실제데이터/배포는 진행중.

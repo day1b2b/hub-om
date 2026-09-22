@@ -1,6 +1,6 @@
 # MongoDB 전환 범위와 남은 PostgreSQL 의존성
 
-확인 기준: `48b0f8b` 이후 API 경계 작업 트리, 2026-09-22. `src`의 테스트 외 소스에서 실제 연결 생성·Prisma delegate 호출·raw SQL·repository factory와 간접 호출을 읽어 구분했다. 이 문서는 코드 경로 조사이며 운영 DB 접속이나 운영 데이터 검증 결과가 아니다. 아래 진행 상태는 이 기준 시점의 기록이다.
+확인 기준: `32bd456` 이후 코치 접근 경계 작업 트리, 2026-09-22. `src`의 테스트 외 소스에서 실제 연결 생성·Prisma delegate 호출·raw SQL·repository factory와 간접 호출을 읽어 구분했다. 이 문서는 코드 경로 조사이며 운영 DB 접속이나 운영 데이터 검증 결과가 아니다. 아래 진행 상태는 이 기준 시점의 기록이다.
 
 **35개 모델의 복사/codec 지원은 앱 전체 전환 완료를 의미하지 않는다. 생산 factory와 직접 API는 여전히 PostgreSQL을 사용한다.** 기존 Mongo 구현은 별도 shadow DB/namespace에서 직접 여는 병렬 검증용이다. 환경변수 이름만 바꾸거나 기존 factory 몇 개를 바꾸는 것으로 아래 직접·간접 경로가 함께 전환되지 않는다.
 
@@ -9,7 +9,7 @@
 | 기능 | Mongo 구현 상태 | 생산 연결 상태 |
 | --- | --- | --- |
 | 운영 목록·상세·생성·수정·soft-delete·과정 검색·요약 | `MongoOperationRepository` 구현·합성 검증. Company/Course/CourseIdLabel/OperationSession/OperationSourceRecord/TeamUser/ActivityChange 사용 | `operationRepositoryFactory.ts`는 `CalendarReflectingOperationRepository(new PrismaOperationRepository())` 유지. Mongo 감사 쓰기가 전역 활동 기록을 대체하지 않음 |
-| 코치 공개 조회 6개·개인정보 조회 2개 | `MongoCoachRepository`, `MongoCoachPrivateRepository` 구현·합성 검증. 분야/커리큘럼/일정/예약/archive 관계 포함 | 공개 coach factory는 Prisma 고정. private factory는 명시 context 주입 지원, 기본은 Prisma. 토큰 인증은 별도 |
+| 코치 공개 조회 6개·개인정보 조회 2개 | `MongoCoachRepository`, `MongoCoachPrivateRepository` 구현·합성 검증. 분야/커리큘럼/일정/예약/archive 관계 포함 | 공개 coach factory는 Prisma 고정. private factory는 명시 context 주입 지원, 기본은 Prisma. 토큰 인증은 명시 context 지원, 기본 PG 유지 |
 | Member/TeamUser 기반 명단 조회 | `MongoTeamMemberRepository` 구현·합성 검증 | TeamMember factory는 기존 local/Prisma/Notion fallback 유지 |
 | InstructorNote 조회·쓰기 | shadow 구현과 Mongo8.0.30 실제 save handler 검증 완료 | factory는 명시 context 우선, 기본 local/Prisma 유지. Notion 직접 PG 경로 별도 |
 | Coach CRUD | shadow 구현과 Mongo8.0.30 관리 API 경계 검증 완료. 업무/ActivityChange 실패 rollback 확인 | 두 관리 API는 repository 호출로 변경. 명시 context 외 기본 PG 유지. 일정/섭외/마스터·토큰·복원은 별도 |
@@ -26,8 +26,8 @@
 | 운영·과정의 별도 관리자 기능 | `api/admin/courses/lookup`, `api/admin/courses/[courseId]`, `api/admin/deleted-operations`, `api/admin/onsite-required-backfill`, `api/admin/om-assignment-status-backfill`, `lib/data/courseNameRestore.ts` | Company, Course, OperationSession, OperationSourceRecord, 활동 감사 | 기본 OperationRepository 외 직접 수정/복원/일괄 작업·경합·감사 검증 |
 | OM 접수·배정·권한 | `lib/data/omRequest/omRequestLocalRepository.ts`, `omRequestAssignment.ts`, `lib/auth/omRequestAssignmentAccess.ts` → `listTeamUsers()` | OmRequest, OperationSession, TeamUser, ActivityChange | 이름에 Local이 있어도 운영에서는 PG. 접수·배정 원자성·중복/사람 수정 정책·명단 기반 권한 동등성 필요 |
 | 팀 사용자 관리 | `lib/data/teamUsers/teamUserRepository.ts` → 기본 `legacyTeamUserRepository.ts` → TeamUser delegate | TeamUser; local JSON은 개발 분기 | 명단/권한 호출부는 facade를 유지하며 context 주입 검증. 생산 선택과 전체 writer 일치 필요. Member 조회는 별도 |
-| 코치 CRUD·태그 마스터 | `api/coaches`, `api/coaches/[id]`, `api/coaches/[id]/regenerate-token`, `api/master/fields`, `api/master/curriculums`, `api/admin/deleted-coaches` | Coach, CoachPrivateProfile, CoachField/Curriculum, 두 Master | 두 CRUD API는 context/기본 Prisma adapter로 연결. 마스터 API·토큰 재발급·삭제 복원 경로 미전환 |
-| 코치 인증·본인 페이지·개인정보 열람 | `lib/coaches/coachTokenAuth.ts`, `lib/data/coachMyPage.ts`, `coachPrivateAccess.ts`, `coachAccessTokenBackfill.ts`, `api/coach/me`, `api/coaches/export` | Coach, CoachPrivateProfile, CoachPrivateAccessLog, CoachdbArchiveRow, 예약·섭외 | 토큰 lookup/만료·민감 조회 권한·접근 감사·export·backfill. 공개 조회 adapter만으로 대체 불가 |
+| 코치 CRUD·태그 마스터 | `api/coaches`, `api/coaches/[id]`, `api/coaches/[id]/regenerate-token`, `api/master/fields`, `api/master/curriculums`, `api/admin/deleted-coaches` | Coach, CoachPrivateProfile, CoachField/Curriculum, 두 Master | 두 CRUD API는 context/기본 Prisma adapter로 연결. 토큰 재발급도 context 경계 연결. 마스터 API·삭제 복원 경로 미전환 |
+| 코치 인증·본인 페이지·개인정보 열람 | `lib/coaches/coachTokenAuth.ts`, `lib/data/coachMyPage.ts`, `coachPrivateAccess.ts`, `coachAccessTokenBackfill.ts`, `api/coach/me`, `api/coaches/export` | Coach, CoachPrivateProfile, CoachPrivateAccessLog, CoachdbArchiveRow, 예약·섭외 | 토큰 lookup/본인 API/export는 명시context 연결 및 합성검증. 기본PG이며 manager coachMyPage·backfill은 별도 미전환 |
 | 가용 일정·예약·섭외 | `api/coaches/[id]/schedules`, `/reservations`, `/engagements`, `api/coach/schedule/[yearMonth]`, `api/engagements/[id]`, `/review`; `lib/coaches/engagementApi.ts`, `reservationAutoCancel.ts` | CoachSchedule, CoachScheduleAccessLog, CoachDayReservation, CoachEngagement, CoachEngagementSchedule, Coach | 일정 쓰기·예약 선점/취소·섭외 확정·중복/관계 transaction. 조회 대시보드 구현과 별개 |
 | 코치 메모·콘텐츠·관리 조회 | `lib/coaches/contentEntries.ts`, `api/coaches/[id]/notes`, `api/admin/content-entries`, `api/admin/schedule-registration/[yearMonth]`, `api/schedules/[yearMonth]/status`, `app/coaches/admin/page.tsx` | CoachContentEntry, CoachEngagement, CoachScheduleAccessLog, Coach | 메모 생성·관리·검토·등록 현황 및 직접 페이지 조회 |
 | 코치 외부 동기화 | `lib/coaches/notionCoachSync.ts`, `samsungScheduleSync.ts`, `contractSheetSync.ts`, `syncLog.ts` | Coach, PrivateProfile, Field/Curriculum/Master, Engagement/Schedule, CoachSyncLog | 수집 변환·merge/upsert·예약 후처리·동기화 로그. HTTP adapter 변경과 별도 검증 |
@@ -81,14 +81,11 @@
 | `src/app/api/announcements/[id]/attachments/[attachmentId]/route.ts` | AnnouncementAttachment |
 | `src/app/api/announcements/[id]/route.ts` | Announcement |
 | `src/app/api/announcements/route.ts` | Announcement |
-| `src/app/api/coach/me/route.ts` | Coach, CoachdbArchiveRow |
 | `src/app/api/coach/schedule/[yearMonth]/route.ts` | CoachSchedule, CoachScheduleAccessLog, CoachEngagement, CoachEngagementSchedule |
 | `src/app/api/coaches/[id]/engagements/route.ts` | Coach, CoachEngagement |
 | `src/app/api/coaches/[id]/notes/route.ts` | CoachContentEntry |
-| `src/app/api/coaches/[id]/regenerate-token/route.ts` | Coach |
 | `src/app/api/coaches/[id]/reservations/route.ts` | Coach, CoachDayReservation |
 | `src/app/api/coaches/[id]/schedules/route.ts` | Coach, CoachSchedule, CoachScheduleAccessLog, CoachEngagementSchedule |
-| `src/app/api/coaches/export/route.ts` | Coach, CoachPrivateAccessLog |
 | `src/app/api/engagements/[id]/review/route.ts` | CoachEngagement |
 | `src/app/api/engagements/[id]/route.ts` | CoachEngagement |
 | `src/app/api/health/route.ts` | 중앙 연결·raw SQL 또는 동적 delegate: 본문 기능군 참조 |
@@ -98,7 +95,6 @@
 | `src/app/coaches/admin/page.tsx` | Coach |
 | `src/lib/activity/request.ts` | ActivityRequest |
 | `src/lib/admin/databaseDashboard.ts` | Company, Course, OperationSession, DriveImportRun, DriveImportResult, Member, DataImportRun, OperationSourceRecord |
-| `src/lib/coaches/coachTokenAuth.ts` | Coach |
 | `src/lib/coaches/contentEntries.ts` | CoachContentEntry |
 | `src/lib/coaches/contractSheetSync.ts` | Coach, CoachPrivateProfile, CoachEngagement, CoachEngagementSchedule |
 | `src/lib/coaches/notionCoachSync.ts` | Coach, CoachPrivateProfile, CoachFieldMaster, CoachCurriculumMaster, CoachField, CoachCurriculum |
@@ -112,6 +108,9 @@
 | `src/lib/data/importStagingWriter.ts` | DataImportRun, OperationSourceRecord |
 | `src/lib/data/omRequest/omRequestAssignment.ts` | OperationSession, OmRequest, ActivityChange |
 | `src/lib/data/omRequest/omRequestLocalRepository.ts` | OmRequest |
+| `src/lib/data/prismaCoachTokenRepository.ts` | Coach, CoachdbArchiveRow |
+| `src/lib/data/prismaCoachTokenRotationRepository.ts` | Coach |
+| `src/lib/data/prismaCoachExportRepository.ts` | Coach, CoachPrivateAccessLog |
 | `src/lib/data/prismaCoachManagementRepository.ts` | Coach, CoachPrivateProfile, CoachFieldMaster, CoachCurriculumMaster, CoachField, CoachCurriculum |
 | `src/lib/data/prismaCoachPrivateRepository.ts` | CoachPrivateProfile, CoachEngagement |
 | `src/lib/data/prismaCoachRepository.ts` | Coach, CoachSchedule, CoachDayReservation, CoachEngagement, CoachEngagementSchedule, CoachdbArchiveRow |
@@ -130,5 +129,10 @@
 
 - [요청 단위 저장소 계약](mongodb-api-boundaries.md): 명시 scope에서는 누락 서비스·중앙 Prisma getter·Calendar raw PG lock 진입이 실패한다. scope 밖에 미리 보관한 Prisma 객체 자체를 무효화하는 장치는 아니다.
 - 로컬 MongoDB 8.0.30 replica set 합성 검증 묶음 30 pass / 0 fail / 0 skip. 이 중 TeamMember mock 검사 4개가 포함된다. 전체 회귀 814 pass / 12 skip이며 서로 합산하지 않는다. 운영 Mongo cluster 및 실제 PG query 대조·UI 확인은 미실행.
-- private access 서비스의 권한/감사 실패 차단 검증은 완료했지만 `api/coaches/export`의 직접 PG 흐름은 그대로다. export 전환 완료로 해석하면 안 된다.
+- 위 API 경계 단계 이후 별도 코치 접근 작업에서 export도 context 경계로 연결했다. 아래 후속 검증을 참고한다.
 - 생산 selector·실데이터 복사·최종 동기화·복원·배포는 여전히 미완료.
+
+## 코치 접근 후속 검증 (2026-09-22)
+토큰 인증·본인조회·재발급·개인정보 내보내기를 명시 Mongo scope에서 실제handler로 검증했다. 기본PG 선택은 유지한다. 전체 회귀825pass15skip, Mongo8.0.30 묶음33pass0skip(mock4포함). [토큰조회](mongodb-coach-token-access.md), [재발급](mongodb-coach-token-rotation.md), [내보내기](mongodb-coach-export.md) 참고.
+
+양backend 삭제코치 재발급404, UUIDcase정규화, CSV수식문자열화와no-store가 의도된보안보완이다. 실제OAuth/UI/PG query대조·운영Mongo검증/데이터복사/배포는 별도다. 다음은 코치 일정등록/예약/취소 경계다.
