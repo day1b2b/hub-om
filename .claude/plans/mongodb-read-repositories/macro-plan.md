@@ -1,5 +1,7 @@
 # MongoDB 병렬 이전 상위 계획
 
+최신 총괄 상태: Notion 4430763 통합 및 전체876pass19skip0fail 재실행·독립 검토 완료. 근거는 ../mongodb-coach-notion-sync/integration-review.md. 다음 작업은 이름 포함 원천 식별자 암호화 정책·고유키/검색·snapshot/runtime·기존 데이터 변환 보완이다. 운영 PG와 실제 데이터는 유지한다.
+
 목표: 기존 PostgreSQL 운영을 유지하며 개인정보를 암호화한 별도 MongoDB를 검증한 뒤 안전하게 전환한다.
 
 1. 복사 기반: 35모델 read-only export, 암호화 spool, insert-only import와 참조/고유키 검증. 코드와 합성 검증 완료, 실제 복사 미실행.
