@@ -1,3 +1,4 @@
+import { assertDefaultDatabaseAccess } from "../data/dataRepositoryContext";
 // 노션 코치 DB → coaches 동기화 (서버 실행). 매핑은 notionCoachMap이 담당한다.
 //
 // 연결 키는 노션 코치 DB의 ID(auto increment, 강사 DB와 같은 방식)다. 이름은 노션에서 바뀔 수 있고
@@ -26,6 +27,7 @@ const COACH_INCLUDE = {
 type ExistingCoach = Prisma.CoachGetPayload<{ include: typeof COACH_INCLUDE }>;
 
 export async function syncNotionCoaches(dryRun: boolean): Promise<SyncResult> {
+  assertDefaultDatabaseAccess();
   const config = readNotionConfig();
   const pages = await fetchAllNotionPages(config);
   const result = emptySyncResult(dryRun);

@@ -1,11 +1,11 @@
 import type { ClientSession } from "mongodb";
 import type { CoachManagementRepository, CoachManagementQuery, CoachManagementDetail, CoachManagementSummary, CoachManagementTag, CoachManagementAuthor } from "./coachManagementRepository";
-import { MongoCoachWriteRepository, COACH_WRITE_MODELS, type MongoCoachWriteOptions } from "./mongoCoachWriteRepository";
+import { MongoCoachWriteRepository, prepareMongoCoachWriteStore, COACH_WRITE_MODELS, type MongoCoachWriteOptions } from "./mongoCoachWriteRepository";
 import { MongoOperationStore, assertMongo, MongoOperationError, type MongoRow } from "./mongoOperationStore";
 import { assertMongoReadStoreReady, prepareMongoReadStore } from "./mongoReadStore";
 
 export const COACH_MANAGEMENT_MODELS = [...COACH_WRITE_MODELS, "CoachEngagement", "CoachSchedule"] as const;
-export async function prepareMongoCoachManagementStore(options: MongoCoachWriteOptions) { await prepareMongoReadStore(options, COACH_MANAGEMENT_MODELS); }
+export async function prepareMongoCoachManagementStore(options: MongoCoachWriteOptions) { await prepareMongoReadStore(options, COACH_MANAGEMENT_MODELS); await prepareMongoCoachWriteStore(options); }
 const STATUS_ORDER = ["PENDING", "ACTIVE", "INACTIVE"];
 const date = (value: unknown) => (value as Date).toISOString().slice(0, 10);
 const nullable = (row: MongoRow, key: string) => row[key] as string | null;

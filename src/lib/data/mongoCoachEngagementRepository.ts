@@ -1,3 +1,4 @@
+import { prepareMongoCoachCatalogGuard, assertMongoCoachCatalogGuardReady, lockMongoCoachCatalog } from "./mongoCoachCatalogGuard";
 import { randomUUID } from "node:crypto";
 import { MongoServerError, type ClientSession } from "mongodb";
 import { activityContext } from "../activity/context";
@@ -15,9 +16,10 @@ const logical = (row: MongoRow) => row as unknown as CoachEngagementRow;
 
 export async function prepareMongoCoachEngagementStore(options: Options): Promise<void> {
   await prepareMongoReadStore(options, COACH_ENGAGEMENT_MODELS);
+  await prepareMongoCoachCatalogGuard(new MongoOperationStore(options, COACH_ENGAGEMENT_MODELS), options.allowShadowWrites);
   await prepareMongoCoachSchedulingGuard(new MongoOperationStore(options, COACH_ENGAGEMENT_MODELS), options.allowShadowWrites);
 }
-/** Explicit shadow boundary; external sheet writers remain a separate migration gate. */
+/** Explicit shadow boundary; sheet and manual writers share catalog and coach coordination. */
 export class MongoCoachEngagementRepository implements CoachEngagementRepository {
   private readonly store: MongoOperationStore;
   private constructor(store: MongoOperationStore) { this.store = store; }
@@ -29,6 +31,7 @@ export class MongoCoachEngagementRepository implements CoachEngagementRepository
       assertMongo((hello.setName || hello.msg === "isdbgrid") && hello.logicalSessionTimeoutMinutes != null, "TRANSACTIONS_REQUIRED");
       await assertMongoReadStoreReady(store);
       await assertMongoCoachSchedulingGuardReady(store);
+      await assertMongoCoachCatalogGuardReady(store);
       return new MongoCoachEngagementRepository(store);
     } catch (error) { if (error instanceof MongoOperationError) throw error; throw new MongoOperationError("COACH_ENGAGEMENT_OPEN_FAILED"); }
   }
@@ -100,6 +103,7 @@ export class MongoCoachEngagementRepository implements CoachEngagementRepository
   async createForCoach(coachId: string, input: CreateCoachEngagementInput) {
     this.requireActivity(); coachId = coachId.toLowerCase();
     return this.transaction(async session => {
+      await lockMongoCoachCatalog(this.store, session);
       await lockMongoCoachScheduling(this.store, coachId, session);
       if (!await this.store.one("Coach", { _id: coachId, deletedAt: null }, session)) return null;
       const row = await this.write("CoachEngagement", { id: randomUUID(), sourceEngagementId: manualSourceId(), coachId,
@@ -111,6 +115,7 @@ export class MongoCoachEngagementRepository implements CoachEngagementRepository
   async update(engagementId: string, input: UpdateCoachEngagementInput) {
     this.requireActivity(); engagementId = engagementId.toLowerCase();
     return this.transaction(async session => {
+      await lockMongoCoachCatalog(this.store, session);
       const previous = await this.lockedEngagement(engagementId, session);
       if (!previous) return null;
       const patch = Object.fromEntries(Object.entries(input).filter(([key, value]) => value !== undefined && (!(key === "courseName" || key === "startDate" || key === "endDate") || value !== null)));

@@ -27,8 +27,12 @@ function state() {
     const tx = {
       async $queryRaw(sql: TemplateStringsArray, ...values: unknown[]) {
         assert.match(sql.join("?"), /pg_advisory_xact_lock\(\?::bigint\)/); assert.equal(typeof values[0], "bigint");
-        const previous = queue; queue = new Promise<void>(resolve => { release = resolve; }); await previous;
-        onLock?.(); onLock = undefined; snapshot = structuredClone(row); historyLength = history.length; locked = true; events.push("lock");
+        // Serialize the fake transaction once; subsequent advisory locks are reentrant.
+        if (!locked) {
+          const previous = queue; queue = new Promise<void>(resolve => { release = resolve; }); await previous;
+          onLock?.(); onLock = undefined; snapshot = structuredClone(row); historyLength = history.length; locked = true;
+        }
+        events.push("lock");
       },
       coach: { async findFirst() { assert.ok(locked); return { id: coachId }; } },
       coachEngagement: {
@@ -60,10 +64,10 @@ test("cancelled creation still regenerates weekdays and cancels reservations; st
   const base = fixture();
   const created = await repository.createForCoach(coachId, { courseName: base.courseName, status: "CANCELLED", startDate: base.startDate, endDate: base.endDate, startTime: null, endTime: null, rating: null, feedback: null, rehire: null, hiredByText: null });
   assert.equal(created?.status, "CANCELLED"); assert.equal(created.startDate, "2026-09-21T00:00:00.000Z");
-  assert.deepEqual(fixtureState.events, ["lock", "create", "delete-schedules", "create-schedules", "auto-cancel", "commit"]);
+  assert.deepEqual(fixtureState.events, ["lock", "lock", "create", "delete-schedules", "create-schedules", "auto-cancel", "commit"]);
   fixtureState.events.length = 0;
   await repository.update(created.id, { status: "SCHEDULED" });
-  assert.deepEqual(fixtureState.events, ["lock", "reread", "update", "commit"]);
+  assert.deepEqual(fixtureState.events, ["lock", "lock", "reread", "update", "commit"]);
 });
 
 test("invalid PUT date fallback uses the row re-read after lock acquisition", async () => {
@@ -71,7 +75,7 @@ test("invalid PUT date fallback uses the row re-read after lock acquisition", as
   fixtureState.beforeLock(() => fixtureState.setRow({ ...fixture(), courseName: "Concurrent name" }));
   const updated = await repository.update(fixture().id, { courseName: null, startDate: null });
   assert.equal(updated?.courseName, "Concurrent name"); assert.equal(updated.startDate, "2026-09-21T00:00:00.000Z");
-  assert.deepEqual(fixtureState.events, ["lock", "reread", "update", "delete-schedules", "create-schedules", "auto-cancel", "commit"]);
+  assert.deepEqual(fixtureState.events, ["lock", "lock", "reread", "update", "delete-schedules", "create-schedules", "auto-cancel", "commit"]);
 });
 
 test("concurrent review toggles read inside the lock and write their histories in the same transaction", async () => {

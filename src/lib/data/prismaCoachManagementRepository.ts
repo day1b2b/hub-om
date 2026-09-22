@@ -3,6 +3,7 @@ import { CoachStatus,type Prisma } from "@prisma/client";
 import { generateCoachAccessToken,normalizeCoachName } from "../coaches/accessToken";
 import { logProfileEdit } from "../coaches/contentEntries";
 import { getPrismaClient } from "./prisma";
+import { lockPrismaCoach, lockPrismaCoachCatalog } from "./prismaCoachLock";
 import { CoachManagementError,type CoachManagementRepository,type CoachManagementQuery,type CoachManagementAuthor } from "./coachManagementRepository";
 
 const PROFILE_FIELD_KEYS=[
@@ -138,9 +139,13 @@ export class PrismaCoachManagementRepository implements CoachManagementRepositor
     }
 
     const prisma=getPrismaClient();
+    const coachId=randomUUID();
     const coach=await prisma.$transaction(async (tx) => {
+      await lockPrismaCoachCatalog(tx);
+      await lockPrismaCoach(tx,coachId);
       const created=await tx.coach.create({
         data: {
+          id: coachId,
           sourceCoachId: `hub:${randomUUID()}`,
           accessToken: generateCoachAccessToken(),
           name,
@@ -178,25 +183,28 @@ export class PrismaCoachManagementRepository implements CoachManagementRepositor
   }
   async updateCoach(id: string,body: Record<string,unknown>,author: CoachManagementAuthor) {
     const prisma=getPrismaClient();
-    const existing=await prisma.coach.findUnique({
-      where: { id },
-      select: { id: true,deletedAt: true }
-    });
-
-    if(!existing||existing.deletedAt) {
-      throw new CoachManagementError("COACH_NOT_FOUND");
-    }
-
-    let name: string|undefined;
-    if(body.name!==undefined) {
-      const parsedName=stringValue(body.name);
-      if(!parsedName) {
-        throw new CoachManagementError("COACH_NAME_REQUIRED");
-      }
-      name=parsedName;
-    }
-
     const updated=await prisma.$transaction(async (tx) => {
+      await lockPrismaCoachCatalog(tx);
+      await lockPrismaCoach(tx,id);
+      const existing=await tx.coach.findUnique({
+        where: { id },
+        select: { id: true,deletedAt: true }
+      });
+
+      if(!existing||existing.deletedAt) {
+        throw new CoachManagementError("COACH_NOT_FOUND");
+      }
+
+      let name: string|undefined;
+      if(body.name!==undefined) {
+        const parsedName=stringValue(body.name);
+        if(!parsedName) {
+          throw new CoachManagementError("COACH_NAME_REQUIRED");
+        }
+        name=parsedName;
+      }
+
+
       const coach=await tx.coach.update({
         where: { id },
         data: {
@@ -259,54 +267,24 @@ export class PrismaCoachManagementRepository implements CoachManagementRepositor
   }
   async updateCoachStatus(id: string,value: unknown) {
     const status=parseCoachStatus(value);
-
-    if(!status) {
-      throw new CoachManagementError("INVALID_COACH_STATUS");
-    }
-
-    const prisma=getPrismaClient();
-    const existing=await prisma.coach.findUnique({
-      where: { id },
-      select: { id: true,deletedAt: true }
+    if(!status) throw new CoachManagementError("INVALID_COACH_STATUS");
+    return getPrismaClient().$transaction(async tx => {
+      await lockPrismaCoachCatalog(tx);
+      await lockPrismaCoach(tx,id);
+      const existing=await tx.coach.findUnique({ where: { id },select: { id: true,deletedAt: true } });
+      if(!existing||existing.deletedAt) throw new CoachManagementError("COACH_NOT_FOUND");
+      const coach=await tx.coach.update({ where: { id },data: { status },select: { id: true,status: true,isActive: true } });
+      return { id: coach.id,status: coach.status.toLowerCase(),isActive: coach.isActive };
     });
-
-    if(!existing||existing.deletedAt) {
-      throw new CoachManagementError("COACH_NOT_FOUND");
-    }
-
-    const coach=await prisma.coach.update({
-      where: { id },
-      data: { status },
-      select: {
-        id: true,
-        status: true,
-        isActive: true
-      }
-    });
-
-    return {
-      id: coach.id,
-      status: coach.status.toLowerCase(),
-      isActive: coach.isActive
-    };
   }
   async deleteCoach(id: string,deletedBy: string|null) {
-    const prisma=getPrismaClient();
-
-    const coach=await prisma.coach.findUnique({ where: { id },select: { id: true,deletedAt: true } });
-    if(!coach||coach.deletedAt) {
-      throw new CoachManagementError("COACH_NOT_FOUND");
-    }
-
-    await prisma.coach.update({
-      where: { id },
-      data: {
-        deletedAt: new Date(),
-        deletedBy: deletedBy
-      }
+    await getPrismaClient().$transaction(async tx => {
+      await lockPrismaCoachCatalog(tx);
+      await lockPrismaCoach(tx,id);
+      const coach=await tx.coach.findUnique({ where: { id },select: { id: true,deletedAt: true } });
+      if(!coach||coach.deletedAt) throw new CoachManagementError("COACH_NOT_FOUND");
+      await tx.coach.update({ where: { id },data: { deletedAt: new Date(),deletedBy } });
     });
-
-
   }
 }
 

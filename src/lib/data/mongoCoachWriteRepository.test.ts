@@ -9,6 +9,9 @@ import { decodeMongoRuntimeDocument, type MongoRuntimeDocument } from "./mongoRu
 import { MongoOperationError, type MongoRow } from "./mongoOperationStore";
 
 mock.module("./mongoReadStore", { namedExports: { ...readStore, assertMongoReadStoreReady: async () => {} } });
+mock.module("./mongoCoachCatalogGuard", { namedExports: { prepareMongoCoachCatalogGuard: async () => {}, assertMongoCoachCatalogGuardReady: async () => {}, lockMongoCoachCatalog: async () => {} } });
+mock.module("./mongoCoachSchedulingGuard", { namedExports: { prepareMongoCoachSchedulingGuard: async () => {}, assertMongoCoachSchedulingGuardReady: async () => {}, lockMongoCoachScheduling: async () => {} } });
+// Fake storage parity only; native suites exercise the real coordination guards.
 const { MongoCoachWriteRepository, COACH_WRITE_MODELS } = await import("./mongoCoachWriteRepository");
 const names = ["PII_ENCRYPTION_KEYS", "PII_ACTIVE_KEY_ID", "PII_INDEX_KEY", "PII_ALLOW_PLAINTEXT_READS"];
 function fakeClient() {
@@ -52,6 +55,7 @@ function fakeClient() {
 let pgRows: Record<string, MongoRow[]> = {};
 const savePg = (model: string, data: MongoRow) => { const row = { id: randomUUID(), isActive: true, deletedAt: null, ...data }; (pgRows[model] ??= []).push(row); return row; };
 const delegates = {
+  $queryRaw: async () => [],
   coach: { create: async ({ data }: { data: MongoRow }) => savePg("Coach", data), findUnique: async ({ where }: { where: MongoRow }) => pgRows.Coach?.find(row => row.id === where.id), update: async ({ where, data }: { where: MongoRow; data: MongoRow }) => { const row = pgRows.Coach.find(row => row.id === where.id)!; Object.assign(row, data); return { id: row.id, name: row.name, status: row.status, isActive: row.isActive }; } },
   coachPrivateProfile: { create: async ({ data }: { data: MongoRow }) => savePg("CoachPrivateProfile", data), upsert: async ({ where, create, update }: { where: MongoRow; create: MongoRow; update: MongoRow }) => { const row = pgRows.CoachPrivateProfile.find(row => row.coachId === where.coachId); return row ? Object.assign(row, update) : savePg("CoachPrivateProfile", create); } },
   coachFieldMaster: { upsert: async ({ create }: { create: MongoRow }) => pgRows.CoachFieldMaster?.find(row => row.name === create.name) ?? savePg("CoachFieldMaster", create) },

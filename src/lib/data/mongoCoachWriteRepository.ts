@@ -1,3 +1,5 @@
+import { prepareMongoCoachCatalogGuard, assertMongoCoachCatalogGuardReady, lockMongoCoachCatalog } from "./mongoCoachCatalogGuard";
+import { prepareMongoCoachSchedulingGuard, assertMongoCoachSchedulingGuardReady, lockMongoCoachScheduling } from "./mongoCoachSchedulingGuard";
 import { randomUUID } from "node:crypto";
 import { MongoServerError, type ClientSession } from "mongodb";
 import { generateCoachAccessToken, normalizeCoachName } from "../coaches/accessToken";
@@ -29,6 +31,9 @@ function dto(row: MongoRow): { id: string; name: string } { return { id: row.id 
 /** Explicit schema/index setup for disposable shadow namespaces only. */
 export async function prepareMongoCoachWriteStore(options: MongoCoachWriteOptions): Promise<void> {
   await prepareMongoReadStore(options, COACH_WRITE_MODELS);
+  const store = new MongoOperationStore(options, COACH_WRITE_MODELS);
+  await prepareMongoCoachCatalogGuard(store, options.allowShadowWrites);
+  await prepareMongoCoachSchedulingGuard(store, options.allowShadowWrites);
 }
 
 /** Matches the authenticated coach management POST/PUT/PATCH/DELETE payloads.
@@ -45,6 +50,8 @@ export class MongoCoachWriteRepository {
       const hello = await store.db.command({ hello: 1 });
       assertMongo(hello.setName && hello.logicalSessionTimeoutMinutes != null, "REPLICA_SET_REQUIRED");
       await assertMongoReadStoreReady(store);
+      await assertMongoCoachCatalogGuardReady(store);
+      await assertMongoCoachSchedulingGuardReady(store);
       return new MongoCoachWriteRepository(store);
     } catch (error) {
       if (error instanceof MongoOperationError) throw error;
@@ -57,7 +64,7 @@ export class MongoCoachWriteRepository {
     for (let attempt = 0; attempt < 5; attempt++) {
       const session = this.store.client.startSession();
       try {
-        return await session.withTransaction(() => work(session), { readConcern: { level: "snapshot" }, writeConcern: { w: "majority", j: true }, readPreference: "primary", timeoutMS: 30_000 });
+        return await session.withTransaction(async () => { await lockMongoCoachCatalog(this.store, session); return work(session); }, { readConcern: { level: "snapshot" }, writeConcern: { w: "majority", j: true }, readPreference: "primary", timeoutMS: 30_000 });
       } catch (error) {
         if (error instanceof MongoServerError && error.code === 11000 && attempt < 4) continue;
         if (error instanceof MongoOperationError) throw error;
@@ -101,9 +108,10 @@ export class MongoCoachWriteRepository {
     const name = text(body.name);
     assertMongo(name, "COACH_NAME_REQUIRED");
     return this.transaction(async session => {
-      const now = new Date();
+      const now = new Date(), id = randomUUID();
+      await lockMongoCoachScheduling(this.store, id, session);
       const coach = await this.write("Coach", {
-        id: randomUUID(), sourceCoachId: `hub:${randomUUID()}`, accessToken: generateCoachAccessToken(), name, normalizedName: normalizeCoachName(name),
+        id, sourceCoachId: `hub:${randomUUID()}`, accessToken: generateCoachAccessToken(), name, normalizedName: normalizeCoachName(name),
         ...Object.fromEntries(TEXT_FIELDS.filter(key => key !== "dxTag").map(key => [key, text(body[key])])),
         status: status(body.status) ?? "ACTIVE", returnDate: date(body.returnDate), isActive: true, createdAt: now, updatedAt: now
       }, false, session);
@@ -115,6 +123,7 @@ export class MongoCoachWriteRepository {
   }
   async updateCoach(coachId: string, body: Record<string, unknown>, author: CoachWriteAuthor): Promise<{ id: string; name: string }> {
     return this.transaction(async session => {
+      await lockMongoCoachScheduling(this.store, coachId, session);
       const previous = await this.existing(coachId, session), now = new Date(), patch: MongoRow = {};
       if (body.name !== undefined) {
         const name = text(body.name); assertMongo(name, "COACH_NAME_REQUIRED");
@@ -140,6 +149,7 @@ export class MongoCoachWriteRepository {
   async updateCoachStatus(coachId: string, value: unknown): Promise<{ id: string; status: string; isActive: boolean }> {
     const next = status(value, false); assertMongo(next, "INVALID_COACH_STATUS");
     return this.transaction(async session => {
+      await lockMongoCoachScheduling(this.store, coachId, session);
       const previous = await this.existing(coachId, session);
       const coach = await this.write("Coach", { ...previous, status: next, updatedAt: new Date() }, true, session);
       return { id: coachId, status: (coach.status as string).toLowerCase(), isActive: coach.isActive as boolean };
@@ -147,6 +157,7 @@ export class MongoCoachWriteRepository {
   }
   async deleteCoach(coachId: string, deletedBy: string | null): Promise<void> {
     await this.transaction(async session => {
+      await lockMongoCoachScheduling(this.store, coachId, session);
       const previous = await this.existing(coachId, session), now = new Date();
       await this.write("Coach", { ...previous, deletedAt: now, deletedBy, updatedAt: now }, true, session);
     });

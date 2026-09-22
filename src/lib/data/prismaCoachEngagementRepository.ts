@@ -7,7 +7,7 @@ import {
   type CoachReviewCommand, type CoachReviewResult, type CreateCoachEngagementInput, type UpdateCoachEngagementInput
 } from "./coachEngagementRepository";
 import { getPrismaClient } from "./prisma";
-import { lockPrismaCoach } from "./prismaCoachLock";
+import { lockPrismaCoach, lockPrismaCoachCatalog } from "./prismaCoachLock";
 
 async function regenerateWeekdaySchedules(tx: Prisma.TransactionClient, row: { id: string; coachId: string; startDate: Date; endDate: Date; startTime: string | null; endTime: string | null }) {
   await tx.coachEngagementSchedule.deleteMany({ where: { engagementId: row.id } });
@@ -45,6 +45,7 @@ export class PrismaCoachEngagementRepository implements CoachEngagementRepositor
   }
   async createForCoach(coachId: string, input: CreateCoachEngagementInput): Promise<CoachEngagementRecord | null> {
     return getPrismaClient().$transaction(async tx => {
+      await lockPrismaCoachCatalog(tx);
       await lockPrismaCoach(tx, coachId);
       const coach = await tx.coach.findFirst({ where: { id: coachId, deletedAt: null }, select: { id: true } });
       if (!coach) return null;
@@ -56,6 +57,7 @@ export class PrismaCoachEngagementRepository implements CoachEngagementRepositor
   }
   async update(engagementId: string, input: UpdateCoachEngagementInput): Promise<CoachEngagementRecord | null> {
     return getPrismaClient().$transaction(async tx => {
+      await lockPrismaCoachCatalog(tx);
       const existing = await lockedEngagement(tx, engagementId);
       if (!existing) return null;
       const { courseName, startDate, endDate, ...patch } = input;

@@ -79,7 +79,7 @@ test("actual engagement and review handlers against an isolated Mongo replica se
   }
   const snapshot = async (store: MongoOperationStore) => Promise.all(["CoachEngagement", "CoachEngagementSchedule", "CoachDayReservation", "CoachContentEntry", "ActivityChange"].map(model => store.collection(model).find({}).sort({ _id: 1 }).toArray()));
   // Instrument only this test's collections; every call still reaches the real driver.
-  async function forceGuardOrder(f: Awaited<ReturnType<typeof fixture>>, firstCall: () => Promise<Response>, secondCall: () => Promise<Response>) {
+  async function forceGuardOrder(f: Awaited<ReturnType<typeof fixture>>, firstCall: () => Promise<Response>, secondCall: () => Promise<Response>, catalog = false) {
     const deferred = () => { let resolve!: () => void; const promise = new Promise<void>(done => { resolve = done; }); return { promise, resolve }; };
     const held = deferred(), collided = deferred(), release = deferred();
     async function bounded(promise: Promise<unknown>, label: string) {
@@ -87,12 +87,12 @@ test("actual engagement and review handlers against an isolated Mongo replica se
       try { await Promise.race([promise, new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error(label)), 8000); })]); }
       finally { clearTimeout(timer); }
     }
-    const guardName = `${f.options.namespace}_CoachSchedulingGuard`, engagementName = f.store.collection("CoachEngagement").collectionName;
+    const guardName = `${f.options.namespace}_${catalog ? "CoachCatalogGuard" : "CoachSchedulingGuard"}`, engagementName = f.store.collection("CoachEngagement").collectionName;
     const originalUpdate = Collection.prototype.updateOne, originalFind = Collection.prototype.findOne;
     let firstHeld = false, collisions = 0, secondAttempts = 0, firstUpserted = 0;
     const secondReads: Array<Record<string, unknown>> = [];
     const updatePatch = mock.method(Collection.prototype, "updateOne", async function(this: Collection, ...args: Parameters<Collection["updateOne"]>) {
-      const relevant = this.collectionName === guardName && String(args[0]._id) === f.id;
+      const relevant = this.collectionName === guardName && String(args[0]._id) === (catalog ? "catalog" : f.id);
       const actor = activityContext.getStore()?.actorEmail;
       if (relevant && actor === managerB.user.email) secondAttempts++;
       try {
@@ -337,10 +337,10 @@ test("actual engagement and review handlers against an isolated Mongo replica se
       const f = await fixture(), { store, id, scope } = f;
       const { engagement } = await runWithDataRepositories(scope, () => actors.run(managerA, async () => (await create(id)).json()));
       const courseName = "Concurrent renamed course";
-      const result = await forceGuardOrder(f, () => update(engagement.id, { courseName }), () => update(engagement.id, { status: "completed" }));
+      const result = await forceGuardOrder(f, () => update(engagement.id, { courseName }), () => update(engagement.id, { status: "completed" }), true);
       assert.deepEqual(result.responses.map(row => row.status), [200,200]);
-      assert.ok(result.secondReads.length >= 3);
-      assert.equal(result.secondReads[0].courseName, basic.courseName);
+      assert.ok(result.secondReads.length >= 2);
+      assert.ok(result.secondReads.every(row => row.courseName === courseName), "Catalog lock precedes the first engagement predicate read");
       assert.ok(result.secondReads.slice(-2).every(row => row.courseName === courseName), "Retry must reread the first writer's committed course name");
       const row = await store.one("CoachEngagement", { _id: engagement.id }); assert.equal(row?.courseName, courseName); assert.equal(row?.status, "COMPLETED");
       const secondBody = await result.responses[1].json(); assert.equal(secondBody.engagement.courseName, courseName); assert.equal(secondBody.engagement.status, "COMPLETED");
