@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { configuredMongoUri, diagnoseMongoConnection, shadowDatabaseName } from "./connection";
+import { MongoOperationStore } from "../data/mongoOperationStore";
 
 test("URI alone cannot select a writable shadow database or alter PostgreSQL", () => {
   const env = { MONGODB_URI: "mongodb://fixture:secret@example.invalid/production", DATABASE_URL: "postgresql://unchanged" };
@@ -9,6 +10,17 @@ test("URI alone cannot select a writable shadow database or alter PostgreSQL", (
   for (const name of ["production", "admin", "config", "local", "hub_om_shadow_", "hub_om_shadow_a.$"]) assert.throws(() => shadowDatabaseName({ ...env, MONGODB_SHADOW_DATABASE: name }));
   assert.equal(shadowDatabaseName({ ...env, MONGODB_SHADOW_DATABASE: "hub_om_shadow_rehearsal" }), "hub_om_shadow_rehearsal");
   assert.equal(env.DATABASE_URL, "postgresql://unchanged");
+});
+test("explicit hyphenated validation database is accepted without opening other hyphenated databases", () => {
+  const client = { db: (databaseName: string) => ({ databaseName }) };
+  for (const name of ["hub-om-shadow-validation", "hub_om_shadow_rehearsal"]) {
+    assert.equal(shadowDatabaseName({ MONGODB_SHADOW_DATABASE: name }), name);
+    assert.equal(new MongoOperationStore({ client: client as never, databaseName: name, namespace: "shadow_fixture" }).db.databaseName, name);
+  }
+  for (const name of ["hub-om", "hub-om-shadow-production", "hub-om-shadow-validation-extra", "axflo"]) {
+    assert.throws(() => shadowDatabaseName({ MONGODB_SHADOW_DATABASE: name }), /EXPLICIT_SHADOW/);
+    assert.throws(() => new MongoOperationStore({ client: client as never, databaseName: name, namespace: "shadow_fixture" }), /SHADOW_DATABASE_REQUIRED/);
+  }
 });
 test("diagnostic only issues ping/hello, sanitizes output and closes client", async () => {
   const commands: unknown[] = []; let closed = false;

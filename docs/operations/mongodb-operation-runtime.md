@@ -4,6 +4,8 @@
 
 기준 커밋은 `c257b82281b04d591731842674a583998c77a4b4`, 승인된 드라이버는 `mongodb@7.2.0`이다. Prisma schema, SQL migrations, package/lock, 기존 factory와 Prisma repository를 변경하지 않았다. 운영 데이터·실제 키·외부 MongoDB 쓰기는 수행하지 않았다.
 
+후속 권한 재검증: 사용자가 지정한 외부 DB명은 `hub-om-shadow-validation`이다. 이 정확한 이름을 별도 허용하고 기존 임시 underscore DB 패턴도 유지한다. 사용자 승인으로 이 DB의 무작위 임시 컬렉션 생성·`collMod`는 성공했지만 합성 문서 insert는 code13으로 실패했다. 확인된 역할은 `dbAdmin`만이며 insert/update/remove 권한이 없다. 생성한 임시 컬렉션은 정리했다. 같은 DB에 `readWrite` 추가 후 데이터/트랜잭션 검증을 재개해야 한다. 기존 로컬 검증 결과와 이 외부 권한 결과를 구분한다.
+
 ## 명시적 연결
 
 일반 요청 처리나 factory에서 준비 함수를 호출하지 않는다. 이미 승인된 **별도 shadow namespace**에 한 번 준비한 후 repository를 직접 생성하는 개발용 진입점만 제공한다.
@@ -18,7 +20,7 @@ const client = new MongoClient(explicitlyAuthorizedUri);
 await client.connect();
 const options = {
   client,
-  databaseName: "hub_om_shadow_validation",
+  databaseName: "hub-om-shadow-validation",
   namespace: "shadow_explicit_synthetic_run"
 };
 await prepareMongoOperationStore({

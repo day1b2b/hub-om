@@ -15,7 +15,7 @@ PostgreSQL을 먼저 암호화하고 다시 MongoDB로 옮기는 방식 대신, 
 - 개인정보 정책의 25모델 125필드는 파일에 기록하기 **전에** 암호화한다. 암호화된 source 모드는 기존 암호문 인증과 HMAC 일치를 검증한다. 키·평문 행·DB URL은 로그에 출력하지 않는다.
 - 새 0700 폴더에 0600 파일을 배타적으로 생성한다. 파일 fsync와 read-only transaction 종료 후 최종 manifest를 공개한다. 불완전 폴더는 재사용하지 않는다.
 - importer는 manifest/모든 파일/암호문/행 수/정렬/해시를 먼저 검증한다. 한 파일 32 MiB, 합계 128 MiB, 최대 100만 행으로 제한한다. 제한을 넘으면 실패하며 일부만 성공으로 처리하지 않는다.
-- 대상은 명시된 `hub_om_shadow_...` DB와 `shadow_<runId>_<Model>` 컬렉션이다. URI의 기본 DB를 쓰기 대상으로 자동 선택하지 않는다. insert-only로 복사하고 재실행 시 동일 ID·내용만 허용한다.
+- 대상은 명시된 `hub-om-shadow-validation`(또는 기존 `hub_om_shadow_...`) DB와 `shadow_<runId>_<Model>` 컬렉션이다. URI의 기본 DB를 쓰기 대상으로 자동 선택하지 않는다. insert-only로 복사하고 재실행 시 동일 ID·내용만 허용한다.
 - BSON Date/Decimal128/Binary를 왕복 검증하고 원본 암호문·ID·내용을 대조한다. 선언된 FK와 논리 unique/HMAC unique는 대상 전체를 독립 재조회하여 검증한다.
 - 성공 결과도 항상 `cutoverAuthorized: false`다. source sequence는 MVCC 대상이 아니므로 `sequenceValuesRequireFrozenRecheck: true`로 기록한다.
 
@@ -27,7 +27,7 @@ PostgreSQL을 먼저 암호화하고 다시 MongoDB로 옮기는 방식 대신, 
 |---|---|
 | `DATABASE_URL` | source PostgreSQL. export 프로세스에만 제공 |
 | `MONGODB_URI` | MongoDB 접속. 이 값만으로 쓰기/앱 전환이 활성화되지 않음 |
-| `MONGODB_SHADOW_DATABASE` | 별도 DB 이름. `hub_om_shadow_[a-z0-9_]{1,40}` 필수 |
+| `MONGODB_SHADOW_DATABASE` | 승인된 대상 `hub-om-shadow-validation`. 기존 합성 검증용 `hub_om_shadow_[a-z0-9_]{1,40}`도 허용 |
 | `MONGODB_PRODUCTION_DATABASE` | 보호할 MongoDB 이름. shadow와 같으면 importer 중단 |
 | `MONGODB_ALLOW_SHADOW_WRITES` | importer 실행 시에만 `true` |
 | `PII_ACTIVE_KEY_ID`, `PII_ENCRYPTION_KEYS`, `PII_INDEX_KEY` | 암호화/인증/HMAC. 기존 암호화 계약과 동일 |
@@ -39,7 +39,7 @@ PostgreSQL을 먼저 암호화하고 다시 MongoDB로 옮기는 방식 대신, 
 다음은 실행 형식이다. 실제 운영 데이터 export/import는 백업·대상 DB·복구 키를 확인한 뒤 수행한다. 파일 위치·run ID·DB 이름은 해당 실행에 맞춰 지정한다.
 
 1. 읽기 전용 연결 진단: `npm run mongodb:check`. ping/hello만 실행한다. replica set 보고는 실제 transaction/rollback 성공을 보증하지 않는다.
-2. 합성 DB 검증: `npm run mongodb:check-synthetic -- --allow-synthetic-shadow-writes --cleanup-synthetic-db`. `MONGODB_SHADOW_DATABASE`를 지정하면 그 DB 내 이번 실행의 무작위 컬렉션만 생성·정리하며 DB 자체는 삭제하지 않는다. 미지정이면 무작위 독립 DB를 생성·정리한다. 임시 테스트 키만 사용하고 실제 개인정보를 읽지 않는다. 최소 권한 방식은 `hub_om_shadow_validation` DB 하나에만 `readWrite`를 부여하고 그 이름을 명시하는 것이다. 전체 DB 관리자 권한은 필요하지 않다.
+2. 합성 DB 검증: `npm run mongodb:check-synthetic -- --allow-synthetic-shadow-writes --cleanup-synthetic-db`. `MONGODB_SHADOW_DATABASE`를 지정하면 그 DB 내 이번 실행의 무작위 컬렉션만 생성·정리하며 DB 자체는 삭제하지 않는다. 미지정이면 무작위 독립 DB를 생성·정리한다. 임시 테스트 키만 사용하고 실제 개인정보를 읽지 않는다. 최소 권한 방식은 `hub-om-shadow-validation` DB 하나에만 `readWrite`를 부여하고 그 이름을 명시하는 것이다. 전체 DB 관리자 권한은 필요하지 않다.
 3. source export:
 
 ```sh

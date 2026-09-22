@@ -16,7 +16,7 @@ export function configuredMongoUri(env: Record<string, string | undefined> = pro
 
 export function shadowDatabaseName(env: Record<string, string | undefined> = process.env): string {
   const name = env.MONGODB_SHADOW_DATABASE;
-  if (!name || !/^hub_om_shadow_[a-z0-9_]{1,40}$/.test(name)) throw new MongoPreparationError("EXPLICIT_SHADOW_DATABASE_REQUIRED");
+  if (!name || (name !== "hub-om-shadow-validation" && !/^hub_om_shadow_[a-z0-9_]{1,40}$/.test(name))) throw new MongoPreparationError("EXPLICIT_SHADOW_DATABASE_REQUIRED");
   // No URI default database fallback, so diagnostics can never select an existing production DB for writes.
   return name;
 }

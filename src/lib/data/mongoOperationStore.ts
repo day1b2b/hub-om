@@ -29,7 +29,7 @@ export class MongoOperationStore {
   readonly namespace: string;
   readonly client: MongoClient;
   constructor(options: MongoOperationOptions) {
-    assertMongo(/^hub_om_shadow_[A-Za-z0-9_]{1,64}$/.test(options.databaseName), "SHADOW_DATABASE_REQUIRED");
+    assertMongo(options.databaseName === "hub-om-shadow-validation" || /^hub_om_shadow_[A-Za-z0-9_]{1,64}$/.test(options.databaseName), "SHADOW_DATABASE_REQUIRED");
     assertMongo(/^shadow_[A-Za-z0-9_-]{1,80}$/.test(options.namespace), "INVALID_NAMESPACE");
     this.client = options.client;
     this.db = options.client.db(options.databaseName);
