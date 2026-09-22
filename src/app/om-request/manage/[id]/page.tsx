@@ -66,6 +66,7 @@ export default async function OmRequestDetailPage({ params }: Props) {
   const isAuthor = isOmRequestAuthor(request, session.user?.email);
 
   const createdAt = new Date(request.createdAt).toLocaleString("ko-KR", {
+    timeZone: "Asia/Seoul",
     year: "numeric", month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit"
   });
