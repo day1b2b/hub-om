@@ -68,10 +68,12 @@ npm run mongodb:import -- /secure/export-parent/export-directory rehearsal_01 --
 
 단위/모의 테스트, 실제 독립 PostgreSQL, 실제 MongoDB 합성 데이터, 실제 운영 데이터, 앱 화면 검증을 구분한다. 접속 주소·키·고객 데이터·행 단위 해시는 공개 기록에 넣지 않는다. 이번 작업의 실제 실행 결과는 PR/총괄 보고에 별도로 기록한다.
 
-2026-09-22 확인:
+2026-09-22 초기 확인 (c257b82 시점, 아래 후속 결과와 구분):
 
 - 전체 자동 테스트 763개 통과·4개 환경 의존 검사 생략. lint 오류 0개·기존 경고 7개, 타입 검사·프로덕션 빌드 통과.
 - 별도 실제 PostgreSQL 18에서 PII 전/후 42/44 migration, 각각 35모델·7개 합성 행 export→대조→메모리 import·재시도 검증 통과. [재현 절차](mongodb-shadow-postgres-verification.md).
 - 설정된 MongoDB ping/hello 성공, replica set 확인. **별도 무작위 검증 DB의 listCollections 단계에서 권한 오류(code 13)**로 실제 MongoDB 저장 검증 중단. 이 실행에서 데이터 쓰기·삭제 없음. 실제 BSON 왕복은 로컬 직렬화 테스트로만 통과했고, MongoDB 서버의 쓰기/rollback 성공으로 해석하면 안 된다.
 - 로컬 빌드 `/sign-in` 200, 비로그인 `/api/operations` 307. 로그인 후 업무 흐름이나 MongoDB 앱 화면 전체 검증은 미실행.
 - 운영 데이터 export/import·키 변경·PostgreSQL backfill·배포·서비스 DB 전환은 미실행.
+
+후속 확인: 실제 승인 대상은 `hub-om-shadow-validation`이다. dbAdmin/readWrite 반영 후 외부 MongoDB 합성 35모델 복사·재시도·rollback과 Operation repository 7개 시나리오 검증이 통과했다. 초기 무작위 DB 권한 오류는 현재 승인 DB의 권한 부족을 뜻하지 않는다. [후속 검증 기록](mongodb-external-shadow-verification.md). 실제 운영 데이터 복사·전체 앱 전환은 여전히 미실행이다. 운영 앱과 분리된 [one-shot 복사 job](mongodb-shadow-job.md)을 준비하며 새 Team/Coach 조회 검증과 구분한다.
