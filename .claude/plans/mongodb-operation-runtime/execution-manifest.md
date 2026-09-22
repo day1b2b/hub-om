@@ -14,3 +14,5 @@
 계획 문서: clarify-result.md, plan-v1.md, validation-v1.md, meta-evaluation.md, validation-v2.md, plan-v1-review.md, plan-v2.md, execution-manifest.md, execution-review.md, gap-plan.md, alignment-review.md, handoff.md.
 
 생산 factory/Prisma repository/schema/migrations/package.json/package-lock.json diff 없음. 변경 추적은 `git status --short`와 기준 커밋 diff 및 미추적 파일 목록을 함께 사용했다.
+
+외부 검증 후속: scripts/check-mongodb-operation-shadow.ts와 docs/operations/mongodb-external-shadow-verification.md 추가. 기존 local-only integration 제약은 유지하고 외부 검증을 정확한 승인 DB/합성자료/소유 컬렉션으로 분리했다. 실행7시나리오 PASS,13합성행,9컬렉션 cleanup완료. 독립리뷰 수정 및 lint/typecheck 통과.

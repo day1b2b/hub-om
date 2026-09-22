@@ -7,7 +7,8 @@
 - Last completed: 독립 리뷰 보완 및 전체/실제 replica-set 검증. owned mongod 종료 완료, 임시 파일은 남김.
 - Verification: npm test777pass5skip; 별도 실제 Mongo16pass; lint0error7기존warning; typecheck/build 성공; diffcheck 성공.
 - Validation: 생성→조회→수정→replay/다른내용 conflict/삭제후거부; 동시성 및 late audit rollback; metadata privacy/검색 한도. execution-review.md 참조.
-- Open gaps: 외부 Mongo권한/TLS/운영규모 SLO/다중노드 장애·backup reverse; 전체 repository/API/Calendar/감사 request 전환. 로컬 엔진 실증을 배포 환경 실증으로 간주하지 말 것.
+- External follow-up: 실제 `hub-om-shadow-validation`에서35모델 BSON/관계/rollback 및 native운영7시나리오 통과. TLS 검증우회옵션 없음. 사용자계정 두DB readWrite/dbAdmin 확인. 생성36+9 임시컬렉션 정리 성공. docs/operations/mongodb-external-shadow-verification.md 참조.
+- Open gaps: 실제 데이터 snapshot 암호화 export/import 대조, 운영규모 SLO/다중노드 장애·backup reverse; 전체 repository/API/Calendar/감사 request 전환. 합성 소량 외부 검증을 전체 배포 검증으로 간주하지 말 것.
 - Accepted differences: 최종 courseId+name atomic수정, 새과정속성복사, 목적label 적용, 금액소수2자리초과·역전날짜 거부, tx rollback sequence 재사용. docs에 명시.
 - Alignment: update_handoff_only, 기록 적용 완료.
 - Do Next: 부모에서 이 local commit diff/검증을 확인해 통합 여부를 정하고, 다음 repository 또는 승인된 외부 shadow gate 진행.

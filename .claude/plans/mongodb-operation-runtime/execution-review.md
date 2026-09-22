@@ -31,4 +31,4 @@
 
 Validation source: 사용자 승인된 생성→조회→수정→동일 요청 replay 수직 흐름. 단순 tests pass 외에 재전송이 나중 수정을 덮어쓰지 않고 감사 실패가 업무를 남기지 않는 시나리오를 실제 엔진에서 확인했다.
 
-외부환경 미검증: 배포 Mongo의 실제 인증/TLS/readWrite권한·다중노드 failover/네트워크 중 commit 불확실성·생산규모 latency·backup/restore/reverse-cutover. 이 제한은 전체 Mongo 전환 gate에 남긴다.
+후속 외부 검증: 사용자 권한 승인 후 실제 대상에서 인증/readWrite/dbAdmin, TLS 옵션, 35모델 BSON/관계/rollback, native OperationRepository7시나리오를 통과했다. docs/operations/mongodb-external-shadow-verification.md 참조. 실제 데이터 대조·다중노드 failover/네트워크 중 commit 불확실성·생산규모 latency·backup/restore/reverse-cutover는 미검증으로 전체 전환 gate에 남긴다.
