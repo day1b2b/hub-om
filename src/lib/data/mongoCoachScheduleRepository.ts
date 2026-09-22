@@ -1,3 +1,4 @@
+import { prepareMongoCoachSchedulingGuard, assertMongoCoachSchedulingGuardReady, lockMongoCoachScheduling } from "./mongoCoachSchedulingGuard";
 import { randomUUID } from "node:crypto";
 import { activityContext } from "../activity/context";
 import { MongoServerError, type ClientSession, type IndexDescription } from "mongodb";
@@ -22,6 +23,7 @@ export async function prepareMongoCoachScheduleStore(options: Options): Promise<
   await prepareMongoReadStore(options, COACH_SCHEDULE_MODELS);
   const store = new MongoOperationStore(options, COACH_SCHEDULE_MODELS);
   await store.collection("CoachDayReservation").createIndexes([activeIndex], { collation: { locale: "simple" } });
+  await prepareMongoCoachSchedulingGuard(store, options.allowShadowWrites);
 }
 
 /** Internal shadow implementation. No environment variable selects this repository in production. */
@@ -35,6 +37,7 @@ export class MongoCoachScheduleRepository implements CoachScheduleRepository {
       const hello = await store.db.command({ hello: 1 });
       assertMongo((hello.setName || hello.msg === "isdbgrid") && hello.logicalSessionTimeoutMinutes != null, "TRANSACTIONS_REQUIRED");
       await assertMongoReadStoreReady(store);
+      await assertMongoCoachSchedulingGuardReady(store);
       const index = (await store.collection("CoachDayReservation").listIndexes().toArray()).find(item => item.name === activeIndex.name);
       assertMongo(index && JSON.stringify(index.key) === JSON.stringify(activeIndex.key) && index.unique && !index.sparse && !index.hidden && (!index.collation || index.collation.locale === "simple") && stableMongoValue(index.partialFilterExpression) === stableMongoValue(activeIndex.partialFilterExpression), "ACTIVE_RESERVATION_INDEX_NOT_READY");
       return new MongoCoachScheduleRepository(store);
@@ -91,6 +94,7 @@ export class MongoCoachScheduleRepository implements CoachScheduleRepository {
     coachId = coachId.toLowerCase();
     const { start, end } = this.range(yearMonth);
     return this.transaction(async session => {
+      await lockMongoCoachScheduling(this.store, coachId, session);
       assertMongo(await this.coach(coachId, session), "COACH_NOT_FOUND");
       const { schedules, engagementSchedules, log } = await this.month(coachId, yearMonth, session);
       const engagements = (await this.store.scan("CoachEngagement", { coachId, endDate: { $gte: start }, startDate: { $lte: end } }, session))
@@ -116,6 +120,7 @@ export class MongoCoachScheduleRepository implements CoachScheduleRepository {
     coachId = coachId.toLowerCase(); const { start, end } = this.range(yearMonth);
     const parsed = parseSchedules(entries, yearMonth); assertMongo(parsed.ok, "INVALID_COACH_SCHEDULES");
     await this.transaction(async session => {
+      await lockMongoCoachScheduling(this.store, coachId, session);
       assertMongo(await this.coach(coachId, session), "COACH_NOT_FOUND");
       const previous = await this.store.scan("CoachSchedule", { coachId, date: { $gte: start, $lte: end } }, session);
       const log = await this.store.one("CoachScheduleAccessLog", { coachId, yearMonth }, session);
@@ -134,6 +139,7 @@ export class MongoCoachScheduleRepository implements CoachScheduleRepository {
     assertMongo(activityContext.getStore(), "ACTIVITY_CONTEXT_REQUIRED");
     coachId = coachId.toLowerCase(); const parsed = parseDates(dates); assertMongo(parsed, "INVALID_COACH_DATES");
     return this.transaction(async session => {
+      await lockMongoCoachScheduling(this.store, coachId, session);
       if (!await this.coach(coachId, session)) return null;
       const rows = await this.store.scan("CoachDayReservation", { coachId, date: { $in: parsed.map(value => new Date(`${value}T00:00:00.000Z`)) }, cancelledAt: null }, session);
       const byDate = new Map(rows.map(row => [day(row.date), row]));
@@ -147,6 +153,7 @@ export class MongoCoachScheduleRepository implements CoachScheduleRepository {
     assertMongo(activityContext.getStore(), "ACTIVITY_CONTEXT_REQUIRED");
     coachId = coachId.toLowerCase(); const parsed = parseDates(dates); assertMongo(parsed, "INVALID_COACH_DATES");
     return this.transaction(async session => {
+      await lockMongoCoachScheduling(this.store, coachId, session);
       // Read full authenticated rows: a blind index alone cannot authorize cancellation.
       const rows = await this.store.scan("CoachDayReservation", { coachId, date: { $in: parsed.map(value => new Date(`${value}T00:00:00.000Z`)) }, cancelledAt: null }, session);
       const owned = rows.filter(row => row.reservedByEmail === email), now = new Date();

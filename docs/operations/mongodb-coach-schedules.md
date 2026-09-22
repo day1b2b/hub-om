@@ -24,10 +24,14 @@ Mongo는 전체 행 codec의 암호화/HMAC/무결성 검사를 사용한다. �
 
 PG adapter는 기존 조회/응답/암호화/감사를 유지하고 세 변경 메서드에 코치별 parameterized advisory transaction lock을 추가한다. 동일 UUID의 대소문자도 동일 lock을 사용한다. 모의 adapter 테스트는 실PG 경합·rollback의 증거가 아니다.
 
+## 후속 경계
+
+일정·예약 작성 이후 [투입·평가 경계](mongodb-coach-engagements.md)에서 범위 내 writer에 코치별 공통 guard를 추가했다. 수동 섭외 API/자동취소/평가 경계는 구현됐고, 아래 외부 sync·삭제 writer 통합 및 실제 운영 전환 게이트는 계속 남는다.
+
 ## 검증·남은 전환 게이트
 
 실행 명령·최종 카운트는 `.claude/plans/mongodb-coach-schedules/execution-manifest.md`, 독립검토는 execution-review.md에 기록한다. native 로컬 Mongo8 replica set, 임시키와 합성 fixture만 사용한다. 실제 OAuth/UI/운영Mongo/실PG query 대조는 수행하지 않는다.
 
-**이 scope 완료가 생산 전환을 허용하지 않는다.** engagement 쓰기·`reservationAutoCancel.ts`·contractSheetSync·samsungScheduleSync는 아직 PG 경로다. 확정 writer가 예약을 취소하고 confirmedEngagementId를 연결하는 원자성, engagement 물리삭제의 SetNull과 Coach soft delete의 차이를 함께 이관·검증해야 한다. 현재 active unique는 POST 간 중복만 막으며 범위 밖 확정·삭제 writer와의 통합 직렬화를 보장하지 않는다. Coach 삭제와 신규 예약의 동시 commit 금지는 기존 수준을 넘는 별도 보장으로 추가하지 않았다.
+**이 scope 완료가 생산 전환을 허용하지 않는다.** 외부 contractSheetSync·samsungScheduleSync 및 이들이 사용하는 호환 `reservationAutoCancel.ts`는 아직 직접 PG 경로다. 확정 writer가 예약을 취소하고 confirmedEngagementId를 연결하는 원자성, engagement 물리삭제의 SetNull과 Coach soft delete의 차이를 함께 이관·검증해야 한다. 현재 active unique는 POST 간 중복만 막으며 범위 밖 확정·삭제 writer와의 통합 직렬화를 보장하지 않는다. Coach 삭제와 신규 예약의 동시 commit 금지는 기존 수준을 넘는 별도 보장으로 추가하지 않았다.
 
 실데이터 snapshot/차이 반영/최종 쓰기 중단/복구/OAuth UI/배포/생산 selector는 총괄 전환 계획의 후속 게이트로 남는다.

@@ -124,7 +124,7 @@ test("coach reads retain date/status DTOs, lastSaved fallback and access-only lo
   const accessed: Array<{ update: Record<string, unknown> }> = [];
   const saved = date("2026-10-02");
   let explicitSaved: Date | null = null;
-  fakeClient = {
+  const state = transactional({
     coachSchedule: {
       async findMany() { return [{ id: "schedule", date: date("2026-10-01"), startTime: "09:00", endTime: "12:00" }]; },
       async aggregate() { return { _max: { updatedAt: saved } }; }
@@ -135,7 +135,7 @@ test("coach reads retain date/status DTOs, lastSaved fallback and access-only lo
       async findUnique() { return { lastEditedAt: explicitSaved }; },
       async upsert(args: { update: Record<string, unknown> }) { accessed.push(args); }
     }
-  };
+  });
   const repository = new PrismaCoachScheduleRepository();
   const result = await repository.getCoachMonth(coachId, "2026-10");
   assert.deepEqual(result, {
@@ -145,6 +145,7 @@ test("coach reads retain date/status DTOs, lastSaved fallback and access-only lo
     lastSavedAt: saved.toISOString()
   });
   assert.deepEqual(Object.keys(accessed[0].update), ["accessedAt"]);
+  assert.deepEqual(state.events, ["begin", "lock", "commit"]);
   explicitSaved = date("2026-10-04");
   assert.equal((await repository.getCoachMonth(coachId, "2026-10")).lastSavedAt, explicitSaved.toISOString());
 });

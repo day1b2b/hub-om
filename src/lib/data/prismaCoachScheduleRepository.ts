@@ -1,8 +1,8 @@
-import { createHash } from "node:crypto";
 import { CoachEngagementStatus, type Prisma } from "@prisma/client";
 import { parseDates, parseMonthRange, parseScheduleDate, parseSchedules } from "../coaches/coachScheduleValidation";
 import type { CoachDateReservation, CoachManagerMonthSchedules, CoachMonthSchedules, CoachScheduleEntry, CoachScheduleRepository } from "./coachScheduleRepository";
 import { getPrismaClient } from "./prisma";
+import { lockPrismaCoach } from "./prismaCoachLock";
 
 function monthRange(yearMonth: string) {
   const range = parseMonthRange(yearMonth);
@@ -43,38 +43,34 @@ function engagementSchedulesQuery(coachId: string, range: { start: Date; end: Da
     orderBy: [{ date: "asc" }, { startTime: "asc" }]
   } satisfies Prisma.CoachEngagementScheduleFindManyArgs;
 }
-/** All writes in this adapter serialize per coach; the parameterized key never becomes SQL text. */
-async function lockCoach(tx: Prisma.TransactionClient, coachId: string) {
-  const lockKey = createHash("sha256").update(`coach-schedule:${coachId.toLowerCase()}`).digest().readBigInt64BE();
-  await tx.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock(${lockKey}::bigint)`;
-}
-
 export class PrismaCoachScheduleRepository implements CoachScheduleRepository {
   async getCoachMonth(coachId: string, yearMonth: string): Promise<CoachMonthSchedules> {
     const range = monthRange(yearMonth);
-    const prisma = getPrismaClient();
-    const [schedules, engagements, engagementSchedules, lastSaved, fallbackLastSaved] = await Promise.all([
-      prisma.coachSchedule.findMany(schedulesQuery(coachId, range)),
-      prisma.coachEngagement.findMany({
-        where: { coachId, endDate: { gte: range.start }, startDate: { lte: range.end } },
-        select: { id: true, courseName: true, startDate: true, endDate: true, startTime: true, endTime: true, status: true },
-        orderBy: [{ startDate: "asc" }, { courseName: "asc" }]
-      }),
-      prisma.coachEngagementSchedule.findMany(engagementSchedulesQuery(coachId, range)),
-      prisma.coachScheduleAccessLog.findUnique({ where: { coachId_yearMonth: { coachId, yearMonth } }, select: { lastEditedAt: true } }),
-      prisma.coachSchedule.aggregate({ where: { coachId, date: { gte: range.start, lte: range.end } }, _max: { updatedAt: true } })
-    ]);
-    const now = new Date();
-    await prisma.coachScheduleAccessLog.upsert({
-      where: { coachId_yearMonth: { coachId, yearMonth } },
-      create: { coachId, yearMonth, accessedAt: now }, update: { accessedAt: now }
+    return getPrismaClient().$transaction(async tx => {
+      await lockPrismaCoach(tx, coachId);
+      const [schedules, engagements, engagementSchedules, lastSaved, fallbackLastSaved] = await Promise.all([
+        tx.coachSchedule.findMany(schedulesQuery(coachId, range)),
+        tx.coachEngagement.findMany({
+          where: { coachId, endDate: { gte: range.start }, startDate: { lte: range.end } },
+          select: { id: true, courseName: true, startDate: true, endDate: true, startTime: true, endTime: true, status: true },
+          orderBy: [{ startDate: "asc" }, { courseName: "asc" }]
+        }),
+        tx.coachEngagementSchedule.findMany(engagementSchedulesQuery(coachId, range)),
+        tx.coachScheduleAccessLog.findUnique({ where: { coachId_yearMonth: { coachId, yearMonth } }, select: { lastEditedAt: true } }),
+        tx.coachSchedule.aggregate({ where: { coachId, date: { gte: range.start, lte: range.end } }, _max: { updatedAt: true } })
+      ]);
+      const now = new Date();
+      await tx.coachScheduleAccessLog.upsert({
+        where: { coachId_yearMonth: { coachId, yearMonth } },
+        create: { coachId, yearMonth, accessedAt: now }, update: { accessedAt: now }
+      });
+      return {
+        schedules: schedules.map(scheduleDto),
+        engagements: engagements.map(row => ({ id: row.id, courseName: row.courseName, startDate: day(row.startDate), endDate: day(row.endDate), startTime: row.startTime, endTime: row.endTime, status: row.status.toLowerCase() })),
+        engagementSchedules: engagementSchedules.map(engagementScheduleDto),
+        lastSavedAt: lastSaved?.lastEditedAt?.toISOString() ?? fallbackLastSaved._max.updatedAt?.toISOString() ?? null
+      };
     });
-    return {
-      schedules: schedules.map(scheduleDto),
-      engagements: engagements.map(row => ({ id: row.id, courseName: row.courseName, startDate: day(row.startDate), endDate: day(row.endDate), startTime: row.startTime, endTime: row.endTime, status: row.status.toLowerCase() })),
-      engagementSchedules: engagementSchedules.map(engagementScheduleDto),
-      lastSavedAt: lastSaved?.lastEditedAt?.toISOString() ?? fallbackLastSaved._max.updatedAt?.toISOString() ?? null
-    };
   }
 
   async replaceCoachMonth(coachId: string, yearMonth: string, entries: CoachScheduleEntry[]): Promise<void> {
@@ -82,7 +78,7 @@ export class PrismaCoachScheduleRepository implements CoachScheduleRepository {
     const schedules = parseSchedules(entries, yearMonth);
     if (!schedules.ok) throw new Error(schedules.error);
     await getPrismaClient().$transaction(async tx => {
-      await lockCoach(tx, coachId);
+      await lockPrismaCoach(tx, coachId);
       const now = new Date();
       await tx.coachSchedule.deleteMany({ where: { coachId, date: { gte: range.start, lte: range.end } } });
       if (schedules.value.length > 0) {
@@ -117,7 +113,7 @@ export class PrismaCoachScheduleRepository implements CoachScheduleRepository {
   async reserveDates(coachId: string, dates: string[], author: { name: string; email: string }): Promise<CoachDateReservation[] | null> {
     const validDates = datesInput(dates);
     return getPrismaClient().$transaction(async tx => {
-      await lockCoach(tx, coachId);
+      await lockPrismaCoach(tx, coachId);
       const coach = await tx.coach.findUnique({ where: { id: coachId }, select: { id: true, deletedAt: true } });
       if (!coach || coach.deletedAt) return null;
       const existingRows = await tx.coachDayReservation.findMany({
@@ -137,7 +133,7 @@ export class PrismaCoachScheduleRepository implements CoachScheduleRepository {
   async cancelDates(coachId: string, dates: string[], email: string): Promise<string[]> {
     const validDates = datesInput(dates);
     return getPrismaClient().$transaction(async tx => {
-      await lockCoach(tx, coachId);
+      await lockPrismaCoach(tx, coachId);
       const ownRows = await tx.coachDayReservation.findMany({
         where: { coachId, date: { in: validDates.map(toDbDate) }, cancelledAt: null, reservedByEmail: email },
         select: { id: true, date: true }

@@ -1,3 +1,4 @@
+import type { CoachEngagementRepository } from "./coachEngagementRepository";
 import type { CoachScheduleRepository } from "./coachScheduleRepository";
 import type { CoachExportRepository } from "./coachExportRepository";
 import type { CoachTokenRepository } from "./coachTokenRepository";
@@ -16,6 +17,7 @@ export interface CoachPrivateAccessLogRepository {
   recordAccess(coachId: string, accessedByEmail: string, context: string): Promise<void>;
 }
 export interface DataRepositories {
+  coachEngagement: CoachEngagementRepository;
   coachSchedule: CoachScheduleRepository;
   coachExport: CoachExportRepository;
   coachToken: CoachTokenRepository;

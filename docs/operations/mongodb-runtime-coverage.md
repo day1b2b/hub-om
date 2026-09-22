@@ -1,6 +1,6 @@
 # MongoDB 전환 범위와 남은 PostgreSQL 의존성
 
-확인 기준: `cc9eeb49` 이후 코치 일정·예약 경계 작업 트리, 2026-09-22. `src`의 테스트 외 소스에서 실제 연결 생성·Prisma delegate 호출·raw SQL·repository factory와 간접 호출을 읽어 구분했다. 이 문서는 코드 경로 조사이며 운영 DB 접속이나 운영 데이터 검증 결과가 아니다. 아래 진행 상태는 이 기준 시점의 기록이다.
+확인 기준: `7ebb24f` 이후 코치 투입·평가 경계 작업 트리, 2026-09-22. `src`의 테스트 외 소스에서 실제 연결 생성·Prisma delegate 호출·raw SQL·repository factory와 간접 호출을 읽어 구분했다. 이 문서는 코드 경로 조사이며 운영 DB 접속이나 운영 데이터 검증 결과가 아니다. 아래 진행 상태는 이 기준 시점의 기록이다.
 
 **35개 모델의 복사/codec 지원은 앱 전체 전환 완료를 의미하지 않는다. 생산 factory와 직접 API는 여전히 PostgreSQL을 사용한다.** 기존 Mongo 구현은 별도 shadow DB/namespace에서 직접 여는 병렬 검증용이다. 환경변수 이름만 바꾸거나 기존 factory 몇 개를 바꾸는 것으로 아래 직접·간접 경로가 함께 전환되지 않는다.
 
@@ -15,6 +15,7 @@
 | Coach CRUD | shadow 구현과 Mongo8.0.30 관리 API 경계 검증 완료. 업무/ActivityChange 실패 rollback 확인 | 두 관리 API는 repository 호출로 변경. 명시 context 외 기본 PG 유지. 일정/섭외/마스터·토큰·복원은 별도 |
 | TeamUser 생성·팀/역할 수정 | shadow 구현과 Mongo8.0.30 합성 검증 완료. guard 중복 경쟁·감사 실패 rollback 확인. 물리삭제는 정책 충돌로 차단 | 기존 export 함수는 context 우선 facade. 기본 legacy PG/local 유지. 모든 writer의 guard 참여 필요 |
 | 코치 월간 일정·예약 | `MongoCoachScheduleRepository` 및 실제handler 합성검증 경계. 월 교체/접근 로그/예약 선점·자기취소, active unique·transaction·암호화·감사 | 지정 3개 API는 context 우선/기본 Prisma. 섭외확정·예약자동취소·외부동기화는 별도 |
+| 코치 투입·평가 | `MongoCoachEngagementRepository`, 슬롯 교체·예약 자동취소·평가 이력 원자화와 공통 scheduling guard | 3개 API context 경계/기본 PG. 외부 contractSheetSync/samsungScheduleSync 미참여, 생산 전환 gate |
 | 전체 모델 암호화 snapshot export/import | 35개 모델 codec·일관된 PG 읽기 snapshot·사본 대조·참조 검증 지원 | 운영 서비스 선택·실시간 변경 동기화·최종 freeze/cutover·복구 승인은 별도 |
 
 ## 남은 기능군별 실제 경로
@@ -29,7 +30,7 @@
 | 팀 사용자 관리 | `lib/data/teamUsers/teamUserRepository.ts` → 기본 `legacyTeamUserRepository.ts` → TeamUser delegate | TeamUser; local JSON은 개발 분기 | 명단/권한 호출부는 facade를 유지하며 context 주입 검증. 생산 선택과 전체 writer 일치 필요. Member 조회는 별도 |
 | 코치 CRUD·태그 마스터 | `api/coaches`, `api/coaches/[id]`, `api/coaches/[id]/regenerate-token`, `api/master/fields`, `api/master/curriculums`, `api/admin/deleted-coaches` | Coach, CoachPrivateProfile, CoachField/Curriculum, 두 Master | 두 CRUD API는 context/기본 Prisma adapter로 연결. 토큰 재발급도 context 경계 연결. 마스터 API·삭제 복원 경로 미전환 |
 | 코치 인증·본인 페이지·개인정보 열람 | `lib/coaches/coachTokenAuth.ts`, `lib/data/coachMyPage.ts`, `coachPrivateAccess.ts`, `coachAccessTokenBackfill.ts`, `api/coach/me`, `api/coaches/export` | Coach, CoachPrivateProfile, CoachPrivateAccessLog, CoachdbArchiveRow, 예약·섭외 | 토큰 lookup/본인 API/export는 명시context 연결 및 합성검증. 기본PG이며 manager coachMyPage·backfill은 별도 미전환 |
-| 가용 일정·예약·섭외 | `api/coaches/[id]/schedules`, `/reservations`, `/engagements`, `api/coach/schedule/[yearMonth]`, `api/engagements/[id]`, `/review`; `lib/coaches/engagementApi.ts`, `reservationAutoCancel.ts` | CoachSchedule, CoachScheduleAccessLog, CoachDayReservation, CoachEngagement, CoachEngagementSchedule, Coach | 월일정 GET/PUT·예약 POST/DELETE·매니저일정 GET은 context 경계. 섭외확정/자동취소/동기화·관계 transaction은 남음 |
+| 가용 일정·예약·섭외 | `api/coaches/[id]/schedules`, `/reservations`, `/engagements`, `api/coach/schedule/[yearMonth]`, `api/engagements/[id]`, `/review`; `lib/coaches/engagementApi.ts`, `reservationAutoCancel.ts` | CoachSchedule, CoachScheduleAccessLog, CoachDayReservation, CoachEngagement, CoachEngagementSchedule, Coach | 월일정 GET/PUT·예약 POST/DELETE·매니저일정 GET은 context 경계. 수동 섭외확정/자동취소/평가는 context 경계 및 일정·예약 공통 guard. 외부동기화·삭제 관계 transaction은 남음 |
 | 코치 메모·콘텐츠·관리 조회 | `lib/coaches/contentEntries.ts`, `api/coaches/[id]/notes`, `api/admin/content-entries`, `api/admin/schedule-registration/[yearMonth]`, `api/schedules/[yearMonth]/status`, `app/coaches/admin/page.tsx` | CoachContentEntry, CoachEngagement, CoachScheduleAccessLog, Coach | 메모 생성·관리·검토·등록 현황 및 직접 페이지 조회 |
 | 코치 외부 동기화 | `lib/coaches/notionCoachSync.ts`, `samsungScheduleSync.ts`, `contractSheetSync.ts`, `syncLog.ts` | Coach, PrivateProfile, Field/Curriculum/Master, Engagement/Schedule, CoachSyncLog | 수집 변환·merge/upsert·예약 후처리·동기화 로그. HTTP adapter 변경과 별도 검증 |
 | 강사 위키·노션 동기화 | `lib/data/prismaInstructorNoteRepository.ts`, `lib/instructors/notionInstructorSync.ts` | InstructorNote | 실제 save route의 명시 context 검증 완료. 기본 factory와 직접 Notion upsert는 여전히 PG |
@@ -82,10 +83,7 @@
 | `src/app/api/announcements/[id]/attachments/[attachmentId]/route.ts` | AnnouncementAttachment |
 | `src/app/api/announcements/[id]/route.ts` | Announcement |
 | `src/app/api/announcements/route.ts` | Announcement |
-| `src/app/api/coaches/[id]/engagements/route.ts` | Coach, CoachEngagement |
 | `src/app/api/coaches/[id]/notes/route.ts` | CoachContentEntry |
-| `src/app/api/engagements/[id]/review/route.ts` | CoachEngagement |
-| `src/app/api/engagements/[id]/route.ts` | CoachEngagement |
 | `src/app/api/health/route.ts` | 중앙 연결·raw SQL 또는 동적 delegate: 본문 기능군 참조 |
 | `src/app/api/master/curriculums/route.ts` | CoachCurriculumMaster |
 | `src/app/api/master/fields/route.ts` | CoachFieldMaster |
@@ -111,6 +109,7 @@
 | `src/lib/data/prismaCoachExportRepository.ts` | Coach, CoachPrivateAccessLog |
 | `src/lib/data/prismaCoachManagementRepository.ts` | Coach, CoachPrivateProfile, CoachFieldMaster, CoachCurriculumMaster, CoachField, CoachCurriculum |
 | `src/lib/data/prismaCoachPrivateRepository.ts` | CoachPrivateProfile, CoachEngagement |
+| `src/lib/data/prismaCoachEngagementRepository.ts` | Coach, CoachEngagement, CoachEngagementSchedule, CoachDayReservation, CoachContentEntry; 공통 coach advisory lock |
 | `src/lib/data/prismaCoachScheduleRepository.ts` | CoachSchedule, CoachScheduleAccessLog, CoachDayReservation, CoachEngagement, CoachEngagementSchedule, Coach; 예약/일정 advisory transaction lock |
 | `src/lib/data/prismaCoachRepository.ts` | Coach, CoachSchedule, CoachDayReservation, CoachEngagement, CoachEngagementSchedule, CoachdbArchiveRow |
 | `src/lib/data/prismaImportRepository.ts` | Company, Course, DataImportRun |
@@ -138,3 +137,6 @@
 
 ## 코치 일정·예약 후속 경계 (2026-09-22)
 [범위와 보장](mongodb-coach-schedules.md), [실행 근거](../../.claude/plans/mongodb-coach-schedules/execution-manifest.md). 세 API의 직접 PG 호출은 PrismaCoachScheduleRepository adapter로 이동했으며 생산 기본은 PG다. Mongo active unique와 원자성은 확정·동기화 writer 통합을 대신하지 않는다.
+
+## 코치 투입·평가 후속 경계 (2026-09-22)
+[정책과 저장 경계](mongodb-coach-engagements.md), [실행 근거](../../.claude/plans/mongodb-coach-engagements/execution-manifest.md). 예약→재생성 취소와 재생성→예약 허용을 유지한다. 외부 두 sync의 guard/저장 경계와 물리삭제 관계 처리는 별도 필수 후속이다.
