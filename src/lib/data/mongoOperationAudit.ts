@@ -10,6 +10,8 @@ const allowed: Record<string, Set<string>> = {
   Course: new Set(["companyId", "courseId", "name", "operationType", "courseCategory", "revenue"]),
   CourseIdLabel: new Set(["companyId", "courseId", "label"]),
   Coach: new Set(["name", "workType", "status", "returnDate", "dxTag", "isActive", "displayOrder"]),
+  CoachSchedule: new Set(["coachId", "date", "startTime", "endTime"]),
+  CoachDayReservation: new Set(["coachId", "date", "cancelledAt", "confirmedEngagementId"]),
   CoachContentEntry: new Set(["coachId", "kind", "flaggedAt"]),
   CoachPrivateProfile: new Set(),
   CoachFieldMaster: new Set(["name"]),
