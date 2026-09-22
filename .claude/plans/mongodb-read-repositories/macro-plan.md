@@ -8,3 +8,6 @@
 4. 전환: 원본 쓰기 동결, 최종 snapshot/sequence 상한, 데이터 대조, 검토 후 factory·배포 연결. 운영 신규 쓰기 이후 단순 PG 주소 복귀 금지. 미실행.
 
 운영 PG backfill, 전체 환경 복제, 키 변경, 기존 미커밋 파일 변경을 이 조회 작업에 섞지 않는다.
+
+## 2026-09-22 저장소 구현 후속
+코치 CRUD·팀 명단 생성/수정·강사노트 저장의 shadow 구현과 Mongo7.0.43 합성검증 완료. 다음 작업 및 남은 gate는 ../mongodb-write-repositories/handoff.md, docs/operations/mongodb-runtime-coverage.md 참고. 전체 runtime/실제복사/전환 Wave는 계속 in_progress.
