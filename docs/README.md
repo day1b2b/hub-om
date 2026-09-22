@@ -46,3 +46,5 @@ AI 작업자는 먼저 [operations/manager-ai-workflow.md](operations/manager-ai
 - [operations/lecture-followup-reminder.md](operations/lecture-followup-reminder.md): 회차 종료 후 담당 OM에게 보내는 마무리 DM 알림(D+1 등록, D+7 등록·회고)의 기준과 설정 방법.
 
 개인정보 저장 암호화 대상·전환·복구 절차는 [operations/personal-data-encryption.md](operations/personal-data-encryption.md)를 참고한다.
+
+PostgreSQL을 유지하면서 별도 MongoDB로 암호화 복사하는 준비 도구는 [operations/mongodb-shadow-transfer.md](operations/mongodb-shadow-transfer.md)를 참고한다. 현재 앱의 데이터 소스는 바뀌지 않는다.

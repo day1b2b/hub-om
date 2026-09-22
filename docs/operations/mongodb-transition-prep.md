@@ -1,5 +1,7 @@
 # MongoDB 이전 준비: 운영·캘린더 오프라인 대조
 
+> 이 문서는 과거 4모델 준비 단계의 기록이다. 현재 35모델 암호화 복사 도구와 실행 경계는 [mongodb-shadow-transfer.md](mongodb-shadow-transfer.md)를 참고한다. 아래 고정 baseline 검증은 현재 schema에서 실패하며, 지문만 갱신하지 않는다.
+
 이 작업은 **DB 없이 입력 파일을 대조하는 준비 도구**다. 현재 PostgreSQL runtime, Prisma schema, 패키지/lock, API 동작은 바꾸지 않는다. MongoDB 접속·적재·BSON 역직렬화·전체 서비스 전환을 구현한 것이 아니다.
 
 ## Task Plan
