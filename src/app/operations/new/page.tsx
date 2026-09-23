@@ -46,7 +46,7 @@ export default async function NewOperationPage({ searchParams }: NewOperationPag
           </div>
         </header>
 
-        <OperationCreateForm initialValues={initialValues} personOptions={personOptions} teamScope={teamScope} />
+        <OperationCreateForm expectedSubject={session.browserDraftSubject} initialValues={initialValues} personOptions={personOptions} teamScope={teamScope} />
       </section>
     </main>
   );

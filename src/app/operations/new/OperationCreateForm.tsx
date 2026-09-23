@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { buildOperationCreateTemplateCsv } from "@/features/operations/operationCreateTemplate";
+import { clearOperationSubmission, hasLegacyOperationSubmission, OperationSubmissionValidationError, persistOperationSubmission, readOperationSubmission, submitOperationSnapshot, type OperationSubmission, type OperationSubmissionStore } from "@/features/operations/operationSubmission";
+import { operationSubmissionStore } from "@/features/operations/operationSubmissionStore";
+import { LEGACY_DRAFT_PREFIXES, LEGACY_REGISTRATION_UNRESOLVED } from "@/lib/privacy/legacyDraftSources";
+import { browserDrafts } from "@/lib/privacy/browserDraftRuntime";
+import { useBrowserDraftSession } from "@/components/BrowserDraftProvider";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MultiDateCalendar } from "@/components/MultiDateCalendar";
 import { parsePastedRounds, type ParsedRound } from "@/features/operations/parsePastedRounds";
@@ -26,6 +32,7 @@ interface OperationCreateFormInitialValues {
 }
 
 interface OperationCreateFormProps {
+  expectedSubject?: string;
   initialValues?: OperationCreateFormInitialValues;
   personOptions: {
     ld: string[];
@@ -36,21 +43,14 @@ interface OperationCreateFormProps {
 
 const TRAINING_TYPE_OPTIONS: TrainingType[] = ["오프라인", "블렌디드", "비대면", "해커톤"];
 
-const TEMPLATE_HEADER = ["회차", "시작일", "종료일", "시간", "강사", "실습코치", "실제교육일(선택)"];
-const TEMPLATE_SAMPLE_ROW = [
-  "1",
-  "2026-09-03",
-  "2026-09-07",
-  "09:30 ~ 17:30",
-  "강사A",
-  "코치A",
-  "2026-09-03, 2026-09-04, 2026-09-07"
-];
-
 type SubmitState = "idle" | "saving" | "failed";
 
-export function OperationCreateForm({ initialValues = {}, personOptions, teamScope }: OperationCreateFormProps) {
+export function OperationCreateForm({ expectedSubject, initialValues = {}, personOptions, teamScope }: OperationCreateFormProps) {
   const router = useRouter();
+  const { status, ownerId, generation } = useBrowserDraftSession();
+  const [originalOwner, setOriginalOwner] = useState<string | null>(null);
+  const draftStore = useMemo(() => status === "ready" && ownerId && expectedSubject && browserDrafts.getSubject() === expectedSubject
+    ? operationSubmissionStore(browserDrafts, { status, ownerId, generation }, teamScope, expectedSubject) : null, [status, ownerId, generation, teamScope, expectedSubject]);
   const ldOptions = useMemo(() => unique(personOptions.ld), [personOptions.ld]);
   const omOptions = useMemo(() => unique(personOptions.om), [personOptions.om]);
   const teamQuery = teamScopeSearchParam(teamScope);
@@ -74,10 +74,80 @@ export function OperationCreateForm({ initialValues = {}, personOptions, teamSco
   const [dateOverrides, setDateOverrides] = useState<Record<number, string[]>>({});
   const [openDateEditorIndex, setOpenDateEditorIndex] = useState<number | null>(null);
 
+  const [pendingSubmission, setPendingSubmission] = useState<OperationSubmission | null>(null);
+  const [restoredStore, setRestoredStore] = useState<OperationSubmissionStore | null>(null);
+  const storageReady = draftStore !== null && restoredStore === draftStore;
+  const submittingRef = useRef(false);
+  const [legacyRevision, setLegacyRevision] = useState(0);
+  useEffect(() => {
+    const refreshLegacy = () => setLegacyRevision(value => value + 1);
+    const onStorage = (event: StorageEvent) => {
+      const key = event.key;
+      if (key === null || key === LEGACY_REGISTRATION_UNRESOLVED || LEGACY_DRAFT_PREFIXES.some(prefix => key.startsWith(prefix))) refreshLegacy();
+    };
+    window.addEventListener("hub-om:legacy-transition-updated", refreshLegacy);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener("hub-om:legacy-transition-updated", refreshLegacy);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setRestoredStore(null);
+    if (!draftStore) return;
+    if (originalOwner && originalOwner !== draftStore.owner) return;
+    if (!originalOwner) setOriginalOwner(draftStore.owner);
+    async function restore() {
+      try {
+        if (hasLegacyOperationSubmission(window.sessionStorage) || hasLegacyOperationSubmission(window.localStorage)) {
+          throw new Error("서버 반영 여부가 미확정인 이전 등록 정보가 있습니다. 화면 위쪽의 이전 초안 보호 절차를 진행하고 운영 현황을 확인한 뒤 새 등록을 허용해주세요.");
+        }
+        const pending = await readOperationSubmission(draftStore!, teamScope);
+        if (!active) return;
+        setPendingSubmission(pending);
+        if (pending) {
+          const first = pending.payloads[0];
+          setCompanyName(first.companyName);
+          setCourseName(first.courseName);
+          setCourseId(first.courseId ?? "");
+          setOmNames(first.om ? first.om.split(", ") : [""]);
+          setLdNames(first.ld ? first.ld.split(", ") : [""]);
+          setTrainingType(TRAINING_TYPE_OPTIONS.includes(first.trainingType as TrainingType) ? first.trainingType as TrainingType : "오프라인");
+          setOnsiteRequired(first.onsiteRequired ?? "N");
+          setHasResultReport(pending.hasResultReport);
+          const restoredText = pending.payloads.map((body) => [body.roundNo, body.startDate, body.endDate, body.timeText, body.instructors, body.coach, body.region, body.educationDates].map((value) => value ?? "").join("\t")).join("\n");
+          setPasteText(restoredText);
+          setRows(parsePastedRounds(restoredText));
+          setDateOverrides({});
+        }
+        setRestoredStore(draftStore);
+        setError(null);
+      } catch (reason) {
+        if (active) setError(reason instanceof Error ? reason.message : "암호화된 등록 정보를 확인하지 못했습니다. 기존 정보를 보존하고 저장을 중단했습니다.");
+      }
+    }
+    void restore();
+    return () => { active = false; };
+  }, [draftStore, teamScope, originalOwner, legacyRevision]);
+
   const validCount = rows.filter((row) => row.errors.length === 0).length;
+
+  if (!draftStore || (originalOwner !== null && originalOwner !== draftStore.owner)) {
+    return <div className="operation-form" role="status">등록 정보를 확인하려면 인터넷에 연결하고 본인 계정으로 로그인해주세요. 이 화면의 입력과 저장된 정보는 삭제하지 않습니다.</div>;
+  }
 
   return (
     <div className="operation-form">
+      {pendingSubmission ? (
+        <div role="status" className="operation-form-section">
+          <p>{pendingSubmission.payloads[0].companyName} · {pendingSubmission.payloads[0].courseName} · {pendingSubmission.payloads.length}개 회차 등록이 진행 중입니다.</p>
+          <p>중복 등록을 막기 위해 입력을 잠갔습니다. 원래 등록 계속하기를 누르면 저장된 회차를 확인하고 남은 등록을 이어갑니다. 오류가 반복되면 본인 계정으로 로그인한 뒤 다시 시도하거나 담당자에게 문의해주세요.</p>
+        </div>
+      ) : null}
+      <fieldset disabled={!storageReady || pendingSubmission !== null || submitState === "saving"} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
       <section className="dashboard-panel operation-form-section">
         <div className="section-title">
           <h2>기본 정보</h2>
@@ -136,11 +206,11 @@ export function OperationCreateForm({ initialValues = {}, personOptions, teamSco
             <button className="secondary-action" onClick={downloadTemplate} type="button">
               양식 다운로드 (엑셀)
             </button>
-            <span>양식을 채운 뒤 회차~실습코치 6개 열을 복사해 아래에 붙여넣으세요.</span>
+            <span>양식을 채운 뒤 회차~실제교육일 8개 열을 복사해 아래에 붙여넣으세요.</span>
           </div>
 
           <label className="bulk-add-rounds-field">
-            <span>붙여넣기 (회차 / 시작일 / 종료일 / 시간 / 강사 / 실습코치 / 실제교육일(선택))</span>
+            <span>붙여넣기 (회차 / 시작일 / 종료일 / 시간 / 강사 / 실습코치 / 지역 / 실제교육일(선택))</span>
             <textarea
               className="bulk-add-rounds-textarea"
               onChange={(event) => handlePasteChange(event.target.value)}
@@ -229,11 +299,12 @@ export function OperationCreateForm({ initialValues = {}, personOptions, teamSco
         </div>
       ) : null}
 
+      </fieldset>
       <div className="operation-form-actions">
         {error ? <span className="lecture-note-save-error">{error}</span> : null}
         <Link className="secondary-action" href={`/operations${teamQuery}`}>취소</Link>
-        <button className="primary-action" disabled={submitState === "saving"} onClick={submit} type="button">
-          {submitState === "saving" ? "등록 중" : "저장"}
+        <button className="primary-action" disabled={!storageReady || submitState === "saving"} onClick={submit} type="button">
+          {submitState === "saving" ? "등록 중" : pendingSubmission ? "원래 등록 계속하기" : "저장"}
         </button>
       </div>
     </div>
@@ -256,7 +327,7 @@ export function OperationCreateForm({ initialValues = {}, personOptions, teamSco
   }
 
   function downloadTemplate() {
-    const csvBody = [TEMPLATE_HEADER, TEMPLATE_SAMPLE_ROW].map((row) => row.join(",")).join("\r\n");
+    const csvBody = buildOperationCreateTemplateCsv();
     const blob = new Blob(["﻿" + csvBody], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -270,123 +341,77 @@ export function OperationCreateForm({ initialValues = {}, personOptions, teamSco
   }
 
   async function submit() {
+    if (!storageReady || !draftStore || submittingRef.current) return;
+    const storage = draftStore;
     setError(null);
-
-    if (!companyName.trim() || !courseName.trim()) {
-      setError("기업명과 과정명은 필수입니다.");
-      return;
+    if (!pendingSubmission) {
+      if (!companyName.trim() || !courseName.trim()) {
+        setError("기업명과 과정명은 필수입니다.");
+        return;
+      }
+      if (rows.length === 0 || rows.some((row) => row.errors.length > 0)) {
+        setError("회차를 최소 1건 입력하고 오류가 있는 행을 확인해주세요.");
+        return;
+      }
     }
-
-    if (rows.length === 0) {
-      setError("회차를 최소 1건 이상 입력해주세요.");
-      return;
-    }
-
-    if (rows.some((row) => row.errors.length > 0)) {
-      setError("오류가 있는 행을 확인해주세요.");
-      return;
-    }
-
+    submittingRef.current = true;
     setSubmitState("saving");
-
-    const om = omNames.filter(Boolean).join(", ");
-    const ld = ldNames.filter(Boolean).join(", ");
-    const [firstRound, ...restRounds] = rows;
-    const submittedEducationDates = (index: number) => (dateOverrides[index] ?? rows[index].educationDates).join(", ");
-
-    let response: Response;
-
     try {
-      response = await fetch("/api/operations", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          coach: firstRound.coach,
-          companyName: companyName.trim(),
-          courseId: courseId.trim(),
-          courseName: courseName.trim(),
-          driveLink: initialValues.driveLink,
-          educationDays: initialValues.educationDays,
-          educationDates: submittedEducationDates(0),
-          endDate: firstRound.endDate,
-          instructors: firstRound.instructors,
-          ld,
-          om,
-          onsiteRequired,
-          operationDetail: initialValues.operationDetail,
-          region: initialValues.region,
-          roundNo: firstRound.roundNo,
-          startDate: firstRound.startDate,
-          timeText: firstRound.timeText,
-          trainingType
-        })
-      });
-    } catch {
-      setSubmitState("failed");
-      setError("과정을 등록하지 못했습니다.");
-      return;
-    }
-
-    const payload = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string; operation?: { operationId: string } };
-
-    if (!response.ok || !payload.ok || !payload.operation) {
-      setSubmitState("failed");
-      setError(payload.error ?? "과정을 등록하지 못했습니다.");
-      return;
-    }
-
-    const createdOperationIds = [payload.operation.operationId];
-
-    for (const [restIndex, round] of restRounds.entries()) {
-      let roundResponse: Response;
-
-      try {
-        roundResponse = await fetch(`/api/operations/${encodeURIComponent(payload.operation.operationId)}/rounds`, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
+      const assertRegistrationCurrent = () => {
+        storage.assertCurrent();
+        if (hasLegacyOperationSubmission(window.sessionStorage) || hasLegacyOperationSubmission(window.localStorage)) throw new Error("이전 등록의 반영 여부를 먼저 확인해주세요. 현재 등록 정보는 보존했습니다.");
+      };
+      assertRegistrationCurrent();
+      let snapshot = pendingSubmission;
+      if (snapshot && (snapshot.owner !== storage.owner || snapshot.expectedSubject !== storage.expectedSubject || snapshot.team !== teamScope)) throw new Error("등록 정보의 계정 또는 팀이 달라 저장을 중단했습니다.");
+      if (!snapshot) {
+        const payloads = rows.map<Record<string, string>>((round, index) => {
+          const common = {
             coach: round.coach,
-            educationDates: submittedEducationDates(restIndex + 1),
+            educationDates: (dateOverrides[index] ?? round.educationDates).join(", "),
             endDate: round.endDate,
             instructors: round.instructors,
             roundNo: round.roundNo,
             startDate: round.startDate,
-            timeText: round.timeText
-          })
+            timeText: round.timeText,
+            region: round.region || initialValues.region || ""
+          };
+          return index === 0 ? {
+            ...common,
+            companyName: companyName.trim(), courseId: courseId.trim(), courseName: courseName.trim(),
+            driveLink: initialValues.driveLink ?? "", educationDays: initialValues.educationDays ?? "",
+            ld: ldNames.filter(Boolean).join(", "), om: omNames.filter(Boolean).join(", "),
+            onsiteRequired, operationDetail: initialValues.operationDetail ?? "", trainingType
+          } : common;
         });
-      } catch {
-        setSubmitState("failed");
-        setError(`${round.roundNo}회차를 등록하지 못했습니다.`);
+        snapshot = { version: 2, owner: storage.owner, expectedSubject: storage.expectedSubject, team: teamScope, id: crypto.randomUUID(), payloads, hasResultReport };
+        // 첫 요청 전에 정확한 전송 본문과 키를 보존한다. 실패하면 네트워크 요청을 시작하지 않는다.
+        await persistOperationSubmission(storage, snapshot);
+        setPendingSubmission(snapshot);
+      }
+      const operationId = await submitOperationSnapshot(snapshot, fetch, assertRegistrationCurrent);
+      await clearOperationSubmission(storage);
+      router.push(`/operations/${encodeURIComponent(operationId)}${teamQuery}`);
+    } catch (reason) {
+      setSubmitState("failed");
+      if (reason instanceof OperationSubmissionValidationError) {
+        try {
+          await clearOperationSubmission(storage);
+          setPendingSubmission(null);
+          setError(`${reason.message} 아직 등록된 회차가 없습니다. 입력을 수정한 뒤 다시 저장해주세요.`);
+        } catch {
+          setError("아직 등록되지 않았지만 브라우저의 진행 정보를 정리하지 못했습니다. 이 탭에서 다시 시도해주세요.");
+        }
         return;
       }
-
-      const roundPayload = (await roundResponse.json().catch(() => ({}))) as {
-        ok?: boolean;
-        error?: string;
-        operation?: { operationId: string };
-      };
-
-      if (!roundResponse.ok || !roundPayload.ok || !roundPayload.operation) {
-        setSubmitState("failed");
-        setError(roundPayload.error ?? `${round.roundNo}회차를 등록하지 못했습니다.`);
-        return;
-      }
-
-      createdOperationIds.push(roundPayload.operation.operationId);
+      setError(reason instanceof Error && reason.name !== "TimeoutError" && reason.name !== "TypeError"
+        ? reason.message
+        : "응답을 확인하지 못했습니다. 원래 등록 계속하기로 안전하게 다시 시도해주세요.");
+    } finally {
+      submittingRef.current = false;
     }
-
-    if (hasResultReport === "N") {
-      for (const operationId of createdOperationIds) {
-        await fetch(`/api/operations/${encodeURIComponent(operationId)}/drive-import/apply`, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ patches: [{ field: "hasResultReport", action: "replace", value: "불필요" }] })
-        }).catch(() => null);
-      }
-    }
-
-    router.push(`/operations/${payload.operation.operationId}${teamQuery}`);
   }
+
 }
 
 function buildSeedLine(initialValues: OperationCreateFormInitialValues): string {

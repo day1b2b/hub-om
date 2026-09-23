@@ -1,3 +1,4 @@
+import { assertCreationReplay, creationOperationId, creationOperationPrefix } from "./operationCreationIdentity";
 import { randomUUID } from "node:crypto";
 import {
   ArchiveStatus as PrismaArchiveStatus,
@@ -332,12 +333,28 @@ export class PrismaOperationRepository implements OperationRepository {
       throw new Error("End date must be on or after start date.");
     }
 
-    const operationId = `manual-${randomUUID()}`;
+    const operationId = input.creationIdentity ? creationOperationId(input.creationIdentity) : `manual-${randomUUID()}`;
+    let creationReplayed = false;
     const durationDays = dateDiffDays(startDate, endDate) + 1;
     const operationType = PRISMA_OPERATION_TYPE[input.operationType];
     const educationFormat = PRISMA_EDUCATION_FORMAT[input.educationFormat];
 
     const session = await prisma.$transaction(async (tx) => {
+      if (input.creationIdentity) {
+        const identity = input.creationIdentity;
+        // 같은 요청 키를 DB에서 직렬화해 다른 worker의 동시 재전송도 기존 결과를 반환한다.
+        const lockKey = BigInt.asIntN(64, BigInt(`0x${identity.scope.slice(0, 16)}`));
+        await tx.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock(${lockKey}::bigint)`;
+        const existing = await tx.operationSession.findFirst({
+          where: { operationId: { startsWith: creationOperationPrefix(identity) } },
+          select: { operationId: true, deletedAt: true }
+        });
+        if (existing) {
+          assertCreationReplay(identity, existing);
+          creationReplayed = true;
+          return existing;
+        }
+      }
       const company = await tx.company.upsert({
         where: { normalizedName: normalizeName(companyName) },
         update: { name: companyName },
@@ -428,7 +445,7 @@ export class PrismaOperationRepository implements OperationRepository {
       throw new Error("Created operation could not be loaded.");
     }
 
-    return operation;
+    return creationReplayed ? { ...operation, creationReplayed: true } : operation;
   }
 
   async updateOperation(operationId: string, input: UpdateOperationInput, updatedBy?: string): Promise<OperationSession> {

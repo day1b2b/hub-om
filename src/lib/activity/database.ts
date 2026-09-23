@@ -1,3 +1,4 @@
+import { encryptField, indexField } from "@/lib/privacy/fields";
 import type { PrismaClient, Prisma } from "@prisma/client";
 import { activityContext } from "./context";
 
@@ -7,7 +8,12 @@ const excludedModels = new Set(["activityRequest", "activityChange"]);
 async function setContext(tx: Prisma.TransactionClient) {
   const context = activityContext.getStore();
   if (context) {
-    const installed = await tx.$queryRaw<Array<{ installed: boolean }>>`SELECT set_config('app.activity_context', ${JSON.stringify(context)}, true), to_regprocedure('public.capture_activity_change()') IS NOT NULL AS installed`;
+    const installed = await tx.$queryRaw<Array<{ installed: boolean }>>`SELECT set_config('app.activity_context', ${JSON.stringify({ ...context,
+      actorEmail: encryptField("ActivityChange", "actorEmail", context.actorEmail),
+      actorName: encryptField("ActivityChange", "actorName", context.actorName),
+      actorEmailPiiIndex: indexField("ActivityChange", "actorEmail", context.actorEmail),
+      actorNamePiiIndex: indexField("ActivityChange", "actorName", context.actorName)
+    })}, true), to_regprocedure('public.capture_activity_change()') IS NOT NULL AS installed`;
     if (!installed[0]?.installed) throw new Error("Activity migration must be applied before serving API writes.");
   }
 }

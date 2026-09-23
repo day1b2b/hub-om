@@ -1,3 +1,4 @@
+import { assertLegacyStorage } from "./assert-legacy-storage.mjs";
 /**
  * 기존에 등록된 운영 회차의 현장 투입(onsite_required) 값을 전부 Y로 맞춘다.
  * 완료/아카이빙된 과거 건을 포함해 소프트 삭제(deleted_at)되지 않은 전체 행이 대상이다.
@@ -28,6 +29,7 @@ async function main(): Promise<void> {
 
   const client = new Client({ connectionString: targetUrl });
   await client.connect();
+  await assertLegacyStorage(client);
 
   try {
     const count = await client.query<{ count: string }>(

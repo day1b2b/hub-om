@@ -1,3 +1,4 @@
+import { assertLegacyStorage } from "./assert-legacy-storage.mjs";
 /**
  * coach-db 원본 public 테이블 전체를 hub-om DB에 보관용으로 적재한다.
  *
@@ -73,6 +74,7 @@ async function main(): Promise<void> {
 
   await source.connect();
   await target.connect();
+  await assertLegacyStorage(target);
 
   try {
     const summary = await archiveCoachDb({

@@ -39,7 +39,8 @@ export async function syncSamsungSchedule(dryRun: boolean): Promise<SyncResult> 
 
   const prisma = getPrismaClient();
   const coaches = await prisma.coach.findMany({ where: { deletedAt: null }, include: { privateProfile: true } });
-  const coachByName = new Map(coaches.map((coach) => [coach.name, coach]));
+  type CoachRecord = Omit<(typeof coaches)[number], `${string}PiiIndex` | `${string}Encrypted`>;
+  const coachByName = new Map<string, CoachRecord>(coaches.map((coach) => [coach.name, coach]));
   const entries: SamsungEntry[] = [];
 
   for (let index = 1; index < rows.length; index++) {

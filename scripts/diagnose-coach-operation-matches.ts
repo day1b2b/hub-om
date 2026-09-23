@@ -1,3 +1,4 @@
+import { assertLegacyStorage } from "./assert-legacy-storage.mjs";
 /**
  * coach_engagements 미매칭 건의 운영 세션 후보를 진단한다.
  *
@@ -55,6 +56,7 @@ async function main(): Promise<void> {
   const limit = parseLimit(process.argv.slice(2));
   const client = new Client({ connectionString: targetUrl });
   await client.connect();
+  await assertLegacyStorage(client);
 
   try {
     const counts = await loadCounts(client);

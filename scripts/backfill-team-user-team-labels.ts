@@ -1,3 +1,4 @@
+import { assertLegacyStorage } from "./assert-legacy-storage.mjs";
 /**
  * 조직 개편으로 팀 명칭이 1팀/2팀 -> AX 1파트/AX 2파트로 바뀌면서,
  * team_users 테이블에 저장된 기존 team 값을 새 명칭으로 갱신한다.
@@ -33,6 +34,7 @@ async function main(): Promise<void> {
 
   const client = new Client({ connectionString: targetUrl });
   await client.connect();
+  await assertLegacyStorage(client);
 
   try {
     for (const { from, to } of RENAMES) {

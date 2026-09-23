@@ -1,3 +1,4 @@
+import { encodePrivateJson, decodePrivateJson } from "@/lib/privacy/crypto";
 import fs from "fs";
 import path from "path";
 import type { InstructorNote, InstructorNoteRepository } from "./instructorNoteRepository";
@@ -13,15 +14,16 @@ const DATA_FILE = path.join(process.cwd(), ".local", "instructor-wiki.json");
 
 function readAll(): Record<string, InstructorNote> {
   try {
-    return JSON.parse(fs.readFileSync(DATA_FILE, "utf-8")) as Record<string, InstructorNote>;
-  } catch {
-    return {};
+    return decodePrivateJson(fs.readFileSync(DATA_FILE, "utf-8"), "local:instructor-wiki") as Record<string, InstructorNote>;
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") return {};
+    throw error;
   }
 }
 
 function writeAll(all: Record<string, InstructorNote>): void {
   fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
-  fs.writeFileSync(DATA_FILE, JSON.stringify(all, null, 2), "utf-8");
+  fs.writeFileSync(DATA_FILE, encodePrivateJson(all, "local:instructor-wiki"), { encoding: "utf-8", mode: 0o600 });
 }
 
 /** 파일 키가 이름이던 예전 데이터를 위해, 값에 이름이 없으면 키로 채워 준다. */

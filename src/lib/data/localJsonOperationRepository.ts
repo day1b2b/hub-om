@@ -1,5 +1,7 @@
+import { encodePrivateJson, decodePrivateJson } from "@/lib/privacy/crypto";
+import { assertCreationReplay, creationOperationId, creationOperationPrefix, OperationCreationConflict } from "./operationCreationIdentity";
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, open, readFile, rename, rm } from "node:fs/promises";
 import path from "node:path";
 import {
   buildOperationMonth,
@@ -19,50 +21,125 @@ import type {
 } from "./operationTypes";
 
 interface LocalOperationPayload {
-  operations?: OperationSession[];
+  operations: OperationSession[];
+  creationReceipts: Record<string, string>;
 }
 
+const localWrites = new Map<string, Promise<unknown>>();
+
 export class LocalJsonOperationRepository implements OperationRepository {
-  constructor(private readonly fileName = process.env.OPERATION_DATA_FILE ?? "operations.json") {}
+  private readonly fileName: string;
 
-  async listOperations(): Promise<OperationSession[]> {
-    const { absolutePath } = this.getLocalFilePath();
+  constructor(fileName = process.env.OPERATION_DATA_FILE ?? "operations.json") {
+    this.fileName = fileName;
+  }
 
+  private async serializeWrite<T>(run: () => Promise<T>): Promise<T> {
+    const key = this.getLocalFilePath().absolutePath;
+    const previous = localWrites.get(key) ?? Promise.resolve();
+    const current = previous.catch(() => {}).then(run);
+    localWrites.set(key, current);
     try {
-      const raw = await readFile(absolutePath, "utf8");
-      const parsed = JSON.parse(raw) as LocalOperationPayload | OperationSession[];
-      const operations = Array.isArray(parsed) ? parsed : parsed.operations;
+      return await current;
+    } finally {
+      if (localWrites.get(key) === current) localWrites.delete(key);
+    }
+  }
 
-      if (!Array.isArray(operations)) {
-        throw new Error("Local operation data must be an array or an object with an operations array.");
-      }
-
-      // 새 필드가 생기기 전에 저장된 로컬 픽스처 데이터에는 그 키가 아예 없다.
-      // Postgres는 마이그레이션이 기존 행을 기본값으로 채워주지만, 로컬 JSON은 그런 백필이
-      // 없으니 읽을 때 직접 채워 화면 쪽에서 항상 값이 있다고 가정할 수 있게 한다.
-      // (예: lectureManagementNote가 없으면 운영 상세의 .trim()에서 바로 500이 난다.)
-      return [...operations]
-        .map((operation) => ({
-          ...operation,
-          companyId: operation.companyId ?? "",
-          courseCategory: operation.courseCategory ?? "",
-          courseIdLabel: operation.courseIdLabel ?? "",
-          courseRecordId: operation.courseRecordId ?? "",
-          educationDates: operation.educationDates ?? [],
-          hasSatisfactionSurvey: operation.hasSatisfactionSurvey ?? "확인필요",
-          lectureManagementNote: operation.lectureManagementNote ?? "",
-          onsiteOm: operation.onsiteOm ?? "",
-          processId: operation.processId ?? "",
-          tools: operation.tools ?? ""
-        }))
-        .sort(compareOperationSessions);
+  private async readPayload(): Promise<LocalOperationPayload> {
+    let raw: string;
+    try {
+      raw = await readFile(this.getLocalFilePath().absolutePath, "utf8");
     } catch (error) {
-      if (isFileMissingError(error)) {
-        return [];
-      }
-
+      if (isFileMissingError(error)) return { operations: [], creationReceipts: {} };
       throw error;
     }
+
+    const parsed: unknown = decodePrivateJson(raw.trimEnd(), "local:operations");
+    if (Array.isArray(parsed)) return { operations: parsed, creationReceipts: {} };
+    if (!parsed || typeof parsed !== "object" || !("operations" in parsed) || !Array.isArray(parsed.operations)) {
+      throw new Error("Local operation data must be an array or an object with an operations array.");
+    }
+
+    const receipts = "creationReceipts" in parsed ? parsed.creationReceipts : {};
+    if (!receipts || typeof receipts !== "object" || Array.isArray(receipts)) {
+      throw new Error("Local operation creation receipts are invalid.");
+    }
+    const creationReceipts: Record<string, string> = {};
+    for (const [scope, operationId] of Object.entries(receipts)) {
+      if (!/^[a-f0-9]{64}$/.test(scope) || typeof operationId !== "string" ||
+          !new RegExp(`^manual-request-${scope}-[a-f0-9]{64}$`).test(operationId)) {
+        throw new Error("Local operation creation receipts are invalid.");
+      }
+      creationReceipts[scope] = operationId;
+    }
+    return { operations: parsed.operations, creationReceipts };
+  }
+
+  private async readCreationReceipts(): Promise<Record<string, string>> {
+    return (await this.readPayload()).creationReceipts;
+  }
+
+  private async writeOperations(operations: OperationSession[], receipt?: { scope: string; operationId: string }): Promise<void> {
+    const previous = await this.readPayload();
+    const creationReceipts = previous.creationReceipts;
+    const preserveReceipt = (scope: string, operationId: string) => {
+      if (creationReceipts[scope] && creationReceipts[scope] !== operationId) {
+        throw new OperationCreationConflict();
+      }
+      creationReceipts[scope] = operationId;
+    };
+    // 삭제·수정 전 행에서 복구해 이전 파일에서도 삭제된 요청의 이력을 남긴다.
+    for (const operation of previous.operations) {
+      const requestId = /^manual-request-([a-f0-9]{64})-([a-f0-9]{64})$/.exec(operation.operationId);
+      if (requestId) preserveReceipt(requestId[1], operation.operationId);
+    }
+    if (receipt) preserveReceipt(receipt.scope, receipt.operationId);
+    // 암호화가 실패하면 기존 파일뿐 아니라 임시 파일도 만들지 않는다.
+    const encrypted = encodePrivateJson({ operations, creationReceipts }, "local:operations");
+    const { absolutePath } = this.getLocalFilePath();
+    await mkdir(path.dirname(absolutePath), { recursive: true });
+    const temporaryPath = `${absolutePath}.${randomUUID()}.tmp`;
+    const temporaryFile = await open(temporaryPath, "wx", 0o600);
+    try {
+      try {
+        await temporaryFile.chmod(0o600);
+        await temporaryFile.writeFile(encrypted, "utf8");
+        await temporaryFile.sync();
+      } finally {
+        await temporaryFile.close();
+      }
+      // 같은 디렉터리에서 교체하여 읽는 쪽에 부분 파일이 보이지 않게 한다.
+      // 기존 파일의 권한과 관계없이 새 암호문 파일은 0600이다.
+      await rename(temporaryPath, absolutePath);
+    } catch (error) {
+      await rm(temporaryPath, { force: true });
+      throw error;
+    }
+  }
+
+  async listOperations(): Promise<OperationSession[]> {
+    const { operations } = await this.readPayload();
+
+    // 새 필드가 생기기 전에 저장된 로컬 픽스처 데이터에는 그 키가 아예 없다.
+    // Postgres는 마이그레이션이 기존 행을 기본값으로 채워주지만, 로컬 JSON은 그런 백필이
+    // 없으니 읽을 때 직접 채워 화면 쪽에서 항상 값이 있다고 가정할 수 있게 한다.
+    // (예: lectureManagementNote가 없으면 운영 상세의 .trim()에서 바로 500이 난다.)
+    return [...operations]
+      .map((operation) => ({
+        ...operation,
+        companyId: operation.companyId ?? "",
+        courseCategory: operation.courseCategory ?? "",
+        courseIdLabel: operation.courseIdLabel ?? "",
+        courseRecordId: operation.courseRecordId ?? "",
+        educationDates: operation.educationDates ?? [],
+        hasSatisfactionSurvey: operation.hasSatisfactionSurvey ?? "확인필요",
+        lectureManagementNote: operation.lectureManagementNote ?? "",
+        onsiteOm: operation.onsiteOm ?? "",
+        processId: operation.processId ?? "",
+        tools: operation.tools ?? ""
+      }))
+      .sort(compareOperationSessions);
   }
 
   /** 코스ID로 과정을 찾는다 — 로컬 JSON에는 회차만 있어 과정 단위로 묶어 낸다. */
@@ -132,12 +209,34 @@ export class LocalJsonOperationRepository implements OperationRepository {
   }
 
   async createOperation(input: CreateOperationInput): Promise<OperationSession> {
+    return this.serializeWrite(() => this.createOperationUnlocked(input));
+  }
+
+  private async createOperationUnlocked(input: CreateOperationInput): Promise<OperationSession> {
     const operations = await this.listOperations();
     const educationDates = input.educationDates ?? [];
     const derivedRange = deriveDateRangeFromEducationDates(educationDates);
     const startDate = derivedRange?.startDate ?? normalizeVisibleText(input.startDate);
     const endDate = derivedRange?.endDate ?? normalizeVisibleText(input.endDate);
-    const operationId = `manual-${randomUUID()}`;
+    const operationId = input.creationIdentity ? creationOperationId(input.creationIdentity) : `manual-${randomUUID()}`;
+    if (input.creationIdentity) {
+      const previousId = (await this.readCreationReceipts())[input.creationIdentity.scope];
+      if (previousId) {
+        const existing = operations.find((operation) => operation.operationId === previousId);
+        assertCreationReplay(input.creationIdentity, { operationId: previousId, deletedAt: !existing });
+        return { ...existing!, creationReplayed: true };
+      }
+      // 이전 operations-only 파일에 남은 요청 ID로 영수증을 복구한다.
+      // 같은 범위가 여러 행이면 임의로 고르거나 새 행을 만들지 않는다.
+      const prefix = creationOperationPrefix(input.creationIdentity);
+      const existing = operations.filter((operation) => operation.operationId.startsWith(prefix));
+      if (existing.length > 1) throw new OperationCreationConflict();
+      if (existing.length === 1) {
+        assertCreationReplay(input.creationIdentity, existing[0]);
+        await this.writeOperations(operations, { scope: input.creationIdentity.scope, operationId });
+        return { ...existing[0], creationReplayed: true };
+      }
+    }
     const revenue = input.revenue;
     const totalCost = input.totalCost;
     const operation: OperationSession = {
@@ -198,15 +297,16 @@ export class LocalJsonOperationRepository implements OperationRepository {
       validationErrors: [],
       validationStatus: "정상"
     };
-    const { absolutePath, localDir } = this.getLocalFilePath();
-
-    await mkdir(localDir, { recursive: true });
-    await writeFile(absolutePath, `${JSON.stringify({ operations: [...operations, operation] }, null, 2)}\n`, "utf8");
+    await this.writeOperations([...operations, operation], input.creationIdentity ? { scope: input.creationIdentity.scope, operationId } : undefined);
 
     return operation;
   }
 
   async updateOperation(operationId: string, input: UpdateOperationInput): Promise<OperationSession> {
+    return this.serializeWrite(() => this.updateOperationUnlocked(operationId, input));
+  }
+
+  private async updateOperationUnlocked(operationId: string, input: UpdateOperationInput): Promise<OperationSession> {
     const operations = await this.listOperations();
     const operation = operations.find((candidate) => candidate.operationId === operationId);
 
@@ -283,21 +383,19 @@ export class LocalJsonOperationRepository implements OperationRepository {
       }
       return candidate;
     });
-    const { absolutePath, localDir } = this.getLocalFilePath();
-
-    await mkdir(localDir, { recursive: true });
-    await writeFile(absolutePath, `${JSON.stringify({ operations: nextOperations }, null, 2)}\n`, "utf8");
+    await this.writeOperations(nextOperations);
 
     return updatedOperation;
   }
 
   async deleteOperation(operationId: string): Promise<void> {
+    return this.serializeWrite(() => this.deleteOperationUnlocked(operationId));
+  }
+
+  private async deleteOperationUnlocked(operationId: string): Promise<void> {
     const operations = await this.listOperations();
     const nextOperations = operations.filter((candidate) => candidate.operationId !== operationId);
-    const { absolutePath, localDir } = this.getLocalFilePath();
-
-    await mkdir(localDir, { recursive: true });
-    await writeFile(absolutePath, `${JSON.stringify({ operations: nextOperations }, null, 2)}\n`, "utf8");
+    await this.writeOperations(nextOperations);
   }
 
   async getSummary() {

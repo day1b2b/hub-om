@@ -1,99 +1,36 @@
 /**
- * 최신 coach-db 아카이브에서 코치 입력 토큰(access_token)을 hub-om coaches 테이블로 백필한다.
+ * 최신 completed coach-db 아카이브의 non-null 코치 토큰을 암호화 repository로 백필한다.
+ * 기본값은 읽기 전용이며 토큰/원천 행/DB 오류는 출력하지 않는다.
  *
- * 실행:
- *   npm run db:backfill:coach-access-tokens -- --dry-run
- *   npm run db:backfill:coach-access-tokens -- --apply
+ * npm run db:backfill:coach-access-tokens -- --dry-run
+ * npm run db:backfill:coach-access-tokens -- --apply --backup-confirmed --maintenance-confirmed
+ *
+ * apply 전 백업·복구 확인 및 앱/원천 적재의 쓰기 중단이 필요하다.
+ * 확인 플래그는 실제 maintenance를 수행하지 않는다. 전체 작업은 120초 제한의
+ * 단일 트랜잭션이며 실패 시 전체 롤백한다. DB 규모별 소요 시간은 격리 DB에서 검증한다.
  */
-
-import { config } from "dotenv";
-import pg from "pg";
-
-const { Client } = pg;
-
-config({ path: ".env.local" });
-config({ path: ".env" });
-
-const apply = process.argv.includes("--apply");
+import nextEnv from "@next/env";
+import { getPrismaClient } from "../src/lib/data/prisma";
+import { backfillCoachAccessTokens, parseCoachTokenBackfillArgs } from "../src/lib/data/coachAccessTokenBackfill";
 
 async function main(): Promise<void> {
-  const targetUrl = process.env.DATABASE_URL;
-  if (!targetUrl) {
-    console.error("[backfill-coach-access-tokens] DATABASE_URL이 없어 실행을 중단합니다.");
-    process.exit(1);
-  }
-
-  console.log(`[backfill-coach-access-tokens] 모드: ${apply ? "apply (실제 쓰기)" : "dry-run (쓰기 없음)"}`);
-
-  const client = new Client({ connectionString: targetUrl });
-  await client.connect();
-
+  const options = parseCoachTokenBackfillArgs(process.argv.slice(2));
+  // Next's loader matches app environment precedence without a new dependency.
+  nextEnv.loadEnvConfig(process.cwd(), false, { info() {}, error() {} });
+  const db = getPrismaClient();
   try {
-    const summary = await client.query<{
-      archived_tokens: string;
-      missing_tokens: string;
-      changed_tokens: string;
-    }>(`
-      WITH latest AS (
-        SELECT DISTINCT ON (ar.row_key)
-          ar.row_key,
-          ar.row_data->>'access_token' AS access_token
-        FROM coachdb_archive_rows ar
-        JOIN coachdb_archive_snapshots s ON s.id = ar.snapshot_id
-        WHERE s.status = 'completed'
-          AND ar.table_schema = 'public'
-          AND ar.table_name = 'coaches'
-          AND ar.row_data->>'access_token' IS NOT NULL
-        ORDER BY ar.row_key, s.started_at DESC
-      )
-      SELECT
-        count(*)::text AS archived_tokens,
-        count(*) FILTER (WHERE c.access_token IS NULL)::text AS missing_tokens,
-        count(*) FILTER (WHERE c.access_token IS DISTINCT FROM latest.access_token)::text AS changed_tokens
-      FROM latest
-      JOIN coaches c ON c.source_coach_id = latest.row_key
-    `);
-
-    const row = summary.rows[0];
-    if (!apply) {
-      console.log(
-        `[backfill-coach-access-tokens] dry-run 완료: 아카이브 토큰 ${row.archived_tokens}건 / ` +
-          `신규 ${row.missing_tokens}건 / 변경 필요 ${row.changed_tokens}건`
-      );
-      return;
-    }
-
-    const result = await client.query<{ id: string }>(`
-      WITH latest AS (
-        SELECT DISTINCT ON (ar.row_key)
-          ar.row_key,
-          ar.row_data->>'access_token' AS access_token
-        FROM coachdb_archive_rows ar
-        JOIN coachdb_archive_snapshots s ON s.id = ar.snapshot_id
-        WHERE s.status = 'completed'
-          AND ar.table_schema = 'public'
-          AND ar.table_name = 'coaches'
-          AND ar.row_data->>'access_token' IS NOT NULL
-        ORDER BY ar.row_key, s.started_at DESC
-      )
-      UPDATE coaches c
-      SET access_token = latest.access_token,
-          updated_at = CURRENT_TIMESTAMP
-      FROM latest
-      WHERE c.source_coach_id = latest.row_key
-        AND c.access_token IS DISTINCT FROM latest.access_token
-      RETURNING c.id
-    `);
-
+    const summary = await backfillCoachAccessTokens(db, options);
     console.log(
-      `[backfill-coach-access-tokens] apply 완료: 아카이브 토큰 ${row.archived_tokens}건 / 업데이트 ${result.rowCount ?? 0}건`
+      `[backfill-coach-access-tokens] ${options.apply ? "apply" : "dry-run"} 완료: ` +
+      `아카이브 토큰 ${summary.archivedTokens}건 / 신규 ${summary.missingTokens}건 / ` +
+      `변경 필요 ${summary.changedTokens}건 / 업데이트 ${summary.updatedTokens}건`,
     );
   } finally {
-    await client.end();
+    await db.$disconnect();
   }
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
+main().catch(() => {
+  console.error("[backfill-coach-access-tokens] 실패. 인자·백업/maintenance 확인·암호화 설정·DB 연결을 점검하세요. 트랜잭션 실패 시 전체 변경이 롤백됩니다.");
+  process.exitCode = 1;
 });

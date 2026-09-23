@@ -1,3 +1,4 @@
+import { assertLegacyStorage } from "./assert-legacy-storage.mjs";
 /**
  * 만족도 집계 시트(eduops_log)를 운영 세션에 매칭해보는 드라이런.
  * DB에 아무것도 쓰지 않고, 매칭/미매칭/모호 결과만 리포트로 출력한다.
@@ -101,6 +102,7 @@ async function main(): Promise<void> {
 
   const client = new Client({ connectionString: databaseUrl });
   await client.connect();
+  await assertLegacyStorage(client);
 
   try {
     const candidates = await loadOperationCandidates(client);

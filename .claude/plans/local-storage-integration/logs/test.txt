@@ -1,0 +1,15 @@
+전체 로그 끝부분 및 skip 항목 발췌. 실행 exit0.
+﹣ activity triggers and attribution on isolated PostgreSQL (0.281416ms) # SKIP
+﹣ 과정명 복원: 격리 PostgreSQL의 데이터·경합·감사 원자성 (0.283083ms) # SKIP
+﹣ 격리 DB에서 경합·다른 회차·재진입·실패 후 잠금 해제를 검증 (0.276541ms) # SKIP
+﹣ PII migration and application paths against a dedicated, disposable PostgreSQL database (0.571458ms) # SKIP
+✔ 상한을 넘기면 null을 주고 원래 읽기는 계속 돈다 (62.020541ms)
+✔ 상한 안에 실패하면 그 실패를 그대로 올린다 (0.664917ms)
+ℹ tests 575
+ℹ suites 0
+ℹ pass 571
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 4
+ℹ todo 0
+ℹ duration_ms 3043.874708

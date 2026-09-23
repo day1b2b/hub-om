@@ -35,7 +35,8 @@ export async function syncContractSheetEngagements(dryRun: boolean): Promise<Syn
     where: { deletedAt: null },
     include: { privateProfile: true }
   });
-  const coachByName = new Map(coaches.map((coach) => [coach.name, coach]));
+  type CoachRecord = Omit<(typeof coaches)[number], `${string}PiiIndex` | `${string}Encrypted`>;
+  const coachByName = new Map<string, CoachRecord>(coaches.map((coach) => [coach.name, coach]));
   const employeeIdsByName = collectEmployeeIds(rows);
   const parsed: ParsedEngagement[] = [];
 

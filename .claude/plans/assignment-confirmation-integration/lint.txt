@@ -1,0 +1,19 @@
+
+> hub-om@0.1.0 lint
+> eslint .
+
+
+/Users/ga/workspace/hub-om-assignment-integration/src/app/admin/users/UserManagement.tsx
+  188:7  warning  Expected an assignment or function call and instead saw an expression  @typescript-eslint/no-unused-expressions
+
+/Users/ga/workspace/hub-om-assignment-integration/src/app/om-request/complete/page.tsx
+  21:10  warning  'Badge' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/ga/workspace/hub-om-assignment-integration/src/app/om-request/manage/[id]/edit/page.tsx
+  38:9   warning  '_id' is assigned a value but never used           @typescript-eslint/no-unused-vars
+  39:16  warning  '_createdAt' is assigned a value but never used    @typescript-eslint/no-unused-vars
+  40:13  warning  '_status' is assigned a value but never used       @typescript-eslint/no-unused-vars
+  41:17  warning  '_assignedOm' is assigned a value but never used   @typescript-eslint/no-unused-vars
+  42:18  warning  '_operationId' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+✖ 7 problems (0 errors, 7 warnings)

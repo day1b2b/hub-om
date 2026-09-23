@@ -1,3 +1,4 @@
+import { encodePrivateJson, decodePrivateJson } from "@/lib/privacy/crypto";
 import fs from "fs";
 import path from "path";
 import type { MemberRole } from "@prisma/client";
@@ -16,14 +17,14 @@ function hasDatabaseUrl(): boolean {
 function readAll(): TeamUser[] {
   if (!fs.existsSync(DATA_FILE)) return [];
   try {
-    return JSON.parse(fs.readFileSync(DATA_FILE, "utf-8")) as TeamUser[];
+    return decodePrivateJson(fs.readFileSync(DATA_FILE, "utf-8"), "local:team-users") as TeamUser[];
   } catch {
-    return [];
+    throw new Error("개인정보 파일을 읽지 못했습니다. 암호화 키와 변환 상태를 확인하세요.");
   }
 }
 
 function writeAll(users: TeamUser[]) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(users, null, 2), "utf-8");
+  fs.writeFileSync(DATA_FILE, encodePrivateJson(users, "local:team-users"), { encoding: "utf-8", mode: 0o600 });
 }
 
 function toTeamUser(row: {

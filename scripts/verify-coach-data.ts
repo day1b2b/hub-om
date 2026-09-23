@@ -1,3 +1,4 @@
+import { assertLegacyStorage } from "./assert-legacy-storage.mjs";
 /**
  * hub-om에 이관된 coach-db 데이터 상태를 읽기 전용으로 점검한다.
  *
@@ -34,6 +35,7 @@ async function main(): Promise<void> {
 
   const target = new Client({ connectionString: targetUrl });
   await target.connect();
+  await assertLegacyStorage(target);
 
   try {
     console.log("[verify-coach-data] hub-om 데이터 확인");

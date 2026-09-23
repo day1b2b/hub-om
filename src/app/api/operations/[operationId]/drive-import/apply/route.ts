@@ -1,3 +1,4 @@
+import { operationSubmissionSubjectConflict } from "@/lib/auth/operationSubmissionSubject";
 import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server.js";
 import { readLimitedJson, RequestBodyTooLargeError } from "@/lib/http/readLimitedJson";
@@ -83,6 +84,8 @@ interface ApplyPatch {
 
 async function activityPOST(request: Request, { params }: RouteContext) {
   const session = await requireWorkspaceSession();
+  const subjectConflict = operationSubmissionSubjectConflict(request, session);
+  if (subjectConflict) return subjectConflict;
 
   let body: { patches?: ApplyPatch[] } | null;
   try {

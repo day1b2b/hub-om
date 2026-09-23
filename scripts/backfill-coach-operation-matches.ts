@@ -1,3 +1,4 @@
+import { assertLegacyStorage } from "./assert-legacy-storage.mjs";
 /**
  * 이미 import된 coach_engagements의 operation_session_id를 hub-om DB 안에서 백필한다.
  *
@@ -67,6 +68,7 @@ async function main(): Promise<void> {
 
   const client = new Client({ connectionString: targetUrl });
   await client.connect();
+  await assertLegacyStorage(client);
 
   try {
     const candidates = await loadOperationCandidates(client);
