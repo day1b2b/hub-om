@@ -1,4 +1,4 @@
-import { MongoOperationStore, assertMongo, operationMongoIndexes, operationMongoValidator, stableMongoValue, type MongoOperationOptions } from "./mongoOperationStore";
+import { MongoOperationStore, applyMongoValidator, assertMongo, operationMongoIndexes, operationMongoValidator, stableMongoValue, type MongoOperationOptions } from "./mongoOperationStore";
 
 export const TEAM_READ_MODELS = ["Member", "TeamUser"] as const;
 export const COACH_READ_MODELS = [
@@ -13,10 +13,7 @@ export async function prepareMongoReadStore(options: MongoOperationOptions & { a
   const store = new MongoOperationStore(options, models);
   for (const model of store.models) {
     const collection = store.collection(model);
-    const validator = operationMongoValidator(model);
-    const exists = await store.db.listCollections({ name: collection.collectionName }, { nameOnly: false }).next();
-    if (!exists) await store.db.createCollection(collection.collectionName, { validator, validationLevel: "strict", validationAction: "error", collation: { locale: "simple" } });
-    else await store.db.command({ collMod: collection.collectionName, validator, validationLevel: "strict", validationAction: "error" });
+    await applyMongoValidator(store, model, operationMongoValidator(model));
     const indexes = operationMongoIndexes(model);
     if (indexes.length) await collection.createIndexes(indexes, { collation: { locale: "simple" } });
   }

@@ -149,3 +149,9 @@
 ## Notion 코치 동기화 후속 경계 (2026-09-22)
 
 [정책과 저장 경계](mongodb-coach-notion-sync.md). Notion/all의 기존 차단 gate를 명시 source/repository 주입 실행으로 전환한다. 기존 identity·deleted 매칭·regular overwrite와 duplicate 빈값 보충·행별 commit을 유지한다. 다음 필수 작업은 이름 포함 투입/슬롯 source ID 암호화이며, 나머지 미전환 runtime·운영 리허설·배포는 별도로 남는다.
+
+## 투입·슬롯 원천 식별자 암호화 후속 (2026-09-23)
+
+[적용 순서·복구·shadow 재복사](pii-source-engagement-ids.md). 이름이 포함될 수 있는 `sourceEngagementId`/`sourceEngagementScheduleId`를 PG·Mongo 공통 정책으로 암호화하고 HMAC companion unique로 원문 중복을 막는다. Mongo 시트 매칭은 HMAC 조회 후 복호화 값을 확인한다. Mongo read/operation store 준비는 이전 정책 문서가 남은 기존 namespace를 거부하며 자동 삭제·수리하지 않는다. 새 PG migration은 운영에 적용하지 않았다.
+
+위 두 필드의 저장 평문 blocker는 코드·합성 검증 기준으로 해소했다. 운영 PG backfill·enforce, 새 namespace로의 실제 재복사·복원 리허설, 위 표의 미전환 기능(관리자·가져오기·캘린더·공지·활동 등)과 최종 전환은 그대로 남아 있다. 브라우저 초안 암호화도 별도 미완료다.

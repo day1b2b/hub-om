@@ -271,7 +271,8 @@
       "hired_by_text",
       "feedback_pii_index",
       "hired_by_id_pii_index",
-      "hired_by_text_pii_index"
+      "hired_by_text_pii_index",
+      "source_engagement_id_pii_index"
     ]
   },
   "coach_engagement_schedules": {
@@ -284,7 +285,8 @@
       "cancelled_at"
     ],
     "changeOnly": [
-      "source_engagement_schedule_id"
+      "source_engagement_schedule_id",
+      "source_engagement_schedule_id_pii_index"
     ]
   },
   "team_users": {

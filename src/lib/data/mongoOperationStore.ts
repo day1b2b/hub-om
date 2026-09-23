@@ -172,6 +172,25 @@ export function operationMongoIndexes(model: string): IndexDescription[] {
   return [...unique, ...privateIndexes, ...(extra[model] ?? []).map((key, i) => ({ name: `runtime_lookup_${i}`, key }))];
 }
 
+/** collMod validates only later writes. Documents stored under an older field policy must fail setup,
+ * never be rewritten, deleted or accepted as ready; re-copy them into a new shadow namespace instead. */
+export async function applyMongoValidator(store: MongoOperationStore, model: string, validator: Document): Promise<void> {
+  const collection = store.collection(model);
+  const info = await store.db.listCollections({ name: collection.collectionName }, { nameOnly: false }).next();
+  if (!info) { await store.db.createCollection(collection.collectionName, { validator, validationLevel: "strict", validationAction: "error", collation: { locale: "simple" } }); return; }
+  const nonconforming = () => collection.findOne({ $nor: [validator] }, { projection: { _id: 1 }, maxTimeMS: 60_000 });
+  assertMongo(!(await nonconforming()), "EXISTING_DOCUMENTS_POLICY_MISMATCH");
+  await store.db.command({ collMod: collection.collectionName, validator, validationLevel: "strict", validationAction: "error" });
+  // A writer between the check and collMod could still leave an older-policy document; restore and refuse.
+  if (await nonconforming()) {
+    const previous = info.options ?? {};
+    // A failed restore leaves the new validator; readiness then still fails on the indexes this setup never created.
+    try { await store.db.command({ collMod: collection.collectionName, validator: previous.validator ?? {}, validationLevel: previous.validationLevel ?? "strict", validationAction: previous.validationAction ?? "error" }); }
+    catch { /* The policy mismatch below is the actionable error either way. */ }
+    throw new MongoOperationError("EXISTING_DOCUMENTS_POLICY_MISMATCH");
+  }
+}
+
 /** Explicit setup only: never invoked by the production factory or normal repository reads/writes. */
 export async function prepareMongoOperationStore(options: MongoOperationOptions & { allowShadowWrites: true; processSequenceHighWater: number }): Promise<void> {
   assertMongo(options.allowShadowWrites === true, "SHADOW_WRITE_GATE");
@@ -179,10 +198,7 @@ export async function prepareMongoOperationStore(options: MongoOperationOptions 
   const store = new MongoOperationStore(options);
   for (const model of [...OPERATION_MODELS, ...INTERNAL_MODELS]) {
     const collection = store.collection(model);
-    const validator = operationMongoValidator(model);
-    const exists = await store.db.listCollections({ name: collection.collectionName }, { nameOnly: false }).next();
-    if (!exists) await store.db.createCollection(collection.collectionName, { validator, validationLevel: "strict", validationAction: "error", collation: { locale: "simple" } });
-    else await store.db.command({ collMod: collection.collectionName, validator, validationLevel: "strict", validationAction: "error" });
+    await applyMongoValidator(store, model, operationMongoValidator(model));
     const indexes = operationMongoIndexes(model);
     if (indexes.length) await collection.createIndexes(indexes, { collation: { locale: "simple" } });
   }

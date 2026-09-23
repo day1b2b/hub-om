@@ -12,7 +12,7 @@ PostgreSQL을 먼저 암호화하고 다시 MongoDB로 옮기는 방식 대신, 
 
 - Prisma 논리 모델 35개의 scalar/nullable/list/enum/UUID/복합 PK를 검증한다. 실제 SQL 열·타입·PK가 맞지 않으면 source 읽기를 중단한다. 평문 source에서 누락된 개인정보 companion만 허용한다.
 - 단일 `READ ONLY REPEATABLE READ` transaction에서 읽는다. PostgreSQL에 INSERT/UPDATE/DELETE/DDL을 실행하지 않는다. 날짜/시각, Decimal(14,2), SQL NULL과 JSON null을 구분한다.
-- 개인정보 정책의 25모델 125필드는 파일에 기록하기 **전에** 암호화한다. 암호화된 source 모드는 기존 암호문 인증과 HMAC 일치를 검증한다. 키·평문 행·DB URL은 로그에 출력하지 않는다.
+- 개인정보 정책의 26모델 127필드(2026-09-23 원천 식별자 2개 추가 이후)는 파일에 기록하기 **전에** 암호화한다. 이전 정책 spool은 새 codec 검증에서 거부되므로 다시 export한다. 암호화된 source 모드는 기존 암호문 인증과 HMAC 일치를 검증한다. 키·평문 행·DB URL은 로그에 출력하지 않는다.
 - 새 0700 폴더에 0600 파일을 배타적으로 생성한다. 파일 fsync와 read-only transaction 종료 후 최종 manifest를 공개한다. 불완전 폴더는 재사용하지 않는다.
 - importer는 manifest/모든 파일/암호문/행 수/정렬/해시를 먼저 검증한다. 한 파일 32 MiB, 합계 128 MiB, 최대 100만 행으로 제한한다. 제한을 넘으면 실패하며 일부만 성공으로 처리하지 않는다.
 - 대상은 명시된 `hub-om-shadow-validation`(또는 기존 `hub_om_shadow_...`) DB와 `shadow_<runId>_<Model>` 컬렉션이다. URI의 기본 DB를 쓰기 대상으로 자동 선택하지 않는다. insert-only로 복사하고 재실행 시 동일 ID·내용만 허용한다.

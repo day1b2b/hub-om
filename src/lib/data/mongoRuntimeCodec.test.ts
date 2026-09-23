@@ -39,7 +39,7 @@ test("all 35 static contracts match migration metadata and runtime import graph 
   assert.ok(Object.isFrozen(mongoRuntimeContracts.Course.fields));
 });
 
-test("all models and 125 private fields roundtrip both migration -> runtime and runtime -> migration over BSON wire", () => {
+test("all models and 127 private fields roundtrip both migration -> runtime and runtime -> migration over BSON wire", () => {
   let privateCount = 0;
   for (const model of mongoRuntimeModelNames) {
     const row = fixture(model);
@@ -58,7 +58,7 @@ test("all models and 125 private fields roundtrip both migration -> runtime and 
       if (policy.index) assert.equal(encoded[policy.index], migrated[policy.index]);
     }
   }
-  assert.equal(privateCount, 125);
+  assert.equal(privateCount, 127);
 });
 
 test("all nullable fields retain SQL NULL including private JSON/date companions", () => {

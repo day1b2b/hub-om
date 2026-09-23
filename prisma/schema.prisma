@@ -708,6 +708,7 @@ model CoachEngagement {
   @@map("coach_engagements")
 
   // Application encryption lookup/storage columns; never expose these in API responses.
+  sourceEngagementIdPiiIndex String? @unique @map("source_engagement_id_pii_index")
   feedbackPiiIndex String? @map("feedback_pii_index")
   hiredByIdPiiIndex String? @map("hired_by_id_pii_index")
   hiredByTextPiiIndex String? @map("hired_by_text_pii_index")
@@ -729,6 +730,9 @@ model CoachEngagementSchedule {
   @@index([coachId, date])
   @@index([date])
   @@map("coach_engagement_schedules")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  sourceEngagementScheduleIdPiiIndex String? @unique @map("source_engagement_schedule_id_pii_index")
 }
 
 model CoachImportRun {

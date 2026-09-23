@@ -2,7 +2,7 @@
 
 ## 범위와 계약
 
-`src/lib/privacy/fields.json`이 서버 저장 암호화 대상(25개 테이블, 125개 필드)의 단일 목록이다. `inventory.json`은 나머지 업무 필드까지 분류하며 테스트가 미분류 신규 필드를 차단한다.
+`src/lib/privacy/fields.json`이 서버 저장 암호화 대상(26개 테이블, 127개 필드)의 단일 목록이다. 2026-09-23에 이름이 포함되는 투입·슬롯 원천 식별자 2개를 추가했다([적용 순서·복구](pii-source-engagement-ids.md)). `inventory.json`은 나머지 업무 필드까지 분류하며 테스트가 미분류 신규 필드를 차단한다.
 
 - 담당자·코치·강사·직원 이름/정규화 이름, 이메일, 전화번호, 생년월일, 사번, 개인 외부 식별자, Slack ID, 코치 접근 토큰.
 - 담당/작성/수정/삭제/예약/조회 주체, 개인 캘린더/문서 링크, 자유 입력 메모·강의관리·피드백·공지와 첨부파일.
@@ -81,3 +81,7 @@ Node.js `crypto`의 AES-256-GCM, 매 저장마다 무작위 12바이트 nonce, 1
 후속 로컬 검증 결과: `npm test` 528개 중 524개 통과/실패 0/DB 의존 4개 건너뜀(개인정보 DB 전환, 활동 로그 DB, 과정명 복원 DB, 캘린더 잠금 DB). `npm run typecheck`, `npm run build`, `npm run db:validate`, `git diff --check` 통과. `npm run lint` 오류 0/기존 경고 7. 새 의존성 추가 없음. 이 결과는 실제 DB·브라우저 검증의 대체가 아니다.
 
 DB adapter 교체 시 재사용 경계와 암호문/AAD/HMAC 불변 조건은 [서버 암호화 adapter 인계 계약](privacy-adapter-contract.md)을 따른다.
+
+## 2026-09-23 투입·슬롯 원천 식별자 추가
+
+`CoachEngagement.sourceEngagementId`, `CoachEngagementSchedule.sourceEngagementScheduleId`는 코치 이름을 포함할 수 있어 암호화 대상으로 바꿨다. 기존 `operational` 분류는 제외 승인이 아니었다. HMAC companion unique로 원문 중복을 막고, 기존 백필·enforce 도구가 두 필드를 자동으로 포함한다. 새 migration `20260923090000_pii_source_engagement_ids`는 운영에 적용하지 않았다. 점검 모드 적용 순서, 부분 중단·충돌·키 불일치 처리, Mongo shadow 재복사는 [별도 문서](pii-source-engagement-ids.md)를 따른다.

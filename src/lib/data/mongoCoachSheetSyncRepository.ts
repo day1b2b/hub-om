@@ -3,7 +3,7 @@ import { MongoServerError, type ClientSession } from "mongodb";
 import { activityContext } from "../activity/context";
 import type { CoachSheetSyncRepository, CoachSheetSyncTransaction, SheetSyncCoach, SheetEngagementMatch } from "./coachSheetSyncRepository";
 import { MongoOperationStore, MongoOperationError, assertMongo, completeMongoRow, type MongoOperationOptions, type MongoRow } from "./mongoOperationStore";
-import { encodeMongoRuntimeDocument } from "./mongoRuntimeCodec";
+import { encodeMongoRuntimeDocument, mongoRuntimeBlindIndex } from "./mongoRuntimeCodec";
 import { assertMongoReadStoreReady, prepareMongoReadStore } from "./mongoReadStore";
 import { operationAuditRow } from "./mongoOperationAudit";
 import { assertMongoCoachCatalogGuardReady, prepareMongoCoachCatalogGuard, lockMongoCoachCatalog } from "./mongoCoachCatalogGuard";
@@ -51,8 +51,13 @@ export class MongoCoachSheetSyncRepository implements CoachSheetSyncRepository {
       },
       getCoach: async (id: string) => { const row = await store.one("Coach", { _id: id, deletedAt: null }, session); return row ? coach(row) : null; },
       findMatchingEngagement: async (match: SheetEngagementMatch) => {
-        const row = await store.one("CoachEngagement", { $or: [{ sourceEngagementId: match.sourceEngagementId }, { coachId: match.coachId, courseName: match.courseName, startDate: { $lte: match.endDate }, endDate: { $gte: match.startDate } }] }, session);
-        return row ? { id: row.id as string, coachId: row.coachId as string } : null;
+        // Randomized ciphertext never equals the source ID; look up by HMAC, then confirm the decrypted value.
+        const sourceIndex = mongoRuntimeBlindIndex("CoachEngagement", "sourceEngagementId", match.sourceEngagementId);
+        const row = await store.one("CoachEngagement", { $or: [{ sourceEngagementIdPiiIndex: sourceIndex }, { coachId: match.coachId, courseName: match.courseName, startDate: { $lte: match.endDate }, endDate: { $gte: match.startDate } }] }, session);
+        if (!row) return null;
+        const overlaps = row.coachId === match.coachId && row.courseName === match.courseName && (row.startDate as Date) <= match.endDate && (row.endDate as Date) >= match.startDate;
+        assertMongo(row.sourceEngagementId === match.sourceEngagementId || overlaps, "PRIVATE_EQUALITY_MISMATCH");
+        return { id: row.id as string, coachId: row.coachId as string };
       },
       listReservationCoachIdsForEngagements: async (ids: string[]) => [...new Set((await store.scan("CoachDayReservation", { confirmedEngagementId: { $in: ids } }, session)).map(row => row.coachId as string))],
       listEngagementsByCourseNames: async (names: string[]) => (await store.scan("CoachEngagement", { courseName: { $in: names } }, session)).map(row => ({ id: row.id as string, coachId: row.coachId as string }))

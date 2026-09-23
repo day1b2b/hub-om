@@ -15,8 +15,11 @@ import { MongoCoachTokenRepository, prepareMongoCoachTokenStore, COACH_TOKEN_MOD
 import { MongoRequestAuditRepository, prepareMongoRequestAuditStore, REQUEST_AUDIT_MODELS } from "./mongoRequestAuditRepository";
 import { MongoCoachManagementRepository, prepareMongoCoachManagementStore } from "./mongoCoachManagementRepository";
 import { MongoOperationStore, operationMongoValidator, type MongoRow } from "./mongoOperationStore";
+import { NativeMongoShadowTarget } from "../mongodb/shadowTarget";
+import { encodeMongoDocument } from "../migration/mongoDocumentCodec";
+import { Prisma } from "@prisma/client";
 import { coachFixtureRow } from "./mongoCoachFixtures";
-import { encodeMongoRuntimeDocument, mongoRuntimeBlindIndex } from "./mongoRuntimeCodec";
+import { MongoDbNull, encodeMongoRuntimeDocument, mongoRuntimeBlindIndex } from "./mongoRuntimeCodec";
 import { isEncrypted } from "../privacy/crypto";
 
 type Session = { user: { email: string; name: string }; expires: string };
@@ -228,10 +231,74 @@ test("actual sheet sync services and handlers against an isolated Mongo replica 
       const reservation = await f.store.one("CoachDayReservation", { coachId: f.id }); assert.ok(reservation?.cancelledAt); assert.equal(reservation.confirmedEngagementId, existing.id);
       const logs = await f.store.scan("CoachSyncLog", {}); assert.equal(logs.length, 1); assert.equal(logs[0].status, "completed"); assert.equal(logs[0].updated, 1); assert.equal(logs[0].triggeredBy, managerA.user.email);
       const repeated = await f.call(source([contractRow(),contractRow()])); assert.equal(repeated.status, 200); assert.equal(await f.store.collection("CoachEngagement").countDocuments(), 1); assert.equal(await f.store.collection("CoachEngagementSchedule").countDocuments(), 2);
-      for (const model of ["Coach","CoachPrivateProfile","CoachEngagement","CoachSyncLog","ActivityChange","ActivityRequest"]) {
-        const raw = JSON.stringify(await f.store.collection(model).find({}).toArray()); for (const secret of [...(model === "CoachEngagement" ? [] : [coachName]),privateMail,privatePhone,"Synthetic manual feedback",managerA.user.email]) assert.ok(!raw.includes(secret), `${model} exposes synthetic PII`);
+      for (const model of ["Coach","CoachPrivateProfile","CoachEngagement","CoachEngagementSchedule","CoachSyncLog","ActivityChange","ActivityRequest"]) {
+        const raw = JSON.stringify(await f.store.collection(model).find({}).toArray()); for (const secret of [coachName,privateMail,privatePhone,"Synthetic manual feedback",managerA.user.email]) assert.ok(!raw.includes(secret), `${model} exposes synthetic PII`);
       }
       const rawLog = await f.store.collection("CoachSyncLog").findOne({}); assert.ok(rawLog && isEncrypted(rawLog.triggeredBy));
+    });
+
+    await suite.test("name-bearing source IDs are encrypted, resync matches only by HMAC and plaintext duplicates collide", async () => {
+      const f = await fixture();
+      const created = await f.call(source([contractRow()])); assert.equal(created.status, 200); assert.equal((await created.json()).result.created, 1);
+      const [engagement] = await f.store.scan("CoachEngagement", {}); const sourceId = engagement.sourceEngagementId as string; assert.ok(sourceId.includes(coachName));
+      const raw = await f.store.collection("CoachEngagement").findOne({ _id: engagement.id as string });
+      assert.ok(raw && isEncrypted(raw.sourceEngagementId) && raw.sourceEngagementIdPiiIndex === mongoRuntimeBlindIndex("CoachEngagement","sourceEngagementId",sourceId));
+      const rawSlots = await f.store.collection("CoachEngagementSchedule").find({}).toArray(); assert.equal(rawSlots.length, 2);
+      for (const slot of rawSlots) assert.ok(isEncrypted(slot.sourceEngagementScheduleId) && /^[a-f0-9]{64}$/.test(String(slot.sourceEngagementScheduleIdPiiIndex)));
+      assert.ok((await f.store.scan("CoachEngagementSchedule", {})).every(slot => (slot.sourceEngagementScheduleId as string).startsWith(`${sourceId}:`)));
+      // A renamed course disables the overlap fallback; without the HMAC branch this would create a second engagement.
+      const finds: Array<{ filter: unknown }> = [], engagementCollection = f.store.collection("CoachEngagement").collectionName;
+      const observe = (event: CommandStartedEvent) => { if (event.commandName === "find" && event.databaseName === databaseName && event.command.find === engagementCollection) finds.push({ filter: event.command.filter }); };
+      client.on("commandStarted", observe);
+      try { const again = await f.call(source([contractRow(coachName, "Synthetic Renamed Course")])); assert.equal(again.status, 200); const body = await again.json(); assert.equal(body.result.updated, 1); assert.equal(body.result.created, 0); }
+      finally { client.off("commandStarted", observe); }
+      assert.ok(finds.some(row => JSON.stringify(row.filter).includes(raw.sourceEngagementIdPiiIndex)), "Resync must query the source ID HMAC");
+      assert.ok(finds.every(row => !JSON.stringify(row.filter).includes(coachName)), "Engagement queries must not carry the plaintext source ID");
+      assert.equal(await f.store.collection("CoachEngagement").countDocuments(), 1); assert.equal(await f.store.collection("CoachEngagementSchedule").countDocuments(), 2);
+      const current = await f.store.one("CoachEngagement", { _id: engagement.id as string }); assert.equal(current?.courseName, "Synthetic Renamed Course"); assert.equal(current?.sourceEngagementId, sourceId);
+      // Fresh random ciphertext of the same plaintext still collides on the HMAC unique index.
+      const duplicate = encodeMongoRuntimeDocument("CoachEngagement", { ...current!, id: "00000000-0000-4000-8000-00000000d001" }); assert.notEqual(duplicate.sourceEngagementId, raw.sourceEngagementId);
+      await assert.rejects(f.store.collection("CoachEngagement").insertOne(duplicate), (error: unknown) => error instanceof MongoServerError && error.code === 11000 && Object.keys(error.keyPattern ?? {}).join() === "sourceEngagementIdPiiIndex");
+      const [slot] = await f.store.scan("CoachEngagementSchedule", {});
+      await assert.rejects(f.store.collection("CoachEngagementSchedule").insertOne(encodeMongoRuntimeDocument("CoachEngagementSchedule", { ...slot, id: "00000000-0000-4000-8000-00000000d002" })), (error: unknown) => error instanceof MongoServerError && error.code === 11000 && Object.keys(error.keyPattern ?? {}).join() === "sourceEngagementScheduleIdPiiIndex");
+      for (const model of ["CoachEngagement","CoachEngagementSchedule","ActivityChange","ActivityRequest","CoachSyncLog"]) {
+        const stored = JSON.stringify(await f.store.collection(model).find({}).toArray()); assert.ok(!stored.includes(coachName) && !stored.includes(sourceId), `${model} exposes a plaintext source ID`);
+      }
+    });
+
+    await suite.test("older-policy plaintext source IDs block preparation without mutation; a fresh namespace takes the re-copy", async () => {
+      const namespace = `shadow_sheet_${randomBytes(8).toString("hex")}`, options = { client, databaseName, namespace, allowShadowWrites: true as const };
+      const db = client.db(databaseName), name = `${namespace}_CoachEngagement`, logical = coachFixtureRow("CoachEngagement", { coachId: "00000000-0000-4000-8000-00000000c001", sourceEngagementId: `contract-sheet:2:${coachName}:${firstDay}:${secondDay}`, courseName, status: "SCHEDULED", source: "SHEET", startDate: new Date(firstDay), endDate: new Date(secondDay) });
+      const legacy: Record<string, unknown> = { ...encodeMongoRuntimeDocument("CoachEngagement", logical), sourceEngagementId: logical.sourceEngagementId }; delete legacy.sourceEngagementIdPiiIndex;
+      const oldValidator = { $jsonSchema: { bsonType: "object", required: ["_id", "sourceEngagementId"] } };
+      await db.createCollection(name, { validator: oldValidator, validationLevel: "strict", validationAction: "error" }); await db.collection(name).insertOne(legacy as never);
+      const before = await db.collection(name).find({}).toArray();
+      await assert.rejects(prepareMongoCoachSheetSyncStore(options), (error: unknown) => (error as { code?: string }).code === "EXISTING_DOCUMENTS_POLICY_MISMATCH");
+      assert.deepEqual(await db.collection(name).find({}).toArray(), before);
+      const info = await db.listCollections({ name }).next(); assert.deepEqual((info as { options?: { validator?: unknown } })?.options?.validator, oldValidator);
+      await assert.rejects(MongoCoachSheetSyncRepository.open(options));
+      // A writer between the pre-check and collMod must not leave the new validator reporting ready.
+      const racing = `shadow_sheet_${randomBytes(8).toString("hex")}`; await db.createCollection(`${racing}_CoachEngagement`, { validator: oldValidator, validationLevel: "strict", validationAction: "error" });
+      let checks = 0; const original = Collection.prototype.findOne;
+      const patch = mock.method(Collection.prototype, "findOne", async function(this: Collection, ...args: Parameters<Collection["findOne"]>) { if (this.collectionName === `${racing}_CoachEngagement` && Object.hasOwn((args[0] ?? {}) as object, "$nor")) return ++checks === 2 ? { _id: "raced" } : null; return original.apply(this, args); });
+      try { await assert.rejects(prepareMongoCoachSheetSyncStore({ ...options, namespace: racing }), (error: unknown) => (error as { code?: string }).code === "EXISTING_DOCUMENTS_POLICY_MISMATCH"); } finally { patch.mock.restore(); }
+      assert.equal(checks, 2); const restored = (await db.listCollections({ name: `${racing}_CoachEngagement` }).next() as { options?: { validator?: unknown; validationLevel?: string; validationAction?: string } })?.options; assert.deepEqual([restored?.validator, restored?.validationLevel, restored?.validationAction], [oldValidator, "strict", "error"]);
+      const fresh = { ...options, namespace: `shadow_sheet_${randomBytes(8).toString("hex")}` }; await prepareMongoCoachSheetSyncStore(fresh);
+      const copy = new MongoOperationStore(fresh, COACH_SHEET_SYNC_MODELS); await copy.collection("CoachEngagement").insertOne(encodeMongoRuntimeDocument("CoachEngagement", { ...logical, sourceEngagementId: before[0].sourceEngagementId }));
+      const copied = await copy.collection("CoachEngagement").findOne({}); assert.ok(copied && isEncrypted(copied.sourceEngagementId)); assert.equal((await copy.one("CoachEngagement", {}))?.sourceEngagementId, logical.sourceEngagementId);
+      await MongoCoachSheetSyncRepository.open(fresh);
+      // Documented remediation: the real shadow importer fills a new namespace first, then store preparation must accept it.
+      const imported = { ...options, namespace: `shadow_sheet_${randomBytes(8).toString("hex")}` }, target = new NativeMongoShadowTarget(db);
+      const plain = (row: MongoRow) => Object.fromEntries(Object.entries(row).map(([key, value]) => [key, value === MongoDbNull ? Prisma.DbNull : value]));
+      const coach = coachFixtureRow("Coach", { name: coachName, normalizedName: "synthetic sheet coach", sourceCoachId: "synthetic:imported", status: "ACTIVE", isActive: true });
+      const engagement: MongoRow = { ...logical, coachId: coach.id };
+      const slot = coachFixtureRow("CoachEngagementSchedule", { engagementId: engagement.id, coachId: coach.id, sourceEngagementScheduleId: `${logical.sourceEngagementId}:0:${firstDay}`, date: new Date(firstDay), startTime: "09:00", endTime: "18:00" });
+      for (const [model, row] of [["Coach", coach], ["CoachEngagement", engagement], ["CoachEngagementSchedule", slot]] as const) assert.equal(await target.insertOnly(imported.namespace, model, encodeMongoDocument(model, plain(row), { sourceMode: "plaintext" })), true);
+      await prepareMongoCoachSheetSyncStore(imported);
+      const repository = await MongoCoachSheetSyncRepository.open(imported);
+      assert.deepEqual(await repository.findMatchingEngagement({ sourceEngagementId: logical.sourceEngagementId as string, coachId: coach.id as string, courseName: "Synthetic unrelated course", startDate: new Date("2098-01-01"), endDate: new Date("2098-01-02") }), { id: engagement.id, coachId: coach.id });
+      const importedRaw = JSON.stringify(await db.collection(`${imported.namespace}_CoachEngagementSchedule`).find({}).toArray()) + JSON.stringify(await db.collection(`${imported.namespace}_CoachEngagement`).find({}).toArray());
+      assert.ok(!importedRaw.includes(coachName));
     });
 
     await suite.test("invalid/cancelled/struck/old-new coach rows skip while an existing historic coach still imports", async () => {

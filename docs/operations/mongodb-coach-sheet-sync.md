@@ -18,7 +18,7 @@
 
 ## 로그·보안·제외 범위
 
-CoachSyncLog는 start→업무→finish라는 별도 lifecycle이다. start 실패는 작업을 시작하지 않으며 finish 실패로 이미 commit한 업무가 취소되지 않는다. 실패 로그에는 고정 코드만 저장한다. 기존 개인정보 codec으로 private profile, 감사값, log의 지정 필드를 보호한다. 이름이 포함된 sourceEngagementId/sourceEngagementScheduleId는 기존 privacy 정책상 평문이며 이번 분리에서 새 암호화 정책을 도입하지 않았다.
+CoachSyncLog는 start→업무→finish라는 별도 lifecycle이다. start 실패는 작업을 시작하지 않으며 finish 실패로 이미 commit한 업무가 취소되지 않는다. 실패 로그에는 고정 코드만 저장한다. 기존 개인정보 codec으로 private profile, 감사값, log의 지정 필드를 보호한다. 이름이 포함된 sourceEngagementId/sourceEngagementScheduleId는 이 분리 시점에는 평문이었다. 2026-09-23 후속으로 암호화·HMAC 매칭을 적용했다([원천 식별자 암호화](pii-source-engagement-ids.md)).
 
 Notion은 아직 PG 직접 writer다. 명시 repository scope에서 서비스 진입 즉시 외부 읽기 전에 차단하며 `/sync/all`도 Notion 단계에서 중단한다. 기본 PG의 Notion은 기존대로이며 catalog 참여를 보장하지 않는다. 따라서 전체 동기화의 생산 Mongo 전환 완료를 뜻하지 않는다.
 

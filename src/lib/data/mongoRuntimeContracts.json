@@ -2993,6 +2993,13 @@
         "uuid": false,
         "dateOnly": false
       },
+      "sourceEngagementIdPiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
       "feedbackPiiIndex": {
         "type": "String",
         "nullable": true,
@@ -3044,7 +3051,7 @@
       },
       {
         "fields": [
-          "sourceEngagementId"
+          "sourceEngagementIdPiiIndex"
         ],
         "nullsDistinct": true
       }
@@ -3111,6 +3118,13 @@
         "list": false,
         "uuid": false,
         "dateOnly": false
+      },
+      "sourceEngagementScheduleIdPiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
       }
     },
     "references": [
@@ -3142,7 +3156,7 @@
       },
       {
         "fields": [
-          "sourceEngagementScheduleId"
+          "sourceEngagementScheduleIdPiiIndex"
         ],
         "nullsDistinct": true
       }

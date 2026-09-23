@@ -257,7 +257,7 @@
   },
   "CoachEngagement": {
     "id": "operational",
-    "sourceEngagementId": "operational",
+    "sourceEngagementId": "encrypted",
     "coachId": "operational",
     "operationSessionId": "operational",
     "courseName": "operational",
@@ -275,7 +275,7 @@
   },
   "CoachEngagementSchedule": {
     "id": "operational",
-    "sourceEngagementScheduleId": "operational",
+    "sourceEngagementScheduleId": "encrypted",
     "engagementId": "operational",
     "coachId": "operational",
     "date": "operational",

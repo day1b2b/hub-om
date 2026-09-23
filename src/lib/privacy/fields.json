@@ -638,6 +638,13 @@
   "CoachEngagement": {
     "table": "coach_engagements",
     "fields": {
+      "sourceEngagementId": {
+        "column": "source_engagement_id",
+        "type": "String",
+        "nullable": false,
+        "index": "sourceEngagementIdPiiIndex",
+        "indexColumn": "source_engagement_id_pii_index"
+      },
       "feedback": {
         "column": "feedback",
         "type": "String",
@@ -658,6 +665,20 @@
         "nullable": true,
         "index": "hiredByTextPiiIndex",
         "indexColumn": "hired_by_text_pii_index"
+      }
+    },
+    "primaryKey": "id",
+    "compoundKeys": []
+  },
+  "CoachEngagementSchedule": {
+    "table": "coach_engagement_schedules",
+    "fields": {
+      "sourceEngagementScheduleId": {
+        "column": "source_engagement_schedule_id",
+        "type": "String",
+        "nullable": false,
+        "index": "sourceEngagementScheduleIdPiiIndex",
+        "indexColumn": "source_engagement_schedule_id_pii_index"
       }
     },
     "primaryKey": "id",

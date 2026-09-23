@@ -32,3 +32,7 @@ Coach 관리 route·Team facade·Instructor save·요청/개인정보 감사의 
 ## Notion 코치 동기화 후속
 
 명시 source/repository와 PG 기본/Mongo adapter, 실제 Notion/all 및 catalog 참여를 구현·검증했다. 일반876pass19skip0fail, Mongo8.0.30 묶음110pass0skip(mock4포함), type/buildpass, lint0error기존7warning. 실행·독립 검증 근거는 ../mongodb-coach-notion-sync/execution-review.md를 따른다. 다음 작업은 이름 포함 sourceEngagementId/sourceEngagementScheduleId의 암호화 정책·검색/고유키·snapshot/runtime·기존변환 보완이며 전체 개인정보 암호화의 필수 차단 항목이다. 이후 남은 runtime 경로·실제복사/복원/전환을 계속 수행한다.
+
+## 원천 식별자 암호화 후속
+
+feature/20260922-source-identifiers-encryption에서 이름 포함 sourceEngagementId/sourceEngagementScheduleId를 암호화 정책·HMAC unique·PG migration·계약 snapshot·Mongo 시트 HMAC 매칭·기존 namespace 거부까지 구현했다. 격리 PG17과 Mongo8.0.30 replica set으로 전환 상태·부분 중단·재시도·키 불일치·재동기화를 검증했다. 근거는 ../mongodb-source-identifiers-encryption/execution-review.md. 운영 migration/backfill은 미실행이다. 다음은 총괄 feature 통합 검토 후 runtime-coverage의 미전환 기능과 실제 복사·복원 리허설이다.
