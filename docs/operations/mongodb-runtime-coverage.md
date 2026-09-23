@@ -28,7 +28,7 @@
 | 운영·과정의 별도 관리자 기능 | `api/admin/courses/lookup`, `api/admin/courses/[courseId]`, `api/admin/deleted-operations`, `api/admin/onsite-required-backfill`, `api/admin/om-assignment-status-backfill`, `lib/data/courseNameRestore.ts` | Company, Course, OperationSession, OperationSourceRecord, 활동 감사 | 기본 OperationRepository 외 직접 수정/복원/일괄 작업·경합·감사 검증 |
 | OM 접수·배정·권한 | `lib/data/omRequest/omRequestLocalRepository.ts`, `omRequestAssignment.ts`, `lib/auth/omRequestAssignmentAccess.ts` → `listTeamUsers()` | OmRequest, OperationSession, TeamUser, ActivityChange | 이름에 Local이 있어도 운영에서는 PG. 접수·배정 원자성·중복/사람 수정 정책·명단 기반 권한 동등성 필요 |
 | 팀 사용자 관리 | `lib/data/teamUsers/teamUserRepository.ts` → 기본 `legacyTeamUserRepository.ts` → TeamUser delegate | TeamUser; local JSON은 개발 분기 | 명단/권한 호출부는 facade를 유지하며 context 주입 검증. 생산 선택과 전체 writer 일치 필요. Member 조회는 별도 |
-| 코치 CRUD·태그 마스터 | `api/coaches`, `api/coaches/[id]`, `api/coaches/[id]/regenerate-token`, `api/master/fields`, `api/master/curriculums`, `api/admin/deleted-coaches` | Coach, CoachPrivateProfile, CoachField/Curriculum, 두 Master | 두 CRUD API는 context/기본 Prisma adapter로 연결. 토큰 재발급도 context 경계 연결. 마스터 API·삭제 복원 경로 미전환 |
+| 코치 CRUD·태그 마스터 | `api/coaches`, `api/coaches/[id]`, `api/coaches/[id]/regenerate-token`, `api/master/fields`, `api/master/curriculums`, `api/admin/deleted-coaches` | Coach, CoachPrivateProfile, CoachField/Curriculum, 두 Master | 두 CRUD API는 context/기본 Prisma adapter로 연결. 토큰 재발급도 context 경계 연결. 태그 마스터·삭제 코치 목록/복원/영구삭제도 2026-09-23 context/기본 Prisma adapter로 연결([경계](mongodb-coach-admin.md)) |
 | 코치 인증·본인 페이지·개인정보 열람 | `lib/coaches/coachTokenAuth.ts`, `lib/data/coachMyPage.ts`, `coachPrivateAccess.ts`, `coachAccessTokenBackfill.ts`, `api/coach/me`, `api/coaches/export` | Coach, CoachPrivateProfile, CoachPrivateAccessLog, CoachdbArchiveRow, 예약·섭외 | 토큰 lookup/본인 API/export는 명시context 연결 및 합성검증. 기본PG이며 manager coachMyPage·backfill은 별도 미전환 |
 | 가용 일정·예약·섭외 | `api/coaches/[id]/schedules`, `/reservations`, `/engagements`, `api/coach/schedule/[yearMonth]`, `api/engagements/[id]`, `/review`; `lib/coaches/engagementApi.ts`, `reservationAutoCancel.ts` | CoachSchedule, CoachScheduleAccessLog, CoachDayReservation, CoachEngagement, CoachEngagementSchedule, Coach | 월일정 GET/PUT·예약 POST/DELETE·매니저일정 GET은 context 경계. 수동 섭외확정/자동취소/평가는 context 경계 및 일정·예약 공통 guard. contract/Samsung 동기화·삭제 관계 transaction은 별도 시트 경계에서 구현. Notion도 별도 동기화 경계 구현 |
 | 코치 메모·콘텐츠·관리 조회 | `lib/coaches/contentEntries.ts`, `api/coaches/[id]/notes`, `api/admin/content-entries`, `api/admin/schedule-registration/[yearMonth]`, `api/schedules/[yearMonth]/status`, `app/coaches/admin/page.tsx` | CoachContentEntry, CoachEngagement, CoachScheduleAccessLog, Coach | 메모 생성·관리·검토·등록 현황 및 직접 페이지 조회 |
@@ -75,7 +75,6 @@
 | `src/app/api/admin/courses/[courseId]/route.ts` | Course, OperationSession |
 | `src/app/api/admin/courses/lookup/route.ts` | Company, Course |
 | `src/app/api/admin/database/cell/route.ts` | Company, Course, OperationSession, Member |
-| `src/app/api/admin/deleted-coaches/route.ts` | Coach |
 | `src/app/api/admin/deleted-operations/route.ts` | Company, Course, OperationSession |
 | `src/app/api/admin/om-assignment-status-backfill/route.ts` | OperationSession |
 | `src/app/api/admin/onsite-required-backfill/route.ts` | OperationSession |
@@ -85,8 +84,6 @@
 | `src/app/api/announcements/route.ts` | Announcement |
 | `src/app/api/coaches/[id]/notes/route.ts` | CoachContentEntry |
 | `src/app/api/health/route.ts` | 중앙 연결·raw SQL 또는 동적 delegate: 본문 기능군 참조 |
-| `src/app/api/master/curriculums/route.ts` | CoachCurriculumMaster |
-| `src/app/api/master/fields/route.ts` | CoachFieldMaster |
 | `src/app/api/schedules/[yearMonth]/status/route.ts` | Coach, CoachScheduleAccessLog |
 | `src/app/coaches/admin/page.tsx` | Coach |
 | `src/lib/activity/request.ts` | ActivityRequest |
@@ -106,6 +103,7 @@
 | `src/lib/data/prismaCoachTokenRepository.ts` | Coach, CoachdbArchiveRow |
 | `src/lib/data/prismaCoachTokenRotationRepository.ts` | Coach |
 | `src/lib/data/prismaCoachExportRepository.ts` | Coach, CoachPrivateAccessLog |
+| `src/lib/data/prismaCoachAdminRepository.ts` | CoachFieldMaster, CoachCurriculumMaster, Coach(Cascade/SetNull 자식 포함) |
 | `src/lib/data/prismaCoachManagementRepository.ts` | Coach, CoachPrivateProfile, CoachFieldMaster, CoachCurriculumMaster, CoachField, CoachCurriculum |
 | `src/lib/data/prismaCoachPrivateRepository.ts` | CoachPrivateProfile, CoachEngagement |
 | `src/lib/data/prismaCoachEngagementRepository.ts` | Coach, CoachEngagement, CoachEngagementSchedule, CoachDayReservation, CoachContentEntry; 공통 coach advisory lock |
@@ -155,3 +153,7 @@
 [적용 순서·복구·shadow 재복사](pii-source-engagement-ids.md). 이름이 포함될 수 있는 `sourceEngagementId`/`sourceEngagementScheduleId`를 PG·Mongo 공통 정책으로 암호화하고 HMAC companion unique로 원문 중복을 막는다. Mongo 시트 매칭은 HMAC 조회 후 복호화 값을 확인한다. Mongo read/operation store 준비는 이전 정책 문서가 남은 기존 namespace를 거부하며 자동 삭제·수리하지 않는다. 새 PG migration은 운영에 적용하지 않았다.
 
 위 두 필드의 저장 평문 blocker는 코드·합성 검증 기준으로 해소했다. 운영 PG backfill·enforce, 새 namespace로의 실제 재복사·복원 리허설, 위 표의 미전환 기능(관리자·가져오기·캘린더·공지·활동 등)과 최종 전환은 그대로 남아 있다. 브라우저 초안 암호화도 별도 미완료다.
+
+## 코치 태그 마스터·삭제 코치 관리 후속 (2026-09-23)
+
+[경계와 영구삭제 결정](mongodb-coach-admin.md). 세 route는 저장소 호출로 바뀌었고 기본은 PG adapter다. Mongo 영구삭제는 결정권자 결정에 따라 기존 물리 삭제와 같은 Cascade/SetNull을 한 트랜잭션에서 재현한다. 개인정보 접근 기록을 쓰는 `recordAccess`와 export가 코치 잠금에 참여한다. 같은 fixture로 PG 기준과 비교 검증했다. 다른 코치 경로(메모·콘텐츠·관리 조회, coachMyPage, token backfill)와 나머지 기능군은 미전환이다.

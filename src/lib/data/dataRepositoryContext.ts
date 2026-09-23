@@ -8,6 +8,7 @@ import type { CoachTokenRepository } from "./coachTokenRepository";
 import type { CoachTokenRotationRepository } from "./coachTokenRotationRepository";
 import { AsyncLocalStorage } from "node:async_hooks";
 import type { CoachManagementRepository } from "./coachManagementRepository";
+import type { CoachAdminRepository } from "./coachAdminRepository";
 import type { TeamUserRepository } from "./teamUsers/teamUserRepositoryContract";
 import type { InstructorNoteRepository } from "./instructorNoteRepository";
 import type { CoachPrivateRepository } from "./coachPrivateRepository";
@@ -31,6 +32,7 @@ export interface DataRepositories {
   coachToken: CoachTokenRepository;
   coachTokenRotation: CoachTokenRotationRepository;
   coachManagement: CoachManagementRepository;
+  coachAdmin: CoachAdminRepository;
   teamUsers: TeamUserRepository;
   instructorNote: InstructorNoteRepository;
   coachPrivate: CoachPrivateRepository;

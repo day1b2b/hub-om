@@ -1,14 +1,17 @@
 import { randomUUID } from "node:crypto";
+import { MongoServerError } from "mongodb";
 import type { ActivityContext } from "../activity/context";
 import type { CoachPrivateAccessLogRepository, RequestActivityRepository } from "./dataRepositoryContext";
 import { encodeMongoRuntimeDocument } from "./mongoRuntimeCodec";
 import { assertMongo, completeMongoRow, MongoOperationError, MongoOperationStore, type MongoOperationOptions } from "./mongoOperationStore";
 import { assertMongoReadStoreReady, prepareMongoReadStore } from "./mongoReadStore";
+import { assertMongoCoachSchedulingGuardReady, lockMongoCoachScheduling, prepareMongoCoachSchedulingGuard } from "./mongoCoachSchedulingGuard";
 
 export const REQUEST_AUDIT_MODELS = ["ActivityRequest", "ActivityChange", "Coach", "CoachPrivateAccessLog"] as const;
 type Options = MongoOperationOptions & { allowShadowWrites: true };
 export async function prepareMongoRequestAuditStore(options: Options): Promise<void> {
   await prepareMongoReadStore(options, REQUEST_AUDIT_MODELS);
+  await prepareMongoCoachSchedulingGuard(new MongoOperationStore(options, REQUEST_AUDIT_MODELS), options.allowShadowWrites);
 }
 
 /** Explicit shadow backend. Request logs are best-effort at withActivity, whereas private access
@@ -22,6 +25,7 @@ export class MongoRequestAuditRepository implements RequestActivityRepository, C
     const store = new MongoOperationStore(options, REQUEST_AUDIT_MODELS);
     try {
       await assertMongoReadStoreReady(store);
+      await assertMongoCoachSchedulingGuardReady(store);
       const hello = await store.db.command({ hello: 1 });
       assertMongo((typeof hello.setName === "string" || hello.msg === "isdbgrid") && typeof hello.logicalSessionTimeoutMinutes === "number", "TRANSACTIONS_REQUIRED");
       return new MongoRequestAuditRepository(store);
@@ -43,19 +47,31 @@ export class MongoRequestAuditRepository implements RequestActivityRepository, C
     }
   }
   async recordAccess(coachId: string, accessedByEmail: string, context: string): Promise<void> {
+    // A first guard upsert can race to 11000 without a transient label; restart the whole transaction.
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try { return await this.recordAccessOnce(coachId, accessedByEmail, context); }
+      catch (error) { if (!(error instanceof MongoServerError && error.code === 11000 && attempt < 4)) throw error; }
+    }
+    throw new MongoOperationError("PRIVATE_ACCESS_AUDIT_FAILED");
+  }
+  private async recordAccessOnce(coachId: string, accessedByEmail: string, context: string): Promise<void> {
     const session = this.store.client.startSession();
     try {
       await session.withTransaction(async () => {
         // Match the PG foreign key; deleted coaches still exist and are valid audit targets.
         assertMongo(await this.store.one("Coach", { _id: coachId }, session), "AUDIT_COACH_NOT_FOUND");
+        // Writing the coach guard conflicts with a concurrent permanent delete, so no orphan log commits.
+        await lockMongoCoachScheduling(this.store, coachId, session);
         const row = completeMongoRow("CoachPrivateAccessLog", { id: randomUUID(), coachId, accessedByEmail, accessedAt: new Date(), context });
         await this.store.collection("CoachPrivateAccessLog").insertOne(encodeMongoRuntimeDocument("CoachPrivateAccessLog", row), { session });
-      }, { readConcern: { level: "snapshot" }, writeConcern: { w: "majority", j: true }, readPreference: "primary", timeoutMS: 10_000 });
+        // Coach writers (sheet/Notion sync) can hold this guard for up to 30s.
+      }, { readConcern: { level: "snapshot" }, writeConcern: { w: "majority", j: true }, readPreference: "primary", timeoutMS: 30_000 });
     } catch (error) {
-      if (error instanceof MongoOperationError) throw error;
+      if (error instanceof MongoOperationError || (error instanceof MongoServerError && error.code === 11000)) throw error;
       throw new MongoOperationError("PRIVATE_ACCESS_AUDIT_FAILED");
     } finally { await session.endSession(); }
   }
+
   /** Same 30/365-day retention and <=1000 rows per model as the current PG implementation. */
   async pruneActivityBatch(): Promise<{ requests: number; changes: number }> {
     try {

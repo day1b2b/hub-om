@@ -1,14 +1,13 @@
 import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
-import { getPrismaClient } from "@/lib/data/prisma";
+import { getCoachAdminRepository } from "@/lib/data/coachAdminRepositoryFactory";
 
 export const dynamic = "force-dynamic";
 
 async function activityGET() {
   await requireWorkspaceSession();
-  const prisma = getPrismaClient();
-  const fields = await prisma.coachFieldMaster.findMany({ orderBy: { name: "asc" } });
+  const fields = await getCoachAdminRepository().listMasters("fields");
   return NextResponse.json({ ok: true, fields });
 }
 
@@ -21,12 +20,7 @@ async function activityPOST(request: Request) {
     return NextResponse.json({ ok: false, error: "분야명이 필요합니다." }, { status: 400 });
   }
 
-  const prisma = getPrismaClient();
-  const field = await prisma.coachFieldMaster.upsert({
-    where: { name },
-    create: { name },
-    update: {}
-  });
+  const field = await getCoachAdminRepository().ensureMaster("fields", name);
 
   return NextResponse.json({ ok: true, field }, { status: 201 });
 }

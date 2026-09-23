@@ -1,26 +1,14 @@
 import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
-import { getPrismaClient } from "@/lib/data/prisma";
+import { getCoachAdminRepository } from "@/lib/data/coachAdminRepositoryFactory";
 
 export const dynamic = "force-dynamic";
 
 async function activityGET() {
   await assertAdminSession();
 
-  const prisma = getPrismaClient();
-  const coaches = await prisma.coach.findMany({
-    where: { deletedAt: { not: null } },
-    orderBy: { deletedAt: "desc" },
-    select: {
-      id: true,
-      name: true,
-      workType: true,
-      status: true,
-      deletedAt: true,
-      deletedBy: true
-    }
-  });
+  const coaches = await getCoachAdminRepository().listDeletedCoaches();
 
   return NextResponse.json({
     ok: true,
@@ -40,12 +28,7 @@ async function activityPUT(request: Request) {
     return NextResponse.json({ ok: false, error: "코치 ID가 필요합니다." }, { status: 400 });
   }
 
-  const prisma = getPrismaClient();
-  const coach = await prisma.coach.update({
-    where: { id: body.id },
-    data: { deletedAt: null, deletedBy: null },
-    select: { id: true, name: true }
-  });
+  const coach = await getCoachAdminRepository().restoreCoach(body.id);
 
   return NextResponse.json({ ok: true, coach });
 }
@@ -58,17 +41,10 @@ async function activityDELETE(request: Request) {
     return NextResponse.json({ ok: false, error: "코치 ID가 필요합니다." }, { status: 400 });
   }
 
-  const prisma = getPrismaClient();
-  const coach = await prisma.coach.findUnique({
-    where: { id: body.id },
-    select: { id: true, deletedAt: true }
-  });
-
-  if (!coach?.deletedAt) {
+  if (!(await getCoachAdminRepository().purgeDeletedCoach(body.id))) {
     return NextResponse.json({ ok: false, error: "삭제된 코치만 영구삭제할 수 있습니다." }, { status: 400 });
   }
 
-  await prisma.coach.delete({ where: { id: body.id } });
   return NextResponse.json({ ok: true });
 }
 

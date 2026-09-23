@@ -40,3 +40,7 @@ feature/20260922-source-identifiers-encryption에서 이름 포함 sourceEngagem
 ## 원천 식별자 암호화 총괄 통합
 
 b032fc5를 총괄 feature에 fast-forward하고 전체 회귀(일반876pass20skip0fail, Mongo112pass, PG22pass, type/build/lint)를 재확인했다. 근거는 ../mongodb-source-identifiers-encryption/integration-review.md. 다음은 runtime-coverage의 미전환 기능 전환과 운영 backfill·실제 복사·복원 리허설 준비다. 전체 운영 이전은 진행 중이다.
+
+## 코치 태그 마스터·삭제 코치 관리
+
+feature/20260923-mongodb-coach-master-restore에서 태그 마스터·삭제 코치 목록/복원/영구삭제의 Mongo 경계를 구현했다. 영구삭제는 결정권자 결정으로 기존 물리 삭제와 동일하게 유지한다. 근거는 ../mongodb-coach-admin/execution-review.md. 다음은 코치 메모·콘텐츠·관리 조회 등 남은 coverage 기능군이다.
