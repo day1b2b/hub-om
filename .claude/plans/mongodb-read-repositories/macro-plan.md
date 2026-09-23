@@ -36,3 +36,7 @@ Coach 관리 route·Team facade·Instructor save·요청/개인정보 감사의 
 ## 원천 식별자 암호화 후속
 
 feature/20260922-source-identifiers-encryption에서 이름 포함 sourceEngagementId/sourceEngagementScheduleId를 암호화 정책·HMAC unique·PG migration·계약 snapshot·Mongo 시트 HMAC 매칭·기존 namespace 거부까지 구현했다. 격리 PG17과 Mongo8.0.30 replica set으로 전환 상태·부분 중단·재시도·키 불일치·재동기화를 검증했다. 근거는 ../mongodb-source-identifiers-encryption/execution-review.md. 운영 migration/backfill은 미실행이다. 다음은 총괄 feature 통합 검토 후 runtime-coverage의 미전환 기능과 실제 복사·복원 리허설이다.
+
+## 원천 식별자 암호화 총괄 통합
+
+b032fc5를 총괄 feature에 fast-forward하고 전체 회귀(일반876pass20skip0fail, Mongo112pass, PG22pass, type/build/lint)를 재확인했다. 근거는 ../mongodb-source-identifiers-encryption/integration-review.md. 다음은 runtime-coverage의 미전환 기능 전환과 운영 backfill·실제 복사·복원 리허설 준비다. 전체 운영 이전은 진행 중이다.
