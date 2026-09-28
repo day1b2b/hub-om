@@ -16,6 +16,8 @@ export interface OperationRepository {
    */
   findCoursesByCompany(companyQuery: string, courseQuery: string, limit: number): Promise<CourseLookupCandidate[]>;
   getOperationById(operationId: string): Promise<OperationSession | null>;
+  /** 생성 시각(DB `created_at`). 로컬 JSON 저장소처럼 추적하지 않는 백엔드는 null. */
+  getOperationCreatedAt(operationId: string): Promise<Date | null>;
   createOperation(input: CreateOperationInput): Promise<OperationSession>;
   /** updatedBy는 수정한 사람의 이메일. deleteOperation의 deletedBy와 같은 감사 기록용이다. */
   updateOperation(operationId: string, input: UpdateOperationInput, updatedBy?: string): Promise<OperationSession>;

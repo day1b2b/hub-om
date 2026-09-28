@@ -7,10 +7,14 @@ let unresolvedNames: string[] = [];
 let deleteFailure = "";
 let creates = 0;
 let exists = true;
+let createdAt: Date | null = null;
 const removed: string[] = [];
 const patched: Record<string, unknown>[] = [];
 const notifications: boolean[] = [];
-mock.module("@/lib/data/operationRepositoryFactory", { namedExports: { getOperationRepository: () => ({ getOperationById: async () => exists ? operation : null }) } });
+mock.module("@/lib/data/operationRepositoryFactory", { namedExports: { getOperationRepository: () => ({
+  getOperationById: async () => exists ? operation : null,
+  getOperationCreatedAt: async () => createdAt
+}) } });
 mock.module("./calendarOperationLock", { namedExports: { calendarLockSignal: () => undefined, withCalendarOperationLock: async (_id: string, run: () => Promise<unknown>) => run() } });
 mock.module("./calendarWriteConfig", { namedExports: { isCalendarWriteEnabled: () => true, resolvePartCalendarId: () => "cal" } });
 mock.module("./calendarParticipants", { namedExports: { resolveCalendarTargets: async () => ({ partKey: "1파트", attendeeEmails: [], unresolvedNames }) } });
@@ -30,7 +34,7 @@ mock.module("./calendarEventLinkRepository", { namedExports: {
 const { reflectOperationCreated, reflectOperationUpdated, reflectOperationDelete } = await import("./reflectOperationToCalendar");
 const operation = { operationId: "fixture" } as OperationSession;
 const first = { operationId: "fixture", calendarId: "cal", eventId: "first", eventDate: "2026-09-07" };
-beforeEach(() => { exists = true; creates = 0; links = [first]; unresolvedNames = []; deleteFailure = ""; removed.length = 0; patched.length = 0; notifications.length = 0; });
+beforeEach(() => { exists = true; creates = 0; links = [first]; unresolvedNames = []; deleteFailure = ""; createdAt = null; removed.length = 0; patched.length = 0; notifications.length = 0; });
 test("장소와 담당자를 비우면 Google PATCH에도 빈 값을 전달한다", async () => {
   await reflectOperationUpdated(operation);
   assert.equal(patched[0].location, ""); assert.deepEqual(patched[0].attendees, []);
@@ -59,4 +63,22 @@ test("역반영 직후 원본 이벤트는 다시 덮어쓰지 않는다", async
 
 test("생성 후 삭제된 회차를 오래된 객체로 다시 생성하지 않는다", async () => {
   exists = false; links = []; await reflectOperationCreated(operation); assert.equal(creates, 0);
+});
+
+test("매핑 없는 기능 도입 전 과정은 담당자를 바꿔도 만들지 않는다", async () => {
+  links = []; createdAt = new Date("2026-08-01T00:00:00Z");
+  await reflectOperationUpdated(operation);
+  assert.equal(creates, 0);
+});
+
+test("생성 시각을 모르면(로컬 저장소 등) 기능 도입 전 과정과 같이 취급한다", async () => {
+  links = []; createdAt = null;
+  await reflectOperationUpdated(operation);
+  assert.equal(creates, 0);
+});
+
+test("매핑 없는 기능 도입 후 과정은 담당자가 정해지면 뒤늦게라도 만든다", async () => {
+  links = []; createdAt = new Date("2026-09-01T00:00:00Z");
+  await reflectOperationUpdated(operation);
+  assert.equal(creates, 1);
 });
