@@ -131,6 +131,11 @@ export class LocalJsonOperationRepository implements OperationRepository {
     return operations.find((operation) => operation.operationId === operationId) ?? null;
   }
 
+  /** 로컬 JSON 저장소는 생성 시각을 기록하지 않는다(로컬 개발 전용 백엔드). */
+  async getOperationCreatedAt(): Promise<Date | null> {
+    return null;
+  }
+
   async createOperation(input: CreateOperationInput): Promise<OperationSession> {
     const operations = await this.listOperations();
     const educationDates = input.educationDates ?? [];

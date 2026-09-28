@@ -65,6 +65,10 @@ export class CalendarReflectingOperationRepository implements OperationRepositor
     return this.inner.getOperationById(operationId);
   }
 
+  getOperationCreatedAt(operationId: string): Promise<Date | null> {
+    return this.inner.getOperationCreatedAt(operationId);
+  }
+
   getSummary(): Promise<OperationSummary> {
     return this.inner.getSummary();
   }

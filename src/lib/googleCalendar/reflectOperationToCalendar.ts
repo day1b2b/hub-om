@@ -30,9 +30,16 @@ function logSkip(operationId: string, reason: string): void {
 /**
  * 기능을 켜기 전부터 있던 과정은 캘린더에 올리지 않는다.
  * 그런 과정을 누가 수정했다는 이유로 뒤늦게 초대 메일이 나가면 받는 사람이 당황한다.
- * 그래서 이벤트를 새로 만드는 것은 "운영 생성" 때뿐이고, 수정은 이미 캘린더에
+ * 그래서 이벤트를 새로 만드는 것은 원칙적으로 "운영 생성" 때뿐이고, 수정은 이미 캘린더에
  * 올라가 있는 과정(매핑이 있는 과정)에만 반영한다.
+ *
+ * 이 기능이 배포된 날짜. 매핑이 없는 과정을 "수정" 트리거로 만났을 때, 이 날짜 이후에
+ * 생성된 과정이면 "기능 도입 전 과정"이 아니라 "생성 시점에 파트를 못 정해 건너뛴 과정"으로
+ * 보고 뒤늦게라도 이벤트를 만든다(아래 reflectOperationUnlocked 참고, calendarParticipants.ts의
+ * 관련 주석과 함께 보면 됨).
  */
+const CALENDAR_REFLECT_LAUNCH_DATE = new Date("2026-08-21T00:00:00Z");
+
 type ReflectTrigger = "created" | "updated";
 
 async function reflectOperationUnlocked(operation: OperationSession, trigger: ReflectTrigger, skipEventId?: string): Promise<void> {
@@ -61,8 +68,13 @@ async function reflectOperationUnlocked(operation: OperationSession, trigger: Re
 
     const existing = await listCalendarEventLinks(operation.operationId);
 
-    // 수정인데 캘린더에 없는 과정 = 기능 도입 전에 만들어진 과정. 건드리지 않는다.
-    if (existing.length === 0 && trigger === "updated") return;
+    if (existing.length === 0 && trigger === "updated") {
+      // 매핑이 없는 채로 "수정"을 만났다. 기능 도입 전에 만들어진 과정이면 그대로 둔다.
+      // 기능 도입 후 생성됐다면 생성 시점에 파트를 못 정해 건너뛴 것뿐이니(예: 담당 OM 미배정
+      // + 요청 LD 소속도 파트가 아니었던 경우) "생성"처럼 취급해 아래로 흘려보내 지금이라도 만든다.
+      const createdAt = await getOperationRepository().getOperationCreatedAt(operation.operationId);
+      if (!createdAt || createdAt < CALENDAR_REFLECT_LAUNCH_DATE) return;
+    }
 
     // 담당 OM이 다른 파트로 바뀌면 캘린더가 달라진다. 옛 캘린더의 이벤트를 먼저 지운다.
     const sameCalendar = new Map<string, CalendarEventLink>();
@@ -152,7 +164,10 @@ export function reflectOperationCreated(operation: OperationSession): Promise<vo
   return reflectOperation(operation, "created");
 }
 
-/** 운영 수정. 이미 캘린더에 올라간 과정만 갱신한다. */
+/**
+ * 운영 수정. 이미 캘린더에 올라간 과정을 갱신한다. 매핑이 없는 과정은 기능 도입 전 과정이면
+ * 그대로 두고, 기능 도입 후 과정이면(생성 시점에 파트를 못 정해 건너뛴 경우) 지금 만든다.
+ */
 export function reflectOperationUpdated(operation: OperationSession, skipEventId?: string): Promise<void> {
   return reflectOperation(operation, "updated", skipEventId);
 }
