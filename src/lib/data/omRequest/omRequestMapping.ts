@@ -93,4 +93,3 @@ export function toInputData(input: OmRequestInput) {
     notes: input.notes,
   };
 }
-

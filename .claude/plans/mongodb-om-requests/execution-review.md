@@ -31,3 +31,6 @@ V25 최종독립수락PASS/재cleanup완료,제품commit/push/remote gate완료(
 
 ## 최종 리뷰 보완 검증
 V12 누락을 실제 회차 validator 실패로 보완했다. 회차 생성이 끝난 뒤 첫/둘째 결과보고서 patch 실패를 각각 주입하여 201, 두 회차 유지, 성공한 patch 유지, 대표 연결 미설정, 후속 도구/알림/LD메타 실행, 실패 patch 감사 없음 확인. v12-handlers.log **19 pass / 0 skip / 0 fail**, exit0, 4413ms. v12-typecheck.log 통과. 기존 handler18을 포함하므로 이전31/590/916과 합산하지 않는다. 제품 코드는 전혀 바뀌지 않았고 검증파일 하나만 추가되어 불필요한 전체 재실행은 하지 않았다. verified-source-digests.json 갱신. 새 소유 합성 DB 재기동/정리도 exit0; cleanup.log는 마지막 정리 결과다.
+
+## 통합 diff 공백 검사 보완
+총괄 검토에서 `git diff --check 383d804..52919fc`가 mapping.ts EOF 빈 줄로 exit2임을 발견. 이전 검사는 working tree만 보아 신규 파일 공백을 놓쳤다. EOF 빈 줄 하나만 제거하고 baseline부터 전체변경 기준으로 재검사. 기능동작은 동일하며 digest는 공백변경을 반영.

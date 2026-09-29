@@ -13,7 +13,7 @@ Alignmentupdate_task_scope. 이Task와후속배정Task분리. 운영문서docs/o
 2. 다음기능은OM배정: docs/operations/assignment-confirmation-integration.md 및실omRequestAssignment/route/AssignForm 기준. PG현재서명·권한·정확한생성batch/전체회차(수동name/id포함)확인후변경·취소/DONE유지정책보존. 실제PGoracle/Mongo/handler/동시배정·일반writer경합·부분failure/auditrollback 검증.
 
 ## Do Not
-운영DB/실원천/원본workspace/키/env/권한/배포/main/dev수정금지. automation재개금지. 이번Mongo배정은4진입점명시차단. 옛samecourse helper를새배정정책으로되살리지말것. 연결근거없는과거요청임의수리/확대금지. 기존namespace자동삭제수리금지. 완성검증을반복하지말고새변경/실패범위만재검증.
+운영DB/실원천/원본workspace/키/env/권한/배포/main/dev수정금지. 이담당에서automation설정변경금지(총괄의ACTIVE/PAUSED실제상태를뜻하지않음). 이번Mongo배정은4진입점명시차단. 옛samecourse helper를새배정정책으로되살리지말것. 연결근거없는과거요청임의수리/확대금지. 기존namespace자동삭제수리금지. 완성검증을반복하지말고새변경/실패범위만재검증.
 
 재개순서: handoff→execution-review→최종review→integration-review(준비후)→plan-v2/validation-v2→coverage/macro.
 Resume action: start_next_task (OM 전체 배정).
