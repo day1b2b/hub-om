@@ -108,3 +108,5 @@ a52f191 기준 feature/20260929-mongodb-sales-revenue-sync에서 기존 workflow
 ## OM 요청 첫 단위 (2026-09-29)
 
 383d804 기준 feature/20260929-mongodb-om-requests. 독립조사·계획검토에 따라 접수→회차연결/조회/수정/삭제를 첫Task로구분. 기본PG/local유지,명시Mongo감사원자성과합성부수작업포트,actualpage/API검증. 기존접수부분성공/재제출/물리삭제정책그대로. 배정전체는후속필수Task이며현재Mongo문맥에서명시거부. 구현/실행/통합상태는 ../mongodb-om-requests/ 실행·인계문서기준. 전체앱/운영이전/dev→main은미완료.
+
+OM 요청 첫단위 제품908175b 독립수락·총괄FF/push 및 양쪽원격SHA일치,합성정리완료. 인계 ../mongodb-om-requests/handoff.md. 다음Task는OM전체배정이며전체운영전환/dev→main은아직미완료.

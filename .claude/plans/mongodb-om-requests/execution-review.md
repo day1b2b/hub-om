@@ -18,7 +18,7 @@ V08 boundary4entrypoint와실assignHTTP403/409. V09~16 handler실실패주입·�
 V17 실제request recorder실패201·raw감사.DB관계쓰기원자성. V18 실new/list/detail/edit/complete서버Reacttree/props;UIleaf대역.
 V19~20 PG독립HMAC계산+raw비노출·허용응답긍정대조·native키/AAD. V21 native업무/auditrollback과handler실validatorfail.
 V22 Mongo실readbarrier→경쟁commit→재시도/최신값보존/삭제부활0/감사중복0. V23 실제원본69×3. V24 위general/native/static.
-V25 최종독립수락PASS/재cleanup완료,commit/push/remote gate대기. 기능검증과통합완료구분.
+V25 최종독립수락PASS/재cleanup완료,제품commit/push/remote gate완료(integration-review). 기능검증과통합완료구분.
 
 ## 실패 및 보완
 전부 gap-plan.md. 초안가정·문법·type실패는PASS로포함하지않음. PG3번째시도에서수정invalidfractional case하나남아세backend모두실패→positive원본검증이미있는동일원인이므로잔여거부가정수정후69관찰성공.

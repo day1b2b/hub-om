@@ -7,7 +7,7 @@
 3 저장:MongoOmRequestRepository,기존정책codec/schema무변경,partial쓰기/원자감사/누적deadline.
 4 호출:실POST/PATCH/DELETE/page,context+부수작업port,기본PG/local유지,오류비노출.
 5 검증:실PG5pass(69관찰각backend),OMnative+handler31pass,일반916pass60skip,전체Mongo590pass,static통과. V12 추가handler19pass/typecheck통과,제품동일. 독립최종리뷰PASS.
-6 문서/정리/통합:합성재cleanup완료,독립리뷰PASS,commit/push/remotegate대기.
+6 문서/정리/통합:합성재cleanup완료,독립리뷰PASS,제품908175b commit/push/총괄FF/양쪽원격일치완료.
 
 ## 변경/신규src
 - src/app/api/om-request/[id]/route.ts
