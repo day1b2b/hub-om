@@ -102,3 +102,5 @@ b401626 기반에서 deleted-operations GET/PUT를 별도 repository와 명시 d
 a52f191 기준 feature/20260929-mongodb-sales-revenue-sync에서 기존 workflow를 원천/저장/알림 port로 분리하고 기본PG를 유지했다. 명시Mongo의 일괄업무/변경감사·별도요약로그, Decimal/원천 중복/partial/재실행을 실제 원본PG와 대조한다. 계획/실행/검증공백보완/독립수락/원격통합 상태는 ../mongodb-sales-revenue-sync/. 다음 후보는 OM 접수·배정. 전체runtime/생산구성/실제복사·복원·최종전환/dev→main은 미완료다.
 
 매출 실행 검증: 일반910pass57skip, 전체Mongo577pass0skip(mock4포함), 원본PG/newPG/Mongo각135phase의PG5pass. type/buildPASS,lint기존7warning. 개별native28/handler17/source4는중복합산하지않는다. 제품변경없이최종리뷰의T15 test만추가검증했으며정리/원격통합증거는해당handoff를따른다.
+
+매출 제품4ff3234의독립수락·feature원격일치·총괄fast-forward/push확인,소유합성자원정리완료. 후속문서HEAD와최종인계는 ../mongodb-sales-revenue-sync/integration-review.md. 다음OM접수·배정단위로진행가능하며운영전환완료는아니다.
