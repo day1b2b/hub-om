@@ -1,3 +1,4 @@
+import { numericMoney } from "./mongoNumericMoney";
 import { BSON, MongoServerError, type ClientSession, type Document } from "mongodb";
 import { AdminDatabaseCellError, type AdminDatabaseCellUpdate, type AdminDatabaseRepository } from "./adminDatabaseRepository";
 import type { AdminDatabaseRows } from "./adminDatabaseRows";
@@ -28,25 +29,6 @@ function canonicalId(value: string): string {
   if (!/^[0-9a-f]{4}(?:-?[0-9a-f]{4}){7}$/i.test(text)) throw new AdminDatabaseCellError("INVALID_UUID");
   const hex = text.replaceAll("-", "").toLowerCase();
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-}
-/** Round the Number's decimal wire representation to numeric(14,2), including
- * exponent notation and negative half ties. Never multiply a floating value by 100.
- */
-function numericMoney(value: number): string {
-  if (!Number.isFinite(value)) throw new AdminDatabaseCellError("INVALID_DECIMAL");
-  const match = /^(-?)(\d+)(?:\.(\d+))?(?:e([+-]?\d+))?$/i.exec(String(value));
-  if (!match) throw new AdminDatabaseCellError("INVALID_DECIMAL");
-  const fraction = match[3] ?? "";
-  const digits = BigInt(match[2] + fraction);
-  const shift = Number(match[4] ?? 0) - fraction.length + 2;
-  let cents: bigint;
-  if (shift >= 0) cents = digits * 10n ** BigInt(shift);
-  else {
-    const divisor = 10n ** BigInt(-shift);
-    cents = digits / divisor + (digits % divisor * 2n >= divisor ? 1n : 0n);
-  }
-  if (cents >= 100_000_000_000_000n) throw new AdminDatabaseCellError("DECIMAL_OVERFLOW");
-  return `${match[1] && cents !== 0n ? "-" : ""}${cents / 100n}.${String(cents % 100n).padStart(2, "0")}`;
 }
 function displayRow(row: MongoRow): MongoRow {
   return Object.fromEntries(Object.entries(row).map(([key, value]) => [key, value === MongoDbNull || value === MongoJsonNull ? null : value]));
@@ -213,7 +195,7 @@ export class MongoAdminDatabaseRepository implements AdminDatabaseRepository {
       if (input.field === "name" && (model === "Company" || model === "Member")) value = String(value);
       if (definition.type === "Decimal" && value !== null) {
         if (typeof value !== "number") throw new AdminDatabaseCellError("INVALID_DECIMAL");
-        value = numericMoney(value);
+        value = numericMoney(value, code => new AdminDatabaseCellError(code));
       }
       if (definition.dateOnly && value instanceof Date && Number.isFinite(value.getTime())) {
         // The existing adapter-pg date wire format rejects year zero/BC dates.

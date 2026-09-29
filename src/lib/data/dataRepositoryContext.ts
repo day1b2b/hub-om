@@ -1,3 +1,4 @@
+import type { SalesRevenueSyncRepository, SalesRevenueSource, SalesRevenueNotifier } from "./salesRevenueSyncRepository";
 import type { InstructorNotionSource, InstructorNotionSyncRepository } from "./instructorNotionSyncRepository";
 import type { ActivityReadRepository } from "./activityReads/activityReadRepository";
 import type { AnnouncementRepository } from "./announcements/announcementRepository";
@@ -33,6 +34,9 @@ export interface CoachPrivateAccessLogRepository {
   recordAccess(coachId: string, accessedByEmail: string, context: string): Promise<void>;
 }
 export interface DataRepositories {
+  salesRevenueSync: SalesRevenueSyncRepository;
+  salesRevenueSource: SalesRevenueSource;
+  salesRevenueNotifier: SalesRevenueNotifier;
   instructorNotionSync: InstructorNotionSyncRepository;
   instructorNotionSource: InstructorNotionSource;
   activityReads: ActivityReadRepository;

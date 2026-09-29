@@ -96,3 +96,9 @@ b401626 기반에서 deleted-operations GET/PUT를 별도 repository와 명시 d
 ## 강사 Notion 동기화 (2026-09-29)
 
 3dfa025 기준 feature/20260929-mongodb-instructor-notion-sync에서 저장/원천 경계를 분리한다. 기존 NO/legacy 매칭·수동 입력·행별 부분 성공을 유지하고 기존 Mongo 강사 위키 transaction으로 경합/암호화/감사를 검증한다. 생산 기본 PG, 실제 Notion 접근 없음. 구현·실행검증·독립V1–V3수락·소유자원정리완료. 일반905pass54skip/전체Mongo532pass0skip(mock4포함),PG5/native25/handler10은중복합산하지않는다. type/buildPASS,lint전체0error8warning후새testwarning을제거하고해당파일lintPASS(기존7warning잔존). 계획·실행근거는 ../mongodb-instructor-notion-sync/,원격통합은해당integration-review. 다음후보는매출동기화저장/합성원천경계. 소수 NO의 원본 PG 절단 동작은 실제 PG17.9로 확인했다. 전체 runtime/실제 복사·복원·최종 전환은 별도 미완료다.
+
+## 매출 동기화 (2026-09-29)
+
+a52f191 기준 feature/20260929-mongodb-sales-revenue-sync에서 기존 workflow를 원천/저장/알림 port로 분리하고 기본PG를 유지했다. 명시Mongo의 일괄업무/변경감사·별도요약로그, Decimal/원천 중복/partial/재실행을 실제 원본PG와 대조한다. 계획/실행/검증공백보완/독립수락/원격통합 상태는 ../mongodb-sales-revenue-sync/. 다음 후보는 OM 접수·배정. 전체runtime/생산구성/실제복사·복원·최종전환/dev→main은 미완료다.
+
+매출 실행 검증: 일반910pass57skip, 전체Mongo577pass0skip(mock4포함), 원본PG/newPG/Mongo각135phase의PG5pass. type/buildPASS,lint기존7warning. 개별native28/handler17/source4는중복합산하지않는다. 제품변경없이최종리뷰의T15 test만추가검증했으며정리/원격통합증거는해당handoff를따른다.

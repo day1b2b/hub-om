@@ -10,12 +10,11 @@
 | --- | --- | --- |
 | OM 접수·배정 | omRequestLocalRepository/omRequestAssignment는 실제 PG 호출. 이름의 Local은 운영 DB 미사용을 뜻하지 않음 | 접수와 OperationSession 배정의 원자성·권한/명단을 함께 검증. 개발은 합성 데이터로 진행 가능 |
 | 가져오기·staging·승격·Drive 기록 | prismaImportRepository/importStagingWriter/importPromotionService/driveImportResults. 직접 Prisma 명단·강사 위키 조회도 존재 | 표준 운영 writer·명단 경계를 연결한 뒤 staging/승격/재실행. 합성 원천 검증 가능, 실제 원천 연결/적재는 별도 실행 조건 필요 |
-| 매출 동기화 | salesRevenueSync 직접 PG | 과정/감사 경계 위에서 금액·충돌·재실행 대조. 실제 금액 변경/원천 읽기는 별도 운영 조건 필요 |
 | Calendar 반영·역동기화 | calendarEventLinkRepository/operationSessionTimestamps의 PG와 calendarOperationLock의 raw pg.Pool | 단순 운영 CRUD 구현과 별개. 저장 연결·시각·프로세스 간 잠금·외부 부작용을 같이 검증. 실제 Google 권한/캘린더 반영은 외부 조치 필요 |
 | 백업·health | api/admin/backup raw snapshot, api/health PG 조회 | 전체 Mongo 선택과 함께 백업/복원·상태 판정 계약 설계. 실제 복원 검증은 3단계 |
 | CLI·예약 작업·브라우저 초안 | coverage는 src runtime 중심. 기존 backfill CLI/배포 entrypoint/로컬 파일·브라우저 저장은 별도 점검 | 사용 중인 실행 경로를 식별하고 필요한 전환만 진행. 브라우저 암호화를 DB 암호화로 갈음하지 않음 |
 
-이미 완료된 운영 CRUD·코치 인증/토큰/개인정보 내보내기·일정/예약/투입/평가·코치 시트/Notion 동기화·코치 관리/콘텐츠·담당자 내 페이지·토큰 보완·관리자 과정/삭제 운영/보정/과정명 복원·관리자 DB·공지/첨부·활동 조회·강사 Notion 동기화 경계 전환을 새 미전환 기능으로 반복하지 않는다. 단, 이들의 전체 앱 연결은 다음 단계에 포함한다.
+이미 완료된 운영 CRUD·코치 인증/토큰/개인정보 내보내기·일정/예약/투입/평가·코치 시트/Notion 동기화·코치 관리/콘텐츠·담당자 내 페이지·토큰 보완·관리자 과정/삭제 운영/보정/과정명 복원·관리자 DB·공지/첨부·활동 조회·강사 Notion·매출 동기화 경계 전환을 새 미전환 기능으로 반복하지 않는다. 단, 이들의 전체 앱 연결은 다음 단계에 포함한다.
 
 ## 2. 전체 Mongo 실행 연결
 
@@ -36,3 +35,5 @@ health·백업·배포 entrypoint의 Prisma migration 실행 및 활성 CLI/예�
 1단계의 개발·합성 검증은 기존 승인으로 계속 가능하다. 2단계의 격리 앱 연결 검증도 운영 설정 없이 진행할 수 있다. 3단계는 운영 백업·키/접근권한·실데이터 범위·전환 시간대·복구 책임자 등 외부 조치가 필요하며 과거 승인 이력과 별개로 최종 작업의 구체적인 백업·대상 범위·실행 조건 확인 및 완료 증거는 아직 없다. 2026-09-29 저장된 hub-om 개발 진행 heartbeat는 ACTIVE로 읽기 확인했다. 이 자동화 상태는 운영 DB·배포의 자동 실행을 허용하지 않으며 이번 작업에서 자동화 설정을 변경하지 않았다.
 
 강사 Notion 동기화는 저장/합성 원천 경계와 원본 PG 대조·실제 handler·경합 검증까지 진행했다. 최신 완료/원격 통합 상태는 `.claude/plans/mongodb-instructor-notion-sync/`를 따른다. 실제 Notion 접근은 없었다. 다음 개발 후보는 매출 동기화의 저장/합성 원천 경계다. 기존 과정 writer·감사 위에서 금액 변환·충돌·미리보기·재실행을 별도 계획으로 확인하고, 실제 원천 접속이나 금액 변경은 하지 않는다.
+
+매출 동기화는 원본 PG 금액·집계·미리보기/부분 조회 차단·재실행과 실제 Mongo writer 경합, 실제 GET/POST·원천/알림 격리까지 구현했다. 최종 검증·통합 증거는 `.claude/plans/mongodb-sales-revenue-sync/` 기준이다. 다음 개발 후보는 OM 접수·배정으로, 접수 상태·배정 권한·OperationSession 생성의 원자성과 재실행을 함께 조사한다. 실제 Salesmap/Slack/운영 금액 반영은 수행하지 않았다.

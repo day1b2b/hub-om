@@ -26,6 +26,7 @@
 | 공지·첨부 | `MongoAnnouncementRepository`, 분리 암호화 bytes·부분쓰기·원자적 감사·최대 5×5MiB·PG 대조 | 6개 API handler/3개 조회 page는 명시 announcements context, 기본 PG 유지. [경계·검증 상태](mongodb-announcements.md) |
 | 활동 관리 조회·피드·사용 통계 | `MongoActivityReadRepository`, 원본 PG 대조·검색/집계·legacy/이름 표시·snapshot·손상 차단 | 세 GET는 명시 activityReads context/기본 PG. [경계·한계](mongodb-activity-reads.md). 감사 쓰기/보존 정책과 전체 앱 연결은 별도 |
 | 강사 Notion 동기화 | 기존 `MongoInstructorNoteRepository`의 행 재매칭·암호화·원자적 감사, 원본 PG 대조·실 manual 경합 검증 | 실제 GET/POST는 명시 instructorNotionSync/instructorNotionSource/requestActivity 경계, 기본 PG·기존 권한 유지. [경계·한계](mongodb-instructor-notion-sync.md) |
+| 매출 동기화 | `MongoSalesRevenueSyncRepository`, 원본 PG 금액·다중 딜·partial·재실행 대조, 일괄 업무/변경 감사 및 실제 writer 경합 검증 | 실제 GET/POST는 salesRevenueSync/source/notifier/requestActivity 명시 경계, 기본PG 유지. [경계·한계](mongodb-sales-revenue-sync.md). 최종 검증·통합은 해당 실행 기록 |
 | 전체 모델 암호화 snapshot export/import | 35개 모델 codec·일관된 PG 읽기 snapshot·사본 대조·참조 검증 지원 | 운영 서비스 선택·실시간 변경 동기화·최종 freeze/cutover·복구 승인은 별도 |
 
 ## 남은 기능군별 실제 경로
@@ -45,7 +46,7 @@
 | 코치 외부 동기화 | `lib/coaches/notionCoachSync.ts`, `samsungScheduleSync.ts`, `contractSheetSync.ts`, `syncLog.ts` | Coach, PrivateProfile, Field/Curriculum/Master, Engagement/Schedule, CoachSyncLog | contract/Samsung/Notion 및 로그는 명시 Mongo context, 합성 source로 실제 handler 검증. Notion/all은 전체 scope 선행 검사 후 실행하며 기본 PG 유지 |
 | 강사 위키·노션 동기화 | `lib/data/prismaInstructorNoteRepository.ts`, `lib/instructors/notionInstructorSync.ts` | InstructorNote | 실제 save route와 Notion GET/POST의 명시 context 검증. sync는 별도 원천/저장 port와 PG adapter를 사용하며 기본 PG 유지 |
 | 가져오기·staging·승격·Drive 기록 | `lib/data/prismaImportRepository.ts`, `importStagingWriter.ts`, `importPromotionService.ts`, `lib/driveImports/driveImportResults.ts`; `api/admin/imports/{upload,google-sheets/import,notion/import}`; `app/admin/imports/**` | DataImportRun, OperationSourceRecord, Company, Course, OperationSession, DriveImportRun, DriveImportResult | staging 오류 보존·승격·중복 식별·일괄 원자성·관리 페이지. 외부 소스 읽기 자체와 PG 적재 구분 |
-| 매출 동기화 | `lib/data/salesRevenueSync.ts` | Course, SalesRevenueSyncLog | 금액/동기화 전후 값·감사·재시도, 실제 운영 쓰기 승인 별도 |
+| 매출 동기화의 생산 연결 | `lib/data/prismaSalesRevenueSyncRepository.ts`와 기본 Salesmap/알림 adapter | Course, SalesRevenueSyncLog | 명시 Mongo 경계는 구현. 전체 생산 구성·실제 원천/운영 금액 반영은 별도 |
 | Google Calendar | `lib/data/calendarReflectingOperationRepository.ts` → calendar 모듈; `lib/googleCalendar/calendarEventLinkRepository.ts`, `operationSessionTimestamps.ts`, `calendarOperationLock.ts` | CalendarEventLink, OperationSession; 별도 `pg.Pool`, advisory lock | 이벤트 연결·역동기화·시각 갱신·프로세스 간 잠금. Mongo operation CRUD만으로 외부 캘린더 부작용을 대체하지 않음 |
 | 활동 요청·변경 이력·활동 피드 | `lib/activity/request.ts`, `database.ts`, `retention.ts`, `presentation.ts`; `api/activity-feed`, `api/admin/activity`, `/usage` | ActivityRequest, ActivityChange 및 이름 해석에 쓰이는 업무 모델; `set_config`, PG trigger, SQL DELETE | 조회 세 GET는 명시 activityReads context/기본PG 경계로 연결했다. 전역 요청 연결·트리거 귀속·보존 작업의 실제 운영 연결은 별도다. MongoOperation의 ActivityChange 기록은 이 전체를 대체하지 않음 |
 | 관리자 DB·백업·건강 확인 | `lib/admin/databaseDashboard.ts`, `api/admin/database/cell`, `api/admin/backup`, `api/health` | 여러 업무 모델 및 archive snapshot raw SQL; `SELECT 1` | 8표 조회/4표 셀 수정과 페이지 담당자 명단은 명시 context로 연결. 백업 범위·health의 DB 판정·복구 절차는 미전환. PG health를 그대로 두면 Mongo 상태를 확인하지 못함 |
@@ -109,7 +110,7 @@
 | `src/lib/data/prismaInstructorNoteRepository.ts` | InstructorNote |
 | `src/lib/data/prismaOperationRepository.ts` | Company, Course, CourseIdLabel, OperationSession |
 | `src/lib/data/prismaTeamMemberRepository.ts` | Member, TeamUser |
-| `src/lib/data/salesRevenueSync.ts` | Course, SalesRevenueSyncLog |
+| `src/lib/data/prismaSalesRevenueSyncRepository.ts` | Course, SalesRevenueSyncLog; salesRevenueSync facade의 기본 PG adapter |
 | `src/lib/data/teamUsers/legacyTeamUserRepository.ts` | TeamUser |
 | `src/lib/driveImports/driveImportResults.ts` | DriveImportRun, DriveImportResult |
 | `src/lib/googleCalendar/calendarEventLinkRepository.ts` | CalendarEventLink |
@@ -181,3 +182,9 @@
 관리자 활동·피드·사용 통계 세 GET를 activityReads 명시 context/기본 PG 경계로 분리한다. 기존 권한·필터·집계·legacy/대상 이름·오류를 유지하며 검증/독립 수락/통합은 `.claude/plans/mongodb-activity-reads/`를 따른다. 감사 쓰기·보존 정책·전체 앱 선택과 실제 운영 이전은 별도다.
 
 활동 조회 최종 일반901pass51skip, Mongo497pass0skip(mock4포함), PG6/native30/실handler10, typecheck/build PASS, lint0error/기존7warning, 독립 V1–V8 PASS. 중복 검사 합산 금지. 소유 합성 자원 정리 완료, 통합은 `.claude/plans/mongodb-activity-reads/integration-review.md`를 따른다.
+
+## 매출 동기화 후속 (2026-09-29)
+
+a52f191 기반 명시 저장/source/notifier와 실제 GET/POST 경계 구현. 최초 snapshot pending·원천 순서·다중 딜·금액 반올림·partial 차단·별도 best-effort 로그를 원본 PG와 대조한다. 최신 검증/실패/독립 수락·정리·원격 통합 상태는 `.claude/plans/mongodb-sales-revenue-sync/`를 따른다. 전체 생산 연결·실제 데이터 이전/dev→main은 미완료다.
+
+매출 최종 실행: 일반910pass57skip/전체Mongo577pass0skip(mock4포함), PG5pass로각backend45상황×3단계대조. native28/handler17/source4는중복합산하지않는다. type/buildPASS, lint0error기존7warning. 독립리뷰지적의deadline/동일목표/복수표시명검증을보완했다. 정리·독립최종수락·원격상태는해당handoff/integration-review를따른다.
