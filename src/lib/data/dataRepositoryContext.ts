@@ -1,3 +1,5 @@
+import type { AdminDatabaseRepository } from "./adminDatabaseRepository";
+import type { TeamMemberRepository } from "./teamMemberRepository";
 import type { CourseNameRestoreRepository } from "./courseNameRestoreRepository";
 import type { OperationBackfillRepository } from "./operationBackfillRepository";
 import type { DeletedOperationRepository } from "./deletedOperationRepository";
@@ -28,6 +30,8 @@ export interface CoachPrivateAccessLogRepository {
   recordAccess(coachId: string, accessedByEmail: string, context: string): Promise<void>;
 }
 export interface DataRepositories {
+  adminDatabase: AdminDatabaseRepository;
+  teamMembers: TeamMemberRepository;
   courseNameRestore: CourseNameRestoreRepository;
   operationBackfill: OperationBackfillRepository;
   deletedOperations: DeletedOperationRepository;

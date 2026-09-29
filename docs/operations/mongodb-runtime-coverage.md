@@ -10,7 +10,7 @@
 | --- | --- | --- |
 | 운영 목록·상세·생성·수정·soft-delete·과정 검색·요약 | `MongoOperationRepository` 구현·합성 검증. Company/Course/CourseIdLabel/OperationSession/OperationSourceRecord/TeamUser/ActivityChange 사용 | `operationRepositoryFactory.ts`는 `CalendarReflectingOperationRepository(new PrismaOperationRepository())` 유지. Mongo 감사 쓰기가 전역 활동 기록을 대체하지 않음 |
 | 코치 공개 조회 6개·개인정보 조회 2개 | `MongoCoachRepository`, `MongoCoachPrivateRepository` 구현·합성 검증. 분야/커리큘럼/일정/예약/archive 관계 포함 | 공개 coach factory는 Prisma 고정. private factory는 명시 context 주입 지원, 기본은 Prisma. 토큰 인증은 명시 context 지원, 기본 PG 유지 |
-| Member/TeamUser 기반 명단 조회 | `MongoTeamMemberRepository` 구현·합성 검증 | TeamMember factory는 기존 local/Prisma/Notion fallback 유지 |
+| Member/TeamUser 기반 명단 조회 | `MongoTeamMemberRepository` 구현·합성 검증 | stored factory는 명시 teamMembers context 우선, 밖에서는 local/Prisma 유지. 일반 factory의 Notion 정책은 별도 |
 | InstructorNote 조회·쓰기 | shadow 구현과 Mongo8.0.30 실제 save handler 검증 완료 | factory는 명시 context 우선, 기본 local/Prisma 유지. Notion 직접 PG 경로 별도 |
 | Coach CRUD | shadow 구현과 Mongo8.0.30 관리 API 경계 검증 완료. 업무/ActivityChange 실패 rollback 확인 | 두 관리 API는 repository 호출로 변경. 명시 context 외 기본 PG 유지. 일정/섭외/마스터·토큰·복원은 별도 |
 | TeamUser 생성·팀/역할 수정 | shadow 구현과 Mongo8.0.30 합성 검증 완료. guard 중복 경쟁·감사 실패 rollback 확인. 물리삭제는 정책 충돌로 차단 | 기존 export 함수는 context 우선 facade. 기본 legacy PG/local 유지. 모든 writer의 guard 참여 필요 |
@@ -22,6 +22,7 @@
 | 관리자 과정 조회·일괄 소프트 삭제 | `MongoCourseAdminRepository`, 기존 과정 조회·활성 운영 건 삭제 및 원자적 감사·경합 검증 | 두 admin/courses API는 명시 courseAdmin context/기본PG 유지. Course와 관계 문서는 삭제하지 않음. [경계·한계](mongodb-course-admin.md) |
 | 담당자 내 페이지 | `MongoCoachManagerMyPageRepository`, 기존 활성 예약·확정 과정 조건과 메서드별 snapshot 검증 | `coachMyPage.ts` facade의 명시 `coachManagerMyPage` context만 Mongo. 기본 PG·기존 admin guard 유지. [경계·한계](mongodb-manager-my-page.md) |
 | 코치 접근 토큰 보완 | `MongoCoachTokenBackfillRepository`, 최신 non-null archive token·paging·dry-run·apply/rollback·재실행 경계 | CLI 기본 PG, 명시 `coachTokenBackfill` context만 Mongo. 운영 적용은 별도 maintenance/백업 확인 필요. [경계·한계](mongodb-coach-token-backfill.md) |
+| 관리자 DB 조회·허용 셀 편집 | `MongoAdminDatabaseRepository`, snapshot 8표/100행·4표 부분 갱신·원자적 감사·PG 의미 대조 | 기존 dashboard/API는 명시 adminDatabase, 페이지 명단은 stored teamMembers context. 기본 PG 유지. [경계·검증 상태](mongodb-admin-database.md) |
 | 전체 모델 암호화 snapshot export/import | 35개 모델 codec·일관된 PG 읽기 snapshot·사본 대조·참조 검증 지원 | 운영 서비스 선택·실시간 변경 동기화·최종 freeze/cutover·복구 승인은 별도 |
 
 ## 남은 기능군별 실제 경로
@@ -31,7 +32,7 @@
 | 기능군 | 실제 PostgreSQL 진입점·연결 경로 | 모델·PG 기능 | 남은 전환 범위 |
 | --- | --- | --- | --- |
 | 공통 연결·암호화 | `src/lib/data/prisma.ts` → `PrismaPg` → `withPrivacyDatabase` → `withActivityDatabase` | 전 모델; SQL transaction·Prisma 확장 | 생산 선택과 오류·암복호화·transaction 계약 전환. 타입 이름 제거 작업과 구분 |
-| 운영·과정의 별도 관리자 기능 | `api/admin/courses/lookup`, `api/admin/courses/[courseId]`, `api/admin/deleted-operations`, `api/admin/onsite-required-backfill`, `api/admin/om-assignment-status-backfill`, `lib/data/courseNameRestore.ts` | Company, Course, OperationSession, OperationSourceRecord, 활동 감사 | admin/courses 두 API는 2026-09-29 명시 context/기본PG adapter로 연결. 삭제 운영 목록/복원도 명시 deletedOperations context/기본PG 경계에 연결. onsite·배정 보정 두 API도 명시 operationBackfill context/기본PG 경계에 연결. 과정명 복원도 명시 courseNameRestore context/기본PG 경계로 분리. DB dashboard/cell 등 나머지 별도 관리자 기능은 미전환 |
+| 운영·과정의 별도 관리자 기능 | `api/admin/courses/lookup`, `api/admin/courses/[courseId]`, `api/admin/deleted-operations`, `api/admin/onsite-required-backfill`, `api/admin/om-assignment-status-backfill`, `lib/data/courseNameRestore.ts` | Company, Course, OperationSession, OperationSourceRecord, 활동 감사 | admin/courses 두 API는 2026-09-29 명시 context/기본PG adapter로 연결. 삭제 운영 목록/복원도 명시 deletedOperations context/기본PG 경계에 연결. onsite·배정 보정 두 API도 명시 operationBackfill context/기본PG 경계에 연결. 과정명 복원도 명시 courseNameRestore context/기본PG 경계로 분리. DB dashboard/cell도 명시 adminDatabase context에 연결. 관리자 백업/health 등 나머지 경계는 미전환 |
 | OM 접수·배정·권한 | `lib/data/omRequest/omRequestLocalRepository.ts`, `omRequestAssignment.ts`, `lib/auth/omRequestAssignmentAccess.ts` → `listTeamUsers()` | OmRequest, OperationSession, TeamUser, ActivityChange | 이름에 Local이 있어도 운영에서는 PG. 접수·배정 원자성·중복/사람 수정 정책·명단 기반 권한 동등성 필요 |
 | 팀 사용자 관리 | `lib/data/teamUsers/teamUserRepository.ts` → 기본 `legacyTeamUserRepository.ts` → TeamUser delegate | TeamUser; local JSON은 개발 분기 | 명단/권한 호출부는 facade를 유지하며 context 주입 검증. 생산 선택과 전체 writer 일치 필요. Member 조회는 별도 |
 | 코치 CRUD·태그 마스터 | `api/coaches`, `api/coaches/[id]`, `api/coaches/[id]/regenerate-token`, `api/master/fields`, `api/master/curriculums`, `api/admin/deleted-coaches` | Coach, CoachPrivateProfile, CoachField/Curriculum, 두 Master | 두 CRUD API는 context/기본 Prisma adapter로 연결. 토큰 재발급도 context 경계 연결. 태그 마스터·삭제 코치 목록/복원/영구삭제도 2026-09-23 context/기본 Prisma adapter로 연결([경계](mongodb-coach-admin.md)) |
@@ -45,7 +46,7 @@
 | Google Calendar | `lib/data/calendarReflectingOperationRepository.ts` → calendar 모듈; `lib/googleCalendar/calendarEventLinkRepository.ts`, `operationSessionTimestamps.ts`, `calendarOperationLock.ts` | CalendarEventLink, OperationSession; 별도 `pg.Pool`, advisory lock | 이벤트 연결·역동기화·시각 갱신·프로세스 간 잠금. Mongo operation CRUD만으로 외부 캘린더 부작용을 대체하지 않음 |
 | 공지·첨부 | `app/announcements/**`, `api/announcements/**` | Announcement, AnnouncementAttachment | 목록/상세/수정/삭제/첨부 byte 저장·다운로드·권한·암복호화 |
 | 활동 요청·변경 이력·활동 피드 | `lib/activity/request.ts`, `database.ts`, `retention.ts`, `presentation.ts`; `api/activity-feed`, `api/admin/activity`, `/usage` | ActivityRequest, ActivityChange 및 이름 해석에 쓰이는 업무 모델; `set_config`, PG trigger, SQL DELETE | 전역 middleware·트리거 귀속·보존기간 정리·관리 조회 전환. MongoOperation의 ActivityChange 기록은 이 전체를 대체하지 않음 |
-| 관리자 DB·백업·건강 확인 | `lib/admin/databaseDashboard.ts`, `api/admin/database/cell`, `api/admin/backup`, `api/health` | 여러 업무 모델 및 archive snapshot raw SQL; `SELECT 1` | 관리 화면/셀 수정/백업 범위·health의 DB 판정·복구 절차. PG health를 그대로 두면 Mongo 상태를 확인하지 못함 |
+| 관리자 DB·백업·건강 확인 | `lib/admin/databaseDashboard.ts`, `api/admin/database/cell`, `api/admin/backup`, `api/health` | 여러 업무 모델 및 archive snapshot raw SQL; `SELECT 1` | 8표 조회/4표 셀 수정과 페이지 담당자 명단은 명시 context로 연결. 백업 범위·health의 DB 판정·복구 절차는 미전환. PG health를 그대로 두면 Mongo 상태를 확인하지 못함 |
 
 ## 간접 의존성과 오탐 제외
 
@@ -79,7 +80,7 @@
 | `src/app/api/admin/backup/route.ts` | Coach, CoachPrivateProfile, CoachFieldMaster, CoachCurriculumMaster, CoachField, CoachCurriculum, CoachSchedule, CoachScheduleAccessLog, CoachEngagement, CoachEngagementSchedule, CoachImportRun |
 | `src/lib/data/prismaCoachContentRepository.ts` | Coach, CoachContentEntry, CoachEngagement, CoachScheduleAccessLog; 이전 콘텐츠/월현황 API의 PG 기본 adapter |
 | `src/lib/data/prismaCourseAdminRepository.ts` | Company, Course, OperationSession; admin/courses 두 API의 PG 기본 adapter |
-| `src/app/api/admin/database/cell/route.ts` | Company, Course, OperationSession, Member |
+| `src/lib/data/prismaAdminDatabaseRepository.ts` | Company, Course, OperationSession, Member; 셀 API의 기본 PG adapter |
 | `src/lib/data/prismaDeletedOperationRepository.ts` | Company, Course, OperationSession; 삭제 운영 목록/복원 API의 PG 기본 adapter |
 | `src/lib/data/prismaOperationBackfillRepository.ts` | OperationSession; 현장 투입·OM 상태 보정 API의 PG 기본 adapter |
 | `src/app/api/announcements/[id]/attachments/[attachmentId]/route.ts` | AnnouncementAttachment |
@@ -87,7 +88,7 @@
 | `src/app/api/announcements/route.ts` | Announcement |
 | `src/app/api/health/route.ts` | 중앙 연결·raw SQL 또는 동적 delegate: 본문 기능군 참조 |
 | `src/lib/activity/request.ts` | ActivityRequest |
-| `src/lib/admin/databaseDashboard.ts` | Company, Course, OperationSession, DriveImportRun, DriveImportResult, Member, DataImportRun, OperationSourceRecord |
+| `src/lib/data/prismaAdminDatabaseRows.ts` | Company, Course, OperationSession, DriveImportRun, DriveImportResult, Member, DataImportRun, OperationSourceRecord; dashboard facade의 기본 PG 조회 |
 | `src/lib/coaches/contentEntries.ts` | CoachContentEntry; logProfileEdit/logReviewEdit legacy helper만 직접 PG. 메모 helper는 repository facade |
 | `src/lib/data/prismaCoachSheetSyncRepository.ts` | Coach, CoachPrivateProfile, CoachEngagement, CoachEngagementSchedule, CoachDayReservation; catalog→coach locks |
 | `src/lib/data/prismaCoachNotionSyncRepository.ts` | Coach, CoachPrivateProfile, CoachFieldMaster, CoachCurriculumMaster, CoachField, CoachCurriculum; catalog→coach locks |
@@ -165,3 +166,9 @@
 ## 과정명 복원 경계 후속 (2026-09-29)
 
 기존 서비스·API의 정규화/원천 근거/계획 지문 재검증/전체 선택 적용을 별도 repository로 분리했다. 업무 모델·PG schema 변경 없이 내부 CourseNameRestoreGuard를 추가해 복원끼리의 disjoint 선택 경쟁을 처리한다. 일반893pass/42skip·Mongo360pass/0skip(mock4포함)·실PG 대조/SSI8pass·handler/factory8pass·typecheck/build 및 lint0error/기존7warning을 확인했다. 검사 묶음은 겹치므로 합산하지 않는다. 실제 구현·합성 검증·독립 리뷰·통합 상태는 `.claude/plans/mongodb-course-name-restore/`를 따른다. 운영 복원 실행이나 전체 Mongo 전환 완료가 아니다.
+
+## 관리자 DB 조회·셀 편집 후속 (2026-09-29)
+
+8표 조회·4표 허용 셀 편집을 adminDatabase 경계로 분리한다. 기본 PG·기존 DTO·파서·권한·허용 필드·오류를 보존하며 Member null 정렬/복합unique/감사, UUID·Decimal의 실제 PG 의미를 대조한다. 담당자 목록은 getStoredTeamMemberRepository의 teamMembers scope로 연결한다. 일반 getTeamMemberRepository의 Notion 정책은 이번 범위 밖이다. 실행·독립 수락·통합 상태는 `.claude/plans/mongodb-admin-database/`를 따른다. 관리자 백업/health와 실제 복구/운영 전환은 별도 미완료다.
+
+관리자 DB 최종 일반895pass45skip·Mongo402pass0skip(mock4포함)·추가 native43pass·handler/factory12pass·실PG5pass. typecheck/build PASS, lint0error/기존7warning, 독립 V1–V10 PASS. 중복 묶음은 합산하지 않는다.

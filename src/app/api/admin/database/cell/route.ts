@@ -14,7 +14,7 @@ import {
 import { requireAdminSession } from "@/lib/auth/requireAdminSession";
 import { describeCellUpdateError, prismaErrorCode } from "@/lib/admin/databaseCellError";
 import { getAdminEditableField, type AdminDatabaseTableKey, type AdminEditableField } from "@/lib/admin/databaseEditConfig";
-import { getPrismaClient } from "@/lib/data/prisma";
+import { getAdminDatabaseRepository } from "@/lib/data/adminDatabaseRepositoryFactory";
 
 export const dynamic = "force-dynamic";
 
@@ -56,13 +56,13 @@ async function activityPATCH(request: Request) {
     return NextResponse.json({ ok: false, error: parsedValue.error }, { status: 400 });
   }
 
-  const prisma = getPrismaClient();
+  const repository = getAdminDatabaseRepository();
   const updatedBy = session.user?.email ?? null;
 
   const table = body.table as AdminDatabaseTableKey;
 
   try {
-    await updateCell({
+    await repository.updateCell({
       field: body.field,
       rowId: body.rowId,
       table,
@@ -91,49 +91,6 @@ async function activityPATCH(request: Request) {
 
   return NextResponse.json({ ok: true });
 
-  async function updateCell(input: {
-    field: string;
-    rowId: string;
-    table: AdminDatabaseTableKey;
-    updatedBy: string | null;
-    value: boolean | Date | number | string | null;
-  }) {
-    if (input.table === "companies") {
-      await prisma.company.update({
-        data: input.field === "name"
-          ? { name: String(input.value), normalizedName: normalizeName(String(input.value)) }
-          : { [input.field]: input.value },
-        where: { id: input.rowId }
-      });
-      return;
-    }
-
-    if (input.table === "courses") {
-      await prisma.course.update({
-        data: { [input.field]: input.value },
-        where: { id: input.rowId }
-      });
-      return;
-    }
-
-    if (input.table === "members") {
-      await prisma.member.update({
-        data: input.field === "name"
-          ? { name: String(input.value), normalizedName: normalizeName(String(input.value)) }
-          : { [input.field]: input.value },
-        where: { id: input.rowId }
-      });
-      return;
-    }
-
-    await prisma.operationSession.update({
-      data: {
-        [input.field]: input.value,
-        updatedBy: input.updatedBy
-      },
-      where: { id: input.rowId }
-    });
-  }
 }
 
 function parseEditableValue(field: AdminEditableField, value: unknown):
@@ -186,10 +143,6 @@ function parseEditableValue(field: AdminEditableField, value: unknown):
   }
 
   return { ok: true, value: text };
-}
-
-function normalizeName(value: string) {
-  return value.trim().replace(/\s+/g, " ").toLowerCase();
 }
 
 export const PATCH = withActivity("/api/admin/database/cell", "PATCH", activityPATCH);

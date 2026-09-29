@@ -1,3 +1,4 @@
+import { getDataRepositoryOverride } from "./dataRepositoryContext";
 import type { TeamMemberRepository } from "./teamMemberRepository";
 import { LocalJsonTeamMemberRepository } from "./localJsonTeamMemberRepository";
 import { getNotionTeamMemberRepository } from "./notionTeamMemberRepository";
@@ -14,7 +15,7 @@ export function getTeamMemberRepository(): TeamMemberRepository {
 }
 
 export function getStoredTeamMemberRepository(): TeamMemberRepository {
-  return getFallbackTeamMemberRepository();
+  return getDataRepositoryOverride("teamMembers") ?? getFallbackTeamMemberRepository();
 }
 
 function getFallbackTeamMemberRepository(): TeamMemberRepository {

@@ -76,3 +76,7 @@ b401626 기반에서 deleted-operations GET/PUT를 별도 repository와 명시 d
 ## 과정명 복원 미리보기·선택 적용 (2026-09-29)
 
 95cdb6f에서 courseNameRestore를 PG기본 adapter와 명시Mongo 경계로 분리했다. 기존 근거 차단/metadata/지문/1~100선택 계약을 유지하고 내부singleton guard로 복원끼리의 disjoint 쓰기 경쟁을 처리한다. guard는 업무모델·PG스키마가 아닌 coordination 컬렉션이며 counter를 더미 잠금으로 사용하지 않는다. 일반893pass/42skip·전체Mongo360pass/0skip(mock4포함)·실PG대조/SSI8pass·handler/factory8pass·typecheck/build·lint0error/기존7warning을 확인했다. 중복 묶음은 합산하지 않는다. 검증·리뷰·통합은 ../mongodb-course-name-restore/에 기록한다. 다음 작은 후보는 관리자 DB 호스트/셀 편집이며 별도 계획으로 계약을 확인한다. 운영복원과 전체앱전환·실데이터이전·복구리허설·dev→main은 미완료다.
+
+## 관리자 DB 조회·셀 편집 후속 (2026-09-29)
+
+4db4cf6 기반에서 기존 8표 표시와4표편집·페이지담당자목록을 adminDatabase/teamMembers 명시경계로 연결한다. 새업무필드·권한·삭제정책없이 PGquery/formatter/parser원본독립oracle로 검증한다. 소유PG56659/Mongo27759만사용하며 실제운영수정은없다. 계획/검증/실행/독립리뷰는 ../mongodb-admin-database/를따른다. 구현·합성검증·독립 V1–V10 수락 완료. 일반895pass45skip/Mongo402pass0skip(mock4포함), 추가native43/handler12/PG5는중복합산하지않는다. type/build PASS, lint기존7warning. 원격통합은integration-review를따른다. 전체운영전환/dev→main은별도미완료다.
