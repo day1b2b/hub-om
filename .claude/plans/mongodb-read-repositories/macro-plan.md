@@ -86,3 +86,9 @@ b401626 기반에서 deleted-operations GET/PUT를 별도 repository와 명시 d
 5f9d291에서 공지6handler/3조회page의직접PG를 announcements repository로분리한다. 기존관리자·HTML정제·응답·공지softdelete/수정중첨부제거·사전조회/상한계산한계를보존한다. 최대5x5MiB의암호화bytes저장/다운로드·PG감사/nullable·원자성/실경합을독립oracle로검증한다. 실행/독립리뷰/한계/인계는 ../mongodb-announcements/. 구현·합성 검증·독립 V1–V11 수락 완료. 일반898pass48skip/Mongo457pass0skip(mock4포함), PG6/native30/handler13은 중복 합산하지 않는다. typecheck/build PASS, lint 기존7warning. 소유 합성 자원 정리 완료, 원격 통합은 integration-review를 따른다. 운영 전환/dev→main 완료와 구분한다. 다음 후보는 활동 조회·피드·사용 통계 세 GET이며 별도 계획에서 확정한다.
 
 전체 서비스 이전의 선행 관계와 외부 실행 조건은 `docs/operations/mongodb-cutover-remaining.md`에 정리했다. 이미 완료된 기능 경계를 반복 구현하지 않으며 전체 앱 연결·실제 복사/복원/전환은 별도 미완료다.
+
+## 활동 관리 조회·피드·사용 통계 (2026-09-29)
+
+39c70e2에서 세 GET의 기본 PG·명시 activityReads 경계를 분리한다. private 부분검색/공개 LIKE·원문 HMAC users, legacy와 현재 대상 이름/기록 당시 fallback을 원본 PG oracle로 대조한다. 8초 전체 기한/scan별 fullrow32MiB20k의 Mongo 추가 안전제약을 명시한다. `.claude/plans/mongodb-activity-reads/`의 계획·검증·실행·리뷰·인계 기준이며 실제 운영 전환 완료를 의미하지 않는다.
+
+활동 조회 구현·합성 검증·독립 V1–V8 수락과 소유 자원 정리 완료. 일반901pass51skip/전체Mongo497pass0skip(mock4포함), PG6/native30/handler10은 중복 합산하지 않는다. typecheck/build PASS, lint기존7warning. 원격 통합은 해당 integration-review 기준. 다음 후보는 강사 Notion 동기화의 저장/합성 원천 경계이며 실제 Notion·운영 쓰기는 수행하지 않는다.
