@@ -8,7 +8,7 @@
 
 소유PG56679/Mongo27779 정상종료·남은합성DB0·두소유dbpath제거/부재·cleanup exit0. /private/tmp/hub-om-activity-reads-20260929 로그·스크립트보존. 실제대형한도경계/실8초대기는미실행,주입counter/가상시간·주입transientdriverretry와실writer snapshot증거구분.
 
-구현·검증·정리완료. featurepush/총괄통합의최종확인은integration-review를따른다. 원격확인전다음작업으로넘어가지않는다.
+Lifecycle: complete. Artifact: complete. Resume: start_next_task. Alignment: update_next_task. 작업 commit 7e28d27da12aed86f53fd469f1fb657cc2c5cc7e의 원격 일치와 총괄 fast-forward·제품 코드 동일성을 확인했다. 최종 통합 문서 commit의 원격 SHA는 integration-review와 최종 보고를 따른다. 미해결 검증 실패나 실행 중인 DB는 없다.
 
 Do Next: 강사 Notion 동기화 저장/합성원천 경계를별도계획. src/lib/instructors/notionInstructorSync.ts와GET/POST api/admin/sync-notion-instructors의NO우선·이름legacy매칭·수동필드보존·dry-run/재실행/오류·감사를현재PGoracle로확정. 기존강사위키저장소재사용,실Notion접속없이합성검증,기존manualwriter경합·전체회귀·독립검토·정리·feature총괄remoteSHA까지완료기준. 전체남은기능/연결/복사복원전환은docs/operations/mongodb-cutover-remaining.md.
 
