@@ -29,3 +29,5 @@ Node24.19.0, env-i, 새 PG17.9의 45개 migration 및 Mongo8.0.30 replica set. �
 다음 관리자 단위 후보는 `courseNameRestore.ts`와 `/api/admin/course-name-restore`의 미리보기·선택 복원이다. 사용처를 읽기 전용으로 확인했다. 원천 기록의 최신 시각 동률·대상 과정 중복·메타데이터 충돌 차단, snapshot 재검증, 1~100개 선택, 과정 생성/회차 이동/감사 원자성을 별도 계획으로 다뤄야 한다. 아직 새 브랜치나 코드는 만들지 않았다.
 
 관리자 DB 호스트/셀, 기존 onsite legacy PG CLI, 가져오기·OM 접수·배정·캘린더·공지 등 coverage의 다른 미전환 경로와 실제 데이터 복사·복구 리허설·최종 전환은 남아 있다. 브라우저 초안 암호화와 전체 앱 전환도 완료로 표현하지 않는다. 운영/원본 workspace/키/env/권한/배포 및 main/dev는 변경하지 않았고 자동화를 재개하지 않았다. 전체 완료 조건이 충족되지 않았으므로 dev→main도 아직 진행하지 않았다.
+
+기능 commit `ba46c0d0b8be897b5ee2530f0460cad92903d777` 원격 일치 및 총괄 fast-forward 통합을 확인했다. 코드 동일성과 통합 근거는 integration-review.md에 기록했다.
