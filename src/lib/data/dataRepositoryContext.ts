@@ -1,3 +1,5 @@
+import type { OperationRepository } from "./operationRepository";
+import type { OmRequestRepository, OmCustomToolsRepository, OmRequestNotifier } from "./omRequest/omRequestRepository";
 import type { SalesRevenueSyncRepository, SalesRevenueSource, SalesRevenueNotifier } from "./salesRevenueSyncRepository";
 import type { InstructorNotionSource, InstructorNotionSyncRepository } from "./instructorNotionSyncRepository";
 import type { ActivityReadRepository } from "./activityReads/activityReadRepository";
@@ -34,6 +36,10 @@ export interface CoachPrivateAccessLogRepository {
   recordAccess(coachId: string, accessedByEmail: string, context: string): Promise<void>;
 }
 export interface DataRepositories {
+  omRequests: OmRequestRepository;
+  operations: OperationRepository;
+  omCustomTools: OmCustomToolsRepository;
+  omRequestNotifier: OmRequestNotifier;
   salesRevenueSync: SalesRevenueSyncRepository;
   salesRevenueSource: SalesRevenueSource;
   salesRevenueNotifier: SalesRevenueNotifier;

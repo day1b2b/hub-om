@@ -104,3 +104,7 @@ a52f191 기준 feature/20260929-mongodb-sales-revenue-sync에서 기존 workflow
 매출 실행 검증: 일반910pass57skip, 전체Mongo577pass0skip(mock4포함), 원본PG/newPG/Mongo각135phase의PG5pass. type/buildPASS,lint기존7warning. 개별native28/handler17/source4는중복합산하지않는다. 제품변경없이최종리뷰의T15 test만추가검증했으며정리/원격통합증거는해당handoff를따른다.
 
 매출 제품4ff3234의독립수락·feature원격일치·총괄fast-forward/push확인,소유합성자원정리완료. 후속문서HEAD와최종인계는 ../mongodb-sales-revenue-sync/integration-review.md. 다음OM접수·배정단위로진행가능하며운영전환완료는아니다.
+
+## OM 요청 첫 단위 (2026-09-29)
+
+383d804 기준 feature/20260929-mongodb-om-requests. 독립조사·계획검토에 따라 접수→회차연결/조회/수정/삭제를 첫Task로구분. 기본PG/local유지,명시Mongo감사원자성과합성부수작업포트,actualpage/API검증. 기존접수부분성공/재제출/물리삭제정책그대로. 배정전체는후속필수Task이며현재Mongo문맥에서명시거부. 구현/실행/통합상태는 ../mongodb-om-requests/ 실행·인계문서기준. 전체앱/운영이전/dev→main은미완료.

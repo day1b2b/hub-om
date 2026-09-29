@@ -1,3 +1,4 @@
+import { getDataRepositoryOverride } from "../dataRepositoryContext";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { getPrismaClient } from "../prisma";
@@ -19,6 +20,7 @@ export class OmAssignmentConflict extends Error {
 }
 
 function requireDatabase(): void {
+  if (getDataRepositoryOverride("omRequests")) throw new OmAssignmentConflict("MongoDB 검증 문맥의 배정은 아직 지원하지 않습니다.");
   if (process.env.OPERATION_DATA_SOURCE === "local" || !process.env.DATABASE_URL) {
     throw new OmAssignmentConflict("로컬 파일 모드에서는 배정을 안전하게 함께 저장할 수 없습니다. DB 검증 환경에서 확인해 주세요.");
   }

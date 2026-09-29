@@ -8,7 +8,7 @@
 
 | 기능 | Mongo 구현 상태 | 생산 연결 상태 |
 | --- | --- | --- |
-| 운영 목록·상세·생성·수정·soft-delete·과정 검색·요약 | `MongoOperationRepository` 구현·합성 검증. Company/Course/CourseIdLabel/OperationSession/OperationSourceRecord/TeamUser/ActivityChange 사용 | `operationRepositoryFactory.ts`는 `CalendarReflectingOperationRepository(new PrismaOperationRepository())` 유지. Mongo 감사 쓰기가 전역 활동 기록을 대체하지 않음 |
+| 운영 목록·상세·생성·수정·soft-delete·과정 검색·요약 | `MongoOperationRepository` 구현·합성 검증. Company/Course/CourseIdLabel/OperationSession/OperationSourceRecord/TeamUser/ActivityChange 사용 | `operationRepositoryFactory.ts`는 명시 operations context 우선, 밖에서는 `CalendarReflectingOperationRepository(new PrismaOperationRepository())` 유지. Mongo 감사 쓰기가 전역 활동 기록을 대체하지 않음 |
 | 코치 공개 조회 6개·개인정보 조회 2개 | `MongoCoachRepository`, `MongoCoachPrivateRepository` 구현·합성 검증. 분야/커리큘럼/일정/예약/archive 관계 포함 | 공개 coach factory는 Prisma 고정. private factory는 명시 context 주입 지원, 기본은 Prisma. 토큰 인증은 명시 context 지원, 기본 PG 유지 |
 | Member/TeamUser 기반 명단 조회 | `MongoTeamMemberRepository` 구현·합성 검증 | stored factory는 명시 teamMembers context 우선, 밖에서는 local/Prisma 유지. 일반 factory의 Notion 정책은 별도 |
 | InstructorNote 조회·쓰기 | shadow 구현과 Mongo8.0.30 실제 save handler 검증 완료 | factory는 명시 context 우선, 기본 local/Prisma 유지. Notion sync는 별도 명시 원천/저장 경계로 연결 |
@@ -27,6 +27,7 @@
 | 활동 관리 조회·피드·사용 통계 | `MongoActivityReadRepository`, 원본 PG 대조·검색/집계·legacy/이름 표시·snapshot·손상 차단 | 세 GET는 명시 activityReads context/기본 PG. [경계·한계](mongodb-activity-reads.md). 감사 쓰기/보존 정책과 전체 앱 연결은 별도 |
 | 강사 Notion 동기화 | 기존 `MongoInstructorNoteRepository`의 행 재매칭·암호화·원자적 감사, 원본 PG 대조·실 manual 경합 검증 | 실제 GET/POST는 명시 instructorNotionSync/instructorNotionSource/requestActivity 경계, 기본 PG·기존 권한 유지. [경계·한계](mongodb-instructor-notion-sync.md) |
 | 매출 동기화 | `MongoSalesRevenueSyncRepository`, 원본 PG 금액·다중 딜·partial·재실행 대조, 일괄 업무/변경 감사 및 실제 writer 경합 검증 | 실제 GET/POST는 salesRevenueSync/source/notifier/requestActivity 명시 경계, 기본PG 유지. [경계·한계](mongodb-sales-revenue-sync.md). 최종 검증·통합은 해당 실행 기록 |
+| OM 요청 접수·조회·수정·삭제 | `MongoOmRequestRepository`, 기존 부분 성공 접수·회차 연결, 입력 부분 갱신·원자적 감사·명시 합성 부수 작업 | 기본PG/local 유지. 배정은 명시 Mongo에서 차단하며 후속 필수 단위. [경계·검증 상태](mongodb-om-requests.md) |
 | 전체 모델 암호화 snapshot export/import | 35개 모델 codec·일관된 PG 읽기 snapshot·사본 대조·참조 검증 지원 | 운영 서비스 선택·실시간 변경 동기화·최종 freeze/cutover·복구 승인은 별도 |
 
 ## 남은 기능군별 실제 경로
@@ -37,7 +38,7 @@
 | --- | --- | --- | --- |
 | 공통 연결·암호화 | `src/lib/data/prisma.ts` → `PrismaPg` → `withPrivacyDatabase` → `withActivityDatabase` | 전 모델; SQL transaction·Prisma 확장 | 생산 선택과 오류·암복호화·transaction 계약 전환. 타입 이름 제거 작업과 구분 |
 | 운영·과정의 별도 관리자 기능 | `api/admin/courses/lookup`, `api/admin/courses/[courseId]`, `api/admin/deleted-operations`, `api/admin/onsite-required-backfill`, `api/admin/om-assignment-status-backfill`, `lib/data/courseNameRestore.ts` | Company, Course, OperationSession, OperationSourceRecord, 활동 감사 | admin/courses 두 API는 2026-09-29 명시 context/기본PG adapter로 연결. 삭제 운영 목록/복원도 명시 deletedOperations context/기본PG 경계에 연결. onsite·배정 보정 두 API도 명시 operationBackfill context/기본PG 경계에 연결. 과정명 복원도 명시 courseNameRestore context/기본PG 경계로 분리. DB dashboard/cell도 명시 adminDatabase context에 연결. 관리자 백업/health 등 나머지 경계는 미전환 |
-| OM 접수·배정·권한 | `lib/data/omRequest/omRequestLocalRepository.ts`, `omRequestAssignment.ts`, `lib/auth/omRequestAssignmentAccess.ts` → `listTeamUsers()` | OmRequest, OperationSession, TeamUser, ActivityChange | 이름에 Local이 있어도 운영에서는 PG. 접수·배정 원자성·중복/사람 수정 정책·명단 기반 권한 동등성 필요 |
+| OM 접수·배정·권한 | `lib/data/omRequest/omRequestLocalRepository.ts`, `omRequestAssignment.ts`, `lib/auth/omRequestAssignmentAccess.ts` → `listTeamUsers()` | OmRequest, OperationSession, TeamUser, ActivityChange | 접수·조회·수정·삭제는 명시 omRequests/operations/customTools/notifier 경계 구현·검증·독립수락 완료(원격 통합은 인계 기록 기준). 기본PG/local 유지. 배정 토큰·전체 회차 원자성·실제 경합 검증은 후속 필수이며 명시Mongo에서 아직 차단 |
 | 팀 사용자 관리 | `lib/data/teamUsers/teamUserRepository.ts` → 기본 `legacyTeamUserRepository.ts` → TeamUser delegate | TeamUser; local JSON은 개발 분기 | 명단/권한 호출부는 facade를 유지하며 context 주입 검증. 생산 선택과 전체 writer 일치 필요. Member 조회는 별도 |
 | 코치 CRUD·태그 마스터 | `api/coaches`, `api/coaches/[id]`, `api/coaches/[id]/regenerate-token`, `api/master/fields`, `api/master/curriculums`, `api/admin/deleted-coaches` | Coach, CoachPrivateProfile, CoachField/Curriculum, 두 Master | 두 CRUD API는 context/기본 Prisma adapter로 연결. 토큰 재발급도 context 경계 연결. 태그 마스터·삭제 코치 목록/복원/영구삭제도 2026-09-23 context/기본 Prisma adapter로 연결([경계](mongodb-coach-admin.md)) |
 | 코치 인증·본인 페이지·개인정보 열람 | `lib/coaches/coachTokenAuth.ts`, `lib/data/coachMyPage.ts`, `coachPrivateAccess.ts`, `coachTokenBackfillCommand.ts`, `api/coach/me`, `api/coaches/export` | Coach, CoachPrivateProfile, CoachPrivateAccessLog, CoachdbArchiveRow/Snapshot, 예약·섭외·TeamUser | 토큰 lookup/본인 API/export·manager coachMyPage는 명시context 연결 및 합성검증. 2026-09-29 token backfill도 기능 브랜치에서 명시context/기본PG로 연결·실DB 검증. 운영 토큰 보완 실행과 생산 backend 선택은 미완료 |
@@ -54,7 +55,7 @@
 ## 간접 의존성과 오탐 제외
 
 - `withActivity`는 명시 context에서 Mongo 요청 로그·retention을 사용하고, context가 없을 때 기존 PG 경로를 유지한다. Mongo 기록 실패 시 PG로 재시도하지 않는다. 최초 조사 시점 `src/app`의 테스트 외 `withActivity` 사용 파일은 72개였다. 이는 전환 완료율이나 독립 DB 연결 수가 아니다.
-- OM 배정 권한은 `omRequestAssignmentAccess.ts` → `teamUserRepository.ts` → PG TeamUser를 읽는다. 인증 화면만 정상이라고 실제 배정 권한까지 Mongo로 바뀐 것은 아니다.
+- OM 배정 권한은 `omRequestAssignmentAccess.ts` → `teamUserRepository.ts` → 기본PG 또는 명시 teamUsers를 읽는다. 인증 화면만 정상이라고 실제 배정 권한까지 Mongo로 바뀐 것은 아니다.
 - `auth.ts`는 Google/NextAuth 설정이며 Prisma auth adapter를 사용하지 않는다. `requireAdminSession.ts`의 관리자/PII viewer 판정도 환경 설정·세션 기반이다. 이 파일들을 직접 PG 연결로 세지 않았다. 코치 링크 인증은 별도로 `coachTokenAuth.ts`가 PG를 읽는다.
 - `@prisma/client`의 **type-only import**, enum 상수·Decimal/JsonNull 표현 사용만으로 DB 연결이라고 세지 않았다. `privacy/fields.ts`·DTO mapping 등의 값 변환은 실제 연결 생성과 구분한다. `activity/query.ts`, `usage.ts`, `legacy.ts`의 query/표현 helper도 호출자가 실행하는 PG 경로에 속할 뿐 독립 연결이 아니다.
 - `features/coaches/CoachList.tsx`, dashboard·operation UI의 `.coach`/`.course` 속성 접근은 Prisma delegate 오탐에서 제외했다. `NOTION_IMPORT_DATABASE_URL`은 외부 원천 설정이지 PostgreSQL 연결 문자열이 아니다.

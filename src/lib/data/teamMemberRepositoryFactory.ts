@@ -5,6 +5,8 @@ import { getNotionTeamMemberRepository } from "./notionTeamMemberRepository";
 import { PrismaTeamMemberRepository } from "./prismaTeamMemberRepository";
 
 export function getTeamMemberRepository(): TeamMemberRepository {
+  const override = getDataRepositoryOverride("teamMembers");
+  if (override) return override;
   const fallback = getFallbackTeamMemberRepository();
 
   if (process.env.OPERATION_DATA_SOURCE !== "notion") {

@@ -2,7 +2,7 @@ import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { isAdminEmail } from "@/lib/auth/requireAdminSession";
-import { addCustomTools, listCustomTools } from "@/lib/data/omRequest/omCustomToolsLocalRepository";
+import { addCustomTools, listCustomTools, getOmCustomToolsRepository } from "@/lib/data/omRequest/omCustomToolsLocalRepository";
 import { deleteOmRequest, getOmRequest, updateOmRequest } from "@/lib/data/omRequest/omRequestLocalRepository";
 import { isOmRequestAuthor, type OmRequestInput } from "@/lib/data/omRequest/omRequestTypes";
 import { extractUnknownTools } from "@/lib/data/omRequest/omToolOptions";
@@ -30,13 +30,14 @@ async function activityPATCH(request: Request, { params }: Props) {
       return NextResponse.json({ error: "본인이 작성한 요청만 수정할 수 있습니다." }, { status: 403 });
     }
 
+    getOmCustomToolsRepository();
     const body = (await request.json()) as OmRequestInput;
     const updated = await updateOmRequest(id, body);
     if (!updated) return NextResponse.json({ error: "요청 없음" }, { status: 404 });
     try {
       addCustomTools(extractUnknownTools(updated.tools ?? "", listCustomTools()));
-    } catch (err) {
-      console.error("[om-request] 커스텀 툴 저장 실패(무시):", err);
+    } catch {
+      console.error("[om-request] 커스텀 툴 저장 실패(무시):");
     }
     return NextResponse.json(updated);
   } catch {

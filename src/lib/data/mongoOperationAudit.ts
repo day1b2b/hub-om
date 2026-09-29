@@ -6,6 +6,7 @@ import { mongoRuntimeContracts } from "./mongoRuntimeCodec";
 
 const excluded = new Set(["id", "createdAt", "updatedAt", "createdBy", "updatedBy", "deletedBy", "normalizedName", "sourceFingerprint", "validationErrors"]);
 const allowed: Record<string, Set<string>> = {
+  OmRequest: new Set(["status", "operationId", "team", "company", "trainingType", "courseId", "courseName", "courseCategoryMajor", "courseCategory", "skillfloSetup", "skillmatchSetup", "onSiteOperation", "coachRequest", "resultReportNeeded", "totalSessions"]),
   Company: new Set(["name"]),
   Announcement: new Set(),
   AnnouncementAttachment: new Set(["announcementId", "mimeType", "size"]),
@@ -28,6 +29,7 @@ const allowed: Record<string, Set<string>> = {
   OperationSession: new Set(["operationId", "courseRecordId", "operationStatus", "archiveStatus", "educationFormat", "operationChannel", "roundNo", "educationDays", "startDate", "endDate", "educationDates", "operationMonth", "sessionDurationDays", "sessionDurationType", "timeText", "onsiteRequired", "totalCost", "instructorCost", "operationCost", "hasSatisfactionSurvey", "hasResultReport"])
 };
 function column(model: string, field: string) {
+  if (model === "OmRequest" && field === "onSiteOperation") return "onsite_operation";
   if (model === "Course" && field === "name") return "course_name";
   return field.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
 }
@@ -41,7 +43,7 @@ function safeValue(value: unknown, model: string, field: string): unknown {
   return text.length > 500 ? { truncated: true, preview: text.slice(0, 500) } : JSON.parse(text);
 }
 /** Compare authenticated logical values, never randomized ciphertext. */
-export function operationAuditRow(model: string, before: MongoRow | null, after: MongoRow | null): MongoRow | null {
+export function operationAuditRow(model: string, before: MongoRow | null, after: MongoRow | null, forceChangedFields: readonly string[] = []): MongoRow | null {
   const context = activityContext.getStore();
   const row = after ?? before;
   if (!context || !row) return null;
@@ -61,8 +63,8 @@ export function operationAuditRow(model: string, before: MongoRow | null, after:
     }
     // PG distinguishes absent INSERT/DELETE sides from a present JSON null.
     // Extend only the two announcement models; unrelated models stay unchanged.
-    const distinguishPresence = model === "CoachContentEntry" || model === "Announcement" || model === "AnnouncementAttachment";
-    if (stableMongoValue(before?.[field]) === stableMongoValue(after?.[field])
+    const distinguishPresence = model === "OmRequest" || model === "CoachContentEntry" || model === "Announcement" || model === "AnnouncementAttachment";
+    if (!forceChangedFields.includes(field) && stableMongoValue(before?.[field]) === stableMongoValue(after?.[field])
       && (!distinguishPresence || Object.hasOwn(before ?? {}, field) === Object.hasOwn(after ?? {}, field))) continue;
     changes[column(model, field)] = allowed[model]?.has(field) && !privacy[field]
       ? { before: safeValue(before?.[field], model, field), after: safeValue(after?.[field], model, field) }

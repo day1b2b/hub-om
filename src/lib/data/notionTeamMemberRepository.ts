@@ -46,7 +46,8 @@ interface NotionText {
 }
 
 export class NotionTeamMemberRepository implements TeamMemberRepository {
-  constructor(private readonly options: NotionTeamMemberRepositoryOptions) {}
+  private readonly options: NotionTeamMemberRepositoryOptions;
+  constructor(options: NotionTeamMemberRepositoryOptions) { this.options = options; }
 
   async listResourceOwners(): Promise<ResourceOwnerRoster> {
     const fallbackRoster = await this.options.fallback.listResourceOwners();
