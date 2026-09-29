@@ -10,6 +10,7 @@
 - src/lib/data/dataRepositoryContext.ts
 
 ## 신규 파일
+- .claude/plans/mongodb-course-admin/integration-review.md (후속 통합 기록)
 - .claude/plans/mongodb-course-admin/execution-manifest.md
 - .claude/plans/mongodb-course-admin/execution-review.md
 - .claude/plans/mongodb-course-admin/handoff.md
@@ -34,4 +35,4 @@
 - 2: MongoCourseAdminRepository — 완료, 기존schema·codec·audit·scan 재사용. 새의존성/스키마/생산selector 없음.
 - 3: PG/native/handler 테스트 — 완료. native최종23, 실제PG최종7, 묶음간중복합산금지.
 - 4: 최종일반888pass/33skip/0fail, Mongo묶음222pass/0skip/0fail(mock4포함), typecheck/build PASS, lint0error7기존warning. 실행-review에환경·명령·한계 연결.
-- 5: Gibbs 독립기능수락 PASS, 문서최종갱신. 자원정리/featurepush/총괄통합은 integration-review.md로후속확정.
+- 5: Gibbs 독립기능수락 PASS, 문서최종갱신 및소유합성자원정리완료. 기능7f2e934 push/원격일치 및총괄fast-forward 완료. 후속통합문서는 integration-review.md, 최종총괄push/SHA확인은최종보고.

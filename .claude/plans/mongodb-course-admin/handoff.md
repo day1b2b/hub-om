@@ -30,3 +30,5 @@ Node24.19.0, PostgreSQL17.9(45migration), Mongo8.0.30 replica set, env -i, 새lo
 최종 독립리뷰, 자원정리와 commit/push/원격SHA·총괄통합은 integration-review.md에 확정 기록한다.
 
 소유검증DB/프로세스정리완료: PG56619/Mongo27719 종료, dbpath2개제거. 로그만 /private/tmp/hub-om-course-admin-20260929/logs 에보존. 독립기능리뷰PASS. featurepush/총괄통합SHA는 integration-review.md 참조.
+
+기능SHA `7f2e934743fe836d9a7a8f5d78bb3bbc823bfc4d` 원격일치확인. 총괄 d964cb2→7f2e934 fast-forward 및검증코드동일확인, 후속문서commit은 integration-review.md에기록.
