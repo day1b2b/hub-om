@@ -62,4 +62,3 @@ V3. initialize·실제 API·원천·오류 경계
 GET dry-run의 업무·ActivityChange·guard 쓰기는 0건입니다. 기존 ActivityRequest 기록까지 금지하지 않습니다. Authorization 헤더가 있는 관리자 fallback 요청의 감사 actorType도 원본 `token_request`를 보존합니다.
 
 필수 oracle/native/actual handler·회귀·typecheck/lint/build 증거를 연결합니다. 실패·skip·미실행은 PASS가 아닙니다. 정리·push·통합 SHA와 운영 전환 완료는 별도 판정합니다.
-

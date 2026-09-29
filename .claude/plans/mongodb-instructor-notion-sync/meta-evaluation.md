@@ -20,19 +20,19 @@
 
 V2 필수 보완은 다음과 같습니다.
 
-1. **비정상 NO 판정표**  
+1. **비정상 NO 판정표**
    `0/음수/소수/Int32 양끝·초과`별로 **mapper 통과 → dry-run 조회 → apply → skip/errors·무쓰기**를 분리하세요. NaN/Infinity는 실제 JSON 입력과 직접 주입을 구분합니다. 실PG 확인 전 일괄 skip하거나 Mongo 차이를 무조건 안전성 강화로 인정하지 않습니다.
 
-2. **실제 manual 경합**  
+2. **실제 manual 경합**
    직접 collection 수정으로 대체하지 않고 기존 `saveNote`/`saveNoteByNotionNo`를 사용합니다. manual 선행·sync 선행 양방향의 실제 겹침과 conflict/retry를 확인하고, 최종 수동 3필드·OR·NO 연결·요청별 감사를 실제 직렬 순서로 판정합니다. PG에도 같은 동시성 보장을 요구하지 않습니다.
 
-3. **독립 oracle·정규화 제한**  
+3. **독립 oracle·정규화 제한**
    원본 mapper의 `stripPii`까지 동결하거나 원본 해시로 보호합니다. 새 workflow/matcher를 공유하지 않습니다. 생성 UUID·시각만 지정 위치에서 정규화하고, fixture ID·NO·수동 값·배열 순서·실패 행 위치는 유지합니다. 오류는 **발생 단계·행·집계와 새 고정 코드**를 각각 검증합니다.
 
-4. **오류 안전성**  
+4. **오류 안전성**
    설정·첫/후속 fetch·JSON 파싱·mapper·DB·감사 실패의 정제 경계를 명시합니다. 합성 이름·token·원천 body·driver text를 주입해 응답/errorDetail/로그에서 부재를 검사하되 인가된 preview는 유지합니다. 공통 `syncJsonResponse` 변경으로 다른 sync 계약을 바꾸지 않습니다.
 
-5. **`initialize(): void` — 제안 수락**  
+5. **`initialize(): void` — 제안 수락**
    원본은 원천 전체 수집 후 루프 전에 `getPrismaClient()`를 호출하므로, client 획득을 행별 메서드로만 옮기면 전체 실패가 행 오류 또는 빈 성공으로 바뀝니다.
    - 순서: **두 port 해결 → 원천 전체 수집 → initialize → 행 처리**.
    - 행별 catch 밖에서 정확히 한 번 호출하며, 실패는 정제된 전체 500·업무 쓰기 0건.
