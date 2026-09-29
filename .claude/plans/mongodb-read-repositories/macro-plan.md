@@ -1,6 +1,6 @@
 # MongoDB 병렬 이전 상위 계획
 
-최신 총괄 상태: 2026-09-29 담당자 내 페이지까지 1a7323b에 통합했다. 이후 feature/20260929-mongodb-coach-token-backfill에서 토큰 보완 CLI의 명시 Mongo 경계·실제 PG/Mongo 검증을 진행했다. 최신 결과·통합 상태는 ../mongodb-coach-token-backfill/execution-review.md와 handoff.md를 따른다. 이전 담당자 페이지 통합 근거는 ../mongodb-manager-my-page/integration-review.md다. 원천 식별자 암호화와 코치 관리 구현도 통합됐으며 운영 적용은 미실행이다.
+최신 총괄 상태: 2026-09-29 담당자 내 페이지까지 통합한 1a7323b 위에 토큰 보완 feature 95c26fff6871c4cc12229275b908c885cc52161c를 fast-forward 통합했다. 명시 Mongo CLI 경계·실제 PG/Mongo 검증·독립 리뷰와 실패 보완 근거는 ../mongodb-coach-token-backfill/integration-review.md 및 execution-review.md를 따른다. 다음은 남은 코치 legacy 사용처 점검과 운영·과정 관리자 기능이다. 원천 식별자 암호화와 코치 관리 구현도 통합됐으며 운영 적용은 미실행이다.
 
 목표: 기존 PostgreSQL 운영을 유지하며 개인정보를 암호화한 별도 MongoDB를 검증한 뒤 안전하게 전환한다.
 

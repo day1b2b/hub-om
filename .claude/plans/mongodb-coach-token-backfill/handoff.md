@@ -3,7 +3,7 @@
 - 기반 총괄: 1a7323bf81108e1a7fe16196cba5b7a3c60c80a7.
 - 작업 브랜치: feature/20260929-mongodb-coach-token-backfill.
 - 지속 clone: /Users/ga/workspace/hub-om-mongodb-coach-content.
-- 구현·검증·독립 코드 리뷰 보완 완료. feature commit/push 및 총괄 통합의 정확한 SHA는 종료보고·원격 ref·integration-review.md로 연결한다.
+- 구현·검증·독립 코드 리뷰 보완 완료. feature 95c26fff6871c4cc12229275b908c885cc52161c commit/push·원격 SHA 일치 확인 후 총괄에 fast-forward 통합했다. 최종 통합 SHA는 종료보고·원격 ref, 근거는 integration-review.md로 연결한다.
 
 ## 완료 범위와 근거
 
