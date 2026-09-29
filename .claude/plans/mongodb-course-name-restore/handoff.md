@@ -2,6 +2,8 @@
 
 기준 `95cdb6fb71e49b7e3f230571d867bca357a114fe`, 작업 `feature/20260929-mongodb-course-name-restore`. 격리 clone `/Users/ga/workspace/hub-om-mongodb-coach-content`. 원본 workspace는 수정하지 않았다.
 
+검증된 기능 commit `2bce979a5b44f98c394ecd9f6fb4573db570e667`의 push·원격 일치를 확인했다. 같은 격리 clone에서 총괄 브랜치로 fast-forward 통합했고 코드가 동일함을 확인했다. 통합 문서 commit을 포함한 최종 총괄 SHA는 integration-review와 원격 ref/최종 보고를 따른다.
+
 ## 구현한 범위
 
 과정명 복원 미리보기·선택 적용을 기본 PG adapter와 명시 Mongo repository/context로 분리했다. 원본 query/hash와 직접 DB 주입을 보존하고 명시 scope에서는 PG 우회를 차단한다. PG COMMIT에서 직접 노출되는 adapter-pg40001/40P01만 기존 재조회 오류로 변환하는 보완을 추가했다.
