@@ -173,18 +173,24 @@ test("actual sheet sync services and handlers against an isolated Mongo replica 
         assert.equal(coaches.find(row => row.id === f.id)?.privateProfile?.email,"target-profile@example.invalid");
         assert.equal(coaches.find(row => row.id === f.otherId)?.privateProfile,null);
         const profileFinds = finds.filter(row => row.collection === f.store.collection("CoachPrivateProfile").collectionName);
-        assert.equal(profileFinds.length,1,"All live coaches must share a single profile query");
+        assert.equal(profileFinds.length,2,"One batched profile read plus an empty keyset page, never one query per coach");
         assert.deepEqual((profileFinds[0].filter._id as { $in:string[] }).$in.sort(),coaches.map(row => row.id).sort());
+        assert.deepEqual((profileFinds[1].filter.$and as Record<string,unknown>[])[0],profileFinds[0].filter);
+        assert.equal(typeof ((profileFinds[1].filter.$and as Record<string,unknown>[])[1]._id as { $gt:unknown }).$gt,"string");
         finds.length=0;
         const matched = await f.scope.coachSheetSync.findLiveCoachByName(coachName); assert.equal(matched?.id,f.id); assert.equal(matched?.name,coachName);
         const coachFinds = finds.filter(row => row.collection === f.store.collection("Coach").collectionName);
-        assert.equal(coachFinds.length,1); assert.deepEqual(coachFinds[0].filter,{ namePiiIndex:mongoRuntimeBlindIndex("Coach","name",coachName) });
+        assert.equal(coachFinds.length,2); assert.deepEqual(coachFinds[0].filter,{ namePiiIndex:mongoRuntimeBlindIndex("Coach","name",coachName) });
+        assert.deepEqual((coachFinds[1].filter.$and as Record<string,unknown>[])[0],coachFinds[0].filter);
         assert.ok(!JSON.stringify(coachFinds[0].filter).includes(coachName));
         finds.length=0;
         const response = await f.call(source([contractRow()])); assert.equal(response.status,200);
         const transactionCoachFinds = finds.filter(row => row.transactional && row.collection === f.store.collection("Coach").collectionName);
         assert.ok(transactionCoachFinds.some(row => row.filter.namePiiIndex === mongoRuntimeBlindIndex("Coach","name",coachName)),"Real ensureCoach must query the name HMAC inside its transaction");
-        assert.ok(transactionCoachFinds.every(row => row.filter.namePiiIndex !== undefined || row.filter._id !== undefined),"Identity transactions must not scan all coaches");
+        assert.ok(transactionCoachFinds.every(row => {
+          const predicate = row.filter.$and ? (row.filter.$and as Record<string,unknown>[])[0] : row.filter;
+          return predicate.namePiiIndex !== undefined || predicate._id !== undefined;
+        }),"Every identity page must retain its HMAC or primary-key filter");
         assert.equal(await f.store.collection("CoachEngagement").countDocuments({ coachId:f.id }),1);
       } finally { client.off("commandStarted",observe); }
     });

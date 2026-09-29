@@ -17,13 +17,24 @@ const names = ["PII_ENCRYPTION_KEYS", "PII_ACTIVE_KEY_ID", "PII_INDEX_KEY", "PII
 function fakeClient() {
   let records = new Map<string, MongoRuntimeDocument[]>();
   let failModel = "", duplicateMasterOnce = false, ended = 0, attempts = 0;
-  const matches = (row: MongoRuntimeDocument, filter: MongoRow) => Object.entries(filter).every(([key, value]) => row[key] === value);
+  const matches = (row: MongoRuntimeDocument, filter: MongoRow): boolean => Object.entries(filter).every(([key, value]) => {
+    if (key === "$and") return (value as MongoRow[]).every(part => matches(row, part));
+    if (value && typeof value === "object" && "$gt" in value) return String(row[key]) > String(value.$gt);
+    return row[key] === value;
+  });
   const modelOf = (name: string) => COACH_WRITE_MODELS.find(model => name.endsWith(`_${model}`))!;
   const collection = (collectionName: string) => {
     const model = modelOf(collectionName);
     return {
       findOne: async (filter: MongoRow) => records.get(model)?.find(row => matches(row, filter)) ?? null,
-      find: (filter: MongoRow) => ({ limit() { return this; }, async *[Symbol.asyncIterator]() { yield* (records.get(model) ?? []).filter(row => matches(row, filter)); }, close: async () => {} }),
+      find: (filter: MongoRow) => {
+        let rows = (records.get(model) ?? []).filter(row => matches(row, filter));
+        return {
+          sort() { rows.sort((a, b) => a._id < b._id ? -1 : a._id > b._id ? 1 : 0); return this; },
+          limit(count: number) { rows = rows.slice(0, count); return this; },
+          async *[Symbol.asyncIterator]() { yield* rows; }, close: async () => {}
+        };
+      },
       insertOne: async (row: MongoRuntimeDocument) => {
         if (model === failModel) throw new Error("synthetic-private-value-should-not-escape");
         if (model === "CoachFieldMaster" && duplicateMasterOnce) { duplicateMasterOnce = false; throw new MongoServerError({ code: 11000, message: "synthetic collision" }); }

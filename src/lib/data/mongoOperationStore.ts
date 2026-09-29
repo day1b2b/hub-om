@@ -48,16 +48,28 @@ export class MongoOperationStore {
   }
   async scan(model: string, filter: Filter<MongoRuntimeDocument> = {}, session?: ClientSession): Promise<MongoRow[]> {
     const rows: MongoRow[] = []; let bytes = 0;
-    const cursor = this.collection(model).find(filter, { session, maxTimeMS: 15_000, collation: { locale: "simple" } }).limit(MONGO_SCAN_ROWS + 1);
-    try {
-      for await (const row of cursor) {
+    const deadline = performance.now() + 15_000;
+    let lastId: string | undefined;
+    // Driver 7.2 adds invalid maxTimeMS to getMore under transaction CSOT and
+    // forbids cursor timeout overrides. Single-batch keyset reads avoid getMore
+    // without relying on internal driver properties or batch byte size.
+    while (true) {
+      const remaining = Math.ceil(deadline - performance.now());
+      assertMongo(remaining > 0, "SCAN_TIMEOUT");
+      const cursor = this.collection(model).find(lastId === undefined ? filter : { $and: [filter, { _id: { $gt: lastId } }] },
+        { session, maxTimeMS: remaining, singleBatch: true, batchSize: 100, collation: { locale: "simple" } }).sort({ _id: 1 }).limit(100);
+      let count = 0;
+      try { for await (const row of cursor) {
+        count++; lastId = row._id;
         bytes += BSON.calculateObjectSize(row);
         assertMongo(rows.length < MONGO_SCAN_ROWS && bytes <= MONGO_SCAN_BYTES, "SCAN_LIMIT_EXCEEDED");
-        const plain = decodeMongoRuntimeDocument(model, row);
-        rows.push(plain);
-      }
-      return rows;
-    } finally { await cursor.close(); }
+        rows.push(decodeMongoRuntimeDocument(model, row));
+      } } finally { await cursor.close(); }
+      assertMongo(performance.now() <= deadline, "SCAN_TIMEOUT");
+      // A short batch can be caused by BSON size; only an empty page proves EOF.
+      if (count === 0) break;
+    }
+    return rows;
   }
   /** Equality uses the existing field-scoped HMAC; authenticated full rows still enforce integrity. */
   async findPrivateEqual(model: string, field: string, value: string | null, session?: ClientSession): Promise<MongoRow[]> {

@@ -93,6 +93,9 @@ export class MongoCoachAdminRepository implements CoachAdminRepository {
       return tag(row);
     });
   }
+  async countDeletedCoaches(): Promise<number> {
+    return this.read(session => this.store.collection("Coach").countDocuments({ deletedAt: { $ne: null } }, { session, maxTimeMS: 15_000 }));
+  }
   async listDeletedCoaches(): Promise<DeletedCoach[]> {
     return this.read(async session => (await this.store.scan("Coach", { deletedAt: { $ne: null } }, session))
       .sort((a, b) => (b.deletedAt as Date).getTime() - (a.deletedAt as Date).getTime())

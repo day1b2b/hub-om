@@ -15,6 +15,9 @@ export class PrismaCoachAdminRepository implements CoachAdminRepository {
       ? prisma.coachFieldMaster.upsert({ where: { name }, create: { name }, update: {} })
       : prisma.coachCurriculumMaster.upsert({ where: { name }, create: { name }, update: {} });
   }
+  countDeletedCoaches() {
+    return getPrismaClient().coach.count({ where: { deletedAt: { not: null } } });
+  }
   listDeletedCoaches() {
     return getPrismaClient().coach.findMany({
       where: { deletedAt: { not: null } },

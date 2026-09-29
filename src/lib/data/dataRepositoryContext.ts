@@ -1,3 +1,4 @@
+import type { CoachContentRepository } from "./coachContentRepository";
 import type { CoachNotionSyncRepository, CoachNotionSource } from "./coachNotionSyncRepository";
 import type { CoachSyncLogRepository } from "./coachSyncLogRepository";
 import type { CoachSheetSyncRepository, CoachSheetSource } from "./coachSheetSyncRepository";
@@ -21,6 +22,7 @@ export interface CoachPrivateAccessLogRepository {
   recordAccess(coachId: string, accessedByEmail: string, context: string): Promise<void>;
 }
 export interface DataRepositories {
+  coachContent: CoachContentRepository;
   coachNotionSync: CoachNotionSyncRepository;
   coachNotionSource: CoachNotionSource;
   coachSyncLog: CoachSyncLogRepository;

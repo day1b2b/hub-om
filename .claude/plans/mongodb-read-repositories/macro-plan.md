@@ -44,3 +44,7 @@ b032fc5를 총괄 feature에 fast-forward하고 전체 회귀(일반876pass20ski
 ## 코치 태그 마스터·삭제 코치 관리
 
 feature/20260923-mongodb-coach-master-restore에서 태그 마스터·삭제 코치 목록/복원/영구삭제의 Mongo 경계를 구현했다. 영구삭제는 결정권자 결정으로 기존 물리 삭제와 동일하게 유지한다. 근거는 ../mongodb-coach-admin/execution-review.md. 다음은 코치 메모·콘텐츠·관리 조회 등 남은 coverage 기능군이다.
+
+## 코치 메모·콘텐츠·관리 조회 후속 (2026-09-29)
+
+feature/20260929-mongodb-coach-content에서 메모 CRUD/피드/월 등록현황·status/관리페이지 삭제수를 명시 repository 경계로 연결한다. 이전 9/23 임시 작업과 리뷰 stall 결과를 재사용하지 않고 e1b9749부터 재구현했다. 실제 PG/Mongo 대조로 다중 묶음 cursor 오류와 콘텐츠 감사 표현 차이를 발견·보완했다. 최신 검증·독립 리뷰·원격 인계 상태는 ../mongodb-coach-content/execution-review.md와 handoff.md를 따른다. 총괄 통합은 별도이며 생산 기본은 PG다. 나머지 coverage 기능·실제복사·복구리허설·운영전환·브라우저초안 암호화는 미완료다.

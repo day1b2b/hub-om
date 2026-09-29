@@ -31,7 +31,7 @@ function column(model: string, field: string) {
 function safeValue(value: unknown, model: string, field: string): unknown {
   if (value === undefined || typeof value === "symbol") return null;
   const contract = mongoRuntimeContracts[model].fields[field];
-  if (contract?.values && contract.type !== "OnsiteRequired" && typeof value === "string") value = value.toLowerCase();
+  if (contract?.values && contract.type !== "OnsiteRequired" && contract.type !== "CoachContentEntryKind" && typeof value === "string") value = value.toLowerCase();
   if (contract?.type === "Decimal" && typeof value === "string") value = Number(value);
   if (contract?.dateOnly) value = Array.isArray(value) ? value.map(date => (date as Date).toISOString().slice(0,10)) : value instanceof Date ? value.toISOString().slice(0,10) : value;
   const text = JSON.stringify(value);
@@ -47,7 +47,10 @@ export function operationAuditRow(model: string, before: MongoRow | null, after:
   const changes: MongoRow = {};
   for (const field of new Set([...Object.keys(before ?? {}), ...Object.keys(after ?? {})])) {
     if (excluded.has(field) || field.endsWith("PiiIndex") || field.endsWith("Encrypted")) continue;
-    if (stableMongoValue(before?.[field]) === stableMongoValue(after?.[field])) continue;
+    // PG distinguishes an absent INSERT/DELETE side from a present JSON null.
+    // Preserve that shape for content audits as well as ordinary value changes.
+    if (stableMongoValue(before?.[field]) === stableMongoValue(after?.[field])
+      && (model !== "CoachContentEntry" || Object.hasOwn(before ?? {}, field) === Object.hasOwn(after ?? {}, field))) continue;
     changes[column(model, field)] = allowed[model]?.has(field) && !privacy[field]
       ? { before: safeValue(before?.[field], model, field), after: safeValue(after?.[field], model, field) }
       : { redacted: true };

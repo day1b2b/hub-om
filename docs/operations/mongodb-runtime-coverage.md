@@ -31,7 +31,7 @@
 | 코치 CRUD·태그 마스터 | `api/coaches`, `api/coaches/[id]`, `api/coaches/[id]/regenerate-token`, `api/master/fields`, `api/master/curriculums`, `api/admin/deleted-coaches` | Coach, CoachPrivateProfile, CoachField/Curriculum, 두 Master | 두 CRUD API는 context/기본 Prisma adapter로 연결. 토큰 재발급도 context 경계 연결. 태그 마스터·삭제 코치 목록/복원/영구삭제도 2026-09-23 context/기본 Prisma adapter로 연결([경계](mongodb-coach-admin.md)) |
 | 코치 인증·본인 페이지·개인정보 열람 | `lib/coaches/coachTokenAuth.ts`, `lib/data/coachMyPage.ts`, `coachPrivateAccess.ts`, `coachAccessTokenBackfill.ts`, `api/coach/me`, `api/coaches/export` | Coach, CoachPrivateProfile, CoachPrivateAccessLog, CoachdbArchiveRow, 예약·섭외 | 토큰 lookup/본인 API/export는 명시context 연결 및 합성검증. 기본PG이며 manager coachMyPage·backfill은 별도 미전환 |
 | 가용 일정·예약·섭외 | `api/coaches/[id]/schedules`, `/reservations`, `/engagements`, `api/coach/schedule/[yearMonth]`, `api/engagements/[id]`, `/review`; `lib/coaches/engagementApi.ts`, `reservationAutoCancel.ts` | CoachSchedule, CoachScheduleAccessLog, CoachDayReservation, CoachEngagement, CoachEngagementSchedule, Coach | 월일정 GET/PUT·예약 POST/DELETE·매니저일정 GET은 context 경계. 수동 섭외확정/자동취소/평가는 context 경계 및 일정·예약 공통 guard. contract/Samsung 동기화·삭제 관계 transaction은 별도 시트 경계에서 구현. Notion도 별도 동기화 경계 구현 |
-| 코치 메모·콘텐츠·관리 조회 | `lib/coaches/contentEntries.ts`, `api/coaches/[id]/notes`, `api/admin/content-entries`, `api/admin/schedule-registration/[yearMonth]`, `api/schedules/[yearMonth]/status`, `app/coaches/admin/page.tsx` | CoachContentEntry, CoachEngagement, CoachScheduleAccessLog, Coach | 메모 생성·관리·검토·등록 현황 및 직접 페이지 조회 |
+| 코치 메모·콘텐츠·관리 조회 | `lib/coaches/contentEntries.ts`, `api/coaches/[id]/notes`, `api/admin/content-entries`, `api/admin/schedule-registration/[yearMonth]`, `api/schedules/[yearMonth]/status`, `app/coaches/admin/page.tsx` | CoachContentEntry, CoachEngagement, CoachScheduleAccessLog, Coach | 2026-09-29 기능 브랜치에서 coachContent/coachAdmin 명시 context 연결·검증. 기본 PG 유지. 프로필/후기 legacy helper, coachMyPage 등은 별도. [경계·한계](mongodb-coach-content.md) |
 | 코치 외부 동기화 | `lib/coaches/notionCoachSync.ts`, `samsungScheduleSync.ts`, `contractSheetSync.ts`, `syncLog.ts` | Coach, PrivateProfile, Field/Curriculum/Master, Engagement/Schedule, CoachSyncLog | contract/Samsung/Notion 및 로그는 명시 Mongo context, 합성 source로 실제 handler 검증. Notion/all은 전체 scope 선행 검사 후 실행하며 기본 PG 유지 |
 | 강사 위키·노션 동기화 | `lib/data/prismaInstructorNoteRepository.ts`, `lib/instructors/notionInstructorSync.ts` | InstructorNote | 실제 save route의 명시 context 검증 완료. 기본 factory와 직접 Notion upsert는 여전히 PG |
 | 가져오기·staging·승격·Drive 기록 | `lib/data/prismaImportRepository.ts`, `importStagingWriter.ts`, `importPromotionService.ts`, `lib/driveImports/driveImportResults.ts`; `api/admin/imports/{upload,google-sheets/import,notion/import}`; `app/admin/imports/**` | DataImportRun, OperationSourceRecord, Company, Course, OperationSession, DriveImportRun, DriveImportResult | staging 오류 보존·승격·중복 식별·일괄 원자성·관리 페이지. 외부 소스 읽기 자체와 PG 적재 구분 |
@@ -71,24 +71,20 @@
 | `src/app/api/admin/activity/route.ts` | Coach, CoachContentEntry, ActivityRequest, ActivityChange |
 | `src/app/api/admin/activity/usage/route.ts` | ActivityRequest, ActivityChange |
 | `src/app/api/admin/backup/route.ts` | Coach, CoachPrivateProfile, CoachFieldMaster, CoachCurriculumMaster, CoachField, CoachCurriculum, CoachSchedule, CoachScheduleAccessLog, CoachEngagement, CoachEngagementSchedule, CoachImportRun |
-| `src/app/api/admin/content-entries/route.ts` | Coach, CoachContentEntry, CoachEngagement |
+| `src/lib/data/prismaCoachContentRepository.ts` | Coach, CoachContentEntry, CoachEngagement, CoachScheduleAccessLog; 이전 콘텐츠/월현황 API의 PG 기본 adapter |
 | `src/app/api/admin/courses/[courseId]/route.ts` | Course, OperationSession |
 | `src/app/api/admin/courses/lookup/route.ts` | Company, Course |
 | `src/app/api/admin/database/cell/route.ts` | Company, Course, OperationSession, Member |
 | `src/app/api/admin/deleted-operations/route.ts` | Company, Course, OperationSession |
 | `src/app/api/admin/om-assignment-status-backfill/route.ts` | OperationSession |
 | `src/app/api/admin/onsite-required-backfill/route.ts` | OperationSession |
-| `src/app/api/admin/schedule-registration/[yearMonth]/route.ts` | Coach, CoachScheduleAccessLog |
 | `src/app/api/announcements/[id]/attachments/[attachmentId]/route.ts` | AnnouncementAttachment |
 | `src/app/api/announcements/[id]/route.ts` | Announcement |
 | `src/app/api/announcements/route.ts` | Announcement |
-| `src/app/api/coaches/[id]/notes/route.ts` | CoachContentEntry |
 | `src/app/api/health/route.ts` | 중앙 연결·raw SQL 또는 동적 delegate: 본문 기능군 참조 |
-| `src/app/api/schedules/[yearMonth]/status/route.ts` | Coach, CoachScheduleAccessLog |
-| `src/app/coaches/admin/page.tsx` | Coach |
 | `src/lib/activity/request.ts` | ActivityRequest |
 | `src/lib/admin/databaseDashboard.ts` | Company, Course, OperationSession, DriveImportRun, DriveImportResult, Member, DataImportRun, OperationSourceRecord |
-| `src/lib/coaches/contentEntries.ts` | CoachContentEntry |
+| `src/lib/coaches/contentEntries.ts` | CoachContentEntry; logProfileEdit/logReviewEdit legacy helper만 직접 PG. 메모 helper는 repository facade |
 | `src/lib/data/prismaCoachSheetSyncRepository.ts` | Coach, CoachPrivateProfile, CoachEngagement, CoachEngagementSchedule, CoachDayReservation; catalog→coach locks |
 | `src/lib/data/prismaCoachNotionSyncRepository.ts` | Coach, CoachPrivateProfile, CoachFieldMaster, CoachCurriculumMaster, CoachField, CoachCurriculum; catalog→coach locks |
 | `src/lib/data/coachSyncLogRepositoryFactory.ts` | CoachSyncLog PG default adapter |

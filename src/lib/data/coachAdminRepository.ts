@@ -10,6 +10,7 @@ export interface CoachAdminRepository {
   listMasters(kind: CoachMasterKind): Promise<CoachMasterTag[]>;
   /** Existing name returns the existing tag unchanged (upsert with an empty update). */
   ensureMaster(kind: CoachMasterKind, name: string): Promise<CoachMasterTag>;
+  countDeletedCoaches(): Promise<number>;
   listDeletedCoaches(): Promise<DeletedCoach[]>;
   /** Clears the soft-delete markers of any existing coach; a missing coach throws. */
   restoreCoach(id: string): Promise<{ id: string; name: string }>;

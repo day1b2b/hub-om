@@ -1,9 +1,8 @@
 import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
-import { CoachContentEntryKind } from "@prisma/client";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { createNote } from "@/lib/coaches/contentEntries";
-import { getPrismaClient } from "@/lib/data/prisma";
+import { getCoachContentRepository } from "@/lib/data/coachContentRepositoryFactory";
 
 export const dynamic = "force-dynamic";
 
@@ -15,12 +14,7 @@ async function activityGET(_request: Request, { params }: RouteContext) {
   await requireWorkspaceSession();
   const { id } = await params;
 
-  const prisma = getPrismaClient();
-  const notes = await prisma.coachContentEntry.findMany({
-    where: { coachId: id, kind: CoachContentEntryKind.NOTE, deletedAt: null },
-    orderBy: { createdAt: "desc" },
-    select: { id: true, content: true, authorName: true, flaggedAt: true, createdAt: true }
-  });
+  const notes = await getCoachContentRepository().listNotes(id);
 
   return NextResponse.json({ ok: true, notes });
 }

@@ -1,8 +1,7 @@
 import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
-import { CoachContentEntryKind } from "@prisma/client";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
-import { getPrismaClient } from "@/lib/data/prisma";
+import { getCoachContentRepository } from "@/lib/data/coachContentRepositoryFactory";
 
 export const dynamic = "force-dynamic";
 
@@ -22,48 +21,14 @@ interface FeedRow {
 async function activityGET() {
   await requireWorkspaceSession();
 
-  const prisma = getPrismaClient();
-
-  const [entries, reviewedEngagements] = await Promise.all([
-    prisma.coachContentEntry.findMany({
-      where: {
-        kind: CoachContentEntryKind.NOTE, deletedAt: null
-      },
-      orderBy: { createdAt: "desc" },
-      take: 300,
-      select: {
-        id: true,
-        kind: true,
-        content: true,
-        authorName: true,
-        sourceField: true,
-        flaggedAt: true,
-        createdAt: true,
-        coach: { select: { id: true, name: true } }
-      }
-    }),
-    prisma.coachEngagement.findMany({
-      where: { OR: [{ rating: { not: null } }, { feedback: { not: null } }] },
-      orderBy: { createdAt: "desc" },
-      take: 300,
-      select: {
-        id: true,
-        rating: true,
-        feedback: true,
-        courseName: true,
-        createdAt: true,
-        reviewFlaggedAt: true,
-        coach: { select: { id: true, name: true } }
-      }
-    })
-  ]);
+  const { entries, reviewedEngagements } = await getCoachContentRepository().getContentFeed();
 
   const noteAndHistoryRows: FeedRow[] = entries.map((entry) => ({
     id: entry.id,
-    kind: entry.kind === CoachContentEntryKind.NOTE ? "note" : "history",
+    kind: entry.kind === "NOTE" ? "note" : "history",
     coachId: entry.coach.id,
     coachName: entry.coach.name,
-    authorOrSource: entry.kind === CoachContentEntryKind.NOTE ? entry.authorName ?? "-" : entry.sourceField ?? "-",
+    authorOrSource: entry.kind === "NOTE" ? entry.authorName ?? "-" : entry.sourceField ?? "-",
     content: entry.content,
     flagged: Boolean(entry.flaggedAt),
     createdAt: entry.createdAt.toISOString()
