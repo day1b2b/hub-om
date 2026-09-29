@@ -1,3 +1,4 @@
+import type { OperationBackfillRepository } from "./operationBackfillRepository";
 import type { DeletedOperationRepository } from "./deletedOperationRepository";
 import type { CourseAdminRepository } from "./courseAdminRepository";
 import type { CoachTokenBackfillRepository } from "./coachTokenBackfillRepository";
@@ -26,6 +27,7 @@ export interface CoachPrivateAccessLogRepository {
   recordAccess(coachId: string, accessedByEmail: string, context: string): Promise<void>;
 }
 export interface DataRepositories {
+  operationBackfill: OperationBackfillRepository;
   deletedOperations: DeletedOperationRepository;
   courseAdmin: CourseAdminRepository;
   coachTokenBackfill: CoachTokenBackfillRepository;

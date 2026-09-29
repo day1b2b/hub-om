@@ -68,3 +68,7 @@ d964cb2 기준에서 코치 legacy 이력의 실제 사용처를 확인했다. l
 b401626 기반에서 deleted-operations GET/PUT를 별도 repository와 명시 deletedOperations context로 연결했다. PG 기본·8필드·exact문자열ID·삭제/활성/반복복원의updatedAt갱신·감사제외를 보존한다. Mongo snapshot관계조회와 삭제자/HMAC초기화·부분쓰기·원자적감사, 기존일반/과정삭제writer와경합을 실제PG원본query oracle 및합성Mongo로검증한다. 실행·독립리뷰·통합상태는 ../mongodb-deleted-operations/ 문서. 운영DB나원천에복원을실행한것은아니다.
 
 후속작은개발단위후보는 기존관리자 onsite-required-backfill 및 om-assignment-status-backfill의 count/apply 경계다. 두기능의기존버튼/조건/응답과명확한업무필드를유지하고 실제운영보정은수행하지않는다. 운영이전/복구리허설/생산backend선택/dev→main은미완료.
+
+## 관리자 현장 투입·OM 배정 상태 보정 후속 (2026-09-29)
+
+118e276에서 두 관리자 보정 GET/POST를 operationBackfill 경계로 분리한다. 기존 Y/ASSIGNMENT_PLANNED 목표·exact placeholder 조건·대상0/재실행·권한·응답을 유지한다. HMAC 후보 검증·부분 갱신·transaction 감사·기존 writer 경합을 실제합성 PG 원본query oracle 및 Mongo로 검증한다. 실행/독립리뷰/인계는 ../mongodb-operation-backfill/을 따른다. 기존 onsite CLI·관리자 DB 호스트/셀·과정명 복원 등 다른 기능과 실제 운영 보정은 별도다. 실데이터 이전·복구리허설·운영전환 및 dev→main 완료조건은 아직 충족하지 않았다.

@@ -16,6 +16,7 @@
 | TeamUser 생성·팀/역할 수정 | shadow 구현과 Mongo8.0.30 합성 검증 완료. guard 중복 경쟁·감사 실패 rollback 확인. 물리삭제는 정책 충돌로 차단 | 기존 export 함수는 context 우선 facade. 기본 legacy PG/local 유지. 모든 writer의 guard 참여 필요 |
 | 코치 월간 일정·예약 | `MongoCoachScheduleRepository` 및 실제handler 합성검증 경계. 월 교체/접근 로그/예약 선점·자기취소, active unique·transaction·암호화·감사 | 지정 3개 API는 context 우선/기본 Prisma. 투입·시트·Notion writer와 coach guard 공유 |
 | 코치 투입·평가 | `MongoCoachEngagementRepository`, 슬롯 교체·예약 자동취소·평가 이력 원자화와 공통 scheduling guard | 3개 API context 경계/기본 PG. contract/Samsung/Notion도 catalog→coach guard 참여, 생산 전환은 별도 |
+| 관리자 현장 투입·OM 상태 보정 | `MongoOperationBackfillRepository`, 기존 count/apply 조건·HMAC 후보 확인·부분 갱신·원자적 감사 | 두 admin backfill API는 명시 operationBackfill context/기본PG 경계. [경계·검증 상태](mongodb-operation-backfill.md). 실제 운영 보정·legacy CLI·호스트 페이지는 별도 |
 | 삭제된 운영 건 목록·복원 | `MongoDeletedOperationRepository`, 기존 목록 DTO·exact 운영ID·반복복원 시각·감사 계약 및 일반writer 경합 검증 | admin/deleted-operations GET/PUT는 명시 deletedOperations context/기본PG 유지. [경계·한계](mongodb-deleted-operations.md) |
 | 관리자 과정 조회·일괄 소프트 삭제 | `MongoCourseAdminRepository`, 기존 과정 조회·활성 운영 건 삭제 및 원자적 감사·경합 검증 | 두 admin/courses API는 명시 courseAdmin context/기본PG 유지. Course와 관계 문서는 삭제하지 않음. [경계·한계](mongodb-course-admin.md) |
 | 담당자 내 페이지 | `MongoCoachManagerMyPageRepository`, 기존 활성 예약·확정 과정 조건과 메서드별 snapshot 검증 | `coachMyPage.ts` facade의 명시 `coachManagerMyPage` context만 Mongo. 기본 PG·기존 admin guard 유지. [경계·한계](mongodb-manager-my-page.md) |
@@ -29,7 +30,7 @@
 | 기능군 | 실제 PostgreSQL 진입점·연결 경로 | 모델·PG 기능 | 남은 전환 범위 |
 | --- | --- | --- | --- |
 | 공통 연결·암호화 | `src/lib/data/prisma.ts` → `PrismaPg` → `withPrivacyDatabase` → `withActivityDatabase` | 전 모델; SQL transaction·Prisma 확장 | 생산 선택과 오류·암복호화·transaction 계약 전환. 타입 이름 제거 작업과 구분 |
-| 운영·과정의 별도 관리자 기능 | `api/admin/courses/lookup`, `api/admin/courses/[courseId]`, `api/admin/deleted-operations`, `api/admin/onsite-required-backfill`, `api/admin/om-assignment-status-backfill`, `lib/data/courseNameRestore.ts` | Company, Course, OperationSession, OperationSourceRecord, 활동 감사 | admin/courses 두 API는 2026-09-29 명시 context/기본PG adapter로 연결. 삭제 운영 목록/복원도 명시 deletedOperations context/기본PG 경계에 연결. onsite·배정 보정, 과정명 복원 등 나머지 별도 관리자 기능은 미전환 |
+| 운영·과정의 별도 관리자 기능 | `api/admin/courses/lookup`, `api/admin/courses/[courseId]`, `api/admin/deleted-operations`, `api/admin/onsite-required-backfill`, `api/admin/om-assignment-status-backfill`, `lib/data/courseNameRestore.ts` | Company, Course, OperationSession, OperationSourceRecord, 활동 감사 | admin/courses 두 API는 2026-09-29 명시 context/기본PG adapter로 연결. 삭제 운영 목록/복원도 명시 deletedOperations context/기본PG 경계에 연결. onsite·배정 보정 두 API도 명시 operationBackfill context/기본PG 경계에 연결. 과정명 복원·DB dashboard/cell 등 나머지 별도 관리자 기능은 미전환 |
 | OM 접수·배정·권한 | `lib/data/omRequest/omRequestLocalRepository.ts`, `omRequestAssignment.ts`, `lib/auth/omRequestAssignmentAccess.ts` → `listTeamUsers()` | OmRequest, OperationSession, TeamUser, ActivityChange | 이름에 Local이 있어도 운영에서는 PG. 접수·배정 원자성·중복/사람 수정 정책·명단 기반 권한 동등성 필요 |
 | 팀 사용자 관리 | `lib/data/teamUsers/teamUserRepository.ts` → 기본 `legacyTeamUserRepository.ts` → TeamUser delegate | TeamUser; local JSON은 개발 분기 | 명단/권한 호출부는 facade를 유지하며 context 주입 검증. 생산 선택과 전체 writer 일치 필요. Member 조회는 별도 |
 | 코치 CRUD·태그 마스터 | `api/coaches`, `api/coaches/[id]`, `api/coaches/[id]/regenerate-token`, `api/master/fields`, `api/master/curriculums`, `api/admin/deleted-coaches` | Coach, CoachPrivateProfile, CoachField/Curriculum, 두 Master | 두 CRUD API는 context/기본 Prisma adapter로 연결. 토큰 재발급도 context 경계 연결. 태그 마스터·삭제 코치 목록/복원/영구삭제도 2026-09-23 context/기본 Prisma adapter로 연결([경계](mongodb-coach-admin.md)) |
@@ -79,8 +80,7 @@
 | `src/lib/data/prismaCourseAdminRepository.ts` | Company, Course, OperationSession; admin/courses 두 API의 PG 기본 adapter |
 | `src/app/api/admin/database/cell/route.ts` | Company, Course, OperationSession, Member |
 | `src/lib/data/prismaDeletedOperationRepository.ts` | Company, Course, OperationSession; 삭제 운영 목록/복원 API의 PG 기본 adapter |
-| `src/app/api/admin/om-assignment-status-backfill/route.ts` | OperationSession |
-| `src/app/api/admin/onsite-required-backfill/route.ts` | OperationSession |
+| `src/lib/data/prismaOperationBackfillRepository.ts` | OperationSession; 현장 투입·OM 상태 보정 API의 PG 기본 adapter |
 | `src/app/api/announcements/[id]/attachments/[attachmentId]/route.ts` | AnnouncementAttachment |
 | `src/app/api/announcements/[id]/route.ts` | Announcement |
 | `src/app/api/announcements/route.ts` | Announcement |
@@ -156,3 +156,7 @@
 ## 코치 태그 마스터·삭제 코치 관리 후속 (2026-09-23)
 
 [경계와 영구삭제 결정](mongodb-coach-admin.md). 세 route는 저장소 호출로 바뀌었고 기본은 PG adapter다. Mongo 영구삭제는 결정권자 결정에 따라 기존 물리 삭제와 같은 Cascade/SetNull을 한 트랜잭션에서 재현한다. 개인정보 접근 기록을 쓰는 `recordAccess`와 export가 코치 잠금에 참여한다. 같은 fixture로 PG 기준과 비교 검증했다. 다른 코치 경로(메모·콘텐츠·관리 조회, coachMyPage, token backfill)와 나머지 기능군은 미전환이다.
+
+## 관리자 운영 보정 API 후속 (2026-09-29)
+
+현장 투입 여부·OM 배정 상태 보정의 두 GET/POST를 별도 repository로 연결했다. 원본 exact 조건·부분 갱신·재실행0을 보존하며 Mongo 후보 HMAC/원문 검증·감사 원자성을 검증한다. 최신 실행·독립 리뷰·통합 상태는 `.claude/plans/mongodb-operation-backfill/`을 따른다. `/admin/database` 호스트 전체 및 legacy PG CLI `scripts/backfill-onsite-required-y.ts`는 이번 범위 밖이다. 운영 보정 실행과 전체 이전은 미완료다.
