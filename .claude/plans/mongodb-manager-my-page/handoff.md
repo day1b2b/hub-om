@@ -3,7 +3,7 @@
 - 기반 총괄 HEAD: bc77a12758bd060a4194b6489dd14c4eaa63074d.
 - 작업 브랜치: feature/20260929-mongodb-manager-my-page.
 - 지속 clone: /Users/ga/workspace/hub-om-mongodb-coach-content.
-- 구현·검증·독립 리뷰 차단 지적 해소 완료. 커밋/원격 SHA는 자기참조 없이 종료보고와 원격 branch ref로 확인한다. 총괄 브랜치 통합은 별도다.
+- 구현·검증·독립 리뷰 차단 지적 해소 완료. 기능 커밋 ae07ee249b28e458a824bf791d8260509515804b의 원격 SHA 일치 확인. 이후 사용자 요청으로 총괄 브랜치에 fast-forward 통합했으며 integration-review.md를 따른다. 최종 통합 SHA는 종료보고와 원격 branch ref로 확인한다.
 
 ## 완료 범위
 

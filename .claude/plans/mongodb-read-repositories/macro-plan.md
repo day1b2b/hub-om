@@ -1,6 +1,6 @@
 # MongoDB 병렬 이전 상위 계획
 
-최신 총괄 상태: 2026-09-29 콘텐츠 0656e8b 통합 bc77a12 및 동일 코드의 실행 로그·독립 코드 검토 완료. 근거는 ../mongodb-coach-content/integration-review.md. 담당자 내 페이지 coachMyPage는 별도 feature/20260929-mongodb-manager-my-page에서 repository/명시 Mongo context 구현·검증했으며 최종 인계 상태는 ../mongodb-manager-my-page/handoff.md를 따른다. 총괄 통합은 별도다. 원천 식별자 암호화와 코치 관리 구현은 통합됐으며 운영 적용은 미실행이다.
+최신 총괄 상태: 2026-09-29 콘텐츠 통합 bc77a12 위에 담당자 내 페이지 ae07ee249b28e458a824bf791d8260509515804b를 fast-forward 통합했다. 명시 Mongo context 구현·실제 PG/Mongo 비교·독립 리뷰 및 기존 취소 테스트 보완 근거는 ../mongodb-manager-my-page/integration-review.md와 execution-review.md를 따른다. 다음 후보는 token backfill이다. 원천 식별자 암호화와 코치 관리 구현도 통합됐으며 운영 적용은 미실행이다.
 
 목표: 기존 PostgreSQL 운영을 유지하며 개인정보를 암호화한 별도 MongoDB를 검증한 뒤 안전하게 전환한다.
 
