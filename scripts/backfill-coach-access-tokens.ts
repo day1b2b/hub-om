@@ -10,24 +10,18 @@
  * 단일 트랜잭션이며 실패 시 전체 롤백한다. DB 규모별 소요 시간은 격리 DB에서 검증한다.
  */
 import nextEnv from "@next/env";
-import { getPrismaClient } from "../src/lib/data/prisma";
-import { backfillCoachAccessTokens, parseCoachTokenBackfillArgs } from "../src/lib/data/coachAccessTokenBackfill";
+import { runCoachTokenBackfillCommand } from "../src/lib/data/coachTokenBackfillCommand";
 
 async function main(): Promise<void> {
-  const options = parseCoachTokenBackfillArgs(process.argv.slice(2));
-  // Next's loader matches app environment precedence without a new dependency.
-  nextEnv.loadEnvConfig(process.cwd(), false, { info() {}, error() {} });
-  const db = getPrismaClient();
-  try {
-    const summary = await backfillCoachAccessTokens(db, options);
-    console.log(
-      `[backfill-coach-access-tokens] ${options.apply ? "apply" : "dry-run"} 완료: ` +
-      `아카이브 토큰 ${summary.archivedTokens}건 / 신규 ${summary.missingTokens}건 / ` +
-      `변경 필요 ${summary.changedTokens}건 / 업데이트 ${summary.updatedTokens}건`,
-    );
-  } finally {
-    await db.$disconnect();
-  }
+  const { options, summary } = await runCoachTokenBackfillCommand(process.argv.slice(2), () => {
+    // Next's loader matches app environment precedence without a new dependency.
+    nextEnv.loadEnvConfig(process.cwd(), false, { info() {}, error() {} });
+  });
+  console.log(
+    `[backfill-coach-access-tokens] ${options.apply ? "apply" : "dry-run"} 완료: ` +
+    `아카이브 토큰 ${summary.archivedTokens}건 / 신규 ${summary.missingTokens}건 / ` +
+    `변경 필요 ${summary.changedTokens}건 / 업데이트 ${summary.updatedTokens}건`,
+  );
 }
 
 main().catch(() => {

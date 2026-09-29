@@ -17,6 +17,7 @@
 | 코치 월간 일정·예약 | `MongoCoachScheduleRepository` 및 실제handler 합성검증 경계. 월 교체/접근 로그/예약 선점·자기취소, active unique·transaction·암호화·감사 | 지정 3개 API는 context 우선/기본 Prisma. 투입·시트·Notion writer와 coach guard 공유 |
 | 코치 투입·평가 | `MongoCoachEngagementRepository`, 슬롯 교체·예약 자동취소·평가 이력 원자화와 공통 scheduling guard | 3개 API context 경계/기본 PG. contract/Samsung/Notion도 catalog→coach guard 참여, 생산 전환은 별도 |
 | 담당자 내 페이지 | `MongoCoachManagerMyPageRepository`, 기존 활성 예약·확정 과정 조건과 메서드별 snapshot 검증 | `coachMyPage.ts` facade의 명시 `coachManagerMyPage` context만 Mongo. 기본 PG·기존 admin guard 유지. [경계·한계](mongodb-manager-my-page.md) |
+| 코치 접근 토큰 보완 | `MongoCoachTokenBackfillRepository`, 최신 non-null archive token·paging·dry-run·apply/rollback·재실행 경계 | CLI 기본 PG, 명시 `coachTokenBackfill` context만 Mongo. 운영 적용은 별도 maintenance/백업 확인 필요. [경계·한계](mongodb-coach-token-backfill.md) |
 | 전체 모델 암호화 snapshot export/import | 35개 모델 codec·일관된 PG 읽기 snapshot·사본 대조·참조 검증 지원 | 운영 서비스 선택·실시간 변경 동기화·최종 freeze/cutover·복구 승인은 별도 |
 
 ## 남은 기능군별 실제 경로
@@ -30,7 +31,7 @@
 | OM 접수·배정·권한 | `lib/data/omRequest/omRequestLocalRepository.ts`, `omRequestAssignment.ts`, `lib/auth/omRequestAssignmentAccess.ts` → `listTeamUsers()` | OmRequest, OperationSession, TeamUser, ActivityChange | 이름에 Local이 있어도 운영에서는 PG. 접수·배정 원자성·중복/사람 수정 정책·명단 기반 권한 동등성 필요 |
 | 팀 사용자 관리 | `lib/data/teamUsers/teamUserRepository.ts` → 기본 `legacyTeamUserRepository.ts` → TeamUser delegate | TeamUser; local JSON은 개발 분기 | 명단/권한 호출부는 facade를 유지하며 context 주입 검증. 생산 선택과 전체 writer 일치 필요. Member 조회는 별도 |
 | 코치 CRUD·태그 마스터 | `api/coaches`, `api/coaches/[id]`, `api/coaches/[id]/regenerate-token`, `api/master/fields`, `api/master/curriculums`, `api/admin/deleted-coaches` | Coach, CoachPrivateProfile, CoachField/Curriculum, 두 Master | 두 CRUD API는 context/기본 Prisma adapter로 연결. 토큰 재발급도 context 경계 연결. 태그 마스터·삭제 코치 목록/복원/영구삭제도 2026-09-23 context/기본 Prisma adapter로 연결([경계](mongodb-coach-admin.md)) |
-| 코치 인증·본인 페이지·개인정보 열람 | `lib/coaches/coachTokenAuth.ts`, `lib/data/coachMyPage.ts`, `coachPrivateAccess.ts`, `coachAccessTokenBackfill.ts`, `api/coach/me`, `api/coaches/export` | Coach, CoachPrivateProfile, CoachPrivateAccessLog, CoachdbArchiveRow, 예약·섭외·TeamUser | 토큰 lookup/본인 API/export는 명시context 연결 및 합성검증. 2026-09-29 manager coachMyPage도 별도 기능 브랜치에서 명시context/기본PG로 연결·검증. token backfill은 미전환 |
+| 코치 인증·본인 페이지·개인정보 열람 | `lib/coaches/coachTokenAuth.ts`, `lib/data/coachMyPage.ts`, `coachPrivateAccess.ts`, `coachTokenBackfillCommand.ts`, `api/coach/me`, `api/coaches/export` | Coach, CoachPrivateProfile, CoachPrivateAccessLog, CoachdbArchiveRow/Snapshot, 예약·섭외·TeamUser | 토큰 lookup/본인 API/export·manager coachMyPage는 명시context 연결 및 합성검증. 2026-09-29 token backfill도 기능 브랜치에서 명시context/기본PG로 연결·실DB 검증. 운영 토큰 보완 실행과 생산 backend 선택은 미완료 |
 | 가용 일정·예약·섭외 | `api/coaches/[id]/schedules`, `/reservations`, `/engagements`, `api/coach/schedule/[yearMonth]`, `api/engagements/[id]`, `/review`; `lib/coaches/engagementApi.ts`, `reservationAutoCancel.ts` | CoachSchedule, CoachScheduleAccessLog, CoachDayReservation, CoachEngagement, CoachEngagementSchedule, Coach | 월일정 GET/PUT·예약 POST/DELETE·매니저일정 GET은 context 경계. 수동 섭외확정/자동취소/평가는 context 경계 및 일정·예약 공통 guard. contract/Samsung 동기화·삭제 관계 transaction은 별도 시트 경계에서 구현. Notion도 별도 동기화 경계 구현 |
 | 코치 메모·콘텐츠·관리 조회 | `lib/coaches/contentEntries.ts`, `api/coaches/[id]/notes`, `api/admin/content-entries`, `api/admin/schedule-registration/[yearMonth]`, `api/schedules/[yearMonth]/status`, `app/coaches/admin/page.tsx` | CoachContentEntry, CoachEngagement, CoachScheduleAccessLog, Coach | 2026-09-29 coachContent/coachAdmin 명시 context 연결·검증 및 총괄 통합. 기본 PG 유지. 프로필/후기 legacy helper는 별도. [경계·한계](mongodb-coach-content.md) |
 | 코치 외부 동기화 | `lib/coaches/notionCoachSync.ts`, `samsungScheduleSync.ts`, `contractSheetSync.ts`, `syncLog.ts` | Coach, PrivateProfile, Field/Curriculum/Master, Engagement/Schedule, CoachSyncLog | contract/Samsung/Notion 및 로그는 명시 Mongo context, 합성 source로 실제 handler 검증. Notion/all은 전체 scope 선행 검사 후 실행하며 기본 PG 유지 |
@@ -89,7 +90,7 @@
 | `src/lib/data/prismaCoachSheetSyncRepository.ts` | Coach, CoachPrivateProfile, CoachEngagement, CoachEngagementSchedule, CoachDayReservation; catalog→coach locks |
 | `src/lib/data/prismaCoachNotionSyncRepository.ts` | Coach, CoachPrivateProfile, CoachFieldMaster, CoachCurriculumMaster, CoachField, CoachCurriculum; catalog→coach locks |
 | `src/lib/data/coachSyncLogRepositoryFactory.ts` | CoachSyncLog PG default adapter |
-| `src/lib/data/coachAccessTokenBackfill.ts` | Coach, CoachdbArchiveRow |
+| `src/lib/data/prismaCoachTokenBackfillRepository.ts` | Coach, CoachdbArchiveRow/Snapshot; 기존 coachAccessTokenBackfill 직접주입 알고리즘을 호출하는 PG 기본 CLI adapter |
 | `src/lib/data/prismaCoachManagerMyPageRepository.ts` | Coach, CoachDayReservation, CoachEngagement, CoachEngagementSchedule; 명단 TeamUser는 기존 resolveOmNameByEmail 간접 호출. coachMyPage.ts는 facade |
 | `src/lib/data/coachPrivateAccess.ts` | CoachPrivateAccessLog |
 | `src/lib/data/courseNameRestore.ts` | Company, Course, OperationSession |

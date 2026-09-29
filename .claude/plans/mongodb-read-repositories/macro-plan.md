@@ -1,6 +1,6 @@
 # MongoDB 병렬 이전 상위 계획
 
-최신 총괄 상태: 2026-09-29 콘텐츠 통합 bc77a12 위에 담당자 내 페이지 ae07ee249b28e458a824bf791d8260509515804b를 fast-forward 통합했다. 명시 Mongo context 구현·실제 PG/Mongo 비교·독립 리뷰 및 기존 취소 테스트 보완 근거는 ../mongodb-manager-my-page/integration-review.md와 execution-review.md를 따른다. 다음 후보는 token backfill이다. 원천 식별자 암호화와 코치 관리 구현도 통합됐으며 운영 적용은 미실행이다.
+최신 총괄 상태: 2026-09-29 담당자 내 페이지까지 1a7323b에 통합했다. 이후 feature/20260929-mongodb-coach-token-backfill에서 토큰 보완 CLI의 명시 Mongo 경계·실제 PG/Mongo 검증을 진행했다. 최신 결과·통합 상태는 ../mongodb-coach-token-backfill/execution-review.md와 handoff.md를 따른다. 이전 담당자 페이지 통합 근거는 ../mongodb-manager-my-page/integration-review.md다. 원천 식별자 암호화와 코치 관리 구현도 통합됐으며 운영 적용은 미실행이다.
 
 목표: 기존 PostgreSQL 운영을 유지하며 개인정보를 암호화한 별도 MongoDB를 검증한 뒤 안전하게 전환한다.
 
@@ -52,3 +52,7 @@ feature/20260929-mongodb-coach-content에서 메모 CRUD/피드/월 등록현황
 ## 담당자 내 페이지 후속 (2026-09-29)
 
 bc77a12에서 기존 활성 예약·확정 과정 조회를 PG 기본 adapter와 명시 Mongo context로 분리했다. 이메일 exact/HMAC 확인, 취소여부와 무관한 확정 링크·예약 coach 우선, 기존 이름 매칭·그룹·기간·슬롯·삭제 coach 포함을 보존한다. Mongo 한 메서드 안의 명단과 관계를 같은 snapshot으로 읽는다. 실제 PG45 migration·독립 DTO와 Mongo 비교 및 실제 page/admin guard 경계를 검증한다. 최종 결과는 ../mongodb-manager-my-page/execution-review.md. 다음 기능 후보는 coachAccessTokenBackfill이며 쓰기·키·재실행 계약을 별도 계획으로 검토한다. token backfill, 다른 coverage 기능 및 운영 이전은 이번 단위에 포함하지 않았다. 전체 미완료이므로 dev→main 병합 조건도 아직 충족되지 않았다.
+
+## 코치 접근 토큰 보완 후속 (2026-09-29)
+
+1a7323b 기반으로 기존 PG 직접주입함수를 보존하고 CLI→service→repository 및 명시 coachTokenBackfill context를 연결했다. 최신 non-null 보관 토큰 선택, 250건 페이지, HMAC·암호문, dryrun 불변/apply 전체취소·재실행0을 실제 PG45migration과 Mongo로 대조했다. 실행·실패보완·독립리뷰·인계는 ../mongodb-coach-token-backfill/ 문서를 따른다. 운영에 backfill을 적용한 것은 아니다. 다음은 coverage의 남은 코치 legacy 경로 사용처 점검과 운영·과정 관리자 기능을 작은 단위로 전환하는 것이다. 전체 운영 이전과 dev→main 완료 조건은 아직 충족되지 않았다.

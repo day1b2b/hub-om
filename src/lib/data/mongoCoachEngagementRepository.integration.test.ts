@@ -267,7 +267,9 @@ test("actual engagement and review handlers against an isolated Mongo replica se
       const { scope, store, id } = await fixture();
       await runWithDataRepositories(scope, () => actors.run(managerA, async () => {
         const { engagement } = await (await create(id)).json(); await reserve(id, [firstDay, "2099-12-11"]);
-        const ordered = await store.collection("CoachDayReservation").find({ coachId: id, cancelledAt: null }).toArray(); assert.equal(ordered.length, 2);
+        // Match store.scan's simple-collation _id order so the second actual
+        // audit fails after the first cancellation has really executed.
+        const ordered = await store.collection("CoachDayReservation").find({ coachId: id, cancelledAt: null }, { collation: { locale: "simple" } }).sort({ _id: 1 }).toArray(); assert.equal(ordered.length, 2);
         const before = await snapshot(store), changes = store.collection("ActivityChange");
         await store.db.command({ collMod: changes.collectionName, validator: { $and: [operationMongoValidator("ActivityChange"), { $nor: [{ targetType: "coach_day_reservations", targetId: ordered[1]._id, action: "update" }] }] } });
         const attempts: string[] = [], observe = (event: CommandStartedEvent) => { if (event.command.insert === changes.collectionName) for (const document of event.command.documents ?? []) if (document.targetType === "coach_day_reservations") attempts.push(document.targetId); };
