@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppSidebar } from "@/components/AppSidebar";
 import { requireAdminSession } from "@/lib/auth/requireAdminSession";
-import { getPrismaClient } from "@/lib/data/prisma";
+import { getAnnouncementRepository } from "@/lib/data/announcements/announcementRepositoryFactory";
 import { AnnouncementForm } from "@/features/announcements/AnnouncementForm";
 
 export const dynamic = "force-dynamic";
@@ -15,19 +15,8 @@ export default async function AnnouncementEditPage({ params }: Props) {
   await requireAdminSession();
   const { id } = await params;
 
-  const prisma = getPrismaClient();
-  const announcement = await prisma.announcement.findFirst({
-    where: { id, deletedAt: null },
-    select: {
-      id: true,
-      title: true,
-      content: true,
-      attachments: {
-        select: { id: true, fileName: true, size: true },
-        orderBy: { createdAt: "asc" }
-      }
-    }
-  });
+  const repository = getAnnouncementRepository();
+  const announcement = await repository.getEditPage(id);
 
   if (!announcement) notFound();
 

@@ -23,6 +23,7 @@
 | 담당자 내 페이지 | `MongoCoachManagerMyPageRepository`, 기존 활성 예약·확정 과정 조건과 메서드별 snapshot 검증 | `coachMyPage.ts` facade의 명시 `coachManagerMyPage` context만 Mongo. 기본 PG·기존 admin guard 유지. [경계·한계](mongodb-manager-my-page.md) |
 | 코치 접근 토큰 보완 | `MongoCoachTokenBackfillRepository`, 최신 non-null archive token·paging·dry-run·apply/rollback·재실행 경계 | CLI 기본 PG, 명시 `coachTokenBackfill` context만 Mongo. 운영 적용은 별도 maintenance/백업 확인 필요. [경계·한계](mongodb-coach-token-backfill.md) |
 | 관리자 DB 조회·허용 셀 편집 | `MongoAdminDatabaseRepository`, snapshot 8표/100행·4표 부분 갱신·원자적 감사·PG 의미 대조 | 기존 dashboard/API는 명시 adminDatabase, 페이지 명단은 stored teamMembers context. 기본 PG 유지. [경계·검증 상태](mongodb-admin-database.md) |
+| 공지·첨부 | `MongoAnnouncementRepository`, 분리 암호화 bytes·부분쓰기·원자적 감사·최대 5×5MiB·PG 대조 | 6개 API handler/3개 조회 page는 명시 announcements context, 기본 PG 유지. [경계·검증 상태](mongodb-announcements.md) |
 | 전체 모델 암호화 snapshot export/import | 35개 모델 codec·일관된 PG 읽기 snapshot·사본 대조·참조 검증 지원 | 운영 서비스 선택·실시간 변경 동기화·최종 freeze/cutover·복구 승인은 별도 |
 
 ## 남은 기능군별 실제 경로
@@ -44,7 +45,6 @@
 | 가져오기·staging·승격·Drive 기록 | `lib/data/prismaImportRepository.ts`, `importStagingWriter.ts`, `importPromotionService.ts`, `lib/driveImports/driveImportResults.ts`; `api/admin/imports/{upload,google-sheets/import,notion/import}`; `app/admin/imports/**` | DataImportRun, OperationSourceRecord, Company, Course, OperationSession, DriveImportRun, DriveImportResult | staging 오류 보존·승격·중복 식별·일괄 원자성·관리 페이지. 외부 소스 읽기 자체와 PG 적재 구분 |
 | 매출 동기화 | `lib/data/salesRevenueSync.ts` | Course, SalesRevenueSyncLog | 금액/동기화 전후 값·감사·재시도, 실제 운영 쓰기 승인 별도 |
 | Google Calendar | `lib/data/calendarReflectingOperationRepository.ts` → calendar 모듈; `lib/googleCalendar/calendarEventLinkRepository.ts`, `operationSessionTimestamps.ts`, `calendarOperationLock.ts` | CalendarEventLink, OperationSession; 별도 `pg.Pool`, advisory lock | 이벤트 연결·역동기화·시각 갱신·프로세스 간 잠금. Mongo operation CRUD만으로 외부 캘린더 부작용을 대체하지 않음 |
-| 공지·첨부 | `app/announcements/**`, `api/announcements/**` | Announcement, AnnouncementAttachment | 목록/상세/수정/삭제/첨부 byte 저장·다운로드·권한·암복호화 |
 | 활동 요청·변경 이력·활동 피드 | `lib/activity/request.ts`, `database.ts`, `retention.ts`, `presentation.ts`; `api/activity-feed`, `api/admin/activity`, `/usage` | ActivityRequest, ActivityChange 및 이름 해석에 쓰이는 업무 모델; `set_config`, PG trigger, SQL DELETE | 전역 middleware·트리거 귀속·보존기간 정리·관리 조회 전환. MongoOperation의 ActivityChange 기록은 이 전체를 대체하지 않음 |
 | 관리자 DB·백업·건강 확인 | `lib/admin/databaseDashboard.ts`, `api/admin/database/cell`, `api/admin/backup`, `api/health` | 여러 업무 모델 및 archive snapshot raw SQL; `SELECT 1` | 8표 조회/4표 셀 수정과 페이지 담당자 명단은 명시 context로 연결. 백업 범위·health의 DB 판정·복구 절차는 미전환. PG health를 그대로 두면 Mongo 상태를 확인하지 못함 |
 
@@ -71,9 +71,6 @@
 
 | 경로 | 직접 delegate 모델 |
 | --- | --- |
-| `src/app/announcements/[id]/edit/page.tsx` | Announcement |
-| `src/app/announcements/[id]/page.tsx` | Announcement |
-| `src/app/announcements/page.tsx` | Announcement |
 | `src/app/api/activity-feed/route.ts` | ActivityRequest, ActivityChange |
 | `src/app/api/admin/activity/route.ts` | Coach, CoachContentEntry, ActivityRequest, ActivityChange |
 | `src/app/api/admin/activity/usage/route.ts` | ActivityRequest, ActivityChange |
@@ -83,11 +80,9 @@
 | `src/lib/data/prismaAdminDatabaseRepository.ts` | Company, Course, OperationSession, Member; 셀 API의 기본 PG adapter |
 | `src/lib/data/prismaDeletedOperationRepository.ts` | Company, Course, OperationSession; 삭제 운영 목록/복원 API의 PG 기본 adapter |
 | `src/lib/data/prismaOperationBackfillRepository.ts` | OperationSession; 현장 투입·OM 상태 보정 API의 PG 기본 adapter |
-| `src/app/api/announcements/[id]/attachments/[attachmentId]/route.ts` | AnnouncementAttachment |
-| `src/app/api/announcements/[id]/route.ts` | Announcement |
-| `src/app/api/announcements/route.ts` | Announcement |
 | `src/app/api/health/route.ts` | 중앙 연결·raw SQL 또는 동적 delegate: 본문 기능군 참조 |
 | `src/lib/activity/request.ts` | ActivityRequest |
+| `src/lib/data/announcements/prismaAnnouncementRepository.ts` | Announcement, AnnouncementAttachment; 공지 facade의 기본 PG 조회/쓰기 |
 | `src/lib/data/prismaAdminDatabaseRows.ts` | Company, Course, OperationSession, DriveImportRun, DriveImportResult, Member, DataImportRun, OperationSourceRecord; dashboard facade의 기본 PG 조회 |
 | `src/lib/coaches/contentEntries.ts` | CoachContentEntry; logProfileEdit/logReviewEdit legacy helper만 직접 PG. 메모 helper는 repository facade |
 | `src/lib/data/prismaCoachSheetSyncRepository.ts` | Coach, CoachPrivateProfile, CoachEngagement, CoachEngagementSchedule, CoachDayReservation; catalog→coach locks |
@@ -172,3 +167,11 @@
 8표 조회·4표 허용 셀 편집을 adminDatabase 경계로 분리한다. 기본 PG·기존 DTO·파서·권한·허용 필드·오류를 보존하며 Member null 정렬/복합unique/감사, UUID·Decimal의 실제 PG 의미를 대조한다. 담당자 목록은 getStoredTeamMemberRepository의 teamMembers scope로 연결한다. 일반 getTeamMemberRepository의 Notion 정책은 이번 범위 밖이다. 실행·독립 수락·통합 상태는 `.claude/plans/mongodb-admin-database/`를 따른다. 관리자 백업/health와 실제 복구/운영 전환은 별도 미완료다.
 
 관리자 DB 최종 일반895pass45skip·Mongo402pass0skip(mock4포함)·추가 native43pass·handler/factory12pass·실PG5pass. typecheck/build PASS, lint0error/기존7warning, 독립 V1–V10 PASS. 중복 묶음은 합산하지 않는다.
+
+## 공지·첨부 저장 경계 후속 (2026-09-29)
+
+[경계와 기존 한계](mongodb-announcements.md). 공지6handler/3조회page를 announcements 명시context/기본PG adapter로 분리한다. 최대 첨부 bytes·기존 삭제/수정 계약·감사 대조는 검증했고, 전체 회귀·독립 최종 수락은 `.claude/plans/mongodb-announcements/` 실행결과로판정한다. 전체전환/실데이터이전/복구리허설/운영전환은미완료다.
+
+서비스 이전까지의 남은 기능군·전체 앱 연결·실제 복사/복원/전환 순서는 [잔여 작업](mongodb-cutover-remaining.md)을 따른다. 오래된 후속 단락의 당시 미완료 목록보다 위 표와 최신 실행 기록을 우선한다.
+
+공지·첨부 최종 일반 898pass/48skip, Mongo 457pass/0skip(mock4포함), 실제 PG 6pass/native 30pass/실제 handler-page 13pass. typecheck/build PASS, lint 0error/기존7warning, 독립 V1–V11 PASS. 중복 묶음은 합산하지 않는다. 소유 합성 자원 정리 완료, 원격 통합은 `.claude/plans/mongodb-announcements/integration-review.md`를 따른다.

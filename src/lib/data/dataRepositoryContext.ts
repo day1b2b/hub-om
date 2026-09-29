@@ -1,3 +1,4 @@
+import type { AnnouncementRepository } from "./announcements/announcementRepository";
 import type { AdminDatabaseRepository } from "./adminDatabaseRepository";
 import type { TeamMemberRepository } from "./teamMemberRepository";
 import type { CourseNameRestoreRepository } from "./courseNameRestoreRepository";
@@ -30,6 +31,7 @@ export interface CoachPrivateAccessLogRepository {
   recordAccess(coachId: string, accessedByEmail: string, context: string): Promise<void>;
 }
 export interface DataRepositories {
+  announcements: AnnouncementRepository;
   adminDatabase: AdminDatabaseRepository;
   teamMembers: TeamMemberRepository;
   courseNameRestore: CourseNameRestoreRepository;

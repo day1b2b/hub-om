@@ -7,6 +7,8 @@ import { mongoRuntimeContracts } from "./mongoRuntimeCodec";
 const excluded = new Set(["id", "createdAt", "updatedAt", "createdBy", "updatedBy", "deletedBy", "normalizedName", "sourceFingerprint", "validationErrors"]);
 const allowed: Record<string, Set<string>> = {
   Company: new Set(["name"]),
+  Announcement: new Set(),
+  AnnouncementAttachment: new Set(["announcementId", "mimeType", "size"]),
   Member: new Set(["role", "sourceTeam"]),
   Course: new Set(["companyId", "courseId", "name", "operationType", "courseCategory", "revenue"]),
   CourseIdLabel: new Set(["companyId", "courseId", "label"]),
@@ -48,10 +50,20 @@ export function operationAuditRow(model: string, before: MongoRow | null, after:
   const changes: MongoRow = {};
   for (const field of new Set([...Object.keys(before ?? {}), ...Object.keys(after ?? {})])) {
     if (excluded.has(field) || field.endsWith("PiiIndex") || field.endsWith("Encrypted")) continue;
-    // PG distinguishes an absent INSERT/DELETE side from a present JSON null.
-    // Preserve that shape for content audits as well as ordinary value changes.
+    // Attachment bytes can be 5MiB: never enumerate or JSON-stringify them.
+    // The public fields below still use the existing scalar comparison policy.
+    if (model === "AnnouncementAttachment" && field === "data") {
+      const left = before?.data, right = after?.data;
+      if (left instanceof Uint8Array && right instanceof Uint8Array && left.byteLength === right.byteLength
+        && Buffer.from(left.buffer, left.byteOffset, left.byteLength).equals(Buffer.from(right.buffer, right.byteOffset, right.byteLength))) continue;
+      changes.data = { redacted: true };
+      continue;
+    }
+    // PG distinguishes absent INSERT/DELETE sides from a present JSON null.
+    // Extend only the two announcement models; unrelated models stay unchanged.
+    const distinguishPresence = model === "CoachContentEntry" || model === "Announcement" || model === "AnnouncementAttachment";
     if (stableMongoValue(before?.[field]) === stableMongoValue(after?.[field])
-      && (model !== "CoachContentEntry" || Object.hasOwn(before ?? {}, field) === Object.hasOwn(after ?? {}, field))) continue;
+      && (!distinguishPresence || Object.hasOwn(before ?? {}, field) === Object.hasOwn(after ?? {}, field))) continue;
     changes[column(model, field)] = allowed[model]?.has(field) && !privacy[field]
       ? { before: safeValue(before?.[field], model, field), after: safeValue(after?.[field], model, field) }
       : { redacted: true };

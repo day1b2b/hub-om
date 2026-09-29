@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppSidebar } from "@/components/AppSidebar";
 import { requireAdminSession } from "@/lib/auth/requireAdminSession";
-import { getPrismaClient } from "@/lib/data/prisma";
+import { getAnnouncementRepository } from "@/lib/data/announcements/announcementRepositoryFactory";
 import { AnnouncementActions } from "@/features/announcements/AnnouncementActions";
 import { sanitizeAnnouncementContent } from "@/lib/data/announcements/sanitizeAnnouncementContent";
 
@@ -16,22 +16,8 @@ export default async function AnnouncementDetailPage({ params }: Props) {
   await requireAdminSession();
   const { id } = await params;
 
-  const prisma = getPrismaClient();
-  const announcement = await prisma.announcement.findFirst({
-    where: { id, deletedAt: null },
-    select: {
-      id: true,
-      title: true,
-      content: true,
-      authorName: true,
-      authorEmail: true,
-      createdAt: true,
-      attachments: {
-        select: { id: true, fileName: true, size: true },
-        orderBy: { createdAt: "asc" }
-      }
-    }
-  });
+  const repository = getAnnouncementRepository();
+  const announcement = await repository.getDetailPage(id);
 
   if (!announcement) notFound();
 

@@ -80,3 +80,9 @@ b401626 기반에서 deleted-operations GET/PUT를 별도 repository와 명시 d
 ## 관리자 DB 조회·셀 편집 후속 (2026-09-29)
 
 4db4cf6 기반에서 기존 8표 표시와4표편집·페이지담당자목록을 adminDatabase/teamMembers 명시경계로 연결한다. 새업무필드·권한·삭제정책없이 PGquery/formatter/parser원본독립oracle로 검증한다. 소유PG56659/Mongo27759만사용하며 실제운영수정은없다. 계획/검증/실행/독립리뷰는 ../mongodb-admin-database/를따른다. 구현·합성검증·독립 V1–V10 수락 완료. 일반895pass45skip/Mongo402pass0skip(mock4포함), 추가native43/handler12/PG5는중복합산하지않는다. type/build PASS, lint기존7warning. 원격통합은integration-review를따른다. 전체운영전환/dev→main은별도미완료다.
+
+## 공지·첨부 후속 (2026-09-29)
+
+5f9d291에서 공지6handler/3조회page의직접PG를 announcements repository로분리한다. 기존관리자·HTML정제·응답·공지softdelete/수정중첨부제거·사전조회/상한계산한계를보존한다. 최대5x5MiB의암호화bytes저장/다운로드·PG감사/nullable·원자성/실경합을독립oracle로검증한다. 실행/독립리뷰/한계/인계는 ../mongodb-announcements/. 구현·합성 검증·독립 V1–V11 수락 완료. 일반898pass48skip/Mongo457pass0skip(mock4포함), PG6/native30/handler13은 중복 합산하지 않는다. typecheck/build PASS, lint 기존7warning. 소유 합성 자원 정리 완료, 원격 통합은 integration-review를 따른다. 운영 전환/dev→main 완료와 구분한다. 다음 후보는 활동 조회·피드·사용 통계 세 GET이며 별도 계획에서 확정한다.
+
+전체 서비스 이전의 선행 관계와 외부 실행 조건은 `docs/operations/mongodb-cutover-remaining.md`에 정리했다. 이미 완료된 기능 경계를 반복 구현하지 않으며 전체 앱 연결·실제 복사/복원/전환은 별도 미완료다.
