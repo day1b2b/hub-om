@@ -19,3 +19,5 @@ deleted-operations GET/PUT를 기본PG adapter와 명시 deletedOperations conte
 최종검사: 직접Node 신규40pass/0skip/0fail/exit0, broadMongo280pass/0skip/0fail/exit0(mock4포함), 일반889pass/36skip/0fail. typecheck/buildPASS, lint0error7기존warning. 초기wrapperexit2는실패기록으로유지, 위직접재검증과구별.
 
 소유합성자원정리완료: Mongo getCmdLineOpts dbPath/replica이름 확인, 남은합성DB0, PG/Mongo정상종료와잠금/프로세스파일정리확인후소유dbpath2개제거. 경로부재와cleanup.log exit0확인. 로그/스크립트보존, 다른namespace/운영접근없음.
+
+기능 commit `aad01d858804c97dbf01c4e1e7b7cbced0bfa197` 원격 일치 확인, 총괄 fast-forward 통합 완료. 코드 동일성 및 최종 인계는 integration-review.md에 기록했다.
