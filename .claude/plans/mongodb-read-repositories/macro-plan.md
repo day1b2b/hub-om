@@ -56,3 +56,9 @@ bc77a12에서 기존 활성 예약·확정 과정 조회를 PG 기본 adapter와
 ## 코치 접근 토큰 보완 후속 (2026-09-29)
 
 1a7323b 기반으로 기존 PG 직접주입함수를 보존하고 CLI→service→repository 및 명시 coachTokenBackfill context를 연결했다. 최신 non-null 보관 토큰 선택, 250건 페이지, HMAC·암호문, dryrun 불변/apply 전체취소·재실행0을 실제 PG45migration과 Mongo로 대조했다. 실행·실패보완·독립리뷰·인계는 ../mongodb-coach-token-backfill/ 문서를 따른다. 운영에 backfill을 적용한 것은 아니다. 다음은 coverage의 남은 코치 legacy 경로 사용처 점검과 운영·과정 관리자 기능을 작은 단위로 전환하는 것이다. 전체 운영 이전과 dev→main 완료 조건은 아직 충족되지 않았다.
+
+## 관리자 과정 조회·소프트 삭제 후속 (2026-09-29)
+
+d964cb2 기준에서 코치 legacy 이력의 실제 사용처를 확인했다. logProfileEdit는 기존PG adapter 내부이며 Mongo 프로필/평가 이력은 이미 구현되어 있다. 호출처 없는 logReviewEdit를 새 미전환 기능으로 중복 구현하지 않았다.
+
+다음 실제 경계인 admin/courses lookup과 과정 내 활성 운영 건 soft-delete를 별도 courseAdmin repository로 분리했다. 기본PG 쿼리·권한·DTO·재실행0·관계보존을 유지하며 명시Mongo context에서 snapshot·암호화한 삭제자/HMAC·원자적 감사·기존writer 충돌재시도를 검증한다. 새 삭제정책/스키마/운영selector 변경없음. 증거·최종리뷰·통합상태는 ../mongodb-course-admin/ 문서 참조. 다음후보는 삭제 운영 목록/복원 등 남은 운영 관리자 기능이다. 가져오기·Calendar·공지·전체실데이터이전·복원리허설·운영전환은 미완료로 유지하며 dev→main 완료조건은 아직 충족되지 않았다.

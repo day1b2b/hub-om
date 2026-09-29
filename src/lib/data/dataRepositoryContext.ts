@@ -1,3 +1,4 @@
+import type { CourseAdminRepository } from "./courseAdminRepository";
 import type { CoachTokenBackfillRepository } from "./coachTokenBackfillRepository";
 import type { CoachManagerMyPageRepository } from "./coachManagerMyPageRepository";
 import type { CoachContentRepository } from "./coachContentRepository";
@@ -24,6 +25,7 @@ export interface CoachPrivateAccessLogRepository {
   recordAccess(coachId: string, accessedByEmail: string, context: string): Promise<void>;
 }
 export interface DataRepositories {
+  courseAdmin: CourseAdminRepository;
   coachTokenBackfill: CoachTokenBackfillRepository;
   coachManagerMyPage: CoachManagerMyPageRepository;
   coachContent: CoachContentRepository;
