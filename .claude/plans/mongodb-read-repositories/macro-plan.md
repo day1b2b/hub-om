@@ -92,3 +92,7 @@ b401626 기반에서 deleted-operations GET/PUT를 별도 repository와 명시 d
 39c70e2에서 세 GET의 기본 PG·명시 activityReads 경계를 분리한다. private 부분검색/공개 LIKE·원문 HMAC users, legacy와 현재 대상 이름/기록 당시 fallback을 원본 PG oracle로 대조한다. 8초 전체 기한/scan별 fullrow32MiB20k의 Mongo 추가 안전제약을 명시한다. `.claude/plans/mongodb-activity-reads/`의 계획·검증·실행·리뷰·인계 기준이며 실제 운영 전환 완료를 의미하지 않는다.
 
 활동 조회 구현·합성 검증·독립 V1–V8 수락과 소유 자원 정리 완료. 일반901pass51skip/전체Mongo497pass0skip(mock4포함), PG6/native30/handler10은 중복 합산하지 않는다. typecheck/build PASS, lint기존7warning. 원격 통합은 해당 integration-review 기준. 다음 후보는 강사 Notion 동기화의 저장/합성 원천 경계이며 실제 Notion·운영 쓰기는 수행하지 않는다.
+
+## 강사 Notion 동기화 (2026-09-29)
+
+3dfa025 기준 feature/20260929-mongodb-instructor-notion-sync에서 저장/원천 경계를 분리한다. 기존 NO/legacy 매칭·수동 입력·행별 부분 성공을 유지하고 기존 Mongo 강사 위키 transaction으로 경합/암호화/감사를 검증한다. 생산 기본 PG, 실제 Notion 접근 없음. 구현·실행검증·독립V1–V3수락·소유자원정리완료. 일반905pass54skip/전체Mongo532pass0skip(mock4포함),PG5/native25/handler10은중복합산하지않는다. type/buildPASS,lint전체0error8warning후새testwarning을제거하고해당파일lintPASS(기존7warning잔존). 계획·실행근거는 ../mongodb-instructor-notion-sync/,원격통합은해당integration-review. 다음후보는매출동기화저장/합성원천경계. 소수 NO의 원본 PG 절단 동작은 실제 PG17.9로 확인했다. 전체 runtime/실제 복사·복원·최종 전환은 별도 미완료다.

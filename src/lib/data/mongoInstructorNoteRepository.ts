@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { MongoServerError, type ClientSession } from "mongodb";
 import type { InstructorNote, InstructorNoteRepository, InstructorNotionProfile } from "./instructorNoteRepository";
+import type { InstructorNotionRecord, InstructorNotionMatch, InstructorNotionSyncRepository } from "./instructorNotionSyncRepository";
 import { stripPiiFromNote } from "./instructorNotePii";
-import { encodeMongoRuntimeDocument, MongoDbNull } from "./mongoRuntimeCodec";
+import { encodeMongoRuntimeDocument, mongoRuntimeBlindIndex, MongoDbNull } from "./mongoRuntimeCodec";
 import { assertMongo, completeMongoRow, MongoOperationError, MongoOperationStore, type MongoOperationOptions, type MongoRow } from "./mongoOperationStore";
 import { assertMongoReadStoreReady } from "./mongoReadStore";
 import { operationAuditRow } from "./mongoOperationAudit";
@@ -43,8 +44,31 @@ function patchFields(patch: InstructorNote): MongoRow {
   return fields;
 }
 
+/** Sync writes notionProfile on every row. PG has no HMAC for this JSON field,
+ * so its randomized re-encryption is audited even when logical JSON is unchanged.
+ * Keep this compatibility rule local: manual saves retain their existing audit.
+ */
+function notionSyncAudit(previous: MongoRow | null, row: MongoRow): MongoRow | null {
+  const logical = operationAuditRow("InstructorNote", previous, row);
+  const profileWritten = row.notionProfile != null && row.notionProfile !== MongoDbNull;
+  if (previous && !logical && !profileWritten) return null;
+  const audit = logical ?? operationAuditRow("InstructorNote", null, row);
+  if (!audit) return null; // No activity context, as in PG scripts.
+  const changes: MongoRow = logical ? { ...logical.changes as MongoRow } : {};
+  if (!previous) {
+    // PG INSERT distinguishes missing OLD keys from present nullable columns.
+    for (const field of ["displayName", "notionId", "partnerId", "notes", "notionNo", "notionProfile", "notionSyncedAt"]) {
+      if (row[field] == null || row[field] === MongoDbNull) {
+        changes[field.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`)] = { redacted: true };
+      }
+    }
+  }
+  if (profileWritten) changes.notion_profile = { redacted: true };
+  return { ...audit, action: previous ? "update" : "create", changes };
+}
+
 /** Parallel validation only: explicit shadow writes, no production factory/environment fallback. */
-export class MongoInstructorNoteRepository implements InstructorNoteRepository {
+export class MongoInstructorNoteRepository implements InstructorNoteRepository, InstructorNotionSyncRepository {
   private readonly store: MongoOperationStore;
   private constructor(store: MongoOperationStore) { this.store = store; }
 
@@ -88,6 +112,72 @@ export class MongoInstructorNoteRepository implements InstructorNoteRepository {
     });
   }
 
+  /** open already performed readiness checks; workflow initialization does no IO. */
+  initialize(): void {}
+
+  private async matchNotionRecord(record: InstructorNotionRecord, session: ClientSession): Promise<{
+    previous: MongoRow | null; notionNo: number; by: InstructorNotionMatch["by"];
+  }> {
+    // Preserve the actual PG Int input conversion, including boundary fractions.
+    assertMongo(typeof record.notionNo === "number", "INSTRUCTOR_NOTION_ROW_FAILED");
+    const truncatedNo = Math.trunc(record.notionNo);
+    // BSON encodes negative zero as a double; PG Int stores it as ordinary zero.
+    const notionNo = Object.is(truncatedNo, -0) ? 0 : truncatedNo;
+    assertMongo(Number.isFinite(notionNo) && notionNo >= -2147483648 && notionNo <= 2147483647, "INSTRUCTOR_NOTION_ROW_FAILED");
+    const existing = await this.store.one("InstructorNote", { notionNo }, session);
+    if (existing) return { previous: existing, notionNo, by: "notionNo" };
+    assertMongo(typeof record.name === "string", "INSTRUCTOR_NOTION_ROW_FAILED");
+    const legacy = await this.store.scan("InstructorNote", {
+      notionNo: null,
+      instructorNamePiiIndex: mongoRuntimeBlindIndex("InstructorNote", "instructorName", record.name)
+    }, session);
+    // Full-row codec authenticates ciphertext and companions; verify the original
+    // exact name as well. Duplicate legacy names have no cross-backend winner rule.
+    assertMongo(legacy.every(row => row.instructorName === record.name && row.notionNo === null), "INSTRUCTOR_NOTION_ROW_FAILED");
+    // An empty HMAC result is not proof of absence with a wrong index key or
+    // a damaged legacy companion. Authenticate the remaining legacy namespace
+    // before creating a new identity; never silently repair it.
+    const fallback = legacy.length === 0 ? await this.store.scan("InstructorNote", { notionNo: null }, session) : [];
+    const previous = legacy[0] ?? fallback.find(row => row.instructorName === record.name) ?? null;
+    return { previous, notionNo, by: previous ? "legacy" : "none" };
+  }
+
+  async findMatch(record: InstructorNotionRecord): Promise<InstructorNotionMatch> {
+    try {
+      return await this.transaction(async session => {
+        const { previous, by } = await this.matchNotionRecord(record, session);
+        return { target: previous ? {
+          id: previous.id as string,
+          instructorName: previous.instructorName as string,
+          recruitAvoid: previous.recruitAvoid as boolean
+        } : null, by };
+      });
+    } catch { throw new MongoOperationError("INSTRUCTOR_NOTION_ROW_FAILED"); }
+  }
+
+  async applyRecord(record: InstructorNotionRecord): Promise<"created" | "updated"> {
+    try {
+      return await this.transaction(async session => {
+        // Never reuse preview targets or a prior attempt's row. Both driver and
+        // unique-key retries recompute the match, OR, document and audit here.
+        const { previous, notionNo } = await this.matchNotionRecord(record, session);
+        const note = record.note;
+        const fields: MongoRow = {
+          notionNo,
+          instructorName: record.name,
+          ...(note.notionId ? { notionId: note.notionId } : {}),
+          recruitAvoid: (previous?.recruitAvoid as boolean | undefined) || (note.recruitAvoid ?? false),
+          notionProfile: note.notion ?? MongoDbNull,
+          notionSyncedAt: note.notion?.syncedAt ? new Date(note.notion.syncedAt) : null
+        };
+        // Only mapped sync fields are overlaid; manual displayName/notes/partnerId
+        // and createdAt come from this attempt's authenticated current row.
+        await this.save(previous, fields, session, true);
+        return previous ? "updated" : "created";
+      });
+    } catch { throw new MongoOperationError("INSTRUCTOR_NOTION_ROW_FAILED"); }
+  }
+
   async getNote(name: string): Promise<InstructorNote> {
     return this.safe(async () => {
       const rows = (await this.store.findPrivateEqual("InstructorNote", "instructorName", name)).sort(byNotionNo);
@@ -103,7 +193,7 @@ export class MongoInstructorNoteRepository implements InstructorNoteRepository {
     return this.safe(async () => (await this.store.scan("InstructorNote")).map(toNote));
   }
 
-  private async save(previous: MongoRow | null, fields: MongoRow, session: ClientSession): Promise<InstructorNote> {
+  private async save(previous: MongoRow | null, fields: MongoRow, session: ClientSession, syncing = false): Promise<InstructorNote> {
     const now = new Date();
     const row = completeMongoRow("InstructorNote", previous
       ? { ...previous, ...fields, updatedAt: now }
@@ -113,7 +203,7 @@ export class MongoInstructorNoteRepository implements InstructorNoteRepository {
       const result = await this.store.collection("InstructorNote").replaceOne({ _id: previous.id as string }, document, { session });
       assertMongo(result.matchedCount === 1, "ROW_DISAPPEARED");
     } else await this.store.collection("InstructorNote").insertOne(document, { session });
-    const audit = operationAuditRow("InstructorNote", previous, row);
+    const audit = syncing ? notionSyncAudit(previous, row) : operationAuditRow("InstructorNote", previous, row);
     if (audit) await this.store.collection("ActivityChange").insertOne(encodeMongoRuntimeDocument("ActivityChange", audit), { session });
     return toNote(row);
   }
