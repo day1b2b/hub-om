@@ -1,6 +1,6 @@
 # MongoDB 병렬 이전 상위 계획
 
-최신 총괄 상태: Notion 4430763 통합 및 전체876pass19skip0fail 재실행·독립 검토 완료. 근거는 ../mongodb-coach-notion-sync/integration-review.md. 다음 작업은 이름 포함 원천 식별자 암호화 정책·고유키/검색·snapshot/runtime·기존 데이터 변환 보완이다. 운영 PG와 실제 데이터는 유지한다.
+최신 총괄 상태: 2026-09-29 콘텐츠 0656e8b 통합 및 동일 코드의 실행 로그·독립 코드 검토 완료. 근거는 ../mongodb-coach-content/integration-review.md. 다음 작업은 담당자 내 페이지 coachMyPage의 repository/명시 Mongo context 전환이다. 원천 식별자 암호화와 코치 관리 구현은 통합됐으며 운영 적용은 미실행이다.
 
 목표: 기존 PostgreSQL 운영을 유지하며 개인정보를 암호화한 별도 MongoDB를 검증한 뒤 안전하게 전환한다.
 
