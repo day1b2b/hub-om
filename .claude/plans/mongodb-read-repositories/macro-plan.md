@@ -62,3 +62,9 @@ bc77a12에서 기존 활성 예약·확정 과정 조회를 PG 기본 adapter와
 d964cb2 기준에서 코치 legacy 이력의 실제 사용처를 확인했다. logProfileEdit는 기존PG adapter 내부이며 Mongo 프로필/평가 이력은 이미 구현되어 있다. 호출처 없는 logReviewEdit를 새 미전환 기능으로 중복 구현하지 않았다.
 
 다음 실제 경계인 admin/courses lookup과 과정 내 활성 운영 건 soft-delete를 별도 courseAdmin repository로 분리했다. 기본PG 쿼리·권한·DTO·재실행0·관계보존을 유지하며 명시Mongo context에서 snapshot·암호화한 삭제자/HMAC·원자적 감사·기존writer 충돌재시도를 검증한다. 새 삭제정책/스키마/운영selector 변경없음. 증거·최종리뷰·통합상태는 ../mongodb-course-admin/ 문서 참조. 다음후보는 삭제 운영 목록/복원 등 남은 운영 관리자 기능이다. 가져오기·Calendar·공지·전체실데이터이전·복원리허설·운영전환은 미완료로 유지하며 dev→main 완료조건은 아직 충족되지 않았다.
+
+## 삭제 운영 목록·복원 후속 (2026-09-29)
+
+b401626 기반에서 deleted-operations GET/PUT를 별도 repository와 명시 deletedOperations context로 연결했다. PG 기본·8필드·exact문자열ID·삭제/활성/반복복원의updatedAt갱신·감사제외를 보존한다. Mongo snapshot관계조회와 삭제자/HMAC초기화·부분쓰기·원자적감사, 기존일반/과정삭제writer와경합을 실제PG원본query oracle 및합성Mongo로검증한다. 실행·독립리뷰·통합상태는 ../mongodb-deleted-operations/ 문서. 운영DB나원천에복원을실행한것은아니다.
+
+후속작은개발단위후보는 기존관리자 onsite-required-backfill 및 om-assignment-status-backfill의 count/apply 경계다. 두기능의기존버튼/조건/응답과명확한업무필드를유지하고 실제운영보정은수행하지않는다. 운영이전/복구리허설/생산backend선택/dev→main은미완료.

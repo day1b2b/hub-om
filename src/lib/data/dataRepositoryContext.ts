@@ -1,3 +1,4 @@
+import type { DeletedOperationRepository } from "./deletedOperationRepository";
 import type { CourseAdminRepository } from "./courseAdminRepository";
 import type { CoachTokenBackfillRepository } from "./coachTokenBackfillRepository";
 import type { CoachManagerMyPageRepository } from "./coachManagerMyPageRepository";
@@ -25,6 +26,7 @@ export interface CoachPrivateAccessLogRepository {
   recordAccess(coachId: string, accessedByEmail: string, context: string): Promise<void>;
 }
 export interface DataRepositories {
+  deletedOperations: DeletedOperationRepository;
   courseAdmin: CourseAdminRepository;
   coachTokenBackfill: CoachTokenBackfillRepository;
   coachManagerMyPage: CoachManagerMyPageRepository;
