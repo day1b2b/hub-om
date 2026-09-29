@@ -1,6 +1,6 @@
 # MongoDB 병렬 이전 상위 계획
 
-최신 총괄 상태: 2026-09-29 콘텐츠 0656e8b 통합 및 동일 코드의 실행 로그·독립 코드 검토 완료. 근거는 ../mongodb-coach-content/integration-review.md. 다음 작업은 담당자 내 페이지 coachMyPage의 repository/명시 Mongo context 전환이다. 원천 식별자 암호화와 코치 관리 구현은 통합됐으며 운영 적용은 미실행이다.
+최신 총괄 상태: 2026-09-29 콘텐츠 0656e8b 통합 bc77a12 및 동일 코드의 실행 로그·독립 코드 검토 완료. 근거는 ../mongodb-coach-content/integration-review.md. 담당자 내 페이지 coachMyPage는 별도 feature/20260929-mongodb-manager-my-page에서 repository/명시 Mongo context 구현·검증했으며 최종 인계 상태는 ../mongodb-manager-my-page/handoff.md를 따른다. 총괄 통합은 별도다. 원천 식별자 암호화와 코치 관리 구현은 통합됐으며 운영 적용은 미실행이다.
 
 목표: 기존 PostgreSQL 운영을 유지하며 개인정보를 암호화한 별도 MongoDB를 검증한 뒤 안전하게 전환한다.
 
@@ -48,3 +48,7 @@ feature/20260923-mongodb-coach-master-restore에서 태그 마스터·삭제 코
 ## 코치 메모·콘텐츠·관리 조회 후속 (2026-09-29)
 
 feature/20260929-mongodb-coach-content에서 메모 CRUD/피드/월 등록현황·status/관리페이지 삭제수를 명시 repository 경계로 연결한다. 이전 9/23 임시 작업과 리뷰 stall 결과를 재사용하지 않고 e1b9749부터 재구현했다. 실제 PG/Mongo 대조로 다중 묶음 cursor 오류와 콘텐츠 감사 표현 차이를 발견·보완했다. 최신 검증·독립 리뷰·원격 인계 상태는 ../mongodb-coach-content/execution-review.md와 handoff.md를 따른다. 총괄 통합은 별도이며 생산 기본은 PG다. 나머지 coverage 기능·실제복사·복구리허설·운영전환·브라우저초안 암호화는 미완료다.
+
+## 담당자 내 페이지 후속 (2026-09-29)
+
+bc77a12에서 기존 활성 예약·확정 과정 조회를 PG 기본 adapter와 명시 Mongo context로 분리했다. 이메일 exact/HMAC 확인, 취소여부와 무관한 확정 링크·예약 coach 우선, 기존 이름 매칭·그룹·기간·슬롯·삭제 coach 포함을 보존한다. Mongo 한 메서드 안의 명단과 관계를 같은 snapshot으로 읽는다. 실제 PG45 migration·독립 DTO와 Mongo 비교 및 실제 page/admin guard 경계를 검증한다. 최종 결과는 ../mongodb-manager-my-page/execution-review.md. 다음 기능 후보는 coachAccessTokenBackfill이며 쓰기·키·재실행 계약을 별도 계획으로 검토한다. token backfill, 다른 coverage 기능 및 운영 이전은 이번 단위에 포함하지 않았다. 전체 미완료이므로 dev→main 병합 조건도 아직 충족되지 않았다.

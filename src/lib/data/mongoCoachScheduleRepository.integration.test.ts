@@ -348,7 +348,9 @@ test("actual coach schedule/reservation handlers against an isolated Mongo repli
         assert.equal((await reservationRoute.POST(reservationRequest(id, "POST", dates), coachContext(id))).status, 200);
         const before = await store.collection("CoachDayReservation").find({ coachId: id }).sort({ _id: 1 }).toArray();
         const changes = store.collection("ActivityChange"), count = await changes.countDocuments();
-        const cancellationOrder = await store.collection("CoachDayReservation").find({ coachId: id, date: { $in: dates.map(value => new Date(`${value}T00:00:00.000Z`)) }, cancelledAt: null }, { collation: { locale: "simple" } }).toArray();
+        // cancelDates uses store.scan's _id keyset order, not natural insertion order.
+        // Reject the second actual audit so the assertion always covers a prior write rollback.
+        const cancellationOrder = await store.collection("CoachDayReservation").find({ coachId: id, date: { $in: dates.map(value => new Date(`${value}T00:00:00.000Z`)) }, cancelledAt: null }, { collation: { locale: "simple" } }).sort({ _id: 1 }).toArray();
         assert.equal(cancellationOrder.length, 2);
         const rejectedId = cancellationOrder[1]._id;
         await store.db.command({ collMod: changes.collectionName, validator: { $and: [operationMongoValidator("ActivityChange"), { $nor: [{ targetType: "coach_day_reservations", action: "update", targetId: rejectedId }] }] } });
