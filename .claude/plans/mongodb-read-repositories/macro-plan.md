@@ -72,3 +72,7 @@ b401626 기반에서 deleted-operations GET/PUT를 별도 repository와 명시 d
 ## 관리자 현장 투입·OM 배정 상태 보정 후속 (2026-09-29)
 
 118e276에서 두 관리자 보정 GET/POST를 operationBackfill 경계로 분리한다. 기존 Y/ASSIGNMENT_PLANNED 목표·exact placeholder 조건·대상0/재실행·권한·응답을 유지한다. HMAC 후보 검증·부분 갱신·transaction 감사·기존 writer 경합을 실제합성 PG 원본query oracle 및 Mongo로 검증한다. 실행/독립리뷰/인계는 ../mongodb-operation-backfill/을 따른다. 기존 onsite CLI·관리자 DB 호스트/셀·과정명 복원 등 다른 기능과 실제 운영 보정은 별도다. 실데이터 이전·복구리허설·운영전환 및 dev→main 완료조건은 아직 충족하지 않았다.
+
+## 과정명 복원 미리보기·선택 적용 (2026-09-29)
+
+95cdb6f에서 courseNameRestore를 PG기본 adapter와 명시Mongo 경계로 분리했다. 기존 근거 차단/metadata/지문/1~100선택 계약을 유지하고 내부singleton guard로 복원끼리의 disjoint 쓰기 경쟁을 처리한다. guard는 업무모델·PG스키마가 아닌 coordination 컬렉션이며 counter를 더미 잠금으로 사용하지 않는다. 일반893pass/42skip·전체Mongo360pass/0skip(mock4포함)·실PG대조/SSI8pass·handler/factory8pass·typecheck/build·lint0error/기존7warning을 확인했다. 중복 묶음은 합산하지 않는다. 검증·리뷰·통합은 ../mongodb-course-name-restore/에 기록한다. 다음 작은 후보는 관리자 DB 호스트/셀 편집이며 별도 계획으로 계약을 확인한다. 운영복원과 전체앱전환·실데이터이전·복구리허설·dev→main은 미완료다.
