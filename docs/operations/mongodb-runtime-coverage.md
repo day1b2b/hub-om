@@ -165,7 +165,7 @@
 
 ## 관리자 운영 보정 API 후속 (2026-09-29)
 
-현장 투입 여부·OM 배정 상태 보정의 두 GET/POST를 별도 repository로 연결했다. 원본 exact 조건·부분 갱신·재실행0을 보존하며 Mongo 후보 HMAC/원문 검증·감사 원자성을 검증한다. 최신 실행·독립 리뷰·통합 상태는 `.claude/plans/mongodb-operation-backfill/`을 따른다. `/admin/database` 호스트 전체 및 legacy PG CLI `scripts/backfill-onsite-required-y.ts`는 이번 범위 밖이다. 운영 보정 실행과 전체 이전은 미완료다.
+현장 투입 여부·OM 배정 상태 보정의 두 GET/POST를 별도 repository로 연결했다. 원본 exact 조건·부분 갱신·재실행0을 보존하며 Mongo 후보 HMAC/원문 검증·감사 원자성을 검증한다. 최신 실행·독립 리뷰·통합 상태는 `.claude/plans/mongodb-operation-backfill/`을 따른다. `/admin/database` 호스트 전체는 당시 범위 밖이었고 이후 runtime 조립을 완료했다. legacy `scripts/backfill-onsite-required-y.ts`도 2026-10-01 기본 PG/명시 Mongo CLI 경계로 연결했다. 운영 보정 실행과 전체 이전은 미완료다.
 
 ## 과정명 복원 경계 후속 (2026-09-29)
 
@@ -329,3 +329,7 @@ health·관리자 코치 JSON export·request/private audit·activity prune를 �
 ## 활동 정리 CLI runtime 연결 (2026-10-01)
 
 기본 PostgreSQL CLI를 보존하면서 exact `--backend=mongodb-shadow` 선택만 준비된 operational runtime에 연결했다. 환경 누락·미준비 namespace는 mutation과 PG fallback 없이 실패한다. 상세 범위는 [활동 정리 CLI 문서](mongodb-activity-prune-cli-runtime.md)를 따른다. 운영 예약·배포 설정은 미변경이다.
+
+## 현장 투입 보정 CLI runtime 연결 (2026-10-01)
+
+legacy raw SQL `db:backfill:onsite-required-y`를 기존 operationBackfill repository command로 교체했다. 기본 PG와 dry-run/`--apply`·대상 의미를 유지하고 exact Mongo selector만 준비된 admin maintenance shadow에 연결한다. 상세 범위는 [현장 투입 보정 CLI 문서](mongodb-onsite-backfill-cli-runtime.md)를 따른다. 운영 실행·예약·배포 설정은 미변경이다.

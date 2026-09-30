@@ -247,3 +247,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 활동 정리 CLI runtime 후속 (2026-10-01)
 
 `feature/20261001-mongodb-activity-prune-cli-runtime`에서 실제 `activity:prune` entrypoint를 기본 PG와 exact 명시 Mongo shadow로 분리한다. Mongo 선택은 준비된 operational runtime만 열고 schema 준비·수리·fallback을 하지 않는다. 실행·독립 리뷰·통합은 `../mongodb-activity-prune-cli-runtime/` 기록을 따른다. 운영 예약·배포 설정과 production 전체 selector, 실데이터 이전/dev→main은 미완료다.
+
+## 현장 투입 보정 CLI runtime 후속 (2026-10-01)
+
+`feature/20261001-mongodb-onsite-backfill-cli-runtime`에서 legacy `db:backfill:onsite-required-y` raw SQL을 기존 operationBackfill command로 교체한다. 기본 PG·dry-run/`--apply` 의미를 유지하고 명시 Mongo는 준비된 admin maintenance shadow만 연다. 실행·독립 리뷰·통합은 `../mongodb-onsite-backfill-cli-runtime/` 기록을 따른다. 운영 보정·예약·배포와 production 전체 selector, 실데이터 이전/dev→main은 미완료다.
