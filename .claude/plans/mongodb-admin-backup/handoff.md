@@ -1,6 +1,6 @@
 # 관리자 백업 인계
 
-현재feature/20260930-mongodb-admin-backup, 구현·검증·독립리뷰·소유자원정리완료. 원격통합은integration-review를따른다. Level3필수산출물완비, 다음resume action start_next_task(통합확인후).
+현재feature/20260930-mongodb-admin-backup, 구현·검증·독립리뷰·소유자원정리완료. 제품e7e1c98원격통합완료, 후속기록은integration-review를따른다. Level3필수산출물완비, 다음resume action start_next_task(통합확인후).
 
 관리자 backup POST를 기본PG/명시adminBackup repository로 분리했다. 기존 secret 또는 실제 PII admin guard, withActivity, 파일명·headers·exportedAt/counts/data와11개모델전체행·보관metadata6필드최근20개를 유지한다. 승인 응답의 복호화 개인정보와 저장상태 암호화를 구분하며 Mongo companion은최상위에서만제거해사용자JSON키를보존한다. Mongo단일snapshot·누적2만행/32MiB/60초는명시검증범위의보호한계이며초과시전체reject한다. PG에새한도는없다. 저장소실패는cause없는ADMIN_BACKUP_READ_FAILED이며인증오류/withActivity500감사는기존제어흐름을유지한다.
 
