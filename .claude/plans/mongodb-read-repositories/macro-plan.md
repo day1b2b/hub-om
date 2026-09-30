@@ -295,3 +295,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 운영 JSON 가져오기 CLI runtime 후속 (2026-10-01)
 
 `feature/20261001-mongodb-operations-import-cli`에서 legacy raw pg JSON 가져오기를 encrypted PostgreSQL/명시 prepared Mongo repository command로 교체한다. 기존 정규화·operationId/업무키 매칭·회사/과정/운영과 run/source 저장을 유지하며 dry-run/apply gate, 같은 파일 중복, 전체 transaction·guard·재실행을 검증한다. 실행·독립 리뷰·통합은 `../mongodb-operation-import-cli/` 기록을 따른다. 운영 실행·production selector·실데이터 이전/dev→main은 미완료다.
+
+### 2026-10-01 만족도 CSV 드라이런 CLI 읽기 경계
+
+`feature/20261001-mongodb-next-runtime-audit`에서 보관된 `satisfaction:dry-run`의 raw pg 조회를 encrypted PostgreSQL/명시 prepared Mongo OperationRepository로 교체한다. 기존 CSV 정규화·매칭·승인된 표 출력을 유지하며 actual 두 저장소 결과와 저장 불변을 검증한다. 실행·독립 리뷰·통합은 `../mongodb-satisfaction-dry-run-cli/` 기록을 따른다. 기능 재활성화·운영 실행·production selector·실데이터 이전/dev→main은 미완료다.

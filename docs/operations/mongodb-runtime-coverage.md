@@ -377,3 +377,7 @@ legacy raw pg `db:promote-source-only`를 기본 encrypted PostgreSQL/명시 pre
 ## 운영 JSON 가져오기 CLI runtime 연결 (2026-10-01)
 
 legacy raw pg `db:import:operations`를 기본 encrypted PostgreSQL/명시 prepared Mongo shadow repository로 교체한다. 기존 JSON 정규화·operationId/업무키 매칭·회사/과정/운영 갱신·가져오기 실행/원천 행을 유지하고 dry-run/apply, 같은 파일 중복, 암호화 저장, 전체 transaction rollback·재실행을 검증한다. 상세 범위는 [운영 JSON 가져오기 문서](mongodb-operation-import-cli.md)를 따른다. 운영 실행·배포 설정은 미변경이다.
+
+## 만족도 CSV 드라이런 CLI runtime 연결 (2026-10-01)
+
+보관된 수동 점검 도구 `satisfaction:dry-run`의 raw pg 조회를 기존 OperationRepository 기반 기본 encrypted PostgreSQL/명시 prepared Mongo shadow 읽기 경계로 교체한다. 기존 CSV 정규화·매칭·표시 의미, read-only와 오류 비노출을 유지하고 실제 두 저장소의 동일 결과와 저장 불변을 검증한다. 상세 범위는 [만족도 CSV 드라이런 문서](mongodb-satisfaction-dry-run-cli.md)를 따른다. 기능 재활성화·운영 CSV·Google 접근·배포 설정은 미변경이다.
