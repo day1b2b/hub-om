@@ -289,3 +289,7 @@ Google Drive(A)와 OneDrive(B)는 백업 **후보**만 확정했다. 실제 계�
 ## PostgreSQL 정렬·시간대 사전 점검 (2026-09-30)
 
 `scripts/check-postgres-runtime-contract.ts`는 앱과 같은 UTC 세션의 시스템 카탈로그와 고정 합성 문자열만 읽는 preflight다. 연결 시작부터 read-only를 강제하고 UTF8·UTC·UTF-8 byte 정렬·collation version 일치를 각각 판정한다. 합성 PostgreSQL 17/18 C locale에서는 compatible/0, PostgreSQL 18 ICU `ko-KR`에서는 byte ordering 불일치만 blocked/2였고 사용자 테이블은 모두 0개였다. 실제 운영 실행은 하지 않았으므로 운영 collation/TZ 확인 완료로 표시하지 않는다. 절차와 판정은 [사전 점검 문서](postgres-runtime-contract-preflight.md)를 따른다. 다음은 이 결과를 전제로 하는 전체 앱·활성 작업의 Mongo runtime 조립이며 실제 A/B 백업·각 복원·복사·최종 전환과 dev→main은 계속 미완료다.
+
+## 내부 운영 runtime 조립 (2026-09-30)
+
+health·관리자 코치 JSON export·request/private audit·activity prune를 동일 client/database/namespace의 명시 shadow scope로 조립했다. 빈 namespace만 준비하고 기존 namespace는 쓰기 없이 전체 readiness를 확인한다. scope 전체 잠금으로 요청 중 다른 runtime 중첩 전환을 막고 서로 다른 최상위 작업의 namespace는 격리한다. 실제 MongoDB 8.0.30 합성 검증과 세부 한계는 [운영 runtime 문서](mongodb-operational-runtime.md)를 따른다. 생산 selector·전체 Next 요청·활성 CLI/예약 작업·실백업/복원/복사/최종 전환은 계속 미완료다.

@@ -207,3 +207,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## PostgreSQL runtime 전제 점검 후속 (2026-09-30)
 
 `feature/20260930-mongodb-runtime-composition`에서 첫 조립 선행 게이트로 읽기 전용 `scripts/check-postgres-runtime-contract.ts`를 추가한다. 시스템 카탈로그와 고정 합성 문자열만 사용해 앱의 UTC 세션, UTF8, byte 정렬, collation version을 판정하며 연결 시작부터 read-only다. 합성 PostgreSQL 17/18 C/UTF8은 compatible/0, PostgreSQL 18 ICU `ko-KR`은 ordering 불일치 blocked/2였고 업무 테이블은 모두 0개였다. 실제 운영 DB에는 접근하지 않았으므로 운영 증거는 0이며, blocked/실행 실패를 PASS로 처리하지 않는다. 다음 구현은 이 preflight를 전제로 한 같은 Mongo namespace의 runtime repository 조립이다. 운영 selector·배포 설정·실 A/B 백업/복원·복사·최종 전환과 dev→main은 미완료다.
+
+## 내부 운영 runtime scope 후속 (2026-09-30)
+
+`feature/20260930-mongodb-runtime-scope`에서 외부 원천이 없는 health/adminBackup/requestActivity/coachPrivateAccessLog/activityPrune를 같은 명시 shadow scope로 묶는다. 빈 namespace만 준비하며 기존 namespace는 자동 수리·삭제 없이 전체 open readiness가 맞아야 재개한다. scope lock으로 nested namespace 교체를 차단하고 독립 작업의 두 namespace 병렬 격리를 실제 MongoDB 8.0.30에서 검증한다. 실행·독립 리뷰·통합은 `../mongodb-runtime-scope/` 기록을 따른다. 생산 selector·전체 Next/활성 CLI·예약·배포 조립 및 실 A/B 백업/복원/복사/최종 전환은 미완료다.

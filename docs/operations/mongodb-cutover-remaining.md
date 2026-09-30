@@ -19,6 +19,8 @@
 
 `runWithDataRepositories`는 현재 테스트/내부 명시 주입 장치다. 생산 요청 전체를 구성하는 진입점은 아직 없다. 여러 factory는 기본 PG adapter를 반환하며, operationRepositoryFactory는 CalendarReflectingOperationRepository(new PrismaOperationRepository()), coachRepositoryFactory는 Prisma 고정이다. 일반 getTeamMemberRepository의 local/Prisma/Notion 선택과 저장용 명단 scope도 구분해야 한다.
 
+내부 운영 포트의 첫 조립 단위는 [Mongo operational runtime](mongodb-operational-runtime.md)으로 묶었다. health·코치 JSON export·request/private audit·activity prune가 같은 borrowed client/database/namespace를 쓰며 빈 shadow만 준비하고 기존 상태는 read-only readiness로만 연다. 이는 생산 요청 전체의 composition root나 backend selector가 아니며 실제 활성 CLI·예약·Next 서버 연결은 남아 있다.
+
 남은 기능 구현과 병행해 전체 요청·페이지·작업 실행의 저장소 묶음, 원천 adapter, 요청 감사, Calendar 부작용, 키/오류 처리를 일관되게 연결한다. 누락된 저장소가 PG로 넘어가지 않는지 검사하고 실제 앱/브라우저·권한 흐름을 통합 확인한다. 환경변수 이름만 바꾸는 것으로 완료되지 않는다. 이 연결 코드는 먼저 격리 환경에서 검증하고 운영 설정은 바꾸지 않는다.
 
 health·백업·배포 entrypoint의 Prisma migration 실행 및 활성 CLI/예약 작업을 함께 점검해야 한다. 완성된 repository를 다시 만드는 단계가 아니라 실제 사용 경로에 맞춰 묶고 검증하는 단계다.
