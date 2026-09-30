@@ -138,3 +138,5 @@ OM 요청 첫단위 제품908175b 독립수락·총괄FF/push 및 양쪽원격SH
 일반922pass/71skip, PG54pass/0skip, Mongo파일별최종833(저장60/API22포함), type/build통과·lint기존7. 첫전체wrapper실패와 파일별결과교체를 명시하고 독립 코드/회귀수락·소유합성정리를 마쳤다. 원격 통합은 ../mongodb-import-promotion/integration-review.md 기준이다.
 
 다음별도Task는Calendar 저장/lease와 실제backfill 연결이다. 원본PG도잠금상실후부분쓰기/Google성공가능하므로새exactly-once를요구하지않고기존실패의미를검증한다. 실제원천/Drive/활동쓰기보존/backuphealth/CLI/전체앱조립 및 실A/B백업복원최종전환은 별도미완료. dev→main 조건은아직충족하지않았다.
+
+가져오기 반영 제품 `504782b9f69a921df7b6ec1422dcf103514494e7`를 작업 branch와 총괄 branch에 atomic push했고 원격 SHA 일치를 확인했다. 원본 workspace·main/dev·운영 설정은 그대로다. 다음은 별도 Calendar 저장·잠금 경계 Task다.
