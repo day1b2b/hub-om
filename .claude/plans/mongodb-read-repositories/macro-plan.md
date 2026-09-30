@@ -235,3 +235,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 관리자 유지보수 runtime scope 후속 (2026-10-01)
 
 `feature/20261001-mongodb-admin-maintenance-runtime`에서 과정 관리·삭제 운영·두 보정·request audit를 같은 명시 shadow scope로 조립한다. 실제 삭제→복원→보정 흐름과 준비 불변·scope 차단을 검증한다. 실행·리뷰·통합은 `../mongodb-admin-maintenance-runtime/` 기록을 따른다. production selector·운영 이전은 미완료다.
+
+## 사용자 관리 runtime scope 후속 (2026-10-01)
+
+`feature/20261001-mongodb-user-admin-runtime`에서 관리자 사용자 목록·등록·팀·역할 변경과 토큰 조회를 request audit와 같은 명시 shadow scope로 조립한다. 기존 권한·정규화 중복·응답 최소화·물리삭제 차단을 유지하고 실제 Mongo handler 흐름, 준비 불변, scope 혼입 차단과 저장 평문 비노출을 검증한다. 실행·독립 리뷰·통합은 `../mongodb-user-admin-runtime/` 기록을 따른다. 생산 기본 PG, 실백업 증거 0, 자동화 PAUSED, 운영 이전과 dev→main 미완료 상태는 변하지 않는다.
