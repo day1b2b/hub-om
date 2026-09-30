@@ -11,10 +11,11 @@ import { mock, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { isValidElement, type ReactElement, type ReactNode } from "react";
 import ts from "typescript";
-import { MongoClient } from "mongodb";
-import { ANNOUNCEMENT_MODELS, MongoAnnouncementRepository, prepareMongoAnnouncementStore } from "./mongoAnnouncementRepository";
-import { MongoRequestAuditRepository, prepareMongoRequestAuditStore, REQUEST_AUDIT_MODELS } from "./mongoRequestAuditRepository";
+import { BSON, MongoClient, type CommandStartedEvent, type Db } from "mongodb";
+import { MONGO_ANNOUNCEMENT_RUNTIME_MODELS, openMongoAnnouncementRuntime, prepareMongoAnnouncementRuntime } from "./mongoAnnouncementRuntime";
+import { MongoAnnouncementRepository } from "./mongoAnnouncementRepository";
 import { MongoOperationStore, operationMongoValidator } from "./mongoOperationStore";
+import { MongoRequestAuditRepository } from "./mongoRequestAuditRepository";
 import { runWithDataRepositories } from "./dataRepositoryContext";
 import type { AnnouncementFileInput } from "./announcements/announcementRepository";
 
@@ -89,19 +90,110 @@ test("announcement actual handlers/pages preserve authorization, multipart, stor
   const envNames = ["PII_ENCRYPTION_KEYS", "PII_ACTIVE_KEY_ID", "PII_INDEX_KEY", "PII_ALLOW_PLAINTEXT_READS", "ADMIN_EMAILS", "DEV_AUTH_BYPASS", "DATABASE_URL"];
   const saved = new Map(envNames.map(key => [key, process.env[key]]));
   const databaseName = `hub_om_shadow_announcement_handlers_${randomBytes(8).toString("hex")}`;
-  const client = new MongoClient(uri!, { directConnection: true, serverSelectionTimeoutMS: 5000 });
+  const client = new MongoClient(uri!, { directConnection: true, monitorCommands: true, serverSelectionTimeoutMS: 5000 });
+  const writes: CommandStartedEvent[] = [];
+  const mutatingCommands = new Set([
+    "create", "createIndexes", "collMod", "insert", "update", "delete", "drop", "dropDatabase", "dropIndexes",
+    "findAndModify", "bulkWrite", "renameCollection", "convertToCapped", "emptycapped", "mapReduce",
+  ]);
+  client.on("commandStarted", event => {
+    const outputAggregate = event.commandName === "aggregate" && Array.isArray(event.command.pipeline)
+      && event.command.pipeline.some((stage: unknown) => stage !== null && typeof stage === "object"
+        && (Object.hasOwn(stage, "$out") || Object.hasOwn(stage, "$merge")));
+    if (mutatingCommands.has(event.commandName) || outputAggregate) writes.push(event);
+  });
+  let closeCalls = 0;
+  const realClose = client.close.bind(client);
+  Object.defineProperty(client, "close", { configurable: true, value: async (...args: Parameters<MongoClient["close"]>) => {
+    closeCalls++; return await realClose(...args);
+  } });
   Object.assign(process.env, { PII_ENCRYPTION_KEYS: JSON.stringify({ fixture: randomBytes(32).toString("base64") }),
     PII_ACTIVE_KEY_ID: "fixture", PII_INDEX_KEY: randomBytes(32).toString("base64"), PII_ALLOW_PLAINTEXT_READS: "false", ADMIN_EMAILS: admin.user.email });
   delete process.env.DATABASE_URL; delete process.env.DEV_AUTH_BYPASS;
   const external = mock.method(globalThis, "fetch", async () => { throw new Error("Unexpected external access"); });
-  let connected = false;
+  let connected = false, ownsDatabase = false;
   try {
     await client.connect(); connected = true;
+    const databases = await client.db("admin").admin().listDatabases({ nameOnly: true });
+    assert.equal(databases.databases.some(database => database.name === databaseName), false);
+    ownsDatabase = true;
     const options = { client, databaseName, namespace: "shadow_handlers", allowShadowWrites: true as const };
-    await prepareMongoAnnouncementStore(options); await prepareMongoRequestAuditStore(options);
-    const store = new MongoOperationStore(options, [...new Set([...ANNOUNCEMENT_MODELS, ...REQUEST_AUDIT_MODELS])]);
-    const scope = { announcements: await MongoAnnouncementRepository.open(options), requestActivity: await MongoRequestAuditRepository.open(options) };
-    const run = <T>(work: () => Promise<T>, actor: Session | null = admin) => runWithDataRepositories(scope, () => actors.run(actor, work));
+    const secondRuntime = await prepareMongoAnnouncementRuntime({ ...options, namespace: "shadow_handlers_second" });
+    const runtime = await prepareMongoAnnouncementRuntime(options);
+    const store = new MongoOperationStore(options, MONGO_ANNOUNCEMENT_RUNTIME_MODELS);
+    const scope = runtime.repositories;
+    const runtimeSnapshot = async (namespace: string) => {
+      const names = new Set([...MONGO_ANNOUNCEMENT_RUNTIME_MODELS.map(model => `${namespace}_${model}`), `${namespace}_CoachSchedulingGuard`]);
+      const infos = (await client.db(databaseName).listCollections({}, { nameOnly: false }).toArray())
+        .filter(info => names.has(info.name)).sort((a, b) => a.name.localeCompare(b.name));
+      return BSON.EJSON.stringify(await Promise.all(infos.map(async info => ({
+        info,
+        indexes: await client.db(databaseName).collection(info.name).listIndexes().toArray(),
+        documents: await client.db(databaseName).collection(info.name).find({}).sort({ _id: 1 }).toArray(),
+      }))), { relaxed: false });
+    };
+    const readySnapshot = await runtimeSnapshot(options.namespace);
+    writes.length = 0;
+    await prepareMongoAnnouncementRuntime(options);
+    await openMongoAnnouncementRuntime(options);
+    assert.deepEqual(writes.map(event => event.commandName), []);
+    assert.equal(await runtimeSnapshot(options.namespace), readySnapshot);
+
+    let nestedCallbacks = 0;
+    assert.throws(() => runtime.run(() => secondRuntime.run(() => { nestedCallbacks++; })), /CALENDAR_SCOPE_MISMATCH/);
+    assert.equal(nestedCallbacks, 0);
+
+    const partialNamespace = "shadow_handlers_partial";
+    const foreignName = `${partialNamespace}_DataImportRun`;
+    await client.db(databaseName).createCollection(foreignName);
+    await client.db(databaseName).collection(foreignName).insertOne({ synthetic: "foreign-runtime-canary" });
+    const partialSnapshot = BSON.EJSON.stringify({
+      info: await client.db(databaseName).listCollections({ name: foreignName }, { nameOnly: false }).toArray(),
+      indexes: await client.db(databaseName).collection(foreignName).listIndexes().toArray(),
+      documents: await client.db(databaseName).collection(foreignName).find({}).toArray(),
+    }, { relaxed: false });
+    writes.length = 0;
+    await assert.rejects(prepareMongoAnnouncementRuntime({ ...options, namespace: partialNamespace }),
+      /^Error: MONGO_ANNOUNCEMENT_RUNTIME_FAILED$/);
+    assert.deepEqual(writes.map(event => event.commandName), []);
+    assert.equal(BSON.EJSON.stringify({
+      info: await client.db(databaseName).listCollections({ name: foreignName }, { nameOnly: false }).toArray(),
+      indexes: await client.db(databaseName).collection(foreignName).listIndexes().toArray(),
+      documents: await client.db(databaseName).collection(foreignName).find({}).toArray(),
+    }, { relaxed: false }), partialSnapshot);
+    await client.db("admin").command({ ping: 1 });
+    assert.equal(closeCalls, 0);
+
+    // Interrupt the real sequence after request-audit collections and guard are ready,
+    // but before the first announcement collection can be created.
+    const failedNamespace = "shadow_handlers_failed";
+    const originalDb = client.db.bind(client);
+    let interrupted = false;
+    Object.defineProperty(client, "db", { configurable: true, value: (name?: string, settings?: Parameters<MongoClient["db"]>[1]) => {
+      const db = originalDb(name, settings);
+      const create = db.createCollection.bind(db);
+      Object.defineProperty(db, "createCollection", { configurable: true, value: async (...args: Parameters<Db["createCollection"]>) => {
+        if (args[0] === `${failedNamespace}_Announcement`) { interrupted = true; throw new Error("synthetic announcement prepare interruption"); }
+        return await create(...args);
+      } });
+      return db;
+    } });
+    try {
+      await assert.rejects(prepareMongoAnnouncementRuntime({ ...options, namespace: failedNamespace }),
+        /^Error: MONGO_ANNOUNCEMENT_RUNTIME_FAILED$/);
+    } finally { Object.defineProperty(client, "db", { configurable: true, value: originalDb }); }
+    assert.equal(interrupted, true);
+    const failedSnapshot = await runtimeSnapshot(failedNamespace);
+    assert.ok(failedSnapshot.includes(`${failedNamespace}_CoachSchedulingGuard`));
+    writes.length = 0;
+    await assert.rejects(prepareMongoAnnouncementRuntime({ ...options, namespace: failedNamespace }),
+      /^Error: MONGO_ANNOUNCEMENT_RUNTIME_FAILED$/);
+    assert.deepEqual(writes.map(event => event.commandName), []);
+    assert.equal(await runtimeSnapshot(failedNamespace), failedSnapshot);
+    await client.db("admin").command({ ping: 1 });
+    assert.equal(closeCalls, 0);
+
+    const run = <T>(work: () => Promise<T>, actor: Session | null = admin) => runtime.run(() => actors.run(actor, work));
     const create = (files: AnnouncementFileInput[] = [], title = "Synthetic seeded announcement", authorName: string | null = admin.user.name) => scope.announcements.create({
       title, content: "<p>Seeded content</p>", authorEmail: admin.user.email, authorName, attachments: files
     });
@@ -259,8 +351,14 @@ test("announcement actual handlers/pages preserve authorization, multipart, stor
 
     await suite.test("missing request/business scopes fail without PG fallback; list page retains loadFailed", async () => {
       const before = await rawBusiness();
-      await assert.rejects(runWithDataRepositories({ announcements: scope.announcements }, () => actors.run(admin, () => collectionRoute.POST(req("POST", form())))), /DATA_REPOSITORY_NOT_CONFIGURED: requestActivity/);
-      await assert.rejects(runWithDataRepositories({ requestActivity: scope.requestActivity }, () => actors.run(admin, () => collectionRoute.POST(req("POST", form())))), /DATA_REPOSITORY_NOT_CONFIGURED: announcements/);
+      let registeredCallbacks = 0;
+      assert.throws(() => runWithDataRepositories({ announcements: scope.announcements }, () => { registeredCallbacks++; }), /CALENDAR_SCOPE_MISMATCH/);
+      assert.throws(() => runWithDataRepositories({ requestActivity: scope.requestActivity }, () => { registeredCallbacks++; }), /CALENDAR_SCOPE_MISMATCH/);
+      assert.equal(registeredCallbacks, 0);
+      const looseAnnouncements = await MongoAnnouncementRepository.open(options);
+      const looseAudit = await MongoRequestAuditRepository.open(options);
+      await assert.rejects(runWithDataRepositories({ announcements: looseAnnouncements }, () => actors.run(admin, () => collectionRoute.POST(req("POST", form())))), /DATA_REPOSITORY_NOT_CONFIGURED: requestActivity/);
+      await assert.rejects(runWithDataRepositories({ requestActivity: looseAudit }, () => actors.run(admin, () => collectionRoute.POST(req("POST", form())))), /DATA_REPOSITORY_NOT_CONFIGURED: announcements/);
       const list = await runWithDataRepositories({}, () => actors.run(admin, () => listPage()));
       assert.deepEqual(component(list, "AnnouncementList").props, { announcements: [], loadFailed: true });
       for (const page of [detailPage, editPage]) await assert.rejects(runWithDataRepositories({}, () => actors.run(admin, () => page(context(randomUUID())))), /DATA_REPOSITORY_NOT_CONFIGURED: announcements/);
@@ -317,11 +415,11 @@ test("announcement actual handlers/pages preserve authorization, multipart, stor
       } finally { await store.collection("Announcement").replaceOne({ _id: parent.id }, raw); }
       assert.equal(pgCalls, 0);
     });
-    assert.equal(pgCalls, 0); assert.equal(external.mock.callCount(), 0);
+    assert.equal(pgCalls, 0); assert.equal(external.mock.callCount(), 0); assert.equal(closeCalls, 0);
   } finally {
-    try { if (connected) await client.db(databaseName).dropDatabase(); }
+    try { if (connected && ownsDatabase) await client.db(databaseName).dropDatabase(); }
     finally {
-      try { await client.close(); }
+      try { await realClose(); }
       finally { external.mock.restore(); for (const [key, value] of saved) { if (value === undefined) delete process.env[key]; else process.env[key] = value; } }
     }
   }

@@ -23,6 +23,8 @@
 
 활동 조회의 세 GET은 [Mongo activity read runtime](mongodb-activity-read-runtime.md)으로 조립했다. 이 경계는 route policy상 요청 감사 제외인 `activityReads` 단일 포트이며, 브라우저가 보내는 각 API 요청에 scope가 필요하다는 점을 실제 handler로 검증했다. `/changes`의 코치 콘텐츠 쓰기와 전체 요청 selector는 포함하지 않는다.
 
+공지·첨부는 [Mongo announcement runtime](mongodb-announcement-runtime.md)으로 request audit와 함께 조립했다. 실제 API·페이지 계약과 준비 재실행을 검증했지만, production selector나 전체 Next 요청 composition은 아니다.
+
 남은 기능 구현과 병행해 전체 요청·페이지·작업 실행의 저장소 묶음, 원천 adapter, 요청 감사, Calendar 부작용, 키/오류 처리를 일관되게 연결한다. 누락된 저장소가 PG로 넘어가지 않는지 검사하고 실제 앱/브라우저·권한 흐름을 통합 확인한다. 환경변수 이름만 바꾸는 것으로 완료되지 않는다. 이 연결 코드는 먼저 격리 환경에서 검증하고 운영 설정은 바꾸지 않는다.
 
 health·백업·배포 entrypoint의 Prisma migration 실행 및 활성 CLI/예약 작업을 함께 점검해야 한다. 완성된 repository를 다시 만드는 단계가 아니라 실제 사용 경로에 맞춰 묶고 검증하는 단계다.

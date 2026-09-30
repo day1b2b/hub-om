@@ -297,3 +297,7 @@ health·관리자 코치 JSON export·request/private audit·activity prune를 �
 ## 활동 조회 runtime 조립 (2026-09-30)
 
 관리자 활동 목록·이용 현황·비공개 활동 피드의 `activityReads`를 명시 shadow runtime으로 조립했다. 실제 세 GET은 기존 정책대로 요청 감사를 쓰지 않으며, 준비된 namespace 재실행과 다른 모델만 있는 부분 namespace에서 mutation 0을 확인한다. 상세 검증과 범위는 [활동 조회 runtime 문서](mongodb-activity-read-runtime.md)를 따른다. `/changes`의 메모·리뷰 쓰기, production selector·전체 Next/활성 작업·운영 이전은 미완료다.
+
+## 공지·첨부 runtime 조립 (2026-10-01)
+
+공지·첨부와 request audit를 같은 client/database/namespace의 등록 shadow runtime으로 조립했다. 실제 API·페이지에서 multipart·첨부·소프트 삭제·업무/요청 감사 계약을 검증하고 기존·부분 namespace는 mutation 없이 실패하거나 연다. 상세 범위는 [공지 runtime 문서](mongodb-announcement-runtime.md)를 따른다. production selector·전체 Next/활성 작업·운영 이전은 미완료다.
