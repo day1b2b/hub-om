@@ -143,9 +143,9 @@ const uri = process.env.MONGODB_IMPORT_PROMOTION_TEST_URI;
 
 test("promotion actual POST: native Mongo and frozen route state-table oracle", { skip: !uri, timeout: 300_000 }, async suite => {
   const url = new URL(uri!);
-  assert.equal(url.protocol, "mongodb:"); assert.equal(url.hostname, "127.0.0.1"); assert.equal(url.port, "27839");
+  assert.equal(url.protocol, "mongodb:"); assert.equal(url.hostname, "127.0.0.1"); assert.ok(["27839", "27849"].includes(url.port));
   assert.equal(url.pathname, "/"); assert.equal(url.username, ""); assert.equal(url.password, ""); assert.equal(url.hash, "");
-  assert.equal(url.searchParams.get("replicaSet"), "importpromotion20260930");
+  assert.equal(url.searchParams.get("replicaSet"), url.port === "27849" ? "calendarboundary20260930" : "importpromotion20260930");
   for (const [name, value] of url.searchParams) {
     assert.ok(["replicaSet", "directConnection"].includes(name));
     if (name === "directConnection") assert.equal(value, "true");

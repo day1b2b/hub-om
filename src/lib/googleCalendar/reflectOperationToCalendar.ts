@@ -23,10 +23,6 @@ import {
   type CalendarEventLink
 } from "./calendarEventLinkRepository";
 
-function logSkip(operationId: string, reason: string): void {
-  console.warn(`[gcal] ${operationId} 반영 건너뜀: ${reason}`);
-}
-
 /**
  * 기능을 켜기 전부터 있던 과정은 캘린더에 올리지 않는다.
  * 그런 과정을 누가 수정했다는 이유로 뒤늦게 초대 메일이 나가면 받는 사람이 당황한다.
@@ -49,12 +45,12 @@ async function reflectOperationUnlocked(operation: OperationSession, trigger: Re
     const targets = await resolveCalendarTargets(operation);
     if (targets.unresolvedNames.length > 0) {
       // 초대만 빠뜨리고 일정은 그대로 만든다.
-      logSkip(operation.operationId, `이메일 미확인 참석자 ${targets.unresolvedNames.join(", ")}`);
+      console.warn("[gcal] CALENDAR_ATTENDEES_UNRESOLVED", targets.unresolvedNames.length);
     }
 
     const calendarId = resolvePartCalendarId(targets.partKey);
     if (!calendarId) {
-      logSkip(operation.operationId, `파트 캘린더를 찾지 못함(파트=${targets.partKey ?? "없음"})`);
+      console.warn("[gcal] CALENDAR_PART_NOT_FOUND");
       // 무음 누락 방지: 파트를 못 정하면(담당 OM 미배정 + 요청 LD 소속이 파트 아님) 담당자에게
       // DM으로 알린다. 생성 시점만 알린다 — 같은 과정을 다시 저장할 때마다 반복 알림이 가지 않게.
       if (trigger === "created") {
@@ -121,9 +117,7 @@ async function reflectOperationUnlocked(operation: OperationSession, trigger: Re
           eventId: recreatedId,
           eventDate: plan.eventDate
         });
-        console.info(
-          `[gcal] ${operation.operationId} ${plan.eventDate} 이벤트가 캘린더에 없어 다시 만듦(hub-om 저장 시점) — event=${recreatedId}`
-        );
+        console.info("[gcal] CALENDAR_EVENT_RECREATED");
         continue;
       }
 
@@ -141,8 +135,8 @@ async function reflectOperationUnlocked(operation: OperationSession, trigger: Re
       await deleteEvent(link.calendarId, link.eventId);
       await deleteMatchingCalendarEventLink(link);
     }
-  } catch (error) {
-    console.error(`[gcal] ${operation.operationId} 반영 실패:`, error);
+  } catch {
+    console.error("[gcal] CALENDAR_REFLECT_FAILED");
   }
 }
 
@@ -154,8 +148,8 @@ async function reflectOperation(operation: OperationSession, trigger: ReflectTri
       if (!current) return; // 생성 직후 취소·삭제된 회차를 오래된 객체로 되살리지 않는다.
       await reflectOperationUnlocked(current, trigger, skipEventId);
     });
-  } catch (error) {
-    console.error(`[gcal] ${operation.operationId} 반영 잠금 실패:`, error);
+  } catch {
+    console.error("[gcal] CALENDAR_REFLECT_LOCK_FAILED");
   }
 }
 
@@ -184,12 +178,12 @@ async function reflectOperationDeleteUnlocked(operationId: string): Promise<void
       await deleteEvent(link.calendarId, link.eventId);
       await deleteMatchingCalendarEventLink(link);
     }
-  } catch (error) {
-    console.error(`[gcal] ${operationId} 삭제 반영 실패:`, error);
+  } catch {
+    console.error("[gcal] CALENDAR_DELETE_FAILED");
   }
 }
 
 export async function reflectOperationDelete(operationId: string): Promise<void> {
   try { await withCalendarOperationLock(operationId, () => reflectOperationDeleteUnlocked(operationId)); }
-  catch (error) { console.error(`[gcal] ${operationId} 삭제 잠금 실패:`, error); }
+  catch { console.error("[gcal] CALENDAR_DELETE_LOCK_FAILED"); }
 }

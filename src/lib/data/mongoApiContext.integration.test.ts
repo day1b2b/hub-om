@@ -137,7 +137,8 @@ test("actual API/auth/activity and private access use one Mongo scope with no Po
       } finally { consoleMock.mock.restore(); }
       assert.throws(getPrismaClient, /DEFAULT_DATABASE_ACCESS_BLOCKED/);
       let externalWork = false;
-      await assert.rejects(withCalendarOperationLock("synthetic", async () => { externalWork = true; }), /DEFAULT_DATABASE_ACCESS_BLOCKED/);
+      // The new explicit Calendar port fails before the legacy raw-PG guard.
+      await assert.rejects(withCalendarOperationLock("synthetic", async () => { externalWork = true; }), /DATA_REPOSITORY_NOT_CONFIGURED: calendarLock/);
       assert.equal(externalWork, false);
       // Same retention bounds as PG, using synthetic records only.
       const old = { ...decoded, id: randomUUID(), occurredAt: new Date(Date.now() - 31 * 86_400_000) };

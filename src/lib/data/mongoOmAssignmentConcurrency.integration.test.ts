@@ -71,8 +71,8 @@ test("OM assignment V10–V12 native cross-writer evidence", { skip: !uri, timeo
   assert.equal(url.protocol, "mongodb:");
   assert.ok(["127.0.0.1", "localhost", "[::1]"].includes(url.hostname));
   // Keep an explicit disposable endpoint allowlist when the full regression uses a fresh server.
-  const expectedReplica = url.port === "27839" ? "importpromotion20260930" : url.port === "27829" ? "importstaging20260930" : "omassignment20260929";
-  assert.ok(["27819", "27829", "27839"].includes(url.port));
+  const expectedReplica = url.port === "27849" ? "calendarboundary20260930" : url.port === "27839" ? "importpromotion20260930" : url.port === "27829" ? "importstaging20260930" : "omassignment20260929";
+  assert.ok(["27819", "27829", "27839", "27849"].includes(url.port));
   assert.equal(url.username, ""); assert.equal(url.password, ""); assert.equal(url.pathname, "/"); assert.equal(url.hash, "");
   assert.deepEqual([...url.searchParams.keys()], ["replicaSet"]);
   assert.equal(url.searchParams.get("replicaSet"), expectedReplica);

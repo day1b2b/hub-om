@@ -1,3 +1,4 @@
+import { calendarErrorMessage } from "./calendarErrors";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { listCalendarEventLinks, deleteMatchingCalendarEventLink } from "./calendarEventLinkRepository";
 import { isCalendarWriteEnabled } from "./calendarWriteConfig";
@@ -61,7 +62,7 @@ export async function applyBackfilledCalendarCleanup(tokens: string[]) {
         await deleteMatchingCalendarEventLink(link);
       });
       outcome.ok = true;
-    } catch (error) { outcome.detail = error instanceof Error ? error.message : String(error); }
+    } catch (error) { outcome.detail = calendarErrorMessage(error); }
   }
   return { ok: outcomes.every(outcome => outcome.ok), dryRun: false, deletedEvents: outcomes.filter(outcome => outcome.googleDeleted).length, failedEvents: outcomes.filter(outcome => !outcome.ok).length, outcomes };
 }

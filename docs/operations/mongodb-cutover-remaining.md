@@ -8,8 +8,8 @@
 
 | 남은 단위 | 실제 남은 호출 근거 | 선행 관계와 외부 조치 |
 | --- | --- | --- |
-| 가져오기 승격·실원천·Drive 기록 | importPromotionService/driveImportResults 및 Sheets·Notion 가져오기 API | 파일 staging·목록/상세 명시 경계는 수락·통합 완료. 운영 승격·재실행·원자성·합성 Calendar 후처리는 구현·검증·독립 코드 수락을 마쳤다. 통합은 해당 기록을 따른다. 실제 Calendar 저장/잠금 연결은 다음 단위다. 실제 원천 연결/적재는 별도 실행 조건 필요 |
-| Calendar 반영·역동기화 | calendarEventLinkRepository/operationSessionTimestamps의 PG와 calendarOperationLock의 raw pg.Pool | 단순 운영 CRUD 구현과 별개. 저장 연결·시각·프로세스 간 잠금·외부 부작용을 같이 검증. 실제 Google 권한/캘린더 반영은 외부 조치 필요 |
+| 실원천·Drive 기록 | driveImportResults 및 Sheets·Notion 가져오기 API | 파일 staging·운영 승격·Calendar 명시 저장/잠금 경계는 수락했다. Drive 저장 이력 조회가 다음 작은 후보다. dry-run CLI도 실제 run/result를 저장하므로 조회 전환과 구별한다. 실제 원천 연결/적재·writer는 별도 필수 후속 |
+| Calendar 전체 앱/예약 작업 조립 | 기본 PG를 유지한 저장/시각 port와 명시 Mongo lease/runtime | 명시 경계 구현·원본PG/native/합성 Google 검증·독립 수락 완료. 원격 통합은 Calendar 기록을 따른다. 실제 Google 권한/메일·앱과 예약 작업 조립은 미완료 |
 | 백업·health | api/admin/backup raw snapshot, api/health PG 조회 | 전체 Mongo 선택과 함께 백업/복원·상태 판정 계약 설계. 실제 복원 검증은 3단계 |
 | CLI·예약 작업·배포 경로 | coverage는 src runtime 중심. 기존 backfill CLI/배포 entrypoint/로컬 파일은 별도 점검 | 호출·예약·배포 경로와 사용 여부를 확인하고 필요한 전환을 진행한다. 불명확한 도구를 임의 제외하지 않는다 |
 

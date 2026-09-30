@@ -4,9 +4,13 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash } from "node:crypto";
 import { Pool } from "pg";
 import { isCalendarWriteEnabled } from "./calendarWriteConfig";
-import { assertDefaultDatabaseAccess } from "../data/dataRepositoryContext";
+import type { CalendarLockHandle, CalendarLockPort } from "./calendarPersistence";
+import { runWithLockedRepositoryScope, getDataRepositoryOverride, assertDefaultDatabaseAccess } from "../data/dataRepositoryContext";
 
 const context = new AsyncLocalStorage<{ operationId: string; controller: AbortController; suppressReflection?: boolean }>();
+type ScopedCalendarContext = { operationId: string; port: CalendarLockPort; handle: CalendarLockHandle; suppressReflection?: boolean };
+const globalForCalendar = globalThis as unknown as { hubOmScopedCalendarLocks?: AsyncLocalStorage<ScopedCalendarContext> };
+const scopedContext = globalForCalendar.hubOmScopedCalendarLocks ??= new AsyncLocalStorage<ScopedCalendarContext>();
 const globalPool = globalThis as unknown as { calendarLockPool?: Pool };
 function pool(): Pool {
   if (!process.env.DATABASE_URL) throw new Error("캘린더 잠금에 DATABASE_URL이 필요합니다.");
@@ -17,9 +21,20 @@ function pool(): Pool {
   return globalPool.calendarLockPool;
 }
 export function calendarLockSignal(): AbortSignal | undefined {
-  return context.getStore()?.controller.signal;
+  return scopedContext.getStore()?.handle.signal ?? context.getStore()?.controller.signal;
 }
 export async function withCalendarOperationLock<T>(operationId: string, run: () => Promise<T>): Promise<T> {
+  const port = getDataRepositoryOverride("calendarLock");
+  const heldScope = scopedContext.getStore();
+  if (heldScope) {
+    if (heldScope.port !== port || heldScope.operationId !== operationId) throw new Error("CALENDAR_SCOPE_MISMATCH");
+    await heldScope.handle.assertActive();
+    return run();
+  }
+  if (port) {
+    if (!isCalendarWriteEnabled()) return run();
+    return port.withLock(operationId, handle => runWithLockedRepositoryScope(() => scopedContext.run({ operationId, port, handle }, run)));
+  }
   assertDefaultDatabaseAccess();
   if (!isCalendarWriteEnabled()) return run();
   const held = context.getStore();
@@ -58,8 +73,20 @@ export async function withCalendarOperationLock<T>(operationId: string, run: () 
   }
 }
 
-export function isCalendarReflectionSuppressed(): boolean { return context.getStore()?.suppressReflection === true; }
+/** Only explicit Mongo handles add an async pre-send check; the PG path is unchanged. */
+export async function assertCalendarLockActive(): Promise<void> {
+  const held = scopedContext.getStore();
+  if (held) {
+    if (getDataRepositoryOverride("calendarLock") !== held.port) throw new Error("CALENDAR_SCOPE_MISMATCH");
+    await held.handle.assertActive();
+  }
+}
+export function isCalendarReflectionSuppressed(): boolean {
+  return (scopedContext.getStore() ?? context.getStore())?.suppressReflection === true;
+}
 export function withoutCalendarReflection<T>(run: () => Promise<T>): Promise<T> {
+  const scoped = scopedContext.getStore();
+  if (scoped) return scopedContext.run({ ...scoped, suppressReflection: true }, run);
   const held = context.getStore();
   if (!held) throw new Error("역반영은 회차 잠금 안에서만 실행할 수 있습니다.");
   return context.run({ ...held, suppressReflection: true }, run);

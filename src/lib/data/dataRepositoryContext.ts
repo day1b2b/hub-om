@@ -1,3 +1,4 @@
+import type { CalendarPersistence, CalendarLockPort } from "../googleCalendar/calendarPersistence";
 import type { OmAssignmentRepository } from "./omRequest/omAssignmentContract";
 import type { OmAssignmentCalendar, OmAssignmentNotifier } from "./omRequest/omAssignmentEffects";
 import type { OperationRepository } from "./operationRepository";
@@ -42,6 +43,8 @@ export interface CoachPrivateAccessLogRepository {
   recordAccess(coachId: string, accessedByEmail: string, context: string): Promise<void>;
 }
 export interface DataRepositories {
+  calendarPersistence: CalendarPersistence;
+  calendarLock: CalendarLockPort;
   importPromotion: ImportPromotionRepository;
   importPromotionCalendar: ImportPromotionCalendar;
   imports: ImportRepository & ImportStagingRepository;
@@ -89,6 +92,8 @@ export interface DataRepositories {
 
 const globalForRepositories = globalThis as unknown as {
   hubOmDataRepositories?: AsyncLocalStorage<Readonly<Partial<DataRepositories>>>;
+  hubOmRegisteredRepositoryScopes?: WeakMap<object, Readonly<Partial<DataRepositories>>>;
+  hubOmLockedRepositoryScope?: AsyncLocalStorage<Readonly<Partial<DataRepositories>>>;
 };
 const repositoryContext = globalForRepositories.hubOmDataRepositories ??= new AsyncLocalStorage<Readonly<Partial<DataRepositories>>>();
 
@@ -96,6 +101,11 @@ const repositoryContext = globalForRepositories.hubOmDataRepositories ??= new As
  * Overrides select storage only; they never grant authentication or authorization.
  */
 export function runWithDataRepositories<T>(repositories: Partial<DataRepositories>, work: () => T): T {
+  const locked = lockedRepositoryScope.getStore();
+  if (locked && Object.entries(locked).some(([name, item]) => repositories[name as keyof DataRepositories] !== item)) {
+    throw new Error("CALENDAR_SCOPE_MISMATCH");
+  }
+  assertRegisteredRepositoryScope(repositories);
   return repositoryContext.run(Object.freeze({ ...repositories }), work);
 }
 
@@ -110,4 +120,35 @@ export function getDataRepositoryOverride<K extends keyof DataRepositories>(name
 
 export function assertDefaultDatabaseAccess(): void {
   if (repositoryContext.getStore()) throw new Error("DEFAULT_DATABASE_ACCESS_BLOCKED");
+}
+
+// Registered Calendar runtimes require their complete, immutable composition.
+// This checks object references before work (including request audit) can start.
+// Existing unregistered test scopes and the default backend retain their behavior.
+const registeredScopes = globalForRepositories.hubOmRegisteredRepositoryScopes ??= new WeakMap<object, Readonly<Partial<DataRepositories>>>();
+export function registerDataRepositoryScope(repositories: Readonly<Partial<DataRepositories>>): void {
+  const expected = Object.freeze({ ...repositories });
+  for (const value of Object.values(expected)) {
+    const prior = registeredScopes.get(value);
+    if (prior && Object.entries(prior).some(([name, item]) => expected[name as keyof DataRepositories] !== item)) {
+      throw new Error("CALENDAR_SCOPE_MISMATCH");
+    }
+  }
+  for (const value of Object.values(expected)) registeredScopes.set(value, expected);
+}
+function assertRegisteredRepositoryScope(repositories: Partial<DataRepositories>): void {
+  for (const value of Object.values(repositories)) {
+    if (!value) continue;
+    const expected = registeredScopes.get(value);
+    if (expected && Object.entries(expected).some(([name, item]) => repositories[name as keyof DataRepositories] !== item)) {
+      throw new Error("CALENDAR_SCOPE_MISMATCH");
+    }
+  }
+}
+
+const lockedRepositoryScope = globalForRepositories.hubOmLockedRepositoryScope ??= new AsyncLocalStorage<Readonly<Partial<DataRepositories>>>();
+/** A held Calendar lease cannot be carried into another repository scope. */
+export function runWithLockedRepositoryScope<T>(work: () => T): T {
+  const current = repositoryContext.getStore();
+  return current ? lockedRepositoryScope.run(current, work) : work();
 }

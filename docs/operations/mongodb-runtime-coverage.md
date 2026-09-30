@@ -51,7 +51,7 @@
 | 강사 위키·노션 동기화 | `lib/data/prismaInstructorNoteRepository.ts`, `lib/instructors/notionInstructorSync.ts` | InstructorNote | 실제 save route와 Notion GET/POST의 명시 context 검증. sync는 별도 원천/저장 port와 PG adapter를 사용하며 기본 PG 유지 |
 | 가져오기·staging·승격·Drive 기록 | `lib/data/prismaImportRepository.ts`, `importStagingWriter.ts`, `prismaImportPromotionRepository.ts`, `lib/driveImports/driveImportResults.ts`; `api/admin/imports/{upload,google-sheets/import,notion/import}`; `app/admin/imports/**` | DataImportRun, OperationSourceRecord, Company, Course, OperationSession, DriveImportRun, DriveImportResult | 업로드→staging→목록/상세는 명시 imports 경계 구현·영향 검증. 최종 수락은 mongodb-import-staging 실행 기록 기준. 승격은 명시 경계 구현·합성 검증·독립 코드 수락을 마쳤으며 통합은 해당 기록을 따른다. 실제 Sheets/Notion 읽기와 적재·Drive 기록은 후속. 외부 소스 읽기 자체와 저장을 구분 |
 | 매출 동기화의 생산 연결 | `lib/data/prismaSalesRevenueSyncRepository.ts`와 기본 Salesmap/알림 adapter | Course, SalesRevenueSyncLog | 명시 Mongo 경계는 구현. 전체 생산 구성·실제 원천/운영 금액 반영은 별도 |
-| Google Calendar | `lib/data/calendarReflectingOperationRepository.ts` → calendar 모듈; `lib/googleCalendar/calendarEventLinkRepository.ts`, `operationSessionTimestamps.ts`, `calendarOperationLock.ts` | CalendarEventLink, OperationSession; 별도 `pg.Pool`, advisory lock | 이벤트 연결·역동기화·시각 갱신·프로세스 간 잠금. Mongo operation CRUD만으로 외부 캘린더 부작용을 대체하지 않음 |
+| Google Calendar | `MongoCalendarPersistence`/`MongoCalendarOperationLock`/명시8port runtime → 기존 Calendar 모듈 | 기본 PG/별도 `pg.Pool` 유지. 구현·원본PG/native/합성 Google 검증·독립 리뷰 수락 | 실제 promotion→backfill→합성 Google→mapping/감사 및 인접 forward/reverse/cleanup을 검증했다. 전체 앱 선택·실Google·예약 작업 연결은 미완료. 원격 통합은 [기록](../../.claude/plans/mongodb-calendar-boundary/integration-review.md), [현재 범위](mongodb-calendar-boundary.md) |
 | 활동 요청·변경 이력·활동 피드 | `lib/activity/request.ts`, `database.ts`, `retention.ts`, `presentation.ts`; `api/activity-feed`, `api/admin/activity`, `/usage` | ActivityRequest, ActivityChange 및 이름 해석에 쓰이는 업무 모델; `set_config`, PG trigger, SQL DELETE | 조회 세 GET는 명시 activityReads context/기본PG 경계로 연결했다. 전역 요청 연결·트리거 귀속·보존 작업의 실제 운영 연결은 별도다. MongoOperation의 ActivityChange 기록은 이 전체를 대체하지 않음 |
 | 관리자 DB·백업·건강 확인 | `lib/admin/databaseDashboard.ts`, `api/admin/database/cell`, `api/admin/backup`, `api/health` | 여러 업무 모델 및 archive snapshot raw SQL; `SELECT 1` | 8표 조회/4표 셀 수정과 페이지 담당자 명단은 명시 context로 연결. 백업 범위·health의 DB 판정·복구 절차는 미전환. PG health를 그대로 두면 Mongo 상태를 확인하지 못함 |
 
@@ -210,3 +210,7 @@ a52f191 기반 명시 저장/source/notifier와 실제 GET/POST 경계 구현. �
 일반922pass/71skip, PG54, Mongo49파일의 최종 중복제거833pass(개별 저장60/API22는 부분집합), type/build 통과, lint0error/기존7warning. 최초 전체 TAP823 성공 뒤 wrapper exit1을 보존하고 영향13파일369 및 최종부모참조보완2파일82 결과로 해당 파일을 교체했다. 단일 최종소스 전체명령 PASS가 아니다. 소유합성PG/Mongo정리완료, 독립 코드/회귀수락 및 원격 통합 증거는 `../../.claude/plans/mongodb-import-promotion/`을 따른다.
 
 다음은 Calendar 저장·잠금·실제 backfill의 명시 연결이다. 실제Sheets/Notion·Drive·활동쓰기/보존·backup/health·CLI·전체앱조립·A/B백업/복원/최종전환은남아있고 생산기본PG·실백업증거0을유지한다.
+
+## 2026-09-30 Calendar 명시 경계
+
+위의 다음 Calendar 작업은 구현·합성 검증·독립 수락을 마쳤다. 일반954/77skip, PG5/0skip, 전체Mongo963/0skip(기존mock4 포함), type/build 통과·lint기존7. 단언 강화 후 adjacent12는 전체의 부분집합이며 단일 최종 테스트소스 전체명령이라고 표현하지 않는다. 제품 코드의 동일 hash와 소유 합성 정리를 확인했다. 실행/원격통합은 `../../.claude/plans/mongodb-calendar-boundary/` 기준이다. 다음 후보는 Drive 저장 이력 조회→기존 결과 페이지이며 dry-run CLI의 이력 쓰기까지 완료한 것은 아니다. 실제 원천·전체 앱 조립·운영 이전은 미완료다.

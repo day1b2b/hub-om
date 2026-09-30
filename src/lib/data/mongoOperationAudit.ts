@@ -6,6 +6,7 @@ import { mongoRuntimeContracts } from "./mongoRuntimeCodec";
 
 const excluded = new Set(["id", "createdAt", "updatedAt", "createdBy", "updatedBy", "deletedBy", "normalizedName", "sourceFingerprint", "validationErrors"]);
 const allowed: Record<string, Set<string>> = {
+  CalendarEventLink: new Set(["operationId", "eventDate"]),
   OmRequest: new Set(["status", "operationId", "team", "company", "trainingType", "courseId", "courseName", "courseCategoryMajor", "courseCategory", "skillfloSetup", "skillmatchSetup", "onSiteOperation", "coachRequest", "resultReportNeeded", "totalSessions"]),
   Company: new Set(["name"]),
   Announcement: new Set(),

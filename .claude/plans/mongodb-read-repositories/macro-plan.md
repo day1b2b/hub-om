@@ -1,6 +1,6 @@
 # MongoDB 병렬 이전 상위 계획
 
-최신 총괄 상태: 2026-09-30 OM 전체 배정 제품 fdd59cee4c13c3144d653b87dc6ec57363a1fe79까지 독립 수락·합성 정리·총괄 FF/push·원격 SHA 일치를 확인했다. 최신 실행 근거는 ../mongodb-om-assignment/를 따른다. 다음은 최신dev307f52f의 만족도/Calendar 변경 동기화이며, 그 뒤 coverage의 미전환 단위로 이어간다. 운영 기본 PG 및 전체 이전 미완료 상태를 유지한다.
+최신 총괄 상태: 2026-09-30 가져오기 운영 반영 제품504782b와 기록8238647까지 총괄/작업 원격 SHA 일치를 확인했다. 이후 별도 feature/20260930-mongodb-calendar-boundary에서 Calendar 저장·잠금·실제 backfill 명시 연결의 구현·합성 검증·독립 수락·소유 정리를 마쳤다. Calendar 원격 통합 상태는 ../mongodb-calendar-boundary/integration-review.md를 따른다. 다음은 Drive 저장 이력 조회→기존 결과 페이지다. 운영 기본 PG 및 전체 이전 미완료 상태를 유지한다.
 
 목표: 기존 PostgreSQL 운영을 유지하며 개인정보를 암호화한 별도 MongoDB를 검증한 뒤 안전하게 전환한다.
 
@@ -140,3 +140,7 @@ OM 요청 첫단위 제품908175b 독립수락·총괄FF/push 및 양쪽원격SH
 다음별도Task는Calendar 저장/lease와 실제backfill 연결이다. 원본PG도잠금상실후부분쓰기/Google성공가능하므로새exactly-once를요구하지않고기존실패의미를검증한다. 실제원천/Drive/활동쓰기보존/backuphealth/CLI/전체앱조립 및 실A/B백업복원최종전환은 별도미완료. dev→main 조건은아직충족하지않았다.
 
 가져오기 반영 제품 `504782b9f69a921df7b6ec1422dcf103514494e7`를 작업 branch와 총괄 branch에 atomic push했고 원격 SHA 일치를 확인했다. 원본 workspace·main/dev·운영 설정은 그대로다. 다음은 별도 Calendar 저장·잠금 경계 Task다.
+
+## 2026-09-30 Calendar 명시 경계 수락
+
+8238647에서 별도 작업 branch를 만들었다. 명시8port runtime, CalendarEventLink 저장/시각 port, 서버시간 lease와 mapping+감사 transaction, 전송 전후 소유권 확인, Calendar 실패/로그의 민감 정보 비노출을 구현했다. 일반954/77skip·원본PG5/0skip·전체Mongo963/0skip 및 단언강화adjacent12(부분집합), type/build·lint기존7을 확인하고 독립 리뷰 지적을 닫았다. 제품 hash 동일·소유 합성 정리 완료, 커밋/원격 통합은 integration-review 기준이다. 세부 실패와 한계는 ../mongodb-calendar-boundary/execution-review.md를 따른다. 다음Drive이력조회는원천/CLI쓰기와분리해진행하며전체앱연결·실Google·실제데이터이전완료로해석하지않는다.
