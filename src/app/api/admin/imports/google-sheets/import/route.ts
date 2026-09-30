@@ -1,7 +1,9 @@
 import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
-import { parseGoogleSpreadsheetUrl, readGoogleSheetRows } from "@/lib/data/googleSheetsImport";
+import { parseGoogleSpreadsheetUrl } from "@/lib/data/googleSheetsImport";
+import { getGoogleSheetsImportSource, googleSheetsImportError } from "@/lib/data/googleSheetsImportSource";
+import { getDataRepositoryOverride } from "@/lib/data/dataRepositoryContext";
 import { storeParsedImport } from "@/lib/data/importStagingWriter";
 import { parseImportTable } from "@/lib/data/importUploadParser";
 import type { SourceTeam } from "@prisma/client";
@@ -35,7 +37,13 @@ async function activityPOST(request: Request) {
     }
 
     const { spreadsheetId } = parseGoogleSpreadsheetUrl(body.spreadsheetUrl ?? "");
-    const rows = await readGoogleSheetRows(accessToken, spreadsheetId, tabTitle);
+    const source = getGoogleSheetsImportSource();
+    // Resolve the complete immutable scope before any source or roster IO.
+    // Outside a scope these checks do not construct or connect a PG repository.
+    getDataRepositoryOverride("imports");
+    getDataRepositoryOverride("teamMembers");
+    getDataRepositoryOverride("instructorNote");
+    const rows = await source.readRows(accessToken, spreadsheetId, tabTitle);
     const parsed = parseImportTable(rows, body.headerRowNumber || 1, {
       defaultYear: parseImportYear(body.importYear)
     });
@@ -65,7 +73,7 @@ async function activityPOST(request: Request) {
     });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, error: error instanceof Error ? error.message : "스프레드시트를 가져오지 못했습니다." },
+      { ok: false, error: googleSheetsImportError(error, "import") },
       { status: 400 }
     );
   }

@@ -1,3 +1,4 @@
+import type { GoogleSheetsImportSource } from "./googleSheetsImportSource";
 import type { DriveImportHistoryRepository } from "./driveImportHistoryRepository";
 import type { CalendarPersistence, CalendarLockPort } from "../googleCalendar/calendarPersistence";
 import type { OmAssignmentRepository } from "./omRequest/omAssignmentContract";
@@ -44,6 +45,7 @@ export interface CoachPrivateAccessLogRepository {
   recordAccess(coachId: string, accessedByEmail: string, context: string): Promise<void>;
 }
 export interface DataRepositories {
+  googleSheetsImportSource: GoogleSheetsImportSource;
   driveImportHistory: DriveImportHistoryRepository;
   calendarPersistence: CalendarPersistence;
   calendarLock: CalendarLockPort;
