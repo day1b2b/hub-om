@@ -9,7 +9,7 @@
 | 기능 | Mongo 구현 상태 | 생산 연결 상태 |
 | --- | --- | --- |
 | 운영 목록·상세·생성·수정·soft-delete·과정 검색·요약 | `MongoOperationRepository` 구현·합성 검증. Company/Course/CourseIdLabel/OperationSession/OperationSourceRecord/TeamUser/ActivityChange 사용 | `operationRepositoryFactory.ts`는 명시 operations context 우선, 밖에서는 `CalendarReflectingOperationRepository(new PrismaOperationRepository())` 유지. Mongo 감사 쓰기가 전역 활동 기록을 대체하지 않음 |
-| 코치 공개 조회 6개·개인정보 조회 2개 | `MongoCoachRepository`, `MongoCoachPrivateRepository` 구현·합성 검증. 분야/커리큘럼/일정/예약/archive 관계 포함 | 공개 coach factory는 Prisma 고정. private factory는 명시 context 주입 지원, 기본은 Prisma. 토큰 인증은 명시 context 지원, 기본 PG 유지 |
+| 코치 공개 조회 6개·개인정보 조회 2개 | `MongoCoachRepository`, `MongoCoachPrivateRepository` 구현·합성 검증. 분야/커리큘럼/일정/예약/archive 관계 포함 | 공개 coach factory도 명시 `coach` context를 우선하고 기본은 Prisma다. 코치·위키·운영 상세 7개 실제 page의 권한·오류·DTO를 native Mongo로 검증했다. private/token 경계와 생산 기본 PG는 유지 |
 | Member/TeamUser 기반 명단 조회 | `MongoTeamMemberRepository` 구현·합성 검증 | stored factory는 명시 teamMembers context 우선, 밖에서는 local/Prisma 유지. 일반 factory의 Notion 정책은 별도 |
 | InstructorNote 조회·쓰기 | shadow 구현과 Mongo8.0.30 실제 save handler 검증 완료 | factory는 명시 context 우선, 기본 local/Prisma 유지. Notion sync는 별도 명시 원천/저장 경계로 연결 |
 | Coach CRUD | shadow 구현과 Mongo8.0.30 관리 API 경계 검증 완료. 업무/ActivityChange 실패 rollback 확인 | 두 관리 API는 repository 호출로 변경. 명시 context 외 기본 PG 유지. 일정/섭외/마스터·토큰·복원은 별도 |
@@ -269,3 +269,11 @@ activity:prune CLI를 기본 PG와 명시 activityPrune repository로 분리했�
 일반1082 PASS/99 opt-in skip, command21 PASS(일반 부분집합), 실제Mongo12 PASS, 인접API12 PASS, frozen original/current 실제PG root1 PASS/36worker 관찰. 최종type/build/lint 통과(기존경고7). 중복 합산과 전체 역사Mongo 재실행 주장은 하지 않는다. 독립 getMore P1/출력검증 P2를 보완했고 최종 실행 증거를 수락받았다. 합성 자원 정리와 실패·한계·원격 통합 근거는 `.claude/plans/mongodb-activity-prune/`를 따른다.
 
 이번 단위 종료 후 새 기능은 시작하지 않고 운영 전 필요한 결정·외부 조치를 같은 폴더 operational-decisions.md에 정리했다. 코치 공개 조회 scope 연결, 전체 앱·활성CLI/예약/배포 조립, snapshot 개인정보 분류·운영collation/TZ 및 실제 A/B 백업·각 복원·복사·최종 전환이 남아 있다. main/dev·운영 설정은 변경하지 않았고 자동화PAUSED 인계를 유지한다.
+
+## 2026-09-30 코치 공개 페이지 명시 경계
+
+기존 `getCoachRepository()`가 명시 `coach` context를 우선하도록 연결했다. scope 밖에서는 기존 `DATABASE_URL` guard와 Prisma adapter를 그대로 사용하고, 활성 scope에 `coach`가 없으면 PG fallback 없이 실패한다. `/coaches`, 코치 상세·일정·투입, 강사 위키 목록·상세, 운영 상세의 실제 7개 page와 auth guard를 실제 `MongoCoachRepository`로 실행했다. UI leaf와 비-coach repository·holiday·collaboration IO만 합성했다.
+
+신규 actual Mongo 검증 12 PASS/0 skip, 기존 native coach 저장소 1 PASS, 일반1083 PASS/100 opt-in skip/0 FAIL, typecheck/build PASS, lint 오류0·기존경고7이다. 일정의 factory 동기 오류와 dashboard/holiday 비동기 오류, 상세 notFound 후 후속0, 위키 목록 마지막 동명이름·상세 첫 일치, 운영 옵션 trim/dedupe/한국어 정렬을 별도 판정했다. 조회 중 Mongo write 0, 동시 namespace 혼합0, 저장 fixture 평문0, PG·실외부 접근0을 확인했다. 실제 운영 데이터·전체 Next 서버·생산 backend 전환은 검증하지 않았다.
+
+Google Drive(A)와 OneDrive(B)는 백업 **후보**만 확정했다. 실제 계정·용량·보존·암호화·독립 삭제/복구 권한, 각 업로드 무결성, 키 회수와 격리 복원은 미검증이므로 실제 백업 증거는 0건이다. 전체 앱·활성 CLI/예약/배포 조립, snapshot 개인정보 분류, 운영 collation/TZ, 실데이터 복사·각 복원·최종 동기화/전환이 남아 있다. 생산 기본 PG, main/dev 불변, 자동화 PAUSED를 유지한다.
