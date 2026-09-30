@@ -1,6 +1,6 @@
 # Health 인계
 
-현재 feature/20260930-mongodb-health-boundary. 구현·검증·독립검토·자원정리 완료, commit/push는 integration-review 참조. Level3 산출물 완비.
+현재 feature/20260930-mongodb-health-boundary. 구현·검증·독립검토·자원정리 완료, 제품 f889823 원격 통합 완료, 후속 기록은 integration-review 참조. Level3 산출물 완비.
 
 health 연결 경계 구현·검증 완료. 기본PG SELECT1과 production HTTP200/503·응답 유지. 명시 databaseHealth만 Mongo borrowed client의 ping1/5초 CSOT를 사용한다. scope 누락은 fallback하지 않는다. 모든 환경의 공개 실패를 고정해 개발 오류 원문 노출을 제거한다. 빈/미생성 DB ping 성공과 유효 형식 다른 키 통과는 연결 확인의 정상 의미이며 readiness를 보증하지 않는다.
 
