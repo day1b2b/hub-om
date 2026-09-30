@@ -283,3 +283,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 코치 DB 가져오기 CLI runtime 후속 (2026-10-01)
 
 `feature/20261001-mongodb-coach-import-cli`에서 legacy raw pg 가져오기를 read-only source와 기본 encrypted PostgreSQL/명시 prepared Mongo target repository로 교체한다. source snapshot, HMAC 기반 기존 행 재사용, 기존 수동 필드·태그 의미, operation 매칭, 전체 transaction·guard·재실행과 누락 부모 차단을 합성 PostgreSQL/Mongo에서 검증한다. 실행·독립 리뷰·통합은 `../mongodb-coach-db-import-cli/` 기록을 따른다. 실제 운영 원천·import·production selector·백업/복원·실데이터 이전과 dev→main은 미완료다.
+
+## 팀원 파일 가져오기 CLI runtime 후속 (2026-10-01)
+
+`feature/20261001-mongodb-team-members-import-cli`에서 legacy raw pg 가져오기를 encrypted PostgreSQL/명시 prepared Mongo repository command로 교체한다. 암호화 원천, 역할·팀·이름 정규화, 입력 그룹별 비활성화, nullable 팀 legacy 중복 갱신, dry-run/apply gate, 전체 transaction·재실행과 Mongo import guard를 검증한다. 실행·독립 리뷰·통합은 `../mongodb-team-member-import-cli/` 기록을 따른다. `promote-source-only`는 기존 팀 전체·여러 import run 의미와 현재 단일 run 승격 계층의 차이를 해소하는 별도 작업으로 남긴다. 운영 실행·production selector·실데이터 이전/dev→main은 미완료다.

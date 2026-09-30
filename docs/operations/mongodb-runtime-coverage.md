@@ -365,3 +365,7 @@ legacy raw pg `db:archive:coach-db`를 read-only PostgreSQL source와 기본 enc
 ## 코치 DB 가져오기 CLI runtime 연결 (2026-10-01)
 
 legacy raw pg `db:import:coach`를 read-only PostgreSQL source와 기본 encrypted PostgreSQL/명시 prepared Mongo target 경계로 교체한다. source 9개 테이블의 단일 snapshot, dry-run 무쓰기, apply 전체 transaction, HMAC 기반 재실행, 수동 필드·기존 태그 보존, 누락 부모 오류 집계와 후반 실패 rollback을 확인한다. 상세 범위는 [코치 DB 가져오기 CLI 문서](mongodb-coach-db-import-cli.md)를 따른다. 실제 운영 import·외부 동기화·복원·실데이터 복사·배포 설정은 미변경이다.
+
+## 팀원 파일 가져오기 CLI runtime 연결 (2026-10-01)
+
+legacy raw pg `db:import:team-members`를 기본 encrypted PostgreSQL/명시 prepared Mongo shadow repository로 교체한다. 암호화 원천, 기존 역할·팀·이름 정규화와 입력 그룹별 비활성화, nullable 팀 legacy 중복 갱신, counts-only dry-run, apply gate와 전체 transaction rollback·재실행을 검증한다. Mongo 동시 import는 전용 guard로 직렬화하며 정상 CLI는 namespace를 준비·수리하지 않는다. 상세 범위는 [팀원 가져오기 문서](mongodb-team-member-import-cli.md)를 따른다. 실제 `.local` 원천·운영 실행·배포 설정은 미변경이다.
