@@ -381,3 +381,7 @@ legacy raw pg `db:import:operations`를 기본 encrypted PostgreSQL/명시 prepa
 ## 만족도 CSV 드라이런 CLI runtime 연결 (2026-10-01)
 
 보관된 수동 점검 도구 `satisfaction:dry-run`의 raw pg 조회를 기존 OperationRepository 기반 기본 encrypted PostgreSQL/명시 prepared Mongo shadow 읽기 경계로 교체한다. 기존 CSV 정규화·매칭·표시 의미, read-only와 오류 비노출을 유지하고 실제 두 저장소의 동일 결과와 저장 불변을 검증한다. 상세 범위는 [만족도 CSV 드라이런 문서](mongodb-satisfaction-dry-run-cli.md)를 따른다. 기능 재활성화·운영 CSV·Google 접근·배포 설정은 미변경이다.
+
+## 운영 목록·상세·신규 화면 runtime 조립 (2026-10-01)
+
+운영 목록·상세·신규 작성 page의 `operations`, `teamUsers`, `teamMembers`, `instructorNote`, `coach`, `omRequests`와 borrowed 맞춤 도구를 같은 명시 shadow scope로 조립한다. 실제 세 page를 MongoDB 8.0.30에서 실행해 PG fallback 없음, 조회 중 저장 불변, 부분 namespace 무수정 거부를 확인한다. 상세 범위는 [운영 화면 runtime 문서](mongodb-operation-pages-runtime.md)를 따른다. 운영 생성·수정·삭제 API와 Calendar/request audit, production selector, 실데이터 이전·복원·최종 전환은 미완료다.

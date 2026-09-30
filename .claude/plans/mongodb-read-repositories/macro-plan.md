@@ -299,3 +299,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ### 2026-10-01 만족도 CSV 드라이런 CLI 읽기 경계
 
 `feature/20261001-mongodb-next-runtime-audit`에서 보관된 `satisfaction:dry-run`의 raw pg 조회를 encrypted PostgreSQL/명시 prepared Mongo OperationRepository로 교체한다. 기존 CSV 정규화·매칭·승인된 표 출력을 유지하며 actual 두 저장소 결과와 저장 불변을 검증한다. 실행·독립 리뷰·통합은 `../mongodb-satisfaction-dry-run-cli/` 기록을 따른다. 기능 재활성화·운영 실행·production selector·실데이터 이전/dev→main은 미완료다.
+
+## 2026-10-01 운영 화면 runtime scope 후속
+
+`feature/20261001-mongodb-operation-app-runtime`에서 운영 목록·상세·신규 작성 화면의 초기 서버 조회에 필요한 여섯 Mongo repository와 borrowed 맞춤 도구 port를 같은 명시 shadow scope로 조립한다. 실제 세 page의 PG fallback 없음·저장 불변·부분 namespace 무수정 거부를 검증한다. 실행·독립 리뷰·통합은 `../mongodb-operation-pages-runtime/` 기록을 따른다. 다음 단위는 운영 생성·수정·삭제 API와 Calendar/request audit 조립이며 production selector·실데이터 이전/dev→main은 미완료다.
