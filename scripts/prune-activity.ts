@@ -1,9 +1,9 @@
 import { config } from "dotenv";
 import { pathToFileURL } from "node:url";
-import { runActivityPruneCommand } from "../src/lib/data/activityPruneCommand";
+import { runActivityPruneCli } from "../src/lib/data/activityPruneCliRuntime";
 
 async function main(): Promise<void> {
-  await runActivityPruneCommand(() => {
+  await runActivityPruneCli(process.argv.slice(2), process.env, () => {
     config({ path: ".env.local" });
     config({ path: ".env" });
   }, (summary) => console.log(JSON.stringify(summary)));
