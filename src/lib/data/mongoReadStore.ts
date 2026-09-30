@@ -1,4 +1,5 @@
 import { MongoOperationStore, applyMongoValidator, assertMongo, operationMongoIndexes, operationMongoValidator, stableMongoValue, type MongoOperationOptions } from "./mongoOperationStore";
+import { assertMongoInstructorNoteGuardReady, prepareMongoInstructorNoteGuard } from "./mongoInstructorNoteGuard";
 
 export const TEAM_READ_MODELS = ["Member", "TeamUser"] as const;
 export const COACH_READ_MODELS = [
@@ -17,6 +18,7 @@ export async function prepareMongoReadStore(options: MongoOperationOptions & { a
     const indexes = operationMongoIndexes(model);
     if (indexes.length) await collection.createIndexes(indexes, { collation: { locale: "simple" } });
   }
+  if (store.models.includes("InstructorNote")) await prepareMongoInstructorNoteGuard(store, options.allowShadowWrites);
   await assertMongoReadStoreReady(store);
 }
 
@@ -33,4 +35,5 @@ export async function assertMongoReadStoreReady(store: MongoOperationStore): Pro
       assertMongo(actual && JSON.stringify(actual.key) === JSON.stringify(expected.key) && !!actual.unique === !!expected.unique && stableMongoValue(actual.partialFilterExpression) === stableMongoValue(expected.partialFilterExpression) && !actual.sparse && !actual.hidden && (!actual.collation || actual.collation.locale === "simple"), "INDEX_NOT_READY");
     }
   }
+  if (store.models.includes("InstructorNote")) await assertMongoInstructorNoteGuardReady(store);
 }

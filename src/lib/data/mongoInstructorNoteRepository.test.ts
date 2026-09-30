@@ -3,10 +3,13 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { mock, test } from "node:test";
 import type { MongoClient } from "mongodb";
 import * as readiness from "./mongoReadStore";
+import * as instructorGuard from "./mongoInstructorNoteGuard";
 import { completeMongoRow, MongoOperationStore, type MongoRow } from "./mongoOperationStore";
 import { decodeMongoRuntimeDocument, encodeMongoRuntimeDocument, MongoDbNull, type MongoRuntimeDocument } from "./mongoRuntimeCodec";
 
 mock.module("./mongoReadStore", { namedExports: { ...readiness, assertMongoReadStoreReady: async () => {} } });
+const lockInstructorNote = mock.fn(async () => {});
+mock.module("./mongoInstructorNoteGuard", { namedExports: { ...instructorGuard, lockMongoInstructorNote: lockInstructorNote } });
 const { MongoInstructorNoteRepository } = await import("./mongoInstructorNoteRepository");
 const saved = new Map(["PII_ENCRYPTION_KEYS", "PII_ACTIVE_KEY_ID", "PII_INDEX_KEY"].map(key => [key, process.env[key]]));
 
@@ -32,6 +35,9 @@ test("InstructorNote: encrypted partial updates, duplicate-name precedence and r
   try {
     await assert.rejects(MongoInstructorNoteRepository.open({ ...options, allowShadowWrites: false as unknown as true }), /SHADOW_WRITE_GATE/);
     const repository = await MongoInstructorNoteRepository.open(options);
+    const findMatch = await repository.findMatch({ notionNo: 111, name: "Synthetic instructor", note: {} });
+    assert.equal(findMatch.by, "none");
+    assert.equal(lockInstructorNote.mock.callCount(), 0, "read-only matching must not update the write guard");
     assert.deepEqual(await repository.getNote("Synthetic none"), {});
     assert.deepEqual(await repository.getNoteByNotionNo(111), {});
     const first = await repository.saveNoteByNotionNo(111, { instructorName: "Synthetic instructor", notes: "Keep this", recruitAvoid: true, notion: { categories: ["Synthetic category"], email: "remove@example.invalid", memo: "Call 010-1234-5678" }, email: "remove@example.invalid" });

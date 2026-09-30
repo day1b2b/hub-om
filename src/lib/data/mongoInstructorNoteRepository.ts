@@ -7,6 +7,7 @@ import { encodeMongoRuntimeDocument, mongoRuntimeBlindIndex, MongoDbNull } from 
 import { assertMongo, completeMongoRow, MongoOperationError, MongoOperationStore, type MongoOperationOptions, type MongoRow } from "./mongoOperationStore";
 import { assertMongoReadStoreReady } from "./mongoReadStore";
 import { operationAuditRow } from "./mongoOperationAudit";
+import { lockMongoInstructorNote } from "./mongoInstructorNoteGuard";
 
 export const INSTRUCTOR_NOTE_MODELS = ["InstructorNote", "ActivityChange"] as const;
 
@@ -160,7 +161,12 @@ export class MongoInstructorNoteRepository implements InstructorNoteRepository, 
       return await this.transaction(async session => {
         // Never reuse preview targets or a prior attempt's row. Both driver and
         // unique-key retries recompute the match, OR, document and audit here.
-        const { previous, notionNo } = await this.matchNotionRecord(record, session);
+        let match = await this.matchNotionRecord(record, session);
+        if (!match.previous) {
+          await lockMongoInstructorNote(this.store, session);
+          match = await this.matchNotionRecord(record, session);
+        }
+        const { previous, notionNo } = match;
         const note = record.note;
         const fields: MongoRow = {
           notionNo,
@@ -211,7 +217,11 @@ export class MongoInstructorNoteRepository implements InstructorNoteRepository, 
   async saveNoteByNotionNo(notionNo: number, patch: InstructorNote): Promise<InstructorNote> {
     return this.transaction(async session => {
       const safe = stripPiiFromNote(patch);
-      const previous = await this.store.one("InstructorNote", { notionNo }, session);
+      let previous = await this.store.one("InstructorNote", { notionNo }, session);
+      if (!previous) {
+        await lockMongoInstructorNote(this.store, session);
+        previous = await this.store.one("InstructorNote", { notionNo }, session);
+      }
       const fields = patchFields(safe);
       // Like PG upsert, the lookup NO is used on create; a supplied patch NO may change an existing row.
       return this.save(previous, previous ? fields : { instructorName: safe.instructorName ?? "", ...fields, notionNo }, session);
@@ -221,10 +231,14 @@ export class MongoInstructorNoteRepository implements InstructorNoteRepository, 
   async saveNote(name: string, patch: InstructorNote): Promise<InstructorNote> {
     return this.transaction(async session => {
       const safe = stripPiiFromNote(patch);
-      const previous = (await this.store.findPrivateEqual("InstructorNote", "instructorName", name, session)).sort(byNotionNo)[0] ?? null;
+      let previous = (await this.store.findPrivateEqual("InstructorNote", "instructorName", name, session)).sort(byNotionNo)[0] ?? null;
+      if (!previous) {
+        await lockMongoInstructorNote(this.store, session);
+        previous = (await this.store.findPrivateEqual("InstructorNote", "instructorName", name, session)).sort(byNotionNo)[0] ?? null;
+      }
       const fields = patchFields(safe);
-      // Existing PG create-by-name ignores patch notionNo and instructorName. Names are not unique;
-      // concurrent first-time name inserts may create separate rows, as in the current repository.
+      // Existing PG create-by-name ignores patch notionNo and instructorName. The guard and
+      // second lookup make concurrent first-time writes converge on one exact-name row.
       if (!previous) { delete fields.notionNo; fields.instructorName = name; }
       return this.save(previous, fields, session);
     });
