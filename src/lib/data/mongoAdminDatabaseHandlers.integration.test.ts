@@ -11,11 +11,11 @@ import { mock, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { isValidElement, type ReactNode, type ReactElement } from "react";
 import ts from "typescript";
-import { MongoClient } from "mongodb";
-import { ADMIN_DATABASE_MODELS, MongoAdminDatabaseRepository, prepareMongoAdminDatabaseStore } from "./mongoAdminDatabaseRepository";
-import { MongoTeamMemberRepository } from "./mongoTeamMemberRepository";
-import { prepareMongoReadStore, TEAM_READ_MODELS } from "./mongoReadStore";
-import { MongoRequestAuditRepository, prepareMongoRequestAuditStore, REQUEST_AUDIT_MODELS } from "./mongoRequestAuditRepository";
+import { BSON, MongoClient, type CommandStartedEvent, type Db } from "mongodb";
+import { ADMIN_DATABASE_MODELS } from "./mongoAdminDatabaseRepository";
+import { TEAM_READ_MODELS } from "./mongoReadStore";
+import { REQUEST_AUDIT_MODELS } from "./mongoRequestAuditRepository";
+import { MONGO_ADMIN_DATABASE_RUNTIME_MODELS, openMongoAdminDatabaseRuntime, prepareMongoAdminDatabaseRuntime } from "./mongoAdminDatabaseRuntime";
 import { MongoOperationStore, operationMongoValidator, type MongoRow } from "./mongoOperationStore";
 import { coachFixtureRow } from "./mongoCoachFixtures";
 import { encodeMongoRuntimeDocument, mongoRuntimeBlindIndex } from "./mongoRuntimeCodec";
@@ -81,8 +81,10 @@ test("admin database actual PATCH and page use native Mongo with real authorizat
   assert.equal(url.username, ""); assert.equal(url.password, ""); assert.equal(url.pathname, "/");
   const envNames = ["PII_ENCRYPTION_KEYS", "PII_ACTIVE_KEY_ID", "PII_INDEX_KEY", "PII_ALLOW_PLAINTEXT_READS", "ADMIN_EMAILS", "DEV_AUTH_BYPASS", "DATABASE_URL", "OPERATION_DATA_SOURCE"];
   const saved = new Map(envNames.map(key => [key, process.env[key]]));
-  const client = new MongoClient(uri!, { directConnection: true, serverSelectionTimeoutMS: 5000 });
+  const client = new MongoClient(uri!, { directConnection: true, monitorCommands: true, serverSelectionTimeoutMS: 5000 });
   const databaseName = `hub_om_shadow_admin_handlers_${randomBytes(8).toString("hex")}`;
+  const realClose = client.close.bind(client); let closeCalls = 0;
+  Object.defineProperty(client, "close", { configurable: true, value: async (...args: Parameters<MongoClient["close"]>) => { closeCalls++; return realClose(...args); } });
   Object.assign(process.env, {
     PII_ENCRYPTION_KEYS: JSON.stringify({ fixture: randomBytes(32).toString("base64") }), PII_ACTIVE_KEY_ID: "fixture",
     PII_INDEX_KEY: randomBytes(32).toString("base64"), PII_ALLOW_PLAINTEXT_READS: "false", ADMIN_EMAILS: admin.user.email,
@@ -90,20 +92,22 @@ test("admin database actual PATCH and page use native Mongo with real authorizat
   });
   delete process.env.DATABASE_URL; delete process.env.DEV_AUTH_BYPASS;
   const external = mock.method(globalThis, "fetch", async () => { throw new Error("External source forbidden"); });
-  let connected = false;
+  const writes: CommandStartedEvent[] = [], mutating = new Set(["create", "createIndexes", "collMod", "insert", "update", "delete", "drop", "dropDatabase", "dropIndexes", "findAndModify", "bulkWrite", "renameCollection"]);
+  client.on("commandStarted", event => {
+    const outputAggregate = event.commandName === "aggregate" && Array.isArray(event.command.pipeline)
+      && event.command.pipeline.some((stage: unknown) => stage !== null && typeof stage === "object" && (Object.hasOwn(stage, "$out") || Object.hasOwn(stage, "$merge")));
+    if (mutating.has(event.commandName) || outputAggregate) writes.push(event);
+  });
+  let connected = false, ownsDatabase = false;
   try {
     await client.connect(); connected = true;
+    const databases = await client.db("admin").admin().listDatabases({ nameOnly: true });
+    assert.equal(databases.databases.some(database => database.name === databaseName), false); ownsDatabase = true;
     const options = { client, databaseName, namespace: "shadow_handlers", allowShadowWrites: true as const };
-    await prepareMongoAdminDatabaseStore(options);
-    await prepareMongoReadStore(options, TEAM_READ_MODELS);
-    await prepareMongoRequestAuditStore(options);
+    const runtime = await prepareMongoAdminDatabaseRuntime(options);
     const store = new MongoOperationStore(options, [...new Set([...ADMIN_DATABASE_MODELS, ...TEAM_READ_MODELS, ...REQUEST_AUDIT_MODELS])]);
-    const scope = {
-      adminDatabase: await MongoAdminDatabaseRepository.open(options),
-      teamMembers: await MongoTeamMemberRepository.open(options),
-      requestActivity: await MongoRequestAuditRepository.open(options)
-    };
-    const run = <T>(work: () => Promise<T>, actor: Session | null = admin) => runWithDataRepositories(scope, () => actors.run(actor, work));
+    const scope = runtime.repositories;
+    const run = <T>(work: () => Promise<T>, actor: Session | null = admin) => runtime.run(() => actors.run(actor, work));
     const patch = (value: unknown) => run(() => PATCH(request(value)));
     const render = (table?: string | string[]) => run(() => page({ searchParams: Promise.resolve({ table }) }));
     const seed = async (model: string, values: MongoRow) => {
@@ -116,6 +120,31 @@ test("admin database actual PATCH and page use native Mongo with real authorizat
     const person = await seed("Member", { name: "Synthetic private owner", normalizedName: "synthetic private owner", role: null, sourceTeam: "TEAM_1", isActive: true, displayOrder: null });
     const operation = await seed("OperationSession", { courseRecordId: course, operationId: "synthetic-admin-operation", onsiteRequired: "N", onsiteText: "preserved onsite", deletedAt: new Date("2099-01-01"), deletedBy: "synthetic-deleter@example.invalid" });
     const rawBusiness = async () => Promise.all(["Company", "Course", "Member", "OperationSession"].map(async model => [model, await store.collection(model).find({}).sort({ _id: 1 }).toArray()]));
+
+    await suite.test("runtime restart, nested scope and interrupted preparation fail without repair", async () => {
+      const names = (value: string) => new Set([...MONGO_ADMIN_DATABASE_RUNTIME_MODELS.map(model => `${value}_${model}`), `${value}_CoachSchedulingGuard`]);
+      const snapshot = async (value: string) => BSON.EJSON.stringify(await Promise.all((await client.db(databaseName).listCollections({}, { nameOnly: false }).toArray())
+        .filter(info => names(value).has(info.name)).sort((a, b) => a.name.localeCompare(b.name)).map(async info => ({ info, indexes: await client.db(databaseName).collection(info.name).listIndexes().toArray(), documents: await client.db(databaseName).collection(info.name).find({}).sort({ _id: 1 }).toArray() }))), { relaxed: false });
+      const ready = await snapshot(options.namespace); writes.length = 0;
+      await prepareMongoAdminDatabaseRuntime(options); await openMongoAdminDatabaseRuntime(options);
+      assert.deepEqual(writes.map(event => event.commandName), []); assert.equal(await snapshot(options.namespace), ready);
+      const second = await prepareMongoAdminDatabaseRuntime({ ...options, namespace: "shadow_handlers_second" }); writes.length = 0; let nested = 0;
+      assert.throws(() => runtime.run(() => second.run(() => { nested++; })), /CALENDAR_SCOPE_MISMATCH/); assert.equal(nested, 0); assert.deepEqual(writes.map(event => event.commandName), []);
+
+      const failedNamespace = "shadow_handlers_failed", originalDb = client.db.bind(client); let interrupted = false;
+      Object.defineProperty(client, "db", { configurable: true, value: (name?: string, settings?: Parameters<MongoClient["db"]>[1]) => {
+        const db = originalDb(name, settings), create = db.createCollection.bind(db);
+        Object.defineProperty(db, "createCollection", { configurable: true, value: async (...args: Parameters<Db["createCollection"]>) => {
+          if (args[0] === `${failedNamespace}_TeamUser`) { interrupted = true; throw new Error("synthetic admin database prepare interruption"); }
+          return create(...args);
+        } }); return db;
+      } });
+      try { await assert.rejects(prepareMongoAdminDatabaseRuntime({ ...options, namespace: failedNamespace }), /^Error: MONGO_ADMIN_DATABASE_RUNTIME_FAILED$/); }
+      finally { Object.defineProperty(client, "db", { configurable: true, value: originalDb }); }
+      assert.equal(interrupted, true); const failed = await snapshot(failedNamespace); assert.ok(failed.includes(`${failedNamespace}_Member`));
+      writes.length = 0; await assert.rejects(prepareMongoAdminDatabaseRuntime({ ...options, namespace: failedNamespace }), /^Error: MONGO_ADMIN_DATABASE_RUNTIME_FAILED$/);
+      assert.deepEqual(writes.map(event => event.commandName), []); assert.equal(await snapshot(failedNamespace), failed);
+    });
 
     await suite.test("real admin guard rejects anonymous, outsider and workspace-only sessions before writes/page reads", async () => {
       const before = await rawBusiness();
@@ -206,8 +235,8 @@ test("admin database actual PATCH and page use native Mongo with real authorizat
 
     await suite.test("missing business/request repositories fail before writes and never use PG/local", async () => {
       const before = await rawBusiness();
-      await assert.rejects(runWithDataRepositories({ adminDatabase: scope.adminDatabase }, () => actors.run(admin, () => PATCH(request(body("companies", company, "name", "denied"))))), /DATA_REPOSITORY_NOT_CONFIGURED: requestActivity/);
-      await assert.rejects(runWithDataRepositories({ requestActivity: scope.requestActivity }, () => actors.run(admin, () => PATCH(request(body("companies", company, "name", "denied"))))), /DATA_REPOSITORY_NOT_CONFIGURED: adminDatabase/);
+      assert.throws(() => runWithDataRepositories({ adminDatabase: scope.adminDatabase }, () => actors.run(admin, () => PATCH(request(body("companies", company, "name", "denied"))))), /CALENDAR_SCOPE_MISMATCH/);
+      assert.throws(() => runWithDataRepositories({ requestActivity: scope.requestActivity }, () => actors.run(admin, () => PATCH(request(body("companies", company, "name", "denied"))))), /CALENDAR_SCOPE_MISMATCH/);
       assert.deepEqual(await rawBusiness(), before); assert.equal(pgCalls, 0); assert.equal(localCalls, 0);
     });
 
@@ -258,18 +287,17 @@ test("admin database actual PATCH and page use native Mongo with real authorizat
         assert.equal(spy.mock.callCount(), 4);
       } finally { spy.mock.restore(); }
       for (const partial of [{ adminDatabase: scope.adminDatabase }, { teamMembers: scope.teamMembers }]) {
-        await assert.rejects(runWithDataRepositories(partial, () => actors.run(admin, () => page({ searchParams: Promise.resolve({}) }))), /DATA_REPOSITORY_NOT_CONFIGURED: (teamMembers|adminDatabase)/);
+        assert.throws(() => runWithDataRepositories(partial, () => actors.run(admin, () => page({ searchParams: Promise.resolve({}) }))), /CALENDAR_SCOPE_MISMATCH/);
       }
       assert.equal(pgCalls, 0); assert.equal(localCalls, 0);
     });
 
     await suite.test("actual page with empty native collections preserves empty Grid props and real team lookup", async () => {
       const emptyOptions = { ...options, namespace: "shadow_empty_page" };
-      await prepareMongoAdminDatabaseStore(emptyOptions); await prepareMongoReadStore(emptyOptions, TEAM_READ_MODELS);
-      const emptyScope = { adminDatabase: await MongoAdminDatabaseRepository.open(emptyOptions), teamMembers: await MongoTeamMemberRepository.open(emptyOptions) };
+      const emptyRuntime = await prepareMongoAdminDatabaseRuntime(emptyOptions), emptyScope = emptyRuntime.repositories;
       const spy = mock.method(emptyScope.teamMembers, "listResourceOwners");
       try {
-        const output = await runWithDataRepositories(emptyScope, () => actors.run(admin, () => page({ searchParams: Promise.resolve({ table: ["members", "courses"] }) })));
+        const output = await emptyRuntime.run(() => actors.run(admin, () => page({ searchParams: Promise.resolve({ table: ["members", "courses"] }) })));
         const grid = component(output, "AdminDatabaseGrid");
         assert.deepEqual(grid.props.columns, []);
         assert.equal((grid.props.selectedTable as DatabaseTableSnapshot).key, "members");
@@ -278,10 +306,11 @@ test("admin database actual PATCH and page use native Mongo with real authorizat
       } finally { spy.mock.restore(); }
     });
     assert.equal(pgCalls, 0); assert.equal(localCalls, 0); assert.equal(external.mock.callCount(), 0);
+    assert.equal(closeCalls, 0); await client.db("admin").command({ ping: 1 });
   } finally {
-    try { if (connected) await client.db(databaseName).dropDatabase(); }
+    try { if (connected && ownsDatabase) await client.db(databaseName).dropDatabase(); }
     finally {
-      try { await client.close(); }
+      try { if (connected) await realClose(); }
       finally { external.mock.restore(); for (const [key, value] of saved) { if (value === undefined) delete process.env[key]; else process.env[key] = value; } }
     }
   }
