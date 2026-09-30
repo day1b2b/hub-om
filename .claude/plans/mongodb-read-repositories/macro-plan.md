@@ -219,3 +219,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 공지·첨부 runtime scope 후속 (2026-10-01)
 
 `feature/20261001-mongodb-announcement-runtime`에서 완료된 공지·첨부 repository와 request audit를 같은 명시 shadow scope로 조립한다. 빈 namespace만 준비하고 등록 runtime 객체 분해·중첩 교체를 차단하며 실제 API·페이지의 업무/요청 감사 경계를 MongoDB 8.0.30에서 검증한다. 실행·독립 리뷰·통합은 `../mongodb-announcement-runtime/` 기록을 따른다. production selector·전체 앱/활성 작업·운영 이전은 미완료다.
+
+## 변경 내역 runtime scope 후속 (2026-10-01)
+
+`feature/20261001-mongodb-changes-runtime`에서 `/changes`가 호출하는 activityReads·coachContent·coachEngagement·requestActivity를 같은 명시 shadow scope로 조립한다. 실제 네 handler로 피드·메모·평가·활동 조회와 업무/요청 감사 귀속, 암호화 저장, 부분 준비·재실행 불변, 포트 분해·혼합 차단을 MongoDB 8.0.30에서 검증한다. 실행·독립 리뷰·통합은 `../mongodb-changes-runtime/` 기록을 따른다. 브라우저 전체 흐름, production selector·전체 앱/활성 작업·운영 이전은 미완료다.
