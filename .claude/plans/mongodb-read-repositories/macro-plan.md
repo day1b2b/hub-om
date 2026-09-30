@@ -311,3 +311,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 2026-10-01 운영 상세 보조 API runtime 후속
 
 `feature/20261001-mongodb-operation-adjacent-runtime`에서 기존 운영 쓰기 runtime을 Drive 후보·폴더·적용과 source-read refresh 실제 handler까지 확장 검증한다. 외부 원천 미설정 결과, Calendar 반영 적용, 감사 귀속과 비합성 fetch 0을 고정한다. 실행·독립 리뷰·통합은 `../mongodb-operation-detail-actions/` 기록을 따른다. 실제 외부 원천·production selector·실데이터 이전/dev→main은 미완료다.
+
+## 2026-10-01 공통 개요 화면 runtime 후속
+
+`feature/20261001-mongodb-dashboard-pages-runtime`에서 대시보드·내 페이지·회사 위키·자료실의 초기 조회에 필요한 네 Mongo repository를 같은 명시 shadow scope로 조립한다. 실제 네 page의 PG fallback 없음·조회 저장 불변·부분 namespace 무수정 거부와 scope 혼입 차단을 검증한다. 실행·독립 리뷰·통합은 `../mongodb-overview-pages-runtime/` 기록을 따른다. 실제 외부 원천·production selector·실데이터 이전/dev→main은 미완료다.
