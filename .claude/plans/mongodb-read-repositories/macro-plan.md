@@ -110,3 +110,10 @@ a52f191 기준 feature/20260929-mongodb-sales-revenue-sync에서 기존 workflow
 383d804 기준 feature/20260929-mongodb-om-requests. 독립조사·계획검토에 따라 접수→회차연결/조회/수정/삭제를 첫Task로구분. 기본PG/local유지,명시Mongo감사원자성과합성부수작업포트,actualpage/API검증. 기존접수부분성공/재제출/물리삭제정책그대로. 배정전체는후속필수Task이며현재Mongo문맥에서명시거부. 구현/실행/통합상태는 ../mongodb-om-requests/ 실행·인계문서기준. 전체앱/운영이전/dev→main은미완료.
 
 OM 요청 첫단위 제품908175b 독립수락·총괄FF/push 및 양쪽원격SHA일치,합성정리완료. 인계 ../mongodb-om-requests/handoff.md. 다음Task는OM전체배정이며전체운영전환/dev→main은아직미완료.
+
+## OM 전체 배정 후속 (2026-09-30)
+
+74e1970 기준 feature/20260929-mongodb-om-assignment에서 확인 후 전체 회차 배정·변경·취소 경계를 구현했다. 생성 감사의 exact 집합·기존 서명/권한/수동값 교체를 보존하고 기존 과정명 복원 guard로 역의존 경쟁을 보호한다. 생산 기본 PG 유지, 새 업무 schema/삭제 정책 없음. 중단 전 임시 로그가 없어 새 격리 PG17.9/Mongo8.0.30로 재검증했다. 일반917/64skip, 전체Mongo684/0skip, PG56, native보완25/handler보완20/UI5 통과(중복 합산 금지). 독립 검토의3개 P2 검증 공백을 보완했고 원격 통합은 해당 integration-review 기준이다. 실제 상태는 ../mongodb-om-assignment/handoff.md 및 execution-review.md 기준이다. 가져오기·Calendar 저장/잠금·백업/health·생산 연결·실데이터 복사/복원/최종 전환은 별도이고 dev→main 조건은 아직 충족하지 않았다.
+
+### 공동 개발 통합 우선순위
+원격dev307f52f에는 총괄74e1970에 없는4커밋/실질2변경이 있다. OM 배정 단위의 의미 있는 커밋 뒤 일반 merge로 반영한다. 대상은 회차 강사평균 기록(75985a6)과 Calendar 누락 복구(a5592e2)의 새getOperationCreatedAt 계약이다. Mongo/기존PG/local/wrapper·만족도 경로의 의미를 함께 점검하며 main/dev 직접 변경·force push 금지. 이후 각 수직 단위 시작과 총괄 통합 전에 최신dev 차이/겹치는 파일을 확인한다. 다음 새 기능은 이 통합 검증 이후 coverage/cutover-remaining에서 고른다.

@@ -1,3 +1,5 @@
+import type { OmAssignmentRepository } from "./omRequest/omAssignmentContract";
+import type { OmAssignmentCalendar, OmAssignmentNotifier } from "./omRequest/omAssignmentEffects";
 import type { OperationRepository } from "./operationRepository";
 import type { OmRequestRepository, OmCustomToolsRepository, OmRequestNotifier } from "./omRequest/omRequestRepository";
 import type { SalesRevenueSyncRepository, SalesRevenueSource, SalesRevenueNotifier } from "./salesRevenueSyncRepository";
@@ -36,6 +38,9 @@ export interface CoachPrivateAccessLogRepository {
   recordAccess(coachId: string, accessedByEmail: string, context: string): Promise<void>;
 }
 export interface DataRepositories {
+  omAssignment: OmAssignmentRepository;
+  omAssignmentCalendar: OmAssignmentCalendar;
+  omAssignmentNotifier: OmAssignmentNotifier;
   omRequests: OmRequestRepository;
   operations: OperationRepository;
   omCustomTools: OmCustomToolsRepository;

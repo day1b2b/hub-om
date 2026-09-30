@@ -451,7 +451,7 @@ test("OM request actual handlers/server pages: native CRUD + intake, scoped assi
       assertNoPrivateError(start, author.user.email); assertIsolated();
     });
 
-    await suite.test("scoped assignment preview/confirm return 409 with real service, including linked and legacy requests", async () => {
+    await suite.test("intake-only scope rejects missing assignment ports before writes for linked and legacy requests", async () => {
       const created = await create();
       // Do not get a false-positive 409 merely because the old service refuses local JSON.
       process.env.OPERATION_DATA_SOURCE = "prisma";
@@ -462,10 +462,10 @@ test("OM request actual handlers/server pages: native CRUD + intake, scoped assi
           const before = await rawBusiness(), sides = sideCounts();
           for (const [method, handler] of [["POST", assignmentRoute.POST], ["PATCH", assignmentRoute.PATCH]] as const) {
             const payload = { id: created.id, assignedOm: "Synthetic roster OM", confirmationToken: "synthetic-token-not-an-implementation" };
-            assert.equal((await run(() => handler(request(method, payload)), other)).status, 403, "Real authorization precedes unsupported-scope handling");
+            assert.equal((await run(() => handler(request(method, payload)), other)).status, 403, "Real authorization precedes missing-port handling");
             const response = await run(() => handler(request(method, payload)), manager);
-            assert.equal(response.status, 409); assert.equal(response.headers.get("Cache-Control"), "no-store");
-            const body = await response.json(); assert.match(body.error, /MongoDB.*아직 지원하지 않습니다/);
+            assert.equal(response.status, 500); assert.equal(response.headers.get("Cache-Control"), "no-store");
+            const body = await response.json(); assert.match(body.error, /배정을 처리하지 못했습니다/);
             assert.ok(!JSON.stringify(body).includes("Synthetic roster OM"));
           }
           // Direct assignment helpers and scope isolation belong to omRequestBoundary.test.ts.

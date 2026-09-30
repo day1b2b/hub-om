@@ -9,7 +9,7 @@ mock.module("../prisma", { namedExports: { getPrismaClient: () => { pgCalls++; t
 const facade = await import("./omRequestLocalRepository");
 const legacy = await import("./legacyOmRequestRepository");
 const { getOmRequestRepository } = await import("./omRequestRepositoryFactory");
-const { previewOmAssignment, assignOmRequestAtomically, OmAssignmentConflict } = await import("./omRequestAssignment");
+const { previewOmAssignment, assignOmRequestAtomically } = await import("./omRequestAssignment");
 const { syncAssignedOmToLinkedOperation } = await import("./omRequestOperationLink");
 const tools = await import("./omCustomToolsLocalRepository");
 const { getOperationRepository } = await import("../operationRepositoryFactory");
@@ -51,12 +51,12 @@ test("custom tools and both roster factories use explicit ports", () => {
     assert.equal(getTeamMemberRepository(), roster); assert.equal(getStoredTeamMemberRepository(), roster);
   });
 });
-test("all four assignment entry points reject a shadow scope without writes", async () => {
+test("missing confirmed-assignment port and both legacy entry points fail closed without writes", async () => {
   const repo = repository("unused"); let operationCalls = 0;
   const operations = new Proxy({}, { get() { return async () => { operationCalls++; throw new Error("Unexpected operation access"); }; } }) as OperationRepository;
   await runWithDataRepositories({ omRequests: repo.value, operations }, async () => {
-    await assert.rejects(previewOmAssignment({} as never, "Synthetic assignee", "synthetic@example.invalid"), OmAssignmentConflict);
-    await assert.rejects(assignOmRequestAtomically({} as never, null, "synthetic@example.invalid", "synthetic-token"), OmAssignmentConflict);
+    await assert.rejects(previewOmAssignment({} as never, "Synthetic assignee", "synthetic@example.invalid"), /DATA_REPOSITORY_NOT_CONFIGURED: omAssignment/);
+    await assert.rejects(assignOmRequestAtomically({} as never, null, "synthetic@example.invalid", "synthetic-token"), /DATA_REPOSITORY_NOT_CONFIGURED: omAssignment/);
     await assert.rejects(facade.updateOmRequestAssignment("synthetic", null), /OM_ASSIGNMENT_MONGO_NOT_IMPLEMENTED/);
     await assert.rejects(syncAssignedOmToLinkedOperation("synthetic", "Synthetic assignee"), /OM_ASSIGNMENT_MONGO_NOT_IMPLEMENTED/);
   });

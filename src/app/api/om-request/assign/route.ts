@@ -4,9 +4,8 @@ import { auth } from "@/auth";
 import { getOmRequest } from "@/lib/data/omRequest/omRequestLocalRepository";
 import { assignOmRequestAtomically, previewOmAssignment, OmAssignmentConflict } from "@/lib/data/omRequest/omRequestAssignment";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
-import { reflectOperationUpdated } from "@/lib/googleCalendar/reflectOperationToCalendar";
+import { getOmAssignmentCalendar, getOmAssignmentNotifier } from "@/lib/data/omRequest/omAssignmentEffects";
 import { canManageOmRequestAssignment } from "@/lib/auth/omRequestAssignmentAccess";
-import { notifyOmAssigned } from "@/lib/slack/notifySlack";
 
 async function resolveCurrentUser(): Promise<{ name: string; email?: string | null }> {
   if (process.env.DEV_AUTH_BYPASS === "true" && process.env.NODE_ENV !== "production") {
@@ -52,12 +51,15 @@ async function assignment(request: Request, preview: boolean) {
     if (typeof confirmationToken !== "string" || !confirmationToken || confirmationToken.length > 512) {
       return NextResponse.json({ error: "변경할 회차를 다시 확인해주세요." }, { status: 409, headers: noStore });
     }
+    const operations = getOperationRepository();
+    const calendar = getOmAssignmentCalendar();
+    const notifier = getOmAssignmentNotifier();
     const { updated, operationIds } = await assignOmRequestAtomically(existing, nextOm, currentUser.email, confirmationToken);
     // Reflect only committed changes; external calendar failures do not undo DB assignments.
     for (const operationId of operationIds) {
       try {
-        const operation = await getOperationRepository().getOperationById(operationId);
-        if (operation) await reflectOperationUpdated(operation);
+        const operation = await operations.getOperationById(operationId);
+        if (operation) await calendar.reflectOperationUpdated(operation);
       } catch {
         console.error("[om-request] 배정 저장 후 캘린더 반영 실패");
       }
@@ -66,7 +68,7 @@ async function assignment(request: Request, preview: boolean) {
       // 요청 접수 알림 스레드에 댓글로 OM·LD를 태깅한다(스레드 정보가 있을 때).
       // Slack 알림 실패가 배정 저장까지 되돌리지 않도록 방어적으로 처리한다.
       try {
-        await notifyOmAssigned({
+        await notifier.notifyAssigned({
           company: updated.company,
           courseName: updated.courseName,
           assignedOm: nextOm,
@@ -75,8 +77,8 @@ async function assignment(request: Request, preview: boolean) {
           channel: updated.slackChannel,
           threadTs: updated.slackThreadTs,
         });
-      } catch (err) {
-        console.error("[om-request] Slack 배정 알림 실패(무시):", err);
+      } catch {
+        console.error("[om-request] Slack 배정 알림 실패(무시)");
       }
     }
     return NextResponse.json(updated, { headers: noStore });

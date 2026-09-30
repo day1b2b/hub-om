@@ -28,7 +28,7 @@ export async function assertMongoCourseNameRestoreGuardReady(store: MongoOperati
   assertMongo(indexes.some(index => index.name === "_id_" && JSON.stringify(index.key) === JSON.stringify({ _id: 1 }))
     && indexes.every(index => index.expireAfterSeconds === undefined), "COURSE_NAME_RESTORE_GUARD_NOT_READY");
 }
-/** Every course-name restore attempt calls this before any plan predicate reads.
+/** Course-name restore and confirmed OM assignment call this before predicate reads.
  * A fresh nonce forces a real write even when the business predicate is empty. Mongo write
  * conflicts retry the whole transaction, including all reads. First-upsert duplicates are
  * also retried by the repository. The guard and business writes commit or abort together.
