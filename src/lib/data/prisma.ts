@@ -27,3 +27,11 @@ export function getPrismaClient(): PrismaClient {
 
   return globalForPrisma.prisma;
 }
+
+/** CLI-owned default clients may be released without affecting explicitly scoped repositories. */
+export async function disconnectPrismaClient(): Promise<void> {
+  const client = globalForPrisma.prisma;
+  if (!client) return;
+  try { await client.$disconnect(); }
+  finally { delete globalForPrisma.prisma; }
+}
