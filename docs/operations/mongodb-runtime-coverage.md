@@ -353,3 +353,7 @@ legacy raw Prisma `db:merge:duplicate-company`를 기본 encrypted PostgreSQL/�
 ## 강사노트 파일 가져오기 CLI runtime 연결 (2026-10-01)
 
 암호화 스키마에서 중단되던 legacy raw pg `db:import:instructor-notes`를 기본 encrypted PostgreSQL/명시 Mongo shadow repository로 교체했다. 암호화 원천 복호화·PII 제거, Notion NO 우선/구형 이름 병합, 기존값 보존·recruitAvoid OR, counts-only 출력, apply gate와 전체 transaction rollback을 확인했다. Mongo 신규 생성 guard는 dry-run에서 쓰지 않으며 기존 Notion writer와 동시 경합도 검증했다. 상세 범위는 [강사노트 가져오기 문서](mongodb-instructor-note-import-cli.md)를 따른다. 실제 `.local` 원천·운영 실행·배포 설정은 미변경이다.
+
+## 코치 데이터 검증 CLI runtime 연결 (2026-10-01)
+
+legacy raw pg `db:verify:coach-data`를 기본 encrypted PostgreSQL/명시 prepared Mongo shadow 읽기 repository로 교체했다. 서비스 건수와 최근 import/아카이브를 한 snapshot에서 읽고 target 및 선택적 coach-db source의 read-only를 강제한다. 식별자·개인정보·원문 오류는 출력하지 않는다. 상세 범위는 [코치 데이터 검증 문서](mongodb-coach-data-verification-cli.md)를 따른다. 실제 원천·운영 DB·배포 설정은 미변경이다.
