@@ -53,7 +53,11 @@ export class MongoOperationRepository implements OperationRepository {
       const result = await this.store.collection(model).replaceOne({ _id: id(previous) }, document, { session });
       assertMongo(result.matchedCount === 1, "ROW_DISAPPEARED");
     } else await this.store.collection(model).insertOne(document, { session });
-    const audit = operationAuditRow(model, previous, clean);
+    // PG INSERT distinguishes an absent old field from a present SQL/JSON null.
+    // Preserve that field set for the operation writer's three business models;
+    // UPDATE and other writers retain their authenticated logical no-op policy.
+    const insertFields = previous === null && ["Company", "Course", "OperationSession"].includes(model) ? Object.keys(clean) : [];
+    const audit = operationAuditRow(model, previous, clean, insertFields);
     if (audit) await this.store.collection("ActivityChange").insertOne(encodeMongoRuntimeDocument("ActivityChange", audit), { session });
     return clean;
   }

@@ -30,6 +30,8 @@ import type { TeamUserRepository } from "./teamUsers/teamUserRepositoryContract"
 import type { InstructorNoteRepository } from "./instructorNoteRepository";
 import type { CoachPrivateRepository } from "./coachPrivateRepository";
 import type { ActivityContext } from "../activity/context";
+import type { ImportPromotionRepository } from "./importPromotionContract";
+import type { ImportPromotionCalendar } from "./importPromotionEffects";
 import type { ImportRepository } from "./importRepository";
 import type { ImportStagingRepository } from "./importStagingWriter";
 
@@ -40,6 +42,8 @@ export interface CoachPrivateAccessLogRepository {
   recordAccess(coachId: string, accessedByEmail: string, context: string): Promise<void>;
 }
 export interface DataRepositories {
+  importPromotion: ImportPromotionRepository;
+  importPromotionCalendar: ImportPromotionCalendar;
   imports: ImportRepository & ImportStagingRepository;
   omAssignment: OmAssignmentRepository;
   omAssignmentCalendar: OmAssignmentCalendar;

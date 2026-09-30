@@ -30,6 +30,7 @@
 | OM 요청 접수·조회·수정·삭제 | `MongoOmRequestRepository`, 기존 부분 성공 접수·회차 연결, 입력 부분 갱신·원자적 감사·명시 합성 부수 작업 | 기본PG/local 유지. 확인 후 전체 배정은 별도 명시 omAssignment 경계에서 구현·합성 검증했다. [경계·검증 상태](mongodb-om-requests.md) |
 | OM 전체 회차 배정·변경·취소 | `MongoOmAssignmentRepository`, 기존 확인 토큰·생성 집합·원자적 감사와 과정명 복원 guard 공유 | 명시 omAssignment/operations/teamUsers/calendar/notifier 경계 구현·합성 검증·독립 검토. 원격 통합 상태는 해당 integration-review 기준. 기본 PG 유지. [경계·검증 상태](mongodb-om-assignment.md) |
 | 파일 업로드·임시 저장·검토 | `MongoImportRepository`, 원본 PG 대조·복호화 정렬·중복/오류 보존·동시 요청·암호화·원자성 검증 | upload API와 목록/상세 page는 명시 imports context, 기본 PG 유지. 최종 회귀·수락·통합은 해당 실행 기록 기준. 승격·실원천·Drive는 별도. [경계·한계](mongodb-import-staging.md) |
+| 가져오기 운영 반영 | `MongoImportPromotionRepository` 구현·원본 PG54/native 저장60/API22 검증·독립 코드 수락 | 명시 importPromotion/teamMembers/importPromotionCalendar/requestActivity, 기본 PG. 일반922/71skip, Mongo파일별최종833. 원격 통합은 실행 기록 기준. [경계·한계](mongodb-import-promotion.md) |
 | 전체 모델 암호화 snapshot export/import | 35개 모델 codec·일관된 PG 읽기 snapshot·사본 대조·참조 검증 지원 | 운영 서비스 선택·실시간 변경 동기화·최종 freeze/cutover·복구 승인은 별도 |
 
 ## 남은 기능군별 실제 경로
@@ -48,7 +49,7 @@
 | 코치 메모·콘텐츠·관리 조회 | `lib/coaches/contentEntries.ts`, `api/coaches/[id]/notes`, `api/admin/content-entries`, `api/admin/schedule-registration/[yearMonth]`, `api/schedules/[yearMonth]/status`, `app/coaches/admin/page.tsx` | CoachContentEntry, CoachEngagement, CoachScheduleAccessLog, Coach | 2026-09-29 coachContent/coachAdmin 명시 context 연결·검증 및 총괄 통합. 기본 PG 유지. 프로필 legacy helper는 PG 관리 adapter 전용이며 Mongo 프로필 이력은 이미 구현했다. logReviewEdit는 호출처 없는 export이고 Mongo 평가는 자체 이력 기록을 사용한다(2026-09-29 사용처 확인). [경계·한계](mongodb-coach-content.md) |
 | 코치 외부 동기화 | `lib/coaches/notionCoachSync.ts`, `samsungScheduleSync.ts`, `contractSheetSync.ts`, `syncLog.ts` | Coach, PrivateProfile, Field/Curriculum/Master, Engagement/Schedule, CoachSyncLog | contract/Samsung/Notion 및 로그는 명시 Mongo context, 합성 source로 실제 handler 검증. Notion/all은 전체 scope 선행 검사 후 실행하며 기본 PG 유지 |
 | 강사 위키·노션 동기화 | `lib/data/prismaInstructorNoteRepository.ts`, `lib/instructors/notionInstructorSync.ts` | InstructorNote | 실제 save route와 Notion GET/POST의 명시 context 검증. sync는 별도 원천/저장 port와 PG adapter를 사용하며 기본 PG 유지 |
-| 가져오기·staging·승격·Drive 기록 | `lib/data/prismaImportRepository.ts`, `importStagingWriter.ts`, `importPromotionService.ts`, `lib/driveImports/driveImportResults.ts`; `api/admin/imports/{upload,google-sheets/import,notion/import}`; `app/admin/imports/**` | DataImportRun, OperationSourceRecord, Company, Course, OperationSession, DriveImportRun, DriveImportResult | 업로드→staging→목록/상세는 명시 imports 경계 구현·영향 검증. 최종 수락은 mongodb-import-staging 실행 기록 기준. 승격·실제 Sheets/Notion 읽기와 적재·Drive 기록은 후속. 외부 소스 읽기 자체와 저장을 구분 |
+| 가져오기·staging·승격·Drive 기록 | `lib/data/prismaImportRepository.ts`, `importStagingWriter.ts`, `prismaImportPromotionRepository.ts`, `lib/driveImports/driveImportResults.ts`; `api/admin/imports/{upload,google-sheets/import,notion/import}`; `app/admin/imports/**` | DataImportRun, OperationSourceRecord, Company, Course, OperationSession, DriveImportRun, DriveImportResult | 업로드→staging→목록/상세는 명시 imports 경계 구현·영향 검증. 최종 수락은 mongodb-import-staging 실행 기록 기준. 승격은 명시 경계 구현·합성 검증·독립 코드 수락을 마쳤으며 통합은 해당 기록을 따른다. 실제 Sheets/Notion 읽기와 적재·Drive 기록은 후속. 외부 소스 읽기 자체와 저장을 구분 |
 | 매출 동기화의 생산 연결 | `lib/data/prismaSalesRevenueSyncRepository.ts`와 기본 Salesmap/알림 adapter | Course, SalesRevenueSyncLog | 명시 Mongo 경계는 구현. 전체 생산 구성·실제 원천/운영 금액 반영은 별도 |
 | Google Calendar | `lib/data/calendarReflectingOperationRepository.ts` → calendar 모듈; `lib/googleCalendar/calendarEventLinkRepository.ts`, `operationSessionTimestamps.ts`, `calendarOperationLock.ts` | CalendarEventLink, OperationSession; 별도 `pg.Pool`, advisory lock | 이벤트 연결·역동기화·시각 갱신·프로세스 간 잠금. Mongo operation CRUD만으로 외부 캘린더 부작용을 대체하지 않음 |
 | 활동 요청·변경 이력·활동 피드 | `lib/activity/request.ts`, `database.ts`, `retention.ts`, `presentation.ts`; `api/activity-feed`, `api/admin/activity`, `/usage` | ActivityRequest, ActivityChange 및 이름 해석에 쓰이는 업무 모델; `set_config`, PG trigger, SQL DELETE | 조회 세 GET는 명시 activityReads context/기본PG 경계로 연결했다. 전역 요청 연결·트리거 귀속·보존 작업의 실제 운영 연결은 별도다. MongoOperation의 ActivityChange 기록은 이 전체를 대체하지 않음 |
@@ -96,7 +97,7 @@
 | `src/lib/data/prismaCoachManagerMyPageRepository.ts` | Coach, CoachDayReservation, CoachEngagement, CoachEngagementSchedule; 명단 TeamUser는 기존 resolveOmNameByEmail 간접 호출. coachMyPage.ts는 facade |
 | `src/lib/data/coachPrivateAccess.ts` | CoachPrivateAccessLog |
 | `src/lib/data/prismaCourseNameRestoreRepository.ts` | Company, Course, OperationSession, OperationSourceRecord; 과정명 복원 service의 기본 PG adapter |
-| `src/lib/data/importPromotionService.ts` | Company, Course, OperationSession, DataImportRun, OperationSourceRecord |
+| `src/lib/data/prismaImportPromotionRepository.ts` | Company, Course, OperationSession, DataImportRun, OperationSourceRecord; 승격 facade의 기본 PG adapter |
 | `src/lib/data/importStagingWriter.ts` | DataImportRun, OperationSourceRecord |
 | `src/lib/data/omRequest/omRequestAssignment.ts` | OperationSession, OmRequest, ActivityChange |
 | `src/lib/data/omRequest/omRequestLocalRepository.ts` | OmRequest |
@@ -201,3 +202,11 @@ a52f191 기반 명시 저장/source/notifier와 실제 GET/POST 경계 구현. �
 최신 dev307f52f의 만족도 강사평균 저장과 Calendar 누락 복구를 보존하고 명시 Mongo `operations.getOperationCreatedAt`을 연결했다. exact operationId, soft-delete 포함, 없음 null, metadata projection을 유지한다. 만족도 실제 POST/감사와 두 필드·빈값·동일 overall skip을 합성 검증한다. 최종 실행·독립 수락·원격 통합은 `.claude/plans/mongodb-dev-alignment/` 기준이다. 이 메서드 추가는 Calendar 저장/잠금 전체 전환이나 실제 Google 연동 검증이 아니다.
 
 브라우저 임시저장 암호화는 후속 과제이며 이번 Mongo 이전의 선행조건에서 제외한다. 현재 기능·권한·개인정보 암호화, 활성 CLI/예약/배포 경로 검증은 유지한다. 실제 독립 A/B 백업·각각 복원·전환 후 신규 쓰기 보존 절차는 [백업 및 전환 계획](mongodb-backup-cutover-plan.md)을 따르며 실제 백업 확인 증거는 0건이다.
+
+## 2026-09-30 가져오기 운영 반영
+
+총괄75125c9 기준 명시 importPromotion과 commit 후 importPromotionCalendar 경계를 구현했다. 기본PG·workspace권한·차단행 보존·지문/업무키 연결·삭제표시복원·source 연결을 유지한다. Company/Course 자연키 insert 경합은 정확한 오류 키로만 재시도한다. 원본 PG 허용 동시 일정과 Mongo 실제 네 경합의 전체 summary/행/참조/감사를 비교했고 일반 Mongo 생성 감사의 nullable 누락과 고아 source 승격을 보완했다.
+
+일반922pass/71skip, PG54, Mongo49파일의 최종 중복제거833pass(개별 저장60/API22는 부분집합), type/build 통과, lint0error/기존7warning. 최초 전체 TAP823 성공 뒤 wrapper exit1을 보존하고 영향13파일369 및 최종부모참조보완2파일82 결과로 해당 파일을 교체했다. 단일 최종소스 전체명령 PASS가 아니다. 소유합성PG/Mongo정리완료, 독립 코드/회귀수락 및 원격 통합 증거는 `../../.claude/plans/mongodb-import-promotion/`을 따른다.
+
+다음은 Calendar 저장·잠금·실제 backfill의 명시 연결이다. 실제Sheets/Notion·Drive·활동쓰기/보존·backup/health·CLI·전체앱조립·A/B백업/복원/최종전환은남아있고 생산기본PG·실백업증거0을유지한다.

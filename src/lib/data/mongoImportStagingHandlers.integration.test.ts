@@ -544,12 +544,12 @@ test("native Mongo actual import upload and admin review preserve boundaries", {
       } finally { await a.store.db.command({ collMod: collection.collectionName, validator: operationMongoValidator("ActivityRequest") }); }
     });
 
-    await suite.test("actual promotion reaches the real PG guard, leaves staging untouched and never invokes Calendar", async () => {
+    await suite.test("missing promotion scope blocks before storage, leaves staging untouched and never invokes Calendar", async () => {
       const seed = await uploaded(await upload(form(jsonFile()))), before = await rawBusiness();
       // Also prove the guard's exact error independently of route catch/response handling.
       assert.throws(() => runWithDataRepositories(a.scope, () => getPrismaClient()), /^Error: DEFAULT_DATABASE_ACCESS_BLOCKED$/);
       const response = await run(() => promotePOST(new Request(`https://example.invalid/api/admin/imports/${seed.importRunId}/promote`, { method: "POST" }), context(seed.importRunId)), member);
-      await rejected(response, "DEFAULT_DATABASE_ACCESS_BLOCKED");
+      await rejected(response, "반영 요청을 처리하지 못했습니다.");
       await audit(response, member, a.store, "/api/admin/imports/[id]/promote");
       assert.deepEqual(await rawBusiness(), before); noFallback();
     });

@@ -130,3 +130,11 @@ OM 요청 첫단위 제품908175b 독립수락·총괄FF/push 및 양쪽원격SH
 총괄8e19638 기준 `feature/20260930-mongodb-import-staging`에서 upload→staging→목록/상세의 명시 imports 경계를 구현했다. 기본PG·parser·권한·기존중복/오류행/동시업로드 의미를 유지하고 비정형 업로드 오류를 고정문구로 가렸다. 원본PG/currentPG/Mongo 대조18, 일반921/68skip, typecheck/build 통과, lint0/기존7warning. 전체Mongo는첫689pass/2fail/1cancel후실패3묶음103pass로보완해파일별최종중복제거751성공을확인했다. 첫실패는기존고정합성주소2건과coachContent전체timeout1건이며검사조건을완화하지않았다. 상세·독립수락·정리·원격통합은 `../mongodb-import-staging/` 기록을 따른다.
 
 다음수직단위는운영승격이다. 기업/과정/운영/source link의transaction, 기존삭제복원/중복, sequence·감사, commit후Calendar를보존한다. 실제Sheets/Notion·Drive기록·Calendar저장잠금·활동쓰기/보존·backup/health·전체앱구성 및 실제이중백업/복원/최종전환은남아있다. 운영기본PG와실백업증거0상태는변하지않았다.
+
+## 2026-09-30 가져오기 운영 반영
+
+75125c9 기준 feature/20260930-mongodb-import-promotion에서 기본PG를 유지한 반영 core/PGadapter/Mongo transaction과 실제 POST의 명시 저장·명단·Calendar 경계를 구현했다. 원본 fixture와 실제 PG 허용 동시 일정으로 전체 값/참조/감사를 대조했고 제한된 자연키 재시도, ordinary 생성 감사의 빈 값 필드, 필수 부모 없는 source 거부를 보완했다. 기존 권한·삭제·차단행·재실행과 commit 이후 실패 의미를 유지했다.
+
+일반922pass/71skip, PG54pass/0skip, Mongo파일별최종833(저장60/API22포함), type/build통과·lint기존7. 첫전체wrapper실패와 파일별결과교체를 명시하고 독립 코드/회귀수락·소유합성정리를 마쳤다. 원격 통합은 ../mongodb-import-promotion/integration-review.md 기준이다.
+
+다음별도Task는Calendar 저장/lease와 실제backfill 연결이다. 원본PG도잠금상실후부분쓰기/Google성공가능하므로새exactly-once를요구하지않고기존실패의미를검증한다. 실제원천/Drive/활동쓰기보존/backuphealth/CLI/전체앱조립 및 실A/B백업복원최종전환은 별도미완료. dev→main 조건은아직충족하지않았다.

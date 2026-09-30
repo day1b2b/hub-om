@@ -65,7 +65,8 @@ test("OM assignment actual handlers: native transactions, authorization, scoped 
   // Never infer a target, load an env file, start MongoDB, or touch another database.
   assert.ok([
     "mongodb://127.0.0.1:27819/?replicaSet=omassignment20260929",
-    "mongodb://127.0.0.1:27829/?replicaSet=importstaging20260930"
+    "mongodb://127.0.0.1:27829/?replicaSet=importstaging20260930",
+    "mongodb://127.0.0.1:27839/?replicaSet=importpromotion20260930"
   ].includes(uri!));
   const expectedReplica = new URL(uri!).searchParams.get("replicaSet");
   const saved = new Map(["PII_ENCRYPTION_KEYS", "PII_ACTIVE_KEY_ID", "PII_INDEX_KEY", "PII_ALLOW_PLAINTEXT_READS", "ADMIN_EMAILS",
