@@ -2,7 +2,7 @@
 
 ### 확정 지적
 
-**[P2] dotenv 안내문 허용 규칙이 임의 출력까지 통과시킵니다.**  
+**[P2] dotenv 안내문 허용 규칙이 임의 출력까지 통과시킵니다.**
 [activityPruneCommand.test.ts:217](/Users/ga/workspace/hub-om-mongodb-coach-content/src/lib/data/activityPruneCommand.test.ts:217)
 
 `tip: .+`를 허용하고 전체 stdout 줄 수도 제한하지 않습니다. 따라서 dotenv 형식을 흉내 낸 추가 로그나 미등록 민감 문자열 suffix가 있어도, 211행의 열거된 marker에 없으면 통과할 수 있습니다.

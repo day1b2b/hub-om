@@ -2,7 +2,7 @@
 
 ### 수정 필요
 
-**[P2] 설치된 dotenv 출력 형식과 parser가 불일치합니다.**  
+**[P2] 설치된 dotenv 출력 형식과 parser가 불일치합니다.**
 [subprocess.fixture.ts:56](/Users/ga/workspace/hub-om-mongodb-coach-content/src/lib/data/activity-prune-tests/subprocess.fixture.ts:56)
 
 PG parser는 `[dotenv@버전] injected env ...`만 허용하지만, 설치된 [dotenv 구현](/Users/ga/workspace/hub-om-mongodb-coach-content/node_modules/dotenv/lib/main.js:130)은 `◇ injected env ...`를 출력합니다. 정상 CLI도 `PRUNE_UNKNOWN_STDOUT`으로 실패할 수 있습니다. 제품 실패와 구분해야 합니다.

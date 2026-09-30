@@ -1,6 +1,6 @@
 **정적 수락 보류: P1 1건입니다.** native·audit 파일 SHA는 전달값과 일치합니다. 나머지 검토 범위에서는 추가 차단 결함을 찾지 못했습니다.
 
-**P1 — 만료 로그 조회가 `getMore`로 넘어가면 transaction CSOT와 충돌합니다.**  
+**P1 — 만료 로그 조회가 `getMore`로 넘어가면 transaction CSOT와 충돌합니다.**
 위치: [mongoActivityPruneRepository.ts:123](/Users/ga/workspace/hub-om-mongodb-coach-content/src/lib/data/mongoActivityPruneRepository.ts:123)
 
 - 현재 `find().sort().limit(1000).toArray()`는 `singleBatch`·`batchSize` 지정이 없어 기본 첫 배치 이후 `getMore`가 발생합니다.

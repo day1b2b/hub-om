@@ -5,7 +5,7 @@
 
 2. **실제 CLI**
    합성 cwd의 `.env.local`·`.env`, 최소 환경의 subprocess에서 원본 entry를 그대로 실행합니다. 우선순위는 **기존 process.env > .env.local > .env**입니다. 성공 JSON·exit0·실제 socket close를 검사합니다.
-   
+
    주의할 원본 동작:
    - `getPrismaClient()`는 `try` **밖**입니다. 초기화 실패에 finally 실행을 요구하면 잘못된 oracle입니다.
    - dotenv 자체 안내 출력이 있으므로 원본 stdout을 무조건 JSON 한 줄로 가정하면 안 됩니다.
@@ -13,7 +13,7 @@
 
 3. **최소 데이터·경계**
    full45 schema에 **ActivityRequest/ActivityChange만** 합성 seed합니다. 빈 상태, 보존 대상, 만료 대상, 한쪽만 1000, 양쪽 1000, 1001＋동률을 묶습니다. 정확히 1000이면 다음 배치가 실행되는지도 관찰합니다.
-   
+
    남은 **전체 ID집합과 raw 행**을 검사하고, 각 backend 내부에서는 암호문까지 불변을 요구합니다. backend 간 임의 nonce 암호문 비교 대신 독립 literal의 전체 논리행을 비교합니다. 요청 삭제 후 아직 보존기간인 연결 ActivityChange가 남는 사례도 포함합니다.
 
 4. **cutoff·동률**
