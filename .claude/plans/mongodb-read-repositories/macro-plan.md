@@ -144,3 +144,7 @@ OM 요청 첫단위 제품908175b 독립수락·총괄FF/push 및 양쪽원격SH
 ## 2026-09-30 Calendar 명시 경계 수락
 
 8238647에서 별도 작업 branch를 만들었다. 명시8port runtime, CalendarEventLink 저장/시각 port, 서버시간 lease와 mapping+감사 transaction, 전송 전후 소유권 확인, Calendar 실패/로그의 민감 정보 비노출을 구현했다. 일반954/77skip·원본PG5/0skip·전체Mongo963/0skip 및 단언강화adjacent12(부분집합), type/build·lint기존7을 확인하고 독립 리뷰 지적을 닫았다. 제품 hash 동일·소유 합성 정리 완료, 커밋/원격 통합은 integration-review 기준이다. 세부 실패와 한계는 ../mongodb-calendar-boundary/execution-review.md를 따른다. 다음Drive이력조회는원천/CLI쓰기와분리해진행하며전체앱연결·실Google·실제데이터이전완료로해석하지않는다.
+
+## 2026-09-30 Drive 이력 조회
+
+73a137a 기준 별도 feature/20260930-mongodb-drive-import-history에서 저장 이력 조회2개와 기존page의 명시 경계를 검증했다. 기본PG 유지, read-only snapshot/부모/codec/raw오류/budget 및 실제원본PG·SSR 대조. 일반957/83skip, native79/0skip, page7/8/8, PG gate1/parity1, Calendar24/0skip, type/buildPASS·lint기존7. 중복합산 금지, 전체Mongo 재실행 아님. 정리완료, 독립정합/원격통합은 ../mongodb-drive-import-history/ 기록 기준. 다음은Sheets tabs/import 합성원천→기존staging 계획. CLIwriter·snapshot민감문자열분류·운영collation·전체조립·실백업복원전환/dev→main은 미완료.

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AppSidebar } from "@/components/AppSidebar";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import {
-  readLatestDriveImportRun,
+  getDriveImportHistoryRepository,
   type StoredDriveImportCandidate,
   type StoredDriveImportRunResult
 } from "@/lib/driveImports/driveImportResults";
@@ -18,10 +18,11 @@ interface DriveImportRunsPageProps {
 export default async function DriveImportRunsPage({ searchParams }: DriveImportRunsPageProps) {
   const session = await requireWorkspaceSession();
   const teamMemberRepository = getStoredTeamMemberRepository();
+  const driveHistoryRepository = getDriveImportHistoryRepository();
   const [ownerRoster, params, latestRun] = await Promise.all([
     teamMemberRepository.listResourceOwners(),
     searchParams,
-    readLatestDriveImportRun()
+    driveHistoryRepository.readLatestDriveImportRun()
   ]);
   const teamScope = resolveTeamScope(params, session, ownerRoster);
   const teamQuery = teamScopeSearchParam(teamScope);
