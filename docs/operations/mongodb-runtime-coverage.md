@@ -369,3 +369,7 @@ legacy raw pg `db:import:coach`를 read-only PostgreSQL source와 기본 encrypt
 ## 팀원 파일 가져오기 CLI runtime 연결 (2026-10-01)
 
 legacy raw pg `db:import:team-members`를 기본 encrypted PostgreSQL/명시 prepared Mongo shadow repository로 교체한다. 암호화 원천, 기존 역할·팀·이름 정규화와 입력 그룹별 비활성화, nullable 팀 legacy 중복 갱신, counts-only dry-run, apply gate와 전체 transaction rollback·재실행을 검증한다. Mongo 동시 import는 전용 guard로 직렬화하며 정상 CLI는 namespace를 준비·수리하지 않는다. 상세 범위는 [팀원 가져오기 문서](mongodb-team-member-import-cli.md)를 따른다. 실제 `.local` 원천·운영 실행·배포 설정은 미변경이다.
+
+## 팀 단위 원천 승격 CLI runtime 연결 (2026-10-01)
+
+legacy raw pg `db:promote-source-only`를 기본 encrypted PostgreSQL/명시 prepared Mongo shadow repository로 교체한다. 기존 팀 전체·복수 import run, 비차단 오류·지문 연결·Member 역할 명단·필드 변환을 유지하고 dry-run/apply 집계, 중복 지문, 전체 transaction rollback·재실행을 검증한다. 웹의 단일 run 승격은 변경하지 않는다. 상세 범위는 [팀 단위 원천 승격 문서](mongodb-source-only-promotion-cli.md)를 따른다. 운영 실행·배포 설정은 미변경이다.

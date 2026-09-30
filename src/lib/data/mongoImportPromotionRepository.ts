@@ -1,9 +1,10 @@
 import { randomUUID } from "node:crypto";
+import type { SourceTeam } from "@prisma/client";
 import { MongoServerError, type ClientSession } from "mongodb";
 import { assertPrivacyConfiguration } from "../privacy/crypto";
 import { getDataRepositoryOverride } from "./dataRepositoryContext";
-import { NOTION_PROMOTION_ERROR, type ImportPromotionRepository, type ImportPromotionResult, type ImportPromotionTransaction } from "./importPromotionContract";
-import { promoteImportRows } from "./importPromotionCore";
+import { NOTION_PROMOTION_ERROR, type ImportPromotionRepository, type ImportPromotionResult, type ImportPromotionTransaction, type SourceOnlyPromotionRepository, type SourceOnlyPromotionResult } from "./importPromotionContract";
+import { promoteImportRows, promoteSourceOnlyRows } from "./importPromotionCore";
 import { numericMoney } from "./mongoNumericMoney";
 import { operationAuditRow } from "./mongoOperationAudit";
 import { applyMongoValidator, assertMongo, completeMongoRow, MongoOperationError, MongoOperationStore, operationMongoValidator, stableMongoValue, type MongoOperationOptions, type MongoRow } from "./mongoOperationStore";
@@ -82,7 +83,7 @@ function normalizedCompany(value: string): string {
 }
 
 /** No production selection and no external effects inside transaction retries. */
-export class MongoImportPromotionRepository implements ImportPromotionRepository {
+export class MongoImportPromotionRepository implements ImportPromotionRepository, SourceOnlyPromotionRepository {
   private readonly store: MongoOperationStore;
   private constructor(store: MongoOperationStore) { this.store = store; }
   static async open(options: MongoImportPromotionOptions): Promise<MongoImportPromotionRepository> {
@@ -141,6 +142,58 @@ export class MongoImportPromotionRepository implements ImportPromotionRepository
       if (error instanceof Error && error.message === NOTION_PROMOTION_ERROR) throw new Error(NOTION_PROMOTION_ERROR);
       if (error instanceof MongoOperationError) throw error;
       throw new MongoOperationError("IMPORT_PROMOTION_FAILED");
+    }
+  }
+
+  async promoteSourceOnlyRows(sourceTeam: SourceTeam, apply: boolean): Promise<SourceOnlyPromotionResult> {
+    const deadline = performance.now() + TIMEOUT_MS;
+    const check = () => assertMongo(performance.now() < deadline, "SOURCE_ONLY_PROMOTION_TIMEOUT");
+    try {
+      assertPrivacyConfiguration();
+      const memberStore = new MongoOperationStore({ client: this.store.client, databaseName: this.store.db.databaseName, namespace: this.store.namespace }, ["Member"]);
+      await assertMongoReadStoreReady(memberStore);
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const session = this.store.client.startSession();
+        try {
+          return await session.withTransaction(async () => {
+            check();
+            if (apply) {
+              try { await lockMongoCourseNameRestore(this.store, session); }
+              catch (error) {
+                if (error instanceof MongoServerError && error.code === 11000) throw new FirstGuardRace();
+                throw error;
+              }
+            }
+            const sources = await this.store.scan("OperationSourceRecord", { sourceTeam, operationSessionId: null }, session);
+            sources.sort((a, b) => String(a.sourceSheet).localeCompare(String(b.sourceSheet), "ko") || Number(a.sourceRowNumber) - Number(b.sourceRowNumber));
+            const members = await memberStore.scan("Member", { isActive: true, role: { $in: ["OM", "LD"] } }, session);
+            members.sort((a, b) => String(a.role).localeCompare(String(b.role)) || String(a.sourceTeam).localeCompare(String(b.sourceTeam))
+              || Number(a.displayOrder) - Number(b.displayOrder) || String(a.name).localeCompare(String(b.name), "ko"));
+            const roster = { om: {} as Record<string, string[]>, ld: {} as Record<string, string[]> };
+            for (const member of members) {
+              const role = member.role === "OM" ? "om" : "ld";
+              const team = member.sourceTeam === "TEAM_1" ? "1팀" : member.sourceTeam === "TEAM_2" ? "2팀" : "미분류";
+              roster[role][team] = [...(roster[role][team] ?? []), String(member.name)];
+            }
+            check();
+            return promoteSourceOnlyRows(this.port(session, check), sources.map(row => ({
+              id: String(row.id),
+              mappedFields: presentationJson(row.mappedFields) as Parameters<typeof promoteSourceOnlyRows>[1][number]["mappedFields"],
+              validationErrors: presentationJson(row.validationErrors) as Parameters<typeof promoteSourceOnlyRows>[1][number]["validationErrors"],
+              sourceFingerprint: typeof row.sourceFingerprint === "string" ? row.sourceFingerprint : null,
+              sourceTeam: row.sourceTeam as SourceTeam
+            })), roster, apply);
+          }, { readConcern: { level: "snapshot" }, writeConcern: { w: "majority", j: true }, readPreference: "primary",
+            timeoutMS: Math.max(1, Math.ceil(deadline - performance.now())) });
+        } catch (error) {
+          if (apply && (error instanceof FirstGuardRace || error instanceof NaturalKeyRace) && attempt < 4) continue;
+          throw error;
+        } finally { await session.endSession(); }
+      }
+      throw new MongoOperationError("SOURCE_ONLY_PROMOTION_RETRY_LIMIT");
+    } catch (error) {
+      if (error instanceof MongoOperationError) throw error;
+      throw new MongoOperationError("SOURCE_ONLY_PROMOTION_FAILED");
     }
   }
 

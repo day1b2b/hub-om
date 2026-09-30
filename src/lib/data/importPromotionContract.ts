@@ -71,3 +71,16 @@ export interface ImportPromotionTransaction {
 export interface ImportPromotionRepository {
   promoteReadyImportRows(importRunId: string): Promise<ImportPromotionResult>;
 }
+
+export interface SourceOnlyPromotionResult {
+  blocked: number;
+  blockedReasons: Record<string, number>;
+  linkedExisting: number;
+  promoted: number;
+  sourceRows: number;
+}
+
+/** Legacy maintenance command boundary: all unlinked rows for one source team, across import runs. */
+export interface SourceOnlyPromotionRepository {
+  promoteSourceOnlyRows(sourceTeam: SourceTeam, apply: boolean): Promise<SourceOnlyPromotionResult>;
+}

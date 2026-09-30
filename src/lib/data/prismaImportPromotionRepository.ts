@@ -1,15 +1,43 @@
-import type { Prisma } from "@prisma/client";
-import type { ImportPromotionRepository, ImportPromotionResult, ImportPromotionTransaction } from "./importPromotionContract";
-import { promoteImportRows } from "./importPromotionCore";
+import { MemberRole, Prisma, type SourceTeam } from "@prisma/client";
+import type { ImportPromotionRepository, ImportPromotionResult, ImportPromotionTransaction, SourceOnlyPromotionRepository, SourceOnlyPromotionResult } from "./importPromotionContract";
+import { promoteImportRows, promoteSourceOnlyRows } from "./importPromotionCore";
 import { getPrismaClient } from "./prisma";
 import { PrismaTeamMemberRepository } from "./prismaTeamMemberRepository";
 
-export class PrismaImportPromotionRepository implements ImportPromotionRepository {
+export class PrismaImportPromotionRepository implements ImportPromotionRepository, SourceOnlyPromotionRepository {
   async promoteReadyImportRows(importRunId: string): Promise<ImportPromotionResult> {
     const prisma = getPrismaClient();
     const roleRoster = await new PrismaTeamMemberRepository().listRoleRosters();
 
     return prisma.$transaction(async (tx) => promoteImportRows(promotionTransaction(tx), importRunId, roleRoster));
+  }
+
+  async promoteSourceOnlyRows(sourceTeam: SourceTeam, apply: boolean): Promise<SourceOnlyPromotionResult> {
+    const prisma = getPrismaClient();
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        return await prisma.$transaction(async tx => {
+          const [sources, members] = await Promise.all([
+            tx.operationSourceRecord.findMany({ where: { sourceTeam, operationSessionId: null }, orderBy: [{ sourceSheet: "asc" }, { sourceRowNumber: "asc" }] }),
+            tx.member.findMany({ where: { isActive: true, role: { in: [MemberRole.OM, MemberRole.LD] } } })
+          ]);
+          members.sort((a, b) => String(a.role).localeCompare(String(b.role)) || String(a.sourceTeam).localeCompare(String(b.sourceTeam))
+            || (a.displayOrder ?? 0) - (b.displayOrder ?? 0) || a.name.localeCompare(b.name, "ko"));
+          const roster = { om: {} as Record<string, string[]>, ld: {} as Record<string, string[]> };
+          for (const member of members) {
+            if (!member.role) continue;
+            const role = member.role === MemberRole.OM ? "om" : "ld";
+            const team = member.sourceTeam === "TEAM_1" ? "1팀" : member.sourceTeam === "TEAM_2" ? "2팀" : "미분류";
+            roster[role][team] = [...(roster[role][team] ?? []), member.name];
+          }
+          return promoteSourceOnlyRows(promotionTransaction(tx), sources, roster, apply);
+        }, { isolationLevel: apply ? Prisma.TransactionIsolationLevel.Serializable : Prisma.TransactionIsolationLevel.RepeatableRead, maxWait: 5_000, timeout: 60_000 });
+      } catch (error) {
+        if (apply && error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034" && attempt < 4) continue;
+        throw error;
+      }
+    }
+    throw new Error("SOURCE_ONLY_PROMOTION_CONCURRENT_CHANGE");
   }
 }
 

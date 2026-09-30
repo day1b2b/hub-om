@@ -10,8 +10,8 @@ import {
   type Prisma,
   type SourceTeam
 } from "@prisma/client";
-import { NOTION_PROMOTION_ERROR, type ImportPromotionCreateData, type ImportPromotionResult, type ImportPromotionTransaction } from "./importPromotionContract";
-import { normalizeRoleAssigneeText } from "./roleAssignees";
+import { NOTION_PROMOTION_ERROR, type ImportPromotionCreateData, type ImportPromotionResult, type ImportPromotionSource, type ImportPromotionTransaction, type SourceOnlyPromotionResult } from "./importPromotionContract";
+import { normalizeAssigneeNames, normalizeRoleAssigneeText, roleNamesFromRoster } from "./roleAssignees";
 import type { TeamMemberRole, TeamMemberRoleRoster } from "./teamMemberRepository";
 
 interface PromotionCandidate {
@@ -180,6 +180,93 @@ export async function promoteImportRows(
   }
 
   return summary;
+}
+
+const SOURCE_ONLY_NON_BLOCKING_ERRORS = new Set(["코스ID 누락", "교육형태 매핑 검토 필요", "결과보고서 링크 누락"]);
+
+/** Preserves the historical team-wide maintenance command. It deliberately does not apply the web run's Notion gate or business-key matching. */
+export async function promoteSourceOnlyRows(
+  tx: ImportPromotionTransaction,
+  sourceRecords: readonly ImportPromotionSource[],
+  roleRoster: TeamMemberRoleRoster,
+  apply: boolean
+): Promise<SourceOnlyPromotionResult> {
+  const summary: SourceOnlyPromotionResult = { blocked: 0, blockedReasons: {}, linkedExisting: 0, promoted: 0, sourceRows: sourceRecords.length };
+  const projectedFingerprints = new Set<string>();
+
+  for (const sourceRecord of sourceRecords) {
+    const fields = jsonObjectToStringRecord(sourceRecord.mappedFields);
+    const validationErrors = jsonStringArray(sourceRecord.validationErrors);
+    const blockingErrors = validationErrors.filter(error => !SOURCE_ONLY_NON_BLOCKING_ERRORS.has(error));
+    const companyName = normalizeLegacySourceOnlyText(fields.companyName);
+    const courseName = normalizeLegacySourceOnlyText(fields.courseName);
+    const startDate = parseDateValue(fields.startDate);
+    const endDate = parseDateValue(fields.endDate);
+    const blockedReason = blockingErrors.length ? blockingErrors.join(" | ")
+      : !companyName ? "기업명 누락"
+      : !courseName ? "과정명 누락"
+      : !startDate ? "시작일 누락 또는 날짜 해석 실패"
+      : !endDate ? "종료일 누락 또는 날짜 해석 실패"
+      : null;
+    if (blockedReason || !startDate || !endDate) {
+      addSourceOnlyBlocked(summary, blockedReason ?? "날짜 해석 실패");
+      continue;
+    }
+
+    const existing = await tx.findByFingerprint(sourceRecord.sourceFingerprint);
+    if (existing) {
+      if (apply) await tx.linkSource(sourceRecord.id, existing.id);
+      summary.linkedExisting += 1;
+      continue;
+    }
+    if (!apply && sourceRecord.sourceFingerprint && projectedFingerprints.has(sourceRecord.sourceFingerprint)) {
+      summary.linkedExisting += 1;
+      continue;
+    }
+
+    if (apply) {
+      const company = await tx.upsertCompany({ name: companyName, normalizedName: companyName.toLowerCase() });
+      const course = await tx.upsertCourse({
+        companyId: company.id,
+        courseId: normalizeLegacySourceOnlyText(fields.courseId),
+        name: courseName,
+        operationType: enumFromText(OPERATION_TYPE_BY_TEXT, fields.operationType, OperationType.NEEDS_REVIEW),
+        revenue: nullableNumber(fields.revenue),
+        revenueRaw: nullableText(fields.revenueRaw)
+      });
+      const createData = {
+        ...buildOperationSessionValueData({ endDate, fields, roleRoster, startDate }),
+        avgSatisfaction: nullableText(fields.avgSatisfaction),
+        educationFormatRaw: nullableText(fields.educationFormatRaw),
+        onsiteRequired: sourceOnlyOnsiteRequired(fields.onsiteRequired),
+        omName: nullableText(normalizeAssigneeNames(fields.om ?? "", roleNamesFromRoster(roleRoster, "om"))),
+        ldName: nullableText(normalizeAssigneeNames(fields.ld ?? "", roleNamesFromRoster(roleRoster, "ld"))),
+        validationErrors: validationErrors as [],
+        courseRecordId: course.id,
+        operationId: stableOperationId(sourceRecord.sourceTeam, sourceRecord.sourceFingerprint),
+        sourceFingerprint: sourceRecord.sourceFingerprint
+      } as ImportPromotionCreateData & { avgSatisfaction: string | null };
+      const session = await tx.createOperation(createData);
+      await tx.linkSource(sourceRecord.id, session.id);
+    }
+    if (sourceRecord.sourceFingerprint) projectedFingerprints.add(sourceRecord.sourceFingerprint);
+    summary.promoted += 1;
+  }
+  return summary;
+}
+
+function sourceOnlyOnsiteRequired(value: string | undefined): OnsiteRequired {
+  return value === "Y" ? OnsiteRequired.Y : value === "N" ? OnsiteRequired.N
+    : value === "PARTIAL" ? OnsiteRequired.PARTIAL : OnsiteRequired.UNKNOWN;
+}
+
+function normalizeLegacySourceOnlyText(value: string | undefined): string {
+  return typeof value === "string" ? value.trim().replace(/\s+/g, " ") : "";
+}
+
+function addSourceOnlyBlocked(summary: SourceOnlyPromotionResult, reason: string) {
+  summary.blocked += 1;
+  summary.blockedReasons[reason] = (summary.blockedReasons[reason] ?? 0) + 1;
 }
 
 function buildPromotionCandidate(mappedFields: Prisma.JsonValue | null, validationErrors: Prisma.JsonValue | null): PromotionCandidate {
