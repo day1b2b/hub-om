@@ -8,7 +8,7 @@
 - 브랜치: `feature/20260930-mongodb-dev-alignment`
 - 시작 HEAD: `dc39e1940b05fc1724372902c4f8e9c90213771a`
 - dev 병합 부모: `307f52ff13588869d2cdd18c7c32d162e85c7393`
-- 일반 병합 중이며 아직 merge commit/push 전이다. dev의 7파일은 보존하고 Mongo 생성시각 조회와 합성 검증을 추가했다. 임의 merge abort/reset 금지.
+- 제품 일반 병합 `a40584f9ffdfd02870402fd52b24c03f0a3dc916`의 기능/총괄 원격 일치를 확인했다. dev의 7파일을 보존하고 Mongo 생성시각 조회와 합성 검증을 추가했다. 이 인계 갱신을 포함한 최종 원격 상태는 integration-review 및 저장소 밖 final-remote.txt를 따른다.
 - source digest는 `verified-source-digests.json`, 검사 상태는 `execution-review.md`, 독립 검토는 `independent-review.md`를 따른다.
 
 ## 검증과 자원
@@ -19,9 +19,9 @@
 
 중지 전 자료는 `/Users/ga/.cache/hub-om-verification/20260930-dev-alignment-paused`에 있고 해당 자원은 이미 정리됐다. 재개 결과와 혼합하지 않는다. OM 배정 이전 완료 자료는 `../mongodb-om-assignment/`와 `/Users/ga/.cache/hub-om-verification/20260930-om-assignment`에 있다.
 
-## 남은 통합 마무리
+## 통합 결과
 
-전체 회귀와 소유 정리 완료. 최종 독립 실행 수락, merge commit/기능 push/총괄 fast-forward와 정확한 원격 SHA 확인은 integration-review를 따른다. 원격 dev는 재개 중 fetch 후 307f52f 그대로 확인했다. 이후 각 수직 단위 시작과 총괄 통합 전 dev 차이/겹치는 파일을 확인한다.
+전체 회귀·독립 실행 수락·소유 정리·제품 merge commit/기능 push/총괄 fast-forward 및 원격 SHA 확인 완료. 상세는 integration-review를 따른다. 원격 dev는 재개 중 fetch 후 307f52f 그대로 확인했다. 이후 각 수직 단위 시작과 총괄 통합 전 dev 차이/겹치는 파일을 확인한다.
 
 ## 전체 이전 범위
 
