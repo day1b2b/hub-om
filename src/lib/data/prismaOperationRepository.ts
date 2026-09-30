@@ -310,6 +310,15 @@ export class PrismaOperationRepository implements OperationRepository {
     return toOperationSession(session, courseIdLabel?.label ?? "");
   }
 
+  async getOperationCreatedAt(operationId: string): Promise<Date | null> {
+    const prisma = getPrismaClient();
+    const session = await prisma.operationSession.findFirst({
+      where: { operationId },
+      select: { createdAt: true }
+    });
+    return session?.createdAt ?? null;
+  }
+
   async createOperation(input: CreateOperationInput): Promise<OperationSession> {
     const prisma = getPrismaClient();
     const roleRoster = await new PrismaTeamMemberRepository().listRoleRosters();

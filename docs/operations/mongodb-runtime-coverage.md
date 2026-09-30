@@ -194,3 +194,9 @@ a52f191 기반 명시 저장/source/notifier와 실제 GET/POST 경계 구현. �
 ## OM 전체 배정 후속 (2026-09-30)
 
 명시 omAssignment로 기존 정확한 생성 배치·10분 확인 토큰·권한·전체 수동값 교체/취소를 보존했다. 요청/회차/변경감사는 한 transaction이며 기존 과정명 복원 guard를 공유해 역의존 경쟁을 보호한다. 일반917 pass/64 skip, 전체Mongo684 pass/0 skip(기존mock4 포함), PG56, native보완25/handler보완20/UI5는 중복 합산하지 않는다. typecheck/build PASS, lint 기존7warning 및 후속 검증 파일lint0. 상세 실패 보완·독립 수락·정리·원격 SHA는 `.claude/plans/mongodb-om-assignment/`을 따른다. 기본PG 유지, 실제 Calendar·Slack·운영 개인정보·복사/복원/최종전환 완료가 아니다. 다음 신규 기능 전에 최신dev307f52f의 만족도/Calendar 변경을 별도 통합 검증한다.
+
+## 공동 개발 변경 정합 (2026-09-30)
+
+최신 dev307f52f의 만족도 강사평균 저장과 Calendar 누락 복구를 보존하고 명시 Mongo `operations.getOperationCreatedAt`을 연결했다. exact operationId, soft-delete 포함, 없음 null, metadata projection을 유지한다. 만족도 실제 POST/감사와 두 필드·빈값·동일 overall skip을 합성 검증한다. 최종 실행·독립 수락·원격 통합은 `.claude/plans/mongodb-dev-alignment/` 기준이다. 이 메서드 추가는 Calendar 저장/잠금 전체 전환이나 실제 Google 연동 검증이 아니다.
+
+브라우저 임시저장 암호화는 후속 과제이며 이번 Mongo 이전의 선행조건에서 제외한다. 현재 기능·권한·개인정보 암호화, 활성 CLI/예약/배포 경로 검증은 유지한다. 실제 독립 A/B 백업·각각 복원·전환 후 신규 쓰기 보존 절차는 [백업 및 전환 계획](mongodb-backup-cutover-plan.md)을 따르며 실제 백업 확인 증거는 0건이다.

@@ -43,7 +43,7 @@ test("Mongo operation repository on a disposable local replica set", { skip: !ur
   process.env.PII_ACTIVE_KEY_ID = "runtime_fixture";
   process.env.PII_INDEX_KEY = randomBytes(32).toString("base64");
   process.env.PII_ALLOW_PLAINTEXT_READS = "false";
-  const client = new MongoClient(uri!, { serverSelectionTimeoutMS: 5000 });
+  const client = new MongoClient(uri!, { serverSelectionTimeoutMS: 5000, monitorCommands: true });
   async function fixture(highWater = 0) {
     const options = { client, databaseName, namespace: `shadow_test_${randomBytes(10).toString("hex")}` };
     await prepareMongoOperationStore({ ...options, allowShadowWrites: true, processSequenceHighWater: highWater });
@@ -105,6 +105,32 @@ test("Mongo operation repository on a disposable local replica set", { skip: !ur
       assert.equal((await repository.getSummary()).total, 1);
       assert.equal((await repository.findCoursesByCourseId(payload.courseId)).length, 1);
       assert.equal((await repository.findCoursesByCompany(payload.companyName, payload.courseName, 10)).length, 1);
+    });
+
+    await suite.test("createdAt metadata matches exact PG lookup for active, missing and deleted rows without side effects", async () => {
+      const { repository, store } = await fixture();
+      const created = await repository.createOperation(input("calendar-created-at"));
+      const row = await store.collection("OperationSession").findOne({ _id: created.id }); assert.ok(row);
+      const observed: Array<{ name: string; projection?: unknown }> = [];
+      const listener = (event: { commandName: string; command: Record<string, unknown> }) => observed.push({ name: event.commandName, projection: event.command.projection });
+      const read = async (key: string) => {
+        observed.length = 0; client.on("commandStarted", listener);
+        try { return await repository.getOperationCreatedAt(key); }
+        finally { client.off("commandStarted", listener); }
+      };
+      const before = await store.collection("ActivityChange").find({}).sort({ _id: 1 }).toArray();
+      assert.deepEqual(await read(created.operationId), row.createdAt);
+      assert.deepEqual(observed.filter(command => command.name === "find").map(command => command.projection), [{ createdAt: 1 }]);
+      assert.equal(observed.some(command => ["insert", "update", "delete", "findAndModify"].includes(command.name)), false);
+      assert.equal(await read(created.operationId + "-absent"), null);
+      await repository.deleteOperation(created.operationId, "synthetic@example.invalid");
+      assert.equal(await repository.getOperationById(created.operationId), null);
+      const deleted = await store.collection("OperationSession").findOne({ _id: created.id }); assert.ok(deleted?.deletedAt);
+      const audits = await store.collection("ActivityChange").find({}).sort({ _id: 1 }).toArray(); assert.ok(audits.length > before.length);
+      await store.collection("Course").deleteMany({}); // Metadata does not depend on a populated course relation.
+      assert.deepEqual(await read(created.operationId), row.createdAt);
+      assert.deepEqual(await store.collection("OperationSession").findOne({ _id: created.id }), deleted);
+      assert.deepEqual(await store.collection("ActivityChange").find({}).sort({ _id: 1 }).toArray(), audits);
     });
 
     await suite.test("same-scope concurrent requests create exactly one receipt and reject changed content", async () => {

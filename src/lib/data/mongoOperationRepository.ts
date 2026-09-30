@@ -98,6 +98,16 @@ export class MongoOperationRepository implements OperationRepository {
     return row ? this.map(row, session) : null;
   }
   async getOperationById(operationId: string) { return this.transaction(session => this.get(operationId, session)); }
+  async getOperationCreatedAt(operationId: string): Promise<Date | null> {
+    return this.transaction(async session => {
+      // Match PG's narrow metadata lookup, including a soft-deleted row. Do not
+      // require course relations or decrypt unrelated personal data for this value.
+      const row = await this.store.collection("OperationSession").findOne({ operationId }, { session, projection: { createdAt: 1 } });
+      if (!row) return null;
+      assertMongo(row.createdAt instanceof Date && Number.isFinite(row.createdAt.getTime()), "INVALID_OPERATION_CREATED_AT");
+      return row.createdAt;
+    });
+  }
   async listOperations(): Promise<OperationSession[]> {
     return this.transaction(async session => {
       const rows = await this.store.scan("OperationSession", { deletedAt: null }, session);

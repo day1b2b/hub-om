@@ -21,7 +21,8 @@ import type { OperationCandidate } from "@/lib/data/operationMatch/matchOperatio
  * 안전 규칙 (docs/operations/db-write-safety.md, 2026-08-10 도입 → 2026-08-31 개정):
  *   - matched 만 쓴다. 모호(ambiguous)·미매칭(unmatched)은 절대 쓰지 않는다. [유지]
  *   - 만족도 값이 비어 있으면 쓰지 않는다. [유지]
- *   - 물리 삭제·스키마 변경 없음. 수정 필드는 avgSatisfaction 하나뿐. [유지]
+ *   - 물리 삭제·스키마 변경 없음. 수정 필드는 avgSatisfaction, 그리고 시트가 강사평균을
+ *     실어 보낼 때만 instructorSatisfaction(비어 오면 안 씀) — 둘 다 시트가 원본이다.
  *   - ★기존 값이 있어도 덮어쓴다. [변경]
  *     원래는 "사람이 손으로 넣은 값 보호"가 목적이었으나, hub-om 에 만족도 수기 입력 경로가
  *     없어 실제로 보호하던 것은 드라이브 임포트 값뿐이었다. 데이터 책임자(시트 관리자)가
@@ -52,6 +53,8 @@ interface RoundApplyBody {
   n?: string;
   overall?: string;
   pos_pct?: string;
+  /** 강사 3성분(만족·전문성·전달력) 평균 — 있으면 운영 회차 instructorSatisfaction 에 같이 기록한다(값이 있을 때만). */
+  instructorSatisfaction?: string;
   /** 누가 눌렀는지 — 담당 OM 과 다르면 응답에 알린다(막지는 않는다). */
   manager?: string;
 }
@@ -122,7 +125,12 @@ async function activityPOST(request: Request) {
       });
     }
 
-    await repository.updateOperation(decision.operationId!, { avgSatisfaction: decision.value! });
+    // avgSatisfaction 은 회차 반영 규칙(planRoundApply)이 정한 값이다. instructorSatisfaction(강사평균)은
+    // 시트가 함께 실어 보낼 때만 같이 쓴다 — 비어 오면(강사 문항이 없는 설문 등) 기존 값을 지우지 않는다.
+    const instrSat = (body.instructorSatisfaction ?? "").trim();
+    const update: { avgSatisfaction: string; instructorSatisfaction?: string } = { avgSatisfaction: decision.value! };
+    if (instrSat) update.instructorSatisfaction = instrSat;
+    await repository.updateOperation(decision.operationId!, update);
 
     // 담당 OM 과 다른 사람이 눌렀는지 알린다 — 막지는 않는다(휴가·대리 반영이 실제로 있다).
     // decision.operationId 는 업무 키다 (행 id 가 아니다) — 찾을 때도 같은 키로 본다
