@@ -263,3 +263,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 코치 아카이브 서비스 백필 CLI runtime 후속 (2026-10-01)
 
 `feature/20261001-mongodb-coach-archive-service-backfill`에서 legacy raw SQL을 encrypted PostgreSQL/명시 prepared Mongo repository command로 교체한다. 최신 completed archive 선택, 코치 변경 필드와 접속 로그 upsert, backup/maintenance gate, 단일 transaction rollback·재실행·경합 재시도·오류 비노출을 검증한다. 실행·독립 리뷰·통합은 `../mongodb-coach-archive-service-backfill/` 기록을 따른다. 다음 후보는 duplicate-company write CLI 조사이며 운영 실행·production 전체 selector·실데이터 이전/dev→main은 미완료다.
+
+## 중복 회사 병합 CLI runtime 후속 (2026-10-01)
+
+`feature/20261001-mongodb-duplicate-company-merge`에서 legacy raw Prisma CLI를 encrypted PostgreSQL/명시 prepared Mongo repository command로 교체한다. source 회사 보존, 중복 과정·라벨의 제한된 물리 삭제, 회차·비중복 catalog 이동, backup/maintenance gate, 단일 transaction rollback·재실행과 catalog writer 공유 guard를 검증한다. 실행·독립 리뷰·통합은 `../mongodb-duplicate-company-merge/` 기록을 따른다. 운영 실행·production 전체 selector·실데이터 이전/dev→main은 미완료다.

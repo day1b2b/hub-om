@@ -345,3 +345,7 @@ legacy raw SQL `db:backfill:team-user-team-labels`를 TeamUser count/조건부 r
 ## 코치 아카이브 서비스 백필 CLI runtime 연결 (2026-10-01)
 
 legacy raw SQL `db:backfill:coach-archive-service-data`를 기본 encrypted PostgreSQL/명시 Mongo shadow repository로 교체했다. 최신 completed archive의 코치 운영 필드와 접속 로그를 단일 transaction으로 복원하고, 개인정보 암호화·재실행·후반 실패 전체 rollback·최초 upsert 경합 재시도·부분 namespace 무수정 거부를 확인했다. 상세 범위는 [코치 아카이브 서비스 백필 문서](mongodb-coach-archive-service-backfill.md)를 따른다. 운영 실행·배포 설정은 미변경이다.
+
+## 중복 회사 병합 CLI runtime 연결 (2026-10-01)
+
+legacy raw Prisma `db:merge:duplicate-company`를 기본 encrypted PostgreSQL/명시 Mongo shadow repository로 교체했다. source 회사는 보존하고 기존 병합 의미에 따라 중복 과정·라벨만 물리 삭제하며, 회차와 비중복 catalog 행은 target으로 이동한다. apply gate·단일 transaction·재실행·후반 실패 rollback과 공유 catalog guard를 확인했다. 상세 범위는 [중복 회사 병합 문서](mongodb-duplicate-company-merge.md)를 따른다. 운영 실행·배포 설정은 미변경이다.
