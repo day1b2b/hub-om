@@ -182,3 +182,12 @@ health 연결 경계 구현·검증 완료. 기본PG SELECT1과 production HTTP2
 일반1061PASS/97 opt-in skip/0FAIL, scope16PASS(일반의부분집합), 실제Mongo15PASS/0skip(root+14), 실제PG frozen original/current ×UTC/Asia-Seoul 각11사례=44관찰/root1PASS/0skip. typecheck-final/build-final PASS, lint-final 오류0/기존경고7. 중복합산하지않는다. 전체과거Mongo묶음을새로돌린것은아니며변경없는privacy/auth/activity/codec/schema/package/loader15파일hash로기존검증을재사용한다. 일반검사후변경은PG opt-in runner경고허용목록과digest2파일뿐이며actualPG·최종type/lint로재검증했다. 근거는 `.claude/plans/mongodb-admin-backup/`를따른다.
 
 다음은activity:prune CLI의명시저장소경계다. 이 API는기존코치JSON다운로드이며전체35모델/원천archive row/복구이미지를제공하지않는다. 실제Next서버오류페이지·운영데이터·실원천·운영collation·실제A/B백업/각복원/복사/최종전환은미검증이다. Mongo snapshot은원본PG Promise.all에없던일관성보완이며원본과같은동시결과로주장하지않는다. driver read15초+제한된cleanup 검증을HTTP응답전체15초보장으로해석하지않는다. 기본PG·실백업증거0·dev→main조건미충족·자동화PAUSED를유지한다. 전체앱/활성CLI/예약/배포구성·snapshot개인정보분류·운영collation/TZ·운영이전은별도잔여범위다.
+
+
+## 2026-09-30 활동 기록 정리 경계
+
+activity:prune CLI를 기본 PG와 명시 activityPrune repository로 분리했다. PG SQL·10초 트랜잭션·30/365일·모델별1000개·합계 출력 후 종료 순서를 유지한다. Mongo는 트랜잭션마다 서버 시각을 한 번 읽고 두 삭제를 원자적으로 수행한다. 기존 API 자동 정리도 같은 helper로 연결했으며 전체4초/개별1500ms·시간당 한 배치·best-effort를 보존했다. 생산 기본은 PG다.
+
+일반1082 PASS/99 opt-in skip, command21 PASS(일반 부분집합), 실제Mongo12 PASS, 인접API12 PASS, frozen original/current 실제PG root1 PASS/36worker 관찰. 최종type/build/lint 통과(기존경고7). 중복 합산과 전체 역사Mongo 재실행 주장은 하지 않는다. 독립 getMore P1/출력검증 P2를 보완했고 최종 실행 증거를 수락받았다. 합성 자원 정리와 실패·한계·원격 통합 근거는 `.claude/plans/mongodb-activity-prune/`를 따른다.
+
+이번 단위 종료 후 새 기능은 시작하지 않고 운영 전 필요한 결정·외부 조치를 같은 폴더 operational-decisions.md에 정리했다. 코치 공개 조회 scope 연결, 전체 앱·활성CLI/예약/배포 조립, snapshot 개인정보 분류·운영collation/TZ 및 실제 A/B 백업·각 복원·복사·최종 전환이 남아 있다. main/dev·운영 설정은 변경하지 않았고 자동화PAUSED 인계를 유지한다.

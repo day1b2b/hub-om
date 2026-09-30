@@ -1,3 +1,4 @@
+import type { ActivityPruneRepository } from "./activityPruneRepository";
 import type { AdminBackupRepository } from "./adminBackupRepository";
 import type { DatabaseHealthRepository } from "./databaseHealthRepository";
 import type { GoogleSheetsImportSource } from "./googleSheetsImportSource";
@@ -50,6 +51,7 @@ export interface CoachPrivateAccessLogRepository {
   recordAccess(coachId: string, accessedByEmail: string, context: string): Promise<void>;
 }
 export interface DataRepositories {
+  activityPrune: ActivityPruneRepository;
   adminBackup: AdminBackupRepository;
   databaseHealth: DatabaseHealthRepository;
   driveImportWriter: DriveImportWriterRepository;

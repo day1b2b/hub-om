@@ -1,0 +1,11 @@
+{
+  "scripts/test-activity-prune-baseline-loader.mjs": "56874c2708681986c3129d01df33235a0a75f69bb9764c128f4aa3d651ae4d5f",
+  "src/lib/data/activity-prune-tests/PG-GATE-RUN.txt": "22ad169783a132575593049e58c2eb5f4752bdf35fc691faa40f538c7af5d1c4",
+  "src/lib/data/activity-prune-tests/baseline-manifest.json": "ad7b056822c54fe51c9bf04079024ff3425f1d3cf48540084f35d4885040d1e0",
+  "src/lib/data/activity-prune-tests/baseline.postgres.integration.test.ts": "6f72a547901cb3e7640a353eff3928bc34c1b0fec1674f34ffff66dd128b3b5d",
+  "src/lib/data/activity-prune-tests/batch-worker.fixture.ts": "871c7588ec49a494209014ac4d17c5df799d78be3371631d53a21cb9ec1e937c",
+  "src/lib/data/activity-prune-tests/cli-observer.fixture.ts": "11eed9e969b2c59e45a1f4af611756475331d8e0c9de692aaf3e1f1047eb2087",
+  "src/lib/data/activity-prune-tests/pg-store.fixture.ts": "245c521859574765bb4bab66cf913ec99e8dc358321aa5e04b43ae8504bbfd3f",
+  "src/lib/data/activity-prune-tests/shared.fixture.ts": "64b4d3e16fb5938767f26e5b9d708d000d9bf2705182c90873011e3464cf6970",
+  "src/lib/data/activity-prune-tests/subprocess.fixture.ts": "6bdade05195d3539f91811faa2929d2fd010ce14bb4d31c07fd9c080a8c2e606"
+}

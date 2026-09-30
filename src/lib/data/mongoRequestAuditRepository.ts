@@ -6,6 +6,7 @@ import { encodeMongoRuntimeDocument } from "./mongoRuntimeCodec";
 import { assertMongo, completeMongoRow, MongoOperationError, MongoOperationStore, type MongoOperationOptions } from "./mongoOperationStore";
 import { assertMongoReadStoreReady, prepareMongoReadStore } from "./mongoReadStore";
 import { assertMongoCoachSchedulingGuardReady, lockMongoCoachScheduling, prepareMongoCoachSchedulingGuard } from "./mongoCoachSchedulingGuard";
+import { pruneMongoActivityBatch } from "./mongoActivityPruneRepository";
 
 export const REQUEST_AUDIT_MODELS = ["ActivityRequest", "ActivityChange", "Coach", "CoachPrivateAccessLog"] as const;
 type Options = MongoOperationOptions & { allowShadowWrites: true };
@@ -75,15 +76,7 @@ export class MongoRequestAuditRepository implements RequestActivityRepository, C
   /** Same 30/365-day retention and <=1000 rows per model as the current PG implementation. */
   async pruneActivityBatch(): Promise<{ requests: number; changes: number }> {
     try {
-      const prune = async (model: "ActivityRequest" | "ActivityChange", days: number) => {
-        const collection = this.store.collection(model);
-        const cutoff = new Date(Date.now() - days * 86_400_000);
-        const rows = await collection.find({ occurredAt: { $lt: cutoff } }, { projection: { _id: 1 }, maxTimeMS: 1500 })
-          .sort({ occurredAt: 1, _id: 1 }).limit(1000).toArray();
-        if (!rows.length) return 0;
-        return (await collection.deleteMany({ _id: { $in: rows.map(row => row._id) }, occurredAt: { $lt: cutoff } }, { maxTimeMS: 1500 })).deletedCount;
-      };
-      return { requests: await prune("ActivityRequest", 30), changes: await prune("ActivityChange", 365) };
+      return await pruneMongoActivityBatch(this.store, { timeoutMS: 4000, operationTimeoutMS: 1500 });
     } catch { throw new MongoOperationError("AUDIT_RETENTION_FAILED"); }
   }
 }
