@@ -305,3 +305,7 @@ health·관리자 코치 JSON export·request/private audit·activity prune를 �
 ## 변경 내역 runtime 조립 (2026-10-01)
 
 `/changes`의 활동 조회·콘텐츠 피드·코치 메모 수정·투입 평가 수정과 request audit를 같은 client/database/namespace의 등록 shadow runtime으로 조립했다. 실제 네 API handler에서 응답과 업무/요청 감사 연결, 암호화 저장, 부분 준비·재실행 불변, 등록 scope 분해·혼합 차단을 확인했다. 상세 범위는 [변경 내역 runtime 문서](mongodb-changes-runtime.md)를 따른다. 브라우저 전체 흐름, production selector·전체 Next/활성 작업·운영 이전은 미완료다.
+
+## 코치 관리자 runtime 조립 (2026-10-01)
+
+코치 관리자 페이지·마스터·삭제 코치 API와 request audit를 같은 client/database/namespace의 등록 shadow runtime으로 조립했다. 복원·기존 영구삭제·업무/요청 감사·암호화 저장과 부분 준비·중첩 전환 차단을 확인했다. 상세 범위는 [코치 관리자 runtime 문서](mongodb-coach-admin-runtime.md)를 따른다. 브라우저 전체 흐름, production selector·전체 Next/활성 작업·운영 이전은 미완료다.
