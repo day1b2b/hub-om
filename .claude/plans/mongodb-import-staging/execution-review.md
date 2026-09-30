@@ -1,6 +1,6 @@
-# 실행 기록 — 검증·정리 수락, 원격 통합 대기
+# 실행 기록 — 완료
 
-현재 상태: V1~V8 독립 수락, V9 실행·정리·증거 보존 수락. 제품 변경·추가 검사 필요 근거 없음. 일반921/68skip, PG18, 전체Mongo파일별751성공, typecheck/lint/buildPASS. 소유서버는종료·정리됐다. 원격통합만아직미실행이다. 지속증거와해시는 `/Users/ga/.cache/hub-om-verification/20260930-import-staging/sha256.json`을따른다. 아래이전진행상태는실행당시이력이며현재상태로해석하지않는다.
+현재 상태: V1~V8 독립 수락, V9 실행·정리·증거 보존 수락. 제품 변경·추가 검사 필요 근거 없음. 일반921/68skip, PG18, 전체Mongo파일별751성공, typecheck/lint/buildPASS. 소유서버는종료·정리됐다. 제품c11a05c를총괄에FF·atomic push했고양쪽원격SHA를확인했다. 마지막문서SHA는integration-review/final-remote증거를따른다. 지속증거와해시는 `/Users/ga/.cache/hub-om-verification/20260930-import-staging/sha256.json`을따른다. 아래이전진행상태는실행당시이력이며현재상태로해석하지않는다.
 
 ## 초기 실행 이력
 
