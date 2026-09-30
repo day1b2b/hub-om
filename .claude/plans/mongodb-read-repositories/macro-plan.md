@@ -203,3 +203,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 `feature/20260930-mongodb-snapshot-privacy`에서 `DriveImportResult.companyName/courseName`을 암호화하고 non-unique HMAC companion, PG migration, `C` byte 정렬 정책, Mongo 계약·validator/index와 35모델 codec에 반영했다. 합성 PG는 legacy/schema전 실패/혼재·backfill·재실행·partial·키불일치 apply 거부·exact/duplicate/음수 limit/enforce를, Mongo는 79개 history/runtime 시나리오로 암호문·HMAC·정렬·이전정책 평문 문서 거부를 확인했다. 일반1084/101skip, 관련 codec/export/import65, type/build 통과, lint기존7이다. 상세 실행·독립 리뷰·정리·원격 통합은 `../mongodb-snapshot-privacy/`를 따른다.
 
 운영 migration/backfill/enforce·기존 namespace 삭제/수리는 하지 않았다. 다음 개발 단위는 운영 collation/TZ 대조와 전체 앱·활성 CLI/예약/배포 조립 중 실제 호출 근거가 있는 작은 수직 단위로 고른다. 실 A/B 백업·각 복원·실데이터 복사·최종 전환과 dev→main 조건은 아직 미완료다.
+
+## PostgreSQL runtime 전제 점검 후속 (2026-09-30)
+
+`feature/20260930-mongodb-runtime-composition`에서 첫 조립 선행 게이트로 읽기 전용 `scripts/check-postgres-runtime-contract.ts`를 추가한다. 시스템 카탈로그와 고정 합성 문자열만 사용해 앱의 UTC 세션, UTF8, byte 정렬, collation version을 판정하며 연결 시작부터 read-only다. 합성 PostgreSQL 17/18 C/UTF8은 compatible/0, PostgreSQL 18 ICU `ko-KR`은 ordering 불일치 blocked/2였고 업무 테이블은 모두 0개였다. 실제 운영 DB에는 접근하지 않았으므로 운영 증거는 0이며, blocked/실행 실패를 PASS로 처리하지 않는다. 다음 구현은 이 preflight를 전제로 한 같은 Mongo namespace의 runtime repository 조립이다. 운영 selector·배포 설정·실 A/B 백업/복원·복사·최종 전환과 dev→main은 미완료다.

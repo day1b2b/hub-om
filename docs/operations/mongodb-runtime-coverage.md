@@ -285,3 +285,7 @@ Google Drive(A)와 OneDrive(B)는 백업 **후보**만 확정했다. 실제 계�
 새 합성 PostgreSQL에서 legacy plaintext, schema 전 실패/rollback, 평문·암호문 혼재, dry-run/apply/retry, companion 부분 복구, 잘못된 암호화/HMAC 키의 apply 전 거부·저장 불변, exact equality, 중복 허용, 음수·fraction·비정상 limit과 `C` byte 정렬, enforce 평문 거부를 확인했다. 기존 source ID의 205행 부분 commit·재실행 검사도 최신 migration과 함께 다시 통과했다. 새 MongoDB 8.0.30 replica set에서 history/runtime 79 PASS로 암호문·HMAC·변조·키 불일치·validator/index·정렬·32MiB 경계와 이전 정책 평문 문서의 무수정 거부를 확인했다. 35모델 codec/export/import 관련 65 PASS, 일반1084 PASS/101 opt-in skip/0 fail, typecheck/build PASS, lint0error/기존7warning이다. 검사 묶음은 중복 합산하지 않는다.
 
 운영 migration/backfill/enforce, 기존 shadow 변환·삭제, 실제 데이터·원천·키·배포에는 접근하지 않았다. 이전 shadow는 자동 수리하지 않고 새 run ID/namespace 재복사가 기본이다. 적용·복구 순서는 [별도 절차](pii-drive-import-result-names.md)를 따른다. 실제 운영 collation/TZ, 전체 앱·활성 CLI/예약/배포 조립, A/B 백업과 각 복원·실데이터 복사·최종 전환, dev→main 조건은 아직 미완료다.
+
+## PostgreSQL 정렬·시간대 사전 점검 (2026-09-30)
+
+`scripts/check-postgres-runtime-contract.ts`는 앱과 같은 UTC 세션의 시스템 카탈로그와 고정 합성 문자열만 읽는 preflight다. 연결 시작부터 read-only를 강제하고 UTF8·UTC·UTF-8 byte 정렬·collation version 일치를 각각 판정한다. 합성 PostgreSQL 17/18 C locale에서는 compatible/0, PostgreSQL 18 ICU `ko-KR`에서는 byte ordering 불일치만 blocked/2였고 사용자 테이블은 모두 0개였다. 실제 운영 실행은 하지 않았으므로 운영 collation/TZ 확인 완료로 표시하지 않는다. 절차와 판정은 [사전 점검 문서](postgres-runtime-contract-preflight.md)를 따른다. 다음은 이 결과를 전제로 하는 전체 앱·활성 작업의 Mongo runtime 조립이며 실제 A/B 백업·각 복원·복사·최종 전환과 dev→main은 계속 미완료다.
