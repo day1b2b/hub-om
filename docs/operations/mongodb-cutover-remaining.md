@@ -35,6 +35,8 @@
 
 관리자 사용자 명단·팀·역할과 토큰 조회는 [Mongo user-admin runtime](mongodb-user-admin-runtime.md)으로 request audit와 함께 조립했다. 실제 API 권한·쓰기·중복·최소 응답·삭제 차단을 검증했지만 production selector는 아니다.
 
+코치 본인 토큰 조회와 월 일정 조회·저장은 [Mongo coach-portal runtime](mongodb-coach-portal-runtime.md)으로 request audit와 함께 조립했다. 실제 API 흐름을 검증했지만 production selector는 아니다.
+
 남은 기능 구현과 병행해 전체 요청·페이지·작업 실행의 저장소 묶음, 원천 adapter, 요청 감사, Calendar 부작용, 키/오류 처리를 일관되게 연결한다. 누락된 저장소가 PG로 넘어가지 않는지 검사하고 실제 앱/브라우저·권한 흐름을 통합 확인한다. 환경변수 이름만 바꾸는 것으로 완료되지 않는다. 이 연결 코드는 먼저 격리 환경에서 검증하고 운영 설정은 바꾸지 않는다.
 
 health·백업·배포 entrypoint의 Prisma migration 실행 및 활성 CLI/예약 작업을 함께 점검해야 한다. 완성된 repository를 다시 만드는 단계가 아니라 실제 사용 경로에 맞춰 묶고 검증하는 단계다.

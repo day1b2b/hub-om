@@ -321,3 +321,7 @@ health·관리자 코치 JSON export·request/private audit·activity prune를 �
 ## 사용자 관리 runtime 조립 (2026-10-01)
 
 관리자 사용자 목록·등록·팀·역할 변경, 토큰 조회와 request audit를 같은 등록 shadow runtime으로 조립했다. 실제 권한·생성·정규화 중복·수정·최소 조회 응답·삭제 차단·감사·암호화 저장과 준비 불변·scope 차단을 확인했다. 상세 범위는 [사용자 관리 runtime 문서](mongodb-user-admin-runtime.md)를 따른다. production selector·운영 이전은 미완료다.
+
+## 코치 포털 runtime 조립 (2026-10-01)
+
+코치 토큰 본인 조회·월 일정 조회/저장과 request audit를 같은 등록 shadow runtime으로 조립했다. 실제 API의 토큰·일정·감사·암호화 저장과 준비 중단 불변·scope 혼입 차단을 확인했다. 상세 범위는 [코치 포털 runtime 문서](mongodb-coach-portal-runtime.md)를 따른다. production selector·운영 이전은 미완료다.

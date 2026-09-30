@@ -239,3 +239,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 사용자 관리 runtime scope 후속 (2026-10-01)
 
 `feature/20261001-mongodb-user-admin-runtime`에서 관리자 사용자 목록·등록·팀·역할 변경과 토큰 조회를 request audit와 같은 명시 shadow scope로 조립한다. 기존 권한·정규화 중복·응답 최소화·물리삭제 차단을 유지하고 실제 Mongo handler 흐름, 준비 불변, scope 혼입 차단과 저장 평문 비노출을 검증한다. 실행·독립 리뷰·통합은 `../mongodb-user-admin-runtime/` 기록을 따른다. 생산 기본 PG, 실백업 증거 0, 자동화 PAUSED, 운영 이전과 dev→main 미완료 상태는 변하지 않는다.
+
+## 코치 포털 runtime scope 후속 (2026-10-01)
+
+`feature/20261001-mongodb-coach-portal-runtime`에서 코치 토큰 본인 조회와 월 일정 조회·저장, request audit를 같은 명시 shadow scope로 조립한다. 기존 인증·일정 동시성·감사 의미를 유지하고 실제 Mongo handler 흐름, 준비 중단 불변과 scope 혼입 차단을 검증한다. 실행·독립 리뷰·통합은 `../mongodb-coach-portal-runtime/` 기록을 따른다. 생산 기본 PG와 운영 이전/dev→main 미완료 상태는 변하지 않는다.
