@@ -1,3 +1,4 @@
+import type { DatabaseHealthRepository } from "./databaseHealthRepository";
 import type { GoogleSheetsImportSource } from "./googleSheetsImportSource";
 import type { NotionImportSource } from "./notionImportSource";
 import type { DriveImportSource } from "./driveImportSource";
@@ -48,6 +49,7 @@ export interface CoachPrivateAccessLogRepository {
   recordAccess(coachId: string, accessedByEmail: string, context: string): Promise<void>;
 }
 export interface DataRepositories {
+  databaseHealth: DatabaseHealthRepository;
   driveImportWriter: DriveImportWriterRepository;
   driveImportSource: DriveImportSource;
   notionImportSource: NotionImportSource;

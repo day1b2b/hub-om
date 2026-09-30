@@ -1,0 +1,26 @@
+{
+  "baseline": "35104776c1ae4f42696d06e0e836ead29a786fb3",
+  "status": "THIS_ANNOTATIONS_FIXED_NOT_EXECUTED",
+  "files": [
+    {
+      "path": "scripts/test-health-baseline-loader.mjs",
+      "sha256": "3693aaf872eeb3a58f7fd9674851edc5924924800fbeae2b4ee125f448271bb7"
+    },
+    {
+      "path": "src/lib/data/health-tests/baseline-contract.fixture.ts",
+      "sha256": "15ba6a52dd9895b2987fb3dedc260bdabd7714dbff9022708b4dceed8d51e61c"
+    },
+    {
+      "path": "src/lib/data/health-tests/baseline-worker.fixture.ts",
+      "sha256": "aee22304b57d164716bc167b069893508d2cc416b7d4e6d7c983b980dee553de"
+    },
+    {
+      "path": "src/lib/data/health-tests/baseline.postgres.integration.test.ts",
+      "sha256": "7c4e68c33c368e586c39b20f355086673cdbf6c8f5861bb63fe45c401702c122"
+    },
+    {
+      "path": "src/lib/data/health-tests/BASELINE-RUN.txt",
+      "sha256": "a86c738ef18a03a0dda753739b9243f7ea07c9a85a7cb9fedc908f514b4cdd40"
+    }
+  ]
+}

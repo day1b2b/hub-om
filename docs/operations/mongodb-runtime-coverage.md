@@ -87,7 +87,7 @@
 | `src/lib/data/prismaAdminDatabaseRepository.ts` | Company, Course, OperationSession, Member; 셀 API의 기본 PG adapter |
 | `src/lib/data/prismaDeletedOperationRepository.ts` | Company, Course, OperationSession; 삭제 운영 목록/복원 API의 PG 기본 adapter |
 | `src/lib/data/prismaOperationBackfillRepository.ts` | OperationSession; 현장 투입·OM 상태 보정 API의 PG 기본 adapter |
-| `src/app/api/health/route.ts` | 중앙 연결·raw SQL 또는 동적 delegate: 본문 기능군 참조 |
+| `src/app/api/health/route.ts` | 기본 PG/명시 Mongo databaseHealth 연결 경계 검증. 전체 readiness 아님 |
 | `src/lib/activity/request.ts` | ActivityRequest |
 | `src/lib/data/activityReads/prismaActivityReadRepository.ts` | ActivityRequest, ActivityChange, CoachContentEntry 및 기존 presentation 관계 조회; 활동 조회 facade 기본 PG |
 | `src/lib/data/announcements/prismaAnnouncementRepository.ts` | Announcement, AnnouncementAttachment; 공지 facade의 기본 PG 조회/쓰기 |
@@ -244,3 +244,11 @@ Sheets 통합093f585 기준 제품3파일의 최소 경계를 구현·검증했�
 일반1034 PASS/93 opt-in skip/0fail, source HTTP12(root+11), native45, CLI6와 scope11(일반의 부분집합), 원본 gate1 및 최종 parity1(3backend×2TZ 각각22 ledger)을 확인했다. typecheck/build 통과, lint 오류0/기존경고7. 묶음은 중복 합산하지 않으며 전체 역사 Mongo 재실행이 아니다. 독립 리뷰·실패 보완·hash 재사용·합성 자원 정리·원격 통합은 `../../.claude/plans/mongodb-drive-import-writer/`를 따른다.
 
 다음 작은 후보는 health 명시 조회 경계다. 관리자 백업·활성 CLI/예약/배포·전체 앱 조립·snapshot 개인정보 분류·운영 collation/시간대·실원천·독립 A/B 백업/각 복원/복사/최종 전환은 미완료다. 실제 백업 증거0, 생산 기본PG, dev→main 조건 미충족을 유지한다.
+
+## 2026-09-30 Health 연결 경계
+
+health 연결 경계 구현·검증 완료. 기본PG SELECT1과 production HTTP200/503·응답 유지. 명시 databaseHealth만 Mongo borrowed client의 ping1/5초 CSOT를 사용한다. scope 누락은 fallback하지 않는다. 모든 환경의 공개 실패를 고정해 개발 오류 원문 노출을 제거한다. 빈/미생성 DB ping 성공과 유효 형식 다른 키 통과는 연결 확인의 정상 의미이며 readiness를 보증하지 않는다.
+
+일반1045PASS/95 opt-in skip/0FAIL(health scope root+10개는 부분집합), actualMongo9PASS/0skip(root+8), originalPG gate1PASS/0skip(6사례×원본/current 12관찰), typecheck-final/build PASS, lint 오류0·기존경고7. 서로 다른 단위를 합산하지 않는다. 전체 역사 Mongo 묶음을 새로 실행한 것은 아니다. 빌드 후 제품6파일 hash 동일, 기존 정책·의존9파일 baseline 동일. 마지막 worker 변경은 this:pg.Client 타입 표기뿐이며 이후 typecheck-final 통과. 실행·실패보완·독립리뷰·통합 근거는 `.claude/plans/mongodb-health-boundary/`를 따른다.
+
+다음은 관리자 백업 경계다. 전체 Next 서버·실배포·실원천/운영 데이터 검증은 미실행이다. schema/decryption/replica 쓰기/readiness/백업복구/cutover를 검증하지 않는다. 관리자 백업·활성CLI/예약/전체앱 조립·snapshot민감문자열분류·운영collation/TZ·실A/B백업/복원/복사/전환은 별도 미완료다. 브라우저 임시저장 보호는 기존 후속범위다. 기본PG·실백업증거0·dev→main 조건 미충족·자동화PAUSED를 유지한다.
