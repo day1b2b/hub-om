@@ -349,3 +349,7 @@ legacy raw SQL `db:backfill:coach-archive-service-data`를 기본 encrypted Post
 ## 중복 회사 병합 CLI runtime 연결 (2026-10-01)
 
 legacy raw Prisma `db:merge:duplicate-company`를 기본 encrypted PostgreSQL/명시 Mongo shadow repository로 교체했다. source 회사는 보존하고 기존 병합 의미에 따라 중복 과정·라벨만 물리 삭제하며, 회차와 비중복 catalog 행은 target으로 이동한다. apply gate·단일 transaction·재실행·후반 실패 rollback과 공유 catalog guard를 확인했다. 상세 범위는 [중복 회사 병합 문서](mongodb-duplicate-company-merge.md)를 따른다. 운영 실행·배포 설정은 미변경이다.
+
+## 강사노트 파일 가져오기 CLI runtime 연결 (2026-10-01)
+
+암호화 스키마에서 중단되던 legacy raw pg `db:import:instructor-notes`를 기본 encrypted PostgreSQL/명시 Mongo shadow repository로 교체했다. 암호화 원천 복호화·PII 제거, Notion NO 우선/구형 이름 병합, 기존값 보존·recruitAvoid OR, counts-only 출력, apply gate와 전체 transaction rollback을 확인했다. Mongo 신규 생성 guard는 dry-run에서 쓰지 않으며 기존 Notion writer와 동시 경합도 검증했다. 상세 범위는 [강사노트 가져오기 문서](mongodb-instructor-note-import-cli.md)를 따른다. 실제 `.local` 원천·운영 실행·배포 설정은 미변경이다.

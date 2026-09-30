@@ -267,3 +267,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 중복 회사 병합 CLI runtime 후속 (2026-10-01)
 
 `feature/20261001-mongodb-duplicate-company-merge`에서 legacy raw Prisma CLI를 encrypted PostgreSQL/명시 prepared Mongo repository command로 교체한다. source 회사 보존, 중복 과정·라벨의 제한된 물리 삭제, 회차·비중복 catalog 이동, backup/maintenance gate, 단일 transaction rollback·재실행과 catalog writer 공유 guard를 검증한다. 실행·독립 리뷰·통합은 `../mongodb-duplicate-company-merge/` 기록을 따른다. 운영 실행·production 전체 selector·실데이터 이전/dev→main은 미완료다.
+
+## 강사노트 파일 가져오기 CLI runtime 후속 (2026-10-01)
+
+`feature/20261001-mongodb-instructor-notes-import-cli`에서 legacy raw pg CLI를 encrypted PostgreSQL/명시 prepared Mongo repository command로 교체한다. 암호화 원천 복호화·PII 제거, Notion NO 우선/구형 이름 병합, 기존값 보존·OR 의미, counts-only 로그, apply gate, 단일 transaction rollback·재실행과 부분 namespace 무수정 거부를 검증한다. 신규 생성 guard는 읽기 전용 dry-run을 쓰지 않고 전체 강사노트 writer와 경합한다. 실행·독립 리뷰·통합은 `../mongodb-instructor-note-import-cli/` 기록을 따른다. 운영 실행·실제 원천·production 전체 selector·실데이터 이전/dev→main은 미완료다.
