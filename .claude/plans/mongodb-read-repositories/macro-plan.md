@@ -303,3 +303,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 2026-10-01 운영 화면 runtime scope 후속
 
 `feature/20261001-mongodb-operation-app-runtime`에서 운영 목록·상세·신규 작성 화면의 초기 서버 조회에 필요한 여섯 Mongo repository와 borrowed 맞춤 도구 port를 같은 명시 shadow scope로 조립한다. 실제 세 page의 PG fallback 없음·저장 불변·부분 namespace 무수정 거부를 검증한다. 실행·독립 리뷰·통합은 `../mongodb-operation-pages-runtime/` 기록을 따른다. 다음 단위는 운영 생성·수정·삭제 API와 Calendar/request audit 조립이며 production selector·실데이터 이전/dev→main은 미완료다.
+
+## 2026-10-01 운영 쓰기 runtime scope 후속
+
+`feature/20261001-mongodb-operation-write-runtime`에서 운영 생성·회차 추가·순서 변경·삭제 API를 기존 Calendar 반영·request audit와 같은 명시 shadow scope로 조립한다. 빈 namespace만 준비하고 실제 네 API의 Mongo 저장·soft-delete·합성 Calendar·감사, Calendar 실패 복구, 부분·legacy namespace 무수정 거부와 local JSON 회귀 방지를 검증한다. 실행·독립 리뷰·통합은 `../mongodb-operation-write-runtime/` 기록을 따른다. 실제 Google·production selector·실데이터 이전/dev→main은 미완료다.

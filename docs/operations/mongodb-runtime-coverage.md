@@ -385,3 +385,7 @@ legacy raw pg `db:import:operations`를 기본 encrypted PostgreSQL/명시 prepa
 ## 운영 목록·상세·신규 화면 runtime 조립 (2026-10-01)
 
 운영 목록·상세·신규 작성 page의 `operations`, `teamUsers`, `teamMembers`, `instructorNote`, `coach`, `omRequests`와 borrowed 맞춤 도구를 같은 명시 shadow scope로 조립한다. 실제 세 page를 MongoDB 8.0.30에서 실행해 PG fallback 없음, 조회 중 저장 불변, 부분 namespace 무수정 거부를 확인한다. 상세 범위는 [운영 화면 runtime 문서](mongodb-operation-pages-runtime.md)를 따른다. 운영 생성·수정·삭제 API와 Calendar/request audit, production selector, 실데이터 이전·복원·최종 전환은 미완료다.
+
+## 운영 쓰기 API runtime 조립 (2026-10-01)
+
+운영 생성·회차 추가·순서 변경·삭제 API를 Calendar 반영·request audit와 같은 명시 shadow scope로 조립한다. 실제 네 API를 MongoDB 8.0.30과 합성 Calendar remote에서 실행해 업무 저장·soft-delete·mapping·감사, Calendar 생성·삭제 실패 복구, legacy namespace 무수정 거부와 PG/비합성 외부 접근 0을 확인한다. local JSON의 기존 404·PG 무접근도 유지한다. 상세 범위는 [운영 쓰기 runtime 문서](mongodb-operation-write-runtime.md)를 따른다. 실제 Google, production selector, 실데이터 이전·복원·최종 전환은 미완료다.
