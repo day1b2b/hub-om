@@ -1,6 +1,6 @@
 # MongoDB 병렬 이전 상위 계획
 
-최신 총괄 상태: 2026-09-30 Sheets 통합093f585 기준 Notion 가져오기 명시 source→staging을 구현·합성 검증했다. 실행·독립리뷰·정리·원격통합 상태는 ../mongodb-notion-import/ 기록을 따른다. 다음 작은 후보는 Drive CLI writer다. 운영 기본PG, 전체 이전 미완료, 실백업증거0, dev→main 조건미충족 상태를 유지한다.
+최신 총괄 상태: 2026-09-30 Notion 통합3c72e69 기준 Drive CLI 이력 writer의 명시 source/저장 경계를 구현·합성 검증했다. 실행·독립리뷰·정리·원격 통합은 ../mongodb-drive-import-writer/ 기록을 따른다. 다음 작은 후보는 health 명시 조회 경계다. 운영 기본PG, 전체 이전 미완료, 실백업증거0, dev→main 조건미충족 상태를 유지한다.
 
 목표: 기존 PostgreSQL 운영을 유지하며 개인정보를 암호화한 별도 MongoDB를 검증한 뒤 안전하게 전환한다.
 
@@ -160,3 +160,9 @@ Notion 가져오기, Drive CLI writer, CLI/예약작업·전체앱연결·backup
 제품 source/context/route3파일, 원본reader·서버token·기존staging·권한·기본PG 보존. HTTP46/handler15/native17/wholeparity각47/일반1017·89skip 및 type/build/lint 검증, 독립지적3건 해소·소유자원정리. 중복합산금지, 원격통합은 ../mongodb-notion-import/integration-review.md를 따른다.
 
 Drive CLI writer·CLI/예약작업·전체앱조립·backup/health·snapshot개인정보분류·운영collation·실A/B백업복원복사전환이 남았다. 자동화재개·운영접근·main/dev변경0. 브라우저 임시저장 보호는 기존 후속범위로 유지한다.
+
+## 2026-09-30 Drive CLI 이력 쓰기
+
+제품8파일. 기존 source scanner/업무 의미를 유지하면서 encrypted PG 기본·명시 Mongo로 연결했다. 원본 PG gate1, scope11/CLI6(일반에 포함), 실제 HTTP/native/reader12, native45, 최종 parity1(3backend×2TZ별22)·일반1034/93skip, type/build/lint를 검증했다. 실패와 독립 지적은 보완하고 소유 합성 PG3DB/Mongo의 잔존0·서버/포트/dbpath 정리를 확인했다. 실행 증거와 최종 원격통합 SHA는 ../mongodb-drive-import-writer/ 기록을 따른다.
+
+다음은 health 명시 조회 경계다. 백업·활성CLI/예약/배포 경로와 전체앱조립, snapshot 개인정보분류·운영collation/TZ, 실A/B백업복원복사전환은 미완료다. 새 삭제/중복/원천권한 정책은 도입하지 않았으며 자동화PAUSED 인계를 자동재개하지 않는다.

@@ -1,0 +1,69 @@
+Drive writer 원본 기술 gate — 부모 실행 전용
+
+상태: 작성/freeze, 실행 미검증. 제품/fullparity 작성 또는 수락이 아님.
+기준: 3c72e6997e057b7811e128e12ca6b354065de66a
+원본보관: immutable commit/blob/SHA manifest 53개(실행원본4,지원49=45migration+package/lock/schema/loader).
+scanner 포함 원본 source bytes는 git object에서 검증 후 메모리에만 읽는다.
+실명 원본을 새 공개 source 사본/문서/로그에 복제하지 않는다. git object 부재는 실패.
+
+작업 디렉터리:
+/Users/ga/workspace/hub-om-mongodb-coach-content
+
+정확한 실행 명령(Node24, 기존 node_modules):
+env -i PATH="$PATH" HOME="$HOME" LC_ALL=C NODE_ENV=test TZ=UTC \
+  PG_DRIVE_WRITER_GATE=1 \
+  node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs --test \
+  src/lib/data/driveImportWriter.postgres.integration.test.ts
+
+선행조건:
+- 부모소유 PG127.0.0.1:56753, user synthetic.
+- data_directory /private/tmp/hub-om-drive-writer-20260930/pg.
+- drive_writer_legacy 연속prefix17, drive_writer_no_defaults 연속prefix18,
+  drive_writer_test 현재45. schema에추가DDL/default복원/guard우회없음.
+- /private/tmp/hub-om-drive-writer-20260930/migration-prefixes.json의base/path/sha256을
+  원본manifest와대조. legacy/no_defaults는부모의원문적용증거;
+  current는실제_prisma_migrations의완료45개checksum을대조.
+- 각DB의companies/courses/operation_sessions/drive_import_runs/drive_import_results가
+  비어있고다른client없음. DB별advisory lock확인. Mongo는사용하지않음.
+- fixture가실행중legacy/no_defaults에회사1·과정1·운영2합성seed를명시ID로생성.
+  current는seed쓰기조차하지않음. 마이그레이션/DBreset은fixture가하지않음.
+
+순차 gate:
+1. legacy/UTC: unchanged CLI→실제guard→실제PG SELECT/INSERT/UPDATE→실제scanner.
+2. legacy/Asia/Seoul: 별도CLIchild의TZ만변경하여동일fixture를실행.
+3. no_defaults/UTC: guard통과→운영조회→createRun23502. DML시도1,source0,run/result0.
+4. current/UTC: 실제guard가표식검사후client.end/고정오류/exit1.
+   운영조회0,DML시도0,source0,raw불변. supervisor도currentDB에DML하지않음.
+어느gate라도실패하면나머지gate를시작하지않음.
+
+기능 literal:
+- scan 1건: 공백trim된합성폴더URL. 실제scanner가Google설정없음issues2개,
+  기존folderID보존/빈files/candidates를반환. result scan_found_folder.
+- search 1건: 링크없음. 실제scanner가동일issues2개/빈candidates 반환.
+  result folder_search_empty. 입력snapshot의OM/LD null→빈문자열과날짜를검증.
+- 완결run1/result2/FK/전체필드/UUIDdefault/시각구간/status소문자completed.
+  scannedRefs1/scanFoundFolder1/scanIssues1/folderSearches1/errors0 및나머지집계0.
+- 실제DATE원값2032-02-03~04, node-pg driver Date 반환타입/ISO, original dateOnly,
+  source입력,INSERT param/result DATE text를연결.
+  UTC는03~04, Asia/Seoul은02~03이라는독립literal 예상. 실제다르면gate FAIL로보고,
+  날짜를동적시각정규화로숨기거나제품정책을고치지않음.
+- SQL 및source관찰은실제함수에위임하며반환값을바꾸지않음. 소스stub없음.
+  원본CLIargv --concurrency 1만사용. noGoogleconfig이므로외부fetch0이어야함.
+- observer의계약위반은별도누적해서원본catch가삼켜도최종FAIL.
+  정상report복사본통과/추가fetch·잘못된SQL·삼켜진위반음성대조가같은검사기를사용.
+- 원본byte/loader/migration해시변조는메모리복사본만, current탈출은실제로설치한
+  resolver의합성import probe로거부. git원본/실제loader/부모migration파일변경없음.
+
+증거/한계:
+- raw원본console.error와sourcecode/stack를출력하지않음. 알려진guard여부와SQLSTATE만기록.
+- CLI console출력은승인된progress와{runId,status,summary}만관찰파일에저장.
+  childstderr는내용출력없이byte수/hash만기록.
+- 관찰파일은 /private/tmp/hub-om-drive-writer-20260930/gate-cwd-*/observer.json.
+  childcwd에.env/.env.local없음확인;env-i whitelist/임의실env미접근.
+- parentfixture는seed전후business raw 및존재하는activity표raw hash불변검사.
+- 정상종료/기대실패시관찰확인후자기history와seed만정리하고잔존0확인.
+  timeout은60초TERM→5초KILL→observed exit까지대기하고후속gate중단.
+  timeout/signal종료시DB자료유지,소유자원감사필요/cleanup미확인으로표시.
+- 성공은역사schema원본기능/기본값실패/현재차단에한정.
+  실Google,합성HTTP성공후보추출,부분commitfault,currentencryptedwriter/native,
+  전체parity와최종제품수락은이번gate증거가아님.

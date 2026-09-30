@@ -1,5 +1,7 @@
 import type { GoogleSheetsImportSource } from "./googleSheetsImportSource";
 import type { NotionImportSource } from "./notionImportSource";
+import type { DriveImportSource } from "./driveImportSource";
+import type { DriveImportWriterRepository } from "./driveImportWriterRepository";
 import type { DriveImportHistoryRepository } from "./driveImportHistoryRepository";
 import type { CalendarPersistence, CalendarLockPort } from "../googleCalendar/calendarPersistence";
 import type { OmAssignmentRepository } from "./omRequest/omAssignmentContract";
@@ -46,6 +48,8 @@ export interface CoachPrivateAccessLogRepository {
   recordAccess(coachId: string, accessedByEmail: string, context: string): Promise<void>;
 }
 export interface DataRepositories {
+  driveImportWriter: DriveImportWriterRepository;
+  driveImportSource: DriveImportSource;
   notionImportSource: NotionImportSource;
   googleSheetsImportSource: GoogleSheetsImportSource;
   driveImportHistory: DriveImportHistoryRepository;

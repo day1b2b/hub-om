@@ -33,6 +33,7 @@
 | 가져오기 운영 반영 | `MongoImportPromotionRepository` 구현·원본 PG54/native 저장60/API22 검증·독립 코드 수락 | 명시 importPromotion/teamMembers/importPromotionCalendar/requestActivity, 기본 PG. 일반922/71skip, Mongo파일별최종833. 원격 통합은 실행 기록 기준. [경계·한계](mongodb-import-promotion.md) |
 | Google Sheets 탭 조회·가져오기 | 전용 합성 원천 port와 기존 MongoImportRepository, 원본PG/현재PG/native 전체결과 및 경합 대조 | 두 POST는 명시 googleSheetsImportSource/imports/명단/requestActivity, 기본PG·기존HTTP 유지. 실제Google/OAuth/UI활성화는 별도. [경계·한계](mongodb-google-sheets-import.md) |
 | Notion 가져오기 API | 전용 명시 source와 기존 MongoImportRepository, 실제HTTP·원본PG/현재PG/native whole 결과·경합 대조 | POST는 명시 notionImportSource/imports/명단/requestActivity, 기본PG·서버공유token·기존reader 유지. 실Notion/OAuth/UI활성화는 별도. [경계·한계](mongodb-notion-import.md) |
+| Drive CLI 이력 쓰기 | `MongoDriveImportWriterRepository`와 기존 scanner/워크플로우 명시 경계, 원본 PG/current PG/native·실제 합성 HTTP·장애·재시도·A/B 검증 | 기본은 encrypted PG, 명시 driveImportWriter/driveImportSource context만 Mongo 사용. 실제 원천/운영 실행은 별도. [경계·한계](mongodb-drive-import-writer.md) |
 | 전체 모델 암호화 snapshot export/import | 35개 모델 codec·일관된 PG 읽기 snapshot·사본 대조·참조 검증 지원 | 운영 서비스 선택·실시간 변경 동기화·최종 freeze/cutover·복구 승인은 별도 |
 
 ## 남은 기능군별 실제 경로
@@ -51,7 +52,7 @@
 | 코치 메모·콘텐츠·관리 조회 | `lib/coaches/contentEntries.ts`, `api/coaches/[id]/notes`, `api/admin/content-entries`, `api/admin/schedule-registration/[yearMonth]`, `api/schedules/[yearMonth]/status`, `app/coaches/admin/page.tsx` | CoachContentEntry, CoachEngagement, CoachScheduleAccessLog, Coach | 2026-09-29 coachContent/coachAdmin 명시 context 연결·검증 및 총괄 통합. 기본 PG 유지. 프로필 legacy helper는 PG 관리 adapter 전용이며 Mongo 프로필 이력은 이미 구현했다. logReviewEdit는 호출처 없는 export이고 Mongo 평가는 자체 이력 기록을 사용한다(2026-09-29 사용처 확인). [경계·한계](mongodb-coach-content.md) |
 | 코치 외부 동기화 | `lib/coaches/notionCoachSync.ts`, `samsungScheduleSync.ts`, `contractSheetSync.ts`, `syncLog.ts` | Coach, PrivateProfile, Field/Curriculum/Master, Engagement/Schedule, CoachSyncLog | contract/Samsung/Notion 및 로그는 명시 Mongo context, 합성 source로 실제 handler 검증. Notion/all은 전체 scope 선행 검사 후 실행하며 기본 PG 유지 |
 | 강사 위키·노션 동기화 | `lib/data/prismaInstructorNoteRepository.ts`, `lib/instructors/notionInstructorSync.ts` | InstructorNote | 실제 save route와 Notion GET/POST의 명시 context 검증. sync는 별도 원천/저장 port와 PG adapter를 사용하며 기본 PG 유지 |
-| 가져오기·staging·승격·Drive 기록 | `lib/data/prismaImportRepository.ts`, `importStagingWriter.ts`, `prismaImportPromotionRepository.ts`, `lib/driveImports/driveImportResults.ts`; `api/admin/imports/{upload,google-sheets/import,notion/import}`; `app/admin/imports/**` | DataImportRun, OperationSourceRecord, Company, Course, OperationSession, DriveImportRun, DriveImportResult | 업로드→staging→목록/상세는 명시 imports 경계 구현·영향 검증. 최종 수락은 mongodb-import-staging 실행 기록 기준. 승격은 명시 경계 구현·합성 검증·독립 코드 수락을 마쳤으며 통합은 해당 기록을 따른다. Drive 저장 이력 두 조회와 기존 페이지는 명시 경계 검증 완료(통합은 해당 기록). Sheets 두 POST의 명시 원천→staging 연결은 합성 검증했다. Notion 가져오기 명시 원천→staging도 합성 검증했다. 실제 Sheets/Notion 연결·적재와 Drive CLI writer는 후속. 외부 소스 읽기와 저장을 구분 |
+| 가져오기·staging·승격·Drive 기록 | `lib/data/prismaImportRepository.ts`, `importStagingWriter.ts`, `prismaImportPromotionRepository.ts`, `lib/driveImports/driveImportResults.ts`; `api/admin/imports/{upload,google-sheets/import,notion/import}`; `app/admin/imports/**` | DataImportRun, OperationSourceRecord, Company, Course, OperationSession, DriveImportRun, DriveImportResult | 업로드→staging→목록/상세는 명시 imports 경계 구현·영향 검증. 최종 수락은 mongodb-import-staging 실행 기록 기준. 승격은 명시 경계 구현·합성 검증·독립 코드 수락을 마쳤으며 통합은 해당 기록을 따른다. Drive 저장 이력 두 조회와 기존 페이지는 명시 경계 검증 완료(통합은 해당 기록). Sheets 두 POST의 명시 원천→staging 연결은 합성 검증했다. Notion 가져오기 명시 원천→staging도 합성 검증했다. Drive CLI writer의 명시 source/저장 경계도 합성 검증했다. 실제 Sheets/Notion/Drive 연결·적재와 전체 앱 조립은 후속. 외부 소스 읽기와 저장을 구분 |
 | 매출 동기화의 생산 연결 | `lib/data/prismaSalesRevenueSyncRepository.ts`와 기본 Salesmap/알림 adapter | Course, SalesRevenueSyncLog | 명시 Mongo 경계는 구현. 전체 생산 구성·실제 원천/운영 금액 반영은 별도 |
 | Google Calendar | `MongoCalendarPersistence`/`MongoCalendarOperationLock`/명시8port runtime → 기존 Calendar 모듈 | 기본 PG/별도 `pg.Pool` 유지. 구현·원본PG/native/합성 Google 검증·독립 리뷰 수락 | 실제 promotion→backfill→합성 Google→mapping/감사 및 인접 forward/reverse/cleanup을 검증했다. 전체 앱 선택·실Google·예약 작업 연결은 미완료. 원격 통합은 [기록](../../.claude/plans/mongodb-calendar-boundary/integration-review.md), [현재 범위](mongodb-calendar-boundary.md) |
 | 활동 요청·변경 이력·활동 피드 | `lib/activity/request.ts`, `database.ts`, `retention.ts`, `presentation.ts`; `api/activity-feed`, `api/admin/activity`, `/usage` | ActivityRequest, ActivityChange 및 이름 해석에 쓰이는 업무 모델; `set_config`, PG trigger, SQL DELETE | 조회 세 GET는 명시 activityReads context/기본PG 경계로 연결했다. 전역 요청 연결·트리거 귀속·보존 작업의 실제 운영 연결은 별도다. MongoOperation의 ActivityChange 기록은 이 전체를 대체하지 않음 |
@@ -119,6 +120,7 @@
 | `src/lib/data/prismaSalesRevenueSyncRepository.ts` | Course, SalesRevenueSyncLog; salesRevenueSync facade의 기본 PG adapter |
 | `src/lib/data/teamUsers/legacyTeamUserRepository.ts` | TeamUser |
 | `src/lib/data/prismaDriveImportHistoryRepository.ts` | DriveImportRun, DriveImportResult; 기존 facade의 기본 PG adapter |
+| `src/lib/data/prismaDriveImportWriterRepository.ts` | Company/Course/OperationSession 조회 및 DriveImportRun/Result 쓰기; 기존 CLI의 암호화 PG 기본 adapter |
 | `src/lib/googleCalendar/calendarEventLinkRepository.ts` | CalendarEventLink |
 | `src/lib/googleCalendar/operationSessionTimestamps.ts` | OperationSession |
 | `src/lib/instructors/notionInstructorSync.ts` | InstructorNote |
@@ -234,3 +236,11 @@ Drive 통합8b4d954 기준 두 POST·source/context4파일을 연결했다. 원�
 Sheets 통합093f585 기준 제품3파일의 최소 경계를 구현·검증했다. 실제HTTP46, actualhandler15, native17, 원본/currentPG/native parity root1(각47ledger·전체ID집합), 일반1017/89skip, type/buildPASS, lint기존7. 중복합산하지 않으며 전체Mongo 과거묶음 재실행이 아니다. 독립 검증 공백3건을 보완·재실행·수락했고 소유PG/Mongo를 정리했다. 원격통합은 `.claude/plans/mongodb-notion-import/integration-review.md`를 따른다.
 
 다음 후보는 Drive CLI writer다. 전체앱/예약작업 조립·backup/health·snapshot민감문자열정책·운영collation·실A/B백업복원복사전환은 남았다. 기본PG·실백업증거0·dev→main 미충족 상태 유지. 실원천/OAuth/UI 검증은 이번 합성 성공으로 대체하지 않는다.
+
+## 2026-09-30 Drive CLI 이력 쓰기 명시 경계
+
+기준 3c72e69에서 기존 CLI를 source/repository/workflow로 분리했다. 원본 migration prefix17 정상·18 ID default 실패·current45 guard 거부를 별도로 관찰하고, 현재 PG는 암호화 wrapper를 사용하는 adapter로 연결했다. native는 다섯 모델의 기존 상태 선검증, snapshot join/정렬/limit, 개별 쓰기·부분 이력·재시도·기존 reader DTO를 보존한다. 기본 PG이며 생산 선택은 바꾸지 않았다.
+
+일반1034 PASS/93 opt-in skip/0fail, source HTTP12(root+11), native45, CLI6와 scope11(일반의 부분집합), 원본 gate1 및 최종 parity1(3backend×2TZ 각각22 ledger)을 확인했다. typecheck/build 통과, lint 오류0/기존경고7. 묶음은 중복 합산하지 않으며 전체 역사 Mongo 재실행이 아니다. 독립 리뷰·실패 보완·hash 재사용·합성 자원 정리·원격 통합은 `../../.claude/plans/mongodb-drive-import-writer/`를 따른다.
+
+다음 작은 후보는 health 명시 조회 경계다. 관리자 백업·활성 CLI/예약/배포·전체 앱 조립·snapshot 개인정보 분류·운영 collation/시간대·실원천·독립 A/B 백업/각 복원/복사/최종 전환은 미완료다. 실제 백업 증거0, 생산 기본PG, dev→main 조건 미충족을 유지한다.

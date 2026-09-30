@@ -1,0 +1,147 @@
+Drive writer source-port full tuple parity — 부모 실행 전용 / 작성 freeze, 실행 NOT_RUN
+기준원본 3c72e6997e057b7811e128e12ca6b354065de66a
+
+작업 디렉터리 /Users/ga/workspace/hub-om-mongodb-coach-content
+parity만 실행(기존 gate opt-in 미설정, test-name-pattern으로 제외):
+env -i PATH="$PATH" HOME="$HOME" LC_ALL=C NODE_ENV=test TZ=UTC \
+ DRIVE_IMPORT_WRITER_PARITY=1 \
+ node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs --test \
+ --test-name-pattern='Drive writer full immutable legacy/current/native parity' \
+ src/lib/data/driveImportWriter.postgres.integration.test.ts
+
+부모가 요청한 gate 재검증과 parity를 직렬 실행:
+env -i PATH="$PATH" HOME="$HOME" LC_ALL=C NODE_ENV=test TZ=UTC \
+ PG_DRIVE_WRITER_GATE=1 DRIVE_IMPORT_WRITER_PARITY=1 \
+ node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs --test \
+ --test-concurrency=1 src/lib/data/driveImportWriter.postgres.integration.test.ts
+각 root는 별도이고 gate 실패가 parity 실행을 자동 억제하지 않으므로, gate 수락 선행이
+필요하면 PG-GATE-RUN.txt 명령 성공 후 위 parity-only 명령을 순차 실행한다.
+
+선행조건/자원:
+- PG127.0.0.1:56753/synthetic, data_directory /private/tmp/hub-om-drive-writer-20260930/pg.
+- drive_writer_legacy prefix17, drive_writer_test current45. 기존 no_defaults DB는 parity에서 미사용.
+- migration-prefixes.json baseline/17개hash 및 current 실제45개 migration checksum 확인.
+- 5개 대상 테이블 empty, PG 다른 client0, DB별 advisory lock. 다른 agent 실행과 병렬 금지.
+- Mongo127.0.0.1:27853 replica drivewriter20260930 실제hello 확인.
+  getCmdLineOpts.storage.dbPath=root/mongo 및 listDatabases의 새DB 부재 확인 후 owned=true.
+  fixture별 random hub_om_shadow_drive_parity_* DB/고정 shadow_drive_parity namespace만 사용.
+- 암호화키/인덱스키는 별도 난수로 worker 안에서만 생성하여 자식에 전달. 실env/키 접근 없음.
+- actual product 파일 작성 완료 필요: driveImportDryRun, PG/native writer, source/context/history.
+- 큰 limit 보완제품도 포함되어야 함: MAX_SAFE+1/1e18 성공, 2**63 SELECT 실패-before-create/source.
+  앞서 부모 limit-probe는 참고이며 이 whole tuple 검사를 대체하지 않음.
+
+실행 구조:
+UTC/AsiaSeoul별 legacy→currentPG→native를 각 독립 worker/process로 실행한다.
+각 시나리오도 env없는 합성cwd의 별도 child를 사용한다.
+legacy는 immutable 원본 CLI/guard/SQL 그대로 실행. resolver와 manifest 확장/수정 없음.
+원천 seam만 합성 scan/search 반환으로 교체하며 원본/새제품 동일 입력을 공급한다.
+currentPG/native는 새 workflow 함수 직접 호출: 실제 새 CLI entry 실행 증거가 아님.
+currentPG factory seam은 실제 PG repository를 관찰 wrapper로 감싸 반환한다.
+native는 실제 scoped repository와 실제 native write/transaction을 위임한다.
+스토리지 반환값/기대 DB tuple을 stub하지 않는다. 외부fetch는 tripwire.
+명시 fault는 load/create/append/finish의 실제 위임 전 또는 성공 반환 후에만 주입한다.
+post-query nonstring link는 DB에서 불가능한 타입 주입임을 구분한다.
+
+작성된 22개 시나리오 × 3backend × 2TZ(관측 전 기대개수, PASS 아님):
+normal / limit-above-safe / limit-1e18 / limit-bigint-overflow /
+parallel-forward / parallel-reverse / empty / zero-workers /
+load-before / create-before / create-after / pick-before-try /
+source-error / source-nonerror / source-stringification-error / mapping-error / append-before / append-after /
+catch-append-failure / finish-before / finish-after / recovery.
+- Company/Course/Session4개(활성3/삭제1)를 역순 seed하고 source에 전달된 전체 snapshot 검증.
+- 원본 DATE 2032-02-03~04; source/stored DATE UTC03~04, Seoul02~03 literal.
+  DB/업무 날짜를 시간 placeholder로 지우지 않는다.
+- 9개 scan후보→8개 저장, confidence누락/null/evidence기본값/중복/순서/제외필드,
+  11개 search후보→앞10개, 2files/2issues 및 summary전체 독립 literal.
+- pending/완료/errors완료, create/append/finish 저장 전/후 오류, error재기록 실패,
+  source Error/nonError 및 mapper실패, zero-workers/empty까지 whole run/result를 비교.
+- UUID/FK/time 실제범위를 먼저 검증하고 동적ID/시간만 정규화.
+  enum인 status만 PG raw소문자→logical대문자 대응, 일반문자열/숫자 타입 유지.
+- 기존 currentPG/native DriveHistory reader 전체 DTO를 독립 literal에 대조.
+  역사17은 현 encrypted Prisma reader가 실행가능한 schema가 아니므로 raw tuple로만 비교.
+  정상/부분/빈결과/pending 이력을 실제 reader에 연결. 후보수가 다른 fixture로 DTO순서 식별.
+  완전동률 latest-result는 원본에 새 tie-break가 없으므로 실제 최대시각 행들의 허용집합만 인정.
+- 각 요청 종료후 business raw 전체 불변, ActivityRequest/ActivityChange 전체0.
+  current PG policy별 ciphertext/HMAC 확인, native authenticated codec로 whole tuple readback.
+- 검증한 반환 runID/그 run의 검증완료 resultID를 누적. 매회와 마지막 recovery후
+  실제 전체ID집합/유일성/양방향 일치 확인. 최종전체조회로 기대집합 생성하지 않음.
+- 같은 comparator의 정상복사본과 추가/누락/고아/잘못된parent/필드누락/null/집계/
+  후보10번째삭제·11번째추가·교체 및 ID교체/중복 음성대조.
+- 원천 attempt를 assertion 전에 기록. 원천/SQL/guard/snapshot 관찰실패는 별도 violations에
+  누적하여 제품catch가 삼켜도 바깥검사 FAIL. 동일관찰검사기 음성대조 포함.
+- 원본SQL은 고정5개형태(선택limit 숫자허용)만 인정. 실제 guard 위임과 false 결과 확인.
+
+실행후 증거:
+root=/private/tmp/hub-om-drive-writer-20260930
+parity-child-*/observer.json: 원천/저장시도/실제위임완료/진행표식.
+parity-{legacy,current,mongo}-{UTC,Asia-Seoul}.json: whole ledger.
+TAP: 시나리오/경로/자식exit/원문없는stderr hash+bytes/cleanup 여부.
+현재/원본/source stack 원문은 출력하지 않음. source fixture는 합성문자열뿐.
+child60초 timeout→TERM→5초KILL→observed exit후 즉시 STOP/자료보존/cleanup미확인.
+상위worker240초 초과는 process group TERM/KILL 및 observed exit, 후속backend중단.
+정상/예상실패 관찰 후 ownhistory/seed 또는 ownMongoDB 정리/잔존0, 연결은 finally에서 종료.
+
+남은 별도 증거(이번 parity로 PASS 주장 금지):
+- V3 actual Google scanner + synthetic HTTP는 Sagan 소유.
+- V2 실제 새 CLI entry/.env→.env.local 순서/fixedfailure/실제exit는 Carver 후속 필요.
+- 병렬성은 성공하는 source overlap 두 완료순서만. 병렬실패에서 다른 worker의 계속진행,
+  service reject 후 settle와 CLI process.exit 시점의 차이는 별도 transaction harness 증거 필요.
+- 동시 A/B 별도 namespace/실패/recovery, 실제 driver retry/unknowncommit/보안오류 행렬은
+  native/transaction 담당자의 별도 증거와 결합해야 함. 본문의 labelled fault는 driver오류 증거 아님.
+- 25배수 progress/원본 argv 전체행렬/production collation/실 Google/최종통합은 이 파일로 닫지 않음.
+
+Gate P2 보완:
+driveImportWriterGateHarness.fixture.ts cleanup본문 내부try/finally에서 sql.end를 호출.
+cleanup실패를 catch하거나 성공으로 덮지 않음. 부모가 저장한 technical-gate-review.md 유지.
+기존 gate조건/원본/resolver/manifest 불변. gate-digests.json은 첫 freeze의 역사기록이라 유지;
+이번 harness와 append된 test의 새 hash는 아래 freeze에 별도 기재한다.
+
+독립 P2 및 최종 critic 보완 (이 변경 후 parity 재실행 필요):
+- 검증한 새 tuple만 raw/복호화 snapshot으로 누적하며 이후 모든 사례와 최종 recovery에
+  이전 ID의 전체내용 불변을 재검사한다. raw/decrypted run/result 각각 같은ID 내용변조 음성대조.
+- current/native console.error 인자를 메모리에서 exact public string 1개 allowlist로 검사한다.
+  console.log는 단일progress 또는 고정keys·숫자summary만 허용. 다른console채널은 거부.
+  secret/key/sourcecanary를 따로 검사. 원문 인자/stack은 report/IPC에 저장하지 않는다.
+  stdout/stderr는 close 이후 전체buffer 검사. stderr는 PID만 제거한 정확한 Node runtime warning
+  문구/loader경로 allowlist이며 임의warning/error는 FAIL. 검사실패는 고정코드만 외부전달.
+  정상/추가인자/Error cause/비공개문자열/미허용stderr/summary문자열 음성대조 추가.
+  legacy 원본console.error는 명시 예외; 새 actualCLI 로그안전성 증거는 Carver 별도.
+- 모든 pending run의 decode전 summary는 native raw===null, PG raw===null 및 실제 SQL IS NULL.
+  JSON-null envelope/JSON null(SQL IS NULL false) 음성대조; NULL 의미를 정규화로 숨기지 않는다.
+- source-stringification-error: nonError 객체의 toString이 throw. source1/append0/result0/finish0,
+  pending run 전체집계0/summary SQL NULL 또는nativeNULL/finishedAtNULL, finally progress1.
+- 부모 initial typecheck 지적: GateChild connect observer가 실제 connect 반환값을 그대로 반환;
+  원본caller는 반환값을 사용하지 않으며 SQL/관찰순서는 그대로. ParityStore rows 명시타입/const audit.
+  gate 재실행 추가요구 없음, original/resolver/manifest 불변.
+검증: 작성자 DB/test/typecheck/lint 실행 없음. TS AST 구문검사만 수행. 첫 parity PASS는 부모보고이며
+위 보완의 실행수락을 대신하지 않는다. 최종 명령은 위 parity-only 그대로.
+
+최종 parity 첫 재실행 출력검사 실패 후 보완:
+- 부모 로그 parity-final.log: legacy UTC22개 ledger/cleanup0/workerexit0 이후 stderr 검사 FAIL.
+  current/native는 시작 전. 이 실행을 전체수락으로 표시하지 않음.
+- 설치된 pg/lib/client.js queryQueueLengthDeprecationNotice와 supervisor invariant의
+  동일Client 3조회 Promise.all 경로를 확인. 관찰용 raw 3조회만 순차 await로 변경.
+  실제 workflow 병렬source/저장스케줄은 불변. warning allowlist 추가/NODE_NO_WARNINGS 사용 없음.
+- 미허용 stderr는 원문없이 line분류·bytes·SHA·정적형태 boolean만 진단파일에 기록.
+  분류는 허가가 아님; 미허용 줄은 계속 FAIL. 이전 원문buffer는 남지 않아 과거 실패줄의
+  동일성은 hash만으로 확정하지 않으며, 수정 후 부모 parity 재실행으로 확인한다.
+- 선택적 부모 runtime-only 진단(원천/DB/키 생성·접속 전 return):
+  env -i PATH="$PATH" HOME="$HOME" LC_ALL=C NODE_ENV=test TZ=UTC \
+   DRIVE_IMPORT_WRITER_OUTPUT_PROBE=1 \
+   node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs \
+   src/lib/data/driveImportWriterParityOutputProbe.fixture.ts
+  root/parity-output-probe.json에 안전한 메타데이터와 allowed 여부만 저장.
+  probe exit0은 진단 완료이며 allowed=true/제품parity성공과 같은 의미가 아님.
+  실제 parity 명령은 앞의 parity-only 그대로. 역사gate 재실행 추가요구 없음.
+
+작성 freeze SHA256 (관찰조회 직렬화/출력진단 보완 후, 실행결과 아님):
+c018cd85adc8c742d38d224787b55e33e9b6d41acf5f53f920fc93535c0e4c48  src/lib/data/driveImportWriterParityChild.fixture.ts
+0187edfd35c92e8e23d5e820aeeebd091f5aee4ecf5d56d932ee578c4bd0307b  src/lib/data/driveImportWriterParityHarness.fixture.ts
+6f56881ec41e0ccadebb3cc80d4273e23d89cae971a765e38fedc208a0c5447e  src/lib/data/driveImportWriterParityLiterals.fixture.ts
+2f73e9a38423e3961015394888500156d45cd87f4daff0e42026bddc82dece1e  src/lib/data/driveImportWriterParityOutputProbe.fixture.ts
+bb77dd28f43868fba523b162a314b21306593813918f31438646ff4c4ce235fc  src/lib/data/driveImportWriterParityReview.fixture.ts
+a22aff4670fb0fd7244abb1c6ddf24bed8a7e4dd44fbd989d6565702c8d00f44  src/lib/data/driveImportWriterParityStore.fixture.ts
+f0f1a8ed7e5fef95775c586443ad20fcf64ff2d61970b0ccf4ff59ad394984dd  src/lib/data/driveImportWriterParityWorker.fixture.ts
+2d34118d0b4a489f77fa2460eb67edef1835fe47fdf17065a5075120640a3c88  src/lib/data/driveImportWriter.postgres.integration.test.ts
+aad905d1934bc92e8e43f9c3647d7108fa4a1ac614f2697227656e6a96874d0a  src/lib/data/driveImportWriterGateHarness.fixture.ts
+8812da9568eaf8cc2498c8b8c009d42c8d2af67a20ac7c5a9a7af8dc1cf2d13f  src/lib/data/driveImportWriterGateChild.fixture.ts
