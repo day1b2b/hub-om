@@ -11,6 +11,8 @@
 
 독립 최종 리뷰는 보완 후 P0/P1/P2 잔여 없음으로 합성 기능 범위를 수락했다. 일반1084 PASS/101 opt-in skip, 실제 PG snapshot1·source partial1, Mongo79, codec/export/import·privacy65, Sheets/Notion 동결60, typecheck/build PASS, lint0error/기존7warning이다. 묶음은 중복 합산하지 않는다. 소유 합성 서버·DB·dbpath·포트를 정리했다.
 
+제품·검증 commit은 `69530b5`다. 최종 원격 통합 상태는 `integration-review.md`와 원격 두 브랜치 SHA를 확인한다.
+
 ## 남은 전체 작업
 
 - 운영 collation/TZ 대조
