@@ -293,3 +293,7 @@ Google Drive(A)와 OneDrive(B)는 백업 **후보**만 확정했다. 실제 계�
 ## 내부 운영 runtime 조립 (2026-09-30)
 
 health·관리자 코치 JSON export·request/private audit·activity prune를 동일 client/database/namespace의 명시 shadow scope로 조립했다. 빈 namespace만 준비하고 기존 namespace는 쓰기 없이 전체 readiness를 확인한다. scope 전체 잠금으로 요청 중 다른 runtime 중첩 전환을 막고 서로 다른 최상위 작업의 namespace는 격리한다. 실제 MongoDB 8.0.30 합성 검증과 세부 한계는 [운영 runtime 문서](mongodb-operational-runtime.md)를 따른다. 생산 selector·전체 Next 요청·활성 CLI/예약 작업·실백업/복원/복사/최종 전환은 계속 미완료다.
+
+## 활동 조회 runtime 조립 (2026-09-30)
+
+관리자 활동 목록·이용 현황·비공개 활동 피드의 `activityReads`를 명시 shadow runtime으로 조립했다. 실제 세 GET은 기존 정책대로 요청 감사를 쓰지 않으며, 준비된 namespace 재실행과 다른 모델만 있는 부분 namespace에서 mutation 0을 확인한다. 상세 검증과 범위는 [활동 조회 runtime 문서](mongodb-activity-read-runtime.md)를 따른다. `/changes`의 메모·리뷰 쓰기, production selector·전체 Next/활성 작업·운영 이전은 미완료다.

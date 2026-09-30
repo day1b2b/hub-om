@@ -5,18 +5,13 @@ import { ADMIN_BACKUP_READ_MODELS, MongoAdminBackupRepository, prepareMongoAdmin
 import { ACTIVITY_PRUNE_MODELS, MongoActivityPruneRepository, prepareMongoActivityPruneStore } from "./mongoActivityPruneRepository";
 import { MongoRequestAuditRepository, prepareMongoRequestAuditStore, REQUEST_AUDIT_MODELS } from "./mongoRequestAuditRepository";
 import { registerDataRepositoryScope, runWithDataRepositories, runWithLockedRepositoryScope, type DataRepositories } from "./dataRepositoryContext";
-import { mongoRuntimeContracts } from "./mongoRuntimeCodec";
+import { hasKnownMongoRuntimeCollections } from "./mongoRuntimeNamespace";
 
 export const MONGO_OPERATIONAL_RUNTIME_MODELS = [...new Set([
   ...ADMIN_BACKUP_READ_MODELS,
   ...REQUEST_AUDIT_MODELS,
   ...ACTIVITY_PRUNE_MODELS,
 ])] as readonly string[];
-const KNOWN_INTERNAL_COLLECTIONS = [
-  "__creation", "__counter", "__teamUserWriteGuard", "CalendarOperationLease",
-  "CoachCatalogGuard", "CoachSchedulingGuard", "CourseNameRestoreGuard",
-] as const;
-
 export type MongoOperationalRepositories = Readonly<Pick<DataRepositories,
   "activityPrune" | "adminBackup" | "databaseHealth" | "requestActivity" | "coachPrivateAccessLog"
 >>;
@@ -66,18 +61,8 @@ export async function openMongoOperationalRuntime(options: PrepareOptions): Prom
 export async function prepareMongoOperationalRuntime(options: PrepareOptions): Promise<MongoOperationalRuntime> {
   try {
     if (options.allowShadowWrites !== true) throw new Error("gate");
-    const store = new MongoOperationStore(options, MONGO_OPERATIONAL_RUNTIME_MODELS);
-    const ownedNames = new Set([
-      ...Object.keys(mongoRuntimeContracts).map(model => `${options.namespace}_${model}`),
-      ...KNOWN_INTERNAL_COLLECTIONS.map(name => `${options.namespace}_${name}`),
-    ]);
-    const cursor = store.db.listCollections({}, { nameOnly: true, timeoutMS: 5000 });
-    let existing = false;
-    try {
-      for await (const collection of cursor) {
-        if (ownedNames.has(collection.name)) { existing = true; break; }
-      }
-    } finally { await cursor.close({ timeoutMS: 5000 }); }
+    new MongoOperationStore(options, MONGO_OPERATIONAL_RUNTIME_MODELS);
+    const existing = await hasKnownMongoRuntimeCollections(options);
 
     if (!existing) {
       // Request audit creates the shared Coach/Activity collections and scheduling guard first.

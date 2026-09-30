@@ -211,3 +211,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 내부 운영 runtime scope 후속 (2026-09-30)
 
 `feature/20260930-mongodb-runtime-scope`에서 외부 원천이 없는 health/adminBackup/requestActivity/coachPrivateAccessLog/activityPrune를 같은 명시 shadow scope로 묶는다. 빈 namespace만 준비하며 기존 namespace는 자동 수리·삭제 없이 전체 open readiness가 맞아야 재개한다. scope lock으로 nested namespace 교체를 차단하고 독립 작업의 두 namespace 병렬 격리를 실제 MongoDB 8.0.30에서 검증한다. 실행·독립 리뷰·통합은 `../mongodb-runtime-scope/` 기록을 따른다. 생산 selector·전체 Next/활성 CLI·예약·배포 조립 및 실 A/B 백업/복원/복사/최종 전환은 미완료다.
+
+## 활동 조회 runtime scope 후속 (2026-09-30)
+
+`feature/20260930-mongodb-activity-read-runtime`에서 완료된 `activityReads`를 관리자 활동·이용 현황·비공개 피드 세 GET의 명시 runtime으로 조립한다. 공통 namespace 소유권 판정을 분리해 다른 runtime 모델만 있는 부분 namespace도 자동 수리하지 않으며, read-only open에는 쓰기 capability를 요구하지 않는다. 실제 MongoDB 8.0.30 handler 검증과 독립 리뷰·통합은 `../mongodb-activity-read-runtime/` 기록을 따른다. `/changes` 쓰기, production selector·전체 앱/활성 작업·운영 이전은 미완료다.

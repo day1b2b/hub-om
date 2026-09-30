@@ -6,8 +6,9 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { randomBytes, randomUUID } from "node:crypto";
 import { registerHooks } from "node:module";
 import { mock, test } from "node:test";
-import { MongoClient, type ClientSession, type TransactionOptions } from "mongodb";
-import { ACTIVITY_READ_MODELS, MongoActivityReadRepository, prepareMongoActivityReadStore } from "./mongoActivityReadRepository";
+import { BSON, MongoClient, type ClientSession, type CommandStartedEvent, type TransactionOptions } from "mongodb";
+import { ACTIVITY_READ_MODELS, MongoActivityReadRepository } from "./mongoActivityReadRepository";
+import { openMongoActivityReadRuntime, prepareMongoActivityReadRuntime } from "./mongoActivityReadRuntime";
 import { MongoOperationStore, type MongoRow } from "./mongoOperationStore";
 import { coachFixtureRow } from "./mongoCoachFixtures";
 import { encodeMongoRuntimeDocument } from "./mongoRuntimeCodec";
@@ -59,19 +60,77 @@ test("actual activity GETs use real authorization, native reads and unchanged HT
     PII_INDEX_KEY: randomBytes(32).toString("base64"), PII_ALLOW_PLAINTEXT_READS: "false", ADMIN_EMAILS: admin.user.email, ACTIVITY_FEED_KEY: token });
   delete process.env.DEV_AUTH_BYPASS; delete process.env.DATABASE_URL;
   const databaseName = `hub_om_shadow_activity_handlers_${randomBytes(8).toString("hex")}`;
-  const client = new MongoClient(uri!, { directConnection: true, serverSelectionTimeoutMS: 5000 });
+  const client = new MongoClient(uri!, { directConnection: true, monitorCommands: true, serverSelectionTimeoutMS: 5000 });
+  const writes: CommandStartedEvent[] = [];
+  const mutatingCommands = new Set([
+    "create", "createIndexes", "collMod", "insert", "update", "delete", "drop", "dropDatabase", "dropIndexes",
+    "findAndModify", "bulkWrite", "renameCollection", "convertToCapped", "emptycapped", "mapReduce",
+  ]);
+  client.on("commandStarted", event => {
+    const outputAggregate = event.commandName === "aggregate" && Array.isArray(event.command.pipeline)
+      && event.command.pipeline.some((stage: unknown) => stage !== null && typeof stage === "object"
+        && (Object.hasOwn(stage, "$out") || Object.hasOwn(stage, "$merge")));
+    if (mutatingCommands.has(event.commandName) || outputAggregate) writes.push(event);
+  });
+  let closeCalls = 0;
+  const realClose = client.close.bind(client);
+  Object.defineProperty(client, "close", { configurable: true, value: async (...args: Parameters<MongoClient["close"]>) => {
+    closeCalls++; return await realClose(...args);
+  } });
   const external = mock.method(globalThis, "fetch", async () => { throw new Error("Unexpected external access"); });
   mock.timers.enable({ apis: ["Date"], now: NOW });
-  let connected = false;
+  let connected = false, ownsDatabase = false;
   try {
     await client.connect(); connected = true;
-    const options = { client, databaseName, namespace: "shadow_handlers" };
-    await prepareMongoActivityReadStore({ ...options, allowShadowWrites: true });
+    const databases = await client.db("admin").admin().listDatabases({ nameOnly: true });
+    assert.equal(databases.databases.some(database => database.name === databaseName), false);
+    ownsDatabase = true;
+    const options = { client, databaseName, namespace: "shadow_handlers", allowShadowWrites: true as const };
+    const secondRuntime = await prepareMongoActivityReadRuntime({ ...options, namespace: "shadow_handlers_second" });
+    const runtime = await prepareMongoActivityReadRuntime(options);
     const store = new MongoOperationStore(options, ACTIVITY_READ_MODELS);
-    const repository = await MongoActivityReadRepository.open(options);
+    const snapshot = async () => BSON.EJSON.stringify(await Promise.all(ACTIVITY_READ_MODELS.map(async model => ({
+      info: await client.db(databaseName).listCollections({ name: `${options.namespace}_${model}` }, { nameOnly: false }).next(),
+      indexes: await client.db(databaseName).collection(`${options.namespace}_${model}`).listIndexes().toArray(),
+      documents: await client.db(databaseName).collection(`${options.namespace}_${model}`).find({}).sort({ _id: 1 }).toArray(),
+    }))), { relaxed: false });
+    const readySnapshot = await snapshot();
+    writes.length = 0;
+    await prepareMongoActivityReadRuntime(options);
+    await openMongoActivityReadRuntime({ client, databaseName, namespace: options.namespace });
+    assert.deepEqual(writes.map(event => event.commandName), []);
+    assert.equal(await snapshot(), readySnapshot);
+
+    let nestedCallbacks = 0;
+    assert.throws(() => runtime.run(() => secondRuntime.run(() => { nestedCallbacks++; })), /CALENDAR_SCOPE_MISMATCH/);
+    assert.equal(nestedCallbacks, 0);
+
+    const partialNamespace = "shadow_handlers_partial";
+    const foreignName = `${partialNamespace}_Announcement`;
+    await client.db(databaseName).createCollection(foreignName);
+    await client.db(databaseName).collection(foreignName).insertOne({ synthetic: "foreign-runtime-canary" });
+    const partialSnapshot = BSON.EJSON.stringify({
+      info: await client.db(databaseName).listCollections({ name: foreignName }, { nameOnly: false }).toArray(),
+      indexes: await client.db(databaseName).collection(foreignName).listIndexes().toArray(),
+      documents: await client.db(databaseName).collection(foreignName).find({}).toArray(),
+    }, { relaxed: false });
+    writes.length = 0;
+    await assert.rejects(prepareMongoActivityReadRuntime({ ...options, namespace: partialNamespace }),
+      /^Error: MONGO_ACTIVITY_READ_RUNTIME_FAILED$/);
+    assert.deepEqual(writes.map(event => event.commandName), []);
+    assert.equal(BSON.EJSON.stringify({
+      info: await client.db(databaseName).listCollections({ name: foreignName }, { nameOnly: false }).toArray(),
+      indexes: await client.db(databaseName).collection(foreignName).listIndexes().toArray(),
+      documents: await client.db(databaseName).collection(foreignName).find({}).toArray(),
+    }, { relaxed: false }), partialSnapshot);
+    await client.db("admin").command({ ping: 1 });
+    assert.equal(closeCalls, 0);
     // No requestActivity injection: these GETs must not introduce withActivity or retention writes.
-    const scope = { activityReads: repository };
-    const run = <T>(fn: () => Promise<T>, actor: Session | null = admin) => runWithDataRepositories(scope, () => actors.run(actor, fn));
+    const run = async <T>(fn: () => Promise<T>, actor: Session | null = admin) => {
+      const before = writes.length;
+      try { return await runtime.run(() => actors.run(actor, fn)); }
+      finally { assert.deepEqual(writes.slice(before).map(event => event.commandName), []); }
+    };
     const adminRead = (query: Record<string, string> = {}) => run(() => adminGET(request("admin", query)));
     const feedRead = (query: Record<string, string> = {}) => run(() => feedGET(request("feed", query, `Bearer ${token}`)), null);
     const usageRead = (query: Record<string, string> = {}) => run(() => usageGET(request("usage", query)));
@@ -257,11 +316,11 @@ test("actual activity GETs use real authorization, native reads and unchanged HT
       } finally { seam.mock.restore(); mock.timers.setTime(NOW); }
       assert.deepEqual(await raw(), before);
     });
-    assert.equal(pgCalls, 0); assert.equal(external.mock.callCount(), 0);
+    assert.equal(pgCalls, 0); assert.equal(external.mock.callCount(), 0); assert.equal(closeCalls, 0);
   } finally {
-    try { if (connected) await client.db(databaseName).dropDatabase(); }
+    try { if (connected && ownsDatabase) await client.db(databaseName).dropDatabase(); }
     finally {
-      try { await client.close(); }
+      try { await realClose(); }
       finally { mock.timers.reset(); external.mock.restore(); for (const [key, value] of saved) { if (value === undefined) delete process.env[key]; else process.env[key] = value; } }
     }
   }
