@@ -357,3 +357,7 @@ legacy raw Prisma `db:merge:duplicate-company`를 기본 encrypted PostgreSQL/�
 ## 코치 데이터 검증 CLI runtime 연결 (2026-10-01)
 
 legacy raw pg `db:verify:coach-data`를 기본 encrypted PostgreSQL/명시 prepared Mongo shadow 읽기 repository로 교체했다. 서비스 건수와 최근 import/아카이브를 한 snapshot에서 읽고 target 및 선택적 coach-db source의 read-only를 강제한다. 식별자·개인정보·원문 오류는 출력하지 않는다. 상세 범위는 [코치 데이터 검증 문서](mongodb-coach-data-verification-cli.md)를 따른다. 실제 원천·운영 DB·배포 설정은 미변경이다.
+
+## 코치 DB 아카이브 CLI runtime 연결 (2026-10-01)
+
+legacy raw pg `db:archive:coach-db`를 read-only PostgreSQL source와 기본 encrypted PostgreSQL/명시 prepared Mongo target 경계로 교체한다. source 단일 snapshot, rowKey/rowData 암호화·HMAC, dry-run 무쓰기, apply 전체 transaction과 중복 키 실패를 확인한다. 상세 범위는 [코치 DB 아카이브 CLI 문서](mongodb-coach-db-archive-cli.md)를 따른다. 실제 운영 아카이브·복원·실데이터 복사·배포 설정은 미변경이다.

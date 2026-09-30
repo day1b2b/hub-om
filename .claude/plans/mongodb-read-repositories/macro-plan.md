@@ -275,3 +275,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 코치 데이터 검증 CLI runtime 후속 (2026-10-01)
 
 `feature/20261001-mongodb-coach-data-verify-cli`에서 legacy raw pg `db:verify:coach-data`를 encrypted PostgreSQL/명시 prepared Mongo 읽기 command로 교체한다. target snapshot 건수·최근 import/아카이브와 선택적 coach-db source count를 read-only로 확인하고 개인정보·식별자·오류 원문은 출력하지 않는다. 실행·독립 리뷰·통합은 `../mongodb-coach-data-verification-cli/` 기록을 따른다. 실제 archive/import·운영 실행·production selector·실데이터 이전/dev→main은 미완료다.
+
+## 코치 DB 아카이브 CLI runtime 후속 (2026-10-01)
+
+`feature/20261001-mongodb-coach-db-archive-cli`에서 legacy raw pg 아카이브를 read-only source와 기본 encrypted PostgreSQL/명시 prepared Mongo target 경계로 교체한다. 원천 단일 snapshot, rowKey/rowData 암호화·HMAC, dry-run 무쓰기, apply 전체 원자성·반복 새 snapshot·중복 키 실패와 오류 비노출을 검증한다. 실행·독립 리뷰·통합은 `../mongodb-coach-db-archive-cli/` 기록을 따른다. 실제 운영 아카이브·독립 A/B 백업/복원·import·실데이터 이전/dev→main은 미완료다.
