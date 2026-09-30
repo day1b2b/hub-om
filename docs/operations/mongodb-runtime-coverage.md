@@ -313,3 +313,7 @@ health·관리자 코치 JSON export·request/private audit·activity prune를 �
 ## 관리자 DB runtime 조립 (2026-10-01)
 
 관리자 DB 페이지·셀 API의 adminDatabase·teamMembers·requestActivity를 같은 client/database/namespace의 등록 shadow runtime으로 조립했다. 실제 페이지·PATCH, 업무/요청 감사·rollback·준비 불변과 자원 소유권을 확인했다. 상세 범위는 [관리자 DB runtime 문서](mongodb-admin-database-runtime.md)를 따른다. 브라우저 전체 흐름, production selector·운영 이전은 미완료다.
+
+## 관리자 유지보수 runtime 조립 (2026-10-01)
+
+과정 관리·삭제 운영·onsite/OM 보정과 request audit를 같은 등록 shadow runtime으로 조립했다. 실제 삭제→복원→보정 흐름과 감사·암호화·준비 불변을 확인했다. 상세 범위는 [관리자 유지보수 runtime 문서](mongodb-admin-maintenance-runtime.md)를 따른다. production selector·운영 이전은 미완료다.

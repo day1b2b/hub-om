@@ -231,3 +231,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 관리자 DB runtime scope 후속 (2026-10-01)
 
 `feature/20261001-mongodb-admin-database-runtime`에서 관리자 DB 페이지·셀 API의 adminDatabase·teamMembers·requestActivity를 같은 명시 shadow scope로 조립한다. 실제 페이지·PATCH, 감사·rollback·준비 재실행/중단·중첩 차단과 자원 소유권을 MongoDB 8.0.30에서 검증한다. 실행·독립 리뷰·통합은 `../mongodb-admin-database-runtime/` 기록을 따른다. 브라우저 전체 흐름, production selector·운영 이전은 미완료다.
+
+## 관리자 유지보수 runtime scope 후속 (2026-10-01)
+
+`feature/20261001-mongodb-admin-maintenance-runtime`에서 과정 관리·삭제 운영·두 보정·request audit를 같은 명시 shadow scope로 조립한다. 실제 삭제→복원→보정 흐름과 준비 불변·scope 차단을 검증한다. 실행·리뷰·통합은 `../mongodb-admin-maintenance-runtime/` 기록을 따른다. production selector·운영 이전은 미완료다.
