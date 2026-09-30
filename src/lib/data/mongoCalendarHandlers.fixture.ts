@@ -43,6 +43,7 @@ export class SyntheticCalendarRemote {
   aclStatus = 200;
   /** Exact write ordinal; failed writes are never retried by this fake. */
   failPost?: { ordinal: number; mode: "before-apply" | "after-apply"; message?: string };
+  failDelete?: { ordinal: number; mode: "before-apply" | "after-apply"; message?: string };
   beforePost?: (call: RemoteCall) => Promise<void>;
   afterPost?: (call: RemoteCall) => Promise<void>;
   patchMissingOnce = false;
@@ -140,7 +141,13 @@ export class SyntheticCalendarRemote {
       if (method === "PATCH" && this.patchMissingOnce) {
         this.patchMissingOnce = false; event.status = "cancelled"; return response(404);
       }
-      if (method === "DELETE") { event.status = "cancelled"; return response(204); }
+      if (method === "DELETE") {
+        const fault = this.failDelete?.ordinal === this.calls("event", "DELETE").length ? this.failDelete : undefined;
+        if (fault?.mode === "before-apply") return response(503, { error: fault.message ?? PRIVATE_MARKER });
+        event.status = "cancelled";
+        if (fault?.mode === "after-apply") throw new Error(fault.message ?? `${PRIVATE_MARKER}-response-lost`);
+        return response(204);
+      }
       events.set(event.id, this.stamp({ ...event, ...body as Partial<RemoteBody> }));
       return response(200, structuredClone(events.get(event.id)));
     }

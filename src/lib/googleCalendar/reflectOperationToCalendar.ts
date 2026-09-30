@@ -167,23 +167,37 @@ export function reflectOperationUpdated(operation: OperationSession, skipEventId
 }
 
 /** 취소·삭제. 회차에 걸린 이벤트를 모두 지우고 매핑도 정리한다(스펙 D4). */
-async function reflectOperationDeleteUnlocked(operationId: string): Promise<void> {
-  try {
-    if (!isCalendarWriteEnabled()) return;
+export type CalendarDeleteRecovery = "not-found" | "completed" | "pending";
 
+async function reflectOperationDeleteUnlocked(operationId: string): Promise<CalendarDeleteRecovery> {
+  try {
     const existing = await listCalendarEventLinks(operationId);
-    if (existing.length === 0) return;
+    if (existing.length === 0) return "not-found";
+    if (!isCalendarWriteEnabled()) return "pending";
 
     for (const link of existing) {
       await deleteEvent(link.calendarId, link.eventId);
       await deleteMatchingCalendarEventLink(link);
     }
+    return "completed";
   } catch {
     console.error("[gcal] CALENDAR_DELETE_FAILED");
+    return "pending";
   }
 }
 
 export async function reflectOperationDelete(operationId: string): Promise<void> {
   try { await withCalendarOperationLock(operationId, () => reflectOperationDeleteUnlocked(operationId)); }
   catch { console.error("[gcal] CALENDAR_DELETE_LOCK_FAILED"); }
+}
+
+/** Retries only a leftover Calendar mapping after the business row was already soft-deleted. */
+export async function retryOperationCalendarDelete(operationId: string): Promise<CalendarDeleteRecovery> {
+  try {
+    if ((await listCalendarEventLinks(operationId)).length === 0) return "not-found";
+    const result = await withCalendarOperationLock(operationId, () => reflectOperationDeleteUnlocked(operationId));
+    // A concurrent retry may have completed between the preflight and lock acquisition.
+    return result === "not-found" ? "completed" : result;
+  }
+  catch { console.error("[gcal] CALENDAR_DELETE_LOCK_FAILED"); return "pending"; }
 }
