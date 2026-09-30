@@ -10,7 +10,7 @@
 | --- | --- | --- |
 | 실원천·Drive 실행 연결 | 실제 Sheets/Notion/Drive 연결 및 전체 앱/작업 구성 | 파일 staging·운영 승격·Calendar 명시 경계, Drive 저장 이력 조회·CLI writer, Sheets/Notion 명시 원천→staging은 합성 검증했다. 실제 원천 연결·운영 적재와 전체 실행 구성은 별도 필수 후속이며 합성 성공으로 대체하지 않는다 |
 | Calendar 전체 앱/예약 작업 조립 | 기본 PG를 유지한 저장/시각 port와 명시 Mongo lease/runtime | 명시 경계 구현·원본PG/native/합성 Google 검증·독립 수락 완료. 원격 통합은 Calendar 기록을 따른다. 실제 Google 권한/메일·앱과 예약 작업 조립은 미완료 |
-| 백업·전체 상태 구성 | api/admin/backup raw snapshot, 전체 앱 backend 구성 | health 기본 PG/명시 Mongo 연결 확인은 합성 검증했다. 다음 작은 후보는 관리자 백업 경계다. health는 schema·복호화·복원·전환 준비를 판정하지 않는다. 실제 복원 검증은 3단계 |
+| 전체 백업·상태 구성 | 전체 앱 backend 구성 및 실제 복구 검증 | health 연결 확인과 기존 관리자 코치 JSON 다운로드 경계는 합성 검증했다. 전체 DB 백업/복구 증거는 별도이며 실제 복원 검증은 3단계다. 다음 작은 후보는 activity:prune CLI 전환이다 |
 | CLI·예약 작업·배포 경로 | coverage는 src runtime 중심. 기존 backfill CLI/배포 entrypoint/로컬 파일은 별도 점검 | 호출·예약·배포 경로와 사용 여부를 확인하고 필요한 전환을 진행한다. 불명확한 도구를 임의 제외하지 않는다 |
 
 이미 완료된 운영 CRUD·코치 인증/토큰/개인정보 내보내기·일정/예약/투입/평가·코치 시트/Notion 동기화·코치 관리/콘텐츠·담당자 내 페이지·토큰 보완·관리자 과정/삭제 운영/보정/과정명 복원·관리자 DB·공지/첨부·활동 조회·강사 Notion·매출 동기화·OM 접수/전체 배정 경계 전환을 새 미전환 기능으로 반복하지 않는다. 단, 이들의 전체 앱 연결은 다음 단계에 포함한다.
