@@ -123,3 +123,10 @@ OM 요청 첫단위 제품908175b 독립수락·총괄FF/push 및 양쪽원격SH
 `dc39e19` 기준 `feature/20260930-mongodb-dev-alignment`에서 최신 dev307f52f를 일반 병합한다. 만족도 강사평균과 Calendar 누락 복구의 상대 변경을 보존하고 Mongo 생성시각 조회를 보완했다. 상세 실행·최종 독립 수락·원격 통합 상태는 `../mongodb-dev-alignment/`을 따른다. 전체 앱의 Mongo 선택은 아직 완료되지 않았으며 생산 기본 PG를 유지한다.
 
 사용자 확정 범위는 Mongo 이전과 현재 기능·기존 권한·개인정보 암호화 유지, 데이터 무유실이다. 브라우저 임시저장 암호화는 후속으로 남기되 이번 이전의 선행조건에서 제외한다. 사용 불명확한 CLI/예약 작업을 임의 제외하지 않는다. 실제 A/B 독립 백업 각각의 무결성·키 복구·격리 복원·앱 검증, 원본 PG 보존, 최종 변경/삭제 대조와 Mongo 쓰기 이후 무손실 복귀가 필수다. 구체적 준비/미결정은 `docs/operations/mongodb-backup-cutover-plan.md`에 있고 실백업 확인 증거는 0건이다. 운영 접근/전환 및 dev→main 조건은 아직 충족하지 않았다.
+
+
+## 2026-09-30 파일 가져오기 임시 저장·검토
+
+총괄8e19638 기준 `feature/20260930-mongodb-import-staging`에서 upload→staging→목록/상세의 명시 imports 경계를 구현했다. 기본PG·parser·권한·기존중복/오류행/동시업로드 의미를 유지하고 비정형 업로드 오류를 고정문구로 가렸다. 원본PG/currentPG/Mongo 대조18, 일반921/68skip, typecheck/build 통과, lint0/기존7warning. 전체Mongo는첫689pass/2fail/1cancel후실패3묶음103pass로보완해파일별최종중복제거751성공을확인했다. 첫실패는기존고정합성주소2건과coachContent전체timeout1건이며검사조건을완화하지않았다. 상세·독립수락·정리·원격통합은 `../mongodb-import-staging/` 기록을 따른다.
+
+다음수직단위는운영승격이다. 기업/과정/운영/source link의transaction, 기존삭제복원/중복, sequence·감사, commit후Calendar를보존한다. 실제Sheets/Notion·Drive기록·Calendar저장잠금·활동쓰기/보존·backup/health·전체앱구성 및 실제이중백업/복원/최종전환은남아있다. 운영기본PG와실백업증거0상태는변하지않았다.

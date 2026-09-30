@@ -70,10 +70,12 @@ test("OM assignment V10–V12 native cross-writer evidence", { skip: !uri, timeo
   const url = new URL(uri!);
   assert.equal(url.protocol, "mongodb:");
   assert.ok(["127.0.0.1", "localhost", "[::1]"].includes(url.hostname));
-  assert.equal(url.port, "27819");
+  // Keep an explicit disposable endpoint allowlist when the full regression uses a fresh server.
+  const expectedReplica = url.port === "27829" ? "importstaging20260930" : "omassignment20260929";
+  assert.ok(["27819", "27829"].includes(url.port));
   assert.equal(url.username, ""); assert.equal(url.password, ""); assert.equal(url.pathname, "/"); assert.equal(url.hash, "");
   assert.deepEqual([...url.searchParams.keys()], ["replicaSet"]);
-  assert.equal(url.searchParams.get("replicaSet"), "omassignment20260929");
+  assert.equal(url.searchParams.get("replicaSet"), expectedReplica);
 
   async function fixture(requestNeedsChange = false) {
     const saved = new Map(envNames.map(name => [name, process.env[name]]));
@@ -99,7 +101,7 @@ test("OM assignment V10–V12 native cross-writer evidence", { skip: !uri, timeo
     };
     try {
       await client.connect(); connected = true;
-      assert.equal((await client.db(databaseName).command({ hello: 1 })).setName, "omassignment20260929");
+      assert.equal((await client.db(databaseName).command({ hello: 1 })).setName, expectedReplica);
       await prepareMongoOperationStore({ ...options, processSequenceHighWater: 1000 });
       await prepareMongoCourseNameRestoreStore({ ...options, processSequenceHighWater: 1000 });
       await prepareMongoAdminDatabaseStore(options);

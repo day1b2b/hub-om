@@ -63,7 +63,11 @@ test("OM assignment actual handlers: native transactions, authorization, scoped 
   skip: !uri, timeout: 240_000
 }, async suite => {
   // Never infer a target, load an env file, start MongoDB, or touch another database.
-  assert.equal(uri, "mongodb://127.0.0.1:27819/?replicaSet=omassignment20260929");
+  assert.ok([
+    "mongodb://127.0.0.1:27819/?replicaSet=omassignment20260929",
+    "mongodb://127.0.0.1:27829/?replicaSet=importstaging20260930"
+  ].includes(uri!));
+  const expectedReplica = new URL(uri!).searchParams.get("replicaSet");
   const saved = new Map(["PII_ENCRYPTION_KEYS", "PII_ACTIVE_KEY_ID", "PII_INDEX_KEY", "PII_ALLOW_PLAINTEXT_READS", "ADMIN_EMAILS",
     "DEV_AUTH_BYPASS", "DATABASE_URL", "OPERATION_DATA_SOURCE", "AUTH_SECRET", "NEXTAUTH_SECRET"].map(key => [key, process.env[key]]));
   Object.assign(process.env, {
@@ -147,7 +151,7 @@ test("OM assignment actual handlers: native transactions, authorization, scoped 
     const collectionRoute = await import("../../app/api/om-request/route");
     const assignmentRoute = await import("../../app/api/om-request/assign/route");
     await client.connect(); connected = true;
-    assert.equal((await client.db("admin").command({ hello: 1 })).setName, "omassignment20260929");
+    assert.equal((await client.db("admin").command({ hello: 1 })).setName, expectedReplica);
 
     type Preview = Awaited<ReturnType<typeof confirmed.previewOmAssignment>>;
     type Observation = {

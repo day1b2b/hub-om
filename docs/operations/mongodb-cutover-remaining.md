@@ -1,6 +1,6 @@
 # 서비스 이전까지 남은 순서
 
-2026-09-30, 총괄 dc39e19(OM 전체 배정 완료) 및 최신 dev307f52f 정합 작업 기준. 최신 통합 여부는 각 작업의 integration-review를 따른다. 운영에 접속하지 않았으며 날짜나 완료율을 추정하지 않는다. 기능별 최신 증거는 [runtime coverage](mongodb-runtime-coverage.md)와 각 실행·통합 기록을 따른다.
+2026-09-30, 총괄 8e19638(OM 전체 배정·최신 dev307f52f 정합 완료) 이후 파일 staging 작업 기준. 최신 통합 여부는 각 작업의 integration-review를 따른다. 운영에 접속하지 않았으며 날짜나 완료율을 추정하지 않는다. 기능별 최신 증거는 [runtime coverage](mongodb-runtime-coverage.md)와 각 실행·통합 기록을 따른다.
 
 서비스를 Mongo로 옮기는 시점은 아래 세 단계의 차단 항목을 닫고 운영 실행 조건을 확인한 뒤다. 기능 repository 구현이 끝난 시점이나 dev→main 코드 병합만으로 이전 완료를 판단하지 않는다.
 
@@ -8,7 +8,7 @@
 
 | 남은 단위 | 실제 남은 호출 근거 | 선행 관계와 외부 조치 |
 | --- | --- | --- |
-| 가져오기·staging·승격·Drive 기록 | prismaImportRepository/importStagingWriter/importPromotionService/driveImportResults. 직접 Prisma 명단·강사 위키 조회도 존재 | 표준 운영 writer·명단 경계를 연결한 뒤 staging/승격/재실행. 합성 원천 검증 가능, 실제 원천 연결/적재는 별도 실행 조건 필요 |
+| 가져오기 승격·실원천·Drive 기록 | importPromotionService/driveImportResults 및 Sheets·Notion 가져오기 API | 파일 staging·목록/상세 명시 경계의 구현과 영향 검증은 진행했고 최종 수락·통합은 해당 실행 기록을 따른다. 다음은 운영 승격·재실행·원자성·Calendar 후처리 연결. 실제 원천 연결/적재는 별도 실행 조건 필요 |
 | Calendar 반영·역동기화 | calendarEventLinkRepository/operationSessionTimestamps의 PG와 calendarOperationLock의 raw pg.Pool | 단순 운영 CRUD 구현과 별개. 저장 연결·시각·프로세스 간 잠금·외부 부작용을 같이 검증. 실제 Google 권한/캘린더 반영은 외부 조치 필요 |
 | 백업·health | api/admin/backup raw snapshot, api/health PG 조회 | 전체 Mongo 선택과 함께 백업/복원·상태 판정 계약 설계. 실제 복원 검증은 3단계 |
 | CLI·예약 작업·배포 경로 | coverage는 src runtime 중심. 기존 backfill CLI/배포 entrypoint/로컬 파일은 별도 점검 | 호출·예약·배포 경로와 사용 여부를 확인하고 필요한 전환을 진행한다. 불명확한 도구를 임의 제외하지 않는다 |
@@ -40,4 +40,4 @@ health·백업·배포 entrypoint의 Prisma migration 실행 및 활성 CLI/예�
 
 MongoDB 이전 자체와 현재 사용 기능·기존 권한·개인정보 암호화 유지가 필수다. 신규 기능 개선은 추가하지 않는다. 브라우저 임시저장 암호화는 필요 작업으로 보존하되 후속으로 분리하며 이번 Mongo 이전 완료의 선행 조건에서 제외한다. 이 제외를 DB 저장/첨부/키의 보호나 기존 기능 제거 승인으로 해석하지 않는다.
 
-OM 접수·전체 배정은 dc39e19까지 합성 검증·독립 수락·총괄 통합 완료다. 먼저 최신dev307f52f의 만족도/Calendar 변경을 일반 merge로 보존·의미 검증하고 남은 필수 전환을 이어간다. 각 수직 단위 시작/통합 전에 dev 차이와 겹치는 파일을 점검한다. 사용이 불명확한 도구는 호출/예약/배포 증거를 확인하기 전 삭제·제외하지 않는다. 실제 운영 DB·키/env·원천·배포·main/dev 변경은 현재 개발 승인 범위에 포함하지 않는다.
+OM 접수·전체 배정은 dc39e19까지 합성 검증·독립 수락·총괄 통합 완료다. 최신dev307f52f의 만족도/Calendar 변경은 일반 merge·의미 검증 후 총괄8e19638에 통합했다. 파일 staging·검토 다음으로 운영 승격·Calendar 등 필수 전환을 이어간다. 각 수직 단위 시작/통합 전에 dev 차이와 겹치는 파일을 점검한다. 사용이 불명확한 도구는 호출/예약/배포 증거를 확인하기 전 삭제·제외하지 않는다. 실제 운영 DB·키/env·원천·배포·main/dev 변경은 현재 개발 승인 범위에 포함하지 않는다.
