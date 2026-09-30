@@ -337,3 +337,7 @@ legacy raw SQL `db:backfill:onsite-required-y`를 기존 operationBackfill repos
 ## 팀 명칭 보정 CLI runtime 연결 (2026-10-01)
 
 legacy raw SQL `db:backfill:team-user-team-labels`를 TeamUser count/조건부 rename으로 교체했다. 기본 PG와 두 exact 라벨·dry-run/`--apply`를 유지하고 local file 선택은 거부한다. Mongo는 명시 prepared user-admin shadow에서 team만 갱신하며 PII 암호문·companion을 보존한다. 상세 범위는 [팀 명칭 보정 CLI 문서](mongodb-team-label-backfill-cli.md)를 따른다. 운영 실행·배포 설정은 미변경이다.
+
+## 코치 운영 매칭 CLI runtime 연결 (2026-10-01)
+
+`db:diagnose:coach-operation-matches`와 `db:backfill:coach-operation-matches`를 기본 encrypted PostgreSQL/명시 Mongo shadow 저장소 경계로 교체했다. 기존 매칭 엔진·진단 표·dry-run/`--apply`를 유지하고 이미 연결된 투입 비덮어쓰기, 재실행 0, catalog guard 최초 경합 재시도, PII 암호문 불변과 부분 namespace 무수정 거부를 확인했다. 상세 범위는 [코치 운영 매칭 CLI 문서](mongodb-coach-operation-match-cli.md)를 따른다. 운영 실행·배포 설정은 미변경이다.

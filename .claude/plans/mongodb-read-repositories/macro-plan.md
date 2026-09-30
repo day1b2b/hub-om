@@ -255,3 +255,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 팀 명칭 보정 CLI runtime 후속 (2026-10-01)
 
 `feature/20261001-mongodb-team-label-backfill-cli`에서 legacy `db:backfill:team-user-team-labels` raw SQL을 TeamUser count/조건부 rename으로 교체한다. 기본 PG·두 exact 라벨·dry-run/`--apply`를 유지하고 명시 Mongo는 준비된 user-admin shadow만 연다. 실행·독립 리뷰·통합은 `../mongodb-team-label-backfill-cli/` 기록을 따른다. 운영 실행·배포와 production 전체 selector, 실데이터 이전/dev→main은 미완료다.
+
+## 코치 운영 매칭 CLI runtime 후속 (2026-10-01)
+
+`feature/20261001-mongodb-coach-operation-match-cli`에서 코치 운영 매칭 진단·백필 raw SQL을 암호화 PostgreSQL/명시 Mongo repository command로 교체한다. 기존 매칭·출력·dry-run/`--apply`를 유지하고 준비된 shadow만 열며 catalog guard·조건부 연결·재실행·오류 비노출을 검증한다. 실행·독립 리뷰·통합은 `../mongodb-coach-operation-match-cli/` 기록을 따른다. 다음 개발 후보는 coach archive service 백필이며 운영 실행·production 전체 selector·실데이터 이전/dev→main은 미완료다.
