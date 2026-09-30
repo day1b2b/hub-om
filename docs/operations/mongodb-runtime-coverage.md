@@ -361,3 +361,7 @@ legacy raw pg `db:verify:coach-data`를 기본 encrypted PostgreSQL/명시 prepa
 ## 코치 DB 아카이브 CLI runtime 연결 (2026-10-01)
 
 legacy raw pg `db:archive:coach-db`를 read-only PostgreSQL source와 기본 encrypted PostgreSQL/명시 prepared Mongo target 경계로 교체한다. source 단일 snapshot, rowKey/rowData 암호화·HMAC, dry-run 무쓰기, apply 전체 transaction과 중복 키 실패를 확인한다. 상세 범위는 [코치 DB 아카이브 CLI 문서](mongodb-coach-db-archive-cli.md)를 따른다. 실제 운영 아카이브·복원·실데이터 복사·배포 설정은 미변경이다.
+
+## 코치 DB 가져오기 CLI runtime 연결 (2026-10-01)
+
+legacy raw pg `db:import:coach`를 read-only PostgreSQL source와 기본 encrypted PostgreSQL/명시 prepared Mongo target 경계로 교체한다. source 9개 테이블의 단일 snapshot, dry-run 무쓰기, apply 전체 transaction, HMAC 기반 재실행, 수동 필드·기존 태그 보존, 누락 부모 오류 집계와 후반 실패 rollback을 확인한다. 상세 범위는 [코치 DB 가져오기 CLI 문서](mongodb-coach-db-import-cli.md)를 따른다. 실제 운영 import·외부 동기화·복원·실데이터 복사·배포 설정은 미변경이다.

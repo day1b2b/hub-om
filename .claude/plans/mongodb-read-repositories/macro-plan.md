@@ -279,3 +279,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 코치 DB 아카이브 CLI runtime 후속 (2026-10-01)
 
 `feature/20261001-mongodb-coach-db-archive-cli`에서 legacy raw pg 아카이브를 read-only source와 기본 encrypted PostgreSQL/명시 prepared Mongo target 경계로 교체한다. 원천 단일 snapshot, rowKey/rowData 암호화·HMAC, dry-run 무쓰기, apply 전체 원자성·반복 새 snapshot·중복 키 실패와 오류 비노출을 검증한다. 실행·독립 리뷰·통합은 `../mongodb-coach-db-archive-cli/` 기록을 따른다. 실제 운영 아카이브·독립 A/B 백업/복원·import·실데이터 이전/dev→main은 미완료다.
+
+## 코치 DB 가져오기 CLI runtime 후속 (2026-10-01)
+
+`feature/20261001-mongodb-coach-import-cli`에서 legacy raw pg 가져오기를 read-only source와 기본 encrypted PostgreSQL/명시 prepared Mongo target repository로 교체한다. source snapshot, HMAC 기반 기존 행 재사용, 기존 수동 필드·태그 의미, operation 매칭, 전체 transaction·guard·재실행과 누락 부모 차단을 합성 PostgreSQL/Mongo에서 검증한다. 실행·독립 리뷰·통합은 `../mongodb-coach-db-import-cli/` 기록을 따른다. 실제 운영 원천·import·production selector·백업/복원·실데이터 이전과 dev→main은 미완료다.
