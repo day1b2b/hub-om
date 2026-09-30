@@ -11,6 +11,8 @@ import { applyMongoValidator, assertMongo, completeMongoRow, MongoOperationError
 import { assertMongoReadStoreReady, prepareMongoReadStore } from "./mongoReadStore";
 import { assertMongoCourseNameRestoreGuardReady, lockMongoCourseNameRestore, prepareMongoCourseNameRestoreGuard } from "./mongoCourseNameRestoreGuard";
 import { encodeMongoRuntimeDocument, MongoDbNull, MongoJsonNull } from "./mongoRuntimeCodec";
+import { importOperationRows, OperationImportDryRun } from "./operationImportCore";
+import type { OperationImportEntry, OperationImportPort, OperationImportRepository } from "./operationImportRepository";
 
 export const IMPORT_PROMOTION_MODELS = ["DataImportRun", "OperationSourceRecord", "Company", "Course", "OperationSession", "ActivityChange"] as const;
 export type MongoImportPromotionOptions = MongoOperationOptions & { allowShadowWrites: true };
@@ -83,7 +85,7 @@ function normalizedCompany(value: string): string {
 }
 
 /** No production selection and no external effects inside transaction retries. */
-export class MongoImportPromotionRepository implements ImportPromotionRepository, SourceOnlyPromotionRepository {
+export class MongoImportPromotionRepository implements ImportPromotionRepository, SourceOnlyPromotionRepository, OperationImportRepository {
   private readonly store: MongoOperationStore;
   private constructor(store: MongoOperationStore) { this.store = store; }
   static async open(options: MongoImportPromotionOptions): Promise<MongoImportPromotionRepository> {
@@ -195,6 +197,72 @@ export class MongoImportPromotionRepository implements ImportPromotionRepository
       if (error instanceof MongoOperationError) throw error;
       throw new MongoOperationError("SOURCE_ONLY_PROMOTION_FAILED");
     }
+  }
+
+  async importOperations(entries: readonly OperationImportEntry[], fileName: string, apply: boolean) {
+    const deadline = performance.now() + TIMEOUT_MS, check = () => assertMongo(performance.now() < deadline, "OPERATION_IMPORT_TIMEOUT");
+    try {
+      assertPrivacyConfiguration();
+      const memberStore = new MongoOperationStore({ client: this.store.client, databaseName: this.store.db.databaseName, namespace: this.store.namespace }, ["Member"]);
+      await assertMongoReadStoreReady(memberStore);
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const session = this.store.client.startSession();
+        try {
+          return await session.withTransaction(async () => {
+            check();
+            try { await lockMongoCourseNameRestore(this.store, session); }
+            catch (error) { if (error instanceof MongoServerError && error.code === 11000) throw new FirstGuardRace(); throw error; }
+            const members = await memberStore.scan("Member", { isActive: true, role: { $in: ["OM", "LD"] } }, session);
+            members.sort((a, b) => String(a.role).localeCompare(String(b.role)) || String(a.sourceTeam).localeCompare(String(b.sourceTeam)) || Number(a.displayOrder) - Number(b.displayOrder) || String(a.name).localeCompare(String(b.name), "ko"));
+            const roster = { om: {} as Record<string, string[]>, ld: {} as Record<string, string[]> };
+            for (const member of members) { const role = member.role === "OM" ? "om" : "ld", team = member.sourceTeam === "TEAM_1" ? "1팀" : member.sourceTeam === "TEAM_2" ? "2팀" : "미분류"; roster[role][team] = [...(roster[role][team] ?? []), String(member.name)]; }
+            const result = await importOperationRows({ port: this.operationImportPort(session, check), roster }, entries, fileName);
+            if (!apply) throw new OperationImportDryRun(result);
+            return result;
+          }, { readConcern: { level: "snapshot" }, writeConcern: { w: "majority", j: true }, readPreference: "primary", timeoutMS: Math.max(1, Math.ceil(deadline - performance.now())) });
+        } catch (error) {
+          if (error instanceof OperationImportDryRun) return error.summary;
+          if ((error instanceof FirstGuardRace || error instanceof NaturalKeyRace) && attempt < 4) continue;
+          throw error;
+        } finally { await session.endSession(); }
+      }
+      throw new MongoOperationError("OPERATION_IMPORT_RETRY_LIMIT");
+    } catch (error) { if (error instanceof MongoOperationError) throw error; throw new MongoOperationError("OPERATION_IMPORT_FAILED"); }
+  }
+
+  private operationImportPort(session: ClientSession, check: () => void): OperationImportPort {
+    const store = this.store;
+    const one = async (model: string, query: MongoRow) => { check(); const row = await store.one(model, query, session); check(); return row; };
+    const write = async (model: string, previous: MongoRow | null, fields: MongoRow) => {
+      const row = completeMongoRow(model, fields), document = encodeMongoRuntimeDocument(model, row); check();
+      if (previous) { const result = await store.collection(model).replaceOne({ _id: String(previous.id) }, document, { session }); assertMongo(result.matchedCount === 1, "OPERATION_IMPORT_ROW_DISAPPEARED"); }
+      else try { await store.collection(model).insertOne(document, { session }); } catch (error) { if (isNaturalKeyRace(error, model, document)) throw new NaturalKeyRace(); throw error; }
+      const audit = operationAuditRow(model, previous, row, previous ? [] : Object.keys(row));
+      if (audit) await store.collection("ActivityChange").insertOne(encodeMongoRuntimeDocument("ActivityChange", audit), { session }); check(); return row;
+    };
+    const money = (values: MongoRow) => { const result = { ...values }; for (const field of ["revenue", "totalCost", "instructorCost", "operationCost"]) if (typeof result[field] === "number") result[field] = numericMoney(result[field], code => new MongoOperationError(`OPERATION_IMPORT_${code}`)); return result; };
+    return {
+      async createImportRun(fileName, rowCount) { const now = new Date(), row = await write("DataImportRun", null, { id: randomUUID(), sourceTeam: "UNKNOWN", sourceType: "legacy_json", sourceName: "Local JSON operation import", fileName, status: "PENDING", rowCount, successCount: 0, errorCount: 0, notes: "Imported from local standardized operation JSON.", startedAt: now, finishedAt: null }); return { id: String(row.id) }; },
+      async finishImportRun(id, rowCount, successCount) { const previous = await one("DataImportRun", { _id: id }); assertMongo(previous, "OPERATION_IMPORT_MISSING_RUN"); await write("DataImportRun", previous, { ...previous, status: "COMPLETED", successCount, errorCount: rowCount - successCount, finishedAt: new Date(), notes: "Import completed." }); },
+      async findOperationById(operationId) { const row = await one("OperationSession", { operationId }); return row ? { id: String(row.id) } : null; },
+      async findOperationByBusinessKey(input) {
+        const company = await one("Company", { normalizedName: input.companyName.toLowerCase() }); if (!company) return null;
+        const courses = await store.scan("Course", { companyId: company.id, name: input.courseName }, session); if (!courses.length) return null;
+        const rows = await store.scan("OperationSession", { deletedAt: null, startDate: input.startDate, endDate: input.endDate, courseRecordId: { $in: courses.map(row => row.id as string) } }, session);
+        rows.sort((a, b) => new Date(a.createdAt as Date).getTime() - new Date(b.createdAt as Date).getTime() || String(a.id).localeCompare(String(b.id))); return rows[0] ? { id: String(rows[0].id) } : null;
+      },
+      async upsertCompany(input) { const previous = await one("Company", { normalizedName: input.normalizedName }), now = new Date(); const row = await write("Company", previous, previous ? { ...previous, name: input.name, updatedAt: now } : { ...input, id: randomUUID(), createdAt: now, updatedAt: now }); return { id: String(row.id) }; },
+      async upsertCourse(input) {
+        assertMongo(await one("Company", { _id: input.companyId }), "OPERATION_IMPORT_MISSING_COMPANY"); const previous = await one("Course", { companyId: input.companyId, courseId: input.courseId, name: input.name }), now = new Date(), patch = money({ operationType: input.operationType, revenue: input.revenue, revenueRaw: input.revenueRaw });
+        if (previous) return { id: String((await write("Course", previous, { ...previous, ...patch, updatedAt: now })).id) };
+        const counter = await store.collection("__counter").findOneAndUpdate({ _id: "Course.processSeq", value: { $lt: MAX_SEQUENCE } }, { $inc: { value: 1 } }, { session, returnDocument: "after" }); assertMongo(counter && Number.isInteger(counter.value) && counter.value > 0, "OPERATION_IMPORT_SEQUENCE_EXHAUSTED_OR_MISSING");
+        const row = await write("Course", null, { ...input, ...patch, id: randomUUID(), processSeq: counter.value, createdAt: now, updatedAt: now }); return { id: String(row.id) };
+      },
+      async createOperation(input) { assertMongo(await one("Course", { _id: input.courseRecordId }), "OPERATION_IMPORT_MISSING_COURSE"); const row = await write("OperationSession", null, { hasSatisfactionSurvey: "NEEDS_REVIEW", ...money(input.values), id: randomUUID(), operationId: input.operationId, courseRecordId: input.courseRecordId, createdAt: new Date(), updatedAt: new Date() }); return { id: String(row.id) }; },
+      async updateOperation(id, courseRecordId, values) { const previous = await one("OperationSession", { _id: id }); assertMongo(previous, "OPERATION_IMPORT_MISSING_OPERATION"); assertMongo(await one("Course", { _id: courseRecordId }), "OPERATION_IMPORT_MISSING_COURSE"); await write("OperationSession", previous, { ...previous, ...money(values), courseRecordId, updatedAt: new Date() }); },
+      async sourceRecordExists(operationSessionId, sourceFingerprint) { return Boolean(await one("OperationSourceRecord", { operationSessionId, sourceFingerprint })); },
+      async createSourceRecord(input) { const now = new Date(); await write("OperationSourceRecord", null, { id: randomUUID(), importRunId: input.importRunId, operationSessionId: input.operationSessionId, sourceTeam: input.sourceTeam, sourceWorkbook: "local-standardized-operations", sourceSheet: "operations", sourceRowNumber: input.rowNumber, headerRowNumber: null, sourceFingerprint: input.sourceFingerprint, rowSnapshot: input.snapshot, mappedFields: input.snapshot, unmappedFields: MongoDbNull, validationErrors: Array.isArray(input.snapshot.validationErrors) ? input.snapshot.validationErrors : [], createdAt: now }); }
+    };
   }
 
   private port(session: ClientSession, check: () => void): ImportPromotionTransaction {

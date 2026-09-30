@@ -291,3 +291,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 팀 단위 원천 승격 CLI runtime 후속 (2026-10-01)
 
 `feature/20261001-mongodb-promote-source-only`에서 legacy raw pg 승격을 encrypted PostgreSQL/명시 prepared Mongo repository command로 교체한다. 기존 팀 전체·복수 import run, 비차단 오류·지문 연결·Member 역할 명단·필드 변환을 유지하며 dry-run/apply gate, 중복 지문 예상치, 전체 transaction·guard·재실행을 검증한다. 실행·독립 리뷰·통합은 `../mongodb-source-only-promotion-cli/` 기록을 따른다. 다음 raw pg 후보는 `db:import:operations`이며 운영 실행·production selector·실데이터 이전/dev→main은 미완료다.
+
+## 운영 JSON 가져오기 CLI runtime 후속 (2026-10-01)
+
+`feature/20261001-mongodb-operations-import-cli`에서 legacy raw pg JSON 가져오기를 encrypted PostgreSQL/명시 prepared Mongo repository command로 교체한다. 기존 정규화·operationId/업무키 매칭·회사/과정/운영과 run/source 저장을 유지하며 dry-run/apply gate, 같은 파일 중복, 전체 transaction·guard·재실행을 검증한다. 실행·독립 리뷰·통합은 `../mongodb-operation-import-cli/` 기록을 따른다. 운영 실행·production selector·실데이터 이전/dev→main은 미완료다.
