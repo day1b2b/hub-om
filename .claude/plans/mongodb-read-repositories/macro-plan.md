@@ -1,6 +1,6 @@
 # MongoDB 병렬 이전 상위 계획
 
-최신 총괄 상태: 2026-09-30 Drive 통합8b4d954 기준 Sheets tabs/import의 명시 source→staging 연결을 구현·합성 검증했다. 최종 독립 수락/정리/원격통합 SHA는 ../mongodb-google-sheets-import/ 실행·통합 기록을 따른다. 다음 작은 후보는 Notion 가져오기 API다. 운영 기본PG, 전체 이전 미완료, 실백업증거0, dev→main 조건미충족 상태를 유지한다.
+최신 총괄 상태: 2026-09-30 Sheets 통합093f585 기준 Notion 가져오기 명시 source→staging을 구현·합성 검증했다. 실행·독립리뷰·정리·원격통합 상태는 ../mongodb-notion-import/ 기록을 따른다. 다음 작은 후보는 Drive CLI writer다. 운영 기본PG, 전체 이전 미완료, 실백업증거0, dev→main 조건미충족 상태를 유지한다.
 
 목표: 기존 PostgreSQL 운영을 유지하며 개인정보를 암호화한 별도 MongoDB를 검증한 뒤 안전하게 전환한다.
 
@@ -154,3 +154,9 @@ OM 요청 첫단위 제품908175b 독립수락·총괄FF/push 및 양쪽원격SH
 feature/20260930-mongodb-google-sheets-import에서 기존 두POST·source/context4파일을 연결했다. 기본PG/HTTP·parser/staging·기존권한·UI/OAuth유지, 누락scope원천전차단과 raw오류비노출은 의도적보완. 원본80파일/7음성대조, 실제3backend ledger45/45/45, 같은입력중복2schedule, actualhandler/auth/audit/암호화/native실패검증. 일반971/86skip, HTTP/handler30 및 최종handler16, transaction16, Calendar24, gate1/parity1, type/build통과·lint기존7. 묶음중복합산/전체Mongo재실행 주장은 금지한다. 실패·최종소스·정리·독립수락·원격통합은 ../mongodb-google-sheets-import/ 기록을 따른다.
 
 Notion 가져오기, Drive CLI writer, CLI/예약작업·전체앱연결·backup/health, snapshot 민감문자열분류·운영collation, 실백업/복원/복사/전환은 별도미완료다. 사용자 인계의 자동화PAUSED를 유지하며 자동재개하지 않았다.
+
+## 2026-09-30 Notion 가져오기
+
+제품 source/context/route3파일, 원본reader·서버token·기존staging·권한·기본PG 보존. HTTP46/handler15/native17/wholeparity각47/일반1017·89skip 및 type/build/lint 검증, 독립지적3건 해소·소유자원정리. 중복합산금지, 원격통합은 ../mongodb-notion-import/integration-review.md를 따른다.
+
+Drive CLI writer·CLI/예약작업·전체앱조립·backup/health·snapshot개인정보분류·운영collation·실A/B백업복원복사전환이 남았다. 자동화재개·운영접근·main/dev변경0. 브라우저 임시저장 보호는 기존 후속범위로 유지한다.

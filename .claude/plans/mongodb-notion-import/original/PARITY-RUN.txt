@@ -1,0 +1,59 @@
+Notion parity — 부모 실행 전용
+
+상태: 작성 완료, 실행/타입 검사 미실행. 실제 수락은 부모 결과와 독립 리뷰 후 판단.
+원본 기준: 093f585b444197c6b0442a3880469fd0d6a0502b. 동결77파일/실행closure28.
+PG gate·frozen loader·manifest·원본 txt bytes는 수정하지 않는다. Sheets closure도 불변.
+
+작업 디렉터리: /Users/ga/workspace/hub-om-mongodb-coach-content
+Node24.19 및 기존 의존성 사용. 부모가 마이그레이션한 전용PG 대상테이블empty,
+PG단독worker, 전용Mongo replica primary가 필요하다. 테스트는 migration/reset을 하지 않는다.
+
+실행:
+env -i PATH="$PATH" HOME="$HOME" LC_ALL=C NODE_ENV=test \
+  PG_NOTION_TEST_DATABASE_URL='postgresql://synthetic@127.0.0.1:56752/notion_import_test' \
+  PG_NOTION_TEST_DATA_DIRECTORY='/private/tmp/hub-om-notion-import-20260930/pg' \
+  MONGODB_NOTION_TEST_URI='mongodb://127.0.0.1:27852/?replicaSet=notionimport20260930' \
+  NOTION_IMPORT_PARITY=1 \
+  node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs --test \
+  .claude/plans/mongodb-notion-import/original/parity-runner.fixture.ts
+
+흐름:
+- route/reader/query factory/PG repository/presenter별 byte/current탈출 및 실제loader변조 거부.
+  disposable 사본만 변조하며 부모의 동결본은 건드리지 않는다.
+- original/current/Mongo를 별도 process로 순차 실행. 동일 raw Notion page/pagination와
+  독립 literal을 실제 POST, 실제 auth guard/withActivity/reader/parser/storage/query에 연결.
+- 허용 정상seam은 auth() 입력과 HTTP transport. DB업무결과 stub 없음.
+- 정상/빈/알려진/미등록강사, 필수값/날짜/OM/LD오류, 팀alias/UNKNOWN, sourceName,
+  중복/부분중복/같은업로드중복/다른pageID, historical spreadsheet/unknown sourceType,
+  local/notion/unknown OPERATION_DATA_SOURCE에서도 기본PG, 199/201과preview200을 검증.
+- 두 경합은 동일 2행(정상명단1+알려진강사/OMLD누락1), 2page fixture.
+  PG는 실제tx.findMany 완료 후, native는 실제인증된sourceName candidate scan 완료 후
+  barrier. 빈candidate일 때 native가 source row조회 생략하는 기존 알고리즘을 그대로 사용.
+  반환값변경/새isolation/handler retry 없음. callback이 추가 재진입하면 조용히 허용하지 않고 FAIL.
+  첫commit후둘째조회 schedule은 첫POST/감사 settle와 실제저장2행 확인 뒤 둘째POST 시작.
+- 모든 backend의 response/run/source rows/FK/detail/request audit를 전체비교한다.
+  ID/FK·호출시간구간·감사정수duration 확인 뒤 ID/시간만 정규화. backend제외필터 없음.
+- summary 실제 startedAt DESC/id DESC 및 전체identity bijection을 각backend에서 검증.
+  UUID동점의 업무행순서가backend마다 달라질 수 있어 반환배열을 재정렬하지 않으며
+  해당 배열간순서동등성을 주장하지 않는다. 각summary 전체값은 독립기대값과 대조한다.
+- native A/B는 불변서버token 하나 아래 별도DB/namespace/databaseID와 실제reader를 사용.
+  2page source overlap, 전체저장/응답/조회/감사 tuple, 반대DB유입0,
+  B실패후A/B회복을 추가검사한다. 이 native전용증거는 공통3backend ledger와 분리한다.
+- Company/Course/OperationSession nonempty sentinel 전체raw 및 ActivityChange 불변,
+  source operationSessionId null을 매요청확인. 새Calendar/승격기능은 호출경로에 넣지 않는다.
+- 후기HTTP/transport/JSON/sourceName 실패는 run+source전체raw불변.
+  원본raw오류와 current고정오류는 각각검사하며 같은문자열인 것처럼 정규화하지 않는다.
+- 실제201detail의200번째삭제/201번째추가/경계교체를 독립expected wholeDTO에 거부.
+  전체tuple의필드누락/추가/값/NULL/배열순서/중복수 음성대조도 수행.
+
+자원/한계:
+- child env whitelist, 임시키는 child안에서 생성. 실제 env파일/실Notion 접근 없음.
+- PG host/db/user/data_directory와 exclusive advisory lock을 검사한다.
+- Mongo 정확 URI/hello replica/primary 확인 후 임의이름의 소유shadow DB만 준비/정리한다.
+- PG 빈대상테이블 전제로 worker생성자료만정리. Mongo main/A/B소유DB를삭제하고잔존검사.
+- 180초 child timeout→TERM→5초후KILL→observed exit→FAIL. 후속worker중단.
+  timeout/강제종료의 cleanup은 미확인이고 부모소유자원감사가 필요하다.
+- 필수case이름과경합tuple개수로누락검사; 총case수를고정성공계약으로사용하지 않는다.
+- 원본gate는별도이며이명령은gate를다시실행하지 않는다.
+- V2전체auth/정확allowlist/preflight, V3전체property/HTTP행렬, V5nativefault/ACK 등은
+  다른소유자의독립검사와종합한다. 이parity만으로V1~V6전체수락을주장하지 않는다.
