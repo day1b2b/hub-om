@@ -243,3 +243,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 코치 포털 runtime scope 후속 (2026-10-01)
 
 `feature/20261001-mongodb-coach-portal-runtime`에서 코치 토큰 본인 조회와 월 일정 조회·저장, request audit를 같은 명시 shadow scope로 조립한다. 기존 인증·일정 동시성·감사 의미를 유지하고 실제 Mongo handler 흐름, 준비 중단 불변과 scope 혼입 차단을 검증한다. 실행·독립 리뷰·통합은 `../mongodb-coach-portal-runtime/` 기록을 따른다. 생산 기본 PG와 운영 이전/dev→main 미완료 상태는 변하지 않는다.
+
+## 활동 정리 CLI runtime 후속 (2026-10-01)
+
+`feature/20261001-mongodb-activity-prune-cli-runtime`에서 실제 `activity:prune` entrypoint를 기본 PG와 exact 명시 Mongo shadow로 분리한다. Mongo 선택은 준비된 operational runtime만 열고 schema 준비·수리·fallback을 하지 않는다. 실행·독립 리뷰·통합은 `../mongodb-activity-prune-cli-runtime/` 기록을 따른다. 운영 예약·배포 설정과 production 전체 selector, 실데이터 이전/dev→main은 미완료다.

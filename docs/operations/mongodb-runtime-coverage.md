@@ -325,3 +325,7 @@ health·관리자 코치 JSON export·request/private audit·activity prune를 �
 ## 코치 포털 runtime 조립 (2026-10-01)
 
 코치 토큰 본인 조회·월 일정 조회/저장과 request audit를 같은 등록 shadow runtime으로 조립했다. 실제 API의 토큰·일정·감사·암호화 저장과 준비 중단 불변·scope 혼입 차단을 확인했다. 상세 범위는 [코치 포털 runtime 문서](mongodb-coach-portal-runtime.md)를 따른다. production selector·운영 이전은 미완료다.
+
+## 활동 정리 CLI runtime 연결 (2026-10-01)
+
+기본 PostgreSQL CLI를 보존하면서 exact `--backend=mongodb-shadow` 선택만 준비된 operational runtime에 연결했다. 환경 누락·미준비 namespace는 mutation과 PG fallback 없이 실패한다. 상세 범위는 [활동 정리 CLI 문서](mongodb-activity-prune-cli-runtime.md)를 따른다. 운영 예약·배포 설정은 미변경이다.
