@@ -11,6 +11,7 @@ import { DB_ARCHIVE_STATUS, DB_EDUCATION_FORMAT, DB_OPERATION_STATUS, DB_OPERATI
 import { encodeMongoRuntimeDocument } from "./mongoRuntimeCodec";
 import { assertMongo, assertMongoOperationStoreReady, completeMongoRow, MongoOperationError, MongoOperationStore, type MongoOperationOptions, type MongoRow } from "./mongoOperationStore";
 import { operationAuditRow } from "./mongoOperationAudit";
+import { lockMongoCourseNameRestore } from "./mongoCourseNameRestoreGuard";
 
 function money(value: number | null): string | null {
   if (value === null) return null;
@@ -31,13 +32,13 @@ export class MongoOperationRepository implements OperationRepository {
     await assertMongoOperationStoreReady(store);
     return new MongoOperationRepository(store);
   }
-  private async transaction<T>(work: (session: ClientSession) => Promise<T>): Promise<T> {
+  private async transaction<T>(work: (session: ClientSession) => Promise<T>, catalogWrite = false): Promise<T> {
     // Mongo's convenient API retries labeled transient/unknown commit errors. Unique upsert races
     // can instead return 11000; restart a fresh transaction and re-read the winning row/claim.
     for (let attempt = 0; attempt < 5; attempt++) {
       const session = this.store.client.startSession();
       try {
-        return await session.withTransaction(() => work(session), { readConcern: { level: "snapshot" }, writeConcern: { w: "majority", j: true }, readPreference: "primary", timeoutMS: 30_000 });
+        return await session.withTransaction(async () => { if (catalogWrite) await lockMongoCourseNameRestore(this.store, session); return work(session); }, { readConcern: { level: "snapshot" }, writeConcern: { w: "majority", j: true }, readPreference: "primary", timeoutMS: 30_000 });
       } catch (error) {
         if (error instanceof MongoServerError && error.code === 11000 && attempt < 4) continue;
         if (error instanceof MongoServerError) throw new MongoOperationError("DATABASE_TRANSACTION_FAILED");
@@ -211,7 +212,7 @@ export class MongoOperationRepository implements OperationRepository {
         if (typeof value === "string") row[field] = nullableText(value);
       }
       return this.map(await this.write("OperationSession", row, null, session), session);
-    });
+    }, true);
   }
   async updateOperation(operationId: string, input: UpdateOperationInput, updatedBy?: string): Promise<OperationSession> {
     return this.transaction(async session => {
@@ -264,7 +265,7 @@ export class MongoOperationRepository implements OperationRepository {
         await this.write("OperationSession", next, previous, session);
       }
       return this.map(next, session);
-    });
+    }, true);
   }
   async deleteOperation(operationId: string, deletedBy?: string): Promise<void> {
     await this.transaction(async session => {

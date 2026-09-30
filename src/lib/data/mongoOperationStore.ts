@@ -1,23 +1,16 @@
 import { BSON, type ClientSession, type Db, type Document, type Filter, type IndexDescription, type MongoClient } from "mongodb";
 import { mongoRuntimeContracts, mongoRuntimeBlindIndex, decodeMongoRuntimeDocument, MongoDbNull, type MongoRuntimeDocument } from "./mongoRuntimeCodec";
 import policies from "../privacy/fields.json" with { type: "json" };
+import { assertMongoCourseNameRestoreGuardReady, prepareMongoCourseNameRestoreGuard } from "./mongoCourseNameRestoreGuard";
+import { assertMongo, MongoOperationError, stableMongoValue } from "./mongoOperationPrimitives";
+
+export { assertMongo, MongoOperationError, stableMongoValue };
 
 export type MongoRow = Record<string, unknown>;
 export const OPERATION_MODELS = ["Company", "Course", "CourseIdLabel", "OperationSession", "OperationSourceRecord", "TeamUser", "ActivityChange"] as const;
 const INTERNAL_MODELS = ["__creation", "__counter"];
 export const MONGO_SCAN_ROWS = 20_000;
 export const MONGO_SCAN_BYTES = 32 * 1024 * 1024;
-export class MongoOperationError extends Error {
-  readonly code: string;
-  constructor(code: string) { super(`Mongo operation failed: ${code}`); this.code = code; }
-}
-export function assertMongo(condition: unknown, code: string): asserts condition { if (!condition) throw new MongoOperationError(code); }
-export function stableMongoValue(value: unknown): string {
-  if (value instanceof Date) return JSON.stringify(value.toISOString());
-  if (Array.isArray(value)) return `[${value.map(stableMongoValue).join(",")}]`;
-  if (value && typeof value === "object") return `{${Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([k,v]) => `${JSON.stringify(k)}:${stableMongoValue(v)}`).join(",")}}`;
-  return JSON.stringify(value) ?? "null";
-}
 export interface MongoOperationOptions {
   client: MongoClient;
   databaseName: string;
@@ -214,6 +207,7 @@ export async function prepareMongoOperationStore(options: MongoOperationOptions 
     const indexes = operationMongoIndexes(model);
     if (indexes.length) await collection.createIndexes(indexes, { collation: { locale: "simple" } });
   }
+  await prepareMongoCourseNameRestoreGuard(store, options.allowShadowWrites);
   const maximum = await store.collection("Course").find({}, { projection: { processSeq: 1 } }).sort({ processSeq: -1 }).limit(1).next();
   const max = maximum?.processSeq ?? 0;
   assertMongo(Number.isInteger(max) && max >= 0 && max < 2147483647, "INVALID_STORED_SEQUENCE");
@@ -234,6 +228,7 @@ export async function assertMongoOperationStoreReady(store: MongoOperationStore)
       assertMongo(actual && JSON.stringify(actual.key) === JSON.stringify(expected.key) && !!actual.unique === !!expected.unique && stableMongoValue(actual.partialFilterExpression) === stableMongoValue(expected.partialFilterExpression) && !actual.sparse && !actual.hidden && (!actual.collation || actual.collation.locale === "simple"), "INDEX_NOT_READY");
     }
   }
+  await assertMongoCourseNameRestoreGuardReady(store);
   const counter = await store.collection("__counter").findOne({ _id: "Course.processSeq" });
   const maximum = await store.collection("Course").find({}, { projection: { processSeq: 1 } }).sort({ processSeq: -1 }).limit(1).next();
   assertMongo(counter && Number.isInteger(counter.value) && counter.value >= (maximum?.processSeq ?? 0), "COUNTER_NOT_READY");

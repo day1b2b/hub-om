@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { ClientSession } from "mongodb";
-import { assertMongo, stableMongoValue, type MongoOperationStore } from "./mongoOperationStore";
+import type { MongoOperationStore } from "./mongoOperationStore";
+import { assertMongo, stableMongoValue } from "./mongoOperationPrimitives";
 
 const uuid = "^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$";
 export const courseNameRestoreGuardValidator = { $jsonSchema: { bsonType: "object", required: ["_id", "nonce"], additionalProperties: false,
