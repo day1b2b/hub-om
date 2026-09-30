@@ -259,3 +259,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 코치 운영 매칭 CLI runtime 후속 (2026-10-01)
 
 `feature/20261001-mongodb-coach-operation-match-cli`에서 코치 운영 매칭 진단·백필 raw SQL을 암호화 PostgreSQL/명시 Mongo repository command로 교체한다. 기존 매칭·출력·dry-run/`--apply`를 유지하고 준비된 shadow만 열며 catalog guard·조건부 연결·재실행·오류 비노출을 검증한다. 실행·독립 리뷰·통합은 `../mongodb-coach-operation-match-cli/` 기록을 따른다. 다음 개발 후보는 coach archive service 백필이며 운영 실행·production 전체 selector·실데이터 이전/dev→main은 미완료다.
+
+## 코치 아카이브 서비스 백필 CLI runtime 후속 (2026-10-01)
+
+`feature/20261001-mongodb-coach-archive-service-backfill`에서 legacy raw SQL을 encrypted PostgreSQL/명시 prepared Mongo repository command로 교체한다. 최신 completed archive 선택, 코치 변경 필드와 접속 로그 upsert, backup/maintenance gate, 단일 transaction rollback·재실행·경합 재시도·오류 비노출을 검증한다. 실행·독립 리뷰·통합은 `../mongodb-coach-archive-service-backfill/` 기록을 따른다. 다음 후보는 duplicate-company write CLI 조사이며 운영 실행·production 전체 selector·실데이터 이전/dev→main은 미완료다.

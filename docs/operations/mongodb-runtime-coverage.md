@@ -341,3 +341,7 @@ legacy raw SQL `db:backfill:team-user-team-labels`를 TeamUser count/조건부 r
 ## 코치 운영 매칭 CLI runtime 연결 (2026-10-01)
 
 `db:diagnose:coach-operation-matches`와 `db:backfill:coach-operation-matches`를 기본 encrypted PostgreSQL/명시 Mongo shadow 저장소 경계로 교체했다. 기존 매칭 엔진·진단 표·dry-run/`--apply`를 유지하고 이미 연결된 투입 비덮어쓰기, 재실행 0, catalog guard 최초 경합 재시도, PII 암호문 불변과 부분 namespace 무수정 거부를 확인했다. 상세 범위는 [코치 운영 매칭 CLI 문서](mongodb-coach-operation-match-cli.md)를 따른다. 운영 실행·배포 설정은 미변경이다.
+
+## 코치 아카이브 서비스 백필 CLI runtime 연결 (2026-10-01)
+
+legacy raw SQL `db:backfill:coach-archive-service-data`를 기본 encrypted PostgreSQL/명시 Mongo shadow repository로 교체했다. 최신 completed archive의 코치 운영 필드와 접속 로그를 단일 transaction으로 복원하고, 개인정보 암호화·재실행·후반 실패 전체 rollback·최초 upsert 경합 재시도·부분 namespace 무수정 거부를 확인했다. 상세 범위는 [코치 아카이브 서비스 백필 문서](mongodb-coach-archive-service-backfill.md)를 따른다. 운영 실행·배포 설정은 미변경이다.
