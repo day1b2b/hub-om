@@ -176,3 +176,19 @@ export async function updateTeamUsersRole(ids: string[], role: TeamUserRole): Pr
 
   return result.count;
 }
+
+export async function renameTeamUsers(from: string, to: string): Promise<number> {
+  if (!hasDatabaseUrl()) {
+    const users = readAll(); let updated = 0;
+    const next = users.map(user => user.team === from ? (updated++, { ...user, team: to }) : user);
+    if (updated) writeAll(next);
+    return updated;
+  }
+  const result = await getPrismaClient().teamUser.updateMany({ where: { team: from }, data: { team: to } });
+  return result.count;
+}
+
+export async function countTeamUsersByTeam(team: string): Promise<number> {
+  if (!hasDatabaseUrl()) return readAll().filter(user => user.team === team).length;
+  return getPrismaClient().teamUser.count({ where: { team } });
+}

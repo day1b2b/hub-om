@@ -144,6 +144,23 @@ export class MongoTeamUserRepository implements TeamUserRepository {
       return rows.length;
     });
   }
+  async renameTeamUsers(from: string, to: string): Promise<number> {
+    assertMongo(typeof from === "string" && typeof to === "string" && from.length > 0 && to.length > 0, "INVALID_TEAM_USER_INPUT");
+    return this.transaction(async session => {
+      // The maintenance label is plaintext. Do not decrypt or rewrite unrelated PII ciphertext.
+      const rows = await this.store.collection("TeamUser").find({ team: from }, { session, projection: { _id: 1, team: 1 } }).sort({ _id: 1 }).limit(MONGO_SCAN_ROWS + 1).toArray();
+      assertMongo(rows.length <= MONGO_SCAN_ROWS, "TEAM_USER_SCAN_LIMIT_EXCEEDED");
+      for (const previous of rows) {
+        const result = await this.store.collection("TeamUser").updateOne({ _id: previous._id, team: from }, { $set: { team: to } }, { session });
+        assertMongo(result.matchedCount === 1, "TEAM_USER_ROW_DISAPPEARED");
+      }
+      return rows.length;
+    });
+  }
+  async countTeamUsersByTeam(team: string): Promise<number> {
+    assertMongo(typeof team === "string" && team.length > 0, "INVALID_TEAM_USER_INPUT");
+    return safely(() => this.store.collection("TeamUser").countDocuments({ team }, { maxTimeMS: 15_000 }));
+  }
   async deleteTeamUsers(ids: string[]): Promise<number> {
     void ids;
     assertMongo(this.allowWrites, "SHADOW_WRITE_GATE");
