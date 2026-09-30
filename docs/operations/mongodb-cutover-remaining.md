@@ -11,7 +11,7 @@
 | 실원천·Drive 실행 연결 | 실제 Sheets/Notion/Drive 연결 및 전체 앱/작업 구성 | 파일 staging·운영 승격·Calendar 명시 경계, Drive 저장 이력 조회·CLI writer, Sheets/Notion 명시 원천→staging은 합성 검증했다. 실제 원천 연결·운영 적재와 전체 실행 구성은 별도 필수 후속이며 합성 성공으로 대체하지 않는다 |
 | Calendar 전체 앱/예약 작업 조립 | 기본 PG를 유지한 저장/시각 port와 명시 Mongo lease/runtime | 명시 경계 구현·원본PG/native/합성 Google 검증·독립 수락 완료. 원격 통합은 Calendar 기록을 따른다. 실제 Google 권한/메일·앱과 예약 작업 조립은 미완료 |
 | 전체 백업·상태 구성 | 전체 앱 backend 구성 및 실제 복구 검증 | health 연결 확인과 기존 관리자 코치 JSON 다운로드 경계는 합성 검증했다. 전체 DB 백업/복구 증거는 별도이며 실제 복원 검증은 3단계다. activity:prune의 명시 저장소 경계와 실제 CLI entrypoint의 명시 Mongo 연결도 합성 검증했다. 실제 활성 작업·전체 앱 연결은 별도다 |
-| CLI·예약 작업·배포 경로 | coverage는 src runtime 중심. 기존 backfill CLI/배포 entrypoint/로컬 파일은 별도 점검 | activity:prune와 onsite-required-y backfill은 기본 PG를 유지한 exact shadow selector까지 연결했다. 그 밖의 호출·예약·배포 경로와 사용 여부를 확인하고 필요한 전환을 진행한다. 불명확한 도구를 임의 제외하지 않는다 |
+| CLI·예약 작업·배포 경로 | coverage는 src runtime 중심. 기존 backfill CLI/배포 entrypoint/로컬 파일은 별도 점검 | activity:prune, onsite-required-y, team-user-team-labels backfill은 기본 PG를 유지한 exact shadow selector까지 연결했다. 그 밖의 호출·예약·배포 경로와 사용 여부를 확인하고 필요한 전환을 진행한다. 불명확한 도구를 임의 제외하지 않는다 |
 
 이미 완료된 운영 CRUD·코치 인증/토큰/개인정보 내보내기·일정/예약/투입/평가·코치 시트/Notion 동기화·코치 관리/콘텐츠·담당자 내 페이지·토큰 보완·관리자 과정/삭제 운영/보정/과정명 복원·관리자 DB·공지/첨부·활동 조회·강사 Notion·매출 동기화·OM 접수/전체 배정 경계 전환을 새 미전환 기능으로 반복하지 않는다. 단, 이들의 전체 앱 연결은 다음 단계에 포함한다.
 
@@ -40,6 +40,8 @@
 `activity:prune` entrypoint는 [Mongo 활동 정리 CLI runtime](mongodb-activity-prune-cli-runtime.md)으로 기본 PG와 exact 명시 shadow 실행을 분리했다. 준비된 namespace만 열며 실제 운영 예약·배포 구성에는 적용하지 않았다.
 
 legacy `db:backfill:onsite-required-y` entrypoint는 [Mongo 현장 투입 보정 CLI runtime](mongodb-onsite-backfill-cli-runtime.md)으로 raw SQL을 제거하고 기존 repository를 재사용한다. 기본 PG와 명시 shadow 실행을 검증했지만 실제 운영 보정이나 배포 구성에는 적용하지 않았다.
+
+legacy `db:backfill:team-user-team-labels` entrypoint는 [Mongo 팀 명칭 보정 CLI](mongodb-team-label-backfill-cli.md)로 raw SQL을 제거하고 TeamUser 저장 경계를 사용한다. 실제 운영 라벨 보정이나 배포 구성에는 적용하지 않았다.
 
 남은 기능 구현과 병행해 전체 요청·페이지·작업 실행의 저장소 묶음, 원천 adapter, 요청 감사, Calendar 부작용, 키/오류 처리를 일관되게 연결한다. 누락된 저장소가 PG로 넘어가지 않는지 검사하고 실제 앱/브라우저·권한 흐름을 통합 확인한다. 환경변수 이름만 바꾸는 것으로 완료되지 않는다. 이 연결 코드는 먼저 격리 환경에서 검증하고 운영 설정은 바꾸지 않는다.
 

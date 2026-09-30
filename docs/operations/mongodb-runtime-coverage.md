@@ -333,3 +333,7 @@ health·관리자 코치 JSON export·request/private audit·activity prune를 �
 ## 현장 투입 보정 CLI runtime 연결 (2026-10-01)
 
 legacy raw SQL `db:backfill:onsite-required-y`를 기존 operationBackfill repository command로 교체했다. 기본 PG와 dry-run/`--apply`·대상 의미를 유지하고 exact Mongo selector만 준비된 admin maintenance shadow에 연결한다. 상세 범위는 [현장 투입 보정 CLI 문서](mongodb-onsite-backfill-cli-runtime.md)를 따른다. 운영 실행·예약·배포 설정은 미변경이다.
+
+## 팀 명칭 보정 CLI runtime 연결 (2026-10-01)
+
+legacy raw SQL `db:backfill:team-user-team-labels`를 TeamUser count/조건부 rename으로 교체했다. 기본 PG와 두 exact 라벨·dry-run/`--apply`를 유지하고 local file 선택은 거부한다. Mongo는 명시 prepared user-admin shadow에서 team만 갱신하며 PII 암호문·companion을 보존한다. 상세 범위는 [팀 명칭 보정 CLI 문서](mongodb-team-label-backfill-cli.md)를 따른다. 운영 실행·배포 설정은 미변경이다.

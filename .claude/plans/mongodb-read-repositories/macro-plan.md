@@ -251,3 +251,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 현장 투입 보정 CLI runtime 후속 (2026-10-01)
 
 `feature/20261001-mongodb-onsite-backfill-cli-runtime`에서 legacy `db:backfill:onsite-required-y` raw SQL을 기존 operationBackfill command로 교체한다. 기본 PG·dry-run/`--apply` 의미를 유지하고 명시 Mongo는 준비된 admin maintenance shadow만 연다. 실행·독립 리뷰·통합은 `../mongodb-onsite-backfill-cli-runtime/` 기록을 따른다. 운영 보정·예약·배포와 production 전체 selector, 실데이터 이전/dev→main은 미완료다.
+
+## 팀 명칭 보정 CLI runtime 후속 (2026-10-01)
+
+`feature/20261001-mongodb-team-label-backfill-cli`에서 legacy `db:backfill:team-user-team-labels` raw SQL을 TeamUser count/조건부 rename으로 교체한다. 기본 PG·두 exact 라벨·dry-run/`--apply`를 유지하고 명시 Mongo는 준비된 user-admin shadow만 연다. 실행·독립 리뷰·통합은 `../mongodb-team-label-backfill-cli/` 기록을 따른다. 운영 실행·배포와 production 전체 selector, 실데이터 이전/dev→main은 미완료다.
