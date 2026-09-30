@@ -309,3 +309,7 @@ health·관리자 코치 JSON export·request/private audit·activity prune를 �
 ## 코치 관리자 runtime 조립 (2026-10-01)
 
 코치 관리자 페이지·마스터·삭제 코치 API와 request audit를 같은 client/database/namespace의 등록 shadow runtime으로 조립했다. 복원·기존 영구삭제·업무/요청 감사·암호화 저장과 부분 준비·중첩 전환 차단을 확인했다. 상세 범위는 [코치 관리자 runtime 문서](mongodb-coach-admin-runtime.md)를 따른다. 브라우저 전체 흐름, production selector·전체 Next/활성 작업·운영 이전은 미완료다.
+
+## 관리자 DB runtime 조립 (2026-10-01)
+
+관리자 DB 페이지·셀 API의 adminDatabase·teamMembers·requestActivity를 같은 client/database/namespace의 등록 shadow runtime으로 조립했다. 실제 페이지·PATCH, 업무/요청 감사·rollback·준비 불변과 자원 소유권을 확인했다. 상세 범위는 [관리자 DB runtime 문서](mongodb-admin-database-runtime.md)를 따른다. 브라우저 전체 흐름, production selector·운영 이전은 미완료다.
