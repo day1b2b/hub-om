@@ -50,6 +50,7 @@ import type { DuplicateCompanyMergeRepository } from "./duplicateCompanyMergeRep
 import type { InstructorNoteImportRepository } from "./instructorNoteImportRepository";
 import type { CoachDataVerificationRepository } from "./coachDataVerificationRepository";
 import type { CoachDbArchiveRepository } from "./coachDbArchiveRepository";
+import type { CoachDbImportRepository } from "./coachDbImportRepository";
 
 export interface RequestActivityRepository {
   recordRequest(context: ActivityContext, status: number, durationMs: number): Promise<void>;
@@ -58,6 +59,7 @@ export interface CoachPrivateAccessLogRepository {
   recordAccess(coachId: string, accessedByEmail: string, context: string): Promise<void>;
 }
 export interface DataRepositories {
+  coachDbImport: CoachDbImportRepository;
   coachDbArchive: CoachDbArchiveRepository;
   activityPrune: ActivityPruneRepository;
   adminBackup: AdminBackupRepository;
