@@ -21,6 +21,10 @@ const collectionRoute = await import("../../app/api/operations/route");
 const itemRoute = await import("../../app/api/operations/[operationId]/route");
 const roundsRoute = await import("../../app/api/operations/[operationId]/rounds/route");
 const reorderRoute = await import("../../app/api/operations/[operationId]/rounds/reorder/route");
+const driveApplyRoute = await import("../../app/api/operations/[operationId]/drive-import/apply/route");
+const driveCandidatesRoute = await import("../../app/api/operations/[operationId]/drive-import/candidates/route");
+const driveFoldersRoute = await import("../../app/api/operations/[operationId]/drive-import/folders/route");
+const sourceRefreshRoute = await import("../../app/api/operations/[operationId]/source-reads/refresh/route");
 const { resetAccessTokenCache } = await import("../googleCalendar/calendarWriteClient");
 hooks.deregister();
 
@@ -32,7 +36,7 @@ type AuditExpectation = { id: string; route: string; method: string; status: num
 
 test("operation write runtime composes create, round, reorder, delete, Calendar and request audit", { skip: !uri, timeout: 180_000 }, async () => {
   const target = new URL(uri!); assert.equal(target.protocol, "mongodb:"); assert.equal(target.hostname, "127.0.0.1"); assert.ok(target.port); assert.equal(target.username, ""); assert.equal(target.password, "");
-  const env = { PII_ENCRYPTION_KEYS: JSON.stringify({ fixture: randomBytes(32).toString("base64") }), PII_ACTIVE_KEY_ID: "fixture", PII_INDEX_KEY: randomBytes(32).toString("base64"), PII_ALLOW_PLAINTEXT_READS: "false", DATABASE_URL: "postgresql://synthetic@127.0.0.1:1/forbidden", OPERATION_DATA_SOURCE: "postgres", DEV_AUTH_BYPASS: "false", GOOGLE_CAL_OAUTH_CLIENT_ID: "synthetic-calendar-client", GOOGLE_CAL_OAUTH_CLIENT_SECRET: "synthetic-calendar-secret", GOOGLE_CAL_OAUTH_REFRESH_TOKEN: "synthetic-calendar-refresh", GOOGLE_CAL_PART_CALENDARS: `1파트:${CALENDAR_ID}`, SLACK_BOT_TOKEN: "", SLACK_CALENDAR_ALERT_EMAIL: "" };
+  const env = { PII_ENCRYPTION_KEYS: JSON.stringify({ fixture: randomBytes(32).toString("base64") }), PII_ACTIVE_KEY_ID: "fixture", PII_INDEX_KEY: randomBytes(32).toString("base64"), PII_ALLOW_PLAINTEXT_READS: "false", DATABASE_URL: "postgresql://synthetic@127.0.0.1:1/forbidden", OPERATION_DATA_SOURCE: "postgres", OPERATION_SOURCE_READER_MODULE: "", DEV_AUTH_BYPASS: "false", GOOGLE_CAL_OAUTH_CLIENT_ID: "synthetic-calendar-client", GOOGLE_CAL_OAUTH_CLIENT_SECRET: "synthetic-calendar-secret", GOOGLE_CAL_OAUTH_REFRESH_TOKEN: "synthetic-calendar-refresh", GOOGLE_CAL_PART_CALENDARS: `1파트:${CALENDAR_ID}`, GOOGLE_DRIVE_SERVICE_ACCOUNT_EMAIL: "", GOOGLE_DRIVE_PRIVATE_KEY: "", GOOGLE_CALENDAR_SERVICE_ACCOUNT_EMAIL: "", GOOGLE_CALENDAR_PRIVATE_KEY: "", SLACK_BOT_TOKEN: "", SLACK_SEARCH_TOKEN: "", SLACK_CALENDAR_ALERT_EMAIL: "", GMAIL_DISCUSSION_MANUAL_ARCHIVE_FILE: "" };
   const saved = new Map(Object.keys(env).map(name => [name, process.env[name]])); Object.assign(process.env, env);
   const remote = new SyntheticCalendarRemote(); let unscopedFetch = 0;
   const logs: string[] = [], recordLog = (...values: unknown[]) => { logs.push(values.map(value => typeof value === "string" ? value : JSON.stringify(value)).join(" ")); };
@@ -60,6 +64,17 @@ test("operation write runtime composes create, round, reorder, delete, Calendar 
     const second = added.operation as { operationId: string }; assert.ok(second.operationId); assert.equal(remote.active().length, 2);
     const reordered = await checked(await invoke(() => reorderRoute.POST(request(`/api/operations/${first.operationId}/rounds/reorder`, { orderedOperationIds: [second.operationId, first.operationId] }), { params: Promise.resolve({ operationId: first.operationId }) })), "/api/operations/[operationId]/rounds/reorder");
     assert.equal((reordered.changes as unknown[]).length, 2); assert.equal(remote.active().length, 2);
+    const patchesBeforeApply = remote.calls("event", "PATCH").length;
+    const apply = await checked(await invoke(() => driveApplyRoute.POST(request(`/api/operations/${first.operationId}/drive-import/apply`, { patches: [{ field: "region", value: "Synthetic revised region", action: "replace" }] }), { params: Promise.resolve({ operationId: first.operationId }) })), "/api/operations/[operationId]/drive-import/apply");
+    assert.equal((apply.operation as { region: string }).region, "Synthetic revised region"); assert.equal(remote.active().length, 2);
+    assert.equal(remote.calls("event", "PATCH").length, patchesBeforeApply + 1);
+    assert.equal((remote.calls("event", "PATCH").at(-1)?.body as { location?: string }).location, "Synthetic revised region");
+    const candidates = await checked(await invoke(() => driveCandidatesRoute.POST(request(`/api/operations/${first.operationId}/drive-import/candidates`, { folderUrl: "https://drive.google.com/drive/folders/synthetic-folder-id-12345" }), { params: Promise.resolve({ operationId: first.operationId }) })), "/api/operations/[operationId]/drive-import/candidates");
+    assert.equal((candidates.result as { candidates: unknown[] }).candidates.length, 0); assert.ok((candidates.result as { issues: string[] }).issues.length > 0);
+    const folders = await checked(await invoke(() => driveFoldersRoute.POST(new Request(`https://example.invalid/api/operations/${first.operationId}/drive-import/folders`, { method: "POST" }), { params: Promise.resolve({ operationId: first.operationId }) })), "/api/operations/[operationId]/drive-import/folders");
+    assert.equal((folders.result as { candidates: unknown[] }).candidates.length, 0); assert.ok((folders.result as { issues: string[] }).issues.length > 0);
+    const refreshed = await checked(await invoke(() => sourceRefreshRoute.POST(request(`/api/operations/${first.operationId}/source-reads/refresh`, { source: "all" }), { params: Promise.resolve({ operationId: first.operationId }) })), "/api/operations/[operationId]/source-reads/refresh");
+    assert.equal(refreshed.status, "disabled"); assert.deepEqual(refreshed.discussionReferences, []);
     await checked(await invoke(() => itemRoute.DELETE(new Request(`https://example.invalid/api/operations/${first.operationId}`, { method: "DELETE" }), { params: Promise.resolve({ operationId: first.operationId }) })), "/api/operations/[operationId]", "DELETE");
     assert.equal(remote.active().length, 1);
     const deleted = await store.one("OperationSession", { operationId: first.operationId }); assert.ok(deleted?.deletedAt instanceof Date);
@@ -98,7 +113,7 @@ test("operation write runtime composes create, round, reorder, delete, Calendar 
     const rawAudit = JSON.stringify(await store.collection("ActivityRequest").find({}).toArray());
     for (const secret of [actor.user.email, actor.user.name, "Synthetic company", "Synthetic course", "Synthetic failure company", "Synthetic failure course", "Synthetic Calendar OM"]) assert.equal(rawAudit.includes(secret), false);
     for (const secret of [actor.user.email, actor.user.name, "Synthetic company", "Synthetic course", "Synthetic failure company", "Synthetic failure course", PRIVATE_MARKER]) assert.equal(logs.join("\n").includes(secret), false);
-    assert.equal(audits.length, 10); assert.equal(pgAdapterCalls, 0); assert.equal(pgPoolCalls, 0); assert.equal(unscopedFetch, 0); assert.deepEqual(remote.violations, []);
+    assert.equal(audits.length, 14); assert.equal(pgAdapterCalls, 0); assert.equal(pgPoolCalls, 0); assert.equal(unscopedFetch, 0); assert.deepEqual(remote.violations, []);
     const partialNamespace = `shadow_operation_write_partial_${randomBytes(6).toString("hex")}`;
     await client.db(databaseName).createCollection(`${partialNamespace}_OperationSession`); writes.length = 0;
     await assert.rejects(prepareMongoOperationWriteRuntime({ ...options, namespace: partialNamespace }), /MONGO_OPERATION_WRITE_RUNTIME_FAILED/);
