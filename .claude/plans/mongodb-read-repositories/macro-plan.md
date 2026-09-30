@@ -1,6 +1,6 @@
 # MongoDB 병렬 이전 상위 계획
 
-최신 총괄 상태: 2026-09-29 담당자 내 페이지까지 통합한 1a7323b 위에 토큰 보완 feature 95c26fff6871c4cc12229275b908c885cc52161c를 fast-forward 통합했다. 명시 Mongo CLI 경계·실제 PG/Mongo 검증·독립 리뷰와 실패 보완 근거는 ../mongodb-coach-token-backfill/integration-review.md 및 execution-review.md를 따른다. 다음은 남은 코치 legacy 사용처 점검과 운영·과정 관리자 기능이다. 원천 식별자 암호화와 코치 관리 구현도 통합됐으며 운영 적용은 미실행이다.
+최신 총괄 상태: 2026-09-30 OM 전체 배정 제품 fdd59cee4c13c3144d653b87dc6ec57363a1fe79까지 독립 수락·합성 정리·총괄 FF/push·원격 SHA 일치를 확인했다. 최신 실행 근거는 ../mongodb-om-assignment/를 따른다. 다음은 최신dev307f52f의 만족도/Calendar 변경 동기화이며, 그 뒤 coverage의 미전환 단위로 이어간다. 운영 기본 PG 및 전체 이전 미완료 상태를 유지한다.
 
 목표: 기존 PostgreSQL 운영을 유지하며 개인정보를 암호화한 별도 MongoDB를 검증한 뒤 안전하게 전환한다.
 
