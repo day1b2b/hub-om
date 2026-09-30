@@ -35,8 +35,8 @@ test("name-bearing engagement source IDs: legacy plaintext, schema transition, p
     await sql.query("DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;");
     const root = path.resolve("prisma/migrations");
     const migrations = readdirSync(root, { withFileTypes: true }).filter(entry => entry.isDirectory()).map(entry => entry.name).sort();
-    assert.equal(migrations.at(-1), TARGET);
-    for (const name of migrations.slice(0, -1)) await sql.query(readFileSync(path.join(root, name, "migration.sql"), "utf8"));
+    const targetIndex = migrations.indexOf(TARGET); assert.ok(targetIndex >= 0);
+    for (const name of migrations.slice(0, targetIndex)) await sql.query(readFileSync(path.join(root, name, "migration.sql"), "utf8"));
 
     // Legacy state: plaintext source IDs guarded only by the plaintext unique constraint.
     await sql.query("INSERT INTO coaches(id, source_coach_id, name, normalized_name, updated_at) VALUES ($1, 'synthetic:source-coach', $2, $2, now())", [coachId, coachName]);
@@ -50,6 +50,7 @@ test("name-bearing engagement source IDs: legacy plaintext, schema transition, p
     assert.equal((await sql.query("SELECT count(*)::int AS n FROM coach_engagements WHERE source_engagement_id LIKE 'pii:v1:%'")).rows[0].n, 0);
 
     await sql.query(readFileSync(path.join(root, TARGET, "migration.sql"), "utf8"));
+    for (const name of migrations.slice(targetIndex + 1)) await sql.query(readFileSync(path.join(root, name, "migration.sql"), "utf8"));
     const dry = await migratePersonalData(raw, false);
     assert.equal(dry.coach_engagements.plaintext, 206); assert.equal(dry.coach_engagement_schedules.plaintext, 2);
     assert.equal((await sql.query("SELECT count(*)::int AS n FROM coach_engagements WHERE source_engagement_id_pii_index IS NOT NULL")).rows[0].n, 0);

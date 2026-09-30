@@ -2,7 +2,7 @@
 
 ## 범위와 계약
 
-`src/lib/privacy/fields.json`이 서버 저장 암호화 대상(26개 테이블, 127개 필드)의 단일 목록이다. 2026-09-23에 이름이 포함되는 투입·슬롯 원천 식별자 2개를 추가했다([적용 순서·복구](pii-source-engagement-ids.md)). `inventory.json`은 나머지 업무 필드까지 분류하며 테스트가 미분류 신규 필드를 차단한다.
+`src/lib/privacy/fields.json`이 서버 저장 암호화 대상(26개 테이블, 129개 필드)의 단일 목록이다. 2026-09-23에 이름이 포함되는 투입·슬롯 원천 식별자 2개를 추가했고, 2026-09-30에 Drive 가져오기 결과의 회사명·과정명 2개를 추가했다([적용 순서·복구](pii-drive-import-result-names.md)). `inventory.json`은 나머지 업무 필드까지 분류하며 테스트가 미분류 신규 필드를 차단한다.
 
 - 담당자·코치·강사·직원 이름/정규화 이름, 이메일, 전화번호, 생년월일, 사번, 개인 외부 식별자, Slack ID, 코치 접근 토큰.
 - 담당/작성/수정/삭제/예약/조회 주체, 개인 캘린더/문서 링크, 자유 입력 메모·강의관리·피드백·공지와 첨부파일.
@@ -42,6 +42,8 @@ Node.js `crypto`의 AES-256-GCM, 매 저장마다 무작위 12바이트 nonce, 1
 8. `PII_ALLOW_PLAINTEXT_READS=false`로 유지하고 새 앱을 시작한다. 이름 검색·정렬, 코치 토큰 인증, 개인정보 상세, 첨부 다운로드, 활동 로그를 확인한다.
 
 `PII_ALLOW_PLAINTEXT_READS=true`는 격리된 점검 용도다. 쓰기는 항상 암호화한다. 혼합 데이터 상태에서 일반 서비스 운영을 허용하는 옵션이 아니다.
+
+apply는 먼저 전체 dry-run preflight를 수행한다. companion이 NULL인 부분 상태는 재생성할 수 있지만, 기존 non-null companion이 현재 HMAC과 다르면 키 불일치 또는 손상으로 보고 어떤 backfill write보다 먼저 거부한다.
 
 ## 키 교체와 복구
 
@@ -85,3 +87,7 @@ DB adapter 교체 시 재사용 경계와 암호문/AAD/HMAC 불변 조건은 [�
 ## 2026-09-23 투입·슬롯 원천 식별자 추가
 
 `CoachEngagement.sourceEngagementId`, `CoachEngagementSchedule.sourceEngagementScheduleId`는 코치 이름을 포함할 수 있어 암호화 대상으로 바꿨다. 기존 `operational` 분류는 제외 승인이 아니었다. HMAC companion unique로 원문 중복을 막고, 기존 백필·enforce 도구가 두 필드를 자동으로 포함한다. 새 migration `20260923090000_pii_source_engagement_ids`는 운영에 적용하지 않았다. 점검 모드 적용 순서, 부분 중단·충돌·키 불일치 처리, Mongo shadow 재복사는 [별도 문서](pii-source-engagement-ids.md)를 따른다.
+
+## 2026-09-30 Drive 결과 스냅숏 이름 추가
+
+`DriveImportResult.companyName`, `DriveImportResult.courseName`은 가져오기 당시 이름을 보존하는 스냅숏이므로 암호화 대상으로 바꿨다. 두 값은 중복될 수 있어 HMAC companion은 조회·무결성 확인용 비고유 인덱스다. 기존 PostgreSQL `C` byte 정렬은 복호화 후 byte 비교로 유지한다. migration `20260930150000_encrypt_drive_import_result_names`는 운영에 적용하지 않았다. 점검 모드 적용 순서, 재실행·키 불일치·Mongo 새 shadow 재복사는 [별도 문서](pii-drive-import-result-names.md)를 따른다.

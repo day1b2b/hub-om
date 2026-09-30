@@ -1137,6 +1137,20 @@
         "uuid": false,
         "dateOnly": false
       },
+      "companyNamePiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "courseNamePiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
       "startDate": {
         "type": "DateTime",
         "nullable": true,

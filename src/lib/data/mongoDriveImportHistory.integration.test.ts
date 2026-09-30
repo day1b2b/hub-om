@@ -80,11 +80,13 @@ test("Drive history native: selection / parents / cipher / budget / snapshot", {
       for (const key of ["summary", "notes"]) assert.ok(!Object.hasOwn(runLiteral(), key));
       assert.ok(!Object.hasOwn(resultLiteral(), "folderId"));
       for (const marker of [CANARY + "-notes", CANARY + "-summary"]) assert.ok(!JSON.stringify(runRaw).includes(marker));
-      for (const marker of [CANARY + "-input", CANARY + "-folder-id", CANARY + "-title", CANARY + "-stored-error", CANARY + "-key", CANARY + "-folder", CANARY + "-issue", "https://example.invalid/synthetic-folder"]) {
+      for (const marker of ["합성 회사", "합성 과정", CANARY + "-input", CANARY + "-folder-id", CANARY + "-title", CANARY + "-stored-error", CANARY + "-key", CANARY + "-folder", CANARY + "-issue", "https://example.invalid/synthetic-folder"]) {
         assert.ok(!JSON.stringify(resultRaw).includes(marker));
       }
       assert.ok(isEncrypted(runRaw.notes)); assert.ok(isEncrypted(resultRaw.inputValue));
-      assert.equal(resultRaw.companyName, "합성 회사", "현재 registry 밖 snapshot 이름은 암호화 주장 금지");
+      assert.ok(isEncrypted(resultRaw.companyName)); assert.ok(isEncrypted(resultRaw.courseName));
+      assert.match(String(resultRaw.companyNamePiiIndex), /^[a-f0-9]{64}$/);
+      assert.match(String(resultRaw.courseNamePiiIndex), /^[a-f0-9]{64}$/);
     });
 
     for (const json of [MongoDbNull, MongoJsonNull, { notAnArray: true }, "scalar", 0]) {
@@ -224,7 +226,8 @@ test("Drive history native: selection / parents / cipher / budget / snapshot", {
       await b.readOnly(async () => { assert.deepEqual(await b.repo.readLatestDriveImportResult(OP), singleLiteral({ inputValue: "namespace-b" })); });
     });
 
-    for (const [model, field, key] of [["DriveImportRun", "notes", RID], ["DriveImportRun", "summary", RID], ["DriveImportResult", "folderId", DID],
+    for (const [model, field, key] of [["DriveImportRun", "notes", RID], ["DriveImportRun", "summary", RID], ["DriveImportResult", "companyName", DID],
+      ["DriveImportResult", "courseName", DID], ["DriveImportResult", "folderId", DID],
       ["DriveImportResult", "inputValue", DID], ["DriveImportResult", "folderTitle", DID], ["DriveImportResult", "folderUrl", DID],
       ["DriveImportResult", "error", DID], ["DriveImportResult", "keyCandidates", DID], ["DriveImportResult", "folderCandidates", DID], ["DriveImportResult", "issues", DID]] as const) {
       await suite.test("V6 full authentication including nonreturned field " + model + "." + field, async () => {
@@ -361,6 +364,23 @@ test("Drive history native: selection / parents / cipher / budget / snapshot", {
       } finally { Object.assign(process.env, h.keys); }
     });
 
+    await suite.test("V6 old-policy plaintext snapshot names fail prepare without repair, deletion or plaintext error", async () => {
+      const f = await h.fixture(); await f.seedPair();
+      await corrupt(f, "DriveImportResult", DID, { $set: { companyName: "SYNTHETIC_OLD_PERSON_NAME", courseName: "SYNTHETIC_OLD_COURSE_NAME" },
+        $unset: { companyNamePiiIndex: "", courseNamePiiIndex: "" } });
+      const before = await f.snapshot(), ledger = wireLedger(h.client, h.databaseName);
+      let failure: unknown;
+      try { await prepareMongoDriveImportHistory({ ...f.options, allowShadowWrites: true }); }
+      catch (error) { failure = error; }
+      finally { ledger.stop(); }
+      assert.ok(failure);
+      const errorText = (error: unknown) => error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+      assert.equal(errorText(failure).includes("SYNTHETIC_OLD"), false);
+      assert.equal(errorText(new Error("SYNTHETIC_OLD_PERSON_NAME")).includes("SYNTHETIC_OLD"), true, "negative control");
+      assert.deepEqual(ledger.commands.filter(c => ["create", "createIndexes", "collMod", "update", "delete", "insert"].includes(c.commandName)), []);
+      assert.deepEqual(await f.snapshot(), before);
+    });
+
     for (const model of HISTORY_MODELS) {
       await suite.test("V6 prepare historical invalid document with current metadata: preflight/no repair/no missing creation " + model, async () => {
         const f = await h.fixture();
@@ -433,7 +453,9 @@ test("Drive history native: selection / parents / cipher / budget / snapshot", {
       const parentBytes = BSON.calculateObjectSize({ _id: RID, startedAt: new Date(AT) }) + BSON.calculateObjectSize(runRaw);
       const padding = BYTE_LIMIT - parentBytes - rows.reduce((sum, row) => sum + BSON.calculateObjectSize(row), 0);
       assert.ok(padding > 0);
-      for (let i = 0; i < rows.length; i++) rows[i].companyName = "x".repeat(Math.floor(padding / rows.length) + (i < padding % rows.length ? 1 : 0));
+      for (let i = 0; i < rows.length; i++) {
+        rows[i].inputKind = String(rows[i].inputKind) + "x".repeat(Math.floor(padding / rows.length) + (i < padding % rows.length ? 1 : 0));
+      }
       assert.equal(parentBytes + rows.reduce((sum, row) => sum + BSON.calculateObjectSize(row), 0), BYTE_LIMIT);
       assert.ok(rows.every(row => BSON.calculateObjectSize(row) < 16 * 1024 * 1024));
       await f.store.collection("DriveImportResult").insertMany(rows, { timeoutMS: 10_000 });
@@ -441,7 +463,7 @@ test("Drive history native: selection / parents / cipher / budget / snapshot", {
       try { assert.deepEqual(await f.repo.readLatestDriveImportRun(0), runLiteral([])); }
       finally { ledger.stop(); }
       assertReadWire(ledger); assert.equal(ledger.rows, 10); assert.equal(ledger.bytes, BYTE_LIMIT);
-      await f.store.collection("DriveImportResult").updateOne({ _id: rows[0]._id }, { $set: { companyName: String(rows[0].companyName) + "x" } }, { timeoutMS: 5000 });
+      await f.store.collection("DriveImportResult").updateOne({ _id: rows[0]._id }, { $set: { inputKind: String(rows[0].inputKind) + "x" } }, { timeoutMS: 5000 });
       ledger = wireLedger(h.client, h.databaseName);
       try { await assert.rejects(f.repo.readLatestDriveImportRun(0), historyFailure); }
       finally { ledger.stop(); }

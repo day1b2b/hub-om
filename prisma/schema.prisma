@@ -300,6 +300,8 @@ model DriveImportRun {
 }
 
 model DriveImportResult {
+  @@index([companyNamePiiIndex])
+  @@index([courseNamePiiIndex])
   id                 String   @id @default(uuid()) @db.Uuid
   runId              String   @map("run_id") @db.Uuid
   operationSessionId String?  @map("operation_session_id") @db.Uuid
@@ -332,6 +334,8 @@ model DriveImportResult {
   @@map("drive_import_results")
 
   // Application encryption lookup/storage columns; never expose these in API responses.
+  companyNamePiiIndex String? @map("company_name_pii_index")
+  courseNamePiiIndex String? @map("course_name_pii_index")
   inputValuePiiIndex String? @map("input_value_pii_index")
   folderIdPiiIndex String? @map("folder_id_pii_index")
   folderTitlePiiIndex String? @map("folder_title_pii_index")

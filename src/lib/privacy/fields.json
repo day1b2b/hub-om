@@ -229,6 +229,22 @@
   "DriveImportResult": {
     "table": "drive_import_results",
     "fields": {
+      "companyName": {
+        "column": "company_name",
+        "type": "String",
+        "nullable": false,
+        "index": "companyNamePiiIndex",
+        "indexColumn": "company_name_pii_index",
+        "ordering": "byte"
+      },
+      "courseName": {
+        "column": "course_name",
+        "type": "String",
+        "nullable": false,
+        "index": "courseNamePiiIndex",
+        "indexColumn": "course_name_pii_index",
+        "ordering": "byte"
+      },
       "inputValue": {
         "column": "input_value",
         "type": "String",

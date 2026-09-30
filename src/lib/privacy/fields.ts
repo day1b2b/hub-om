@@ -1,7 +1,7 @@
 import fieldPolicy from "./fields.json" with { type: "json" };
 import { Prisma } from "@prisma/client";
 import { blindIndex, decrypt, encrypt, isEncrypted } from "./crypto";
-export type FieldPolicy = { column: string; type: string; nullable: boolean; index?: string; indexColumn?: string; storage?: string; storageColumn?: string; allowAuditMetadata?: boolean };
+export type FieldPolicy = { column: string; type: string; nullable: boolean; index?: string; indexColumn?: string; storage?: string; storageColumn?: string; allowAuditMetadata?: boolean; ordering?: "byte" };
 export const privacyFields = fieldPolicy as Record<string, { table: string; primaryKey: string; compoundKeys: string[][]; fields: Record<string, FieldPolicy> }>;
 export const fieldContext = (model: string, field: string) => `${model}.${field}`;
 export function encryptField(model: string, field: string, value: unknown): unknown {

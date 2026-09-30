@@ -277,3 +277,11 @@ activity:prune CLI를 기본 PG와 명시 activityPrune repository로 분리했�
 신규 actual Mongo 검증 12 PASS/0 skip, 기존 native coach 저장소 1 PASS, 일반1083 PASS/100 opt-in skip/0 FAIL, typecheck/build PASS, lint 오류0·기존경고7이다. 일정의 factory 동기 오류와 dashboard/holiday 비동기 오류, 상세 notFound 후 후속0, 위키 목록 마지막 동명이름·상세 첫 일치, 운영 옵션 trim/dedupe/한국어 정렬을 별도 판정했다. 조회 중 Mongo write 0, 동시 namespace 혼합0, 저장 fixture 평문0, PG·실외부 접근0을 확인했다. 실제 운영 데이터·전체 Next 서버·생산 backend 전환은 검증하지 않았다.
 
 Google Drive(A)와 OneDrive(B)는 백업 **후보**만 확정했다. 실제 계정·용량·보존·암호화·독립 삭제/복구 권한, 각 업로드 무결성, 키 회수와 격리 복원은 미검증이므로 실제 백업 증거는 0건이다. 전체 앱·활성 CLI/예약/배포 조립, snapshot 개인정보 분류, 운영 collation/TZ, 실데이터 복사·각 복원·최종 동기화/전환이 남아 있다. 생산 기본 PG, main/dev 불변, 자동화 PAUSED를 유지한다.
+
+## 2026-09-30 Drive 결과 snapshot 이름 암호화
+
+`DriveImportResult.companyName`, `courseName`을 개인정보 정책의 128번째·129번째 필드로 추가했다. PostgreSQL에는 nullable non-unique HMAC companion과 인덱스를 추가하고, 기존 `C` 정렬 의미는 bounded 복호화 후 UTF-8 byte 비교로 유지한다. Mongo runtime 계약·validator·비고유 HMAC 인덱스와 35모델 export/import codec도 같은 정책을 사용한다. 동일 이름 중복은 허용하며 무작위 암호문 unique를 사용하지 않는다.
+
+새 합성 PostgreSQL에서 legacy plaintext, schema 전 실패/rollback, 평문·암호문 혼재, dry-run/apply/retry, companion 부분 복구, 잘못된 암호화/HMAC 키의 apply 전 거부·저장 불변, exact equality, 중복 허용, 음수·fraction·비정상 limit과 `C` byte 정렬, enforce 평문 거부를 확인했다. 기존 source ID의 205행 부분 commit·재실행 검사도 최신 migration과 함께 다시 통과했다. 새 MongoDB 8.0.30 replica set에서 history/runtime 79 PASS로 암호문·HMAC·변조·키 불일치·validator/index·정렬·32MiB 경계와 이전 정책 평문 문서의 무수정 거부를 확인했다. 35모델 codec/export/import 관련 65 PASS, 일반1084 PASS/101 opt-in skip/0 fail, typecheck/build PASS, lint0error/기존7warning이다. 검사 묶음은 중복 합산하지 않는다.
+
+운영 migration/backfill/enforce, 기존 shadow 변환·삭제, 실제 데이터·원천·키·배포에는 접근하지 않았다. 이전 shadow는 자동 수리하지 않고 새 run ID/namespace 재복사가 기본이다. 적용·복구 순서는 [별도 절차](pii-drive-import-result-names.md)를 따른다. 실제 운영 collation/TZ, 전체 앱·활성 CLI/예약/배포 조립, A/B 백업과 각 복원·실데이터 복사·최종 전환, dev→main 조건은 아직 미완료다.

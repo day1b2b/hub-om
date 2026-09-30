@@ -6,14 +6,21 @@ import { decryptField, encryptField, indexField, privacyFields, storedEncrypted 
 
 const quote = (v: string) => '"' + v.replaceAll('"', '""') + '"';
 export async function migratePersonalData(db: PrismaClient, apply: boolean) {
-  const counts: Record<string, { rows: number; plaintext: number; encrypted: number; invalidIndexes: number }> = {};
+  if (apply) {
+    const preflight = await scanPersonalData(db, false);
+    if (Object.values(preflight).some(count => count.conflictingIndexes)) throw new Error("Existing privacy index mismatch; verify the index key before applying.");
+  }
+  return scanPersonalData(db, apply);
+}
+async function scanPersonalData(db: PrismaClient, apply: boolean) {
+  const counts: Record<string, { rows: number; plaintext: number; encrypted: number; invalidIndexes: number; conflictingIndexes: number }> = {};
   for (const [model, definition] of Object.entries(privacyFields)) {
     const idColumn = definition.primaryKey;
     const table = quote(definition.table);
     const jsonPresence = Object.values(definition.fields).filter(p => p.type === "Json").map(p => `(${quote(p.column)} IS NOT NULL) AS ${quote("__pii_present_" + p.column)}`);
     const projection = ["*", ...jsonPresence].join(", ");
     let cursor = "";
-    const count = counts[definition.table] = { rows: 0, plaintext: 0, encrypted: 0, invalidIndexes: 0 };
+    const count = counts[definition.table] = { rows: 0, plaintext: 0, encrypted: 0, invalidIndexes: 0, conflictingIndexes: 0 };
     while (true) {
       const processed = await db.$transaction(async tx => {
         if (!apply) await tx.$executeRawUnsafe("SET TRANSACTION READ ONLY");
@@ -33,7 +40,10 @@ export async function migratePersonalData(db: PrismaClient, apply: boolean) {
             } else {
               plain = legacy === null && policy.type === "Json" && row["__pii_present_" + policy.column] ? Prisma.JsonNull : legacy;
               if (plain == null) {
-                if (policy.indexColumn && row[policy.indexColumn] != null) { patch[policy.indexColumn] = null; count.invalidIndexes++; }
+                if (policy.indexColumn && row[policy.indexColumn] != null) {
+                  count.invalidIndexes++; count.conflictingIndexes++;
+                  if (apply) throw new Error("Existing privacy index mismatch; verify the index key before applying.");
+                }
                 continue;
               }
               count.plaintext++;
@@ -42,7 +52,14 @@ export async function migratePersonalData(db: PrismaClient, apply: boolean) {
             }
             if (policy.indexColumn) {
               const expected = indexField(model, field, plain);
-              if (row[policy.indexColumn] !== expected) { patch[policy.indexColumn] = expected; count.invalidIndexes++; }
+              if (row[policy.indexColumn] !== expected) {
+                count.invalidIndexes++;
+                if (row[policy.indexColumn] == null) patch[policy.indexColumn] = expected;
+                else {
+                  count.conflictingIndexes++;
+                  if (apply) throw new Error("Existing privacy index mismatch; verify the index key before applying.");
+                }
+              }
             }
           }
           if (apply && Object.keys(patch).length) {

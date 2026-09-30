@@ -192,6 +192,13 @@ async function whereInput(client: object, model: string, value: unknown, scope =
 function privateOrdering(model: string, args: Row): boolean {
   return array(args.orderBy ?? []).some(order => record(order) && Object.keys(order).some(field => field in fieldPolicies(model)));
 }
+function normalizedTake(value: unknown): number | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "number" || !Number.isFinite(value)) throw new Error("Invalid take for encrypted ordering.");
+  const take = Math.trunc(value);
+  if (!Number.isSafeInteger(take)) throw new Error("Invalid take for encrypted ordering.");
+  return take;
+}
 async function prepareArgs(client: object, model: string, original: Row): Promise<Row> {
   const args = { ...original };
   for (const key of ["where", "cursor"]) if (key in args) args[key] = await whereInput(client, model, args[key]);
@@ -220,6 +227,7 @@ async function prepareArgs(client: object, model: string, original: Row): Promis
   }
   if (privateOrdering(model, original)) {
     if (original.cursor || original.distinct) throw new Error("Encrypted ordering does not support cursors or distinct.");
+    normalizedTake(original.take);
     const orders = array(original.orderBy).flatMap(v => record(v) ? Object.keys(v) : []);
     if (record(args.select)) for (const field of orders) args.select[field] = true;
     delete args.orderBy; delete args.skip; args.take = MAX_SCAN + 1;
@@ -239,16 +247,18 @@ function finish(model: string, original: Row, value: unknown): unknown {
             const av = a[field], bv = b[field];
             const fieldType = models.get(model)?.fields.find(f => f.name === field);
             const enumValues = fieldType?.kind === "enum" ? Object.values(Reflect.get(PrismaEnums, fieldType.type) ?? {}) : [];
-            const cmp = av != null && bv != null && enumValues.length ? enumValues.indexOf(av) - enumValues.indexOf(bv) : av == null ? (bv == null ? 0 : 1) : bv == null ? -1 : typeof av === "number" && typeof bv === "number" ? av - bv : String(av).localeCompare(String(bv), "ko");
+            const cmp = av != null && bv != null && enumValues.length ? enumValues.indexOf(av) - enumValues.indexOf(bv) : av == null ? (bv == null ? 0 : 1) : bv == null ? -1 : typeof av === "number" && typeof bv === "number" ? av - bv : fieldPolicies(model)[field]?.ordering === "byte" ? Buffer.compare(Buffer.from(String(av)), Buffer.from(String(bv))) : String(av).localeCompare(String(bv), "ko");
             if (cmp) return direction === "desc" ? -cmp : cmp;
           }
         }
         return 0;
       });
-      const take = original.take as number | undefined;
-      if (take !== undefined && take < 0) throw new Error("Negative take is unsupported for encrypted ordering.");
+      const take = normalizedTake(original.take);
       const skip = (original.skip as number) ?? 0;
-      rows = rows.slice(skip, take === undefined ? undefined : skip + take);
+      if (take !== undefined && take < 0) {
+        const end = Math.max(0, rows.length - skip);
+        rows = rows.slice(Math.max(0, end + take), end);
+      } else rows = rows.slice(skip, take === undefined ? undefined : skip + take);
       if (record(original.select)) rows = rows.map(row => Object.fromEntries(Object.entries(row).filter(([f]) => original.select && (original.select as Row)[f])));
     }
     return rows;

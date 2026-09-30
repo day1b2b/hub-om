@@ -197,3 +197,9 @@ activity:prune CLI를 기본 PG와 명시 activityPrune repository로 분리했�
 총괄 be36569 기준 `DataRepositories.coach`와 공개 coach factory의 override-first 경계를 추가했다. 기본 `DATABASE_URL`/Prisma 선택은 유지하고, 명시 scope 누락은 PG fallback 없이 실패한다. 코치 목록·상세·일정·투입, 강사 위키 목록·상세, 운영 상세 7개 실제 page와 실제 auth guard를 native Mongo로 실행했다. UI leaf와 비-coach/외부 IO만 합성했다.
 
 actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반1083/100skip/0fail, typecheck/build PASS, lint0error/기존7warning이다. 동시 namespace 혼합·조회 중 write·PG/외부 접근·저장 fixture 평문은 모두0이었다. 세부 실행·독립리뷰·정리·원격 통합은 `../mongodb-coach-public-pages/` 기록을 따른다. Google Drive A·OneDrive B는 후보이며 실제 백업/각 복원 증거는0이다. 전체 앱·활성CLI/예약/배포 조립, snapshot 개인정보 분류, 운영 collation/TZ, 실제 복사·복원·최종 전환과 dev→main은 미완료다.
+
+## Drive 결과 snapshot 개인정보 보완 (2026-09-30)
+
+`feature/20260930-mongodb-snapshot-privacy`에서 `DriveImportResult.companyName/courseName`을 암호화하고 non-unique HMAC companion, PG migration, `C` byte 정렬 정책, Mongo 계약·validator/index와 35모델 codec에 반영했다. 합성 PG는 legacy/schema전 실패/혼재·backfill·재실행·partial·키불일치 apply 거부·exact/duplicate/음수 limit/enforce를, Mongo는 79개 history/runtime 시나리오로 암호문·HMAC·정렬·이전정책 평문 문서 거부를 확인했다. 일반1084/101skip, 관련 codec/export/import65, type/build 통과, lint기존7이다. 상세 실행·독립 리뷰·정리·원격 통합은 `../mongodb-snapshot-privacy/`를 따른다.
+
+운영 migration/backfill/enforce·기존 namespace 삭제/수리는 하지 않았다. 다음 개발 단위는 운영 collation/TZ 대조와 전체 앱·활성 CLI/예약/배포 조립 중 실제 호출 근거가 있는 작은 수직 단위로 고른다. 실 A/B 백업·각 복원·실데이터 복사·최종 전환과 dev→main 조건은 아직 미완료다.

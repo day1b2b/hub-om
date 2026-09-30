@@ -42,4 +42,4 @@ MongoDB 이전 자체와 현재 사용 기능·기존 권한·개인정보 암�
 
 OM 접수·전체 배정은 dc39e19까지 합성 검증·독립 수락·총괄 통합 완료다. 최신dev307f52f의 만족도/Calendar 변경은 일반 merge·의미 검증 후 총괄8e19638에 통합했다. 파일 staging·검토와 운영 승격의 합성 검증 후 Calendar 저장·잠금·실제 backfill 등 필수 전환을 이어간다. 각 수직 단위 시작/통합 전에 dev 차이와 겹치는 파일을 점검한다. 사용이 불명확한 도구는 호출/예약/배포 증거를 확인하기 전 삭제·제외하지 않는다. 실제 운영 DB·키/env·원천·배포·main/dev 변경은 현재 개발 승인 범위에 포함하지 않는다.
 
-Drive 조회 경계 후속으로 snapshot 회사/과정 문자열의 privacy inventory 대조를 전체 전환의 필수 보안 검토에 추가한다. 현행 비보호 분류는 암호화 제외 승인이 아니다. 합성 PG C collation만 대조했으므로 실제 PG 정렬 계약 확인도 운영 전환 전 필요하다.
+Drive 결과 snapshot의 회사명·과정명은 2026-09-30 암호화 정책·companion·PG migration·Mongo codec/validator/index에 반영하고 합성 PG/Mongo에서 전환과 byte 정렬을 검증했다. 운영 migration/backfill/enforce와 새 shadow 재복사는 실행하지 않았다. 실제 운영 collation/TZ 대조, 전체 앱·작업 조립, 실 A/B 백업·각 복원·복사·최종 전환은 계속 남는다.

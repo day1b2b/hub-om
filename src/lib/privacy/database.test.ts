@@ -110,12 +110,15 @@ test("private sorting reads keys first, pages before payload, and preserves proj
   assert.ok(!JSON.stringify(result).includes("PiiIndex"));
 });
 
-test("private sorting excludes omitted PK, retains null ordering, and rejects unsupported pagination", async () => {
+test("private sorting excludes omitted PK, retains null ordering, preserves negative take and rejects unsupported pagination", async () => {
   const { db } = fixture([coach("null", null), coach("a", "Alpha")]);
   assert.deepEqual(await db.coach.findMany({ orderBy: { name: "asc" }, take: 1, omit: { id: true, isActive: true } }), [{ name: "Alpha" }]);
   assert.deepEqual(await db.coach.findMany({ orderBy: { name: "desc" }, take: 1, select: { id: true } }), [{ id: "null" }]);
   await assert.rejects(db.coach.findMany({ orderBy: { name: "asc" }, cursor: { id: "a" } }), /cursors/);
-  await assert.rejects(db.coach.findMany({ orderBy: { name: "asc" }, take: -1 }), /Negative take/);
+  assert.deepEqual(await db.coach.findMany({ orderBy: { name: "asc" }, take: -1, select: { id: true } }), [{ id: "null" }]);
+  assert.deepEqual(await db.coach.findMany({ orderBy: { name: "asc" }, skip: 1, take: -1, select: { id: true } }), [{ id: "a" }]);
+  for (const skip of [2, 3]) assert.deepEqual(await db.coach.findMany({ orderBy: { name: "asc" }, skip, take: -1, select: { id: true } }), []);
+  for (const take of [NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) await assert.rejects(db.coach.findMany({ orderBy: { name: "asc" }, take }), /Invalid take/);
   await assert.rejects(fixture([]).db.coach.findFirstOrThrow({ orderBy: { name: "asc" } }), { code: "P2025" });
 });
 
