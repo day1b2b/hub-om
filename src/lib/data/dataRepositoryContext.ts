@@ -48,6 +48,7 @@ import type { CoachOperationMatchRepository } from "./coachOperationMatchReposit
 import type { CoachArchiveServiceBackfillRepository } from "./coachArchiveServiceBackfillRepository";
 import type { DuplicateCompanyMergeRepository } from "./duplicateCompanyMergeRepository";
 import type { InstructorNoteImportRepository } from "./instructorNoteImportRepository";
+import type { CoachDataVerificationRepository } from "./coachDataVerificationRepository";
 
 export interface RequestActivityRepository {
   recordRequest(context: ActivityContext, status: number, durationMs: number): Promise<void>;
@@ -113,6 +114,7 @@ export interface DataRepositories {
   coachArchiveServiceBackfill: CoachArchiveServiceBackfillRepository;
   duplicateCompanyMerge: DuplicateCompanyMergeRepository;
   instructorNoteImport: InstructorNoteImportRepository;
+  coachDataVerification: CoachDataVerificationRepository;
   requestActivity: RequestActivityRepository;
 }
 
