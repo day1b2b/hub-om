@@ -45,6 +45,7 @@ import type { ImportPromotionCalendar } from "./importPromotionEffects";
 import type { ImportRepository } from "./importRepository";
 import type { ImportStagingRepository } from "./importStagingWriter";
 import type { CoachOperationMatchRepository } from "./coachOperationMatchRepository";
+import type { CoachArchiveServiceBackfillRepository } from "./coachArchiveServiceBackfillRepository";
 
 export interface RequestActivityRepository {
   recordRequest(context: ActivityContext, status: number, durationMs: number): Promise<void>;
@@ -107,6 +108,7 @@ export interface DataRepositories {
   coachPrivate: CoachPrivateRepository;
   coachPrivateAccessLog: CoachPrivateAccessLogRepository;
   coachOperationMatch: CoachOperationMatchRepository;
+  coachArchiveServiceBackfill: CoachArchiveServiceBackfillRepository;
   requestActivity: RequestActivityRepository;
 }
 
