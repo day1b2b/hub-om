@@ -389,3 +389,7 @@ legacy raw pg `db:import:operations`를 기본 encrypted PostgreSQL/명시 prepa
 ## 운영 쓰기 API runtime 조립 (2026-10-01)
 
 운영 생성·회차 추가·순서 변경·삭제 API를 Calendar 반영·request audit와 같은 명시 shadow scope로 조립한다. 실제 네 API를 MongoDB 8.0.30과 합성 Calendar remote에서 실행해 업무 저장·soft-delete·mapping·감사, Calendar 생성·삭제 실패 복구, legacy namespace 무수정 거부와 PG/비합성 외부 접근 0을 확인한다. local JSON의 기존 404·PG 무접근도 유지한다. 상세 범위는 [운영 쓰기 runtime 문서](mongodb-operation-write-runtime.md)를 따른다. 실제 Google, production selector, 실데이터 이전·복원·최종 전환은 미완료다.
+
+## 운영 상세 보조 API runtime 검증 (2026-10-01)
+
+검증된 운영 쓰기 runtime을 Drive 후보·폴더 조회, 선택 항목 적용, 원천 토론 새로고침 API까지 확장 검증한다. 외부 원천 미설정 상태의 명시 결과, Calendar-aware 적용, 요청 감사와 비합성 fetch 0을 실제 handler에서 확인한다. 상세 범위는 [운영 상세 보조 API 문서](mongodb-operation-detail-actions-runtime.md)를 따른다. 실제 Google Drive·Slack·메일, production selector와 운영 이전은 미완료다.

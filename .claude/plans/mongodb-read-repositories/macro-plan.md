@@ -307,3 +307,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 2026-10-01 운영 쓰기 runtime scope 후속
 
 `feature/20261001-mongodb-operation-write-runtime`에서 운영 생성·회차 추가·순서 변경·삭제 API를 기존 Calendar 반영·request audit와 같은 명시 shadow scope로 조립한다. 빈 namespace만 준비하고 실제 네 API의 Mongo 저장·soft-delete·합성 Calendar·감사, Calendar 실패 복구, 부분·legacy namespace 무수정 거부와 local JSON 회귀 방지를 검증한다. 실행·독립 리뷰·통합은 `../mongodb-operation-write-runtime/` 기록을 따른다. 실제 Google·production selector·실데이터 이전/dev→main은 미완료다.
+
+## 2026-10-01 운영 상세 보조 API runtime 후속
+
+`feature/20261001-mongodb-operation-adjacent-runtime`에서 기존 운영 쓰기 runtime을 Drive 후보·폴더·적용과 source-read refresh 실제 handler까지 확장 검증한다. 외부 원천 미설정 결과, Calendar 반영 적용, 감사 귀속과 비합성 fetch 0을 고정한다. 실행·독립 리뷰·통합은 `../mongodb-operation-detail-actions/` 기록을 따른다. 실제 외부 원천·production selector·실데이터 이전/dev→main은 미완료다.
