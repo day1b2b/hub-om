@@ -1,6 +1,6 @@
 # MongoDB 병렬 이전 상위 계획
 
-최신 총괄 상태: 2026-09-30 가져오기 운영 반영 제품504782b와 기록8238647까지 총괄/작업 원격 SHA 일치를 확인했다. 이후 별도 feature/20260930-mongodb-calendar-boundary에서 Calendar 저장·잠금·실제 backfill 명시 연결의 구현·합성 검증·독립 수락·소유 정리를 마쳤다. Calendar 원격 통합 상태는 ../mongodb-calendar-boundary/integration-review.md를 따른다. 다음은 Drive 저장 이력 조회→기존 결과 페이지다. 운영 기본 PG 및 전체 이전 미완료 상태를 유지한다.
+최신 총괄 상태: 2026-09-30 Calendar 제품0264ccebaf7ec004cb1c659cb1751d038d058ac6까지 총괄/작업 atomic push·원격 SHA 일치를 확인했다. Calendar 저장·잠금·실제 backfill 명시 연결의 구현·합성 검증·독립 수락·소유 정리를 마쳤다. 후속 문서 HEAD와 원격 통합 상태는 ../mongodb-calendar-boundary/integration-review.md를 따른다. 다음은 Drive 저장 이력 조회→기존 결과 페이지다. 운영 기본 PG 및 전체 이전 미완료 상태를 유지한다.
 
 목표: 기존 PostgreSQL 운영을 유지하며 개인정보를 암호화한 별도 MongoDB를 검증한 뒤 안전하게 전환한다.
 
