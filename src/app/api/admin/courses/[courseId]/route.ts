@@ -2,6 +2,7 @@ import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
 import { getCourseAdminRepository } from "@/lib/data/courseAdminRepositoryFactory";
+import { runAdminMaintenanceRequest } from "@/lib/data/adminMaintenanceComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -24,4 +25,4 @@ async function activityDELETE(_request: Request, { params }: RouteContext) {
   return NextResponse.json({ ok: true, deletedCount });
 }
 
-export const DELETE = withActivity("/api/admin/courses/[courseId]", "DELETE", activityDELETE);
+export const DELETE = withActivity("/api/admin/courses/[courseId]", "DELETE", activityDELETE, runAdminMaintenanceRequest);

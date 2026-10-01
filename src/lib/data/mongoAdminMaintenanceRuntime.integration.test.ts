@@ -43,7 +43,7 @@ test("admin maintenance runtime composes course, restore, backfill and request a
   async function snapshot(value: string) { const infos = (await client.db(databaseName).listCollections({}, { nameOnly: false }).toArray()).filter(info => names(value).has(info.name)).sort((a,b) => a.name.localeCompare(b.name)); return BSON.EJSON.stringify(await Promise.all(infos.map(async info => ({ info, indexes: await client.db(databaseName).collection(info.name).listIndexes().toArray(), documents: await client.db(databaseName).collection(info.name).find({}).sort({ _id: 1 }).toArray() }))), { relaxed: false }); }
   try {
     await client.connect(); connected = true; const databases = await client.db("admin").admin().listDatabases({ nameOnly: true }); assert.equal(databases.databases.some(row => row.name === databaseName), false); ownsDatabase = true;
-    const second = await prepareMongoAdminMaintenanceRuntime({ ...options, namespace: "shadow_maintenance_second" });
+    const second = await prepareMongoAdminMaintenanceRuntime({ ...options, namespace: "shadow_peer_maintenance" });
     const runtime = await prepareMongoAdminMaintenanceRuntime(options), store = new MongoOperationStore(options, MONGO_ADMIN_MAINTENANCE_RUNTIME_MODELS);
     const ready = await snapshot(namespace); writes.length = 0; await prepareMongoAdminMaintenanceRuntime(options); await openMongoAdminMaintenanceRuntime(options); assert.deepEqual(writes.map(row => row.commandName), []); assert.equal(await snapshot(namespace), ready);
     let nested = 0; assert.throws(() => runtime.run(() => second.run(() => { nested++; })), /CALENDAR_SCOPE_MISMATCH/); assert.equal(nested, 0);

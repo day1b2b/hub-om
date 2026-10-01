@@ -2,6 +2,7 @@ import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
 import { getOperationBackfillRepository } from "@/lib/data/operationBackfillRepositoryFactory";
+import { runAdminMaintenanceRequest } from "@/lib/data/adminMaintenanceComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +39,6 @@ async function activityPOST() {
   return NextResponse.json({ ok: true, updatedCount });
 }
 
-export const GET = withActivity("/api/admin/om-assignment-status-backfill", "GET", activityGET);
+export const GET = withActivity("/api/admin/om-assignment-status-backfill", "GET", activityGET, runAdminMaintenanceRequest);
 
-export const POST = withActivity("/api/admin/om-assignment-status-backfill", "POST", activityPOST);
+export const POST = withActivity("/api/admin/om-assignment-status-backfill", "POST", activityPOST, runAdminMaintenanceRequest);

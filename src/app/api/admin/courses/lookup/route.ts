@@ -2,6 +2,7 @@ import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
 import { getCourseAdminRepository } from "@/lib/data/courseAdminRepositoryFactory";
+import { runAdminMaintenanceRequest } from "@/lib/data/adminMaintenanceComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -35,4 +36,4 @@ async function activityGET(request: Request) {
   });
 }
 
-export const GET = withActivity("/api/admin/courses/lookup", "GET", activityGET);
+export const GET = withActivity("/api/admin/courses/lookup", "GET", activityGET, runAdminMaintenanceRequest);

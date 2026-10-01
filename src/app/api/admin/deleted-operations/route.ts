@@ -2,6 +2,7 @@ import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
 import { getDeletedOperationRepository } from "@/lib/data/deletedOperationRepositoryFactory";
+import { runAdminMaintenanceRequest } from "@/lib/data/adminMaintenanceComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,6 @@ async function activityPUT(request: Request) {
   return NextResponse.json({ ok: true, operation: session });
 }
 
-export const GET = withActivity("/api/admin/deleted-operations", "GET", activityGET);
+export const GET = withActivity("/api/admin/deleted-operations", "GET", activityGET, runAdminMaintenanceRequest);
 
-export const PUT = withActivity("/api/admin/deleted-operations", "PUT", activityPUT);
+export const PUT = withActivity("/api/admin/deleted-operations", "PUT", activityPUT, runAdminMaintenanceRequest);
