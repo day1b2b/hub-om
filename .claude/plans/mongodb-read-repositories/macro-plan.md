@@ -388,3 +388,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 2026-10-01 관리자 백업 composition selector 후속
 
 `feature/20261001-admin-backup-composition`에서 관리자 백업 POST에 PostgreSQL 기본/Mongo shadow exact selector를 연결한다. adminBackup·requestActivity를 같은 잠금 scope로 열며 전체 복구 백업과 구분한다. 기록은 `../mongodb-admin-backup-composition/`을 따른다.
+
+## 2026-10-01 활동 조회 composition selector 후속
+
+`feature/20261001-activity-reads-composition`에서 활동 피드·관리자 활동·사용량 조회 API에 PostgreSQL 기본/Mongo shadow exact selector를 연결한다. 인증·입력 검증을 저장소 연결보다 먼저 유지하고 승인된 `activityReads` 조회만 준비된 scope에서 실행하며 실패는 기존 고정 503으로 변환한다. 기록은 `../mongodb-activity-read-composition/`을 따른다. 운영 selector·실데이터 이전·A/B 복원·최종 전환과 `dev → main`은 미완료다.

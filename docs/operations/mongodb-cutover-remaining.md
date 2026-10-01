@@ -15,6 +15,8 @@
 
 이미 완료된 운영 CRUD·코치 인증/토큰/개인정보 내보내기·일정/예약/투입/평가·코치 시트/Notion 동기화·코치 관리/콘텐츠·담당자 내 페이지·토큰 보완·관리자 과정/삭제 운영/보정/과정명 복원·관리자 DB·공지/첨부·활동 조회·강사 Notion·매출 동기화·OM 접수/전체 배정 경계 전환을 새 미전환 기능으로 반복하지 않는다. 단, 이들의 전체 앱 연결은 다음 단계에 포함한다.
 
+활동 조회 세 API는 `ACTIVITY_READ_BACKEND`의 정확한 기능군 selector까지 연결했다. 기본 PostgreSQL과 monitoring route의 request audit 제외 정책을 유지하며 실제 Mongo에서 인증·입력 오류·고정 503·부분 namespace 무수정 거부를 확인했다. 생산 환경 변수 설정, 운영 데이터 복사, A/B 백업·각 복원과 최종 전환은 여전히 남는다.
+
 ## 2. 전체 Mongo 실행 연결
 
 `runWithDataRepositories`는 현재 테스트/내부 명시 주입 장치다. 생산 요청 전체를 구성하는 진입점은 아직 없다. 여러 factory는 기본 PG adapter를 반환하며, operationRepositoryFactory는 CalendarReflectingOperationRepository(new PrismaOperationRepository()), coachRepositoryFactory는 Prisma 고정이다. 일반 getTeamMemberRepository의 local/Prisma/Notion 선택과 저장용 명단 scope도 구분해야 한다.

@@ -470,3 +470,7 @@ health API에 PostgreSQL 기본/Mongo shadow selector를 연결하고 databaseHe
 ## 관리자 백업 기능군 selector (2026-10-01)
 
 관리자 코치 JSON 다운로드에 PostgreSQL 기본/Mongo shadow selector를 연결하고 백업 읽기·요청 감사를 같은 잠금 scope로 연다. [상세 범위](mongodb-admin-backup-composition.md). 전체 DB 복구 백업·운영 A/B 백업·최종 이전은 미완료다.
+
+## 활동 조회 기능군 selector (2026-10-01)
+
+활동 피드·관리자 활동·사용량 조회 API에 PostgreSQL 기본/Mongo shadow selector를 연결했다. 인증·입력 검증을 먼저 유지하고 승인된 repository read만 준비된 잠금 scope에서 실행하며, Mongo 준비·조회 실패는 기존 고정 503으로 변환한다. [상세 범위](mongodb-activity-read-composition.md). 세 monitoring route의 기존 request audit 제외 정책은 유지하며 운영 selector·실데이터 이전·복원·최종 전환은 미완료다.
