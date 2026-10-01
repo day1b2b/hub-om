@@ -7,6 +7,7 @@ import { getTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFactory"
 import type { ResourceOwnerRoster } from "@/lib/data/teamMemberRepository";
 import { getOperationSourceReader, type CalendarResourceEvent } from "@/lib/sourceReads";
 import { filterOperationsByTeamScope, filterOwnerRosterByTeamScope, mergeUnclassified, resolveTeamScope } from "@/lib/teamScope";
+import { runOverviewPagesRequest } from "@/lib/data/overviewPagesComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,9 @@ interface ResourcesPageProps {
 }
 
 export default async function ResourcesPage({ searchParams }: ResourcesPageProps) {
+  return runOverviewPagesRequest(() => renderResourcesPage({ searchParams }));
+}
+async function renderResourcesPage({ searchParams }: ResourcesPageProps) {
   const session = await requireWorkspaceSession();
 
   const repository = getOperationRepository();

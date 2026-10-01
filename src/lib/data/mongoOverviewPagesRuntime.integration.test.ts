@@ -35,16 +35,27 @@ hooks.deregister();
 
 function operationInput(): CreateOperationInput { return { archiveStatus: "아카이빙전", coach: "", companyName: "Synthetic overview company", companyWikiLink: "", costRaw: "", courseId: "SYN-OVERVIEW", courseName: "Synthetic overview course", createdBy: user.email, driveLink: "", educationDays: "1", educationDates: ["2099-05-03"], educationFormat: "오프라인", endDate: "2099-05-03", instructorCost: null, instructorWikiLink: "", instructors: "", ld: "", lectureManagementLink: "", om: user.name, onsiteRequired: "N", operationCost: null, operationDetail: "", operationIssue: "", operationStatus: "배정필요", operationType: "단기", padletLink: "", region: "", resultReportLink: "", revenue: null, roundNo: "1", specialNotes: "", startDate: "2099-05-03", timeText: "09:00-10:00", totalCost: null }; }
 function props(element: ReactElement) { return element.props as Record<string, unknown>; }
-async function snapshot(store: MongoOperationStore) { const rows: Record<string, unknown> = {}; for (const item of (await store.db.listCollections({}, { nameOnly: true }).toArray()).sort((a, b) => a.name.localeCompare(b.name))) rows[item.name] = await store.db.collection(item.name).find({}).sort({ _id: 1 }).toArray(); return rows; }
+async function snapshot(store: MongoOperationStore) {
+  const collections: Record<string, unknown> = {};
+  for (const item of (await store.db.listCollections().toArray()).sort((a, b) => a.name.localeCompare(b.name))) {
+    const collection = store.db.collection(item.name);
+    collections[item.name] = {
+      definition: item,
+      indexes: (await collection.indexes()).sort((a, b) => a.name.localeCompare(b.name)),
+      rows: await collection.find({}).sort({ _id: 1 }).toArray()
+    };
+  }
+  return collections;
+}
 
 test("dashboard, me, company wiki and resources pages share one read-only Mongo scope", { skip: !uri, timeout: 180_000 }, async () => {
   const target = new URL(uri!); assert.equal(target.protocol, "mongodb:"); assert.equal(target.hostname, "127.0.0.1"); assert.ok(target.port); assert.equal(target.username, ""); assert.equal(target.password, "");
-  const env = { DATABASE_URL: "postgresql://synthetic@127.0.0.1:1/forbidden", OPERATION_DATA_SOURCE: "postgres", DEV_AUTH_BYPASS: "false", ADMIN_EMAILS: user.email, PII_ENCRYPTION_KEYS: JSON.stringify({ fixture: randomBytes(32).toString("base64") }), PII_ACTIVE_KEY_ID: "fixture", PII_INDEX_KEY: randomBytes(32).toString("base64"), PII_ALLOW_PLAINTEXT_READS: "false" };
+  const databaseName = `hub_om_shadow_overview_pages_${randomBytes(8).toString("hex")}`, namespace = `shadow_overview_pages_${randomBytes(6).toString("hex")}`;
+  const env = { OVERVIEW_PAGES_BACKEND: "mongodb-shadow", MONGODB_URI: uri!, MONGODB_SHADOW_DATABASE: databaseName, MONGODB_SHADOW_NAMESPACE: namespace, DATABASE_URL: "postgresql://synthetic@127.0.0.1:1/forbidden", OPERATION_DATA_SOURCE: "postgres", DEV_AUTH_BYPASS: "false", ADMIN_EMAILS: user.email, PII_ENCRYPTION_KEYS: JSON.stringify({ fixture: randomBytes(32).toString("base64") }), PII_ACTIVE_KEY_ID: "fixture", PII_INDEX_KEY: randomBytes(32).toString("base64"), PII_ALLOW_PLAINTEXT_READS: "false" };
   const saved = new Map(Object.keys(env).map(name => [name, process.env[name]])); Object.assign(process.env, env);
   const client = new MongoClient(uri!, { directConnection: true, monitorCommands: true, serverSelectionTimeoutMS: 5_000 });
   const writes: CommandStartedEvent[] = [], mutating = new Set(["create", "createIndexes", "collMod", "insert", "update", "delete", "drop", "dropDatabase", "dropIndexes", "findAndModify", "bulkWrite", "renameCollection"]);
   client.on("commandStarted", event => { const output = event.commandName === "aggregate" && Array.isArray(event.command.pipeline) && event.command.pipeline.some((stage: unknown) => stage && typeof stage === "object" && (Object.hasOwn(stage, "$out") || Object.hasOwn(stage, "$merge"))); if (mutating.has(event.commandName) || output) writes.push(event); });
-  const databaseName = `hub_om_shadow_overview_pages_${randomBytes(8).toString("hex")}`, namespace = `shadow_overview_pages_${randomBytes(6).toString("hex")}`;
   try {
     await client.connect(); const options = { client, databaseName, namespace, allowShadowWrites: true as const, processSequenceHighWater: 0 };
     const runtime = await prepareMongoOverviewPagesRuntime(options), store = new MongoOperationStore(options, MONGO_OVERVIEW_PAGES_MODELS);
@@ -65,7 +76,7 @@ test("dashboard, me, company wiki and resources pages share one read-only Mongo 
     const requestRow = await store.one("OmRequest", { _id: request.id }); assert.ok(requestRow);
     await store.collection("OmRequest").replaceOne({ _id: request.id }, encodeMongoRuntimeDocument("OmRequest", { ...requestRow, assignedOm: user.name, operationId: null }));
     const before = await snapshot(store); writes.length = 0;
-    const rendered = await runtime.run(async () => ({ dashboard: await dashboardPage({ searchParams: Promise.resolve({}) }), me: await mePage(), wiki: await wikiPage(), resources: await resourcesPage({ searchParams: Promise.resolve({}) }) }));
+    const rendered = { dashboard: await dashboardPage({ searchParams: Promise.resolve({}) }), me: await mePage(), wiki: await wikiPage(), resources: await resourcesPage({ searchParams: Promise.resolve({}) }) };
     assert.equal((props(rendered.dashboard).operations as unknown[]).length, 1); assert.equal((props(rendered.dashboard).teamUsers as unknown[]).length, 1);
     assert.equal(props(rendered.me).omName, user.name); assert.equal((props(rendered.me).operations as unknown[]).length, 1); assert.equal((props(rendered.me).assignedRequests as unknown[]).length, 1);
     assert.equal((props(rendered.wiki).entries as unknown[]).length, 1); assert.equal(props(rendered.wiki).loadFailed, false);
@@ -74,6 +85,6 @@ test("dashboard, me, company wiki and resources pages share one read-only Mongo 
     assert.deepEqual(writes.map(event => event.commandName), []); assert.deepEqual(await snapshot(store), before); assert.equal(pgAdapterCalls, 0); assert.equal(pgPoolCalls, 0); assert.ok(operation.operationId);
     const partialNamespace = `shadow_overview_pages_partial_${randomBytes(6).toString("hex")}`, partial = new MongoOperationStore({ ...options, namespace: partialNamespace });
     await partial.db.createCollection(`${partialNamespace}_LegacyOnly`); await partial.db.collection(`${partialNamespace}_LegacyOnly`).insertOne({ marker: "unchanged" }); const partialBefore = await snapshot(partial); writes.length = 0;
-    await assert.rejects(prepareMongoOverviewPagesRuntime({ ...options, namespace: partialNamespace }), /MONGO_OVERVIEW_PAGES_RUNTIME_FAILED/); assert.deepEqual(writes.map(event => event.commandName), []); assert.deepEqual(await snapshot(partial), partialBefore);
+    process.env.MONGODB_SHADOW_NAMESPACE = partialNamespace; await assert.rejects(dashboardPage({ searchParams: Promise.resolve({}) }), /OVERVIEW_PAGES_COMPOSITION_FAILED/); assert.deepEqual(writes.map(event => event.commandName), []); assert.deepEqual(await snapshot(partial), partialBefore);
   } finally { try { await client.db(databaseName).dropDatabase(); } catch {} await client.close(); for (const [name, value] of saved) { if (value === undefined) delete process.env[name]; else process.env[name] = value; } }
 });
