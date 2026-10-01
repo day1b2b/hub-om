@@ -548,3 +548,7 @@ Notion·계약·일정·전체 동기화 네 API의 GET/POST에 PostgreSQL 기�
 ## 만족도 기능군 selector (2026-10-01)
 
 관리자 만족도 미리보기·자동 반영·수동 연결과 회차별 반영 API에 PostgreSQL 기본/Mongo shadow selector를 연결했다. 운영 저장소·기본 Sheets source·요청 감사를 같은 잠금 namespace로 열고 합성 OAuth·Sheets 응답을 사용한 실제 route, 부분 namespace 불변과 적용 로그의 비공개 값 비노출을 확인했다. [상세 범위](mongodb-satisfaction-composition.md). 실제 Google Sheets·production 배포·운영 만족도 반영·실데이터 이전·복원·최종 전환은 미완료다.
+
+## 코치 공개 화면 기능군 selector (2026-10-01)
+
+코치 목록·일정·상세·투입과 강사 위키 목록·상세 화면에 PostgreSQL 기본/Mongo shadow selector를 연결했다. 인증 후 operations·instructorNote·coach만 같은 잠금 scope로 열고 실제 여섯 화면, 저장 snapshot 불변과 부분 namespace 무수정 거부를 확인했다. [상세 범위](mongodb-coach-public-composition.md). operation 상세는 기존 selector를 유지한다. production 배포·운영 데이터·브라우저 전체 흐름·최종 전환은 미완료다.

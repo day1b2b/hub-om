@@ -466,3 +466,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 2026-10-01 만족도 composition selector 후속
 
 `feature/20261001-satisfaction-composition`에서 관리자 만족도 미리보기·자동 반영·수동 연결과 회차별 반영 API에 exact selector를 연결한다. operations·기본 Sheets source·request audit를 같은 잠금 namespace로 열고 실제 route와 부분 namespace 불변을 검증한다. 기록은 `../mongodb-satisfaction-composition/`을 따른다. 실제 원천·production 배포·운영 데이터·실데이터 이전·A/B 복원·최종 전환과 `dev → main`은 미완료다.
+
+## 2026-10-01 코치 공개 화면 composition selector 후속
+
+`feature/20261001-coach-public-composition`에서 코치·강사 공개 화면 6개에 exact selector를 연결한다. 인증 후 operations·instructorNote·coach 세 포트만 같은 잠금 namespace로 열고 실제 화면과 저장 불변을 검증한다. 기록은 `../mongodb-coach-public-composition/`을 따른다. production 배포·운영 데이터·실데이터 이전·A/B 복원·최종 전환과 `dev → main`은 미완료다.

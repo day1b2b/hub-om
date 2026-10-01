@@ -175,3 +175,7 @@ Drive 결과 snapshot의 회사명·과정명은 2026-09-30 암호화 정책·co
 ## 2026-10-01 만족도 composition 후속
 
 `feature/20261001-satisfaction-composition`에서 네 만족도 API의 PostgreSQL 기본/Mongo shadow exact selector와 기본 Google Sheets source를 검증했다. 기록은 `../../.claude/plans/mongodb-satisfaction-composition/`을 따른다. 실제 Google Sheets·production 배포·운영 만족도 반영·A/B 백업·각 복원·복사·최종 전환과 `dev → main`은 미완료다.
+
+## 2026-10-01 코치 공개 화면 composition 후속
+
+`feature/20261001-coach-public-composition`에서 코치·강사 공개 화면 6개의 PostgreSQL 기본/Mongo shadow exact selector를 검증했다. 기록은 `../../.claude/plans/mongodb-coach-public-composition/`을 따른다. production 배포·운영 데이터·브라우저 전체 흐름·A/B 백업·각 복원·복사·최종 전환과 `dev → main`은 미완료다.
