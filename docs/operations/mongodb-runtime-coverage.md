@@ -502,3 +502,7 @@ Hubbot POST에 PostgreSQL 기본/Mongo shadow selector를 연결하고 responder
 ## 사용자 관리 기능군 selector (2026-10-01)
 
 관리자 사용자 페이지·목록·등록·팀·역할·삭제와 서버간 lookup에 PostgreSQL 기본/Mongo shadow selector를 연결했다. 기존 권한·최소 DTO·요청/업무 감사와 사용자 삭제 정책 차단을 유지했다. [상세 범위](mongodb-user-admin-composition.md). 사용자 삭제 정책 결정, production 배포·운영 데이터·최종 전환은 미완료다.
+
+## 코치 본인 포털 기능군 selector (2026-10-01)
+
+코치 본인 프로필과 월별 일정 조회·교체 API에 PostgreSQL 기본/Mongo shadow selector를 연결했다. 기존 토큰 인증·비공개 응답·월 검증·요청/업무 감사를 유지하고 실제 Mongo에서 PostgreSQL 접근 0건, 암호화 대상 평문 비노출과 부분 namespace 무수정 거부를 확인했다. [상세 범위](mongodb-coach-portal-composition.md). production 배포·운영 데이터·브라우저 전체 흐름·최종 전환은 미완료다.

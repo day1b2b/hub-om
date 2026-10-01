@@ -129,3 +129,7 @@ Drive 결과 snapshot의 회사명·과정명은 2026-09-30 암호화 정책·co
 ## 2026-10-01 사용자 관리 composition 후속
 
 `feature/20261001-user-admin-composition`에서 관리자 사용자 페이지·API와 서버간 lookup에 PostgreSQL 기본/Mongo shadow exact selector를 연결했다. 실제 selector의 생성·팀/역할 변경·토큰 조회·요청/업무 감사·PG fallback 0건과 부분 namespace 불변을 검증했다. 기존 사용자 삭제 정책 차단은 유지한다. 기록은 `../../.claude/plans/mongodb-user-admin-composition/`을 따른다. 사용자 삭제 정책 결정과 나머지 selector, production 배포·운영 데이터·A/B 백업·복원·복사·최종 전환 및 `dev → main`은 미완료다.
+
+## 2026-10-01 코치 본인 포털 composition 후속
+
+`feature/20261001-coach-portal-composition`에서 코치 본인 프로필과 월별 일정 API에 PostgreSQL 기본/Mongo shadow exact selector를 연결했다. 토큰 인증·비공개 응답·일정 교체·요청/업무 감사를 유지하고 실제 Mongo 저장의 PII 평문 비노출과 부분 namespace 불변을 확인했다. 기록은 `../../.claude/plans/mongodb-coach-portal-composition/`을 따른다. 나머지 기능군 selector, production 배포·운영 데이터·A/B 백업·각 복원·복사·최종 전환과 `dev → main`은 미완료다.
