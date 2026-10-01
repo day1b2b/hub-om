@@ -348,3 +348,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 2026-10-01 원천 읽기 상태 runtime 후속
 
 `feature/20261001-mongodb-source-read-status-runtime`에서 `/api/source-reads/status`의 명시 operation source reader와 request audit를 같은 잠금 shadow scope로 조립한다. 실제 handler·준비 불변·부분 namespace 무수정 거부와 포트 분해·혼입 차단을 검증한다. 실행·리뷰·통합은 `../mongodb-source-read-status-runtime/`을 따른다. 실제 외부 원천·production selector·실데이터 이전/dev→main은 미완료다.
+
+## 2026-10-01 Hubbot runtime 후속
+
+`feature/20261001-mongodb-hubbot-runtime`에서 Hubbot responder와 request audit를 같은 잠금 shadow scope로 조립한다. 기존 질문·history·응답 계약과 기본 외부 adapter를 유지하며 실제 handler·준비 불변·부분 namespace 무수정 거부를 검증한다. 실행·리뷰·통합은 `../mongodb-hubbot-runtime/`을 따른다. 실제 외부 서비스·production selector·실데이터 이전/dev→main은 미완료다.

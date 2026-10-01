@@ -430,3 +430,7 @@ Notion·계약·일정·`/sync/all` API의 저장 repository, 합성 source, 실
 ## 원천 읽기 상태 runtime 조립 (2026-10-01)
 
 원천 상태 API의 operationSourceReader와 request audit를 같은 등록 shadow scope로 조립했다. 실제 handler의 네 원천 병렬 상태·개수 응답과 감사, 준비 재실행과 부분 namespace 불변, PG·외부 접근 0, 두 포트의 분해·혼입 차단을 확인했다. [상세 범위](mongodb-source-read-status-runtime.md). 실제 외부 원천·production selector와 운영 이전은 미완료다.
+
+## Hubbot runtime 조립 (2026-10-01)
+
+Hubbot POST의 합성 responder와 request audit를 같은 등록 shadow scope로 조립했다. 기존 질문·history 계약, 감사 비본문 저장, 준비·부분 namespace 불변과 PG·외부 접근 0을 확인했다. [상세 범위](mongodb-hubbot-runtime.md). 실제 Anthropic·Google·Notion·production selector와 운영 이전은 미완료다.
