@@ -53,6 +53,7 @@ import type { CoachDbArchiveRepository } from "./coachDbArchiveRepository";
 import type { CoachDbImportRepository } from "./coachDbImportRepository";
 import type { TeamMemberImportRepository } from "./teamMemberImportRepository";
 import type { OperationImportRepository } from "./operationImportRepository";
+import type { LectureFollowUpNotifier, LectureFollowUpSentLog } from "../reminders/lectureFollowUpReminder";
 
 export interface RequestActivityRepository {
   recordRequest(context: ActivityContext, status: number, durationMs: number): Promise<void>;
@@ -61,6 +62,8 @@ export interface CoachPrivateAccessLogRepository {
   recordAccess(coachId: string, accessedByEmail: string, context: string): Promise<void>;
 }
 export interface DataRepositories {
+  lectureFollowUpNotifier: LectureFollowUpNotifier;
+  lectureFollowUpSentLog: LectureFollowUpSentLog;
   operationImport: OperationImportRepository;
   sourceOnlyPromotion: SourceOnlyPromotionRepository;
   teamMemberImport: TeamMemberImportRepository;

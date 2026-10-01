@@ -7,6 +7,8 @@ import type { TeamUser } from "@/lib/data/teamUsers/teamUserTypes";
 import { sendSlackDirectMessage } from "@/lib/slack/notifySlack";
 import { kstDateString, shiftDateString } from "./reminderDates";
 import { appendSentKeys, readSentKeys } from "./reminderSentLog";
+import { getDataRepositoryOverride } from "@/lib/data/dataRepositoryContext";
+import { randomUUID } from "node:crypto";
 
 // 회차 종료 후 담당 OM에게 개인 DM으로 보내는 마무리 알림.
 // D+1: 코스ID·강의관리 시트·만족도 등록 안내. D+7: 아직 안 된 등록 + 운영 회고 작성 안내.
@@ -81,10 +83,50 @@ export interface ReminderRunSummary {
   warning?: string;
 }
 
+export interface LectureFollowUpNotifier {
+  send(slackId: string, message: string): Promise<boolean>;
+}
+
+export interface LectureFollowUpSentLog {
+  recorded(keys: string[]): Promise<Set<string>>;
+  claim(today: string, keys: string[]): Promise<string | null>;
+  complete(claimId: string, today: string, keys: string[]): Promise<void>;
+  release(claimId: string): Promise<void>;
+}
+
+const localClaims = new Map<string, string[]>();
+const defaultSentLog: LectureFollowUpSentLog = {
+  async recorded(keys) {
+    const recorded = readSentKeys();
+    for (const claimed of localClaims.values()) for (const key of claimed) recorded.add(key);
+    return new Set(keys.filter((key) => recorded.has(key)));
+  },
+  async claim(_today, keys) {
+    const recorded = readSentKeys();
+    for (const claimed of localClaims.values()) for (const key of claimed) recorded.add(key);
+    if (keys.some((key) => recorded.has(key))) return null;
+    const claimId = randomUUID();
+    localClaims.set(claimId, [...keys]);
+    return claimId;
+  },
+  async complete(claimId, today, keys) {
+    if (!localClaims.has(claimId)) throw new Error("REMINDER_SENT_LOG_CLAIM_NOT_FOUND");
+    appendSentKeys(today, keys);
+    localClaims.delete(claimId);
+  },
+  async release(claimId) { localClaims.delete(claimId); }
+};
+
 export async function runLectureFollowUpReminders(options: {
   dryRun: boolean;
   now?: Date;
 }): Promise<ReminderRunSummary> {
+  // A scoped storage run must also declare its external and local-file effects.
+  // Missing ports fail before any business read or send instead of falling back.
+  const notifier = getDataRepositoryOverride("lectureFollowUpNotifier") ?? {
+    send: sendSlackDirectMessage
+  };
+  const sentLog = getDataRepositoryOverride("lectureFollowUpSentLog") ?? defaultSentLog;
   const today = kstDateString(options.now ?? new Date());
   const targetDates = {
     d1: shiftDateString(today, -STAGE_OFFSET_DAYS.d1),
@@ -96,7 +138,13 @@ export async function runLectureFollowUpReminders(options: {
     loadTeamUsers()
   ]);
 
-  const sentKeys = readSentKeys();
+  const candidateKeys = operations.flatMap((operation) => {
+    const stage = resolveStage(operation.endDate, targetDates);
+    if (!stage) return [];
+    return splitPersonNames(operation.om, "").map(normalizePersonName).filter(Boolean)
+      .map((name) => sentKey(today, buildTask(operation, stage, []), name));
+  });
+  const sentKeys = await sentLog.recorded(candidateKeys);
   const allowlist = readAllowlist();
   const startDate = readStartDate();
   // 시작일 전에는 미리보기(대상·문구·차단 사유)는 그대로 되고 DM만 나가지 않는다.
@@ -175,24 +223,32 @@ export async function runLectureFollowUpReminders(options: {
 
   let sentCount = 0;
   let failedCount = 0;
-  const newlySentKeys: string[] = [];
-
   if (!options.dryRun) {
     for (const recipient of sendable) {
-      const delivered = await sendSlackDirectMessage(recipient.slackId ?? "", recipient.message);
+      const keys = [...new Set(recipient.tasks.map((task) => sentKey(today, task, normalizePersonName(recipient.omName))))];
+      const claimId = await sentLog.claim(today, keys);
+      if (!claimId) {
+        skippedAlreadySent += keys.length;
+        continue;
+      }
+
+      let delivered = false;
+      try { delivered = await notifier.send(recipient.slackId ?? "", recipient.message); }
+      catch {
+        failedCount += 1;
+        await sentLog.release(claimId);
+        continue;
+      }
 
       if (delivered) {
         recipient.sent = true;
         sentCount += 1;
-        for (const task of recipient.tasks) {
-          newlySentKeys.push(sentKey(today, task, normalizePersonName(recipient.omName)));
-        }
+        await sentLog.complete(claimId, today, keys);
       } else {
         failedCount += 1;
+        await sentLog.release(claimId);
       }
     }
-
-    appendSentKeys(today, newlySentKeys);
   }
 
   return {
@@ -355,8 +411,8 @@ function shortDate(dateString: string): string {
 async function loadTeamUsers(): Promise<TeamUser[]> {
   try {
     return await listTeamUsers();
-  } catch (error) {
-    console.error("[reminder] 팀원 명단 조회 실패:", error);
+  } catch {
+    console.error("[reminder] 팀원 명단 조회 실패");
     return [];
   }
 }

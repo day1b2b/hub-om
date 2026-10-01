@@ -4,7 +4,7 @@ import os from "os";
 import path from "path";
 import { shiftDateString } from "./reminderDates";
 
-// 같은 날 두 번 실행돼도(스케줄 재시도, 수동 실행이 겹칠 때) 같은 회차 DM이 두 번 가지 않게
+// 같은 날 앞선 실행이 끝난 뒤 다시 실행돼도 같은 회차 DM이 두 번 가지 않게
 // 발송한 키를 파일에 남긴다. 컨테이너가 재시작되면 사라지지만 최악의 결과가
 // "같은 날 DM 1회 중복"이라, DB 테이블(마이그레이션)을 새로 만들지 않고 임시 파일을 쓴다.
 const RETENTION_DAYS = 14;
