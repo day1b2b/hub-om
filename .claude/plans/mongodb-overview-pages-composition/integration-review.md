@@ -6,5 +6,5 @@
 - 전체 회귀: 1,285 통과 / 166 제외 / 0 실패
 - typecheck·build 통과, lint 오류 0 / 기존 경고 7
 - 독립 리뷰: 최초 P2 1건 보완 후 P0-P3 0
-- 총괄 통합: 문서 커밋 후 fast-forward 예정
+- 총괄 통합: `a383aba`에서 fast-forward 확인
 - 미검증: 운영 데이터·production selector·브라우저 전체 흐름·A/B 복원·최종 전환
