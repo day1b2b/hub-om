@@ -5,6 +5,7 @@ import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { storeParsedImport } from "@/lib/data/importStagingWriter";
 import { getNotionImportSource, notionImportError } from "@/lib/data/notionImportSource";
 import { getDataRepositoryOverride } from "@/lib/data/dataRepositoryContext";
+import { runNotionImportRequest } from "@/lib/data/notionImportComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -96,4 +97,9 @@ function getConfiguredNotionDatabase(sourceTeam: SourceTeam) {
   return process.env.NOTION_IMPORT_DATABASE_ID || process.env.NOTION_IMPORT_DATABASE_URL;
 }
 
-export const POST = withActivity("/api/admin/imports/notion/import", "POST", activityPOST);
+export const POST = withActivity(
+  "/api/admin/imports/notion/import",
+  "POST",
+  activityPOST,
+  work => runNotionImportRequest(work)
+);

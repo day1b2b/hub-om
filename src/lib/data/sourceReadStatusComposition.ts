@@ -1,29 +1,11 @@
-import { timingSafeEqual } from "node:crypto";
 import { MongoClient } from "mongodb";
-import { configuredMongoUri, mongoConnectionOptions, shadowDatabaseName } from "../mongodb/connection";
+import { configuredMongoUri, mongoConnectionOptions } from "../mongodb/connection";
 import { getOperationSourceReader } from "../sourceReads/sourceReaderFactory";
 import type { OperationSourceReader } from "../sourceReads/sourceReadTypes";
 import { openMongoSourceReadStatusRuntime } from "./mongoSourceReadStatusRuntime";
+import { requireMongoShadowComposition, type MongoCompositionEnvironment } from "./mongoShadowComposition";
 
-type Environment = Record<string, string | undefined>;
-const namespacePattern = /^shadow_[A-Za-z0-9_-]{1,80}$/;
-
-function decodeCanonicalKey(value: unknown): Buffer | null {
-  if (typeof value !== "string") return null;
-  const decoded = Buffer.from(value, "base64");
-  return decoded.length === 32 && decoded.toString("base64") === value ? decoded : null;
-}
-
-function assertPrivacyEnvironment(env: Environment): void {
-  const active = env.PII_ACTIVE_KEY_ID?.trim() ?? "";
-  let values: unknown;
-  try { values = JSON.parse(env.PII_ENCRYPTION_KEYS ?? ""); }
-  catch { throw new Error("privacy"); }
-  if (!/^[A-Za-z0-9_-]{1,40}$/.test(active) || !values || typeof values !== "object" || Array.isArray(values)) throw new Error("privacy");
-  const activeKey = decodeCanonicalKey((values as Record<string, unknown>)[active]);
-  const indexKey = decodeCanonicalKey(env.PII_INDEX_KEY);
-  if (!activeKey || !indexKey || timingSafeEqual(activeKey, indexKey)) throw new Error("privacy");
-}
+type Environment = MongoCompositionEnvironment;
 
 interface Client {
   connect(): Promise<unknown>;
@@ -54,13 +36,9 @@ export async function runSourceReadStatusRequest<T>(
   if (backend === "postgres") return work();
   if (backend !== "mongodb-shadow") throw new Error("SOURCE_READ_STATUS_COMPOSITION_FAILED");
 
-  const namespace = env.MONGODB_SHADOW_NAMESPACE?.trim() ?? "";
-  if (!namespacePattern.test(namespace)) throw new Error("SOURCE_READ_STATUS_COMPOSITION_FAILED");
   let client: Client | undefined;
   try {
-    assertPrivacyEnvironment(env);
-    configuredMongoUri(env);
-    const databaseName = shadowDatabaseName(env);
+    const { databaseName, namespace } = requireMongoShadowComposition(env);
     const operationSourceReader = await dependencies.getSourceReader();
     client = dependencies.createClient(env);
     await client.connect();
