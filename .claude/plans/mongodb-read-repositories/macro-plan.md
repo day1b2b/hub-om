@@ -437,6 +437,10 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 
 `feature/20261001-om-session-template-composition`에서 회차 xlsx 템플릿 API에 exact selector를 연결한다. 기존 request-audit 전용 runtime을 재사용하고 파일 계약과 workspace 권한을 유지한다. 근거는 `../mongodb-om-session-template-composition/`을 따른다. production 배포·운영 데이터·실데이터 이전·A/B 복원·최종 전환과 `dev → main`은 미완료다.
 
+## 2026-10-01 매출 조회 API composition selector 후속
+
+`feature/20261001-sales-lookup-composition`에서 토큰 기반 코스·고객사 조회에 exact selector를 연결한다. operations·Salesmap source port·request audit를 같은 scope로 열고 기존 운영현황 우선 조회와 폴백을 유지한다. 근거는 `../mongodb-sales-lookup-composition/`을 따른다. 실제 Salesmap·production 배포·운영 이전과 `dev → main`은 미완료다.
+
 ## 2026-10-01 관리자 DB composition selector 후속
 
 `feature/20261001-admin-database-composition`에서 관리자 DB 페이지·셀 PATCH에 exact selector를 연결한다. DB·담당자·요청 감사를 같은 잠금 scope로 열고 기존 검증·rollback을 유지한다. 기록은 `../mongodb-admin-database-composition/`을 따른다. 나머지 기능군 selector, production 배포·운영 이전과 `dev → main`은 미완료다.

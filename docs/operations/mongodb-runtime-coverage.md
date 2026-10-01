@@ -580,3 +580,7 @@ Notion·계약·일정·전체 동기화 네 API의 GET/POST에 PostgreSQL 기�
 ## OM 회차 템플릿 API selector (2026-10-01)
 
 OM 요청용 회차 xlsx 템플릿 API에 PostgreSQL 기본/Mongo shadow exact selector를 연결했다. 기존 request-audit 전용 runtime을 재사용해 파일 계약·workspace 권한과 성공/거절 감사를 확인했다. [상세 범위](mongodb-om-session-template-composition.md). production 배포·운영 데이터·최종 전환은 미완료다.
+
+## 매출 조회 API selector (2026-10-01)
+
+토큰 기반 코스·고객사 조회 API에 PostgreSQL 기본/Mongo shadow exact selector를 연결했다. 운영현황 우선 조회·Salesmap 폴백·요청 감사를 같은 scope로 열고 필터·401·source 미설정·토큰 비저장을 확인했다. [상세 범위](mongodb-sales-lookup-composition.md). 실제 Salesmap·production 배포·운영 이전은 미완료다.

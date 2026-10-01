@@ -207,3 +207,7 @@ Drive 결과 snapshot의 회사명·과정명은 2026-09-30 암호화 정책·co
 ## 2026-10-01 OM 회차 템플릿 API composition 후속
 
 `feature/20261001-om-session-template-composition`에서 회차 xlsx 템플릿 API의 PostgreSQL 기본/Mongo shadow exact selector를 검증했다. 기존 request-audit 전용 runtime을 재사용해 파일 계약·workspace 권한·요청 감사와 부분 namespace 불변을 확인했다. 기록은 `../../.claude/plans/mongodb-om-session-template-composition/`을 따른다. production 배포·운영 데이터·A/B 백업·각 복원·복사·최종 전환과 `dev → main`은 미완료다.
+
+## 2026-10-01 매출 조회 API composition 후속
+
+`feature/20261001-sales-lookup-composition`에서 토큰 기반 코스·고객사 조회 API의 exact selector를 검증했다. 기록은 `../../.claude/plans/mongodb-sales-lookup-composition/`을 따른다. 실제 Salesmap·production 배포·운영 이전과 `dev → main`은 미완료다.
