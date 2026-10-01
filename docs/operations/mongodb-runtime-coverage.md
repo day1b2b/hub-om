@@ -544,3 +544,7 @@ Notion·계약·일정·전체 동기화 네 API의 GET/POST에 PostgreSQL 기�
 ## 매출 동기화 기능군 selector (2026-10-01)
 
 매출 동기화 GET/POST에 PostgreSQL 기본/Mongo shadow selector를 연결했다. 저장소·source·기본 실패 notifier·teamUsers·요청 감사를 같은 잠금 namespace로 열고 합성 Slack 발송과 부분 namespace 불변을 확인했다. [상세 범위](mongodb-sales-sync-composition.md). 실제 Salesmap·Slack·예약·production 배포·운영 이전은 미완료다.
+
+## 만족도 기능군 selector (2026-10-01)
+
+관리자 만족도 미리보기·자동 반영·수동 연결과 회차별 반영 API에 PostgreSQL 기본/Mongo shadow selector를 연결했다. 운영 저장소·기본 Sheets source·요청 감사를 같은 잠금 namespace로 열고 합성 OAuth·Sheets 응답을 사용한 실제 route, 부분 namespace 불변과 적용 로그의 비공개 값 비노출을 확인했다. [상세 범위](mongodb-satisfaction-composition.md). 실제 Google Sheets·production 배포·운영 만족도 반영·실데이터 이전·복원·최종 전환은 미완료다.
