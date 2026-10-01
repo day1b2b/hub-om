@@ -486,3 +486,7 @@ Hubbot POST에 PostgreSQL 기본/Mongo shadow selector를 연결하고 responder
 ## 변경 내역 기능군 selector (2026-10-01)
 
 콘텐츠 피드·메모 수정/삭제·투입 평가 수정에 PostgreSQL 기본/Mongo shadow selector를 연결했다. 활동 목록은 기존 activity selector를 유지한다. [상세 범위](mongodb-changes-composition.md). production 배포·운영 이전은 미완료다.
+
+## 코치 관리자 기능군 selector (2026-10-01)
+
+코치 관리자 페이지의 삭제 수, 분야·커리큘럼 마스터 API와 삭제 코치 목록·복원·명시 영구삭제 API에 PostgreSQL 기본/Mongo shadow selector를 연결했다. 기존 soft-delete·복원·관리자 영구삭제 의미와 request/business audit를 유지했다. [상세 범위](mongodb-coach-admin-composition.md). production 배포·운영 데이터·브라우저 전체 흐름·최종 전환은 미완료다.

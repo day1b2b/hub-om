@@ -113,3 +113,7 @@ Drive 결과 snapshot의 회사명·과정명은 2026-09-30 암호화 정책·co
 ## 2026-10-01 관리자 백업 composition 후속
 
 `feature/20261001-admin-backup-composition`에서 코치 JSON export의 exact selector와 백업·감사 scope를 검증했다. 이는 전체 복구 백업이 아니며 운영 A/B 백업·복원·이전과 `dev → main`은 미완료다.
+
+## 2026-10-01 코치 관리자 composition 후속
+
+`feature/20261001-coach-admin-composition`에서 코치 관리자 페이지와 분야·커리큘럼·삭제 코치 API에 PostgreSQL 기본/Mongo shadow exact selector를 연결했다. 기존 soft-delete·복원·관리자 명시 영구삭제를 유지하고 실제 selector의 Mongo 저장·요청/업무 감사·PG fallback 0건과 부분 namespace 불변을 검증했다. 기록은 `../../.claude/plans/mongodb-coach-admin-composition/`을 따른다. 관리자 DB·유지보수 등 나머지 selector, production 배포·운영 데이터·A/B 백업·복원·복사·최종 전환과 `dev → main`은 미완료다.
