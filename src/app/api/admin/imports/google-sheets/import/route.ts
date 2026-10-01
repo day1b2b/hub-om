@@ -7,6 +7,7 @@ import { getDataRepositoryOverride } from "@/lib/data/dataRepositoryContext";
 import { storeParsedImport } from "@/lib/data/importStagingWriter";
 import { parseImportTable } from "@/lib/data/importUploadParser";
 import type { SourceTeam } from "@prisma/client";
+import { runGoogleSheetsImportRequest } from "@/lib/data/googleSheetsImportComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -91,4 +92,4 @@ function parseSourceTeam(value: string | undefined): SourceTeam {
   return "UNKNOWN";
 }
 
-export const POST = withActivity("/api/admin/imports/google-sheets/import", "POST", activityPOST);
+export const POST = withActivity("/api/admin/imports/google-sheets/import", "POST", activityPOST, work => runGoogleSheetsImportRequest("import", work));

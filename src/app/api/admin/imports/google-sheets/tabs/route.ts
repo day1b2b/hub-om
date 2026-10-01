@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { parseGoogleSpreadsheetUrl } from "@/lib/data/googleSheetsImport";
 import { getGoogleSheetsImportSource, googleSheetsImportError } from "@/lib/data/googleSheetsImportSource";
+import { runGoogleSheetsImportRequest } from "@/lib/data/googleSheetsImportComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -37,4 +38,4 @@ async function activityPOST(request: Request) {
   }
 }
 
-export const POST = withActivity("/api/admin/imports/google-sheets/tabs", "POST", activityPOST);
+export const POST = withActivity("/api/admin/imports/google-sheets/tabs", "POST", activityPOST, work => runGoogleSheetsImportRequest("tabs", work));
