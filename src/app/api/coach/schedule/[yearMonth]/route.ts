@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { extractCoachToken, validateCoachToken } from "@/lib/coaches/coachTokenAuth";
 import { parseMonthRange, parseSchedules } from "@/lib/coaches/coachScheduleValidation";
 import { getCoachScheduleRepository } from "@/lib/data/coachScheduleRepositoryFactory";
+import { runCoachPortalRequest } from "@/lib/data/coachPortalComposition";
 
 export const dynamic = "force-dynamic";
 interface RouteContext { params: Promise<{ yearMonth: string }> }
@@ -28,5 +29,5 @@ async function activityPUT(request: Request, { params }: RouteContext) {
   return NextResponse.json({ ok: true, count: schedules.value.length });
 }
 
-export const GET = withActivity("/api/coach/schedule/[yearMonth]", "GET", activityGET);
-export const PUT = withActivity("/api/coach/schedule/[yearMonth]", "PUT", activityPUT);
+export const GET = withActivity("/api/coach/schedule/[yearMonth]", "GET", activityGET, runCoachPortalRequest);
+export const PUT = withActivity("/api/coach/schedule/[yearMonth]", "PUT", activityPUT, runCoachPortalRequest);

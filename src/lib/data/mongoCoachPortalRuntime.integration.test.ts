@@ -36,7 +36,7 @@ test("coach portal runtime composes token profile, schedule writes and request a
   const snapshot = async (value: string) => BSON.EJSON.stringify(await Promise.all((await client.db(databaseName).listCollections({}, { nameOnly: false }).toArray()).filter(info => names(value).has(info.name)).sort((a,b) => a.name.localeCompare(b.name)).map(async info => ({ info, indexes: await client.db(databaseName).collection(info.name).listIndexes().toArray(), documents: await client.db(databaseName).collection(info.name).find({}).sort({ _id: 1 }).toArray() }))), { relaxed: false });
   try {
     await client.connect(); connected = true; assert.equal((await client.db("admin").admin().listDatabases({ nameOnly: true })).databases.some(row => row.name === databaseName), false); ownsDatabase = true;
-    const second = await prepareMongoCoachPortalRuntime({ ...options, namespace: "shadow_coach_portal_second" });
+    const second = await prepareMongoCoachPortalRuntime({ ...options, namespace: "shadow_peer_coach_portal" });
     const runtime = await prepareMongoCoachPortalRuntime(options), store = new MongoOperationStore(options, MONGO_COACH_PORTAL_RUNTIME_MODELS);
     const ready = await snapshot(namespace); writes.length = 0; await prepareMongoCoachPortalRuntime(options); await openMongoCoachPortalRuntime(options); assert.deepEqual(writes.map(row => row.commandName), []); assert.equal(await snapshot(namespace), ready);
     let nested = 0; writes.length = 0;
