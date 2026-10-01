@@ -434,3 +434,7 @@ Notion·계약·일정·`/sync/all` API의 저장 repository, 합성 source, 실
 ## Hubbot runtime 조립 (2026-10-01)
 
 Hubbot POST의 합성 responder와 request audit를 같은 등록 shadow scope로 조립했다. 기존 질문·history 계약, 감사 비본문 저장, 준비·부분 namespace 불변과 PG·외부 접근 0을 확인했다. [상세 범위](mongodb-hubbot-runtime.md). 실제 Anthropic·Google·Notion·production selector와 운영 이전은 미완료다.
+
+## 원천 읽기 상태 기능군 selector (2026-10-01)
+
+`/api/source-reads/status`에 첫 기능군 composition selector를 연결했다. 기본은 기존 PostgreSQL이고 정확한 `mongodb-shadow` 선택에서만 URI·database·namespace·암호화 키를 선검증한 뒤 준비된 runtime을 연다. request audit와 source reader는 같은 scope를 사용하며 실패 시 PostgreSQL로 fallback하지 않는다. [상세 범위](mongodb-source-read-status-composition.md). 다른 기능군 selector와 생산 배포 설정, 실데이터 이전·복원·최종 전환은 미완료다.

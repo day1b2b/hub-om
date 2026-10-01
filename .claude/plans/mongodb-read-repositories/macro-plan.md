@@ -352,3 +352,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 2026-10-01 Hubbot runtime 후속
 
 `feature/20261001-mongodb-hubbot-runtime`에서 Hubbot responder와 request audit를 같은 잠금 shadow scope로 조립한다. 기존 질문·history·응답 계약과 기본 외부 adapter를 유지하며 실제 handler·준비 불변·부분 namespace 무수정 거부를 검증한다. 실행·리뷰·통합은 `../mongodb-hubbot-runtime/`을 따른다. 실제 외부 서비스·production selector·실데이터 이전/dev→main은 미완료다.
+
+## 2026-10-01 원천 읽기 상태 composition selector 후속
+
+`feature/20261001-source-read-status-composition`에서 `/api/source-reads/status`에 첫 기능군 backend selector를 연결한다. 기본 PostgreSQL을 유지하고 정확한 `mongodb-shadow`만 준비된 runtime을 열며, 좌표·키·namespace 오류는 source load와 업무 처리 전에 실패하고 fallback하지 않는다. 실행·리뷰·통합은 `../mongodb-source-read-status-composition/` 기록을 따른다. 다른 기능군 selector, production 배포 설정, 실제 A/B 백업·복원·복사·최종 전환과 `dev → main`은 미완료다.
