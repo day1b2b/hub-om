@@ -163,3 +163,7 @@ Drive 결과 snapshot의 회사명·과정명은 2026-09-30 암호화 정책·co
 ## 2026-10-01 코치 동기화 예약 작업 composition 후속
 
 `feature/20261001-sync-jobs-composition`에서 Notion·계약·일정·전체 동기화 네 API의 PostgreSQL 기본/Mongo shadow exact selector를 검증했다. 실제 route가 기본 source adapter와 합성 Notion·Google HTTP를 사용하며 실행 로그·요청 감사를 같은 namespace에 남기는지 확인했다. 기록은 `../../.claude/plans/mongodb-sync-jobs-composition/`을 따른다. 실제 원천·Coolify 예약·production 배포·운영 데이터·A/B 백업·각 복원·복사·최종 전환과 `dev → main`은 미완료다.
+
+## 2026-10-01 강사 Notion 동기화 composition 후속
+
+`feature/20261001-instructor-sync-composition`에서 GET/POST exact selector와 실제 기본 Notion source 경계를 검증했다. 기록은 `../../.claude/plans/mongodb-instructor-sync-composition/`을 따른다. 실제 원천·예약·운영 이전과 `dev → main`은 미완료다.

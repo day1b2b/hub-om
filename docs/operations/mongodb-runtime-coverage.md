@@ -536,3 +536,7 @@ OM 요청 등록·관리·상세·수정·완료 화면에 PostgreSQL 기본/Mon
 ## 코치 동기화 예약 작업 기능군 selector (2026-10-01)
 
 Notion·계약·일정·전체 동기화 네 API의 GET/POST에 PostgreSQL 기본/Mongo shadow 명시 selector를 연결했다. 저장 repository·기본 source port·실행 로그·요청 감사를 같은 잠금 namespace로 열고 실제 route selector와 합성 Notion·Google HTTP, 부분 namespace 불변을 확인했다. [상세 범위](mongodb-sync-jobs-composition.md). 실제 원천·Coolify 예약·production 배포·운영 데이터·최종 이전은 미완료다.
+
+## 강사 Notion 동기화 기능군 selector (2026-10-01)
+
+강사 Notion 동기화 GET/POST에 PostgreSQL 기본/Mongo shadow selector를 연결했다. 실제 route의 기본 source adapter와 부분 namespace 무수정 거부를 확인했다. [상세 범위](mongodb-instructor-sync-composition.md). 실제 Notion·예약·production 배포·운영 이전은 미완료다.
