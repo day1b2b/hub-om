@@ -13,7 +13,9 @@ import { kstDateString, shiftDateString } from "../reminders/reminderDates";
 const uri = process.env.MONGODB_LECTURE_FOLLOW_UP_RUNTIME_TEST_URI;
 const admin = { email: "synthetic.reminder.admin@day1company.co.kr", name: "Synthetic reminder admin" };
 let actor: { email: string; name: string } | null = admin;
+const compositionSends: Array<{ slackId: string; message: string }> = [];
 mock.module("@/auth", { namedExports: { auth: async () => actor ? { user: actor, expires: "" } : null } });
+mock.module("@/lib/slack/notifySlack", { namedExports: { sendSlackDirectMessage: async (slackId: string, message: string) => { compositionSends.push({ slackId, message }); return true; } } });
 let pgCalls = 0;
 mock.module("@prisma/adapter-pg", { namedExports: { PrismaPg: class { constructor() { pgCalls++; throw new Error("PG_TRIPWIRE"); } } } });
 mock.module("pg", { namedExports: { Pool: class { constructor() { pgCalls++; throw new Error("PG_TRIPWIRE"); } } }, defaultExport: { Pool: class { constructor() { pgCalls++; throw new Error("PG_TRIPWIRE"); } } } });
@@ -32,8 +34,8 @@ function operation(date: string, om: string, suffix: string): CreateOperationInp
 }
 async function snapshot(store: MongoOperationStore) {
   const rows: Record<string, unknown> = {};
-  for (const item of (await store.db.listCollections({}, { nameOnly: true }).toArray()).sort((a, b) => a.name.localeCompare(b.name))) {
-    rows[item.name] = await store.db.collection(item.name).find({}).sort({ _id: 1 }).toArray();
+  for (const item of (await store.db.listCollections().toArray()).sort((a, b) => a.name.localeCompare(b.name))) {
+    const collection = store.db.collection(item.name); rows[item.name] = { definition: item, indexes: (await collection.indexes()).sort((a, b) => (a.name ?? "").localeCompare(b.name ?? "")), documents: await collection.find({}).sort({ _id: 1 }).toArray() };
   }
   return rows;
 }
@@ -182,4 +184,25 @@ test("lecture follow-up GET/POST use one locked Mongo scope and explicit send/lo
     try { await client.db(databaseName).dropDatabase(); } catch {} await client.close(); fetchMock.mock.restore(); errorMock.mock.restore();
     for (const [name, value] of saved) { if (value === undefined) delete process.env[name]; else process.env[name] = value; }
   }
+});
+
+const compositionUri = process.env.MONGODB_LECTURE_FOLLOW_UP_COMPOSITION_TEST_URI;
+test("lecture follow-up route uses the prepared Mongo composition", { skip: !compositionUri, timeout: 180_000 }, async () => {
+  const target = new URL(compositionUri!); assert.equal(target.hostname, "127.0.0.1"); assert.ok(target.port);
+  const databaseName = `hub_om_shadow_reminder_comp_${randomBytes(6).toString("hex")}`, namespace = `shadow_reminder_comp_${randomBytes(6).toString("hex")}`;
+  const env = { LECTURE_FOLLOW_UP_BACKEND: "mongodb-shadow", MONGODB_URI: compositionUri!, MONGODB_SHADOW_DATABASE: databaseName, MONGODB_SHADOW_NAMESPACE: namespace, AUTH_SECRET: randomBytes(32).toString("base64"), DATABASE_URL: "postgresql://synthetic@127.0.0.1:1/forbidden", OPERATION_DATA_SOURCE: "postgres", DEV_AUTH_BYPASS: "false", ADMIN_EMAILS: admin.email, SYNC_API_SECRET: "synthetic-reminder-secret", SLACK_REMINDER_ONLY_EMAILS: "ALL", SLACK_REMINDER_START_DATE: "", REMINDER_MAX_DM_PER_RUN: "50", HUB_OM_BASE_URL: "https://synthetic-reminder.example.invalid", PII_ENCRYPTION_KEYS: JSON.stringify({ fixture: randomBytes(32).toString("base64") }), PII_ACTIVE_KEY_ID: "fixture", PII_INDEX_KEY: randomBytes(32).toString("base64"), PII_ALLOW_PLAINTEXT_READS: "false" };
+  const saved = new Map(Object.keys(env).map(name => [name, process.env[name]])); Object.assign(process.env, env); compositionSends.length = 0; actor = admin;
+  const client = new MongoClient(compositionUri!, { directConnection: true, serverSelectionTimeoutMS: 5_000 });
+  try {
+    await client.connect(); const options = { client, databaseName, namespace, allowShadowWrites: true as const, processSequenceHighWater: 0, lectureFollowUpNotifier: { async send() { return true; } } };
+    const runtime = await prepareMongoLectureFollowUpRuntime(options), store = new MongoOperationStore(options, MONGO_LECTURE_FOLLOW_UP_MODELS); const omName = "Synthetic Composition Reminder OM";
+    await runtime.repositories.teamUsers.createTeamUser({ name: omName, email: "synthetic.comp.reminder@day1company.co.kr", slackId: "SYNTHETIC-COMP-REMINDER", team: "AX 1파트", role: "om" });
+    await runtime.repositories.operations.createOperation(operation(shiftDateString(kstDateString(), -1), omName, "composition"));
+    const preview = await route.GET(new Request("https://example.invalid/api/reminders/lecture-followup")); assert.equal(preview.status, 200); assert.equal((await preview.json()).dryRun, true); assert.equal(compositionSends.length, 0);
+    const sent = await route.POST(new Request("https://example.invalid/api/reminders/lecture-followup", { method: "POST", headers: { Authorization: "Bearer synthetic-reminder-secret" } })); assert.equal(sent.status, 200); assert.equal((await sent.json()).sentCount, 1); assert.equal(compositionSends.length, 1); assert.equal(compositionSends[0].slackId, "SYNTHETIC-COMP-REMINDER");
+    for (const response of [preview, sent]) { const id = response.headers.get("X-Request-Id"); assert.ok(id); assert.ok(await store.one("ActivityRequest", { _id: id })); }
+    assert.equal(pgCalls, 0);
+    const partialNamespace = `shadow_reminder_comp_partial_${randomBytes(6).toString("hex")}`, partial = new MongoOperationStore({ ...options, namespace: partialNamespace }); await partial.db.createCollection(`${partialNamespace}_LegacyOnly`); await partial.db.collection(`${partialNamespace}_LegacyOnly`).insertOne({ marker: "unchanged" }); const before = await snapshot(partial); process.env.MONGODB_SHADOW_NAMESPACE = partialNamespace;
+    await assert.rejects(route.GET(new Request("https://example.invalid/api/reminders/lecture-followup")), /LECTURE_FOLLOW_UP_COMPOSITION_FAILED/); assert.deepEqual(await snapshot(partial), before);
+  } finally { try { await client.db(databaseName).dropDatabase(); } catch {} await client.close(); for (const [name, value] of saved) { if (value === undefined) delete process.env[name]; else process.env[name] = value; } }
 });

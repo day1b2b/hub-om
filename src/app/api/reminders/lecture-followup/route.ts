@@ -2,6 +2,7 @@ import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
 import { runLectureFollowUpReminders } from "@/lib/reminders/lectureFollowUpReminder";
+import { runLectureFollowUpRequest } from "@/lib/data/lectureFollowUpComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +52,6 @@ async function reminderJsonResponse(handler: () => Promise<unknown>) {
   }
 }
 
-export const GET = withActivity("/api/reminders/lecture-followup", "GET", activityGET);
+export const GET = withActivity("/api/reminders/lecture-followup", "GET", activityGET, runLectureFollowUpRequest);
 
-export const POST = withActivity("/api/reminders/lecture-followup", "POST", activityPOST);
+export const POST = withActivity("/api/reminders/lecture-followup", "POST", activityPOST, runLectureFollowUpRequest);
