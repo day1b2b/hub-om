@@ -6,5 +6,5 @@
 - 전체 회귀: 1,303 통과 / 168 제외 / 0 실패
 - typecheck·build 통과, lint 오류 0 / 기존 경고 7
 - 독립 리뷰: P0-P3 0
-- 총괄 통합: 문서 완료 커밋에서 fast-forward 확인 예정
+- 총괄 통합: `8652075`에서 fast-forward 확인
 - 미검증: 운영 데이터·production selector·실제 Slack·Coolify 예약·A/B 복원·최종 전환
