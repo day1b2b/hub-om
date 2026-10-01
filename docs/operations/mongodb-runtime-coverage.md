@@ -498,3 +498,7 @@ Hubbot POST에 PostgreSQL 기본/Mongo shadow selector를 연결하고 responder
 ## 관리자 유지보수 기능군 selector (2026-10-01)
 
 과정 조회·소프트 삭제, 삭제 운영 조회·복원과 두 보정 API에 PostgreSQL 기본/Mongo shadow selector를 연결했다. 기존 삭제·복원·보정 의미와 요청/업무 감사를 같은 잠금 scope에서 유지했다. [상세 범위](mongodb-admin-maintenance-composition.md). production 배포·운영 데이터·브라우저 전체 상호작용·최종 전환은 미완료다.
+
+## 사용자 관리 기능군 selector (2026-10-01)
+
+관리자 사용자 페이지·목록·등록·팀·역할·삭제와 서버간 lookup에 PostgreSQL 기본/Mongo shadow selector를 연결했다. 기존 권한·최소 DTO·요청/업무 감사와 사용자 삭제 정책 차단을 유지했다. [상세 범위](mongodb-user-admin-composition.md). 사용자 삭제 정책 결정, production 배포·운영 데이터·최종 전환은 미완료다.

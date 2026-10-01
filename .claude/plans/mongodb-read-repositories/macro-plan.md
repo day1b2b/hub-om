@@ -416,3 +416,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 2026-10-01 관리자 유지보수 composition selector 후속
 
 `feature/20261001-admin-maintenance-composition`에서 과정·삭제 운영·두 보정 API에 exact selector를 연결한다. 네 repository를 같은 잠금 scope로 열고 기존 삭제·복원·보정과 감사를 유지한다. 기록은 `../mongodb-admin-maintenance-composition/`을 따른다. 나머지 기능군 selector, production 배포·운영 이전과 `dev → main`은 미완료다.
+
+## 2026-10-01 사용자 관리 composition selector 후속
+
+`feature/20261001-user-admin-composition`에서 관리자 사용자 페이지·API와 서버간 lookup에 exact selector를 연결한다. user-admin runtime을 재사용하고 기존 삭제 정책 차단을 유지한다. 기록은 `../mongodb-user-admin-composition/`을 따른다. 사용자 삭제 정책 결정과 나머지 기능군 selector, production 배포·운영 이전 및 `dev → main`은 미완료다.
