@@ -4,6 +4,7 @@ import { requireCoachSyncAccess } from "@/lib/coaches/syncAuth";
 import { runCoachSyncWithLog } from "@/lib/coaches/syncLog";
 import { syncNotionCoaches } from "@/lib/coaches/notionCoachSync";
 import { syncJsonResponse } from "@/lib/coaches/syncRouteResponse";
+import { runCoachSyncRequest } from "@/lib/data/coachSyncComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,6 @@ async function activityPOST(request: Request) {
   });
 }
 
-export const GET = withActivity("/api/admin/sync-notion", "GET", activityGET);
+export const GET = withActivity("/api/admin/sync-notion", "GET", activityGET, runCoachSyncRequest);
 
-export const POST = withActivity("/api/admin/sync-notion", "POST", activityPOST);
+export const POST = withActivity("/api/admin/sync-notion", "POST", activityPOST, runCoachSyncRequest);

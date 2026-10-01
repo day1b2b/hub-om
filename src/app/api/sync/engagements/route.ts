@@ -3,6 +3,7 @@ import { requireCoachSyncAccess } from "@/lib/coaches/syncAuth";
 import { runCoachSyncWithLog } from "@/lib/coaches/syncLog";
 import { syncContractSheetEngagements } from "@/lib/coaches/contractSheetSync";
 import { syncJsonResponse } from "@/lib/coaches/syncRouteResponse";
+import { runCoachSyncRequest } from "@/lib/data/coachSyncComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,6 @@ async function activityPOST(request: Request) {
   });
 }
 
-export const GET = withActivity("/api/sync/engagements", "GET", activityGET);
+export const GET = withActivity("/api/sync/engagements", "GET", activityGET, runCoachSyncRequest);
 
-export const POST = withActivity("/api/sync/engagements", "POST", activityPOST);
+export const POST = withActivity("/api/sync/engagements", "POST", activityPOST, runCoachSyncRequest);

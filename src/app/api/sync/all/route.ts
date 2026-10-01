@@ -7,6 +7,7 @@ import { syncSamsungSchedule } from "@/lib/coaches/samsungScheduleSync";
 import type { SyncResult } from "@/lib/coaches/syncTypes";
 import { runCoachSyncWithLog } from "@/lib/coaches/syncLog";
 import { syncJsonResponse } from "@/lib/coaches/syncRouteResponse";
+import { runCoachSyncRequest } from "@/lib/data/coachSyncComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +44,6 @@ async function runAll(dryRun: boolean): Promise<SyncResult> {
   };
 }
 
-export const GET = withActivity("/api/sync/all", "GET", activityGET);
+export const GET = withActivity("/api/sync/all", "GET", activityGET, runCoachSyncRequest);
 
-export const POST = withActivity("/api/sync/all", "POST", activityPOST);
+export const POST = withActivity("/api/sync/all", "POST", activityPOST, runCoachSyncRequest);

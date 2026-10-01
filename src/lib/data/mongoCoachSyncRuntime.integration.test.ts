@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
-import { randomBytes } from "node:crypto";
+import { generateKeyPairSync, randomBytes } from "node:crypto";
 import { registerHooks } from "node:module";
 import { mock, test } from "node:test";
 import { MongoClient, type CommandStartedEvent } from "mongodb";
 import { runWithDataRepositories } from "./dataRepositoryContext";
+import { runCoachSyncRequest, type CoachSyncCompositionDependencies } from "./coachSyncComposition";
 import { MONGO_COACH_SYNC_RUNTIME_MODELS, openMongoCoachSyncRuntime, prepareMongoCoachSyncRuntime } from "./mongoCoachSyncRuntime";
 import { MongoOperationStore } from "./mongoOperationStore";
 
@@ -18,8 +19,9 @@ hooks.deregister();
 const uri = process.env.MONGODB_COACH_SYNC_RUNTIME_TEST_URI;
 async function snapshot(store: MongoOperationStore) {
   const result: Record<string, unknown> = {};
-  for (const item of (await store.db.listCollections({}, { nameOnly: true }).toArray()).sort((a, b) => a.name.localeCompare(b.name))) {
-    result[item.name] = await store.db.collection(item.name).find({}).sort({ _id: 1 }).toArray();
+  for (const item of (await store.db.listCollections().toArray()).sort((a, b) => a.name.localeCompare(b.name))) {
+    const collection = store.db.collection(item.name);
+    result[item.name] = { definition: item, indexes: (await collection.indexes()).sort((a, b) => (a.name ?? "").localeCompare(b.name ?? "")), documents: await collection.find({}).sort({ _id: 1 }).toArray() };
   }
   return result;
 }
@@ -42,7 +44,7 @@ test("all-sync handler uses one prepared and locked Mongo runtime", { skip: !uri
       async readContract() { contractReads++; return { values: [["header"]], struckCells: new Set<string>() }; },
       async readSamsung() { samsungReads++; return { rows: [["header"]], contractRows: [] }; }
     } };
-  const fetchMock = mock.method(globalThis, "fetch", async () => { fetchCalls++; throw new Error("EXTERNAL_FETCH_TRIPWIRE"); });
+  let fetchMock = mock.method(globalThis, "fetch", async () => { fetchCalls++; throw new Error("EXTERNAL_FETCH_TRIPWIRE"); });
   try {
     await client.connect();
     const runtime = await prepareMongoCoachSyncRuntime(options), store = new MongoOperationStore(options, MONGO_COACH_SYNC_RUNTIME_MODELS);
@@ -61,6 +63,62 @@ test("all-sync handler uses one prepared and locked Mongo runtime", { skip: !uri
     const requestId = response.headers.get("X-Request-Id"); assert.ok(requestId);
     const audit = await store.one("ActivityRequest", { _id: requestId }); assert.equal(audit?.route, "/api/sync/all"); assert.equal(audit?.actorType, "token_request");
     assert.equal(pgCalls, 0); assert.equal(fetchCalls, 0);
+
+    const compositionNamespace = `shadow_sync_composition_${randomBytes(6).toString("hex")}`;
+    await prepareMongoCoachSyncRuntime({ ...options, namespace: compositionNamespace });
+    const compositionStore = new MongoOperationStore({ ...options, namespace: compositionNamespace }, MONGO_COACH_SYNC_RUNTIME_MODELS);
+    const compositionReady = await snapshot(compositionStore), compositionWrites: string[] = [];
+    const dependencies: CoachSyncCompositionDependencies = {
+      createClient() {
+        const value = new MongoClient(uri!, { directConnection: true, monitorCommands: true, serverSelectionTimeoutMS: 5_000 });
+        value.on("commandStarted", event => { if (mutations.has(event.commandName)) compositionWrites.push(event.commandName); });
+        return value;
+      },
+      notionSource: options.coachNotionSource,
+      sheetSource: options.coachSheetSource,
+      openRuntime: input => openMongoCoachSyncRuntime({ ...input, client: input.client as MongoClient })
+    };
+    const compositionEnvironment = { ...env, COACH_SYNC_BACKEND: "mongodb-shadow", MONGODB_URI: uri!, MONGODB_SHADOW_DATABASE: databaseName, MONGODB_SHADOW_NAMESPACE: compositionNamespace };
+    assert.equal(await runCoachSyncRequest(async () => "ready", compositionEnvironment, dependencies), "ready");
+    assert.equal(compositionWrites.length, 0); assert.deepEqual(await snapshot(compositionStore), compositionReady);
+    compositionWrites.length = 0;
+    fetchMock.mock.restore(); fetchCalls = 0;
+    const sourceUrls: string[] = [];
+    fetchMock = mock.method(globalThis, "fetch", async (input: string | URL | Request) => {
+      const url = String(input instanceof Request ? input.url : input); sourceUrls.push(url); fetchCalls++;
+      if (url === "https://oauth2.googleapis.com/token") return Response.json({ access_token: "synthetic-google-token", expires_in: 3600 });
+      if (url.startsWith("https://sheets.googleapis.com/")) return Response.json({ values: [["header"]] });
+      if (url.startsWith("https://api.notion.com/")) return Response.json({ results: [], has_more: false, next_cursor: null });
+      throw new Error("EXTERNAL_FETCH_TRIPWIRE");
+    });
+    const privateKey = generateKeyPairSync("rsa", { modulusLength: 2048 }).privateKey.export({ format: "pem", type: "pkcs8" }).toString();
+    const routeEnvironment = { ...compositionEnvironment, COACH_NOTION_DATABASE_ID: "synthetic-notion-database", NOTION_TOKEN: "synthetic-notion-token", COACH_CONTRACT_SHEET_ID: "synthetic-contract-sheet", GOOGLE_SERVICE_ACCOUNT_EMAIL: "synthetic-sync@invalid.example", GOOGLE_PRIVATE_KEY: privateKey };
+    const routeSaved = new Map(Object.keys(routeEnvironment).map(name => [name, process.env[name]])); Object.assign(process.env, routeEnvironment);
+    let compositionResponse: Response;
+    try {
+      compositionResponse = await allRoute.POST(new Request("https://example.invalid/api/sync/all", { method: "POST", headers: { Authorization: "Bearer synthetic-sync-secret" } }));
+    } finally {
+      for (const [name, value] of routeSaved) { if (value === undefined) delete process.env[name]; else process.env[name] = value; }
+    }
+    assert.equal(compositionResponse.status, 200); assert.equal((await compositionResponse.json()).ok, true);
+    assert.deepEqual([notionReads, contractReads, samsungReads], [1, 1, 1]);
+    assert.equal(sourceUrls.filter(url => url.startsWith("https://api.notion.com/")).length, 1);
+    assert.equal(sourceUrls.filter(url => url.startsWith("https://sheets.googleapis.com/")).length, 3);
+    assert.equal(sourceUrls.every(url => url.startsWith("https://api.notion.com/") || url.startsWith("https://oauth2.googleapis.com/") || url.startsWith("https://sheets.googleapis.com/")), true);
+    assert.equal(await compositionStore.collection("CoachSyncLog").countDocuments({ type: "all", status: "completed" }), 1);
+    const compositionRequestId = compositionResponse.headers.get("X-Request-Id"); assert.ok(compositionRequestId);
+    assert.equal((await compositionStore.one("ActivityRequest", { _id: compositionRequestId }))?.actorType, "token_request");
+    assert.equal(pgCalls, 0); assert.equal(fetchCalls, sourceUrls.length); assert.ok(fetchCalls >= 4);
+
+    const compositionPartialNamespace = `shadow_sync_composition_partial_${randomBytes(6).toString("hex")}`;
+    const compositionPartial = new MongoOperationStore({ ...options, namespace: compositionPartialNamespace });
+    await compositionPartial.db.createCollection(`${compositionPartialNamespace}_LegacyOnly`);
+    await compositionPartial.db.collection(`${compositionPartialNamespace}_LegacyOnly`).insertOne({ marker: "unchanged" });
+    const compositionPartialBefore = await snapshot(compositionPartial); compositionWrites.length = 0;
+    let partialWorkCalls = 0;
+    await assert.rejects(runCoachSyncRequest(async () => { partialWorkCalls++; return "unexpected"; }, { ...compositionEnvironment, MONGODB_SHADOW_NAMESPACE: compositionPartialNamespace }, dependencies), /COACH_SYNC_COMPOSITION_FAILED/);
+    assert.equal(partialWorkCalls, 0);
+    assert.equal(compositionWrites.length, 0); assert.deepEqual(await snapshot(compositionPartial), compositionPartialBefore);
 
     for (const key of Object.keys(runtime.repositories) as Array<keyof typeof runtime.repositories>) {
       const partial = { ...runtime.repositories }; delete partial[key];
