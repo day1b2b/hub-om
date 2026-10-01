@@ -4,6 +4,7 @@ import { registerHooks } from "node:module";
 import { mock, test } from "node:test";
 import { MongoClient, type CommandStartedEvent } from "mongodb";
 import { runWithDataRepositories } from "./dataRepositoryContext";
+import { runInstructorSyncRequest, type InstructorSyncCompositionDependencies } from "./instructorSyncComposition";
 import { MONGO_INSTRUCTOR_SYNC_RUNTIME_MODELS, openMongoInstructorSyncRuntime, prepareMongoInstructorSyncRuntime } from "./mongoInstructorSyncRuntime";
 import { MongoOperationStore } from "./mongoOperationStore";
 
@@ -35,7 +36,7 @@ test("instructor Notion handler uses one prepared locked Mongo runtime", { skip:
   const databaseName = `hub_om_shadow_instructor_runtime_${randomBytes(8).toString("hex")}`, namespace = `shadow_instructor_${randomBytes(6).toString("hex")}`;
   let reads = 0, fetchCalls = 0;
   const options = { client, databaseName, namespace, allowShadowWrites: true as const, instructorNotionSource: { async readPages() { reads++; return []; } } };
-  const fetchMock = mock.method(globalThis, "fetch", async () => { fetchCalls++; throw new Error("FETCH_TRIPWIRE"); });
+  let fetchMock = mock.method(globalThis, "fetch", async () => { fetchCalls++; throw new Error("FETCH_TRIPWIRE"); });
   try {
     await client.connect(); const runtime = await prepareMongoInstructorSyncRuntime(options);
     const store = new MongoOperationStore(options, MONGO_INSTRUCTOR_SYNC_RUNTIME_MODELS);
@@ -46,6 +47,28 @@ test("instructor Notion handler uses one prepared locked Mongo runtime", { skip:
     const response = await runtime.run(() => route.POST(request())); assert.equal(response.status, 200); assert.equal((await response.json()).result.totalRows, 0);
     assert.equal(reads, 1); assert.equal(pgCalls, 0); assert.equal(fetchCalls, 0);
     const id = response.headers.get("X-Request-Id"); assert.ok(id); assert.ok(await store.one("ActivityRequest", { _id: id }));
+    const compositionNamespace = `shadow_instructor_composition_${randomBytes(6).toString("hex")}`;
+    await prepareMongoInstructorSyncRuntime({ ...options, namespace: compositionNamespace });
+    const compositionStore = new MongoOperationStore({ ...options, namespace: compositionNamespace }, MONGO_INSTRUCTOR_SYNC_RUNTIME_MODELS);
+    fetchMock.mock.restore(); fetchCalls = 0;
+    fetchMock = mock.method(globalThis, "fetch", async (input: string | URL | Request) => {
+      const url = String(input instanceof Request ? input.url : input); fetchCalls++;
+      if (!url.startsWith("https://api.notion.com/")) throw new Error("FETCH_TRIPWIRE");
+      return Response.json({ results: [], has_more: false, next_cursor: null });
+    });
+    const compositionEnvironment = { ...env, INSTRUCTOR_SYNC_BACKEND: "mongodb-shadow", MONGODB_URI: uri!, MONGODB_SHADOW_DATABASE: databaseName, MONGODB_SHADOW_NAMESPACE: compositionNamespace, NOTION_TOKEN: "synthetic-instructor-token", INSTRUCTOR_NOTION_DATABASE_ID: "synthetic-instructor-database" };
+    const routeSaved = new Map(Object.keys(compositionEnvironment).map(name => [name, process.env[name]])); Object.assign(process.env, compositionEnvironment);
+    let compositionResponse: Response;
+    try { compositionResponse = await route.POST(request()); }
+    finally { for (const [name, value] of routeSaved) { if (value === undefined) delete process.env[name]; else process.env[name] = value; } }
+    assert.equal(compositionResponse.status, 200); assert.equal((await compositionResponse.json()).result.totalRows, 0); assert.equal(fetchCalls, 1); assert.equal(pgCalls, 0);
+    const compositionId = compositionResponse.headers.get("X-Request-Id"); assert.ok(compositionId); assert.ok(await compositionStore.one("ActivityRequest", { _id: compositionId }));
+    const dependencies: InstructorSyncCompositionDependencies = { createClient() { return new MongoClient(uri!, { directConnection: true, serverSelectionTimeoutMS: 5_000 }); }, source: options.instructorNotionSource, openRuntime: input => openMongoInstructorSyncRuntime({ ...input, client: input.client as MongoClient }) };
+    const compositionPartialNamespace = `shadow_instructor_composition_partial_${randomBytes(6).toString("hex")}`, compositionPartial = new MongoOperationStore({ ...options, namespace: compositionPartialNamespace });
+    await compositionPartial.db.createCollection(`${compositionPartialNamespace}_LegacyOnly`, { validator: { marker: { $type: "string" } }, validationLevel: "strict", validationAction: "error" }); await compositionPartial.db.collection(`${compositionPartialNamespace}_LegacyOnly`).insertOne({ marker: "unchanged" });
+    const compositionPartialBefore = await snapshot(compositionPartial); let partialWorkCalls = 0;
+    await assert.rejects(runInstructorSyncRequest(async () => { partialWorkCalls++; return "unexpected"; }, { ...compositionEnvironment, MONGODB_SHADOW_NAMESPACE: compositionPartialNamespace }, dependencies), /INSTRUCTOR_SYNC_COMPOSITION_FAILED/);
+    assert.equal(partialWorkCalls, 0); assert.deepEqual(await snapshot(compositionPartial), compositionPartialBefore);
     const second = await prepareMongoInstructorSyncRuntime({ ...options, namespace: `shadow_instructor_second_${randomBytes(6).toString("hex")}` }); let callbacks = 0;
     assert.throws(() => runtime.run(() => second.run(() => { callbacks++; })), /CALENDAR_SCOPE_MISMATCH/); assert.equal(callbacks, 0);
     for (const key of Object.keys(runtime.repositories) as Array<keyof typeof runtime.repositories>) {
