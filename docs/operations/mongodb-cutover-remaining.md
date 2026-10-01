@@ -17,6 +17,8 @@
 
 활동 조회 세 API는 `ACTIVITY_READ_BACKEND`의 정확한 기능군 selector까지 연결했다. 기본 PostgreSQL과 monitoring route의 request audit 제외 정책을 유지하며 실제 Mongo에서 인증·입력 오류·고정 503·부분 namespace 무수정 거부를 확인했다. 생산 환경 변수 설정, 운영 데이터 복사, A/B 백업·각 복원과 최종 전환은 여전히 남는다.
 
+공지 목록·상세·수정 페이지와 CRUD·첨부 다운로드 API는 `ANNOUNCEMENT_BACKEND`의 정확한 기능군 selector까지 연결했다. 기본 PostgreSQL과 기존 권한·감사·소프트 삭제를 유지하며 실제 Mongo에서 첨부 byte와 부분 namespace 무수정 거부를 확인했다. 운영 공지·첨부 복사, 생산 환경 변수 설정, A/B 백업·각 복원과 최종 전환은 여전히 남는다.
+
 ## 2. 전체 Mongo 실행 연결
 
 `runWithDataRepositories`는 현재 테스트/내부 명시 주입 장치다. 생산 요청 전체를 구성하는 진입점은 아직 없다. 여러 factory는 기본 PG adapter를 반환하며, operationRepositoryFactory는 CalendarReflectingOperationRepository(new PrismaOperationRepository()), coachRepositoryFactory는 Prisma 고정이다. 일반 getTeamMemberRepository의 local/Prisma/Notion 선택과 저장용 명단 scope도 구분해야 한다.
