@@ -5,8 +5,9 @@ import { MongoOperationStore, type MongoOperationOptions } from "./mongoOperatio
 import { MongoRequestAuditRepository, prepareMongoRequestAuditStore, REQUEST_AUDIT_MODELS } from "./mongoRequestAuditRepository";
 import { MongoSalesRevenueSyncRepository, prepareMongoSalesRevenueSyncStore, SALES_REVENUE_MODELS } from "./mongoSalesRevenueSyncRepository";
 import type { SalesRevenueNotifier, SalesRevenueSource } from "./salesRevenueSyncRepository";
+import { MONGO_TEAM_USER_MODELS, MongoTeamUserRepository, prepareMongoTeamUserStore } from "./teamUsers/mongoTeamUserRepository";
 
-type ScopeKey = "salesRevenueSync" | "salesRevenueSource" | "salesRevenueNotifier" | "requestActivity";
+type ScopeKey = "salesRevenueSync" | "salesRevenueSource" | "salesRevenueNotifier" | "requestActivity" | "teamUsers";
 type Options = MongoOperationOptions & {
   allowShadowWrites: true;
   salesRevenueSource: SalesRevenueSource;
@@ -14,7 +15,7 @@ type Options = MongoOperationOptions & {
 };
 export type MongoSalesRevenueSyncRepositories = Readonly<Pick<DataRepositories, ScopeKey>>;
 export const MONGO_SALES_REVENUE_SYNC_RUNTIME_MODELS = [...new Set([
-  ...SALES_REVENUE_MODELS, ...REQUEST_AUDIT_MODELS
+  ...SALES_REVENUE_MODELS, ...REQUEST_AUDIT_MODELS, ...MONGO_TEAM_USER_MODELS
 ])] as readonly string[];
 
 export interface MongoSalesRevenueSyncRuntime {
@@ -30,6 +31,7 @@ export async function prepareMongoSalesRevenueSyncRuntime(options: Options): Pro
     if (!await hasKnownMongoRuntimeCollections(options)) {
       await prepareMongoSalesRevenueSyncStore(options);
       await prepareMongoRequestAuditStore(options);
+      await prepareMongoTeamUserStore(options);
     }
     return await openMongoSalesRevenueSyncRuntime(options);
   } catch { throw new Error("MONGO_SALES_REVENUE_SYNC_RUNTIME_FAILED"); }
@@ -40,8 +42,8 @@ export async function openMongoSalesRevenueSyncRuntime(options: Options): Promis
   try {
     if (options.allowShadowWrites !== true) throw new Error("gate");
     new MongoOperationStore(options, MONGO_SALES_REVENUE_SYNC_RUNTIME_MODELS);
-    const [salesRevenueSync, requestActivity] = await Promise.all([
-      MongoSalesRevenueSyncRepository.open(options), MongoRequestAuditRepository.open(options)
+    const [salesRevenueSync, requestActivity, teamUsers] = await Promise.all([
+      MongoSalesRevenueSyncRepository.open(options), MongoRequestAuditRepository.open(options), MongoTeamUserRepository.open(options)
     ]);
     const salesRevenueSource: SalesRevenueSource = Object.freeze({
       isConfigured: () => options.salesRevenueSource.isConfigured(),
@@ -51,7 +53,7 @@ export async function openMongoSalesRevenueSyncRuntime(options: Options): Promis
       notifyFailure: (text: string) => options.salesRevenueNotifier.notifyFailure(text)
     });
     const repositories: MongoSalesRevenueSyncRepositories = Object.freeze({
-      salesRevenueSync, salesRevenueSource, salesRevenueNotifier, requestActivity
+      salesRevenueSync, salesRevenueSource, salesRevenueNotifier, requestActivity, teamUsers
     });
     registerDataRepositoryScope(repositories);
     return Object.freeze({ repositories, run<T>(work: () => T): T {

@@ -4,6 +4,7 @@ import { assertAdminSession } from "@/lib/auth/requireAdminSession";
 import { type MultiDealMode, type SalesRevenueSyncResult, runSalesRevenueSync } from "@/lib/data/salesRevenueSync";
 import { getSalesRevenueNotifier, getSalesRevenueSource, getSalesRevenueSyncRepository } from "@/lib/data/salesRevenueSyncRepositoryFactory";
 import type { SalesRevenueNotifier } from "@/lib/data/salesRevenueSyncRepository";
+import { runSalesSyncRequest } from "@/lib/data/salesSyncComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -110,6 +111,6 @@ async function handle(apply: boolean, request?: Request) {
   }
 }
 
-export const GET = withActivity("/api/admin/sales-revenue", "GET", activityGET);
+export const GET = withActivity("/api/admin/sales-revenue", "GET", activityGET, runSalesSyncRequest);
 
-export const POST = withActivity("/api/admin/sales-revenue", "POST", activityPOST);
+export const POST = withActivity("/api/admin/sales-revenue", "POST", activityPOST, runSalesSyncRequest);
