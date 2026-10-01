@@ -422,3 +422,7 @@ Notion·계약·일정·`/sync/all` API의 저장 repository, 합성 source, 실
 ## 매출 동기화 runtime 조립 (2026-10-01)
 
 매출 저장·합성 Salesmap source·실패 알림 port·request audit를 같은 등록 shadow scope로 조립했다. 실제 bearer POST, 동기화/요청 감사, 준비 재실행과 부분 namespace 불변, PG·외부 접근 0, 네 포트의 분해·혼입 차단을 확인했다. [상세 범위](mongodb-sales-sync-runtime.md). 실제 원천·알림·예약·production selector·운영 금액 반영과 운영 이전은 미완료다.
+
+## 만족도 runtime 조립 (2026-10-01)
+
+관리자 만족도 미리보기·자동 반영·수동 연결과 회차별 반영 API의 operations·합성 시트 source·request audit를 같은 등록 shadow scope로 조립했다. 실제 네 handler의 권한·매칭·기존 값 보존·감사, 준비 재실행과 부분 namespace 불변, PG·외부 접근 0, 세 포트의 분해·혼입 차단을 확인했다. [상세 범위](mongodb-satisfaction-runtime.md). 실제 Google Sheets·운영 만족도 반영·production selector와 운영 이전은 미완료다.
