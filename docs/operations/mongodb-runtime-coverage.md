@@ -556,3 +556,7 @@ Notion·계약·일정·전체 동기화 네 API의 GET/POST에 PostgreSQL 기�
 ## 코치 공개 화면 기능군 selector (2026-10-01)
 
 코치 목록·일정·상세·투입과 강사 위키 목록·상세 화면에 PostgreSQL 기본/Mongo shadow selector를 연결했다. 인증 후 operations·instructorNote·coach만 같은 잠금 scope로 열고 실제 여섯 화면, 저장 snapshot 불변과 부분 namespace 무수정 거부를 확인했다. [상세 범위](mongodb-coach-public-composition.md). operation 상세는 기존 selector를 유지한다. production 배포·운영 데이터·브라우저 전체 흐름·최종 전환은 미완료다.
+
+## 코치 일정·예약·투입 API selector (2026-10-01)
+
+코치 관리자 일정 조회, 예약 생성·취소, 투입 목록·생성·수정 API에 PostgreSQL 기본/Mongo shadow exact selector를 연결했다. 일정·투입·요청 감사를 같은 잠금 scope로 열고 실제 여섯 handler, 기존 동시 수정 보호, 개인정보 평문 비노출과 부분 namespace 무수정 거부를 확인했다. [상세 범위](mongodb-coach-operations-composition.md). production 배포·운영 데이터·브라우저 전체 흐름·최종 전환은 미완료다.

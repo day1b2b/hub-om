@@ -413,6 +413,10 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 
 `feature/20261001-coach-management-composition`에서 코치 CRUD 여섯 API를 PostgreSQL 기본/Mongo shadow exact selector에 연결했다. 실제 request audit를 포함한 동일 namespace 실행, 개인정보 평문 비노출, PG fallback 차단과 부분 namespace 불변을 검증했다. 근거는 `../mongodb-coach-management-composition/` 기록을 따른다. 운영 selector·실데이터 이전·A/B 백업과 각 복원·최종 전환은 미완료다.
 
+## 2026-10-01 코치 일정·예약·투입 API composition selector 후속
+
+`feature/20261001-coach-operations-composition`에서 코치 일정·예약·투입 여섯 API를 PostgreSQL 기본/Mongo shadow exact selector에 연결했다. schedule·engagement·request audit를 같은 잠금 scope로 열고 실제 route, 기존 동시 수정·원자 롤백, 평문 비노출과 부분 namespace 불변을 검증했다. 근거는 `../mongodb-coach-operations-composition/` 기록을 따른다. 운영 selector·실데이터 이전·A/B 백업과 각 복원·최종 전환은 미완료다.
+
 ## 2026-10-01 관리자 DB composition selector 후속
 
 `feature/20261001-admin-database-composition`에서 관리자 DB 페이지·셀 PATCH에 exact selector를 연결한다. DB·담당자·요청 감사를 같은 잠금 scope로 열고 기존 검증·rollback을 유지한다. 기록은 `../mongodb-admin-database-composition/`을 따른다. 나머지 기능군 selector, production 배포·운영 이전과 `dev → main`은 미완료다.
