@@ -478,3 +478,7 @@ health API에 PostgreSQL 기본/Mongo shadow selector를 연결하고 databaseHe
 ## 공지·첨부 기능군 selector (2026-10-01)
 
 공지 목록·상세·수정 페이지와 CRUD·첨부 다운로드 API에 PostgreSQL 기본/Mongo shadow selector를 연결했다. API의 업무 저장과 request audit를 같은 잠금 scope로 열고 기존 권한·multipart·감사·소프트 삭제·첨부 byte 계약을 유지한다. [상세 범위](mongodb-announcement-composition.md). 운영 공지·첨부·production 배포·실데이터 이전·복원·최종 전환은 미완료다.
+
+## Hubbot 기능군 selector (2026-10-01)
+
+Hubbot POST에 PostgreSQL 기본/Mongo shadow selector를 연결하고 responder·request audit를 같은 scope로 연다. [상세 범위](mongodb-hubbot-composition.md). 실제 외부 서비스·production 배포·운영 이전은 미완료다.

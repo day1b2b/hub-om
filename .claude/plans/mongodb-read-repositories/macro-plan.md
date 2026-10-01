@@ -396,3 +396,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 2026-10-01 공지·첨부 composition selector 후속
 
 `feature/20261001-announcement-composition`에서 공지 목록·상세·수정 페이지와 CRUD·첨부 다운로드 API에 PostgreSQL 기본/Mongo shadow exact selector를 연결한다. 기존 `announcements`·`requestActivity` runtime을 재사용해 권한·multipart·감사·소프트 삭제와 첨부 byte 계약을 유지한다. 기록은 `../mongodb-announcement-composition/`을 따른다. 운영 공지·첨부·production 배포·실데이터 이전·A/B 복원·최종 전환과 `dev → main`은 미완료다.
+
+## 2026-10-01 Hubbot composition selector 후속
+
+`feature/20261001-hubbot-composition`에서 Hubbot POST에 PostgreSQL 기본/Mongo shadow exact selector를 연결한다. 기록은 `../mongodb-hubbot-composition/`을 따른다. 실제 외부 서비스·production 배포·운영 이전과 `dev → main`은 미완료다.
