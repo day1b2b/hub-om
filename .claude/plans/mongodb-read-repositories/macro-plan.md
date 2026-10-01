@@ -458,3 +458,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 2026-10-01 강사 Notion 동기화 composition selector 후속
 
 `feature/20261001-instructor-sync-composition`에서 GET/POST exact selector와 기본 source adapter를 연결한다. 기록은 `../mongodb-instructor-sync-composition/`을 따른다. 실제 원천·예약·production 배포·운영 이전과 `dev → main`은 미완료다.
+
+## 2026-10-01 매출 동기화 composition selector 후속
+
+`feature/20261001-sales-sync-composition`에서 GET/POST exact selector와 저장소·source·notifier·teamUsers·request audit를 같은 잠금 namespace로 연결한다. 기록은 `../mongodb-sales-sync-composition/`을 따른다. 실제 원천·알림·예약·production 배포·운영 이전과 `dev → main`은 미완료다.

@@ -167,3 +167,7 @@ Drive 결과 snapshot의 회사명·과정명은 2026-09-30 암호화 정책·co
 ## 2026-10-01 강사 Notion 동기화 composition 후속
 
 `feature/20261001-instructor-sync-composition`에서 GET/POST exact selector와 실제 기본 Notion source 경계를 검증했다. 기록은 `../../.claude/plans/mongodb-instructor-sync-composition/`을 따른다. 실제 원천·예약·운영 이전과 `dev → main`은 미완료다.
+
+## 2026-10-01 매출 동기화 composition 후속
+
+`feature/20261001-sales-sync-composition`에서 GET/POST exact selector와 기본 실패 알림의 teamUsers 조회를 검증했다. 기록은 `../../.claude/plans/mongodb-sales-sync-composition/`을 따른다. 실제 Salesmap·Slack·예약·운영 이전과 `dev → main`은 미완료다.
