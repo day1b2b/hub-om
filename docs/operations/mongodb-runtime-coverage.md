@@ -506,3 +506,7 @@ Hubbot POST에 PostgreSQL 기본/Mongo shadow selector를 연결하고 responder
 ## 코치 본인 포털 기능군 selector (2026-10-01)
 
 코치 본인 프로필과 월별 일정 조회·교체 API에 PostgreSQL 기본/Mongo shadow selector를 연결했다. 기존 토큰 인증·비공개 응답·월 검증·요청/업무 감사를 유지하고 실제 Mongo에서 PostgreSQL 접근 0건, 암호화 대상 평문 비노출과 부분 namespace 무수정 거부를 확인했다. [상세 범위](mongodb-coach-portal-composition.md). production 배포·운영 데이터·브라우저 전체 흐름·최종 전환은 미완료다.
+
+## 운영 화면 기능군 selector (2026-10-01)
+
+운영 목록·상세·신규 화면에 PostgreSQL 기본/Mongo shadow selector를 연결했다. 준비된 runtime만 열고 조회 중 무쓰기·부분 namespace 불변·PG 및 local JSON 혼합 조회 차단을 확인했다. [상세 범위](mongodb-operation-pages-composition.md). 운영 쓰기 API selector·production 배포·운영 데이터·최종 전환은 미완료다.

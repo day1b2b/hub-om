@@ -133,3 +133,7 @@ Drive 결과 snapshot의 회사명·과정명은 2026-09-30 암호화 정책·co
 ## 2026-10-01 코치 본인 포털 composition 후속
 
 `feature/20261001-coach-portal-composition`에서 코치 본인 프로필과 월별 일정 API에 PostgreSQL 기본/Mongo shadow exact selector를 연결했다. 토큰 인증·비공개 응답·일정 교체·요청/업무 감사를 유지하고 실제 Mongo 저장의 PII 평문 비노출과 부분 namespace 불변을 확인했다. 기록은 `../../.claude/plans/mongodb-coach-portal-composition/`을 따른다. 나머지 기능군 selector, production 배포·운영 데이터·A/B 백업·각 복원·복사·최종 전환과 `dev → main`은 미완료다.
+
+## 2026-10-01 운영 화면 composition 후속
+
+`feature/20261001-operation-pages-composition`에서 목록·상세·신규 화면의 exact selector와 open-only scope를 검증했다. Mongo 선택의 PG/local 혼합 조회를 차단했다. 기록은 `../../.claude/plans/mongodb-operation-pages-composition/`을 따른다. 운영 쓰기 selector·production 배포·운영 이전과 `dev → main`은 미완료다.
