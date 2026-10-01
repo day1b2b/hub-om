@@ -410,3 +410,7 @@ OM 요청 생성·수정·삭제, 전체 배정 미리보기·확정, Calendar-a
 ## 강의 후속 알림 예약 runtime 조립 (2026-10-01)
 
 `/api/reminders/lecture-followup`의 operations·teamUsers·requestActivity, Slack port와 Mongo HMAC 원자 선점 로그를 같은 등록 shadow scope로 조립한다. 실제 GET/POST에서 관리자·bearer 권한, D+1/D+7 묶음, 동시 요청 중 하나만 발송, 완료 후 재실행 중복 차단, 대상별 발송 실패, 완료 기록 실패, 요청 감사, 암호화 저장과 비공개 오류 비노출을 확인한다. [상세 범위와 한계](mongodb-lecture-followup-runtime.md)를 따른다. 외부 Slack과 단일 transaction인 exactly-once, 실제 Slack, Coolify 예약 설정, production selector와 운영 이전은 미완료다.
+
+## 코치 동기화 예약 작업 runtime 조립 (2026-10-01)
+
+Notion·계약·일정·`/sync/all` API의 저장 repository, 합성 source, 실행 로그와 요청 감사를 같은 등록 shadow scope로 조립한다. 실제 `/sync/all` bearer POST에서 세 원천의 단일 실행, 완료 로그·요청 감사, PG/비합성 외부 접근 0, 준비 재실행과 부분 namespace 무수정 거부를 확인한다. [상세 범위와 한계](mongodb-sync-jobs-runtime.md)를 따른다. 실제 원천·Coolify 예약·production selector와 운영 이전은 미완료다.

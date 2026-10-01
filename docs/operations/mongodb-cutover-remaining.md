@@ -41,6 +41,8 @@
 
 강의 후속 알림 GET/POST는 [Mongo 강의 후속 알림 runtime](mongodb-lecture-followup-runtime.md)으로 operations·teamUsers·requestActivity, 명시 Slack port와 Mongo 원자 발송 선점 로그를 조립했다. 동시 요청의 중복 발송 차단과 완료 후 재실행은 검증했지만 실제 Slack과 Coolify 예약·배포 구성은 변경하지 않았다. Slack 성공 뒤 Mongo 완료 기록만 실패하면 선점을 유지하지만, Slack 수락 뒤 응답 유실은 구분할 수 없어 선점을 해제하고 재시도 중복 가능성이 남는다.
 
+코치 Notion·계약·일정·전체 동기화 API는 [Mongo 코치 동기화 작업 runtime](mongodb-sync-jobs-runtime.md)으로 저장·합성 source·실행 로그·요청 감사를 조립했다. 실제 원천과 Coolify 예약·배포 구성은 변경하지 않았다.
+
 legacy `db:backfill:onsite-required-y` entrypoint는 [Mongo 현장 투입 보정 CLI runtime](mongodb-onsite-backfill-cli-runtime.md)으로 raw SQL을 제거하고 기존 repository를 재사용한다. 기본 PG와 명시 shadow 실행을 검증했지만 실제 운영 보정이나 배포 구성에는 적용하지 않았다.
 
 legacy `db:backfill:team-user-team-labels` entrypoint는 [Mongo 팀 명칭 보정 CLI](mongodb-team-label-backfill-cli.md)로 raw SQL을 제거하고 TeamUser 저장 경계를 사용한다. 실제 운영 라벨 보정이나 배포 구성에는 적용하지 않았다.

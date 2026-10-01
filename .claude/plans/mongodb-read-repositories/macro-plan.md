@@ -328,3 +328,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 2026-10-01 강의 후속 알림 runtime 후속
 
 `feature/20261001-mongodb-lecture-followup-runtime`에서 예약 알림 GET/POST의 operations·teamUsers·requestActivity와 Slack port와 Mongo HMAC 원자 선점 로그를 같은 잠금 scope로 조립한다. 실제 handler의 D+1/D+7, 동시 요청 중 하나만 발송, 완료 후 재실행, 대상별 발송 실패·완료 기록 실패·권한·감사·암호화·비공개 오류를 합성 검증한다. 실행·독립 리뷰·통합은 `../mongodb-lecture-followup-runtime/` 기록을 따른다. 외부 Slack과 단일 transaction인 exactly-once, 실제 Slack·Coolify 예약·production selector·운영 이전은 미완료다.
+
+## 2026-10-01 코치 동기화 예약 작업 runtime 후속
+
+`feature/20261001-mongodb-sync-jobs-runtime`에서 Notion·계약·일정·`/sync/all` API의 여섯 repository/source/log/audit port를 같은 잠금 shadow scope로 조립한다. 실제 handler의 원천 순서·로그·감사와 PG/외부 접근 차단, 빈 namespace 준비·부분 namespace 불변을 검증한다. 실행·독립 리뷰·통합은 `../mongodb-sync-jobs-runtime/` 기록을 따른다. 실제 원천·Coolify 예약·production selector·운영 이전/dev→main은 미완료다.
