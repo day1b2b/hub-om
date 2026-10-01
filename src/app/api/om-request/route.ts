@@ -9,6 +9,7 @@ import { extractUnknownTools } from "@/lib/data/omRequest/omToolOptions";
 import { getOmRequestRepository, getOmRequestNotifier } from "@/lib/data/omRequest/omRequestRepositoryFactory";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { getOmCustomToolsRepository } from "@/lib/data/omRequest/omCustomToolsLocalRepository";
+import { runOmRequestWriteRequest } from "@/lib/data/omRequestWriteComposition";
 
 async function activityPOST(request: Request) {
   try {
@@ -88,4 +89,4 @@ async function activityPOST(request: Request) {
   }
 }
 
-export const POST = withActivity("/api/om-request", "POST", activityPOST);
+export const POST = withActivity("/api/om-request", "POST", activityPOST, runOmRequestWriteRequest);

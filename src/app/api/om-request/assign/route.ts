@@ -6,6 +6,7 @@ import { assignOmRequestAtomically, previewOmAssignment, OmAssignmentConflict } 
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { getOmAssignmentCalendar, getOmAssignmentNotifier } from "@/lib/data/omRequest/omAssignmentEffects";
 import { canManageOmRequestAssignment } from "@/lib/auth/omRequestAssignmentAccess";
+import { runOmRequestWriteRequest } from "@/lib/data/omRequestWriteComposition";
 
 async function resolveCurrentUser(): Promise<{ name: string; email?: string | null }> {
   if (process.env.DEV_AUTH_BYPASS === "true" && process.env.NODE_ENV !== "production") {
@@ -90,5 +91,5 @@ async function assignment(request: Request, preview: boolean) {
 }
 
 // Preview contains names, so it must not put the selected assignee in a URL or cache.
-export const POST = withActivity("/api/om-request/assign", "POST", (request: Request) => assignment(request, true));
-export const PATCH = withActivity("/api/om-request/assign", "PATCH", (request: Request) => assignment(request, false));
+export const POST = withActivity("/api/om-request/assign", "POST", (request: Request) => assignment(request, true), runOmRequestWriteRequest);
+export const PATCH = withActivity("/api/om-request/assign", "PATCH", (request: Request) => assignment(request, false), runOmRequestWriteRequest);

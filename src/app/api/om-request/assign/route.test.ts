@@ -25,7 +25,11 @@ mock.module("@/lib/data/omRequest/omRequestAssignment", { namedExports: {
   }
 } });
 mock.module("@/lib/data/operationRepositoryFactory", { namedExports: { getOperationRepository: () => ({ getOperationById: async () => ({ operationId: "fixture-operation" }) }) } });
-mock.module("@/lib/googleCalendar/reflectOperationToCalendar", { namedExports: { reflectOperationUpdated: async () => { calls.push("calendar"); } } });
+mock.module("@/lib/googleCalendar/reflectOperationToCalendar", { namedExports: {
+  reflectOperationCreated: async () => {},
+  reflectOperationUpdated: async () => { calls.push("calendar"); },
+  reflectOperationDelete: async () => {}
+} });
 mock.module("@/lib/slack/notifySlack", { namedExports: { notifyOmAssigned: async () => { calls.push("slack"); } } });
 const { POST, PATCH } = await import("./route");
 const input = (assignedOm: unknown, token: unknown = "fixture-token") => new Request("http://localhost/api/om-request/assign", { method: "POST", body: JSON.stringify({ id: "fixture-request", assignedOm, confirmationToken: token }) });

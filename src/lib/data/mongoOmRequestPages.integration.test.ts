@@ -18,7 +18,7 @@ const author = { email: "synthetic.author@day1company.co.kr", name: "Synthetic r
 const manager = { email: "synthetic.manager@day1company.co.kr", name: omRequestManagerName("1파트")! };
 const admin = { email: "synthetic.admin@day1company.co.kr", name: "Synthetic request admin" };
 const outsider = { email: "synthetic.outsider@day1company.co.kr", name: "Synthetic request outsider" };
-const customTools = Object.freeze({ list: () => ["Synthetic custom tool"], add: (_names: string[]) => { throw new Error("UNEXPECTED_TOOL_WRITE"); } });
+const customTools = Object.freeze({ list: () => ["Synthetic custom tool"], add: (names: string[]) => { void names; throw new Error("UNEXPECTED_TOOL_WRITE"); } });
 let actor: typeof author | null = author;
 mock.module("@/auth", { namedExports: { auth: async () => actor ? { user: actor, expires: "" } : null } });
 mock.module("@/lib/data/omRequest/omCustomToolsLocalRepository", { namedExports: { getOmCustomToolsRepository: () => customTools, listCustomTools: () => customTools.list(), addCustomTools: (names: string[]) => customTools.add(names) } });

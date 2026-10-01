@@ -6,6 +6,7 @@ import { addCustomTools, listCustomTools, getOmCustomToolsRepository } from "@/l
 import { deleteOmRequest, getOmRequest, updateOmRequest } from "@/lib/data/omRequest/omRequestLocalRepository";
 import { isOmRequestAuthor, type OmRequestInput } from "@/lib/data/omRequest/omRequestTypes";
 import { extractUnknownTools } from "@/lib/data/omRequest/omToolOptions";
+import { runOmRequestWriteRequest } from "@/lib/data/omRequestWriteComposition";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -69,6 +70,6 @@ async function activityDELETE(_request: Request, { params }: Props) {
   }
 }
 
-export const PATCH = withActivity("/api/om-request/[id]", "PATCH", activityPATCH);
+export const PATCH = withActivity("/api/om-request/[id]", "PATCH", activityPATCH, runOmRequestWriteRequest);
 
-export const DELETE = withActivity("/api/om-request/[id]", "DELETE", activityDELETE);
+export const DELETE = withActivity("/api/om-request/[id]", "DELETE", activityDELETE, runOmRequestWriteRequest);
