@@ -6,6 +6,7 @@ import { getImportPromotionRepository } from "@/lib/data/importPromotionService"
 import { NOTION_PROMOTION_ERROR } from "@/lib/data/importPromotionContract";
 import { getImportPromotionCalendar } from "@/lib/data/importPromotionEffects";
 import { getDataRepositoryOverride } from "@/lib/data/dataRepositoryContext";
+import { runImportPromotionRequest } from "@/lib/data/importPromotionComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -66,4 +67,4 @@ async function activityPOST(_request: Request, { params }: RouteContext) {
   }
 }
 
-export const POST = withActivity("/api/admin/imports/[id]/promote", "POST", activityPOST);
+export const POST = withActivity("/api/admin/imports/[id]/promote", "POST", activityPOST, work => runImportPromotionRequest(work));
