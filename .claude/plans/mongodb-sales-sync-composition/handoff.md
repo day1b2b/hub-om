@@ -1,9 +1,9 @@
 # 매출 동기화 composition 인계
 
-- 생명주기: 구현·검증·독립 리뷰 완료, 총괄 통합 예정
+- 생명주기: 구현·검증·독립 리뷰·총괄 통합 완료
 - 기준 총괄: `31691e4976cc61cbcc9ebba65a28d0a6c1c325ed`
 - 제품 SHA: `202c523`
 - Do Not: teamUsers scope 제거, 요청 중 namespace 준비, 오류 시 PG fallback, 운영 설정·dev/main 변경
 - 다음 범위: coverage 기준 다음 미전환 기능군 selector
 - 운영 이전: A/B 백업·복원·복사·리허설·최종 전환 전까지 미완료
-- 총괄 통합 확인 SHA: 기록 예정
+- 총괄 통합 확인 SHA: `87b84cb` (완료 표시 직전)

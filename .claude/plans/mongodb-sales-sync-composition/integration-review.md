@@ -6,5 +6,5 @@
 - 전체 회귀: 1,319 통과 / 168 제외 / 0 실패
 - typecheck·build 통과, lint 오류 0 / 기존 경고 7
 - 독립 리뷰: P1 1건 보완 후 P0-P3 0
-- 총괄 통합: 문서 완료 커밋에서 확인 예정
+- 총괄 통합: `87b84cb`에서 fast-forward 확인
 - 미검증: 실제 Salesmap/Slack·예약·production selector·운영 이전
