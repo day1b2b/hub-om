@@ -1,15 +1,18 @@
 import { NextResponse } from "next/server";
 import { getDatabaseHealthRepository } from "@/lib/data/databaseHealthFactory";
+import { runHealthRequest } from "@/lib/data/healthComposition";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    await getDatabaseHealthRepository().check();
+    return await runHealthRequest(async () => {
+      await getDatabaseHealthRepository().check();
 
-    return NextResponse.json({
-      ok: true,
-      database: "connected"
+      return NextResponse.json({
+        ok: true,
+        database: "connected"
+      });
     });
   } catch {
     return NextResponse.json(
