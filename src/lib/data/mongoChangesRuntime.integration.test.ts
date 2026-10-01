@@ -61,7 +61,7 @@ test("changes runtime composes activity, content, review and request audit in on
     await client.connect(); connected = true;
     const databases = await client.db("admin").admin().listDatabases({ nameOnly: true });
     assert.equal(databases.databases.some(database => database.name === databaseName), false); ownsDatabase = true;
-    const second = await prepareMongoChangesRuntime({ ...options, namespace: "shadow_changes_second" });
+    const second = await prepareMongoChangesRuntime({ ...options, namespace: "shadow_peer_changes" });
     const runtime = await prepareMongoChangesRuntime(options), store = new MongoOperationStore(options, MONGO_CHANGES_RUNTIME_MODELS);
     const beforeReady = await snapshot(namespace); writes.length = 0;
     await prepareMongoChangesRuntime(options); await openMongoChangesRuntime(options);

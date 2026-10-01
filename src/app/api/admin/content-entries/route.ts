@@ -2,6 +2,7 @@ import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getCoachContentRepository } from "@/lib/data/coachContentRepositoryFactory";
+import { runChangesRequest } from "@/lib/data/changesComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -52,4 +53,4 @@ async function activityGET() {
   return NextResponse.json({ ok: true, entries: rows });
 }
 
-export const GET = withActivity("/api/admin/content-entries", "GET", activityGET);
+export const GET = withActivity("/api/admin/content-entries", "GET", activityGET, runChangesRequest);

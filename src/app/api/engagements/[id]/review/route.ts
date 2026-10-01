@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { parseReviewCommand } from "@/lib/coaches/engagementApi";
 import { getCoachEngagementRepository } from "@/lib/data/coachEngagementRepositoryFactory";
+import { runChangesRequest } from "@/lib/data/changesComposition";
 
 export const dynamic = "force-dynamic";
 interface RouteContext { params: Promise<{ id: string }> }
@@ -15,4 +16,4 @@ async function activityPATCH(request: Request, { params }: RouteContext) {
   const engagement = await getCoachEngagementRepository().updateReview(id.toLowerCase(), command.value, author);
   return NextResponse.json({ ok: true, engagement });
 }
-export const PATCH = withActivity("/api/engagements/[id]/review", "PATCH", activityPATCH);
+export const PATCH = withActivity("/api/engagements/[id]/review", "PATCH", activityPATCH, runChangesRequest);
