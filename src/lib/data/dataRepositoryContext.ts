@@ -56,6 +56,7 @@ import type { TeamMemberImportRepository } from "./teamMemberImportRepository";
 import type { OperationImportRepository } from "./operationImportRepository";
 import type { LectureFollowUpNotifier, LectureFollowUpSentLog } from "../reminders/lectureFollowUpReminder";
 import type { OperationSourceReader } from "../sourceReads/sourceReadTypes";
+import type { HubBotResponder } from "../hubBot/hubBotResponder";
 
 export interface RequestActivityRepository {
   recordRequest(context: ActivityContext, status: number, durationMs: number): Promise<void>;
@@ -64,6 +65,7 @@ export interface CoachPrivateAccessLogRepository {
   recordAccess(coachId: string, accessedByEmail: string, context: string): Promise<void>;
 }
 export interface DataRepositories {
+  hubBotResponder: HubBotResponder;
   operationSourceReader: OperationSourceReader;
   lectureFollowUpNotifier: LectureFollowUpNotifier;
   lectureFollowUpSentLog: LectureFollowUpSentLog;
