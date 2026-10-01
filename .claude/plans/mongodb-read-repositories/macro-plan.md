@@ -372,3 +372,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 2026-10-01 가져오기 승격 composition selector 후속
 
 기존 승격·Calendar 구현을 재사용해 PostgreSQL 기본/Mongo shadow selector를 연결한다. 실제 운영 이전과 `dev → main`은 미완료다.
+
+## 2026-10-01 가져오기 관리 화면 composition selector 후속
+
+`feature/20261001-import-pages-composition`에서 `/admin/imports`와 `/admin/imports/[id]`에 PostgreSQL 기본/Mongo shadow exact selector를 연결한다. 기존 imports repository와 권한·404·리다이렉트를 유지하고 준비된 open-only scope, 오류 비노출과 부분 namespace 불변을 검증한다. 실행·리뷰·통합은 `../mongodb-import-pages-composition/` 기록을 따른다. production 배포·전체 앱 selector·실데이터 이전과 `dev → main`은 미완료다.

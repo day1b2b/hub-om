@@ -89,3 +89,7 @@ Drive 결과 snapshot의 회사명·과정명은 2026-09-30 암호화 정책·co
 ## 2026-10-01 가져오기 승격 composition 후속
 
 `feature/20261001-import-promotion-composition`에서 승격 API의 exact selector와 Calendar 전체 scope를 검증했다. 기록은 `../../.claude/plans/mongodb-import-promotion-composition/`을 따른다. 운영 승격·production 배포·실데이터 이전과 `dev → main`은 미완료다.
+
+## 2026-10-01 가져오기 관리 화면 composition 후속
+
+`feature/20261001-import-pages-composition`에서 목록·상세 page의 exact selector와 open-only imports scope를 검증했다. 권한·404·리다이렉트, PostgreSQL fallback 0건과 부분 namespace 불변을 확인했다. 기록은 `../../.claude/plans/mongodb-import-pages-composition/`을 따른다. 운영 데이터·production 배포·전체 앱 selector·실데이터 이전과 `dev → main`은 미완료다.
