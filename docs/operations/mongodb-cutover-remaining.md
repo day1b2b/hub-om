@@ -155,3 +155,7 @@ Drive 결과 snapshot의 회사명·과정명은 2026-09-30 암호화 정책·co
 ## 2026-10-01 OM 요청 쓰기 composition 후속
 
 `feature/20261001-om-request-write-composition`에서 생성·수정·삭제와 배정 API의 PostgreSQL 기본/Mongo shadow exact selector를 검증했다. 실제 composition의 네 effect port와 요청 감사, 실패 후 core 저장 보존과 부분 namespace 무수정 거부를 확인했다. 기록은 `../../.claude/plans/mongodb-om-request-write-composition/`을 따른다. 실제 Slack/Calendar·production 배포·운영 데이터·A/B 백업·각 복원·복사·최종 전환과 `dev → main`은 미완료다.
+
+## 2026-10-01 강의 후속 알림 composition 후속
+
+`feature/20261001-lecture-followup-composition`에서 GET 미리보기와 POST 발송의 PostgreSQL 기본/Mongo shadow exact selector를 검증했다. 실제 composition의 합성 Slack 발송·요청 감사와 준비 재실행·부분 namespace 무수정 거부를 확인했다. 기록은 `../../.claude/plans/mongodb-lecture-followup-composition/`을 따른다. 실제 Slack·Coolify 예약·production 배포·운영 데이터·A/B 백업·각 복원·복사·최종 전환과 `dev → main`은 미완료다.
