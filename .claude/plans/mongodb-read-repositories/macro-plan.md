@@ -510,3 +510,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 2026-10-01 Drive 가져오기 CLI composition 후속
 
 총괄 `9671c36` 기준 기존 Mongo Drive writer를 실제 `drive:import:dry-run` CLI exact selector로 연결한다. PostgreSQL 기본과 기존 환경 파일·인자·출력 의미를 유지하고 Mongo는 준비된 shadow만 연다. 합성 source와 실제 Mongo에서 이력 암호화 저장·부분 namespace 무수정 거부를 검증한다. 실행·통합 기록은 `../mongodb-drive-import-cli-composition/`을 따른다. 실제 Drive·운영 예약/배포·실데이터 이전과 `dev → main`은 미완료다.
+
+## 2026-10-01 배포 selector manifest 후속
+
+총괄 `00de37e` 기준 production composition의 35개 backend selector를 manifest와 `.env.example`에 고정한다. 정적 CLI는 완전한 PostgreSQL 또는 Mongo 기대 상태만 검사하고 실제 DB·Coolify·예약 설정에는 접근하지 않는다. 실행·통합 기록은 `../mongodb-deployment-selector-manifest/`를 따른다. A/B 백업·각 복원·실데이터 복사·외부 원천·배포·최종 전환과 `dev → main`은 미완료다.

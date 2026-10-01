@@ -592,3 +592,7 @@ OM 요청용 회차 xlsx 템플릿 API에 PostgreSQL 기본/Mongo shadow exact s
 ## Drive 가져오기 CLI selector (2026-10-01)
 
 `drive:import:dry-run`에 PostgreSQL 기본/Mongo shadow exact CLI selector를 연결했다. 명령 이름과 달리 이력은 쓰므로 Mongo 선택은 준비된 Drive writer namespace만 열고, 부분 namespace는 source 호출이나 수정 없이 거부한다. [상세 범위](mongodb-drive-import-cli-composition.md). 실제 Drive·운영 실행·예약·배포·백업·복구와 최종 이전은 미완료다.
+
+## 배포 selector manifest 사전 점검 (2026-10-01)
+
+production composition의 기능군 selector 35개를 manifest와 `.env.example`의 PostgreSQL 기본값으로 고정하고 정적 점검 CLI를 추가했다. 완전한 Mongo 기대 모드는 모든 selector·공통 shadow/PII 설정과 migration 비활성화를 요구한다. [상세 범위](mongodb-deployment-selector-check.md). 실제 DB readiness·Coolify/예약 설정·A/B 백업/복원·복사·최종 전환은 검증하거나 변경하지 않는다.

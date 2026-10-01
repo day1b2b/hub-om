@@ -11,7 +11,7 @@ function decodeCanonicalKey(value: unknown): Buffer | null {
 }
 
 function assertPrivacyEnvironment(env: MongoCompositionEnvironment): void {
-  const active = env.PII_ACTIVE_KEY_ID?.trim() ?? "";
+  const active = env.PII_ACTIVE_KEY_ID ?? "";
   let values: unknown;
   try { values = JSON.parse(env.PII_ENCRYPTION_KEYS ?? ""); }
   catch { throw new Error("privacy"); }
