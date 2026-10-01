@@ -466,3 +466,7 @@ Drive 최근 조회 결과 화면에 PostgreSQL 기본/Mongo shadow selector를 
 ## Health 기능군 selector (2026-10-01)
 
 health API에 PostgreSQL 기본/Mongo shadow selector를 연결하고 databaseHealth 단일 잠금 scope에서 ping한다. 기존 200/503 응답과 오류 비노출을 유지하며 collection을 준비하거나 수정하지 않는다. [상세 범위](mongodb-health-composition.md). 이는 연결 liveness일 뿐 schema·복호화·cutover readiness가 아니며 운영 이전은 미완료다.
+
+## 관리자 백업 기능군 selector (2026-10-01)
+
+관리자 코치 JSON 다운로드에 PostgreSQL 기본/Mongo shadow selector를 연결하고 백업 읽기·요청 감사를 같은 잠금 scope로 연다. [상세 범위](mongodb-admin-backup-composition.md). 전체 DB 복구 백업·운영 A/B 백업·최종 이전은 미완료다.

@@ -101,3 +101,7 @@ Drive 결과 snapshot의 회사명·과정명은 2026-09-30 암호화 정책·co
 ## 2026-10-01 Health composition 후속
 
 `feature/20261001-health-composition`에서 `/api/health`의 exact selector와 databaseHealth 단일 scope를 검증했다. 실제 Mongo ping, PostgreSQL fallback 0건과 collection 생성 0건을 확인했다. 기록은 `../../.claude/plans/mongodb-health-composition/`을 따른다. schema/readiness·production 배포·실데이터 이전과 `dev → main`은 미완료다.
+
+## 2026-10-01 관리자 백업 composition 후속
+
+`feature/20261001-admin-backup-composition`에서 코치 JSON export의 exact selector와 백업·감사 scope를 검증했다. 이는 전체 복구 백업이 아니며 운영 A/B 백업·복원·이전과 `dev → main`은 미완료다.

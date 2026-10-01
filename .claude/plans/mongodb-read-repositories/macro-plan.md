@@ -384,3 +384,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 2026-10-01 Health composition selector 후속
 
 `feature/20261001-health-composition`에서 `/api/health`에 PostgreSQL 기본/Mongo shadow exact selector를 연결한다. databaseHealth 단일 scope로 ping만 수행하고 기존 200/503 응답, 무fallback과 오류 비노출을 검증한다. 실행·리뷰·통합은 `../mongodb-health-composition/` 기록을 따른다. schema/readiness·production 배포·실데이터 이전과 `dev → main`은 미완료다.
+
+## 2026-10-01 관리자 백업 composition selector 후속
+
+`feature/20261001-admin-backup-composition`에서 관리자 백업 POST에 PostgreSQL 기본/Mongo shadow exact selector를 연결한다. adminBackup·requestActivity를 같은 잠금 scope로 열며 전체 복구 백업과 구분한다. 기록은 `../mongodb-admin-backup-composition/`을 따른다.
