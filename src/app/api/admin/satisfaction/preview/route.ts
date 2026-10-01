@@ -5,6 +5,7 @@ import { parseGoogleSpreadsheetUrl } from "@/lib/data/googleSheetsImport";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { getSatisfactionSource } from "@/lib/data/satisfactionSource";
 import { matchSatisfactionRow, sheetValuesToRows } from "@/lib/data/satisfactionSheet";
+import { runSatisfactionRequest } from "@/lib/data/satisfactionComposition";
 import type { OperationCandidate } from "@/lib/data/operationMatch/matchOperation";
 
 export const dynamic = "force-dynamic";
@@ -127,4 +128,4 @@ async function activityPOST(request: Request) {
   }
 }
 
-export const POST = withActivity("/api/admin/satisfaction/preview", "POST", activityPOST);
+export const POST = withActivity("/api/admin/satisfaction/preview", "POST", activityPOST, runSatisfactionRequest);

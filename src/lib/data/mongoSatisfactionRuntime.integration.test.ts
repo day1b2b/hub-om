@@ -4,6 +4,7 @@ import { registerHooks } from "node:module";
 import { mock, test } from "node:test";
 import { MongoClient, type CommandStartedEvent } from "mongodb";
 import { runWithDataRepositories } from "./dataRepositoryContext";
+import { runSatisfactionRequest, type SatisfactionCompositionDependencies } from "./satisfactionComposition";
 import { MONGO_SATISFACTION_RUNTIME_MODELS, openMongoSatisfactionRuntime, prepareMongoSatisfactionRuntime } from "./mongoSatisfactionRuntime";
 import { MongoOperationStore } from "./mongoOperationStore";
 import type { CreateOperationInput } from "./operationTypes";
@@ -13,6 +14,7 @@ mock.module("@/auth", { namedExports: { auth: async () => ({ user: admin, expire
 let pgCalls = 0;
 mock.module("@prisma/adapter-pg", { namedExports: { PrismaPg: class { constructor() { pgCalls++; throw new Error("PG_TRIPWIRE"); } } } });
 mock.module("pg", { namedExports: { Pool: class { constructor() { pgCalls++; throw new Error("PG_TRIPWIRE"); } } }, defaultExport: { Pool: class { constructor() { pgCalls++; throw new Error("PG_TRIPWIRE"); } } } });
+let defaultSourceCalls = 0, defaultRows: string[][] = [];
 const hooks = registerHooks({ resolve(specifier, context, next) {
   return next(specifier === "next/server" || specifier === "next/navigation" ? `${specifier}.js` : specifier, context);
 } });
@@ -61,8 +63,13 @@ test("all satisfaction handlers use one prepared locked Mongo runtime", { skip: 
     satisfactionSource: { async readRows(spreadsheetId: string, tabTitle: string) {
       sourceCalls++; assert.equal(spreadsheetId, "SYNTHETIC_SHEET"); assert.equal(tabTitle, "eduops_log"); return rows;
     } } };
-  const fetchMock = mock.method(globalThis, "fetch", async () => { fetchCalls++; throw new Error("FETCH_TRIPWIRE"); });
-  const infoMock = mock.method(console, "info", () => {});
+  const fetchMock = mock.method(globalThis, "fetch", async (input: string | URL | Request) => {
+    const url = String(input instanceof Request ? input.url : input); fetchCalls++;
+    if (url === "https://oauth2.googleapis.com/token") return Response.json({ access_token: "synthetic-google-token", expires_in: 3600 });
+    if (url.startsWith("https://sheets.googleapis.com/")) { defaultSourceCalls++; return Response.json({ values: defaultRows }); }
+    throw new Error("FETCH_TRIPWIRE");
+  });
+  const infoLogs: string[] = [], infoMock = mock.method(console, "info", (...values: unknown[]) => { infoLogs.push(values.map(String).join(" ")); });
   try {
     await client.connect();
     const runtime = await prepareMongoSatisfactionRuntime(options), store = new MongoOperationStore(options, MONGO_SATISFACTION_RUNTIME_MODELS);
@@ -92,6 +99,34 @@ test("all satisfaction handlers use one prepared locked Mongo runtime", { skip: 
     const final = await runtime.repositories.operations.getOperationById(created.operationId);
     assert.equal(final?.avgSatisfaction, "4.75"); assert.equal(final?.instructorSatisfaction, "4.25");
     assert.equal(sourceCalls, 3); assert.equal(fetchCalls, 0); assert.equal(pgCalls, 0);
+
+    const compositionNamespace = `shadow_satisfaction_composition_${randomBytes(6).toString("hex")}`;
+    const compositionRuntime = await prepareMongoSatisfactionRuntime({ ...options, namespace: compositionNamespace });
+    const compositionStore = new MongoOperationStore({ ...options, namespace: compositionNamespace }, MONGO_SATISFACTION_RUNTIME_MODELS);
+    const compositionCreated = await compositionRuntime.repositories.operations.createOperation(input()); defaultRows = rows;
+    const compositionEnvironment = { ...env, SATISFACTION_BACKEND: "mongodb-shadow", MONGODB_URI: uri!, MONGODB_SHADOW_DATABASE: databaseName, MONGODB_SHADOW_NAMESPACE: compositionNamespace,
+      GOOGLE_CAL_OAUTH_CLIENT_ID: "synthetic-client", GOOGLE_CAL_OAUTH_CLIENT_SECRET: "synthetic-secret", GOOGLE_CAL_OAUTH_REFRESH_TOKEN: "synthetic-refresh" };
+    const routeSaved = new Map(Object.keys(compositionEnvironment).map(name => [name, process.env[name]])); Object.assign(process.env, compositionEnvironment);
+    async function compositionPost(route: { POST(request: Request): Promise<Response> }, path: string, body: Record<string, unknown>, token?: string) {
+      const response = await route.POST(new Request(`https://example.invalid${path}`, { method: "POST", headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body) }));
+      assert.equal(response.status, 200, JSON.stringify(await response.clone().json())); const id = response.headers.get("X-Request-Id"); assert.ok(id); assert.ok(await compositionStore.one("ActivityRequest", { _id: id })); return response.json();
+    }
+    try {
+      assert.equal((await compositionPost(previewRoute, "/api/admin/satisfaction/preview", {})).stats.matched, 1);
+      assert.equal((await compositionPost(applyRoute, "/api/admin/satisfaction/apply", {})).stats.applied, 1);
+      assert.equal((await compositionPost(linkRoute, "/api/admin/satisfaction/link", { recordId, operationId: compositionCreated.id })).skipped.length, 1);
+      assert.equal((await compositionPost(roundRoute, "/api/satisfaction/round-apply", { courseId, date, overall: "4.75", instructorSatisfaction: "4.25", manager: "private-manager@example.invalid" }, "synthetic-satisfaction-secret")).applied, true);
+    } finally { for (const [name, value] of routeSaved) { if (value === undefined) delete process.env[name]; else process.env[name] = value; } }
+    assert.equal(defaultSourceCalls, 3); assert.equal(pgCalls, 0); assert.equal(fetchCalls, 4);
+    for (const privateValue of [admin.email, recordId, "private-manager@example.invalid"]) assert.equal(infoLogs.join("\n").includes(privateValue), false);
+    const compositionFinal = await compositionRuntime.repositories.operations.getOperationById(compositionCreated.operationId); assert.equal(compositionFinal?.avgSatisfaction, "4.75");
+
+    const dependencies: SatisfactionCompositionDependencies = { createClient() { return new MongoClient(uri!, { directConnection: true, serverSelectionTimeoutMS: 5_000 }); }, source: options.satisfactionSource, openRuntime: input => openMongoSatisfactionRuntime({ ...input, client: input.client as MongoClient }) };
+    const compositionPartialNamespace = `shadow_satisfaction_composition_partial_${randomBytes(6).toString("hex")}`, compositionPartial = new MongoOperationStore({ ...options, namespace: compositionPartialNamespace });
+    await compositionPartial.db.createCollection(`${compositionPartialNamespace}_LegacyOnly`, { validator: { marker: { $type: "string" } }, validationLevel: "strict", validationAction: "error" }); await compositionPartial.db.collection(`${compositionPartialNamespace}_LegacyOnly`).insertOne({ marker: "unchanged" });
+    const compositionPartialBefore = await snapshot(compositionPartial); let partialWorkCalls = 0;
+    await assert.rejects(runSatisfactionRequest(async () => { partialWorkCalls++; return "unexpected"; }, { ...compositionEnvironment, MONGODB_SHADOW_NAMESPACE: compositionPartialNamespace }, dependencies), /SATISFACTION_COMPOSITION_FAILED/);
+    assert.equal(partialWorkCalls, 0); assert.deepEqual(await snapshot(compositionPartial), compositionPartialBefore);
 
     const second = await prepareMongoSatisfactionRuntime({ ...options, namespace: `shadow_satisfaction_second_${randomBytes(6).toString("hex")}` });
     let callbacks = 0; assert.throws(() => runtime.run(() => second.run(() => { callbacks++; })), /CALENDAR_SCOPE_MISMATCH/);

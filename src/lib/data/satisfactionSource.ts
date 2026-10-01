@@ -1,6 +1,5 @@
 import { getDataRepositoryOverride } from "./dataRepositoryContext";
-import { readGoogleSheetRows } from "./googleSheetsImport";
-import { getGoogleB2BAccessToken } from "../googleCalendar/calendarWriteClient";
+import { readDefaultSatisfactionRows } from "./satisfactionDefaultSource";
 
 export interface SatisfactionSource {
   readRows(spreadsheetId: string, tabTitle: string): Promise<string[][]>;
@@ -8,8 +7,7 @@ export interface SatisfactionSource {
 
 const defaultSource: SatisfactionSource = Object.freeze({
   async readRows(spreadsheetId: string, tabTitle: string) {
-    const accessToken = await getGoogleB2BAccessToken();
-    return readGoogleSheetRows(accessToken, spreadsheetId, tabTitle);
+    return readDefaultSatisfactionRows(spreadsheetId, tabTitle);
   }
 });
 

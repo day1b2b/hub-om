@@ -6,6 +6,7 @@ import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { getSatisfactionSource } from "@/lib/data/satisfactionSource";
 import { planSatisfactionApply } from "@/lib/data/satisfactionApplyPlan";
 import { matchSatisfactionRow, sheetValuesToRows } from "@/lib/data/satisfactionSheet";
+import { runSatisfactionRequest } from "@/lib/data/satisfactionComposition";
 import type { OperationCandidate } from "@/lib/data/operationMatch/matchOperation";
 
 export const dynamic = "force-dynamic";
@@ -24,8 +25,6 @@ export const dynamic = "force-dynamic";
 async function activityPOST(request: Request) {
   const access = await authorizeSatisfactionMatching();
   if (!access.ok) return access.response;
-  const { session } = access;
-
   try {
     const body = (await request.json().catch(() => ({}))) as {
       spreadsheetUrl?: string;
@@ -78,9 +77,7 @@ async function activityPOST(request: Request) {
       try {
         await repository.updateOperation(item.operationId, { avgSatisfaction: item.value });
         applied.push({ course: item.course, date: item.date, overall: item.value, operation: item.label });
-        console.info(
-          `[satisfaction:apply] by=${session.user?.email ?? "unknown"} operationId=${item.operationId} value=${item.value} recordId=${item.recordId}`
-        );
+        console.info("[satisfaction:apply] applied");
       } catch (error) {
         failed.push({
           course: item.course,
@@ -105,4 +102,4 @@ async function activityPOST(request: Request) {
   }
 }
 
-export const POST = withActivity("/api/admin/satisfaction/apply", "POST", activityPOST);
+export const POST = withActivity("/api/admin/satisfaction/apply", "POST", activityPOST, runSatisfactionRequest);
