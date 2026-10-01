@@ -564,3 +564,7 @@ Notion·계약·일정·전체 동기화 네 API의 GET/POST에 PostgreSQL 기�
 ## 코치 메모 API selector (2026-10-01)
 
 코치 메모 목록·생성 API를 기존 변경 내역 기능군의 PostgreSQL 기본/Mongo shadow selector에 연결했다. 수정·삭제와 같은 coachContent·requestActivity 잠금 scope를 사용하며 실제 요청·업무 감사, 암호화 저장과 부분 namespace 무수정 거부를 확인했다. [상세 범위](mongodb-coach-notes-composition.md). production 배포·운영 데이터·최종 전환은 미완료다.
+
+## 코치 일정 현황 API selector (2026-10-01)
+
+관리자 일정 등록 현황과 일정 상태 조회 API를 기존 changes selector에 연결했다. coachContent·requestActivity scope에서 기존 DTO·월 검증과 요청 감사를 확인했다. [상세 범위](mongodb-coach-schedule-admin-composition.md). 운영 이전은 미완료다.

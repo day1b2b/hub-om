@@ -191,3 +191,7 @@ Drive 결과 snapshot의 회사명·과정명은 2026-09-30 암호화 정책·co
 ## 2026-10-01 코치 메모 API composition 후속
 
 `feature/20261001-coach-notes-composition`에서 코치 메모 목록·생성 API를 기존 `CHANGES_BACKEND` exact selector에 연결했다. 수정·삭제와 같은 잠금 scope에서 요청·업무 감사, 암호화 저장과 부분 namespace 불변을 확인했다. 기록은 `../../.claude/plans/mongodb-coach-notes-composition/`을 따른다. production 배포·운영 데이터·A/B 백업·복원·최종 전환과 `dev → main`은 미완료다.
+
+## 2026-10-01 코치 일정 현황 API composition 후속
+
+`feature/20261001-coach-schedule-admin-composition`에서 관리자 일정 등록 현황과 일정 상태 GET을 기존 changes exact selector에 연결했다. 기록은 `../../.claude/plans/mongodb-coach-schedule-admin-composition/`을 따른다. production 배포·운영 데이터·최종 전환과 `dev → main`은 미완료다.
