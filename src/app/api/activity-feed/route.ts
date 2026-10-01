@@ -1,5 +1,6 @@
 import { getActivityReadRepository } from "@/lib/data/activityReads/activityReadRepositoryFactory";
 import { authorizeActivityFeed, feedQuery } from "@/lib/activity/feed";
+import { runActivityReadRequest } from "@/lib/data/activityReadComposition";
 export const dynamic = "force-dynamic";
 const headers = { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" };
 
@@ -10,7 +11,7 @@ export async function GET(request: Request) {
   try { filters = feedQuery(new URL(request.url).searchParams); }
   catch (error) { return Response.json({ error: error instanceof Error ? error.message : "조회 조건 오류" }, { status: 400, headers }); }
   try {
-    const result = await getActivityReadRepository().feed(filters);
+    const result = await runActivityReadRequest(() => getActivityReadRepository().feed(filters));
     return Response.json(result, { headers });
   } catch {
     return Response.json({ error: "활동 기록 저장소를 확인할 수 없습니다." }, { status: 503, headers });
