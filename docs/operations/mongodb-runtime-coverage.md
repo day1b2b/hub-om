@@ -491,6 +491,10 @@ Hubbot POST에 PostgreSQL 기본/Mongo shadow selector를 연결하고 responder
 
 코치 관리자 페이지의 삭제 수, 분야·커리큘럼 마스터 API와 삭제 코치 목록·복원·명시 영구삭제 API에 PostgreSQL 기본/Mongo shadow selector를 연결했다. 기존 soft-delete·복원·관리자 영구삭제 의미와 request/business audit를 유지했다. [상세 범위](mongodb-coach-admin-composition.md). production 배포·운영 데이터·브라우저 전체 흐름·최종 전환은 미완료다.
 
+## 코치 관리 API selector (2026-10-01)
+
+코치 목록·생성과 단건 조회·수정·상태 변경·삭제 API에 PostgreSQL 기본/Mongo shadow exact selector를 연결했다. 실제 `withActivity` 경계를 포함한 여섯 handler가 같은 Mongo namespace에서 CRUD와 요청 감사를 수행하고, PostgreSQL fallback 없이 개인정보 평문을 저장하지 않는지 확인했다. [상세 범위](mongodb-coach-management-composition.md). production 배포·운영 데이터·브라우저 전체 흐름·최종 전환은 미완료다.
+
 ## 관리자 DB 기능군 selector (2026-10-01)
 
 관리자 DB 페이지와 셀 수정 API에 PostgreSQL 기본/Mongo shadow selector를 연결했다. 페이지의 DB·담당자 조회와 PATCH의 업무·요청 감사를 같은 잠금 scope에서 실행하고 기존 검증·rollback 의미를 유지했다. [상세 범위](mongodb-admin-database-composition.md). production 배포·운영 데이터·브라우저 전체 상호작용·최종 전환은 미완료다.

@@ -179,3 +179,7 @@ Drive 결과 snapshot의 회사명·과정명은 2026-09-30 암호화 정책·co
 ## 2026-10-01 코치 공개 화면 composition 후속
 
 `feature/20261001-coach-public-composition`에서 코치·강사 공개 화면 6개의 PostgreSQL 기본/Mongo shadow exact selector를 검증했다. 기록은 `../../.claude/plans/mongodb-coach-public-composition/`을 따른다. production 배포·운영 데이터·브라우저 전체 흐름·A/B 백업·각 복원·복사·최종 전환과 `dev → main`은 미완료다.
+
+## 2026-10-01 코치 관리 API composition 후속
+
+`feature/20261001-coach-management-composition`에서 코치 목록·생성과 단건 조회·수정·상태 변경·삭제 API의 PostgreSQL 기본/Mongo shadow exact selector를 검증했다. 실제 request audit, 개인정보 평문 비노출, PostgreSQL fallback 0건과 부분 namespace 불변을 확인했다. 기록은 `../../.claude/plans/mongodb-coach-management-composition/`을 따른다. production 배포·운영 데이터·브라우저 전체 흐름·A/B 백업·각 복원·복사·최종 전환과 `dev → main`은 미완료다.
