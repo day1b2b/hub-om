@@ -450,3 +450,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 2026-10-01 강의 후속 알림 composition selector 후속
 
 `feature/20261001-lecture-followup-composition`에서 GET 미리보기와 POST 발송에 exact selector를 연결한다. 기존 원자 선점 runtime과 Slack port·요청 감사를 같은 잠금 scope로 열고 실제 composition의 권한·발송·감사와 부분 namespace 불변을 검증한다. 기록은 `../mongodb-lecture-followup-composition/`을 따른다. 실제 Slack·Coolify 예약·production 배포·운영 데이터·실데이터 이전·A/B 복원·최종 전환과 `dev → main`은 미완료다.
+
+## 2026-10-01 코치 동기화 예약 작업 composition selector 후속
+
+`feature/20261001-sync-jobs-composition`에서 Notion·계약·일정·전체 동기화 네 API에 exact selector를 연결한다. 저장 repository·source port·실행 로그·요청 감사를 같은 잠금 namespace로 열고 실제 route selector와 부분 namespace 불변을 검증한다. 기록은 `../mongodb-sync-jobs-composition/`을 따른다. 실제 원천·Coolify 예약·production 배포·운영 데이터·실데이터 이전·A/B 복원·최종 전환과 `dev → main`은 미완료다.
