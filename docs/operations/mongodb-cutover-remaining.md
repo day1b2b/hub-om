@@ -151,3 +151,7 @@ Drive 결과 snapshot의 회사명·과정명은 2026-09-30 암호화 정책·co
 ## 2026-10-01 OM 요청 화면 composition 후속
 
 `feature/20261001-om-request-pages-composition`에서 등록·관리·상세·수정·완료 화면의 PostgreSQL 기본/Mongo shadow exact selector를 검증했다. 인증을 Mongo 연결보다 먼저 유지하고 실제 composition의 저장 상태 불변과 부분 namespace 무수정 거부를 확인했다. 기록은 `../../.claude/plans/mongodb-om-request-pages-composition/`을 따른다. 쓰기 API selector·production 배포·운영 데이터·실제 외부 원천·A/B 백업·각 복원·복사·최종 전환과 `dev → main`은 미완료다.
+
+## 2026-10-01 OM 요청 쓰기 composition 후속
+
+`feature/20261001-om-request-write-composition`에서 생성·수정·삭제와 배정 API의 PostgreSQL 기본/Mongo shadow exact selector를 검증했다. 실제 composition의 네 effect port와 요청 감사, 실패 후 core 저장 보존과 부분 namespace 무수정 거부를 확인했다. 기록은 `../../.claude/plans/mongodb-om-request-write-composition/`을 따른다. 실제 Slack/Calendar·production 배포·운영 데이터·A/B 백업·각 복원·복사·최종 전환과 `dev → main`은 미완료다.

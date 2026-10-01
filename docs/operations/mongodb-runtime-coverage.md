@@ -524,3 +524,7 @@ Hubbot POST에 PostgreSQL 기본/Mongo shadow selector를 연결하고 responder
 ## OM 요청 화면 기능군 selector (2026-10-01)
 
 OM 요청 등록·관리·상세·수정·완료 화면에 PostgreSQL 기본/Mongo shadow 명시 selector를 연결했다. 인증을 연결보다 먼저 유지하고 기존 operation-pages runtime의 전체 잠금 scope를 재사용했다. 실제 composition의 권한·redirect·404, borrowed 맞춤 도구, 저장 상태 불변과 부분 namespace 무수정 거부를 확인했다. [상세 범위](mongodb-om-request-pages-composition.md). 쓰기 API selector·production 배포·운영 데이터·브라우저 전체 흐름·최종 이전은 미완료다.
+
+## OM 요청 쓰기 기능군 selector (2026-10-01)
+
+생성·수정·삭제와 배정 미리보기·확정 API에 PostgreSQL 기본/Mongo shadow 명시 selector를 연결했다. Calendar-aware runtime과 네 effect port, 요청 감사를 같은 잠금 scope로 열고 실제 composition에서 호출·payload·best-effort 실패 의미와 부분 namespace 불변을 확인했다. [상세 범위](mongodb-om-request-write-composition.md). 실제 Slack/Calendar·production 배포·운영 데이터·최종 이전은 미완료다.

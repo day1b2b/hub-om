@@ -442,3 +442,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 2026-10-01 OM 요청 화면 composition selector 후속
 
 `feature/20261001-om-request-pages-composition`에서 등록·관리·상세·수정·완료 화면에 exact selector를 연결한다. 인증을 연결보다 먼저 유지하고 기존 operation-pages runtime과 borrowed 맞춤 도구를 재사용한다. 기록은 `../mongodb-om-request-pages-composition/`을 따른다. 쓰기 API selector·production 배포·운영 데이터·실데이터 이전·A/B 복원·최종 전환과 `dev → main`은 미완료다.
+
+## 2026-10-01 OM 요청 쓰기 composition selector 후속
+
+`feature/20261001-om-request-write-composition`에서 생성·수정·삭제와 배정 API에 exact selector를 연결한다. Calendar-aware runtime과 네 effect port, 요청 감사를 같은 잠금 scope로 열고 effect 실패 뒤 core 저장 보존을 검증한다. 기록은 `../mongodb-om-request-write-composition/`을 따른다. 실제 외부 원천·production 배포·운영 데이터·실데이터 이전·A/B 복원·최종 전환과 `dev → main`은 미완료다.
