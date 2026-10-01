@@ -5,6 +5,7 @@ import { mock, test } from "node:test";
 import { MongoClient } from "mongodb";
 import { prepareMongoInstructorWikiRuntime, MONGO_INSTRUCTOR_WIKI_RUNTIME_MODELS } from "./mongoInstructorWikiRuntime";
 import { MongoOperationStore } from "./mongoOperationStore";
+import { decodeMongoRuntimeDocument } from "./mongoRuntimeCodec";
 
 const adminEmail = "instructor-wiki-admin@day1company.co.kr";
 let session: { user: { email: string; name: string }; expires: string } | null = {
@@ -107,14 +108,34 @@ test("instructor wiki save and link routes use one selected Mongo scope", { skip
     assert.equal(source.notionId, "11111111111111111111111111111111");
 
     const store = new MongoOperationStore(options, MONGO_INSTRUCTOR_WIKI_RUNTIME_MODELS);
-    assert.equal(await store.collection("ActivityRequest").countDocuments(), 2);
-    assert.equal(await store.collection("ActivityChange").countDocuments({ targetType: "instructor_notes" }), 2);
+    session = { user: { email: "instructor-wiki-member@day1company.co.kr", name: "Synthetic wiki member" }, expires: "" };
+    const memberSave = await saveRoute.POST(request("/api/instructor-wiki/save", {
+      name: "Synthetic source instructor",
+      recruitAvoid: false
+    }));
+    assert.equal(memberSave.status, 200);
+    const noteCollection = store.collection("InstructorNote");
+    const beforeDeniedLink = await noteCollection.find({}).sort({ _id: 1 }).toArray();
+    const deniedLink = await linkRoute.POST(request("/api/instructor-wiki/link", {
+      name: "Synthetic source instructor",
+      targetName: "Synthetic target instructor"
+    }));
+    assert.equal(deniedLink.status, 403);
+    assert.deepEqual(await noteCollection.find({}).sort({ _id: 1 }).toArray(), beforeDeniedLink);
+
+    const requests = await store.collection("ActivityRequest").find({}).toArray();
+    assert.equal(requests.length, 4);
+    assert.ok(requests.map(row => decodeMongoRuntimeDocument("ActivityRequest", row))
+      .some(row => row.route === "/api/instructor-wiki/link" && row.status === 403));
+    assert.equal(await store.collection("ActivityChange").countDocuments({ targetType: "instructor_notes" }), 3);
     const raw = JSON.stringify(await Promise.all(
       MONGO_INSTRUCTOR_WIKI_RUNTIME_MODELS.map(model => store.collection(model).find({}).toArray())
     ));
     for (const value of [
       adminEmail,
       "Synthetic wiki admin",
+      "instructor-wiki-member@day1company.co.kr",
+      "Synthetic wiki member",
       "Synthetic source instructor",
       "Synthetic target instructor",
       "Synthetic private instructor note",
@@ -127,7 +148,7 @@ test("instructor wiki save and link routes use one selected Mongo scope", { skip
       (error: unknown) => error instanceof Error && String((error as Error & { digest?: unknown }).digest).includes("NEXT_REDIRECT")
     );
     assert.deepEqual(await check.run(() => check.repositories.instructorNote.getNote("Denied instructor")), {});
-    assert.equal(await store.collection("ActivityRequest").countDocuments(), 3);
+    assert.equal(await store.collection("ActivityRequest").countDocuments(), 5);
 
     const partial = `shadow_partial_${randomBytes(6).toString("hex")}`;
     const prefix = `${partial}_`;
