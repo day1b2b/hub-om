@@ -4,3 +4,4 @@
 - 외부 adapter env 고정·복원, Drive fetch 0, 미설정 결과 확인
 - 전체 회귀 1,279/166/0, typecheck·build, lint 0/7
 - 독립 리뷰 P2 보완 후 P0-P3 0
+- 총괄 통합: `41edf6f`에서 fast-forward 확인
