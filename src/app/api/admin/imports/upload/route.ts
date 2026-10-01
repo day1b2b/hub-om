@@ -4,6 +4,7 @@ import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { storeParsedImport } from "@/lib/data/importStagingWriter";
 import { parseImportFile, parseXlsxImport } from "@/lib/data/importUploadParser";
 import type { SourceTeam } from "@prisma/client";
+import { runImportStagingRequest } from "@/lib/data/importStagingComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -104,4 +105,4 @@ function inferSourceType(fileName: string) {
   return "upload";
 }
 
-export const POST = withActivity("/api/admin/imports/upload", "POST", activityPOST);
+export const POST = withActivity("/api/admin/imports/upload", "POST", activityPOST, work => runImportStagingRequest("upload", work));
