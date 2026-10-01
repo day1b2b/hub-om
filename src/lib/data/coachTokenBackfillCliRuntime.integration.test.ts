@@ -9,6 +9,16 @@ import { MongoOperationStore } from "./mongoOperationStore";
 import { encodeMongoRuntimeDocument } from "./mongoRuntimeCodec";
 
 const uri = process.env.MONGODB_COACH_TOKEN_BACKFILL_CLI_TEST_URI;
+async function snapshotNamespace(client: MongoClient, databaseName: string, prefix: string) {
+  const result: Record<string, unknown> = {};
+  const collections = (await client.db(databaseName).listCollections({}, { nameOnly: false }).toArray())
+    .filter(info => info.name.startsWith(prefix)).sort((a, b) => a.name.localeCompare(b.name));
+  for (const info of collections) {
+    const collection = client.db(databaseName).collection(info.name);
+    result[info.name] = { info, indexes: await collection.listIndexes().toArray(), rows: await collection.find({}).sort({ _id: 1 }).toArray() };
+  }
+  return result;
+}
 
 test("coach token backfill real CLI selector uses only a prepared Mongo shadow", { skip: !uri, timeout: 120_000 }, async () => {
   const target = new URL(uri!); assert.equal(target.hostname, "127.0.0.1"); assert.ok(target.port);
@@ -39,12 +49,14 @@ test("coach token backfill real CLI selector uses only a prepared Mongo shadow",
     const raw = JSON.stringify(applied); assert.equal(raw.includes("synthetic-fallback-token"), false); assert.equal(raw.includes("synthetic-same-token"), false);
 
     const partial = `shadow_partial_${randomBytes(6).toString("hex")}`;
+    await client.db(databaseName).createCollection(`${partial}_LegacyOnly`, { validator: { marker: { $type: "string" } }, validationLevel: "strict", validationAction: "error" });
     const collection = client.db(databaseName).collection(`${partial}_LegacyOnly`);
+    await collection.createIndex({ marker: 1 }, { unique: true, name: "legacy_marker_unique" });
     await collection.insertOne({ marker: "unchanged" });
-    const before = await collection.find({}).toArray();
+    const before = await snapshotNamespace(client, databaseName, `${partial}_`);
     process.env.MONGODB_SHADOW_NAMESPACE = partial;
     await assert.rejects(runCoachTokenBackfillCli(args, process.env, () => {}), /^Error: COACH_TOKEN_BACKFILL_FAILED$/);
-    assert.deepEqual(await collection.find({}).toArray(), before);
+    assert.deepEqual(await snapshotNamespace(client, databaseName, `${partial}_`), before);
   } finally {
     try { await client.db(databaseName).dropDatabase(); } catch {}
     await client.close();
