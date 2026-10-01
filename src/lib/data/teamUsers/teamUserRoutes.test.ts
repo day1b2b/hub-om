@@ -18,7 +18,8 @@ function route(relative: string): Record<string, Handler> {
     "next/server": { NextResponse: { json: (body: unknown, options?: ResponseInit) => Response.json(body, options) } },
     "@/lib/auth/apiAdminGuard": { denyIfNotAdmin: async () => allowed ? null : Response.json({ error: "Synthetic denied" }, { status: 403 }) },
     "@/lib/data/teamUsers/teamUserRepository": facade,
-    "@/lib/data/teamUsers/teamUserTypes": { TEAM_OPTIONS }
+    "@/lib/data/teamUsers/teamUserTypes": { TEAM_OPTIONS },
+    "@/lib/data/userAdminComposition": { runUserAdminRequest: async <T>(work: () => Promise<T>) => work() }
   };
   const exports: Record<string, Handler> = {};
   new Function("require", "exports", javascript)((name: string) => { assert.ok(Object.hasOwn(modules, name), "unexpected route import"); return modules[name]; }, exports);

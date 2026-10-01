@@ -63,7 +63,7 @@ test("user admin runtime composes roster writes, token lookup, deletion policy a
     await client.connect(); connected = true;
     const databases = await client.db("admin").admin().listDatabases({ nameOnly: true });
     assert.equal(databases.databases.some(row => row.name === databaseName), false); ownsDatabase = true;
-    const second = await prepareMongoUserAdminRuntime({ ...options, namespace: "shadow_user_admin_second" });
+    const second = await prepareMongoUserAdminRuntime({ ...options, namespace: "shadow_peer_user_admin" });
     const runtime = await prepareMongoUserAdminRuntime(options), store = new MongoOperationStore(options, MONGO_USER_ADMIN_RUNTIME_MODELS);
     const ready = await snapshot(namespace); writes.length = 0;
     await prepareMongoUserAdminRuntime(options); await openMongoUserAdminRuntime(options);
