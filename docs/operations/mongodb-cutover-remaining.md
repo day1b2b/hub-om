@@ -215,3 +215,7 @@ Drive 결과 snapshot의 회사명·과정명은 2026-09-30 암호화 정책·co
 ## 2026-10-01 코치 접근 토큰 보완 CLI composition 후속
 
 `feature/20261001-coach-token-backfill-cli-composition`에서 기존 유지보수 CLI에 PostgreSQL 기본/Mongo shadow exact selector를 연결했다. 준비된 namespace만 열고 기존 apply 확인 플래그를 유지한다. 실제 백업·maintenance·운영 적용·복구와 `dev → main`은 미완료다.
+
+## 2026-10-01 Drive 가져오기 CLI composition 후속
+
+`feature/20261001-drive-import-cli-composition`에서 이력을 쓰는 `drive:import:dry-run` 명령에 PostgreSQL 기본/Mongo shadow exact selector를 연결했다. 준비된 namespace만 열고 실제 Drive 대신 합성 source로 저장 경계를 검증했다. 실제 원천·운영 실행·예약·배포, A/B 백업·각 복원·실데이터 복사·최종 전환과 `dev → main`은 미완료다.

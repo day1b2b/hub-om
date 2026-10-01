@@ -20,15 +20,19 @@ function loadEnv(path) {
 }
 
 async function main() {
-  loadEnv(".env");
-  loadEnv(".env.local");
+  const argv = process.argv.slice(2);
+  let defaultEnvironmentLoaded = false;
+  const loadDefaultEnvironment = () => {
+    if (defaultEnvironmentLoaded) return;
+    loadEnv(".env");
+    loadEnv(".env.local");
+    defaultEnvironmentLoaded = true;
+  };
+  if (!argv.some(value => value.startsWith("--backend="))) loadDefaultEnvironment();
 
   // Defer application imports too: importing this CLI never loads env or opens storage.
-  const { parseDriveImportArgs, runDriveImportDryRun } = await import("../src/lib/driveImports/driveImportDryRun.ts");
-  const { getDriveImportWriterRepository } = await import("../src/lib/data/driveImportWriterFactory.ts");
-  const args = parseDriveImportArgs(process.argv.slice(2), process.env.DRIVE_IMPORT_DRY_RUN_CONCURRENCY);
-  const result = await runDriveImportDryRun(args, message => console.log(message));
-  await getDriveImportWriterRepository().close();
+  const { runDriveImportWriterCli } = await import("../src/lib/data/driveImportWriterCliRuntime.ts");
+  const result = await runDriveImportWriterCli(argv, process.env, loadDefaultEnvironment, message => console.log(message));
   console.log(JSON.stringify(result, null, 2));
 }
 

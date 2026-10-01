@@ -506,3 +506,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 2026-10-01 코치 접근 토큰 보완 CLI composition 후속
 
 총괄 `3ff9af4` 기준 기존 Mongo 토큰 보완 repository를 실제 CLI exact selector로 연결한다. 기본 PostgreSQL, 준비된 shadow open-only, 기존 백업·maintenance 확인을 유지하며 운영 적용은 하지 않는다. 실행·통합 기록은 `../mongodb-coach-token-backfill-cli-composition/`을 따른다.
+
+## 2026-10-01 Drive 가져오기 CLI composition 후속
+
+총괄 `9671c36` 기준 기존 Mongo Drive writer를 실제 `drive:import:dry-run` CLI exact selector로 연결한다. PostgreSQL 기본과 기존 환경 파일·인자·출력 의미를 유지하고 Mongo는 준비된 shadow만 연다. 합성 source와 실제 Mongo에서 이력 암호화 저장·부분 namespace 무수정 거부를 검증한다. 실행·통합 기록은 `../mongodb-drive-import-cli-composition/`을 따른다. 실제 Drive·운영 예약/배포·실데이터 이전과 `dev → main`은 미완료다.

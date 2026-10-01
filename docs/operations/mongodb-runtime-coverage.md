@@ -588,3 +588,7 @@ OM 요청용 회차 xlsx 템플릿 API에 PostgreSQL 기본/Mongo shadow exact s
 ## 코치 접근 토큰 보완 CLI selector (2026-10-01)
 
 `db:backfill:coach-access-tokens`에 PostgreSQL 기본/Mongo shadow exact CLI selector를 연결했다. Mongo 선택은 준비된 namespace만 열며 기존 백업·maintenance 확인 인자를 그대로 요구한다. [상세 범위](mongodb-coach-token-backfill-cli-composition.md). 실제 운영 backfill·백업·쓰기 중단·복구와 최종 이전은 미완료다.
+
+## Drive 가져오기 CLI selector (2026-10-01)
+
+`drive:import:dry-run`에 PostgreSQL 기본/Mongo shadow exact CLI selector를 연결했다. 명령 이름과 달리 이력은 쓰므로 Mongo 선택은 준비된 Drive writer namespace만 열고, 부분 namespace는 source 호출이나 수정 없이 거부한다. [상세 범위](mongodb-drive-import-cli-composition.md). 실제 Drive·운영 실행·예약·배포·백업·복구와 최종 이전은 미완료다.
