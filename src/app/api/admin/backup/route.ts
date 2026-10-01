@@ -2,6 +2,7 @@ import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertCoachPiiAccess } from "@/lib/auth/requireAdminSession";
 import { getAdminBackupRepository } from "@/lib/data/adminBackupFactory";
+import { runAdminBackupRequest } from "@/lib/data/adminBackupComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -60,4 +61,4 @@ function isAuthorizedBySecret(request: Request): boolean {
   return authorization === `Bearer ${configured}`;
 }
 
-export const POST = withActivity("/api/admin/backup", "POST", activityPOST);
+export const POST = withActivity("/api/admin/backup", "POST", activityPOST, runAdminBackupRequest);
