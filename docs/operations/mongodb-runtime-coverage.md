@@ -450,3 +450,7 @@ Hubbot POST의 합성 responder와 request audit를 같은 등록 shadow scope�
 ## 파일 가져오기 기능군 selector (2026-10-01)
 
 관리자 xlsx 양식과 파일 upload API에 PostgreSQL 기본/Mongo shadow selector를 연결했다. 동작별 최소 scope와 부분 namespace 무수정 거부를 확인했다. [상세 범위](mongodb-import-staging-composition.md). 운영 업로드·배포·운영 이전은 미완료다.
+
+## 가져오기 승격 기능군 selector (2026-10-01)
+
+운영 반영 API에 PostgreSQL 기본/Mongo shadow selector를 연결하고 기존 8-port Calendar runtime을 open-only로 재사용했다. [상세 범위](mongodb-import-promotion-composition.md). 운영 승격·실제 Google·운영 이전은 미완료다.

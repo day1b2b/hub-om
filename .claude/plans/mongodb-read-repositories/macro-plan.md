@@ -368,3 +368,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 2026-10-01 파일 가져오기 composition selector 후속
 
 `feature/20261001-import-staging-composition`에서 양식·파일 upload의 PostgreSQL 기본/Mongo shadow selector를 연결한다. 기존 parser/staging은 재사용한다. 운영 이전과 `dev → main`은 미완료다.
+
+## 2026-10-01 가져오기 승격 composition selector 후속
+
+기존 승격·Calendar 구현을 재사용해 PostgreSQL 기본/Mongo shadow selector를 연결한다. 실제 운영 이전과 `dev → main`은 미완료다.
