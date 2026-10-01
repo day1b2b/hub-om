@@ -323,3 +323,8 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 2026-10-01 OM 요청 쓰기 runtime 후속
 
 `feature/20261001-mongodb-om-request-write-runtime`에서 OM 요청 생성·수정·삭제와 전체 배정 API의 Mongo repository, request audit, 명시 effect port를 같은 잠금 scope로 조립한다. 실제 handler의 운영 자동 연결·맞춤 도구·합성 알림/Calendar, 암호화 저장·PG fallback 차단·legacy 부분 namespace 무수정 거부를 검증한다. 실행·독립 리뷰·통합은 `../mongodb-om-request-write-runtime/` 기록을 따른다. 실제 외부 원천·production selector·실데이터 이전/dev→main은 미완료다.
+
+
+## 2026-10-01 강의 후속 알림 runtime 후속
+
+`feature/20261001-mongodb-lecture-followup-runtime`에서 예약 알림 GET/POST의 operations·teamUsers·requestActivity와 Slack port와 Mongo HMAC 원자 선점 로그를 같은 잠금 scope로 조립한다. 실제 handler의 D+1/D+7, 동시 요청 중 하나만 발송, 완료 후 재실행, 대상별 발송 실패·완료 기록 실패·권한·감사·암호화·비공개 오류를 합성 검증한다. 실행·독립 리뷰·통합은 `../mongodb-lecture-followup-runtime/` 기록을 따른다. 외부 Slack과 단일 transaction인 exactly-once, 실제 Slack·Coolify 예약·production selector·운영 이전은 미완료다.
