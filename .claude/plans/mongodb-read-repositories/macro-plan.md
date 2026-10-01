@@ -380,3 +380,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 2026-10-01 Drive 조회 화면 composition selector 후속
 
 `feature/20261001-drive-import-page-composition`에서 `/drive-import-runs`에 PostgreSQL 기본/Mongo shadow exact selector를 연결한다. 기존 driveImportHistory·teamMembers repository와 workspace 권한·팀 범위·빈 상태를 유지하고 준비된 open-only scope, 오류 비노출과 부분 namespace 불변을 검증한다. 실행·리뷰·통합은 `../mongodb-drive-import-page-composition/` 기록을 따른다. 실제 Drive·production 배포·전체 앱 selector·실데이터 이전과 `dev → main`은 미완료다.
+
+## 2026-10-01 Health composition selector 후속
+
+`feature/20261001-health-composition`에서 `/api/health`에 PostgreSQL 기본/Mongo shadow exact selector를 연결한다. databaseHealth 단일 scope로 ping만 수행하고 기존 200/503 응답, 무fallback과 오류 비노출을 검증한다. 실행·리뷰·통합은 `../mongodb-health-composition/` 기록을 따른다. schema/readiness·production 배포·실데이터 이전과 `dev → main`은 미완료다.

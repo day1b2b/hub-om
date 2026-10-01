@@ -462,3 +462,7 @@ Hubbot POST의 합성 responder와 request audit를 같은 등록 shadow scope�
 ## Drive 조회 화면 기능군 selector (2026-10-01)
 
 Drive 최근 조회 결과 화면에 PostgreSQL 기본/Mongo shadow selector를 연결하고 기존 이력·담당자 명단 repository를 같은 잠금 scope로 연다. workspace 권한·팀 범위·빈 상태를 유지하고 부분 namespace는 자동 수리하지 않는다. [상세 범위](mongodb-drive-import-page-composition.md). 실제 Drive 실행·운영 데이터·배포 설정·전체 앱 selector와 최종 이전은 미완료다.
+
+## Health 기능군 selector (2026-10-01)
+
+health API에 PostgreSQL 기본/Mongo shadow selector를 연결하고 databaseHealth 단일 잠금 scope에서 ping한다. 기존 200/503 응답과 오류 비노출을 유지하며 collection을 준비하거나 수정하지 않는다. [상세 범위](mongodb-health-composition.md). 이는 연결 liveness일 뿐 schema·복호화·cutover readiness가 아니며 운영 이전은 미완료다.
