@@ -4,6 +4,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { requireAdminSession } from "@/lib/auth/requireAdminSession";
 import { getAnnouncementRepository } from "@/lib/data/announcements/announcementRepositoryFactory";
 import { AnnouncementForm } from "@/features/announcements/AnnouncementForm";
+import { runAnnouncementRequest } from "@/lib/data/announcementComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -15,8 +16,7 @@ export default async function AnnouncementEditPage({ params }: Props) {
   await requireAdminSession();
   const { id } = await params;
 
-  const repository = getAnnouncementRepository();
-  const announcement = await repository.getEditPage(id);
+  const announcement = await runAnnouncementRequest(() => getAnnouncementRepository().getEditPage(id));
 
   if (!announcement) notFound();
 

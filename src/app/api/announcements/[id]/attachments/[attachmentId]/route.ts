@@ -2,6 +2,7 @@ import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
 import { getAnnouncementRepository } from "@/lib/data/announcements/announcementRepositoryFactory";
+import { runAnnouncementRequest } from "@/lib/data/announcementComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -32,4 +33,9 @@ async function activityGET(_request: Request, { params }: RouteContext) {
   });
 }
 
-export const GET = withActivity("/api/announcements/[id]/attachments/[attachmentId]", "GET", activityGET);
+export const GET = withActivity(
+  "/api/announcements/[id]/attachments/[attachmentId]",
+  "GET",
+  activityGET,
+  runAnnouncementRequest
+);

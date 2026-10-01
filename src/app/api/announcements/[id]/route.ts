@@ -4,6 +4,7 @@ import { assertAdminSession } from "@/lib/auth/requireAdminSession";
 import { getAnnouncementRepository } from "@/lib/data/announcements/announcementRepositoryFactory";
 import { MAX_ATTACHMENT_BYTES, MAX_ATTACHMENT_COUNT } from "@/lib/data/announcements/announcementAttachmentLimits";
 import { announcementContentToPlainText, sanitizeAnnouncementContent } from "@/lib/data/announcements/sanitizeAnnouncementContent";
+import { runAnnouncementRequest } from "@/lib/data/announcementComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -107,8 +108,8 @@ function stringValue(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-export const GET = withActivity("/api/announcements/[id]", "GET", activityGET);
+export const GET = withActivity("/api/announcements/[id]", "GET", activityGET, runAnnouncementRequest);
 
-export const PUT = withActivity("/api/announcements/[id]", "PUT", activityPUT);
+export const PUT = withActivity("/api/announcements/[id]", "PUT", activityPUT, runAnnouncementRequest);
 
-export const DELETE = withActivity("/api/announcements/[id]", "DELETE", activityDELETE);
+export const DELETE = withActivity("/api/announcements/[id]", "DELETE", activityDELETE, runAnnouncementRequest);

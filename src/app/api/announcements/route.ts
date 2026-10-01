@@ -5,6 +5,7 @@ import { getAnnouncementRepository } from "@/lib/data/announcements/announcement
 import type { AnnouncementSummary } from "@/lib/data/announcements/announcementTypes";
 import { MAX_ATTACHMENT_BYTES, MAX_ATTACHMENT_COUNT } from "@/lib/data/announcements/announcementAttachmentLimits";
 import { announcementContentToPlainText, sanitizeAnnouncementContent } from "@/lib/data/announcements/sanitizeAnnouncementContent";
+import { runAnnouncementRequest } from "@/lib/data/announcementComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -78,6 +79,6 @@ function stringValue(value: FormDataEntryValue | null): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-export const GET = withActivity("/api/announcements", "GET", activityGET);
+export const GET = withActivity("/api/announcements", "GET", activityGET, runAnnouncementRequest);
 
-export const POST = withActivity("/api/announcements", "POST", activityPOST);
+export const POST = withActivity("/api/announcements", "POST", activityPOST, runAnnouncementRequest);

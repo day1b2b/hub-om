@@ -5,6 +5,7 @@ import { requireAdminSession } from "@/lib/auth/requireAdminSession";
 import { getAnnouncementRepository } from "@/lib/data/announcements/announcementRepositoryFactory";
 import { AnnouncementActions } from "@/features/announcements/AnnouncementActions";
 import { sanitizeAnnouncementContent } from "@/lib/data/announcements/sanitizeAnnouncementContent";
+import { runAnnouncementRequest } from "@/lib/data/announcementComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -16,8 +17,7 @@ export default async function AnnouncementDetailPage({ params }: Props) {
   await requireAdminSession();
   const { id } = await params;
 
-  const repository = getAnnouncementRepository();
-  const announcement = await repository.getDetailPage(id);
+  const announcement = await runAnnouncementRequest(() => getAnnouncementRepository().getDetailPage(id));
 
   if (!announcement) notFound();
 

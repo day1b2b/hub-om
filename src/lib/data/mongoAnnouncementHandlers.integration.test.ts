@@ -118,7 +118,7 @@ test("announcement actual handlers/pages preserve authorization, multipart, stor
     assert.equal(databases.databases.some(database => database.name === databaseName), false);
     ownsDatabase = true;
     const options = { client, databaseName, namespace: "shadow_handlers", allowShadowWrites: true as const };
-    const secondRuntime = await prepareMongoAnnouncementRuntime({ ...options, namespace: "shadow_handlers_second" });
+    const secondRuntime = await prepareMongoAnnouncementRuntime({ ...options, namespace: "shadow_peer_handlers" });
     const runtime = await prepareMongoAnnouncementRuntime(options);
     const store = new MongoOperationStore(options, MONGO_ANNOUNCEMENT_RUNTIME_MODELS);
     const scope = runtime.repositories;
