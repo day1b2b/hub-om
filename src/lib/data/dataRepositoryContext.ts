@@ -12,6 +12,7 @@ import type { OmAssignmentCalendar, OmAssignmentNotifier } from "./omRequest/omA
 import type { OperationRepository } from "./operationRepository";
 import type { OmRequestRepository, OmCustomToolsRepository, OmRequestNotifier } from "./omRequest/omRequestRepository";
 import type { SalesRevenueSyncRepository, SalesRevenueSource, SalesRevenueNotifier } from "./salesRevenueSyncRepository";
+import type { SatisfactionSource } from "./satisfactionSource";
 import type { InstructorNotionSource, InstructorNotionSyncRepository } from "./instructorNotionSyncRepository";
 import type { ActivityReadRepository } from "./activityReads/activityReadRepository";
 import type { AnnouncementRepository } from "./announcements/announcementRepository";
@@ -92,6 +93,7 @@ export interface DataRepositories {
   salesRevenueSync: SalesRevenueSyncRepository;
   salesRevenueSource: SalesRevenueSource;
   salesRevenueNotifier: SalesRevenueNotifier;
+  satisfactionSource: SatisfactionSource;
   instructorNotionSync: InstructorNotionSyncRepository;
   instructorNotionSource: InstructorNotionSource;
   activityReads: ActivityReadRepository;
