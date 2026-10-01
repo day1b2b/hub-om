@@ -15,6 +15,7 @@ import { requireAdminSession } from "@/lib/auth/requireAdminSession";
 import { describeCellUpdateError, prismaErrorCode } from "@/lib/admin/databaseCellError";
 import { getAdminEditableField, type AdminDatabaseTableKey, type AdminEditableField } from "@/lib/admin/databaseEditConfig";
 import { getAdminDatabaseRepository } from "@/lib/data/adminDatabaseRepositoryFactory";
+import { runAdminDatabaseRequest } from "@/lib/data/adminDatabaseComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -145,4 +146,4 @@ function parseEditableValue(field: AdminEditableField, value: unknown):
   return { ok: true, value: text };
 }
 
-export const PATCH = withActivity("/api/admin/database/cell", "PATCH", activityPATCH);
+export const PATCH = withActivity("/api/admin/database/cell", "PATCH", activityPATCH, runAdminDatabaseRequest);
