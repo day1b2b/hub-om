@@ -41,7 +41,7 @@ async function snapshot(store: MongoOperationStore) {
     const collection = store.db.collection(item.name);
     collections[item.name] = {
       definition: item,
-      indexes: (await collection.indexes()).sort((a, b) => a.name.localeCompare(b.name)),
+      indexes: (await collection.indexes()).sort((a, b) => (a.name ?? "").localeCompare(b.name ?? "")),
       rows: await collection.find({}).sort({ _id: 1 }).toArray()
     };
   }

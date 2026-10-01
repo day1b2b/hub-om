@@ -17,6 +17,7 @@ import {
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { getTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFactory";
 import { canManageOmRequestAssignment } from "@/lib/auth/omRequestAssignmentAccess";
+import { runOmRequestPagesRequest } from "@/lib/data/omRequestPagesComposition";
 import { AssignForm } from "./AssignForm";
 import { RequestActions } from "./RequestActions";
 
@@ -46,6 +47,10 @@ function YNField({ label, value }: { label: string; value: string }) {
 
 export default async function OmRequestDetailPage({ params }: Props) {
   const session = await requireWorkspaceSession();
+  return runOmRequestPagesRequest(() => renderOmRequestDetailPage({ params }, session));
+}
+
+async function renderOmRequestDetailPage({ params }: Props, session: Awaited<ReturnType<typeof requireWorkspaceSession>>) {
   const { id } = await params;
   const request = await getOmRequest(id);
   if (!request) notFound();

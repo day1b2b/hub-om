@@ -18,8 +18,10 @@ const author = { email: "synthetic.author@day1company.co.kr", name: "Synthetic r
 const manager = { email: "synthetic.manager@day1company.co.kr", name: omRequestManagerName("1파트")! };
 const admin = { email: "synthetic.admin@day1company.co.kr", name: "Synthetic request admin" };
 const outsider = { email: "synthetic.outsider@day1company.co.kr", name: "Synthetic request outsider" };
+const customTools = Object.freeze({ list: () => ["Synthetic custom tool"], add: (_names: string[]) => { throw new Error("UNEXPECTED_TOOL_WRITE"); } });
 let actor: typeof author | null = author;
 mock.module("@/auth", { namedExports: { auth: async () => actor ? { user: actor, expires: "" } : null } });
+mock.module("@/lib/data/omRequest/omCustomToolsLocalRepository", { namedExports: { getOmCustomToolsRepository: () => customTools, listCustomTools: () => customTools.list(), addCustomTools: (names: string[]) => customTools.add(names) } });
 let pgAdapterCalls = 0, pgPoolCalls = 0;
 mock.module("@prisma/adapter-pg", { namedExports: { PrismaPg: class { constructor() { pgAdapterCalls++; throw new Error("PG_ADAPTER_TRIPWIRE"); } } } });
 mock.module("pg", { namedExports: { Pool: class { constructor() { pgPoolCalls++; throw new Error("PG_POOL_TRIPWIRE"); } } }, defaultExport: { Pool: class { constructor() { pgPoolCalls++; throw new Error("PG_POOL_TRIPWIRE"); } } } });
@@ -63,17 +65,23 @@ function hasPropValue(value: unknown, key: string, expected: unknown): boolean {
   if (elementProps[key] === expected) return true;
   return hasPropValue(elementProps.children, key, expected);
 }
-async function snapshot(store: MongoOperationStore) { const rows: Record<string, unknown> = {}; for (const item of (await store.db.listCollections({}, { nameOnly: true }).toArray()).sort((a, b) => a.name.localeCompare(b.name))) rows[item.name] = await store.db.collection(item.name).find({}).sort({ _id: 1 }).toArray(); return rows; }
+async function snapshot(store: MongoOperationStore) {
+  const collections: Record<string, unknown> = {};
+  for (const item of (await store.db.listCollections().toArray()).sort((a, b) => a.name.localeCompare(b.name))) {
+    const collection = store.db.collection(item.name);
+    collections[item.name] = { definition: item, indexes: (await collection.indexes()).sort((a, b) => (a.name ?? "").localeCompare(b.name ?? "")), rows: await collection.find({}).sort({ _id: 1 }).toArray() };
+  }
+  return collections;
+}
 
 test("OM request entry, manage, detail, edit and complete pages share one native Mongo scope", { skip: !uri, timeout: 180_000 }, async () => {
   const target = new URL(uri!); assert.equal(target.protocol, "mongodb:"); assert.equal(target.hostname, "127.0.0.1"); assert.ok(target.port); assert.equal(target.username, ""); assert.equal(target.password, "");
-  const env = { DATABASE_URL: "postgresql://synthetic@127.0.0.1:1/forbidden", OPERATION_DATA_SOURCE: "postgres", DEV_AUTH_BYPASS: "false", ADMIN_EMAILS: admin.email, PII_ENCRYPTION_KEYS: JSON.stringify({ fixture: randomBytes(32).toString("base64") }), PII_ACTIVE_KEY_ID: "fixture", PII_INDEX_KEY: randomBytes(32).toString("base64"), PII_ALLOW_PLAINTEXT_READS: "false" };
+  const databaseName = `hub_om_shadow_om_request_pages_${randomBytes(8).toString("hex")}`, namespace = `shadow_om_request_pages_${randomBytes(6).toString("hex")}`;
+  const env = { OM_REQUEST_PAGES_BACKEND: "mongodb-shadow", MONGODB_URI: uri!, MONGODB_SHADOW_DATABASE: databaseName, MONGODB_SHADOW_NAMESPACE: namespace, DATABASE_URL: "postgresql://synthetic@127.0.0.1:1/forbidden", OPERATION_DATA_SOURCE: "postgres", DEV_AUTH_BYPASS: "false", ADMIN_EMAILS: admin.email, PII_ENCRYPTION_KEYS: JSON.stringify({ fixture: randomBytes(32).toString("base64") }), PII_ACTIVE_KEY_ID: "fixture", PII_INDEX_KEY: randomBytes(32).toString("base64"), PII_ALLOW_PLAINTEXT_READS: "false" };
   const saved = new Map(Object.keys(env).map(name => [name, process.env[name]])); Object.assign(process.env, env);
   const client = new MongoClient(uri!, { directConnection: true, monitorCommands: true, serverSelectionTimeoutMS: 5_000 });
-  const commands: CommandStartedEvent[] = [], writes: CommandStartedEvent[] = [], mutating = new Set(["create", "createIndexes", "collMod", "insert", "update", "delete", "drop", "dropDatabase", "dropIndexes", "findAndModify", "bulkWrite", "renameCollection"]);
-  client.on("commandStarted", event => { commands.push(event); const output = event.commandName === "aggregate" && Array.isArray(event.command.pipeline) && event.command.pipeline.some((stage: unknown) => stage && typeof stage === "object" && (Object.hasOwn(stage, "$out") || Object.hasOwn(stage, "$merge"))); if (mutating.has(event.commandName) || output) writes.push(event); });
-  const databaseName = `hub_om_shadow_om_request_pages_${randomBytes(8).toString("hex")}`, namespace = `shadow_om_request_pages_${randomBytes(6).toString("hex")}`;
-  const customTools = Object.freeze({ list: () => ["Synthetic custom tool"], add: () => { throw new Error("UNEXPECTED_TOOL_WRITE"); } });
+  const writes: CommandStartedEvent[] = [], mutating = new Set(["create", "createIndexes", "collMod", "insert", "update", "delete", "drop", "dropDatabase", "dropIndexes", "findAndModify", "bulkWrite", "renameCollection"]);
+  client.on("commandStarted", event => { const output = event.commandName === "aggregate" && Array.isArray(event.command.pipeline) && event.command.pipeline.some((stage: unknown) => stage && typeof stage === "object" && (Object.hasOwn(stage, "$out") || Object.hasOwn(stage, "$merge"))); if (mutating.has(event.commandName) || output) writes.push(event); });
   try {
     await client.connect(); const options = { client, databaseName, namespace, allowShadowWrites: true as const, processSequenceHighWater: 0, omCustomTools: customTools };
     const runtime = await prepareMongoOperationPagesRuntime(options), store = new MongoOperationStore(options, MONGO_OPERATION_PAGES_RUNTIME_MODELS);
@@ -92,22 +100,22 @@ test("OM request entry, manage, detail, edit and complete pages share one native
     const before = await snapshot(store); writes.length = 0;
     const raw = JSON.stringify(before); for (const secret of [author.email, author.name, manager.email, manager.name, "Synthetic instructor", "https://example.invalid/syncup", "https://example.invalid/drive", "Synthetic room", "Synthetic request note"]) assert.equal(raw.includes(secret), false);
     actor = author;
-    const rendered = await runtime.run(async () => ({ entry: await requestPage(), manage: await managePage(), detail: await detailPage({ params: Promise.resolve({ id: created.id }) }), edit: await editPage({ params: Promise.resolve({ id: created.id }) }), complete: await completePage({ searchParams: Promise.resolve({ id: created.id }) }) }));
+    const rendered = { entry: await requestPage(), manage: await managePage(), detail: await detailPage({ params: Promise.resolve({ id: created.id }) }), edit: await editPage({ params: Promise.resolve({ id: created.id }) }), complete: await completePage({ searchParams: Promise.resolve({ id: created.id }) }) };
     const entryForm = findElement(rendered.entry, "OmRequestForm"); assert.ok(entryForm); assert.deepEqual(props(entryForm).extraTools, ["Synthetic custom tool"]); assert.equal(props(entryForm).defaultTeam, "AX 1파트"); assert.deepEqual(props(entryForm).knownCompanies, ["Synthetic known company"]); assert.deepEqual(props(entryForm).knownInstructors, ["Synthetic instructor"]);
     const table = findElement(rendered.manage, "OmRequestTable"); assert.ok(table); assert.equal((props(table).initialRequests as unknown[]).length, 1);
     const assign = findElement(rendered.detail, "AssignForm"); assert.ok(assign); assert.equal(props(assign).canAssign, false); assert.equal((props(assign).request as { id: string }).id, created.id); assert.deepEqual(new Set(props(assign).omRoster as string[]), new Set([author.name, manager.name]));
     const actions = findElement(rendered.detail, "RequestActions"); assert.ok(actions); assert.equal(props(actions).isAdmin, false); assert.equal(props(actions).isAuthor, true);
     const editForm = findElement(rendered.edit, "OmRequestForm"); assert.ok(editForm); assert.equal(props(editForm).requestId, created.id); assert.equal((props(editForm).initialData as { company: string }).company, "Synthetic request company"); assert.deepEqual(props(editForm).knownInstructors, ["Synthetic instructor"]);
     assert.equal(hasPropValue(rendered.complete, "value", "Synthetic request course"), true); assert.equal(hasText(rendered.complete, "Synthetic request note"), true);
-    actor = manager; const managerDetail = await runtime.run(() => detailPage({ params: Promise.resolve({ id: created.id }) })); const managerAssign = findElement(managerDetail, "AssignForm"); assert.ok(managerAssign); assert.equal(props(managerAssign).canAssign, true); const managerActions = findElement(managerDetail, "RequestActions"); assert.ok(managerActions); assert.equal(props(managerActions).isAdmin, false); assert.equal(props(managerActions).isAuthor, false);
-    actor = admin; const adminDetail = await runtime.run(() => detailPage({ params: Promise.resolve({ id: created.id }) })); const adminActions = findElement(adminDetail, "RequestActions"); assert.ok(adminActions); assert.equal(props(adminActions).isAdmin, true); assert.equal(props(adminActions).isAuthor, false); const adminEdit = await runtime.run(() => editPage({ params: Promise.resolve({ id: created.id }) })); assert.ok(findElement(adminEdit, "OmRequestForm"));
-    actor = outsider; await assert.rejects(runtime.run(() => editPage({ params: Promise.resolve({ id: created.id }) })), /NEXT_REDIRECT/);
-    actor = null; const beforeUnauthenticated = commands.length; await assert.rejects(runtime.run(() => completePage({ searchParams: Promise.resolve({ id: created.id }) })), /NEXT_REDIRECT/); assert.equal(commands.length, beforeUnauthenticated);
+    actor = manager; const managerDetail = await detailPage({ params: Promise.resolve({ id: created.id }) }); const managerAssign = findElement(managerDetail, "AssignForm"); assert.ok(managerAssign); assert.equal(props(managerAssign).canAssign, true); const managerActions = findElement(managerDetail, "RequestActions"); assert.ok(managerActions); assert.equal(props(managerActions).isAdmin, false); assert.equal(props(managerActions).isAuthor, false);
+    actor = admin; const adminDetail = await detailPage({ params: Promise.resolve({ id: created.id }) }); const adminActions = findElement(adminDetail, "RequestActions"); assert.ok(adminActions); assert.equal(props(adminActions).isAdmin, true); assert.equal(props(adminActions).isAuthor, false); const adminEdit = await editPage({ params: Promise.resolve({ id: created.id }) }); assert.ok(findElement(adminEdit, "OmRequestForm"));
+    actor = outsider; await assert.rejects(editPage({ params: Promise.resolve({ id: created.id }) }), /NEXT_REDIRECT/);
+    actor = null; process.env.OM_REQUEST_PAGES_BACKEND = "invalid"; await assert.rejects(completePage({ searchParams: Promise.resolve({ id: created.id }) }), /NEXT_REDIRECT/); process.env.OM_REQUEST_PAGES_BACKEND = "mongodb-shadow";
     actor = author;
     assert.deepEqual(writes.map(event => event.commandName), []); assert.deepEqual(await snapshot(store), before); assert.equal(pgAdapterCalls, 0); assert.equal(pgPoolCalls, 0);
     await assert.rejects(runtime.run(async () => (await import("./dataRepositoryContext")).getDataRepositoryOverride("requestActivity")), /DATA_REPOSITORY_NOT_CONFIGURED: requestActivity/);
     const partialNamespace = `shadow_om_request_pages_partial_${randomBytes(6).toString("hex")}`, partial = new MongoOperationStore({ ...options, namespace: partialNamespace });
     await partial.db.createCollection(`${partialNamespace}_LegacyOnly`); await partial.db.collection(`${partialNamespace}_LegacyOnly`).insertOne({ marker: "unchanged" }); const partialBefore = await snapshot(partial); writes.length = 0;
-    await assert.rejects(prepareMongoOperationPagesRuntime({ ...options, namespace: partialNamespace }), /MONGO_OPERATION_PAGES_RUNTIME_FAILED/); assert.deepEqual(writes.map(event => event.commandName), []); assert.deepEqual(await snapshot(partial), partialBefore);
+    process.env.MONGODB_SHADOW_NAMESPACE = partialNamespace; await assert.rejects(requestPage(), /OM_REQUEST_PAGES_COMPOSITION_FAILED/); assert.deepEqual(writes.map(event => event.commandName), []); assert.deepEqual(await snapshot(partial), partialBefore);
   } finally { try { await client.db(databaseName).dropDatabase(); } catch {} await client.close(); for (const [name, value] of saved) { if (value === undefined) delete process.env[name]; else process.env[name] = value; } }
 });
