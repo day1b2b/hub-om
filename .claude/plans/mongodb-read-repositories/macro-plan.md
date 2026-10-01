@@ -408,3 +408,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 2026-10-01 코치 관리자 composition selector 후속
 
 `feature/20261001-coach-admin-composition`에서 삭제 수·분야/커리큘럼·삭제 코치 API에 exact selector를 연결한다. 기존 soft-delete·복원·관리자 명시 영구삭제와 감사를 유지한다. 기록은 `../mongodb-coach-admin-composition/`을 따른다. 나머지 기능군 selector, production 배포·운영 이전과 `dev → main`은 미완료다.
+
+## 2026-10-01 관리자 DB composition selector 후속
+
+`feature/20261001-admin-database-composition`에서 관리자 DB 페이지·셀 PATCH에 exact selector를 연결한다. DB·담당자·요청 감사를 같은 잠금 scope로 열고 기존 검증·rollback을 유지한다. 기록은 `../mongodb-admin-database-composition/`을 따른다. 나머지 기능군 selector, production 배포·운영 이전과 `dev → main`은 미완료다.
