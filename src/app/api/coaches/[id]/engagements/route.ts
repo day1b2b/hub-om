@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { parseCreateEngagement } from "@/lib/coaches/engagementApi";
 import { getCoachEngagementRepository } from "@/lib/data/coachEngagementRepositoryFactory";
+import { runCoachOperationsRequest } from "@/lib/data/coachOperationsComposition";
 
 export const dynamic = "force-dynamic";
 interface RouteContext { params: Promise<{ id: string }> }
@@ -23,5 +24,5 @@ async function activityPOST(request: Request, { params }: RouteContext) {
   if (!engagement) return NextResponse.json({ ok: false, error: "코치를 찾을 수 없습니다." }, { status: 404 });
   return NextResponse.json({ ok: true, engagement }, { status: 201 });
 }
-export const GET = withActivity("/api/coaches/[id]/engagements", "GET", activityGET);
-export const POST = withActivity("/api/coaches/[id]/engagements", "POST", activityPOST);
+export const GET = withActivity("/api/coaches/[id]/engagements", "GET", activityGET, runCoachOperationsRequest);
+export const POST = withActivity("/api/coaches/[id]/engagements", "POST", activityPOST, runCoachOperationsRequest);

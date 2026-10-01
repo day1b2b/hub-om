@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { parseMonthRange } from "@/lib/coaches/coachScheduleValidation";
 import { getCoachScheduleRepository } from "@/lib/data/coachScheduleRepositoryFactory";
+import { runCoachOperationsRequest } from "@/lib/data/coachOperationsComposition";
 
 export const dynamic = "force-dynamic";
 interface RouteContext { params: Promise<{ id: string }> }
@@ -17,4 +18,4 @@ async function activityGET(request: Request, { params }: RouteContext) {
   return NextResponse.json({ ok: true, ...result });
 }
 
-export const GET = withActivity("/api/coaches/[id]/schedules", "GET", activityGET);
+export const GET = withActivity("/api/coaches/[id]/schedules", "GET", activityGET, runCoachOperationsRequest);

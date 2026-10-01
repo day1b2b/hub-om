@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { parseDates } from "@/lib/coaches/coachScheduleValidation";
 import { getCoachScheduleRepository } from "@/lib/data/coachScheduleRepositoryFactory";
+import { runCoachOperationsRequest } from "@/lib/data/coachOperationsComposition";
 
 export const dynamic = "force-dynamic";
 interface RouteContext { params: Promise<{ id: string }> }
@@ -31,5 +32,5 @@ async function activityDELETE(request: Request, { params }: RouteContext) {
   return NextResponse.json({ ok: true, cancelledDates });
 }
 
-export const POST = withActivity("/api/coaches/[id]/reservations", "POST", activityPOST);
-export const DELETE = withActivity("/api/coaches/[id]/reservations", "DELETE", activityDELETE);
+export const POST = withActivity("/api/coaches/[id]/reservations", "POST", activityPOST, runCoachOperationsRequest);
+export const DELETE = withActivity("/api/coaches/[id]/reservations", "DELETE", activityDELETE, runCoachOperationsRequest);
