@@ -26,6 +26,9 @@ test("coach token backfill CLI accepts one exact Mongo selector and closes", asy
   assert.equal(result.options.apply, true);
   assert.deepEqual(f.seen, ["connect", "open:hub_om_shadow_tokens:shadow_tokens", "command:--apply,--backup-confirmed,--maintenance-confirmed", "close"]);
   for (const args of [["--backend=postgres"], ["--backend=mongodb-shadow", "--backend=mongodb-shadow"]]) await assert.rejects(runCoachTokenBackfillCli(args, env, () => {}, f.dependencies), /^Error: COACH_TOKEN_BACKFILL_FAILED$/);
+  const invalid = fixture();
+  await assert.rejects(runCoachTokenBackfillCli(["--apply", "--backend=mongodb-shadow"], env, () => {}, invalid.dependencies), /^Error: COACH_TOKEN_BACKFILL_FAILED$/);
+  assert.deepEqual(invalid.seen, []);
 });
 
 test("coach token backfill CLI redacts failures and closes its client", async () => {

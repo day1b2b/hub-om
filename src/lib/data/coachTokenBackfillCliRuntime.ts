@@ -1,5 +1,6 @@
 import { MongoClient } from "mongodb";
 import { configuredMongoUri, mongoConnectionOptions, shadowDatabaseName } from "../mongodb/connection";
+import { parseCoachTokenBackfillArgs } from "./coachAccessTokenBackfill";
 import { runCoachTokenBackfillCommand } from "./coachTokenBackfillCommand";
 import { openMongoCoachTokenBackfillRuntime } from "./mongoCoachTokenBackfillRuntime";
 
@@ -29,6 +30,8 @@ export async function runCoachTokenBackfillCli(
   const namespace = env.MONGODB_SHADOW_NAMESPACE?.trim() ?? "";
   if (!namespacePattern.test(namespace)) throw new Error("COACH_TOKEN_BACKFILL_FAILED");
   const commandArgs = args.filter(value => !value.startsWith("--backend="));
+  try { parseCoachTokenBackfillArgs(commandArgs); }
+  catch { throw new Error("COACH_TOKEN_BACKFILL_FAILED"); }
   let client: Client | undefined;
   let result: Awaited<ReturnType<typeof runCoachTokenBackfillCommand>> | undefined;
   let failed = false;
