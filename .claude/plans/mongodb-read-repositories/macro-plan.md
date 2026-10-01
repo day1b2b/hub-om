@@ -344,3 +344,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 2026-10-01 만족도 runtime 후속
 
 `feature/20261001-mongodb-satisfaction-runtime`에서 관리자 만족도 미리보기·자동 반영·수동 연결과 회차별 반영 API의 operations·합성 시트 source·request audit를 같은 잠금 shadow scope로 조립한다. 실제 네 handler·준비 불변·부분 namespace 무수정 거부와 포트 분해·혼입 차단을 검증한다. 실행·리뷰·통합은 `../mongodb-satisfaction-runtime/`을 따른다. 실제 Google Sheets·운영 만족도 반영·production selector·실데이터 이전/dev→main은 미완료다.
+
+## 2026-10-01 원천 읽기 상태 runtime 후속
+
+`feature/20261001-mongodb-source-read-status-runtime`에서 `/api/source-reads/status`의 명시 operation source reader와 request audit를 같은 잠금 shadow scope로 조립한다. 실제 handler·준비 불변·부분 namespace 무수정 거부와 포트 분해·혼입 차단을 검증한다. 실행·리뷰·통합은 `../mongodb-source-read-status-runtime/`을 따른다. 실제 외부 원천·production selector·실데이터 이전/dev→main은 미완료다.

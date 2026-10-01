@@ -426,3 +426,7 @@ Notion·계약·일정·`/sync/all` API의 저장 repository, 합성 source, 실
 ## 만족도 runtime 조립 (2026-10-01)
 
 관리자 만족도 미리보기·자동 반영·수동 연결과 회차별 반영 API의 operations·합성 시트 source·request audit를 같은 등록 shadow scope로 조립했다. 실제 네 handler의 권한·매칭·기존 값 보존·감사, 준비 재실행과 부분 namespace 불변, PG·외부 접근 0, 세 포트의 분해·혼입 차단을 확인했다. [상세 범위](mongodb-satisfaction-runtime.md). 실제 Google Sheets·운영 만족도 반영·production selector와 운영 이전은 미완료다.
+
+## 원천 읽기 상태 runtime 조립 (2026-10-01)
+
+원천 상태 API의 operationSourceReader와 request audit를 같은 등록 shadow scope로 조립했다. 실제 handler의 네 원천 병렬 상태·개수 응답과 감사, 준비 재실행과 부분 namespace 불변, PG·외부 접근 0, 두 포트의 분해·혼입 차단을 확인했다. [상세 범위](mongodb-source-read-status-runtime.md). 실제 외부 원천·production selector와 운영 이전은 미완료다.

@@ -43,7 +43,7 @@
 
 코치 Notion·계약·일정·전체 동기화 API는 [Mongo 코치 동기화 작업 runtime](mongodb-sync-jobs-runtime.md)으로 저장·합성 source·실행 로그·요청 감사를 조립했다. 실제 원천과 Coolify 예약·배포 구성은 변경하지 않았다.
 
-강사 Notion 동기화 API는 [Mongo 강사 Notion 동기화 runtime](mongodb-instructor-sync-runtime.md)으로 저장·합성 source·요청 감사를 조립했다. 매출 동기화 GET/POST는 [Mongo 매출 동기화 runtime](mongodb-sales-sync-runtime.md)으로 저장·합성 source·실패 알림·요청 감사를 조립했다. 만족도 네 POST는 [Mongo 만족도 runtime](mongodb-satisfaction-runtime.md)으로 운영 저장·합성 시트 source·요청 감사를 조립했다. 실제 Notion·Salesmap·Slack·Google Sheets와 Coolify 예약·배포 구성은 변경하지 않았다.
+강사 Notion 동기화 API는 [Mongo 강사 Notion 동기화 runtime](mongodb-instructor-sync-runtime.md)으로 저장·합성 source·요청 감사를 조립했다. 매출 동기화 GET/POST는 [Mongo 매출 동기화 runtime](mongodb-sales-sync-runtime.md)으로 저장·합성 source·실패 알림·요청 감사를 조립했다. 만족도 네 POST는 [Mongo 만족도 runtime](mongodb-satisfaction-runtime.md)으로 운영 저장·합성 시트 source·요청 감사를 조립했다. 원천 읽기 상태 GET은 [Mongo 원천 읽기 상태 runtime](mongodb-source-read-status-runtime.md)으로 명시 reader·요청 감사를 조립했다. 실제 Notion·Salesmap·Slack·Google Sheets·Calendar·이메일과 Coolify 예약·배포 구성은 변경하지 않았다.
 
 legacy `db:backfill:onsite-required-y` entrypoint는 [Mongo 현장 투입 보정 CLI runtime](mongodb-onsite-backfill-cli-runtime.md)으로 raw SQL을 제거하고 기존 repository를 재사용한다. 기본 PG와 명시 shadow 실행을 검증했지만 실제 운영 보정이나 배포 구성에는 적용하지 않았다.
 
