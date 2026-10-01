@@ -568,3 +568,7 @@ Notion·계약·일정·전체 동기화 네 API의 GET/POST에 PostgreSQL 기�
 ## 코치 일정 현황 API selector (2026-10-01)
 
 관리자 일정 등록 현황과 일정 상태 조회 API를 기존 changes selector에 연결했다. coachContent·requestActivity scope에서 기존 DTO·월 검증과 요청 감사를 확인했다. [상세 범위](mongodb-coach-schedule-admin-composition.md). 운영 이전은 미완료다.
+
+## 코치 접근 정보 API selector (2026-10-01)
+
+토큰 재발급과 개인정보 CSV 내보내기를 PostgreSQL 기본/Mongo shadow selector에 연결했다. 승인된 응답 복호화와 저장 평문 비노출, 업무·접근·요청 감사를 구분해 검증했다. [상세 범위](mongodb-coach-access-composition.md). 운영 이전은 미완료다.

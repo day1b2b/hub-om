@@ -195,3 +195,7 @@ Drive 결과 snapshot의 회사명·과정명은 2026-09-30 암호화 정책·co
 ## 2026-10-01 코치 일정 현황 API composition 후속
 
 `feature/20261001-coach-schedule-admin-composition`에서 관리자 일정 등록 현황과 일정 상태 GET을 기존 changes exact selector에 연결했다. 기록은 `../../.claude/plans/mongodb-coach-schedule-admin-composition/`을 따른다. production 배포·운영 데이터·최종 전환과 `dev → main`은 미완료다.
+
+## 2026-10-01 코치 접근 정보 API composition 후속
+
+`feature/20261001-coach-access-composition`에서 토큰 재발급과 개인정보 CSV 내보내기를 exact selector에 연결했다. 기록은 `../../.claude/plans/mongodb-coach-access-composition/`을 따른다. production 배포·운영 데이터·최종 전환과 `dev → main`은 미완료다.

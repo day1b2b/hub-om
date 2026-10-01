@@ -425,6 +425,10 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 
 `feature/20261001-coach-schedule-admin-composition`에서 관리자 일정 등록 현황·일정 상태 GET을 기존 changes exact selector에 연결했다. 실제 route 요청 감사와 부분 namespace 불변을 검증했다. 근거는 `../mongodb-coach-schedule-admin-composition/`을 따른다. 운영 이전은 미완료다.
 
+## 2026-10-01 코치 접근 정보 API composition selector 후속
+
+`feature/20261001-coach-access-composition`에서 토큰 재발급·개인정보 내보내기를 exact selector에 연결했다. 응답 복호화와 저장 평문 비노출, 세 감사 경계를 검증했다. 근거는 `../mongodb-coach-access-composition/`을 따른다. 운영 이전은 미완료다.
+
 ## 2026-10-01 관리자 DB composition selector 후속
 
 `feature/20261001-admin-database-composition`에서 관리자 DB 페이지·셀 PATCH에 exact selector를 연결한다. DB·담당자·요청 감사를 같은 잠금 scope로 열고 기존 검증·rollback을 유지한다. 기록은 `../mongodb-admin-database-composition/`을 따른다. 나머지 기능군 selector, production 배포·운영 이전과 `dev → main`은 미완료다.
