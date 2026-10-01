@@ -6,6 +6,7 @@ import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { getSalesRevenueSource } from "@/lib/data/salesRevenueSyncRepositoryFactory";
 import { waitAtMost } from "@/lib/waitAtMost";
 import { runSalesLookupRequest } from "@/lib/data/salesLookupComposition";
+import { safeSalesRevenueIssue } from "@/lib/data/salesRevenueSourceIssues";
 
 /**
  * 코스ID → {고객사, 과정명} 읽기 전용 조회.
@@ -158,7 +159,7 @@ async function activityGET(request: Request) {
 
   if (read.status === "failed") {
     return NextResponse.json(
-      { ok: false, error: read.issues[0]?.message ?? "세일즈맵 딜을 읽지 못했습니다." },
+      { ok: false, error: read.issues[0] ? safeSalesRevenueIssue(read.issues[0]) : "세일즈맵 딜을 읽지 못했습니다." },
       { status: 502 }
     );
   }
