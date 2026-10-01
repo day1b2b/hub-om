@@ -3,6 +3,7 @@ import { CoachAdminPage } from "@/features/coaches/CoachAdminPage";
 import { requireAdminSession } from "@/lib/auth/requireAdminSession";
 import { getCoachAdminRepository } from "@/lib/data/coachAdminRepositoryFactory";
 import type { CoachAdminTab } from "@/features/coaches/CoachAdminPage";
+import { runCoachAdminRequest } from "@/lib/data/coachAdminComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,7 @@ export default async function CoachAdminPageRoute({ searchParams }: CoachAdminPa
   if (firstParam(params.tab) === "content") redirect("/changes#content");
   const selectedTab = resolveTab(firstParam(params.tab));
 
-  const deletedCount = await getCoachAdminRepository().countDeletedCoaches();
+  const deletedCount = await runCoachAdminRequest(() => getCoachAdminRepository().countDeletedCoaches());
 
   return <CoachAdminPage deletedCount={deletedCount} selectedTab={selectedTab} />;
 }

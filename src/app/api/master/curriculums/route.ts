@@ -2,6 +2,7 @@ import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getCoachAdminRepository } from "@/lib/data/coachAdminRepositoryFactory";
+import { runCoachAdminRequest } from "@/lib/data/coachAdminComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,6 @@ async function activityPOST(request: Request) {
   return NextResponse.json({ ok: true, curriculum }, { status: 201 });
 }
 
-export const GET = withActivity("/api/master/curriculums", "GET", activityGET);
+export const GET = withActivity("/api/master/curriculums", "GET", activityGET, runCoachAdminRequest);
 
-export const POST = withActivity("/api/master/curriculums", "POST", activityPOST);
+export const POST = withActivity("/api/master/curriculums", "POST", activityPOST, runCoachAdminRequest);

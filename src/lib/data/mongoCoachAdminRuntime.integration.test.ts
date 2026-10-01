@@ -67,7 +67,7 @@ test("coach-admin runtime composes page, masters, deleted coaches and request au
   try {
     await client.connect(); connected = true;
     const databases = await client.db("admin").admin().listDatabases({ nameOnly: true }); assert.equal(databases.databases.some(row => row.name === databaseName), false); ownsDatabase = true;
-    const second = await prepareMongoCoachAdminRuntime({ ...options, namespace: "shadow_coach_admin_runtime_second" });
+    const second = await prepareMongoCoachAdminRuntime({ ...options, namespace: "shadow_peer_coach_admin_runtime" });
     const runtime = await prepareMongoCoachAdminRuntime(options), store = new MongoOperationStore(options, MONGO_COACH_ADMIN_RUNTIME_MODELS);
     const ready = await snapshot(); writes.length = 0; await prepareMongoCoachAdminRuntime(options); await openMongoCoachAdminRuntime(options);
     assert.deepEqual(writes.map(event => event.commandName), []); assert.equal(await snapshot(), ready);

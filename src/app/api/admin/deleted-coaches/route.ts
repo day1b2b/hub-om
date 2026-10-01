@@ -2,6 +2,7 @@ import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
 import { getCoachAdminRepository } from "@/lib/data/coachAdminRepositoryFactory";
+import { runCoachAdminRequest } from "@/lib/data/coachAdminComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -48,8 +49,8 @@ async function activityDELETE(request: Request) {
   return NextResponse.json({ ok: true });
 }
 
-export const GET = withActivity("/api/admin/deleted-coaches", "GET", activityGET);
+export const GET = withActivity("/api/admin/deleted-coaches", "GET", activityGET, runCoachAdminRequest);
 
-export const PUT = withActivity("/api/admin/deleted-coaches", "PUT", activityPUT);
+export const PUT = withActivity("/api/admin/deleted-coaches", "PUT", activityPUT, runCoachAdminRequest);
 
-export const DELETE = withActivity("/api/admin/deleted-coaches", "DELETE", activityDELETE);
+export const DELETE = withActivity("/api/admin/deleted-coaches", "DELETE", activityDELETE, runCoachAdminRequest);
