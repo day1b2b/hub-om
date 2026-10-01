@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import type { HubBotChatTurn } from "@/lib/hubBot/claudeClient";
 import { getHubBotResponder } from "@/lib/hubBot/hubBotResponder";
+import { runHubBotRequest } from "@/lib/data/hubBotComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -43,4 +44,4 @@ function parseHistory(value: unknown): HubBotChatTurn[] {
     .slice(-MAX_HISTORY_LENGTH);
 }
 
-export const POST = withActivity("/api/hubbot/message", "POST", activityPOST);
+export const POST = withActivity("/api/hubbot/message", "POST", activityPOST, runHubBotRequest);
