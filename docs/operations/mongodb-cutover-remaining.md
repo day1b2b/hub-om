@@ -143,3 +143,7 @@ Drive 결과 snapshot의 회사명·과정명은 2026-09-30 암호화 정책·co
 `feature/20261001-operation-write-composition`에서 생성·회차 추가·순서 변경·삭제 API의 exact selector와 Calendar-aware scope를 검증했다. 기록은 `../../.claude/plans/mongodb-operation-write-composition/`을 따른다. 실제 Google·production 배포·운영 이전과 `dev → main`은 미완료다.
 
 `feature/20261001-operation-detail-actions-composition`에서 같은 selector를 Drive 적용·후보·폴더와 원천 새로고침까지 확장했다. 외부 adapter 미설정과 fetch 0건을 확인했다. 실제 Drive·production 배포·운영 이전과 `dev → main`은 미완료다.
+
+## 2026-10-01 공통 개요 화면 composition 후속
+
+`feature/20261001-overview-pages-composition`에서 대시보드·내 업무·회사 위키·리소스 화면의 PostgreSQL 기본/Mongo shadow exact selector를 검증했다. 실제 composition 조회 전후 collection 정의·validator/options·index·행 전체가 같았고 부분 namespace는 무수정으로 거부됐다. 기록은 `../../.claude/plans/mongodb-overview-pages-composition/`을 따른다. production 배포·운영 데이터·브라우저 전체 흐름·A/B 백업·각 복원·복사·최종 전환과 `dev → main`은 미완료다.

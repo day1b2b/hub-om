@@ -516,3 +516,7 @@ Hubbot POST에 PostgreSQL 기본/Mongo shadow selector를 연결하고 responder
 운영 생성·회차 추가·순서 변경·삭제 API에 PostgreSQL 기본/Mongo shadow selector를 연결했다. Calendar-aware runtime과 요청 감사를 같은 scope로 열고 실제 합성 Calendar 흐름과 부분 namespace 불변을 확인했다. [상세 범위](mongodb-operation-write-composition.md). 실제 Google·production 배포·운영 데이터·최종 전환은 미완료다.
 
 같은 `OPERATION_WRITE_BACKEND` scope에 Drive 적용·후보·폴더와 원천 읽기 새로고침 API도 연결했다. 외부 adapter 설정을 격리한 실제 Mongo 검증에서 Drive fetch 0건과 미설정 결과, 요청 감사를 확인했다.
+
+## 공통 개요 화면 기능군 selector (2026-10-01)
+
+대시보드·내 업무·회사 위키·리소스 화면에 PostgreSQL 기본/Mongo shadow 명시 selector를 연결했다. 네 저장소를 같은 잠금 scope로 열고 실제 composition 조회 전후 collection 정의·validator/options·index·행 전체 불변과 부분 namespace 무수정 거부를 확인했다. [상세 범위](mongodb-overview-pages-composition.md). production 배포·운영 데이터·브라우저 전체 흐름·실데이터 이전·복원·최종 전환은 미완료다.

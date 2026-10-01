@@ -434,3 +434,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 `feature/20261001-operation-write-composition`에서 생성·회차 추가·순서 변경·삭제 API에 exact selector를 연결한다. Calendar-aware runtime과 감사를 같은 scope로 연다. 기록은 `../mongodb-operation-write-composition/`을 따른다. 실제 Google·production 배포·운영 이전과 `dev → main`은 미완료다.
 
 `feature/20261001-operation-detail-actions-composition`에서 같은 selector를 Drive 적용·후보·폴더와 원천 새로고침까지 확장한다. 기록은 `../mongodb-operation-detail-actions-composition/`을 따른다. 실제 외부 원천·production 배포·운영 이전과 `dev → main`은 미완료다.
+
+## 2026-10-01 공통 개요 화면 composition selector 후속
+
+`feature/20261001-overview-pages-composition`에서 대시보드·내 업무·회사 위키·리소스 화면에 exact selector를 연결한다. 준비된 네 저장소의 open-only scope를 사용하고 collection 정의·validator/options·index·행 전체의 무변경과 부분 namespace 거부를 검증한다. 기록은 `../mongodb-overview-pages-composition/`을 따른다. production 배포·운영 데이터·실데이터 이전·A/B 복원·최종 전환과 `dev → main`은 미완료다.
