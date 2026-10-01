@@ -364,3 +364,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 2026-10-01 Google Sheets 가져오기 composition selector 후속
 
 `feature/20261001-google-sheets-import-composition`에서 기존 Google Sheets tabs/import에 PostgreSQL 기본/Mongo shadow exact selector를 연결한다. 기존 reader·parser·staging을 반복 구현하지 않고 tabs는 source+audit, import는 imports·teamMembers·instructorNote까지 같은 잠금 scope로 연다. 실행·리뷰·통합은 `../mongodb-google-sheets-import-composition/` 기록을 따른다. 실제 Google Sheets·다른 기능군 selector·production 배포·실데이터 이전과 `dev → main`은 미완료다.
+
+## 2026-10-01 파일 가져오기 composition selector 후속
+
+`feature/20261001-import-staging-composition`에서 양식·파일 upload의 PostgreSQL 기본/Mongo shadow selector를 연결한다. 기존 parser/staging은 재사용한다. 운영 이전과 `dev → main`은 미완료다.

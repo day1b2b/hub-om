@@ -81,3 +81,7 @@ Drive 결과 snapshot의 회사명·과정명은 2026-09-30 암호화 정책·co
 ## 2026-10-01 Google Sheets 가져오기 composition 후속
 
 `feature/20261001-google-sheets-import-composition`에서 기존 tabs/import API에 PostgreSQL 기본/Mongo shadow exact selector를 연결한다. 동작별 최소 scope, source 호출 전 전체 port 준비, 고정 오류·무fallback, 부분 namespace의 validator·index·행 불변을 검증한다. 실행·독립 리뷰·통합은 `../../.claude/plans/mongodb-google-sheets-import-composition/` 기록을 따른다. 실제 Google Sheets·운영 적재·production 배포·실데이터 이전과 `dev → main`은 미완료다.
+
+## 2026-10-01 파일 가져오기 composition 후속
+
+`feature/20261001-import-staging-composition`에서 양식·파일 upload의 exact selector와 최소 scope를 검증했다. 실행·리뷰·통합은 `../../.claude/plans/mongodb-import-staging-composition/`을 따른다. 운영 업로드·production 배포·실데이터 이전과 `dev → main`은 미완료다.

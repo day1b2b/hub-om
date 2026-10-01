@@ -446,3 +446,7 @@ Hubbot POST의 합성 responder와 request audit를 같은 등록 shadow scope�
 ## Google Sheets 가져오기 기능군 selector (2026-10-01)
 
 `/api/admin/imports/google-sheets/tabs`와 `/import`에 PostgreSQL 기본/Mongo shadow 명시 selector를 연결했다. tabs는 source와 request audit만, import는 staging·팀원·강사노트까지 같은 잠금 scope로 연다. 부분 namespace는 준비·두 route 모두 자동 수리 없이 거부하고 validator·index·행을 보존한다. [상세 범위](mongodb-google-sheets-import-composition.md). 실제 Google Sheets·생산 배포 설정·운영 이전은 미완료다.
+
+## 파일 가져오기 기능군 selector (2026-10-01)
+
+관리자 xlsx 양식과 파일 upload API에 PostgreSQL 기본/Mongo shadow selector를 연결했다. 동작별 최소 scope와 부분 namespace 무수정 거부를 확인했다. [상세 범위](mongodb-import-staging-composition.md). 운영 업로드·배포·운영 이전은 미완료다.
