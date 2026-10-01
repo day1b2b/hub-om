@@ -356,3 +356,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 2026-10-01 원천 읽기 상태 composition selector 후속
 
 `feature/20261001-source-read-status-composition`에서 `/api/source-reads/status`에 첫 기능군 backend selector를 연결한다. 기본 PostgreSQL을 유지하고 정확한 `mongodb-shadow`만 준비된 runtime을 열며, 좌표·키·namespace 오류는 source load와 업무 처리 전에 실패하고 fallback하지 않는다. 실행·리뷰·통합은 `../mongodb-source-read-status-composition/` 기록을 따른다. 다른 기능군 selector, production 배포 설정, 실제 A/B 백업·복원·복사·최종 전환과 `dev → main`은 미완료다.
+
+## 2026-10-01 Notion 가져오기 composition selector 후속
+
+`feature/20261001-notion-import-composition`에서 기존 Notion import에 PostgreSQL 기본/Mongo shadow exact selector를 연결한다. 기존 reader·parser·staging을 반복 구현하지 않고 imports·teamMembers·instructorNote·requestActivity·notionImportSource를 같은 잠금 scope로 연다. 실행·리뷰·통합은 `../mongodb-notion-import-composition/` 기록을 따른다. 실제 Notion·다른 기능군 selector·production 배포·실데이터 이전과 `dev → main`은 미완료다.

@@ -75,3 +75,5 @@ OM 접수·전체 배정은 dc39e19까지 합성 검증·독립 수락·총괄 �
 Drive 결과 snapshot의 회사명·과정명은 2026-09-30 암호화 정책·companion·PG migration·Mongo codec/validator/index에 반영하고 합성 PG/Mongo에서 전환과 byte 정렬을 검증했다. 운영 migration/backfill/enforce와 새 shadow 재복사는 실행하지 않았다. 운영 collation/TZ는 [읽기 전용 사전 점검](postgres-runtime-contract-preflight.md)을 추가하고 합성 PostgreSQL 17의 C/UTF8/UTC에서 확인했지만 실제 운영 실행 증거는 아직 없다. 전체 앱·작업 조립, 실 A/B 백업·각 복원·복사·최종 전환도 계속 남는다.
 
 2026-10-01에 원천 읽기 상태 API 한 기능군의 PostgreSQL 기본/Mongo shadow 명시 selector를 합성 PostgreSQL·MongoDB에서 검증했다. 이는 production 전체 selector의 첫 조각이며 배포 설정은 그대로다. 다음에는 coverage의 나머지 요청·페이지·작업에 같은 fail-closed 조립을 확장하고, 그 뒤 실제 A/B 백업·각 복원·복사·최종 전환 절차를 완료해야 한다.
+
+같은 날 Notion 가져오기 API에도 기능군 selector를 연결하고 합성 PostgreSQL·MongoDB에서 실제 route 저장을 확인했다. 실제 Notion 원천과 운영 설정은 사용하지 않았다. 나머지 기능군 selector와 전체 앱 조립, 실제 A/B 백업·복원·복사·최종 전환은 계속 남는다.

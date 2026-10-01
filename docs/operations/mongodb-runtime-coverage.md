@@ -438,3 +438,7 @@ Hubbot POST의 합성 responder와 request audit를 같은 등록 shadow scope�
 ## 원천 읽기 상태 기능군 selector (2026-10-01)
 
 `/api/source-reads/status`에 첫 기능군 composition selector를 연결했다. 기본은 기존 PostgreSQL이고 정확한 `mongodb-shadow` 선택에서만 URI·database·namespace·암호화 키를 선검증한 뒤 준비된 runtime을 연다. request audit와 source reader는 같은 scope를 사용하며 실패 시 PostgreSQL로 fallback하지 않는다. [상세 범위](mongodb-source-read-status-composition.md). 다른 기능군 selector와 생산 배포 설정, 실데이터 이전·복원·최종 전환은 미완료다.
+
+## Notion 가져오기 기능군 selector (2026-10-01)
+
+`/api/admin/imports/notion/import`에 PostgreSQL 기본/Mongo shadow 명시 selector를 연결했다. 검증된 기존 Notion reader·parser·staging 의미를 유지하고 다섯 포트를 같은 잠금 scope로 연다. 설정·부분 namespace 오류는 인증·원천 호출 전에 실패하며 fallback하거나 자동 수리하지 않는다. [상세 범위](mongodb-notion-import-composition.md). 실제 Notion·생산 배포 설정·운영 이전은 미완료다.
