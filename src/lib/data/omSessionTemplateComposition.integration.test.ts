@@ -70,11 +70,17 @@ test("OM session template route uses selected Mongo request audit", { skip: !uri
     const response = await route.GET();
     assert.equal(response.status, 200);
     assert.match(response.headers.get("content-type") ?? "", /spreadsheetml/);
-    assert.match(response.headers.get("content-disposition") ?? "", /attachment/);
+    assert.equal(
+      response.headers.get("content-disposition"),
+      `attachment; filename*=UTF-8''${encodeURIComponent("OM업무요청_교육일정_샘플.xlsx")}`
+    );
     const workbook = XLSX.read(Buffer.from(await response.arrayBuffer()), { type: "buffer" });
     assert.deepEqual(workbook.SheetNames, ["교육일정"]);
-    const rows = XLSX.utils.sheet_to_json<string[]>(workbook.Sheets["교육일정"], { header: 1 });
+    const rows = XLSX.utils.sheet_to_json<string[]>(workbook.Sheets["교육일정"], { header: 1, defval: "" });
     assert.deepEqual(rows[0], ["회차", "시작일", "종료일", "시작시간", "종료시간", "장소", "실제교육일"]);
+    assert.deepEqual(rows[1], ["1", "2026-08-12", "2026-08-13", "09:00", "18:00", "서울 강남구 ○○빌딩 3층", ""]);
+    assert.equal(rows.length, 11);
+    assert.deepEqual(rows[10], ["10", "", "", "", "", "", ""]);
 
     const store = new MongoOperationStore(options, MONGO_IMPORT_TEMPLATE_MODELS);
     const firstRequests = await store.collection("ActivityRequest").find({}).toArray();
