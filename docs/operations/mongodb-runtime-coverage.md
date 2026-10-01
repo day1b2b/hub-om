@@ -482,3 +482,7 @@ health API에 PostgreSQL 기본/Mongo shadow selector를 연결하고 databaseHe
 ## Hubbot 기능군 selector (2026-10-01)
 
 Hubbot POST에 PostgreSQL 기본/Mongo shadow selector를 연결하고 responder·request audit를 같은 scope로 연다. [상세 범위](mongodb-hubbot-composition.md). 실제 외부 서비스·production 배포·운영 이전은 미완료다.
+
+## 변경 내역 기능군 selector (2026-10-01)
+
+콘텐츠 피드·메모 수정/삭제·투입 평가 수정에 PostgreSQL 기본/Mongo shadow selector를 연결했다. 활동 목록은 기존 activity selector를 유지한다. [상세 범위](mongodb-changes-composition.md). production 배포·운영 이전은 미완료다.

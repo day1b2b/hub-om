@@ -21,6 +21,8 @@
 
 Hubbot POST는 `HUBBOT_BACKEND`의 기능군 selector까지 연결했다. 합성 responder와 감사만 검증했으며 실제 외부 서비스·생산 환경 변수·최종 전환은 남는다.
 
+`/changes`의 콘텐츠 피드·메모 수정/삭제·평가 수정은 `CHANGES_BACKEND` selector까지 연결했다. 활동 목록은 `ACTIVITY_READ_BACKEND`를 사용한다. 운영 데이터·production 설정·최종 전환은 남는다.
+
 ## 2. 전체 Mongo 실행 연결
 
 `runWithDataRepositories`는 현재 테스트/내부 명시 주입 장치다. 생산 요청 전체를 구성하는 진입점은 아직 없다. 여러 factory는 기본 PG adapter를 반환하며, operationRepositoryFactory는 CalendarReflectingOperationRepository(new PrismaOperationRepository()), coachRepositoryFactory는 Prisma 고정이다. 일반 getTeamMemberRepository의 local/Prisma/Notion 선택과 저장용 명단 scope도 구분해야 한다.

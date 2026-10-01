@@ -400,3 +400,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 2026-10-01 Hubbot composition selector 후속
 
 `feature/20261001-hubbot-composition`에서 Hubbot POST에 PostgreSQL 기본/Mongo shadow exact selector를 연결한다. 기록은 `../mongodb-hubbot-composition/`을 따른다. 실제 외부 서비스·production 배포·운영 이전과 `dev → main`은 미완료다.
+
+## 2026-10-01 변경 내역 composition selector 후속
+
+`feature/20261001-changes-composition`에서 콘텐츠 피드·메모 수정/삭제·평가 수정에 exact selector를 연결한다. 활동 조회는 기존 selector를 유지한다. 기록은 `../mongodb-changes-composition/`을 따른다. 운영 이전과 `dev → main`은 미완료다.
