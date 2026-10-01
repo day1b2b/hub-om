@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { buildSkillfloCoachUrl } from "@/lib/coaches/skillfloCoachUrl";
 import { getCoachContentRepository } from "@/lib/data/coachContentRepositoryFactory";
+import { runChangesRequest } from "@/lib/data/changesComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -49,4 +50,4 @@ async function activityGET(_request: Request, { params }: RouteContext) {
   return NextResponse.json({ ok: true, yearMonth, counts, coaches: rows });
 }
 
-export const GET = withActivity("/api/admin/schedule-registration/[yearMonth]", "GET", activityGET);
+export const GET = withActivity("/api/admin/schedule-registration/[yearMonth]", "GET", activityGET, runChangesRequest);

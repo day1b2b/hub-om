@@ -2,6 +2,7 @@ import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getCoachContentRepository } from "@/lib/data/coachContentRepositoryFactory";
+import { runChangesRequest } from "@/lib/data/changesComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -51,4 +52,4 @@ async function activityGET(_request: Request, { params }: RouteContext) {
   });
 }
 
-export const GET = withActivity("/api/schedules/[yearMonth]/status", "GET", activityGET);
+export const GET = withActivity("/api/schedules/[yearMonth]/status", "GET", activityGET, runChangesRequest);
