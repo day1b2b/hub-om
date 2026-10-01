@@ -4,6 +4,7 @@ import { assertCoachPiiAccess } from "@/lib/auth/requireAdminSession";
 import { buildSkillfloCoachUrl } from "@/lib/coaches/skillfloCoachUrl";
 import { createCoachExportRepository } from "@/lib/data/coachExportRepositoryFactory";
 import { toCoachExportCsv } from "@/lib/coaches/coachExportCsv";
+import { runCoachAccessRequest } from "@/lib/data/coachAccessComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -64,4 +65,4 @@ async function activityPOST(request: Request) {
   });
 }
 
-export const POST = withActivity("/api/coaches/export", "POST", activityPOST);
+export const POST = withActivity("/api/coaches/export", "POST", activityPOST, runCoachAccessRequest);

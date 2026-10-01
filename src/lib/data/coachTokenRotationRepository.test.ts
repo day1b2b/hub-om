@@ -97,7 +97,8 @@ test("Actual token rotation handler authenticates before repository use and retu
     "@/lib/activity/request": { withActivity: (_route: string, _method: string, work: unknown) => work },
     "next/server": { NextResponse: { json: (body: unknown, init?: ResponseInit) => Response.json(body, init) } },
     "@/lib/auth/requireWorkspaceSession": { async requireWorkspaceSession() { if (!authorized) throw new Error("SYNTHETIC_UNAUTHENTICATED"); return { user: { email: "synthetic@example.invalid" } }; } },
-    "@/lib/data/coachTokenRotationRepositoryFactory": { getCoachTokenRotationRepository }
+    "@/lib/data/coachTokenRotationRepositoryFactory": { getCoachTokenRotationRepository },
+    "@/lib/data/coachAccessComposition": { runCoachAccessRequest: <T>(work: () => Promise<T>) => work() }
   };
   const exports: { POST?: (request: Request, context: { params: Promise<{ id: string }> }) => Promise<Response> } = {};
   new Function("require", "exports", javascript)((name: string) => { assert.ok(Object.hasOwn(modules, name)); return modules[name]; }, exports);
