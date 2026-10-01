@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppSidebar } from "@/components/AppSidebar";
+import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getOmRequest } from "@/lib/data/omRequest/omRequestLocalRepository";
 import { summarizeSessionDates } from "@/lib/data/omRequest/omRequestSessionDates";
 
@@ -28,6 +29,7 @@ function Badge({ value }: { value: string }) {
 }
 
 export default async function OmRequestCompletePage({ searchParams }: Props) {
+  await requireWorkspaceSession();
   const params = await searchParams;
   const id = typeof params.id === "string" ? params.id : null;
   const request = id ? await getOmRequest(id) : null;
