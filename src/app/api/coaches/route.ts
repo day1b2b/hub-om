@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getCoachManagementRepository } from "@/lib/data/coachManagementRepositoryFactory";
 import { coachManagementFailure } from "@/lib/data/coachManagementRepository";
+import { runCoachManagementRequest } from "@/lib/data/coachManagementComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -27,5 +28,5 @@ async function activityPOST(request: Request) {
     return NextResponse.json({ ok: false, error: failure.error }, { status: failure.status });
   }
 }
-export const GET = withActivity("/api/coaches", "GET", activityGET);
-export const POST = withActivity("/api/coaches", "POST", activityPOST);
+export const GET = withActivity("/api/coaches", "GET", activityGET, runCoachManagementRequest);
+export const POST = withActivity("/api/coaches", "POST", activityPOST, runCoachManagementRequest);

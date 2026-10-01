@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getCoachManagementRepository } from "@/lib/data/coachManagementRepositoryFactory";
 import { coachManagementFailure } from "@/lib/data/coachManagementRepository";
+import { runCoachManagementRequest } from "@/lib/data/coachManagementComposition";
 
 export const dynamic = "force-dynamic";
 interface RouteContext { params: Promise<{ id: string }> }
@@ -46,7 +47,7 @@ async function activityDELETE(_request: Request, { params }: RouteContext) {
     return NextResponse.json({ ok: true });
   } catch (error) { return failureResponse(error); }
 }
-export const PATCH = withActivity("/api/coaches/[id]", "PATCH", activityPATCH);
-export const GET = withActivity("/api/coaches/[id]", "GET", activityGET);
-export const PUT = withActivity("/api/coaches/[id]", "PUT", activityPUT);
-export const DELETE = withActivity("/api/coaches/[id]", "DELETE", activityDELETE);
+export const PATCH = withActivity("/api/coaches/[id]", "PATCH", activityPATCH, runCoachManagementRequest);
+export const GET = withActivity("/api/coaches/[id]", "GET", activityGET, runCoachManagementRequest);
+export const PUT = withActivity("/api/coaches/[id]", "PUT", activityPUT, runCoachManagementRequest);
+export const DELETE = withActivity("/api/coaches/[id]", "DELETE", activityDELETE, runCoachManagementRequest);

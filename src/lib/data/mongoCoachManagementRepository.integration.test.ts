@@ -4,13 +4,14 @@ import { registerHooks } from "node:module";
 import { mock, test } from "node:test";
 import { MongoClient } from "mongodb";
 import { MongoCoachManagementRepository, prepareMongoCoachManagementStore, COACH_MANAGEMENT_MODELS } from "./mongoCoachManagementRepository";
+import { prepareMongoCoachManagementRuntime } from "./mongoCoachManagementRuntime";
 import { MongoOperationStore } from "./mongoOperationStore";
 import { activityContext } from "../activity/context";
 import { runWithDataRepositories } from "./dataRepositoryContext";
 let authorized = true;
 mock.module("./prisma", { namedExports: { getPrismaClient: () => { throw new Error("Unexpected PostgreSQL access in Mongo API request"); } } });
 mock.module("../auth/requireWorkspaceSession", { namedExports: { requireWorkspaceSession: async () => { if (!authorized) throw new Error("synthetic unauthorized"); return { user: { email: "synthetic-manager@example.invalid", name: "Synthetic manager" } }; } } });
-mock.module("../activity/request", { namedExports: { withActivity: (_route: string, _method: string, handler: unknown) => handler } });
+mock.module("../activity/request", { namedExports: { withActivity: (_route: string, _method: string, handler: (...args: unknown[]) => Promise<Response>, runner: (work: () => Promise<Response>) => Promise<Response> = work => work()) => (...args: unknown[]) => runner(() => handler(...args)) } });
 const hook = registerHooks({ resolve(specifier, context, nextResolve) { return nextResolve(specifier === "next/server" ? "next/server.js" : specifier, context); } });
 const collectionRoute = await import("../../app/api/coaches/route"), detailRoute = await import("../../app/api/coaches/[id]/route");
 hook.deregister();
@@ -22,11 +23,11 @@ test("Coach management real HTTP handlers use native Mongo boundary, keep auth a
   const client = new MongoClient(uri!, { serverSelectionTimeoutMS: 5000 });
   const databaseName = `hub_om_shadow_coach_api_${randomBytes(8).toString("hex")}`;
   const options = { client, databaseName, namespace: `shadow_api_${randomBytes(8).toString("hex")}`, allowShadowWrites: true as const };
-  const names = ["PII_ENCRYPTION_KEYS", "PII_ACTIVE_KEY_ID", "PII_INDEX_KEY", "PII_ALLOW_PLAINTEXT_READS"], saved = new Map(names.map(name => [name, process.env[name]]));
+  const names = ["PII_ENCRYPTION_KEYS", "PII_ACTIVE_KEY_ID", "PII_INDEX_KEY", "PII_ALLOW_PLAINTEXT_READS", "COACH_MANAGEMENT_BACKEND", "MONGODB_URI", "MONGODB_SHADOW_DATABASE", "MONGODB_SHADOW_NAMESPACE"], saved = new Map(names.map(name => [name, process.env[name]]));
   process.env.PII_ENCRYPTION_KEYS = JSON.stringify({ fixture: randomBytes(32).toString("base64") }); process.env.PII_ACTIVE_KEY_ID = "fixture"; process.env.PII_INDEX_KEY = randomBytes(32).toString("base64"); process.env.PII_ALLOW_PLAINTEXT_READS = "false";
   let connected = false;
   try {
-    await client.connect(); connected = true; await prepareMongoCoachManagementStore(options);
+    await client.connect(); connected = true; await prepareMongoCoachManagementRuntime(options);
     const repository = await MongoCoachManagementRepository.open(options), store = new MongoOperationStore(options, COACH_MANAGEMENT_MODELS);
     const request = (body: unknown = {}) => new Request("https://example.invalid/api/coaches", { method: "POST", body: JSON.stringify(body) });
     await runWithDataRepositories({ coachManagement: repository }, () => activityContext.run({ requestId: randomUUID(), route: "/api/coaches", method: "POST", actorType: "user", actorEmail: "synthetic-manager@example.invalid", actorName: "Synthetic manager" }, async () => {
@@ -60,6 +61,22 @@ test("Coach management real HTTP handlers use native Mongo boundary, keep auth a
       assert.equal((await detailRoute.DELETE(request(), context)).status, 404);
       assert.equal(await store.collection("CoachPrivateProfile").countDocuments({ _id: id }), 1);
     }));
+    Object.assign(process.env, { COACH_MANAGEMENT_BACKEND: "mongodb-shadow", MONGODB_URI: uri!, MONGODB_SHADOW_DATABASE: databaseName, MONGODB_SHADOW_NAMESPACE: options.namespace });
+    assert.equal((await collectionRoute.GET(new Request("https://example.invalid/api/coaches"))).status, 200);
+
+    const partial = { ...options, namespace: `shadow_partial_${randomBytes(8).toString("hex")}` };
+    await prepareMongoCoachManagementStore(partial);
+    const snapshot = async () => {
+      const collections = (await client.db(databaseName).listCollections({}, { nameOnly: false }).toArray())
+        .filter(row => row.name.startsWith(`${partial.namespace}__`)).sort((a, b) => a.name.localeCompare(b.name));
+      return Promise.all(collections.map(async row => ({ definition: row,
+        indexes: await client.db(databaseName).collection(row.name).indexes(),
+        documents: await client.db(databaseName).collection(row.name).find({}).sort({ _id: 1 }).toArray() })));
+    };
+    const before = await snapshot();
+    process.env.MONGODB_SHADOW_NAMESPACE = partial.namespace;
+    await assert.rejects(collectionRoute.GET(new Request("https://example.invalid/api/coaches")), /COACH_MANAGEMENT_COMPOSITION_FAILED/);
+    assert.deepEqual(await snapshot(), before);
   } finally {
     authorized = true;
     try { if (connected) await client.db(databaseName).dropDatabase(); }
