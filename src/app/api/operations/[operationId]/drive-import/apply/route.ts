@@ -5,6 +5,7 @@ import { readLimitedJson, RequestBodyTooLargeError } from "@/lib/http/readLimite
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { parseEducationDatesText } from "@/lib/data/operationCalculations";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
+import { runOperationWriteRequest } from "@/lib/data/operationWriteComposition";
 import type {
   ArchiveStatus,
   EducationFormat,
@@ -266,4 +267,4 @@ function appendText(currentValue: string, nextValue: string): string {
   return `${current}\n\n${next}`;
 }
 
-export const POST = withActivity("/api/operations/[operationId]/drive-import/apply", "POST", activityPOST);
+export const POST = withActivity("/api/operations/[operationId]/drive-import/apply", "POST", activityPOST, runOperationWriteRequest);
