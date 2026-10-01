@@ -458,3 +458,7 @@ Hubbot POST의 합성 responder와 request audit를 같은 등록 shadow scope�
 ## 가져오기 관리 화면 기능군 selector (2026-10-01)
 
 관리자 가져오기 목록·상세 화면에 PostgreSQL 기본/Mongo shadow selector를 연결했다. 기존 권한·목록 DTO·상세 404·비관리자 리다이렉트를 유지하고, 정확한 Next.js 제어 흐름 외 오류는 고정 메시지로 숨긴다. 부분 namespace는 자동 수리하지 않고 저장 상태를 보존한다. [상세 범위](mongodb-import-pages-composition.md). 운영 데이터·배포 설정·전체 앱 selector와 최종 이전은 미완료다.
+
+## Drive 조회 화면 기능군 selector (2026-10-01)
+
+Drive 최근 조회 결과 화면에 PostgreSQL 기본/Mongo shadow selector를 연결하고 기존 이력·담당자 명단 repository를 같은 잠금 scope로 연다. workspace 권한·팀 범위·빈 상태를 유지하고 부분 namespace는 자동 수리하지 않는다. [상세 범위](mongodb-drive-import-page-composition.md). 실제 Drive 실행·운영 데이터·배포 설정·전체 앱 selector와 최종 이전은 미완료다.

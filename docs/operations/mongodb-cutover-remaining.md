@@ -93,3 +93,7 @@ Drive 결과 snapshot의 회사명·과정명은 2026-09-30 암호화 정책·co
 ## 2026-10-01 가져오기 관리 화면 composition 후속
 
 `feature/20261001-import-pages-composition`에서 목록·상세 page의 exact selector와 open-only imports scope를 검증했다. 권한·404·리다이렉트, PostgreSQL fallback 0건과 부분 namespace 불변을 확인했다. 기록은 `../../.claude/plans/mongodb-import-pages-composition/`을 따른다. 운영 데이터·production 배포·전체 앱 selector·실데이터 이전과 `dev → main`은 미완료다.
+
+## 2026-10-01 Drive 조회 화면 composition 후속
+
+`feature/20261001-drive-import-page-composition`에서 `/drive-import-runs`의 exact selector와 open-only 이력·담당자 명단 scope를 검증했다. workspace 권한·빈 상태·PostgreSQL fallback 0건과 부분 namespace 불변을 확인했다. 기록은 `../../.claude/plans/mongodb-drive-import-page-composition/`을 따른다. 실제 Drive·production 배포·전체 앱 selector·실데이터 이전과 `dev → main`은 미완료다.
