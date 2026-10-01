@@ -572,3 +572,7 @@ Notion·계약·일정·전체 동기화 네 API의 GET/POST에 PostgreSQL 기�
 ## 코치 접근 정보 API selector (2026-10-01)
 
 토큰 재발급과 개인정보 CSV 내보내기를 PostgreSQL 기본/Mongo shadow selector에 연결했다. 승인된 응답 복호화와 저장 평문 비노출, 업무·접근·요청 감사를 구분해 검증했다. [상세 범위](mongodb-coach-access-composition.md). 운영 이전은 미완료다.
+
+## 강사 위키 쓰기 API selector (2026-10-01)
+
+강사 메모 저장과 수동 Notion 강사 연결 API에 PostgreSQL 기본/Mongo shadow exact selector를 연결했다. 기존 workspace/admin 권한과 승인된 응답을 유지하면서 Mongo 저장·감사의 강사명·메모·Notion ID·actor 평문 비노출을 확인했다. [상세 범위](mongodb-instructor-wiki-composition.md). production 배포·운영 데이터·최종 전환은 미완료다.

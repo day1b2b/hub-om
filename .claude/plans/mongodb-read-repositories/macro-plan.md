@@ -429,6 +429,10 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 
 `feature/20261001-coach-access-composition`에서 토큰 재발급·개인정보 내보내기를 exact selector에 연결했다. 응답 복호화와 저장 평문 비노출, 세 감사 경계를 검증했다. 근거는 `../mongodb-coach-access-composition/`을 따른다. 운영 이전은 미완료다.
 
+## 2026-10-01 강사 위키 쓰기 API composition selector 후속
+
+`feature/20261001-instructor-wiki-composition`에서 강사 메모 저장과 수동 Notion 강사 연결 API에 exact selector를 연결한다. `instructorNote`와 `requestActivity`만 같은 잠금 namespace로 열고 기존 권한·부분 병합·페이지 ID 연결을 유지한다. 근거는 `../mongodb-instructor-wiki-composition/`을 따른다. production 배포·운영 데이터·실데이터 이전·A/B 복원·최종 전환과 `dev → main`은 미완료다.
+
 ## 2026-10-01 관리자 DB composition selector 후속
 
 `feature/20261001-admin-database-composition`에서 관리자 DB 페이지·셀 PATCH에 exact selector를 연결한다. DB·담당자·요청 감사를 같은 잠금 scope로 열고 기존 검증·rollback을 유지한다. 기록은 `../mongodb-admin-database-composition/`을 따른다. 나머지 기능군 selector, production 배포·운영 이전과 `dev → main`은 미완료다.

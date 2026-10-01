@@ -199,3 +199,7 @@ Drive 결과 snapshot의 회사명·과정명은 2026-09-30 암호화 정책·co
 ## 2026-10-01 코치 접근 정보 API composition 후속
 
 `feature/20261001-coach-access-composition`에서 토큰 재발급과 개인정보 CSV 내보내기를 exact selector에 연결했다. 기록은 `../../.claude/plans/mongodb-coach-access-composition/`을 따른다. production 배포·운영 데이터·최종 전환과 `dev → main`은 미완료다.
+
+## 2026-10-01 강사 위키 쓰기 API composition 후속
+
+`feature/20261001-instructor-wiki-composition`에서 강사 메모 저장과 수동 Notion 강사 연결 API의 PostgreSQL 기본/Mongo shadow exact selector를 검증했다. 실제 route의 권한·부분 병합·페이지 ID 연결·요청/업무 감사와 저장 평문 비노출을 확인했다. 기록은 `../../.claude/plans/mongodb-instructor-wiki-composition/`을 따른다. 실제 Notion 동기화 실행·production 배포·운영 데이터·A/B 백업·각 복원·복사·최종 전환과 `dev → main`은 미완료다.
