@@ -7,3 +7,4 @@
 - 실제 Mongo 확인: 관리자와 일반 workspace 사용자의 저장, 일반 사용자의 연결 403·저장 불변, 비인증 redirect, 업무/요청 감사, raw 평문 비노출, PostgreSQL 접근 0건, 부분 namespace 전후 전체 snapshot 동일
 - 외부 원천: 해당 API는 외부 Notion 호출을 하지 않아 합성 HTTP port가 필요하지 않았다.
 - 미완료: production selector 설정, 운영 데이터 복사, A/B 백업·복원, 최종 전환
+- 독립 리뷰: 최초 P2 1건(일반 workspace 사용자 권한 경계의 실제 Mongo 검증 누락)을 보완한 뒤 P0/P1/P2/P3 모두 0건
