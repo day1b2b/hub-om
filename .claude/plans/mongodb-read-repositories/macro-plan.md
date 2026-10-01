@@ -438,3 +438,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 2026-10-01 공통 개요 화면 composition selector 후속
 
 `feature/20261001-overview-pages-composition`에서 대시보드·내 업무·회사 위키·리소스 화면에 exact selector를 연결한다. 준비된 네 저장소의 open-only scope를 사용하고 collection 정의·validator/options·index·행 전체의 무변경과 부분 namespace 거부를 검증한다. 기록은 `../mongodb-overview-pages-composition/`을 따른다. production 배포·운영 데이터·실데이터 이전·A/B 복원·최종 전환과 `dev → main`은 미완료다.
+
+## 2026-10-01 OM 요청 화면 composition selector 후속
+
+`feature/20261001-om-request-pages-composition`에서 등록·관리·상세·수정·완료 화면에 exact selector를 연결한다. 인증을 연결보다 먼저 유지하고 기존 operation-pages runtime과 borrowed 맞춤 도구를 재사용한다. 기록은 `../mongodb-om-request-pages-composition/`을 따른다. 쓰기 API selector·production 배포·운영 데이터·실데이터 이전·A/B 복원·최종 전환과 `dev → main`은 미완료다.
