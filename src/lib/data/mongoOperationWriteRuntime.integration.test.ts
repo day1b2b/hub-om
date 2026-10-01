@@ -12,6 +12,7 @@ const actor: Actor = { user: { email: "operation-writer@day1company.co.kr", name
 const actors = new AsyncLocalStorage<Actor | null>();
 const remotes = new AsyncLocalStorage<SyntheticCalendarRemote>();
 mock.module("@/auth", { namedExports: { auth: async () => actors.getStore() ?? null } });
+mock.module("@/lib/sourceReads", { namedExports: { getOperationSourceReader: async () => ({ readDiscussionReferences: async () => ({ source: "discussion", status: "disabled", readAt: new Date(0).toISOString(), items: [], issues: [] }) }) } });
 let pgAdapterCalls = 0, pgPoolCalls = 0;
 mock.module("@prisma/adapter-pg", { namedExports: { PrismaPg: class { constructor() { pgAdapterCalls++; throw new Error("PG_ADAPTER_TRIPWIRE"); } } } });
 mock.module("pg", { namedExports: { Pool: class { constructor() { pgPoolCalls++; throw new Error("PG_POOL_TRIPWIRE"); } } }, defaultExport: { Pool: class { constructor() { pgPoolCalls++; throw new Error("PG_POOL_TRIPWIRE"); } } } });
@@ -29,6 +30,7 @@ const { resetAccessTokenCache } = await import("../googleCalendar/calendarWriteC
 hooks.deregister();
 
 const uri = process.env.MONGODB_OPERATION_WRITE_TEST_URI;
+const compositionUri = process.env.MONGODB_OPERATION_WRITE_COMPOSITION_TEST_URI;
 const request = (path: string, body: unknown, key?: string) => new Request(`https://example.invalid${path}`, {
   method: "POST", headers: { "content-type": "application/json", ...(key ? { "Idempotency-Key": key } : {}) }, body: JSON.stringify(body),
 });
@@ -133,4 +135,19 @@ test("operation write runtime composes create, round, reorder, delete, Calendar 
     try { await client.db(databaseName).dropDatabase(); } catch {} await client.close(); fetchMock.mock.restore(); infoMock.mock.restore(); warnMock.mock.restore(); errorMock.mock.restore(); resetAccessTokenCache();
     for (const [name, value] of saved) { if (value === undefined) delete process.env[name]; else process.env[name] = value; }
   }
+});
+
+test("operation write routes use the prepared Mongo composition", { skip: !compositionUri, timeout: 180_000 }, async () => {
+  const target=new URL(compositionUri!);assert.equal(target.hostname,"127.0.0.1");assert.ok(target.port);
+  const databaseName=`hub_om_shadow_operation_write_comp_${randomBytes(6).toString("hex")}`,namespace=`shadow_operation_write_${randomBytes(6).toString("hex")}`;
+  const env={OPERATION_WRITE_BACKEND:"mongodb-shadow",MONGODB_URI:compositionUri!,MONGODB_SHADOW_DATABASE:databaseName,MONGODB_SHADOW_NAMESPACE:namespace,PII_ENCRYPTION_KEYS:JSON.stringify({fixture:randomBytes(32).toString("base64")}),PII_ACTIVE_KEY_ID:"fixture",PII_INDEX_KEY:randomBytes(32).toString("base64"),PII_ALLOW_PLAINTEXT_READS:"false",DATABASE_URL:"postgresql://synthetic@127.0.0.1:1/forbidden",OPERATION_DATA_SOURCE:"postgres",DEV_AUTH_BYPASS:"false",GOOGLE_CAL_OAUTH_CLIENT_ID:"synthetic-calendar-client",GOOGLE_CAL_OAUTH_CLIENT_SECRET:"synthetic-calendar-secret",GOOGLE_CAL_OAUTH_REFRESH_TOKEN:"synthetic-calendar-refresh",GOOGLE_CAL_PART_CALENDARS:`1파트:${CALENDAR_ID}`};
+  const saved=new Map(Object.keys(env).map(key=>[key,process.env[key]]));Object.assign(process.env,env);const client=new MongoClient(compositionUri!,{directConnection:true});const remote=new SyntheticCalendarRemote();
+  const fetchMock=mock.method(globalThis,"fetch",async(input:Parameters<typeof fetch>[0],init?:Parameters<typeof fetch>[1])=>{const scoped=remotes.getStore();if(!scoped)throw new Error("EXTERNAL_FETCH_TRIPWIRE");return scoped.fetch(input,init)});
+  try{await client.connect();resetAccessTokenCache();const options={client,databaseName,namespace,allowShadowWrites:true as const,processSequenceHighWater:0};const runtime=await prepareMongoOperationWriteRuntime(options);await runtime.repositories.teamUsers.createTeamUser({name:"Synthetic Calendar OM",email:"calendar-om@example.invalid",slackId:"synthetic",team:"AX 1파트",role:"om"});const store=new MongoOperationStore(options,[...new Set([...OPERATION_MODELS,"ActivityRequest"])]);const invoke=<T>(work:()=>T)=>actors.run(actor,()=>remotes.run(remote,work));
+    const createdResponse=await invoke(()=>collectionRoute.POST(request("/api/operations",{companyName:"Synthetic composition company",courseName:"Synthetic composition course",courseId:"SYN-COMP",roundNo:"1",startDate:"2099-11-01",endDate:"2099-11-01",educationDates:"2099-11-01",educationDays:"1",trainingType:"오프라인",om:"Synthetic Calendar OM",onsiteRequired:"N"},randomUUID())));assert.equal(createdResponse.status,200);const first=(await createdResponse.clone().json() as {operation:{operationId:string}}).operation;
+    const addedResponse=await invoke(()=>roundsRoute.POST(request(`/api/operations/${first.operationId}/rounds`,{roundNo:"2",startDate:"2099-11-02",endDate:"2099-11-02",educationDates:"2099-11-02"},randomUUID()),{params:Promise.resolve({operationId:first.operationId})}));assert.equal(addedResponse.status,200);const second=(await addedResponse.clone().json() as {operation:{operationId:string}}).operation;
+    const reorderResponse=await invoke(()=>reorderRoute.POST(request(`/api/operations/${first.operationId}/rounds/reorder`,{orderedOperationIds:[second.operationId,first.operationId]}),{params:Promise.resolve({operationId:first.operationId})}));assert.equal(reorderResponse.status,200);
+    const deleteResponse=await invoke(()=>itemRoute.DELETE(new Request(`https://example.invalid/api/operations/${first.operationId}`,{method:"DELETE"}),{params:Promise.resolve({operationId:first.operationId})}));assert.equal(deleteResponse.status,200);assert.equal(remote.active().length,1);for(const response of[createdResponse,addedResponse,reorderResponse,deleteResponse]){const id=response.headers.get("X-Request-Id");assert.ok(id);assert.ok(await store.one("ActivityRequest",{_id:id}))}assert.equal(pgAdapterCalls,0);assert.equal(pgPoolCalls,0);
+    const partial=`shadow_operation_write_partial_${randomBytes(6).toString("hex")}`;process.env.MONGODB_SHADOW_NAMESPACE=partial;const legacy=client.db(databaseName).collection(`${partial}_LegacyOnly`);await client.db(databaseName).createCollection(legacy.collectionName,{validator:{marker:{$type:"string"}},validationLevel:"strict",validationAction:"error"});await legacy.insertOne({marker:"unchanged"});await assert.rejects(invoke(()=>collectionRoute.POST(request("/api/operations",{companyName:"x",courseName:"x",roundNo:"1",startDate:"2099-01-01",endDate:"2099-01-01"},randomUUID()))),/OPERATION_WRITE_COMPOSITION_FAILED/);assert.equal((await legacy.findOne())?.marker,"unchanged");
+  }finally{fetchMock.mock.restore();try{await client.db(databaseName).dropDatabase()}catch{}await client.close();for(const[key,value]of saved){if(value===undefined)delete process.env[key];else process.env[key]=value}}
 });

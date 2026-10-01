@@ -5,6 +5,7 @@ import { isSameCourse } from "@/lib/data/operationCalculations";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { planRoundReorder } from "@/lib/data/roundReorder";
 import { activityContext } from "@/lib/activity/context";
+import { runOperationWriteRequest } from "@/lib/data/operationWriteComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -68,4 +69,4 @@ async function activityPOST(request: Request, { params }: RouteContext) {
   return NextResponse.json({ ok: true, changes: plan.changes });
 }
 
-export const POST = withActivity("/api/operations/[operationId]/rounds/reorder", "POST", activityPOST);
+export const POST = withActivity("/api/operations/[operationId]/rounds/reorder", "POST", activityPOST, runOperationWriteRequest);

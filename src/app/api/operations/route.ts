@@ -8,6 +8,7 @@ import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { EDUCATION_FORMAT_BY_TRAINING_TYPE } from "@/lib/data/omRequest/omRequestOperationLink";
 import type { TrainingType } from "@/lib/data/omRequest/omRequestTypes";
 import type { CreateOperationInput, EducationFormat, OnsiteRequired } from "@/lib/data/operationTypes";
+import { runOperationWriteRequest } from "@/lib/data/operationWriteComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -139,4 +140,4 @@ function educationFormatOf(value: unknown): EducationFormat {
   return "검토필요";
 }
 
-export const POST = withActivity("/api/operations", "POST", activityPOST);
+export const POST = withActivity("/api/operations", "POST", activityPOST, runOperationWriteRequest);

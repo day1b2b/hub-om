@@ -7,7 +7,7 @@ process.env.OPERATION_DATA_SOURCE = "local"; delete process.env.DATABASE_URL;
 mock.module("@/auth", { namedExports: { auth: async () => ({ user: { email: "local-user@day1company.co.kr", name: "Local user" }, expires: "" }) } });
 mock.module("@/lib/data/operationRepositoryFactory", { namedExports: { getOperationRepository: () => ({ getOperationById: async () => null }) } });
 let calendarRetries = 0;
-mock.module("@/lib/googleCalendar/reflectOperationToCalendar", { namedExports: { retryOperationCalendarDelete: async () => { calendarRetries++; return "completed"; } } });
+mock.module("@/lib/googleCalendar/reflectOperationToCalendar", { namedExports: { reflectOperationCreated: async () => {}, reflectOperationDelete: async () => {}, reflectOperationUpdated: async () => {}, retryOperationCalendarDelete: async () => { calendarRetries++; return "completed"; } } });
 const hooks = registerHooks({ resolve(specifier, context, next) { return next(specifier === "next/server" || specifier === "next/navigation" ? `${specifier}.js` : specifier, context); } });
 const route = await import("./route"); hooks.deregister();
 

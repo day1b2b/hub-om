@@ -6,6 +6,7 @@ import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { isSameCourse, parseEducationDatesText } from "@/lib/data/operationCalculations";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import type { CreateOperationInput } from "@/lib/data/operationTypes";
+import { runOperationWriteRequest } from "@/lib/data/operationWriteComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -149,4 +150,4 @@ function textValue(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
-export const POST = withActivity("/api/operations/[operationId]/rounds", "POST", activityPOST);
+export const POST = withActivity("/api/operations/[operationId]/rounds", "POST", activityPOST, runOperationWriteRequest);
