@@ -414,3 +414,7 @@ OM 요청 생성·수정·삭제, 전체 배정 미리보기·확정, Calendar-a
 ## 코치 동기화 예약 작업 runtime 조립 (2026-10-01)
 
 Notion·계약·일정·`/sync/all` API의 저장 repository, 합성 source, 실행 로그와 요청 감사를 같은 등록 shadow scope로 조립한다. 실제 `/sync/all` bearer POST에서 세 원천의 단일 실행, 완료 로그·요청 감사, PG/비합성 외부 접근 0, 준비 재실행과 부분 namespace 무수정 거부를 확인한다. [상세 범위와 한계](mongodb-sync-jobs-runtime.md)를 따른다. 실제 원천·Coolify 예약·production selector와 운영 이전은 미완료다.
+
+## 강사 Notion 동기화 runtime 조립 (2026-10-01)
+
+강사 Notion 저장·합성 source·request audit를 같은 등록 shadow scope로 조립했다. 실제 handler, 준비/부분 namespace 불변, PG·외부 접근 0과 scope 차단을 확인했다. [상세 범위](mongodb-instructor-sync-runtime.md). 실제 원천·예약·production selector·운영 이전은 미완료다.

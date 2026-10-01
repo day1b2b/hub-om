@@ -332,3 +332,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 2026-10-01 코치 동기화 예약 작업 runtime 후속
 
 `feature/20261001-mongodb-sync-jobs-runtime`에서 Notion·계약·일정·`/sync/all` API의 여섯 repository/source/log/audit port를 같은 잠금 shadow scope로 조립한다. 실제 handler의 원천 순서·로그·감사와 PG/외부 접근 차단, 빈 namespace 준비·부분 namespace 불변을 검증한다. 실행·독립 리뷰·통합은 `../mongodb-sync-jobs-runtime/` 기록을 따른다. 실제 원천·Coolify 예약·production selector·운영 이전/dev→main은 미완료다.
+
+## 2026-10-01 강사 Notion 동기화 runtime 후속
+
+`feature/20261001-mongodb-instructor-sync-runtime`에서 저장·합성 source·request audit를 같은 잠금 shadow scope로 조립한다. 실행·리뷰·통합은 `../mongodb-instructor-sync-runtime/`을 따른다. 실제 원천·예약·production selector·운영 이전/dev→main은 미완료다.
