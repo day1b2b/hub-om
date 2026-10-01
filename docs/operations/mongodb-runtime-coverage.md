@@ -584,3 +584,7 @@ OM 요청용 회차 xlsx 템플릿 API에 PostgreSQL 기본/Mongo shadow exact s
 ## 매출 조회 API selector (2026-10-01)
 
 토큰 기반 코스·고객사 조회 API에 PostgreSQL 기본/Mongo shadow exact selector를 연결했다. 운영현황 우선 조회·Salesmap 폴백·요청 감사를 같은 scope로 열고 필터·401·source 미설정·토큰 비저장을 확인했다. [상세 범위](mongodb-sales-lookup-composition.md). 실제 Salesmap·production 배포·운영 이전은 미완료다.
+
+## 코치 접근 토큰 보완 CLI selector (2026-10-01)
+
+`db:backfill:coach-access-tokens`에 PostgreSQL 기본/Mongo shadow exact CLI selector를 연결했다. Mongo 선택은 준비된 namespace만 열며 기존 백업·maintenance 확인 인자를 그대로 요구한다. [상세 범위](mongodb-coach-token-backfill-cli-composition.md). 실제 운영 backfill·백업·쓰기 중단·복구와 최종 이전은 미완료다.

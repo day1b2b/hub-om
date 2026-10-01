@@ -211,3 +211,7 @@ Drive 결과 snapshot의 회사명·과정명은 2026-09-30 암호화 정책·co
 ## 2026-10-01 매출 조회 API composition 후속
 
 `feature/20261001-sales-lookup-composition`에서 토큰 기반 코스·고객사 조회 API의 exact selector를 검증했다. 기록은 `../../.claude/plans/mongodb-sales-lookup-composition/`을 따른다. 실제 Salesmap·production 배포·운영 이전과 `dev → main`은 미완료다.
+
+## 2026-10-01 코치 접근 토큰 보완 CLI composition 후속
+
+`feature/20261001-coach-token-backfill-cli-composition`에서 기존 유지보수 CLI에 PostgreSQL 기본/Mongo shadow exact selector를 연결했다. 준비된 namespace만 열고 기존 apply 확인 플래그를 유지한다. 실제 백업·maintenance·운영 적용·복구와 `dev → main`은 미완료다.

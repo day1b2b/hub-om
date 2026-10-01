@@ -502,3 +502,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 2026-10-01 코치 공개 화면 composition selector 후속
 
 `feature/20261001-coach-public-composition`에서 코치·강사 공개 화면 6개에 exact selector를 연결한다. 인증 후 operations·instructorNote·coach 세 포트만 같은 잠금 namespace로 열고 실제 화면과 저장 불변을 검증한다. 기록은 `../mongodb-coach-public-composition/`을 따른다. production 배포·운영 데이터·실데이터 이전·A/B 복원·최종 전환과 `dev → main`은 미완료다.
+
+## 2026-10-01 코치 접근 토큰 보완 CLI composition 후속
+
+총괄 `3ff9af4` 기준 기존 Mongo 토큰 보완 repository를 실제 CLI exact selector로 연결한다. 기본 PostgreSQL, 준비된 shadow open-only, 기존 백업·maintenance 확인을 유지하며 운영 적용은 하지 않는다. 실행·통합 기록은 `../mongodb-coach-token-backfill-cli-composition/`을 따른다.

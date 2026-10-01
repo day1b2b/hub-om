@@ -10,10 +10,10 @@
  * 단일 트랜잭션이며 실패 시 전체 롤백한다. DB 규모별 소요 시간은 격리 DB에서 검증한다.
  */
 import nextEnv from "@next/env";
-import { runCoachTokenBackfillCommand } from "../src/lib/data/coachTokenBackfillCommand";
+import { runCoachTokenBackfillCli } from "../src/lib/data/coachTokenBackfillCliRuntime";
 
 async function main(): Promise<void> {
-  const { options, summary } = await runCoachTokenBackfillCommand(process.argv.slice(2), () => {
+  const { options, summary } = await runCoachTokenBackfillCli(process.argv.slice(2), process.env, () => {
     // Next's loader matches app environment precedence without a new dependency.
     nextEnv.loadEnvConfig(process.cwd(), false, { info() {}, error() {} });
   });
