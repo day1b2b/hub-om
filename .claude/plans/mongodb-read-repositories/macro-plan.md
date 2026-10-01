@@ -319,3 +319,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 2026-10-01 OM 요청 화면 runtime 후속
 
 `feature/20261001-mongodb-om-request-pages-runtime`에서 기존 운영 화면 runtime을 OM 요청 등록·관리·상세·수정·완료 page에 재사용한다. 실제 다섯 page의 권한·후보·초기값, PG fallback 없음·조회 저장 불변·legacy 부분 namespace 무수정 거부를 검증한다. 실행·독립 리뷰·통합은 `../mongodb-om-request-pages-runtime/` 기록을 따른다. 다음 단위는 OM 요청 쓰기·전체 배정 handler의 단일 runtime 조립이며 production selector·실데이터 이전/dev→main은 미완료다.
+
+## 2026-10-01 OM 요청 쓰기 runtime 후속
+
+`feature/20261001-mongodb-om-request-write-runtime`에서 OM 요청 생성·수정·삭제와 전체 배정 API의 Mongo repository, request audit, 명시 effect port를 같은 잠금 scope로 조립한다. 실제 handler의 운영 자동 연결·맞춤 도구·합성 알림/Calendar, 암호화 저장·PG fallback 차단·legacy 부분 namespace 무수정 거부를 검증한다. 실행·독립 리뷰·통합은 `../mongodb-om-request-write-runtime/` 기록을 따른다. 실제 외부 원천·production selector·실데이터 이전/dev→main은 미완료다.

@@ -401,3 +401,7 @@ legacy raw pg `db:import:operations`를 기본 encrypted PostgreSQL/명시 prepa
 ## OM 요청 화면 runtime 검증 (2026-10-01)
 
 기존 운영 화면 runtime의 `operations`, `teamUsers`, `teamMembers`, `instructorNote`, `omRequests`, borrowed `omCustomTools` 조립을 OM 요청 등록·관리·상세·수정·완료 page에도 재사용한다. 실제 다섯 page에서 권한·후보·초기값, PG fallback 없음, 조회 저장 불변, legacy 부분 namespace 무수정 거부를 확인한다. 상세 범위는 [OM 요청 화면 runtime 문서](mongodb-om-request-pages-runtime.md)를 따른다. 쓰기·배정 handler의 한 runtime 조립, production selector와 운영 이전은 미완료다.
+
+## OM 요청 쓰기 runtime 조립 (2026-10-01)
+
+OM 요청 생성·수정·삭제, 전체 배정 미리보기·확정, Calendar-aware operations·같은 namespace의 persistence/lock, request audit와 명시 effect port를 같은 shadow scope로 조립한다. 실제 API handler의 운영 자동 연결·Calendar 이벤트/매핑·맞춤 도구·합성 알림, 삭제 전 저장 평문 비노출, effect 실패 격리, PG fallback 없음, legacy 부분 namespace 무수정 거부를 확인한다. 상세 범위는 [OM 요청 쓰기 runtime 문서](mongodb-om-request-write-runtime.md)를 따른다. 실제 Slack·Google Calendar, production selector와 운영 이전은 미완료다.
