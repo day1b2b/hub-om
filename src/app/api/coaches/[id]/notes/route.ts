@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { createNote } from "@/lib/coaches/contentEntries";
 import { getCoachContentRepository } from "@/lib/data/coachContentRepositoryFactory";
+import { runChangesRequest } from "@/lib/data/changesComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,6 @@ async function activityPOST(request: Request, { params }: RouteContext) {
   return NextResponse.json({ ok: true, note });
 }
 
-export const GET = withActivity("/api/coaches/[id]/notes", "GET", activityGET);
+export const GET = withActivity("/api/coaches/[id]/notes", "GET", activityGET, runChangesRequest);
 
-export const POST = withActivity("/api/coaches/[id]/notes", "POST", activityPOST);
+export const POST = withActivity("/api/coaches/[id]/notes", "POST", activityPOST, runChangesRequest);
