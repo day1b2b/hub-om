@@ -42,8 +42,13 @@ async function recordRequest(context: ActivityContext, status: number, durationM
   }
 }
 
-export function withActivity<Args extends unknown[]>(route: string, method: string, handler: (...args: Args) => Promise<Response>) {
-  return async (...args: Args): Promise<Response> => {
+export function withActivity<Args extends unknown[]>(
+  route: string,
+  method: string,
+  handler: (...args: Args) => Promise<Response>,
+  compose?: <T>(work: () => Promise<T>) => Promise<T>
+) {
+  const tracked = async (...args: Args): Promise<Response> => {
     // Validate shadow logging before any business side effect. Runtime log failures remain
     // best-effort like PostgreSQL; they must never fall back to the default database.
     const requestActivity = getDataRepositoryOverride("requestActivity");
@@ -89,4 +94,5 @@ export function withActivity<Args extends unknown[]>(route: string, method: stri
       }
     });
   };
+  return (...args: Args): Promise<Response> => compose ? compose(() => tracked(...args)) : tracked(...args);
 }

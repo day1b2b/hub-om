@@ -36,14 +36,16 @@ async function snapshot(store: MongoOperationStore) {
 test("source status handler uses one prepared locked Mongo audit and explicit source reader", { skip: !uri, timeout: 180_000 }, async () => {
   const target = new URL(uri!);
   assert.equal(target.hostname, "127.0.0.1"); assert.ok(target.port); assert.equal(target.username, ""); assert.equal(target.password, "");
+  const databaseName = `hub_om_shadow_source_status_${randomBytes(8).toString("hex")}`, namespace = `shadow_source_status_${randomBytes(6).toString("hex")}`;
   const env = { DATABASE_URL: "postgresql://synthetic@127.0.0.1:1/forbidden", DEV_AUTH_BYPASS: "false",
+    SOURCE_READ_STATUS_BACKEND: "postgres", MONGODB_URI: uri!, MONGODB_SHADOW_DATABASE: databaseName, MONGODB_SHADOW_NAMESPACE: namespace,
+    OPERATION_SOURCE_READER_MODULE: "", SALESMAP_API_TOKEN: "", GOOGLE_CALENDAR_SERVICE_ACCOUNT_EMAIL: "", GOOGLE_CALENDAR_PRIVATE_KEY: "", GOOGLE_CALENDAR_IDS: "",
     PII_ENCRYPTION_KEYS: JSON.stringify({ fixture: randomBytes(32).toString("base64") }), PII_ACTIVE_KEY_ID: "fixture",
     PII_INDEX_KEY: randomBytes(32).toString("base64"), PII_ALLOW_PLAINTEXT_READS: "false" };
   const saved = new Map(Object.keys(env).map(name => [name, process.env[name]])); Object.assign(process.env, env);
   const client = new MongoClient(uri!, { directConnection: true, monitorCommands: true, serverSelectionTimeoutMS: 5_000 });
   const writes: CommandStartedEvent[] = [], mutations = new Set(["create", "createIndexes", "collMod", "insert", "update", "delete", "drop", "dropDatabase", "dropIndexes", "findAndModify", "bulkWrite", "renameCollection"]);
   client.on("commandStarted", event => { if (mutations.has(event.commandName)) writes.push(event); });
-  const databaseName = `hub_om_shadow_source_status_${randomBytes(8).toString("hex")}`, namespace = `shadow_source_status_${randomBytes(6).toString("hex")}`;
   const calls: string[] = []; let fetchCalls = 0;
   const operationSourceReader: OperationSourceReader = {
     async readCourseBoard() { calls.push("course_board"); return result("course_board", [{ sourceRecordId: "synthetic-course", courseName: "Synthetic Course" }]); },
@@ -69,6 +71,15 @@ test("source status handler uses one prepared locked Mongo audit and explicit so
     const requestId = response.headers.get("X-Request-Id"); assert.ok(requestId);
     const audit = await store.one("ActivityRequest", { _id: requestId }); assert.ok(audit); assert.equal(audit.route, "/api/source-reads/status"); assert.equal(audit.status, 200);
 
+    process.env.SOURCE_READ_STATUS_BACKEND = "mongodb-shadow";
+    const composed = await route.GET(); assert.equal(composed.status, 200);
+    const composedBody = await composed.json(); assert.equal(composedBody.ok, true);
+    assert.deepEqual(composedBody.sources.map((item: { status: string; itemCount: number }) => [item.status, item.itemCount]), [
+      ["disabled", 0], ["disabled", 0], ["disabled", 0], ["disabled", 0]
+    ]);
+    const composedId = composed.headers.get("X-Request-Id"); assert.ok(composedId); assert.ok(await store.one("ActivityRequest", { _id: composedId }));
+    assert.equal(fetchCalls, 0); assert.equal(pgCalls, 0);
+
     const second = await prepareMongoSourceReadStatusRuntime({ ...options, namespace: `shadow_source_status_second_${randomBytes(6).toString("hex")}` });
     let callbacks = 0; assert.throws(() => runtime.run(() => second.run(() => { callbacks++; })), /CALENDAR_SCOPE_MISMATCH/);
     for (const key of Object.keys(runtime.repositories) as Array<keyof typeof runtime.repositories>) {
@@ -83,6 +94,13 @@ test("source status handler uses one prepared locked Mongo audit and explicit so
     const before = await snapshot(partial); writes.length = 0;
     await assert.rejects(prepareMongoSourceReadStatusRuntime({ ...options, namespace: partialNamespace }), /MONGO_SOURCE_READ_STATUS_RUNTIME_FAILED/);
     assert.deepEqual(writes.map(event => event.commandName), []); assert.deepEqual(await snapshot(partial), before);
+    process.env.MONGODB_SHADOW_NAMESPACE = partialNamespace;
+    await assert.rejects(route.GET(), /SOURCE_READ_STATUS_COMPOSITION_FAILED/);
+    assert.deepEqual(await snapshot(partial), before); assert.equal(fetchCalls, 0); assert.equal(pgCalls, 0);
+
+    process.env.MONGODB_SHADOW_NAMESPACE = namespace; process.env.PII_INDEX_KEY = "";
+    await assert.rejects(route.GET(), /SOURCE_READ_STATUS_COMPOSITION_FAILED/);
+    assert.equal(fetchCalls, 0); assert.equal(pgCalls, 0);
   } finally {
     try { await client.db(databaseName).dropDatabase(); } catch {}
     await client.close(); fetchMock.mock.restore();
