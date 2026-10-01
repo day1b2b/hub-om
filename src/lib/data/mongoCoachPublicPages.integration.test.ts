@@ -20,6 +20,7 @@ import type { InstructorNote } from "./instructorNoteRepository";
 import type { OperationSession } from "./operationTypes";
 import { MongoCoachRepository } from "./mongoCoachRepository";
 import { MongoOperationStore } from "./mongoOperationStore";
+import { MONGO_COACH_PUBLIC_RUNTIME_MODELS, prepareMongoCoachPublicRuntime } from "./mongoCoachPublicRuntime";
 import { COACH_READ_MODELS, prepareMongoReadStore } from "./mongoReadStore";
 import { encodeMongoRuntimeDocument } from "./mongoRuntimeCodec";
 import { coachFixtureRow, mongoCoachFixtures } from "./mongoCoachFixtures";
@@ -296,7 +297,7 @@ test("coach public pages: seven actual pages use native coach storage with prese
   assert.equal(url.protocol, "mongodb:"); assert.equal(url.hostname, "127.0.0.1"); assert.ok(url.port);
   assert.equal(url.username, ""); assert.equal(url.password, ""); assert.ok(url.pathname === "/" || url.pathname === "");
   for (const key of url.searchParams.keys()) assert.ok(["replicaSet", "directConnection"].includes(key));
-  const restore = saveEnv(["DATABASE_URL", "ADMIN_EMAILS", "DEV_AUTH_BYPASS", "PII_ENCRYPTION_KEYS", "PII_ACTIVE_KEY_ID", "PII_INDEX_KEY", "PII_ALLOW_PLAINTEXT_READS", "SKILLFLO_COACH_URL_TEMPLATE"]);
+  const restore = saveEnv(["DATABASE_URL", "ADMIN_EMAILS", "DEV_AUTH_BYPASS", "PII_ENCRYPTION_KEYS", "PII_ACTIVE_KEY_ID", "PII_INDEX_KEY", "PII_ALLOW_PLAINTEXT_READS", "SKILLFLO_COACH_URL_TEMPLATE", "COACH_PUBLIC_BACKEND", "MONGODB_URI", "MONGODB_SHADOW_DATABASE", "MONGODB_SHADOW_NAMESPACE"]);
   const client = new MongoClient(uri!, { serverSelectionTimeoutMS: 5000, monitorCommands: true });
   const databaseName = `hub_om_shadow_coach_pages_${randomBytes(10).toString("hex")}`;
   let owned = false, reading = false;
@@ -328,6 +329,11 @@ test("coach public pages: seven actual pages use native coach storage with prese
           coachFixtureRow("CoachEngagementSchedule", { coachId: f.b.id, engagementId: randomUUID(), date: new Date("2099-12-01"), startTime: "12:00", endTime: "13:00" })));
       }
     }
+    await prepareMongoCoachPublicRuntime({ ...options("shadow_composition"), allowShadowWrites: true, processSequenceHighWater: 1 });
+    const compositionStore = new MongoOperationStore(options("shadow_composition"), MONGO_COACH_PUBLIC_RUNTIME_MODELS);
+    for (const [model, rows] of f.data) {
+      await compositionStore.collection(model).insertMany(rows.map(row => encodeMongoRuntimeDocument(model, row)));
+    }
     reading = true;
     const a = observe(await MongoCoachRepository.open(options("shadow_a")), "a", calls);
     const b = observe(await MongoCoachRepository.open(options("shadow_b")), "b", calls);
@@ -357,6 +363,45 @@ test("coach public pages: seven actual pages use native coach storage with prese
       assert.deepEqual(props(await run(a, listPage)), { coaches: exp.summaries, loadFailed: false }); expectCalls("a", [["listCoaches", []]]);
       assert.deepEqual(props(await run(empty, listPage)), { coaches: [], loadFailed: false }); expectCalls("empty", [["listCoaches", []]]);
       assert.deepEqual(props(await run(undefined, listPage)), { coaches: [], loadFailed: true }); expectCalls("a", []);
+    });
+    await suite.test("actual selector opens prepared runtime after auth and never repairs a partial namespace", async () => {
+      Object.assign(process.env, { COACH_PUBLIC_BACKEND: "mongodb-shadow", MONGODB_URI: uri!, MONGODB_SHADOW_DATABASE: databaseName,
+        MONGODB_SHADOW_NAMESPACE: "shadow_composition" });
+      try {
+        const snapshot = async (namespace: string) => {
+          const collections = await client.db(databaseName).listCollections({}, { nameOnly: false }).toArray();
+          const selected = collections.filter(row => row.name.startsWith(`${namespace}__`)).sort((a, b) => a.name.localeCompare(b.name));
+          return Promise.all(selected.map(async row => ({ definition: row, indexes: await client.db(databaseName).collection(row.name).indexes(),
+            documents: await client.db(databaseName).collection(row.name).find({}).sort({ _id: 1 }).toArray() })));
+        };
+        const compositionBefore = await snapshot("shadow_composition");
+        assert.deepEqual(props(await actors.run(admin, listPage)), { coaches: exp.summaries, loadFailed: false });
+        assert.deepEqual(props(await actors.run(admin, board)), { currentUserEmail: admin.user.email, dashboard: exp.dashboard, holidays,
+          initialDate: "2099-12-99", loadFailed: false });
+        assert.deepEqual(props(await actors.run(admin, detail)), { coach: exp.detail, engagements: exp.engagements, schedules: exp.schedules,
+          engagementSchedules: exp.engagementSchedules, selectedMonth: "2099-12", selectedTab: "schedule" });
+        assert.deepEqual(props(await actors.run(admin, () => engagementsPage(param(f.a.id as string)))), {
+          coachId: f.a.id, coachName: " 가상 가 ", engagements: exp.engagements, feedbackByEngagement: {} });
+        assert.deepEqual(props(await actors.run(admin, wikiPage)), { entries: [], loadFailed: false, operationEntryCount: 0,
+          provenance: "empty", recruitAvoidNames: [] });
+        await assert.rejects(actors.run(admin, () => wikiDetailPage(param("missing"))), notFound);
+        assert.deepEqual(await snapshot("shadow_composition"), compositionBefore);
+        noForbidden();
+
+        process.env.MONGODB_URI = "mongodb://127.0.0.1:1/";
+        await assert.rejects(actors.run(null, listPage), redirect("/dashboard"));
+        process.env.MONGODB_URI = uri!;
+
+        const before = await snapshot("shadow_broken");
+        process.env.MONGODB_SHADOW_NAMESPACE = "shadow_broken";
+        await assert.rejects(actors.run(admin, listPage), /COACH_PUBLIC_COMPOSITION_FAILED/);
+        assert.deepEqual(await snapshot("shadow_broken"), before);
+      } finally {
+        delete process.env.COACH_PUBLIC_BACKEND;
+        delete process.env.MONGODB_URI;
+        delete process.env.MONGODB_SHADOW_DATABASE;
+        delete process.env.MONGODB_SHADOW_NAMESPACE;
+      }
     });
     await suite.test("native schedule full DTO, async repository failure, sync factory failure and holiday failure", async () => {
       assert.deepEqual(props(await run(a, board)), { currentUserEmail: admin.user.email, dashboard: exp.dashboard, holidays,
