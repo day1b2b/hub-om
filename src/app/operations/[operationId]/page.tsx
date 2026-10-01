@@ -13,6 +13,7 @@ import type { OperationSession } from "@/lib/data/operationTypes";
 import { buildPersonOptions, buildRoleRosterFromOperations, mergeRoleRosters } from "@/lib/data/personOptions";
 import { getStoredTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFactory";
 import { filterOperationsByTeamScope, resolveTeamScope } from "@/lib/teamScope";
+import { allowsLegacyOperationPageFallback, runOperationPagesRequest } from "@/lib/data/operationPagesComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,10 @@ interface OperationDetailPageProps {
 }
 
 export default async function OperationDetailPage({ params, searchParams }: OperationDetailPageProps) {
+  return runOperationPagesRequest(() => renderOperationDetailPage({ params, searchParams }));
+}
+
+async function renderOperationDetailPage({ params, searchParams }: OperationDetailPageProps) {
   const session = await requireWorkspaceSession();
 
   const { operationId } = await params;
@@ -57,7 +62,7 @@ export default async function OperationDetailPage({ params, searchParams }: Oper
   let operation = operations.find((candidate) => candidate.operationId === operationId);
   let allOperations = operations;
 
-  if (!operation && isExcelImportOperationId(operationId)) {
+  if (!operation && isExcelImportOperationId(operationId) && allowsLegacyOperationPageFallback()) {
     const localOperations = await new LocalJsonOperationRepository().listOperations();
     operation = localOperations.find((candidate) => candidate.operationId === operationId);
     allOperations = mergeOperationLists(allOperations, localOperations);

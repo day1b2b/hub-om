@@ -8,6 +8,7 @@ import { getStoredTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFa
 import { listTeamUsers } from "@/lib/data/teamUsers/teamUserRepository";
 import type { TeamUser } from "@/lib/data/teamUsers/teamUserTypes";
 import { filterOperationsByTeamScope, resolveTeamScope } from "@/lib/teamScope";
+import { runOperationPagesRequest } from "@/lib/data/operationPagesComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,10 @@ interface OperationsPageProps {
 }
 
 export default async function OperationsPage({ searchParams }: OperationsPageProps) {
+  return runOperationPagesRequest(() => renderOperationsPage({ searchParams }));
+}
+
+async function renderOperationsPage({ searchParams }: OperationsPageProps) {
   const session = await requireWorkspaceSession();
 
   const repository = getOperationRepository();

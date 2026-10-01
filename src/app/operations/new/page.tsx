@@ -6,6 +6,7 @@ import { getOmRequest } from "@/lib/data/omRequest/omRequestLocalRepository";
 import { buildPersonOptions, buildRoleRosterFromOperations, mergeRoleRosters } from "@/lib/data/personOptions";
 import { getStoredTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFactory";
 import { filterRoleRosterByTeamScope, resolveTeamScope, withUnclassifiedOwners } from "@/lib/teamScope";
+import { runOperationPagesRequest } from "@/lib/data/operationPagesComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,10 @@ interface NewOperationPageProps {
 }
 
 export default async function NewOperationPage({ searchParams }: NewOperationPageProps) {
+  return runOperationPagesRequest(() => renderNewOperationPage({ searchParams }));
+}
+
+async function renderNewOperationPage({ searchParams }: NewOperationPageProps) {
   const session = await requireWorkspaceSession();
   const operationRepository = getOperationRepository();
   const teamMemberRepository = getStoredTeamMemberRepository();
