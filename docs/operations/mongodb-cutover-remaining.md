@@ -77,3 +77,7 @@ Drive 결과 snapshot의 회사명·과정명은 2026-09-30 암호화 정책·co
 2026-10-01에 원천 읽기 상태 API 한 기능군의 PostgreSQL 기본/Mongo shadow 명시 selector를 합성 PostgreSQL·MongoDB에서 검증했다. 이는 production 전체 selector의 첫 조각이며 배포 설정은 그대로다. 다음에는 coverage의 나머지 요청·페이지·작업에 같은 fail-closed 조립을 확장하고, 그 뒤 실제 A/B 백업·각 복원·복사·최종 전환 절차를 완료해야 한다.
 
 같은 날 Notion 가져오기 API에도 기능군 selector를 연결하고 합성 PostgreSQL·MongoDB에서 실제 route 저장을 확인했다. 실제 Notion 원천과 운영 설정은 사용하지 않았다. 나머지 기능군 selector와 전체 앱 조립, 실제 A/B 백업·복원·복사·최종 전환은 계속 남는다.
+
+## 2026-10-01 Google Sheets 가져오기 composition 후속
+
+`feature/20261001-google-sheets-import-composition`에서 기존 tabs/import API에 PostgreSQL 기본/Mongo shadow exact selector를 연결한다. 동작별 최소 scope, source 호출 전 전체 port 준비, 고정 오류·무fallback, 부분 namespace의 validator·index·행 불변을 검증한다. 실행·독립 리뷰·통합은 `../../.claude/plans/mongodb-google-sheets-import-composition/` 기록을 따른다. 실제 Google Sheets·운영 적재·production 배포·실데이터 이전과 `dev → main`은 미완료다.
