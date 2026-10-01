@@ -428,3 +428,7 @@ actual page/factory 12 PASS/0skip, 기존 native coach 저장소1 PASS, 일반10
 ## 2026-10-01 운영 화면 composition selector 후속
 
 `feature/20261001-operation-pages-composition`에서 목록·상세·신규 화면에 exact selector를 연결하고 준비된 runtime만 연다. Mongo 선택의 PG/local fallback을 차단한다. 기록은 `../mongodb-operation-pages-composition/`을 따른다. 운영 쓰기 selector·production 배포·운영 이전과 `dev → main`은 미완료다.
+
+## 2026-10-01 운영 쓰기 composition selector 후속
+
+`feature/20261001-operation-write-composition`에서 생성·회차 추가·순서 변경·삭제 API에 exact selector를 연결한다. Calendar-aware runtime과 감사를 같은 scope로 연다. 기록은 `../mongodb-operation-write-composition/`을 따른다. 실제 Google·production 배포·운영 이전과 `dev → main`은 미완료다.

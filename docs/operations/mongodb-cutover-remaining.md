@@ -137,3 +137,7 @@ Drive 결과 snapshot의 회사명·과정명은 2026-09-30 암호화 정책·co
 ## 2026-10-01 운영 화면 composition 후속
 
 `feature/20261001-operation-pages-composition`에서 목록·상세·신규 화면의 exact selector와 open-only scope를 검증했다. Mongo 선택의 PG/local 혼합 조회를 차단했다. 기록은 `../../.claude/plans/mongodb-operation-pages-composition/`을 따른다. 운영 쓰기 selector·production 배포·운영 이전과 `dev → main`은 미완료다.
+
+## 2026-10-01 운영 쓰기 composition 후속
+
+`feature/20261001-operation-write-composition`에서 생성·회차 추가·순서 변경·삭제 API의 exact selector와 Calendar-aware scope를 검증했다. 기록은 `../../.claude/plans/mongodb-operation-write-composition/`을 따른다. 실제 Google·production 배포·운영 이전과 `dev → main`은 미완료다.

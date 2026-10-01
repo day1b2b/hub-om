@@ -510,3 +510,7 @@ Hubbot POST에 PostgreSQL 기본/Mongo shadow selector를 연결하고 responder
 ## 운영 화면 기능군 selector (2026-10-01)
 
 운영 목록·상세·신규 화면에 PostgreSQL 기본/Mongo shadow selector를 연결했다. 준비된 runtime만 열고 조회 중 무쓰기·부분 namespace 불변·PG 및 local JSON 혼합 조회 차단을 확인했다. [상세 범위](mongodb-operation-pages-composition.md). 운영 쓰기 API selector·production 배포·운영 데이터·최종 전환은 미완료다.
+
+## 운영 쓰기 API 기능군 selector (2026-10-01)
+
+운영 생성·회차 추가·순서 변경·삭제 API에 PostgreSQL 기본/Mongo shadow selector를 연결했다. Calendar-aware runtime과 요청 감사를 같은 scope로 열고 실제 합성 Calendar 흐름과 부분 namespace 불변을 확인했다. [상세 범위](mongodb-operation-write-composition.md). 실제 Google·production 배포·운영 데이터·최종 전환은 미완료다.
