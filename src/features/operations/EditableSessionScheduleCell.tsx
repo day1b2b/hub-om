@@ -102,6 +102,8 @@ export function EditableSessionScheduleCell({
       return;
     }
 
+    if (!confirm("일정/시간을 수정하시겠습니까?")) return;
+
     setError(null);
     setSaveState("saving");
 
