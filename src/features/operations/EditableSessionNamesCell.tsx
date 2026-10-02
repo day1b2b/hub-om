@@ -35,12 +35,9 @@ export function EditableSessionNamesCell({
 
   return (
     <td className="round-resource-cell">
-      <div className="round-resource-cell-view">
-        <span>{value || "미정"}</span>
-        <button className="round-resource-edit-trigger" onClick={startEditing} ref={anchorRef} type="button">
-          수정
-        </button>
-      </div>
+      <button className="session-cell-select" onClick={startEditing} ref={anchorRef} type="button">
+        {value || "미정"}
+      </button>
       {isEditing ? (
         <SessionFieldPopover anchorRef={anchorRef} onClose={cancelEditing}>
           <div className="session-field-popover-body">

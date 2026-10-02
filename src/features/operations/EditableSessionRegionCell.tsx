@@ -19,12 +19,9 @@ export function EditableSessionRegionCell({ operationId, region }: EditableSessi
   if (!isEditing) {
     return (
       <td className="round-resource-cell session-cell-wrap">
-        <div className="round-resource-cell-view">
-          <span>{region || "미정"}</span>
-          <button className="round-resource-edit-trigger" onClick={startEditing} type="button">
-            수정
-          </button>
-        </div>
+        <button className="session-cell-select" onClick={startEditing} type="button">
+          {region || "미정"}
+        </button>
       </td>
     );
   }
@@ -34,6 +31,7 @@ export function EditableSessionRegionCell({ operationId, region }: EditableSessi
       <div className="round-resource-cell-edit-form">
         <input
           aria-label="장소"
+          autoFocus
           onChange={(event) => setDraft(event.target.value)}
           placeholder="예: 서울 강남"
           type="text"
