@@ -37,16 +37,11 @@ export function EditableSessionScheduleCell({
 
   return (
     <td>
-      <div className="round-resource-cell-view">
-        <span className="stacked-cell">
-          <strong>{educationDates.length > 0 ? formatEducationDatesList(educationDates) : `${startDate} ~ ${endDate}`}</strong>
-          <strong>{timeText || "시간 미정"}</strong>
-          {educationDates.length > 0 ? <small>{startDate} ~ {endDate}</small> : null}
-        </span>
-        <button className="round-resource-edit-trigger" onClick={startEditing} ref={anchorRef} type="button">
-          수정
-        </button>
-      </div>
+      <button className="session-cell-select stacked-cell" onClick={startEditing} ref={anchorRef} type="button">
+        <strong>{educationDates.length > 0 ? formatEducationDatesList(educationDates) : `${startDate} ~ ${endDate}`}</strong>
+        <strong>{timeText || "시간 미정"}</strong>
+        {educationDates.length > 0 ? <small>{startDate} ~ {endDate}</small> : null}
+      </button>
       {isEditing ? (
         <SessionFieldPopover anchorRef={anchorRef} onClose={cancelEditing}>
           <div className="session-field-popover-body">
