@@ -13,7 +13,9 @@ import { EditableInfoItem } from "./EditableInfoItem";
 import { EditableOnsiteOmCell } from "./EditableOnsiteOmCell";
 import { EditableResourceRow } from "./EditableResourceRow";
 import { EditableRoundResourceCell } from "./EditableRoundResourceCell";
-import { EditableSessionRow } from "./EditableSessionRow";
+import { EditableSessionNamesCell } from "./EditableSessionNamesCell";
+import { EditableSessionRegionCell } from "./EditableSessionRegionCell";
+import { EditableSessionScheduleCell } from "./EditableSessionScheduleCell";
 import { EditableToolsItem } from "./EditableToolsItem";
 import { IssueReviewEditor } from "./IssueReviewEditor";
 import { LectureManagementNoteRow } from "./LectureManagementNoteRow";
@@ -303,7 +305,7 @@ export function OperationDetail({
                     <th>결과보고서</th>
                     <th>패들렛</th>
                     <th>강의관리</th>
-                    <th>수정</th>
+                    <th>삭제</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -326,71 +328,84 @@ export function OperationDetail({
                         operationId={courseOperation.operationId}
                         options={onsiteOmOptions ?? personOptions.om}
                       />
-                      <EditableSessionRow
-                        coach={courseOperation.coach}
-                        coachOptions={coachOptions}
-                        deleteButton={
-                          <DeleteRoundButton
-                            fallbackOperationId={fallbackOperationId}
-                            isCurrent={courseOperation.operationId === operation.operationId}
-                            isFirstRound={courseOperation.roundNo.trim() === "1"}
-                            isLastRound={courseOperations.length === 1}
-                            operationId={courseOperation.operationId}
-                            roundLabel={roundLabel(courseOperation, index)}
-                            teamQuery={teamQuery}
-                          />
-                        }
+                      <EditableSessionRegionCell operationId={courseOperation.operationId} region={courseOperation.region} />
+                      <EditableSessionScheduleCell
                         educationDates={courseOperation.educationDates}
                         endDate={courseOperation.endDate}
-                        instructorOptions={instructorOptions}
-                        instructors={courseOperation.instructors}
                         operationId={courseOperation.operationId}
-                        region={courseOperation.region}
                         startDate={courseOperation.startDate}
                         timeText={courseOperation.timeText}
-                      >
-                        <td>
-                          <SessionMetricPill
-                            doneText={courseOperation.avgSatisfaction}
-                            missingText={courseOperation.hasSatisfactionSurvey === "불필요" ? "없음" : "미입력"}
-                            muted={courseOperation.hasSatisfactionSurvey === "불필요"}
-                          />
-                        </td>
-                        <ResultReportRequirementCell
-                          hasResultReport={courseOperation.hasResultReport}
-                          operationId={courseOperation.operationId}
+                      />
+                      <EditableSessionNamesCell
+                        field="instructors"
+                        label="강사"
+                        operationId={courseOperation.operationId}
+                        options={instructorOptions}
+                        placeholder="강사명 (여러 명은 콤마로 구분)"
+                        unmatchedHint="등록된 강사 명단과 이름이 달라요. 강사DB 노션을 확인해주세요."
+                        value={courseOperation.instructors}
+                      />
+                      <EditableSessionNamesCell
+                        field="coach"
+                        label="실습코치"
+                        operationId={courseOperation.operationId}
+                        options={coachOptions}
+                        placeholder="실습코치명 (여러 명은 콤마로 구분)"
+                        unmatchedHint="등록된 실습코치 명단과 이름이 달라요. 실습코치DB 노션을 확인해주세요."
+                        value={courseOperation.coach}
+                      />
+                      <td>
+                        <SessionMetricPill
+                          doneText={courseOperation.avgSatisfaction}
+                          missingText={courseOperation.hasSatisfactionSurvey === "불필요" ? "없음" : "미입력"}
+                          muted={courseOperation.hasSatisfactionSurvey === "불필요"}
                         />
-                        {courseOperation.hasResultReport === "불필요" ? (
-                          <td className="round-resource-cell" />
-                        ) : (
-                          <EditableRoundResourceCell
-                            companionDoneValue="유"
-                            companionField="hasResultReport"
-                            companionMissingValue="무"
-                            done={courseOperation.hasResultReport === "유"}
-                            field="resultReportLink"
-                            label="결과보고서"
-                            operationId={courseOperation.operationId}
-                            value={courseOperation.resultReportLink}
-                          />
-                        )}
+                      </td>
+                      <ResultReportRequirementCell
+                        hasResultReport={courseOperation.hasResultReport}
+                        operationId={courseOperation.operationId}
+                      />
+                      {courseOperation.hasResultReport === "불필요" ? (
+                        <td className="round-resource-cell" />
+                      ) : (
                         <EditableRoundResourceCell
-                          done={isNavigableHref(courseOperation.padletLink)}
-                          field="padletLink"
-                          label="패들렛"
+                          companionDoneValue="유"
+                          companionField="hasResultReport"
+                          companionMissingValue="무"
+                          done={courseOperation.hasResultReport === "유"}
+                          field="resultReportLink"
+                          label="결과보고서"
                           operationId={courseOperation.operationId}
-                          value={courseOperation.padletLink}
+                          value={courseOperation.resultReportLink}
                         />
-                        <td>
-                          <LectureManagementNoteRow
-                            done={Boolean(courseOperation.lectureManagementNote.trim())}
-                            educationDates={courseOperation.educationDates}
-                            operationId={courseOperation.operationId}
-                            startDate={courseOperation.startDate}
-                            value={courseOperation.lectureManagementNote}
-                          />
-                        </td>
-                      </EditableSessionRow>
+                      )}
+                      <EditableRoundResourceCell
+                        done={isNavigableHref(courseOperation.padletLink)}
+                        field="padletLink"
+                        label="패들렛"
+                        operationId={courseOperation.operationId}
+                        value={courseOperation.padletLink}
+                      />
+                      <td>
+                        <LectureManagementNoteRow
+                          done={Boolean(courseOperation.lectureManagementNote.trim())}
+                          educationDates={courseOperation.educationDates}
+                          operationId={courseOperation.operationId}
+                          startDate={courseOperation.startDate}
+                          value={courseOperation.lectureManagementNote}
+                        />
+                      </td>
+                      <td>
+                        <DeleteRoundButton
+                          fallbackOperationId={fallbackOperationId}
+                          isCurrent={courseOperation.operationId === operation.operationId}
+                          isFirstRound={courseOperation.roundNo.trim() === "1"}
+                          isLastRound={courseOperations.length === 1}
+                          operationId={courseOperation.operationId}
+                          roundLabel={roundLabel(courseOperation, index)}
+                          teamQuery={teamQuery}
+                        />
+                      </td>
                     </tr>
                   ))}
                 </tbody>
