@@ -12031,6 +12031,7 @@ button.coach-doc-reserve-chip:disabled {
   display: grid;
   gap: 2px;
   grid-template-columns: repeat(7, 1fr);
+  user-select: none;
   padding: 4px 6px 8px;
 }
 
@@ -12053,6 +12054,10 @@ button.coach-doc-reserve-chip:disabled {
 
 .multi-date-calendar-cell:not(.empty):hover {
   background: var(--surface-strong);
+}
+
+.multi-date-calendar-grid.dragging .multi-date-calendar-cell:not(.empty) {
+  cursor: grabbing;
 }
 
 .multi-date-calendar-cell.selected {
