@@ -63,6 +63,8 @@ export function EditableSessionRegionCell({ operationId, region }: EditableSessi
   }
 
   async function save() {
+    if (!confirm("장소를 수정하시겠습니까?")) return;
+
     setSaveState("saving");
 
     let response: Response;
