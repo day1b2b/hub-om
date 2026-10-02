@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const WEEKDAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -30,19 +30,72 @@ export function MultiDateCalendar({ value, onChange }: MultiDateCalendarProps) {
   const isPressedRef = useRef(false);
   const draggedRef = useRef(false);
   const startIsoRef = useRef<string | null>(null);
+  const startPointRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     workingSetRef.current = new Set(value);
   }, [value]);
 
+  const applyCell = useCallback(
+    (iso: string) => {
+      const next = workingSetRef.current;
+      const shouldSelect = dragModeRef.current === "add";
+      if (next.has(iso) === shouldSelect) return;
+      if (shouldSelect) next.add(iso);
+      else next.delete(iso);
+      onChange(Array.from(next).sort());
+    },
+    [onChange]
+  );
+
+  const containerRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     function handleMouseUp() {
+      // draggedRef는 여기서 끄지 않는다 - mouseup 바로 뒤에 오는 native click 이벤트가
+      // "드래그였는지"를 판단해야 하기 때문(아래 click 캡처 리스너 참고).
       isPressedRef.current = false;
-      draggedRef.current = false;
       setIsDragging(false);
     }
     window.addEventListener("mouseup", handleMouseUp);
     return () => window.removeEventListener("mouseup", handleMouseUp);
+  }, []);
+
+  useEffect(() => {
+    const DRAG_THRESHOLD_PX = 4;
+    // 시작 칸에서 바로 위 "이전/다음 달" 버튼처럼, 다른 날짜 칸을 거치지 않고 달력 영역
+    // 밖으로 빠져나가는 드래그도 있다. onMouseEnter만으로는 이런 경로를 드래그로 인식하지
+    // 못하므로, 눌린 채로 일정 거리 이상 움직이면 어디로 움직였든 드래그로 판정한다.
+    function handleMouseMove(event: MouseEvent) {
+      if (!isPressedRef.current || draggedRef.current) return;
+      const start = startPointRef.current;
+      if (!start) return;
+      const dx = event.clientX - start.x;
+      const dy = event.clientY - start.y;
+      if (dx * dx + dy * dy < DRAG_THRESHOLD_PX * DRAG_THRESHOLD_PX) return;
+      draggedRef.current = true;
+      if (startIsoRef.current) applyCell(startIsoRef.current);
+    }
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, [applyCell]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    // 드래그로 날짜를 선택한 뒤 마우스를 뗀 지점이 달력 헤더의 "이전/다음 달" 버튼 위일 수
+    // 있다. click 이벤트는 mousedown 위치가 아니라 mouseup(=뗀) 위치의 요소를 대상으로
+    // 발생하므로, 그대로 두면 드래그를 끝내자마자 의도치 않게 월이 넘어간다. 캡처 단계에서
+    // 미리 가로채 드래그 뒤에 따라오는 click을 완전히 무효화한다.
+    function suppressClickAfterDrag(event: MouseEvent) {
+      if (!draggedRef.current) return;
+      event.stopPropagation();
+      event.preventDefault();
+      draggedRef.current = false;
+    }
+    container.addEventListener("click", suppressClickAfterDrag, true);
+    return () => container.removeEventListener("click", suppressClickAfterDrag, true);
   }, []);
 
   const firstWeekday = new Date(viewYear, viewMonth, 1).getDay();
@@ -54,7 +107,7 @@ export function MultiDateCalendar({ value, onChange }: MultiDateCalendarProps) {
   const sortedSelected = [...selected].sort();
 
   return (
-    <div className="multi-date-calendar">
+    <div className="multi-date-calendar" ref={containerRef}>
       <div className="multi-date-calendar-header">
         <button aria-label="이전 달" onClick={() => changeMonth(-1)} type="button">
           ‹
@@ -95,15 +148,12 @@ export function MultiDateCalendar({ value, onChange }: MultiDateCalendarProps) {
                 isPressedRef.current = true;
                 draggedRef.current = false;
                 startIsoRef.current = iso;
+                startPointRef.current = { x: event.clientX, y: event.clientY };
                 dragModeRef.current = workingSetRef.current.has(iso) ? "remove" : "add";
                 setIsDragging(true);
               }}
               onMouseEnter={() => {
                 if (!isPressedRef.current) return;
-                if (!draggedRef.current) {
-                  draggedRef.current = true;
-                  if (startIsoRef.current) applyCell(startIsoRef.current);
-                }
                 applyCell(iso);
               }}
               type="button"
@@ -118,15 +168,6 @@ export function MultiDateCalendar({ value, onChange }: MultiDateCalendarProps) {
       </div>
     </div>
   );
-
-  function applyCell(iso: string) {
-    const next = workingSetRef.current;
-    const shouldSelect = dragModeRef.current === "add";
-    if (next.has(iso) === shouldSelect) return;
-    if (shouldSelect) next.add(iso);
-    else next.delete(iso);
-    onChange(Array.from(next).sort());
-  }
 
   function changeMonth(delta: number) {
     let month = viewMonth + delta;
