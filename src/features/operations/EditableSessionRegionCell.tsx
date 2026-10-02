@@ -2,36 +2,25 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { NameSelectEditor } from "./EditableInfoItem";
-import type { OnsiteRequired } from "@/lib/data/operationTypes";
-import { displayRoleAssigneeText } from "@/lib/data/roleAssignees";
 
 type SaveState = "idle" | "saving" | "failed";
 
-interface EditableOnsiteOmCellProps {
-  om: string;
-  onsiteOm: string;
-  onsiteRequired: OnsiteRequired;
+interface EditableSessionRegionCellProps {
   operationId: string;
-  options: string[];
+  region: string;
 }
 
-export function EditableOnsiteOmCell({ om, onsiteOm, onsiteRequired, operationId, options }: EditableOnsiteOmCellProps) {
+export function EditableSessionRegionCell({ operationId, region }: EditableSessionRegionCellProps) {
   const router = useRouter();
-  const effectiveValue = onsiteOm || om;
   const [isEditing, setIsEditing] = useState(false);
-  const [draft, setDraft] = useState(effectiveValue);
+  const [draft, setDraft] = useState(region);
   const [saveState, setSaveState] = useState<SaveState>("idle");
-
-  if (onsiteRequired !== "Y") {
-    return <td className="round-resource-cell" />;
-  }
 
   if (!isEditing) {
     return (
-      <td className="round-resource-cell">
+      <td className="round-resource-cell session-cell-wrap">
         <button className="session-cell-select" onClick={startEditing} type="button">
-          {displayRoleAssigneeText(effectiveValue, "배정필요")}
+          {region || "미정"}
         </button>
       </td>
     );
@@ -40,7 +29,14 @@ export function EditableOnsiteOmCell({ om, onsiteOm, onsiteRequired, operationId
   return (
     <td className="round-resource-cell editing">
       <div className="round-resource-cell-edit-form">
-        <NameSelectEditor fieldName="onsiteOm" label="현장운영" onChange={setDraft} options={options} value={draft} />
+        <input
+          aria-label="장소"
+          autoFocus
+          onChange={(event) => setDraft(event.target.value)}
+          placeholder="예: 서울 강남"
+          type="text"
+          value={draft}
+        />
       </div>
       <div className="round-resource-cell-edit-actions">
         <button disabled={saveState === "saving"} onClick={save} type="button">
@@ -50,24 +46,24 @@ export function EditableOnsiteOmCell({ om, onsiteOm, onsiteRequired, operationId
           취소
         </button>
       </div>
-      {saveState === "failed" ? <span className="archive-item-save-error">저장하지 못했습니다.</span> : null}
+      {saveState === "failed" ? <span className="lecture-note-save-error">저장하지 못했습니다.</span> : null}
     </td>
   );
 
   function startEditing() {
-    setDraft(effectiveValue);
+    setDraft(region);
     setSaveState("idle");
     setIsEditing(true);
   }
 
   function cancelEditing() {
-    setDraft(effectiveValue);
+    setDraft(region);
     setSaveState("idle");
     setIsEditing(false);
   }
 
   async function save() {
-    if (!confirm("현장운영을 수정하시겠습니까?")) return;
+    if (!confirm("장소를 수정하시겠습니까?")) return;
 
     setSaveState("saving");
 
@@ -76,10 +72,8 @@ export function EditableOnsiteOmCell({ om, onsiteOm, onsiteRequired, operationId
     try {
       response = await fetch(`/api/operations/${encodeURIComponent(operationId)}/drive-import/apply`, {
         method: "POST",
-        headers: {
-          "content-type": "application/json"
-        },
-        body: JSON.stringify({ patches: [{ field: "onsiteOm", action: "replace", value: draft.trim() }] })
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ patches: [{ field: "region", action: "replace", value: draft.trim() }] })
       });
     } catch {
       setSaveState("failed");
