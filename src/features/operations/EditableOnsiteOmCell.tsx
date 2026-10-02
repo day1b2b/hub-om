@@ -30,12 +30,9 @@ export function EditableOnsiteOmCell({ om, onsiteOm, onsiteRequired, operationId
   if (!isEditing) {
     return (
       <td className="round-resource-cell">
-        <div className="round-resource-cell-view">
-          <span>{displayRoleAssigneeText(effectiveValue, "배정필요")}</span>
-          <button className="round-resource-edit-trigger" onClick={startEditing} type="button">
-            수정
-          </button>
-        </div>
+        <button className="session-cell-select" onClick={startEditing} type="button">
+          {displayRoleAssigneeText(effectiveValue, "배정필요")}
+        </button>
       </td>
     );
   }
@@ -70,6 +67,8 @@ export function EditableOnsiteOmCell({ om, onsiteOm, onsiteRequired, operationId
   }
 
   async function save() {
+    if (!confirm("현장운영을 수정하시겠습니까?")) return;
+
     setSaveState("saving");
 
     let response: Response;
