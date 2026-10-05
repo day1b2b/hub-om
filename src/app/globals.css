@@ -5307,6 +5307,49 @@ td span {
   white-space: nowrap;
 }
 
+/* 회차 테이블 셀(장소/일정/강사/실습코치)을 "수정" 버튼 없이 칸 자체를 눌러
+   편집 모드로 들어가게 하는 선택 영역. 평소에는 일반 텍스트처럼 보이다가
+   hover/focus에서만 클릭 가능함을 드러낸다. */
+.session-cell-select {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 4px 6px;
+  text-align: left;
+  width: 100%;
+}
+
+.session-cell-select:hover,
+.session-cell-select:focus-visible {
+  background: var(--surface-hover, #f4f5f7);
+  border-color: var(--line);
+}
+
+/* 회차 테이블 셀(장소/일정/강사/실습코치) 바로 아래 뜨는 작은 편집 패널.
+   document.body에 portal로 그려져 .session-table-wrap의 overflow-x: auto에
+   잘리지 않는다(SearchableSelect 드롭다운과 같은 이유). */
+.session-field-popover {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16);
+  display: flex;
+  flex-direction: column;
+  max-width: min(360px, calc(100vw - 24px));
+  position: fixed;
+  z-index: 1000;
+}
+
+.session-field-popover-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 18px;
+}
+
 .session-link {
   color: var(--blue);
   font-weight: 800;
@@ -12031,6 +12074,7 @@ button.coach-doc-reserve-chip:disabled {
   display: grid;
   gap: 2px;
   grid-template-columns: repeat(7, 1fr);
+  user-select: none;
   padding: 4px 6px 8px;
 }
 
@@ -12053,6 +12097,10 @@ button.coach-doc-reserve-chip:disabled {
 
 .multi-date-calendar-cell:not(.empty):hover {
   background: var(--surface-strong);
+}
+
+.multi-date-calendar-grid.dragging .multi-date-calendar-cell:not(.empty) {
+  cursor: grabbing;
 }
 
 .multi-date-calendar-cell.selected {
