@@ -134,6 +134,8 @@ export interface OperationSession {
 export interface CreateOperationInput {
   /** API에서 생성한 멱등 요청 식별자. */
   creationIdentity?: OperationCreationIdentity;
+  /** 파트를 이미 확정한 생성 경로가 Calendar 반영에 전달하는 힌트. DB에는 저장하지 않는다. */
+  calendarPartKey?: string;
   archiveStatus: ArchiveStatus;
   coach: string;
   companyName: string;

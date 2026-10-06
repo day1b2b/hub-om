@@ -3,7 +3,7 @@ import { beforeEach, mock, test } from "node:test";
 import type { OperationRepository } from "./operationRepository";
 import type { OperationSession, UpdateOperationInput } from "./operationTypes";
 const reflected = mock.fn(async () => {});
-const reflectedCreate = mock.fn(async () => {});
+const reflectedCreate = mock.fn(async (_operation: OperationSession, _partKey?: string) => {});
 mock.module("@/lib/googleCalendar/calendarOperationLock", { namedExports: { withoutCalendarReflection: async (run: () => Promise<unknown>) => run(), isCalendarReflectionSuppressed: () => false, calendarLockSignal: () => undefined, withCalendarOperationLock: async (_id: string, run: () => Promise<unknown>) => run() } });
 mock.module("@/lib/googleCalendar/reflectOperationToCalendar", { namedExports: {
   reflectOperationCreated: reflectedCreate, reflectOperationUpdated: reflected, reflectOperationDelete: async () => {}
@@ -31,4 +31,14 @@ test("생성 응답 유실 후 기존 회차를 재생할 때 캘린더 생성 �
   } as unknown as OperationRepository);
   await createRepository.createOperation({} as import("./operationTypes").CreateOperationInput);
   assert.equal(reflectedCreate.mock.callCount(), 0);
+});
+
+test("생성 경로에서 확정한 파트를 Calendar 반영에 전달한다", async () => {
+  reflectedCreate.mock.resetCalls();
+  const createRepository = new CalendarReflectingOperationRepository({
+    createOperation: async () => saved
+  } as unknown as OperationRepository);
+  await createRepository.createOperation({ calendarPartKey: "1파트" } as import("./operationTypes").CreateOperationInput);
+  assert.equal(reflectedCreate.mock.callCount(), 1);
+  assert.equal(reflectedCreate.mock.calls[0].arguments[1], "1파트");
 });
