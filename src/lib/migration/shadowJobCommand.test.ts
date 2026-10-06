@@ -26,9 +26,17 @@ test("shadow job imports with no PostgreSQL connection and explicit target", () 
   assert.equal(command.env.MONGODB_URI, configured.MONGODB_URI);
   assert.equal(command.env.RUN_DB_MIGRATIONS, "false");
 });
+test("shadow job prepares only an explicit copied shadow namespace", () => {
+  const command = shadowJobCommand(["prepare", "shadow_rehearsal_01", "123", "--apply-shadow-only"], configured);
+  assert.ok(command.args.includes("scripts/prepare-mongodb-shadow-runtime.ts"));
+  assert.equal(command.env.MONGODB_SHADOW_NAMESPACE, "shadow_rehearsal_01");
+  assert.equal(command.env.DATABASE_URL, undefined);
+  assert.equal(command.env.MONGODB_PRODUCTION_DATABASE, undefined);
+});
 test("shadow job rejects missing gates, migration startup, arbitrary scripts and path escapes", () => {
   for (const args of [[], ["server.js"], ["export", "plaintext"], ["export", "plaintext", "--allow-read-only-source-export", "extra"],
-    ["import", "/etc/mongo-shadow-fixture", "id", "--apply-shadow-only"], ["import", "/spool/../mongo-shadow-fixture", "id", "--apply-shadow-only"]]) {
+    ["import", "/etc/mongo-shadow-fixture", "id", "--apply-shadow-only"], ["import", "/spool/../mongo-shadow-fixture", "id", "--apply-shadow-only"],
+    ["prepare", "production", "1", "--apply-shadow-only"], ["prepare", "shadow_valid", "-1", "--apply-shadow-only"]]) {
     assert.throws(() => shadowJobCommand(args, configured), /SHADOW_JOB_CONFIGURATION_INVALID/);
   }
   for (const changes of [{RUN_DB_MIGRATIONS: "true"}, {PII_INDEX_KEY: ""}, {DATABASE_URL: ""}]) {
