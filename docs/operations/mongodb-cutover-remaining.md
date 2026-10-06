@@ -65,6 +65,10 @@ health·백업·배포 entrypoint의 Prisma migration 실행 및 활성 CLI/예�
 
 2026-10-05에 **C0 초기 실제 복구 세트**를 생성하고 검증했다. 운영 PostgreSQL custom-format 백업과 비밀번호 해시를 제외한 전역 역할 정의를 매체 암호화해 Google Drive(A)와 OneDrive(B)에 각각 저장했고, 공급자 웹 원격 존재 확인과 각 사본의 checksum·독립 복호화·격리 PostgreSQL 복원을 통과했다. 키·접속값·개인정보·비공개 경로는 공개 기록에 남기지 않았다. 이는 초기 백업 게이트만 닫으며 C1 Mongo shadow 복사, 최종 쓰기 중지, Cfinal 새 백업·양쪽 재복원, 배포·전환을 완료한 것으로 보지 않는다. 구체적인 범위와 남은 게이트는 [이중 백업과 전환 절차](mongodb-backup-cutover-plan.md)를 따른다.
 
+2026-10-06에 **C1 무중단 준비 복사**를 수행했다. 운영 PostgreSQL을 읽기 전용으로 반복 가능한 시점에 고정해 35개 모델 56,395행을 암호화 spool로 내보내고, production DB와 분리된 새 검증 namespace에 insert-only로 적재했다. 모델별 건수·digest·readback·참조 관계를 확인했으며 validator·index와 sequence high-water 준비도 통과했다. 이 과정에서 production backend selector·환경 변수·배포·재시작·운영 데이터는 변경하지 않았고, 작업 직후 운영 대시보드와 실제 데이터 표시를 다시 확인했다.
+
+C1 결과는 최종 전환 승인이 아니다. 마지막 쓰기 중지 뒤의 최종 export 또는 delta·삭제 동기화, sequence 재확인, Cfinal 시점의 A/B 암호화 백업과 각 격리 복원, production selector 변경·배포, 전환 후 검증과 새 Mongo 쓰기를 보존하는 복귀 절차가 남아 있다.
+
 
 1. DB·필수 첨부/파일·암호화 키·복구 설정의 범위와 서로 독립된 백업 위치 A/B, 접근·용량·키 안전 보관·검증 지표·중단/복귀 조건을 확정한다. 각 백업의 무결성과 격리 복원을 별도로 검증한다. 실제 운영 접근과 쓰기는 승인된 범위/백업 확인이 필요하다.
 2. PG legacy 평문/암호화·HMAC·필수 schema 상태를 확인하고, 전환 방식에 필요한 schema/codec 호환성을 확인한다. 원본 PG backfill/enforce는 자동 선행조건이 아니며, 필요한 경우 별도 승인된 적용·복구 순서를 따른다. 기존 shadow는 자동 삭제/수리하지 않고 새 namespace 복사 또는 명시 변환 절차를 따른다.
