@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createHash } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { mkdtemp, readFile, readdir, stat, rm } from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
@@ -56,6 +56,25 @@ test("bounded rows and unstable ordering cannot produce completed manifest",asyn
 });
 test("CLI requires explicit read-only export intent, absolute directory and source mode",async()=>{
   const {parseShadowExportArguments}=await import("../../../scripts/export-mongodb-shadow");
-  assert.deepEqual(parseShadowExportArguments(["--allow-read-only-source-export","--output-parent","/tmp","--source-mode","plaintext"]),{outputParent:"/tmp",sourceMode:"plaintext"});
+  assert.deepEqual(parseShadowExportArguments(["--allow-read-only-source-export","--output-parent","/tmp","--source-mode","plaintext"]),{outputParent:"/tmp",sourceMode:"plaintext",recomputePlaintextDerivedIndexes:false});
+  assert.deepEqual(parseShadowExportArguments(["--allow-read-only-source-export","--output-parent","/tmp","--source-mode","plaintext","--recompute-plaintext-derived-indexes"]),{outputParent:"/tmp",sourceMode:"plaintext",recomputePlaintextDerivedIndexes:true});
   for(const args of [[],["--output-parent","/tmp","--source-mode","plaintext"],["--allow-read-only-source-export","--output-parent","relative","--source-mode","plaintext"],["--allow-read-only-source-export","--output-parent","/tmp","--source-mode","auto"],["--allow-read-only-source-export","--allow-read-only-source-export"]]) assert.throws(()=>parseShadowExportArguments(args),/EXPORT_ARGUMENTS/);
+  assert.throws(()=>parseShadowExportArguments(["--allow-read-only-source-export","--output-parent","/tmp","--source-mode","encrypted","--recompute-plaintext-derived-indexes"]),/EXPORT_ARGUMENTS/);
+});
+test("explicit plaintext export recovery changes only stale non-null derived indexes in memory",async()=>{
+  const previous={keys:process.env.PII_ENCRYPTION_KEYS,active:process.env.PII_ACTIVE_KEY_ID,index:process.env.PII_INDEX_KEY};
+  process.env.PII_ENCRYPTION_KEYS=JSON.stringify({fixture:randomBytes(32).toString("base64")});
+  process.env.PII_ACTIVE_KEY_ID="fixture";
+  process.env.PII_INDEX_KEY=randomBytes(32).toString("base64");
+  try{
+    const {normalizePlaintextDerivedIndexesForExport}=await import("../../../scripts/export-mongodb-shadow");
+    const source={actorEmail:"synthetic@example.invalid",actorName:"Synthetic",actorEmailPiiIndex:"0".repeat(64),actorNamePiiIndex:null};
+    const result=normalizePlaintextDerivedIndexesForExport("ActivityRequest",source);
+    assert.equal(result.recomputed,1);
+    assert.equal(result.row.actorEmailPiiIndex,null);
+    assert.equal(result.row.actorNamePiiIndex,null);
+    assert.equal(source.actorEmailPiiIndex,"0".repeat(64));
+  }finally{
+    for(const [key,value] of Object.entries({PII_ENCRYPTION_KEYS:previous.keys,PII_ACTIVE_KEY_ID:previous.active,PII_INDEX_KEY:previous.index}))if(value===undefined)delete process.env[key];else process.env[key]=value;
+  }
 });
