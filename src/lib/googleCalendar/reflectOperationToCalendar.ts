@@ -38,7 +38,7 @@ const CALENDAR_REFLECT_LAUNCH_DATE = new Date("2026-08-21T00:00:00Z");
 
 type ReflectTrigger = "created" | "updated";
 
-async function reflectOperationUnlocked(operation: OperationSession, trigger: ReflectTrigger, skipEventId?: string): Promise<void> {
+async function reflectOperationUnlocked(operation: OperationSession, trigger: ReflectTrigger, skipEventId?: string, partKeyOverride?: string): Promise<void> {
   try {
     if (!isCalendarWriteEnabled()) return;
 
@@ -48,7 +48,8 @@ async function reflectOperationUnlocked(operation: OperationSession, trigger: Re
       console.warn("[gcal] CALENDAR_ATTENDEES_UNRESOLVED", targets.unresolvedNames.length);
     }
 
-    const calendarId = resolvePartCalendarId(targets.partKey);
+    const partKey = partKeyOverride ?? targets.partKey;
+    const calendarId = resolvePartCalendarId(partKey);
     if (!calendarId) {
       console.warn("[gcal] CALENDAR_PART_NOT_FOUND");
       // 무음 누락 방지: 파트를 못 정하면(담당 OM 미배정 + 요청 LD 소속이 파트 아님) 담당자에게
@@ -56,7 +57,7 @@ async function reflectOperationUnlocked(operation: OperationSession, trigger: Re
       if (trigger === "created") {
         await notifyCalendarReflectSkip(
           operation,
-          `파트를 못 정함(담당 OM·요청 LD 소속이 파트(1/2/3)가 아님, 파트=${targets.partKey ?? "없음"})`
+          `파트를 못 정함(담당 OM·요청 LD 소속이 파트(1/2/3)가 아님, 파트=${partKey ?? "없음"})`
         );
       }
       return;
@@ -84,7 +85,7 @@ async function reflectOperationUnlocked(operation: OperationSession, trigger: Re
       await deleteMatchingCalendarEventLink(link);
     }
 
-    for (const plan of buildCalendarEventBodies(operation, targets.attendeeEmails, targets.partKey)) {
+    for (const plan of buildCalendarEventBodies(operation, targets.attendeeEmails, partKey)) {
       const link = sameCalendar.get(plan.eventDate);
 
       if (skipEventId && link?.eventId === skipEventId) { sameCalendar.delete(plan.eventDate); continue; }
@@ -140,13 +141,13 @@ async function reflectOperationUnlocked(operation: OperationSession, trigger: Re
   }
 }
 
-async function reflectOperation(operation: OperationSession, trigger: ReflectTrigger, skipEventId?: string): Promise<void> {
+async function reflectOperation(operation: OperationSession, trigger: ReflectTrigger, skipEventId?: string, partKeyOverride?: string): Promise<void> {
   try {
     await withCalendarOperationLock(operation.operationId, async () => {
       if (!isCalendarWriteEnabled()) return;
       const current = await getOperationRepository().getOperationById(operation.operationId);
       if (!current) return; // 생성 직후 취소·삭제된 회차를 오래된 객체로 되살리지 않는다.
-      await reflectOperationUnlocked(current, trigger, skipEventId);
+      await reflectOperationUnlocked(current, trigger, skipEventId, partKeyOverride);
     });
   } catch {
     console.error("[gcal] CALENDAR_REFLECT_LOCK_FAILED");
@@ -154,8 +155,8 @@ async function reflectOperation(operation: OperationSession, trigger: ReflectTri
 }
 
 /** 운영 생성. 교육일마다 일정을 만들고 담당·현장 OM을 초대한다. */
-export function reflectOperationCreated(operation: OperationSession): Promise<void> {
-  return reflectOperation(operation, "created");
+export function reflectOperationCreated(operation: OperationSession, partKeyOverride?: string): Promise<void> {
+  return reflectOperation(operation, "created", undefined, partKeyOverride);
 }
 
 /**
