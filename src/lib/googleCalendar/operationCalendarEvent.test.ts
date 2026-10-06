@@ -217,6 +217,8 @@ test("resolvePartCalendarId는 이전 설정의 UTF-8 mojibake 파트 키도 복
 test("extractPartKey는 두 표기에서 같은 키를 뽑는다", () => {
   assert.equal(extractPartKey("AX 1파트"), "1파트");
   assert.equal(extractPartKey("3파트"), "3파트");
+  const damaged = Buffer.from(Buffer.from("1파트", "utf8").toString("latin1"), "utf8").toString("latin1");
+  assert.equal(extractPartKey(damaged), "1파트");
   assert.equal(extractPartKey("영업팀"), null);
   assert.equal(extractPartKey(null), null);
 });

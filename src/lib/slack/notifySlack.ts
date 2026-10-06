@@ -19,15 +19,16 @@ function botToken(): string {
 }
 
 // SLACK_OM_REQUEST_CHANNELS="1파트:C0AAA,2파트:C0BBB,3파트:C0CCC"
-function resolveChannel(team: string): string {
+export function resolveChannel(team: string): string {
   const raw = process.env.SLACK_OM_REQUEST_CHANNELS?.trim();
   if (!raw) return "";
+  const normalizedTeam = normalizeLegacyUtf8Mojibake(team);
   for (const entry of raw.split(",")) {
     const sep = entry.indexOf(":");
     if (sep === -1) continue;
     const key = normalizeLegacyUtf8Mojibake(entry.slice(0, sep).trim());
     const channel = entry.slice(sep + 1).trim();
-    if (key && channel && team.includes(key)) return channel;
+    if (key && channel && normalizedTeam.includes(key)) return channel;
   }
   return "";
 }
