@@ -30,6 +30,14 @@ export function shadowJobCommand(args: string[], source: Record<string, string |
     for (const key of ["MONGODB_URI", "MONGODB_SHADOW_DATABASE", "MONGODB_PRODUCTION_DATABASE", "MONGODB_ALLOW_SHADOW_WRITES"]) env[key] = source[key]!;
     script = "scripts/import-mongodb-shadow.ts";
     childArgs = [path.resolve(directory), runId, confirmation];
+  } else if (mode === "prepare") {
+    const [namespace, sequenceHighWater, confirmation, ...extra] = parameters;
+    if (!/^shadow_[A-Za-z0-9_-]{1,80}$/.test(namespace ?? "") || !/^\d+$/.test(sequenceHighWater ?? "") || confirmation !== "--apply-shadow-only" || extra.length) fail();
+    if (source.MONGODB_SHADOW_DATABASE !== "hub-om-shadow-validation" || source.MONGODB_ALLOW_SHADOW_WRITES !== "true" || !source.MONGODB_URI) fail();
+    for (const key of ["MONGODB_URI", "MONGODB_SHADOW_DATABASE", "MONGODB_ALLOW_SHADOW_WRITES"]) env[key] = source[key]!;
+    env.MONGODB_SHADOW_NAMESPACE = namespace!;
+    script = "scripts/prepare-mongodb-shadow-runtime.ts";
+    childArgs = [namespace!, sequenceHighWater!, confirmation];
   } else return fail();
   return { args: ["--experimental-strip-types", "--experimental-loader", "./scripts/ts-loader.mjs", script, ...childArgs], env };
 }
