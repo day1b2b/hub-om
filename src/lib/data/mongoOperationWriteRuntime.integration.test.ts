@@ -5,7 +5,11 @@ import { registerHooks } from "node:module";
 import { mock, test } from "node:test";
 import { MongoClient, type CommandStartedEvent } from "mongodb";
 import { CALENDAR_ID, PRIVATE_MARKER, SyntheticCalendarRemote } from "./mongoCalendarHandlers.fixture";
-import { MongoOperationStore, OPERATION_MODELS, operationMongoValidator } from "./mongoOperationStore";
+import { mongoModelNames } from "../migration/mongoDocumentCodec";
+import { prepareMongoCalendarRuntimeStore } from "./mongoCalendarRuntime";
+import { MongoOperationStore, OPERATION_MODELS, operationMongoValidator, prepareMongoOperationStore } from "./mongoOperationStore";
+import { prepareMongoReadStore } from "./mongoReadStore";
+import { prepareMongoRequestAuditStore } from "./mongoRequestAuditRepository";
 
 type Actor = { user: { email: string; name: string }; expires: string };
 const actor: Actor = { user: { email: "operation-writer@day1company.co.kr", name: "Synthetic operation writer" }, expires: "" };
@@ -17,7 +21,8 @@ let pgAdapterCalls = 0, pgPoolCalls = 0;
 mock.module("@prisma/adapter-pg", { namedExports: { PrismaPg: class { constructor() { pgAdapterCalls++; throw new Error("PG_ADAPTER_TRIPWIRE"); } } } });
 mock.module("pg", { namedExports: { Pool: class { constructor() { pgPoolCalls++; throw new Error("PG_POOL_TRIPWIRE"); } } }, defaultExport: { Pool: class { constructor() { pgPoolCalls++; throw new Error("PG_POOL_TRIPWIRE"); } } } });
 const hooks = registerHooks({ resolve(specifier, context, next) { return next(specifier === "next/server" || specifier === "next/navigation" ? `${specifier}.js` : specifier, context); } });
-const { prepareMongoOperationWriteRuntime } = await import("./mongoOperationWriteRuntime");
+const { openMongoOperationWriteRuntime, prepareMongoOperationWriteRuntime } = await import("./mongoOperationWriteRuntime");
+const { openMongoOmRequestWriteRuntime } = await import("./mongoOmRequestWriteRuntime");
 const collectionRoute = await import("../../app/api/operations/route");
 const itemRoute = await import("../../app/api/operations/[operationId]/route");
 const roundsRoute = await import("../../app/api/operations/[operationId]/rounds/route");
@@ -35,6 +40,36 @@ const request = (path: string, body: unknown, key?: string) => new Request(`http
   method: "POST", headers: { "content-type": "application/json", ...(key ? { "Idempotency-Key": key } : {}) }, body: JSON.stringify(body),
 });
 type AuditExpectation = { id: string; route: string; method: string; status: number };
+
+test("copied shadow preparation includes Calendar lease and TeamUser guard before write runtime opens", { skip: !uri, timeout: 120_000 }, async () => {
+  const target = new URL(uri!); assert.equal(target.hostname, "127.0.0.1"); assert.equal(target.username, ""); assert.equal(target.password, "");
+  const saved = new Map(["PII_ENCRYPTION_KEYS", "PII_ACTIVE_KEY_ID", "PII_INDEX_KEY", "PII_ALLOW_PLAINTEXT_READS"].map(name => [name, process.env[name]]));
+  Object.assign(process.env, { PII_ENCRYPTION_KEYS: JSON.stringify({ fixture: randomBytes(32).toString("base64") }), PII_ACTIVE_KEY_ID: "fixture", PII_INDEX_KEY: randomBytes(32).toString("base64"), PII_ALLOW_PLAINTEXT_READS: "false" });
+  const client = new MongoClient(uri!, { directConnection: true, serverSelectionTimeoutMS: 5_000 });
+  const databaseName = `hub_om_shadow_prepare_regression_${randomBytes(8).toString("hex")}`, namespace = `shadow_prepare_regression_${randomBytes(6).toString("hex")}`;
+  try {
+    await client.connect();
+    const options = { client, databaseName, namespace, allowShadowWrites: true as const, processSequenceHighWater: 0 };
+    // This was the deployed preparation sequence: model metadata was ready,
+    // while Calendar/TeamUser internal coordination metadata was absent.
+    await prepareMongoReadStore(options, mongoModelNames);
+    await prepareMongoOperationStore(options);
+    await prepareMongoRequestAuditStore(options);
+    await assert.rejects(openMongoOperationWriteRuntime(options), /MONGO_OPERATION_WRITE_RUNTIME_FAILED/);
+
+    await prepareMongoCalendarRuntimeStore(options);
+    await openMongoOperationWriteRuntime(options);
+    await openMongoOmRequestWriteRuntime({ ...options,
+      omAssignmentCalendar: { async reflectOperationUpdated() {} },
+      omAssignmentNotifier: { async notifyAssigned() {} },
+      omCustomTools: { list: () => [], add() {} },
+      omRequestNotifier: { async notifyCreated() { return null; } },
+    });
+  } finally {
+    try { await client.db(databaseName).dropDatabase(); } catch {} await client.close();
+    for (const [name, value] of saved) { if (value === undefined) delete process.env[name]; else process.env[name] = value; }
+  }
+});
 
 test("operation write runtime composes create, round, reorder, delete, Calendar and request audit", { skip: !uri, timeout: 180_000 }, async () => {
   const target = new URL(uri!); assert.equal(target.protocol, "mongodb:"); assert.equal(target.hostname, "127.0.0.1"); assert.ok(target.port); assert.equal(target.username, ""); assert.equal(target.password, "");

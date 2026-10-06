@@ -63,6 +63,10 @@ health·백업·배포 entrypoint의 Prisma migration 실행 및 활성 CLI/예�
 
 ## 3. 실제 복사·복원·최종 전환
 
+### Shadow 쓰기 런타임 준비 주의사항
+
+`db:migrate:shadow:prepare-runtime`은 일반 모델 validator/index와 sequence·요청 감사뿐 아니라 운영/OM 요청 쓰기가 공유하는 Calendar lease와 TeamUser write guard까지 준비하고 검증해야 한다. 이 내부 메타데이터가 빠지면 읽기 selector는 정상이어도 `OPERATION_WRITE_COMPOSITION_FAILED`와 `OM_REQUEST_WRITE_COMPOSITION_FAILED`가 요청 handler 진입 전에 발생한다. selector 전환 전에는 준비 명령 성공 후 두 쓰기 runtime의 open-only 검증을 함께 확인한다.
+
 2026-10-05에 **C0 초기 실제 복구 세트**를 생성하고 검증했다. 운영 PostgreSQL custom-format 백업과 비밀번호 해시를 제외한 전역 역할 정의를 매체 암호화해 Google Drive(A)와 OneDrive(B)에 각각 저장했고, 공급자 웹 원격 존재 확인과 각 사본의 checksum·독립 복호화·격리 PostgreSQL 복원을 통과했다. 키·접속값·개인정보·비공개 경로는 공개 기록에 남기지 않았다. 이는 초기 백업 게이트만 닫으며 C1 Mongo shadow 복사, 최종 쓰기 중지, Cfinal 새 백업·양쪽 재복원, 배포·전환을 완료한 것으로 보지 않는다. 구체적인 범위와 남은 게이트는 [이중 백업과 전환 절차](mongodb-backup-cutover-plan.md)를 따른다.
 
 
