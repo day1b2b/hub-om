@@ -132,10 +132,7 @@ export async function planCalendarReverseSync(options?: { now?: Date }): Promise
       // 사람이 원본을 지운 건 아무 처리도 하지 않으므로 로그가 유일한 흔적이다.
       // 응답의 skipped는 스케줄 실행에서 아무도 읽지 않는다.
       if (event.status === "cancelled") {
-        console.warn(
-          `[gcal-reverse] ${link.operationId} 원본 삭제 감지 — 무조치` +
-            ` (교육일=${link.eventDate}, event=${event.id}, calendar=${link.calendarId})`
-        );
+        console.warn("[gcal-reverse] CALENDAR_SOURCE_DELETED");
       }
 
       skipped.push({ calendarId: link.calendarId, eventId: event.id, reason: evaluation.reason });

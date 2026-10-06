@@ -1,3 +1,4 @@
+import { getDataRepositoryOverride } from "../dataRepositoryContext";
 import { ASSIGNMENT_NEEDED_VALUES, isSameCourse, parseEducationDatesText } from "../operationCalculations";
 import { getOperationRepository } from "../operationRepositoryFactory";
 import type { CreateOperationInput } from "../operationTypes";
@@ -121,6 +122,7 @@ export async function createLinkedOperationForOmRequest(request: OmRequest): Pro
  * 회차에도 함께 반영해서, 이미 다른 값으로 개별 지정된 회차는 건드리지 않는다.
  */
 export async function syncAssignedOmToLinkedOperation(operationId: string, assignedOm: string): Promise<void> {
+  if (getDataRepositoryOverride("operations")) throw new Error("OM_ASSIGNMENT_MONGO_NOT_IMPLEMENTED");
   const repository = getOperationRepository();
   const operation = await repository.getOperationById(operationId);
   if (!operation) return;

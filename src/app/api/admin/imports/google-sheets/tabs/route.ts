@@ -1,7 +1,9 @@
 import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
-import { listGoogleSheetTabs, parseGoogleSpreadsheetUrl } from "@/lib/data/googleSheetsImport";
+import { parseGoogleSpreadsheetUrl } from "@/lib/data/googleSheetsImport";
+import { getGoogleSheetsImportSource, googleSheetsImportError } from "@/lib/data/googleSheetsImportSource";
+import { runGoogleSheetsImportRequest } from "@/lib/data/googleSheetsImportComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +21,8 @@ async function activityPOST(request: Request) {
   try {
     const body = (await request.json()) as { spreadsheetUrl?: string };
     const { gid, spreadsheetId } = parseGoogleSpreadsheetUrl(body.spreadsheetUrl ?? "");
-    const tabs = await listGoogleSheetTabs(accessToken, spreadsheetId);
+    const source = getGoogleSheetsImportSource();
+    const tabs = await source.listTabs(accessToken, spreadsheetId);
 
     return NextResponse.json({
       ok: true,
@@ -29,10 +32,10 @@ async function activityPOST(request: Request) {
     });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, error: error instanceof Error ? error.message : "탭 목록을 불러오지 못했습니다." },
+      { ok: false, error: googleSheetsImportError(error, "tabs") },
       { status: 400 }
     );
   }
 }
 
-export const POST = withActivity("/api/admin/imports/google-sheets/tabs", "POST", activityPOST);
+export const POST = withActivity("/api/admin/imports/google-sheets/tabs", "POST", activityPOST, work => runGoogleSheetsImportRequest("tabs", work));

@@ -11,6 +11,7 @@ import {
 } from "@/lib/admin/databaseDashboard";
 import { getStoredTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFactory";
 import { resolveTeamScope } from "@/lib/teamScope";
+import { runAdminDatabaseRequest } from "@/lib/data/adminDatabaseComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -20,12 +21,14 @@ interface AdminDatabasePageProps {
 
 export default async function AdminDatabasePage({ searchParams }: AdminDatabasePageProps) {
   const session = await requireAdminSession();
-  const teamMemberRepository = getStoredTeamMemberRepository();
-  const [ownerRoster, params, snapshot] = await Promise.all([
-    teamMemberRepository.listResourceOwners(),
-    searchParams,
-    readDatabaseDashboard()
-  ]);
+  const params = await searchParams;
+  const [ownerRoster, snapshot] = await runAdminDatabaseRequest(async () => {
+    const teamMemberRepository = getStoredTeamMemberRepository();
+    return Promise.all([
+      teamMemberRepository.listResourceOwners(),
+      readDatabaseDashboard()
+    ]);
+  });
   const teamScope = resolveTeamScope(params, session, ownerRoster);
   const selectedTable = resolveSelectedTable(snapshot.tables, params.table);
   const columns = getColumns(selectedTable);

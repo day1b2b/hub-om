@@ -4,7 +4,7 @@
 // (1) 로그인 확인조차 없는 라우트, (2) admin 경로인데 admin 확인이 없는 라우트를
 // 가시화한다. 실제 프로젝트가 쓰는 권한 헬퍼 이름을 신호로 등록해 오탐을 줄인다.
 //
-// - CHANGED_FILES(쉼표 구분)가 있으면 이번 PR에서 바뀐 라우트를 강조하고,
+// - CHANGED_FILES_PATH(줄바꿈 구분 파일)가 있으면 이번 PR에서 바뀐 라우트를 강조하고,
 //   그중 문제 라우트는 GitHub 경고 어노테이션으로 남긴다.
 // - 항상 exit 0. 판단은 사람이 한다.
 
@@ -95,7 +95,7 @@ const changedFileInput = (() => {
 
 const changed = new Set(
   changedFileInput
-    .split("\n")
+  .split("\n")
     .map((s) => s.trim())
     .filter(Boolean)
     .map(toPosix)

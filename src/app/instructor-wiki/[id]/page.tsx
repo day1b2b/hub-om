@@ -14,6 +14,7 @@ import {
   resolveNotionLinkTargets
 } from "@/lib/data/instructorWikiStore";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
+import { runCoachPublicRequest } from "@/lib/data/coachPublicComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,10 @@ interface InstructorWikiDetailPageProps {
 
 export default async function InstructorWikiDetailPage({ params }: InstructorWikiDetailPageProps) {
   await requireAdminSession();
+  return runCoachPublicRequest(() => renderInstructorWikiDetailPage(params));
+}
+
+async function renderInstructorWikiDetailPage(params: InstructorWikiDetailPageProps["params"]) {
   const { id } = await params;
 
   // 주소는 노션 NO가 정본이다(동명이인까지 구분됨). 숫자가 아니면 노션에 없는 강사이거나

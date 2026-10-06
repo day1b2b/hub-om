@@ -1,10 +1,11 @@
 import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { authorizeSatisfactionMatching } from "@/lib/auth/satisfactionMatchingAccess";
-import { parseGoogleSpreadsheetUrl, readGoogleSheetRows } from "@/lib/data/googleSheetsImport";
-import { getGoogleB2BAccessToken } from "@/lib/googleCalendar/calendarWriteClient";
+import { parseGoogleSpreadsheetUrl } from "@/lib/data/googleSheetsImport";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
+import { getSatisfactionSource } from "@/lib/data/satisfactionSource";
 import { matchSatisfactionRow, sheetValuesToRows } from "@/lib/data/satisfactionSheet";
+import { runSatisfactionRequest } from "@/lib/data/satisfactionComposition";
 import type { OperationCandidate } from "@/lib/data/operationMatch/matchOperation";
 
 export const dynamic = "force-dynamic";
@@ -36,15 +37,15 @@ async function activityPOST(request: Request) {
       );
     }
 
+    const repository = getOperationRepository();
+    const source = getSatisfactionSource();
     const { spreadsheetId } = parseGoogleSpreadsheetUrl(sheetUrl);
-    // 개별 사용자 권한이 아니라 전용 B2B 구글 계정(캘린더 OAuth와 공용)으로 시트를 읽는다.
-    const accessToken = await getGoogleB2BAccessToken();
-    const values = await readGoogleSheetRows(accessToken, spreadsheetId, tabTitle);
+    const values = await source.readRows(spreadsheetId, tabTitle);
     const headerRowNumber =
       Number.isInteger(body.headerRowNumber) && (body.headerRowNumber ?? 0) > 0 ? Number(body.headerRowNumber) : 1;
     const sheetRows = sheetValuesToRows(values, headerRowNumber);
 
-    const operations = await getOperationRepository().listOperations();
+    const operations = await repository.listOperations();
     const candidates: OperationCandidate[] = operations.map((operation) => ({
       id: operation.id,
       operationId: operation.operationId,
@@ -127,4 +128,4 @@ async function activityPOST(request: Request) {
   }
 }
 
-export const POST = withActivity("/api/admin/satisfaction/preview", "POST", activityPOST);
+export const POST = withActivity("/api/admin/satisfaction/preview", "POST", activityPOST, runSatisfactionRequest);

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, mock, test } from "node:test";
-mock.module("./calendarOperationLock", { namedExports: { calendarLockSignal: () => undefined, withCalendarOperationLock: async (_id: string, run: () => Promise<unknown>) => run() } });
+mock.module("./calendarOperationLock", { namedExports: { assertCalendarLockActive: async () => {}, calendarLockSignal: () => undefined, withCalendarOperationLock: async (_id: string, run: () => Promise<unknown>) => run() } });
 mock.module("./calendarWriteConfig", { namedExports: { readCalendarWriteCredentials: () => ({ clientId: "fixture", clientSecret: "fixture", refreshToken: "fixture" }) } });
 const { insertOperationEvent, resetAccessTokenCache } = await import("./calendarWriteClient");
 const body = { summary: "fixture", start: { date: "2026-09-07" }, end: { date: "2026-09-08" } };
@@ -37,7 +37,7 @@ test("Google 성공 후 DB 저장 실패를 가정한 재시도는 기존 이벤
 });
 test("생성 응답 유실 후 재시도도 중복 생성하지 않는다", async () => {
   loseResponse = true;
-  await assert.rejects(insertOperationEvent("cal", body, identity), /response lost/);
+  await assert.rejects(insertOperationEvent("cal", body, identity), { message: "캘린더 작업을 처리하지 못했습니다." });
   await insertOperationEvent("cal", body, identity);
   assert.equal(events.size, 1);
 });

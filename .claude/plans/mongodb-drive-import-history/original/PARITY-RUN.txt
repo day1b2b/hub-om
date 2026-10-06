@@ -1,0 +1,39 @@
+Drive full normal DTO parity — author has NOT executed tests/typecheck/DB.
+Frozen source/closure-manifest remains baseline73a137a. Gate observation evidence remains original files/logs.
+
+Run only after coordinator has completed migration in its owned PG56750/drive_history_test and no PG/page worker shares it.
+Set actual data_directory (example /pg; exact SHOW value required):
+PG_DRIVE_HISTORY_TEST_DATABASE_URL='postgresql://synthetic@127.0.0.1:56750/drive_history_test' \
+PG_DRIVE_HISTORY_TEST_DATA_DIRECTORY='/private/tmp/hub-om-drive-import-history-20260930/pg' \
+MONGODB_DRIVE_HISTORY_TEST_URI='mongodb://127.0.0.1:27850/?replicaSet=drivehistory20260930' \
+DRIVE_HISTORY_PARITY=1 \
+node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs --test src/lib/data/driveImportHistory.postgres.integration.test.ts
+
+The earlier original gate also runs first. To run only parity after gate is accepted, add:
+--test-name-pattern='Drive independent literal parity'
+before the file argument. Filtered tests are reported as filtered/skipped; do not claim a full unfiltered suite.
+
+Child order: three closure negative controls (no DB), original PG, current default PG, explicit native.
+Child failure/timeout stops all later workers. TERM→5s→KILL, observed exit required. Timeout implies owned-resource audit; not cleanup proof.
+Each worker receives only allowlisted endpoints/environment, creates fresh synthetic keys, fetch tripwire forbids sources.
+PG takes suite advisory lock and requires both Drive tables empty, drops only its own run IDs (cascade results); schema/migrations retained.
+PG decode/query faults are restored in finally; if interrupted during rename, coordinator must audit parity_owned_results_unavailable before rerun.
+Native creates a random owned hub_om_shadow_drive_parity_* database, validates actual replica name/primary, drops only that database and checks no owned collections.
+No Calendar database/resource use, external source, credentials, or operational data.
+
+Independent evidence:
+- Same semantic synthetic fixture, separate seed and expected literals; current reader/parser/comparator never generates expected values.
+- Seed write/decode bytes checked separately from reader DTO; raw business/audit state before/after each normal read must be identical.
+- Both methods exact full keys, values, timestamps/date-only/nulls, legacy JSON nonarrays and filtered candidate arrays including {} and [], extra keys, stored errors; session nullable kept valid.
+- Latest failed/empty run vs older complete, single run time priority over result createdAt, createdAt secondary priority; complete allowed DTO for tied run/single.
+- All three result sort priorities; C/SQL_ASCII synthetic collation literal order separately company/course, including U+E000 before U+10000 (UTF16 comparator counterexample). PG records client_encoding and actual convert_to UTF8 hex ee8080/f0908080. Production collation NOT verified.
+- 253 unique ranks test default250, zero,249/250/251, fractional truncate, negative tail in normal order, ±MAX_SAFE accepted; ±(MAX_SAFE+1)/1e18/1e20/MAX_VALUE/NaN/Infinity null. Negative MAX_SAFE is a new actual baseline assertion, not a previously observed fact.
+- 249 mandatory +3 tie boundary, negative tail tie, identical DTO multiplicity. Backend tie choices may differ; each actual choice emitted as allowed-choice evidence. Non-tie ledger compared whole across all backends.
+- Original and current PG absence of DATABASE_URL, real owned table rename query failure, invalid ciphertext all return null on both functions.
+- Closure controls mutate disposable copies only: frozen source1byte, actual loader1byte, undeclared current-style import. Real frozen bytes/manifest untouched; copied manifest hash updated only in escape-control to isolate edge validation.
+- Comparator controls detect missing/extra keys, null-vs-empty, count changes, non-tie permutation, mixed candidate fields, duplicate loss. Harmless property order difference passes.
+
+Boundaries:
+No page proof claimed here (Sagan), no native parent/key/budget/crossnamespace safety proof claimed here (Meitner).
+No compile/test execution performed by author. Coordinator captures commands, exit, final hashes, cleanup, independent review.
+Gate baseline is actual synthetic C/SQL_ASCII, not a configurable collation test; fixture refuses a different PG baseline instead of tuning it.

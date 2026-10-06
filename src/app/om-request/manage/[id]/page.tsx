@@ -10,13 +10,14 @@ import { getCourseCategoryMajor } from "@/lib/data/omRequest/omCourseCategoryOpt
 import { getOmRequest, listOmRequests } from "@/lib/data/omRequest/omRequestLocalRepository";
 import { summarizeSessionDates } from "@/lib/data/omRequest/omRequestSessionDates";
 import {
-  canManageOmRequestAssignment,
   isOmRequestAuthor,
   omRequestManagerName,
   omRequestStatusLabel
 } from "@/lib/data/omRequest/omRequestTypes";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { getTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFactory";
+import { canManageOmRequestAssignment } from "@/lib/auth/omRequestAssignmentAccess";
+import { runOmRequestPagesRequest } from "@/lib/data/omRequestPagesComposition";
 import { AssignForm } from "./AssignForm";
 import { RequestActions } from "./RequestActions";
 
@@ -46,6 +47,10 @@ function YNField({ label, value }: { label: string; value: string }) {
 
 export default async function OmRequestDetailPage({ params }: Props) {
   const session = await requireWorkspaceSession();
+  return runOmRequestPagesRequest(() => renderOmRequestDetailPage({ params }, session));
+}
+
+async function renderOmRequestDetailPage({ params }: Props, session: Awaited<ReturnType<typeof requireWorkspaceSession>>) {
   const { id } = await params;
   const request = await getOmRequest(id);
   if (!request) notFound();
@@ -62,8 +67,7 @@ export default async function OmRequestDetailPage({ params }: Props) {
   const recommendations = recommendOms(request.sessions, partOmNames, busyDatesByOm);
   const omRoster = Array.from(new Set(Object.values(roleRoster.om).flatMap((names) => names ?? [])));
 
-  const currentUserName = session.user?.name ?? session.user?.email?.split("@")[0] ?? "";
-  const canAssign = canManageOmRequestAssignment(request.team, currentUserName, session.user?.email);
+  const canAssign = await canManageOmRequestAssignment(request.team, session.user?.email);
   const isAuthor = isOmRequestAuthor(request, session.user?.email);
 
   const createdAt = new Date(request.createdAt).toLocaleString("ko-KR", {
@@ -185,6 +189,7 @@ export default async function OmRequestDetailPage({ params }: Props) {
                 </span>
               </h2>
               <AssignForm
+                key={`${request.id}:${session.user?.email ?? ""}`}
                 canAssign={canAssign}
                 managerName={partManagerName}
                 omRoster={omRoster}

@@ -4,12 +4,17 @@ import { listCustomTools } from "@/lib/data/omRequest/omCustomToolsLocalReposito
 import { listTeamUsers } from "@/lib/data/teamUsers/teamUserRepository";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { getInstructorNoteRepository } from "@/lib/data/instructorNoteRepositoryFactory";
+import { runOmRequestPagesRequest } from "@/lib/data/omRequestPagesComposition";
 import { OmRequestForm } from "./OmRequestForm";
 
 export const dynamic = "force-dynamic";
 
 export default async function OmRequestPage() {
   const session = await requireWorkspaceSession();
+  return runOmRequestPagesRequest(() => renderOmRequestPage(session));
+}
+
+async function renderOmRequestPage(session: Awaited<ReturnType<typeof requireWorkspaceSession>>) {
   const ldName = session.user?.name ?? session.user?.email?.split("@")[0] ?? "";
   const extraTools = listCustomTools();
 

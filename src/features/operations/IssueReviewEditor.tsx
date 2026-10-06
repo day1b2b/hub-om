@@ -2,6 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { browserDrafts } from "@/lib/privacy/browserDraftRuntime";
+import { useBrowserDraftSession } from "@/components/BrowserDraftProvider";
+import { hasLegacyDraft, LEGACY_DRAFT_NOTICE, LOCKED_DRAFT_NOTICE, runActiveDraftTask, useDraftActivity } from "./operationDraftSession";
 import type { OperationSession } from "@/lib/data/operationTypes";
 
 interface IssueReviewEditorProps {
@@ -36,6 +39,17 @@ type IssueReviewDraft = {
 };
 
 export function IssueReviewEditor({ operation }: IssueReviewEditorProps) {
+  const session = useBrowserDraftSession();
+  if (session.status !== "ready") return <p role="status">{LOCKED_DRAFT_NOTICE}</p>;
+  return <ReadyIssueReviewEditor key={`${session.ownerId}:${session.generation}:${operation.operationId}`} operation={operation} />;
+}
+
+function ReadyIssueReviewEditor({ operation }: IssueReviewEditorProps) {
+  const active = useDraftActivity();
+  const [submissionSubject] = useState(() => browserDrafts.getSubject());
+  const [initialOperation] = useState(operation);
+  const [baseValues, setBaseValues] = useState(() => operationValues(operation));
+  const [legacy, setLegacy] = useState(false);
   const router = useRouter();
   const [values, setValues] = useState<IssueReviewValues>(() => operationValues(operation));
   const [saveState, setSaveState] = useState<SaveState>("idle");
@@ -44,61 +58,54 @@ export function IssueReviewEditor({ operation }: IssueReviewEditorProps) {
   const [draftReady, setDraftReady] = useState(false);
   const hasChanges = useMemo(
     () =>
-      values.specialNotes !== operation.specialNotes ||
-      values.operationIssue !== operation.operationIssue ||
-      values.omUpdate !== operation.omUpdate,
-    [operation.omUpdate, operation.operationIssue, operation.specialNotes, values]
+      values.specialNotes !== baseValues.specialNotes ||
+      values.operationIssue !== baseValues.operationIssue ||
+      values.omUpdate !== baseValues.omUpdate,
+    [baseValues, values]
   );
 
   useEffect(() => {
-    const timeout = window.setTimeout(() => {
-      const draft = readDraft(operation.operationId);
-      const baseValues = operationValues(operation);
-
-      if (draft) {
-        setValues(draft.values);
-        setDraftSavedAt(draft.updatedAt);
-        setMessage("저장하지 않은 이전 내용을 불러왔습니다");
-      } else {
-        setValues(baseValues);
-        setDraftSavedAt(null);
-        setMessage("");
+    let cancelled = false;
+    void (async () => {
+      if (!active()) return;
+      try {
+        setLegacy(hasLegacyDraft(draftStorageKey(initialOperation.operationId)));
+        const raw = await browserDrafts.read<unknown>("issue-review", initialOperation.operationId);
+        if (cancelled || !active()) return;
+        if (raw !== null) {
+          const draft = validateDraft(raw, initialOperation.operationId);
+          setValues(draft.values);
+          setDraftSavedAt(draft.updatedAt);
+          setMessage("저장하지 않은 개인 초안을 불러왔습니다");
+        }
+        setDraftReady(true);
+      } catch {
+        if (!cancelled && active()) setMessage("개인 초안을 읽지 못했습니다. 입력을 시작하기 전에 다시 연결해 주세요.");
       }
-
-      setSaveState("idle");
-      setDraftReady(true);
-    }, 0);
-
-    return () => window.clearTimeout(timeout);
-  }, [operation]);
+    })();
+    return () => { cancelled = true; };
+  }, [active, initialOperation]);
 
   useEffect(() => {
     if (!draftReady || saveState === "saving") return;
-
-    const draftKey = draftStorageKey(operation.operationId);
-
-    if (!hasChanges) {
-      window.localStorage.removeItem(draftKey);
-      const timeout = window.setTimeout(() => setDraftSavedAt(null), 0);
-      return () => window.clearTimeout(timeout);
-    }
-
+    let cancelled = false;
     const timeout = window.setTimeout(() => {
       const updatedAt = new Date().toISOString();
-
-      window.localStorage.setItem(
-        draftKey,
-        JSON.stringify({
-          operationId: operation.operationId,
-          updatedAt,
-          values
-        })
-      );
-      setDraftSavedAt(updatedAt);
+      const task = runActiveDraftTask(() => !cancelled && active(), () => hasChanges
+        ? browserDrafts.write("issue-review", operation.operationId, { operationId: operation.operationId, updatedAt, values })
+        : browserDrafts.remove("issue-review", operation.operationId));
+      if (!task) return;
+      void task.then(() => {
+        if (!cancelled && active()) setDraftSavedAt(hasChanges ? updatedAt : null);
+      }, () => {
+        if (!cancelled && active()) {
+          setDraftSavedAt(null);
+          setMessage("개인 초안을 보관하지 못했습니다. 입력은 유지되며 창을 닫으면 잃을 수 있습니다.");
+        }
+      });
     }, 500);
-
-    return () => window.clearTimeout(timeout);
-  }, [draftReady, hasChanges, operation.operationId, saveState, values]);
+    return () => { cancelled = true; window.clearTimeout(timeout); };
+  }, [active, draftReady, hasChanges, operation.operationId, saveState, values]);
 
   useEffect(() => {
     if (!hasChanges) return;
@@ -114,7 +121,9 @@ export function IssueReviewEditor({ operation }: IssueReviewEditorProps) {
 
   return (
     <div className="issue-editor">
-      <div className="issue-editor-grid">
+      {legacy ? <p role="status">{LEGACY_DRAFT_NOTICE}</p> : null}
+      {!draftReady ? <p role="status">개인 초안을 확인하는 중입니다.</p> : null}
+      <fieldset disabled={!draftReady || saveState === "saving"} style={{ border: 0, padding: 0, margin: 0 }}><div className="issue-editor-grid">
         {EDIT_FIELDS.map((editField) => (
           <div className="issue-editor-field" key={editField.field}>
             <div className="issue-editor-field-head">
@@ -128,6 +137,7 @@ export function IssueReviewEditor({ operation }: IssueReviewEditorProps) {
                   [editField.field]: event.target.value
                 }));
                 setSaveState("idle");
+                setDraftSavedAt(null);
                 setMessage("");
               }}
               placeholder={editField.placeholder}
@@ -153,25 +163,30 @@ export function IssueReviewEditor({ operation }: IssueReviewEditorProps) {
             {saveState === "saving" ? "저장 중" : "저장하기"}
           </button>
         </div>
-      </div>
+      </div></fieldset>
     </div>
   );
 
-  function resetDraft() {
+  async function resetDraft() {
+    if (!active() || !draftReady) return;
     const confirmed = window.confirm(
       "작성 중인 내용이 사라집니다. 마지막으로 저장한 내용으로 되돌릴까요?"
     );
 
     if (!confirmed) return;
+    setSaveState("saving");
 
-    window.localStorage.removeItem(draftStorageKey(operation.operationId));
-    setValues(operationValues(operation));
+    try { await browserDrafts.remove("issue-review", operation.operationId); }
+    catch { if (active()) { setSaveState("idle"); setMessage("개인 초안을 지우지 못해 입력을 유지합니다."); } return; }
+    if (!active()) return;
+    setValues(baseValues);
     setDraftSavedAt(null);
     setSaveState("idle");
     setMessage("마지막 저장 내용으로 되돌림");
   }
 
   async function saveNotes() {
+    if (!active() || !draftReady || !submissionSubject) return;
     setSaveState("saving");
     setMessage("");
 
@@ -181,7 +196,8 @@ export function IssueReviewEditor({ operation }: IssueReviewEditorProps) {
       response = await fetch(`/api/operations/${encodeURIComponent(operation.operationId)}/drive-import/apply`, {
         method: "POST",
         headers: {
-          "content-type": "application/json"
+          "content-type": "application/json",
+          "X-Operation-Submission-Subject": submissionSubject
         },
         body: JSON.stringify({
           patches: EDIT_FIELDS.map((editField) => ({
@@ -192,6 +208,7 @@ export function IssueReviewEditor({ operation }: IssueReviewEditorProps) {
         })
       });
     } catch {
+      if (!active()) return;
       setSaveState("failed");
       setMessage("저장 요청 실패 · 잠시 후 다시 시도해 주세요");
       return;
@@ -199,13 +216,20 @@ export function IssueReviewEditor({ operation }: IssueReviewEditorProps) {
 
     const payload = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string };
 
+    if (!active()) return;
     if (!response.ok || !payload.ok) {
       setSaveState("failed");
       setMessage(payload.error ?? "저장하지 못했습니다.");
       return;
     }
 
-    window.localStorage.removeItem(draftStorageKey(operation.operationId));
+    setBaseValues(values);
+    try { await browserDrafts.remove("issue-review", operation.operationId); }
+    catch {
+      if (active()) { setSaveState("saved"); setMessage("서버 저장 완료 · 개인 초안 정리는 실패했습니다."); router.refresh(); }
+      return;
+    }
+    if (!active()) return;
     setDraftSavedAt(null);
     setSaveState("saved");
     setMessage("저장 완료 · 모두에게 반영됨");
@@ -225,30 +249,11 @@ function draftStorageKey(operationId: string) {
   return `hub-om:issue-review-draft:${operationId}`;
 }
 
-function readDraft(operationId: string): { updatedAt: string; values: IssueReviewValues } | null {
-  const draftText = window.localStorage.getItem(draftStorageKey(operationId));
-
-  if (!draftText) return null;
-
-  let draft: Partial<IssueReviewDraft>;
-
-  try {
-    draft = JSON.parse(draftText) as Partial<IssueReviewDraft>;
-  } catch {
-    window.localStorage.removeItem(draftStorageKey(operationId));
-    return null;
-  }
-
-  if (draft.operationId !== operationId || !draft.updatedAt || !draft.values) return null;
-
-  return {
-    updatedAt: draft.updatedAt,
-    values: {
-      specialNotes: typeof draft.values.specialNotes === "string" ? draft.values.specialNotes : "",
-      operationIssue: typeof draft.values.operationIssue === "string" ? draft.values.operationIssue : "",
-      omUpdate: typeof draft.values.omUpdate === "string" ? draft.values.omUpdate : ""
-    }
-  };
+function validateDraft(value: unknown, operationId: string): { updatedAt: string; values: IssueReviewValues } {
+  if (!value || typeof value !== "object") throw new Error("Invalid issue draft");
+  const draft = value as Partial<IssueReviewDraft>;
+  if (draft.operationId !== operationId || typeof draft.updatedAt !== "string" || !draft.values || EDIT_FIELDS.some(({ field }) => typeof draft.values?.[field] !== "string")) throw new Error("Invalid issue draft");
+  return { updatedAt: draft.updatedAt, values: draft.values as IssueReviewValues };
 }
 
 function normalizeStoredNote(value: string) {

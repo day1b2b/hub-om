@@ -1,6 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { browserDrafts } from "@/lib/privacy/browserDraftRuntime";
+import { useBrowserDraftSession } from "@/components/BrowserDraftProvider";
+import { hasLegacyDraft, LEGACY_DRAFT_NOTICE, LOCKED_DRAFT_NOTICE, runActiveDraftTask, useDraftActivity } from "./operationDraftSession";
 import { useRouter } from "next/navigation";
 import { isNavigableHref, toHref } from "@/lib/links";
 import {
@@ -18,7 +21,7 @@ import {
   type LectureNoteTab
 } from "./lectureNoteModel";
 import { flushLectureNote, type PendingLectureNote } from "./flushLectureNote";
-import { clearDraft, readDraft, writeDraft, type NoteMode, type StoredDraft } from "./lectureNoteDraftStorage";
+import { clearDraft, readDraft, writeDraft, lectureLegacyDraftKey, type NoteMode, type StoredDraft } from "./lectureNoteDraftStorage";
 
 type SaveState = "idle" | "saving" | "saved" | "failed";
 
@@ -78,13 +81,19 @@ function resolveInitialMode(value: string): NoteMode {
   return isNavigableHref(value) ? "link" : "text";
 }
 
-export function LectureManagementNoteRow({
-  done,
-  educationDates,
-  operationId,
-  startDate,
-  value
-}: LectureManagementNoteRowProps) {
+export function LectureManagementNoteRow(props: LectureManagementNoteRowProps) {
+  const session = useBrowserDraftSession();
+  if (session.status !== "ready") return <span role="status">{LOCKED_DRAFT_NOTICE}</span>;
+  return <ReadyLectureManagementNoteRow key={`${session.ownerId}:${session.generation}:${props.operationId}`} {...props} />;
+}
+
+function ReadyLectureManagementNoteRow({ done, educationDates, operationId, startDate, value }: LectureManagementNoteRowProps) {
+  const active = useDraftActivity();
+  const [submissionSubject] = useState(() => browserDrafts.getSubject());
+  const [draftReady, setDraftReady] = useState(false);
+  const [draftError, setDraftError] = useState("");
+  const [legacy, setLegacy] = useState(false);
+  const readSequenceRef = useRef(0);
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [tabs, setTabs] = useState<LectureNoteTab[]>(() => parseLectureNote(value, startDate));
@@ -114,7 +123,7 @@ export function LectureManagementNoteRow({
   // operationId 외에는 setState와 ref만 쓰므로 참조가 바뀌지 않는다. 효과(effect) 의존성에 그대로 넣을 수 있다.
   const persist = useCallback(
     async (noteValue: string, editVersionAtRequest: number): Promise<boolean> => {
-      if (inFlightRef.current) return false;
+      if (!active() || !submissionSubject || inFlightRef.current) return false;
       const sequence = ++saveSequenceRef.current;
       inFlightRef.current = true;
       setSaveState("saving");
@@ -126,7 +135,8 @@ export function LectureManagementNoteRow({
         const response = await fetch(`/api/operations/${encodeURIComponent(operationId)}/drive-import/apply`, {
           method: "POST",
           headers: {
-            "content-type": "application/json"
+            "content-type": "application/json",
+            "X-Operation-Submission-Subject": submissionSubject
           },
           body: JSON.stringify({ patches })
         });
@@ -136,7 +146,7 @@ export function LectureManagementNoteRow({
       }
 
       // 더 최신 저장 요청이 이미 나갔으면 이 결과로 화면 상태를 덮어쓰지 않는다.
-      if (sequence !== saveSequenceRef.current) return failure === null;
+      if (!active() || sequence !== saveSequenceRef.current) return false;
 
       inFlightRef.current = false;
 
@@ -156,7 +166,7 @@ export function LectureManagementNoteRow({
       setRetryCount(0);
       return true;
     },
-    [operationId]
+    [active, operationId, submissionSubject]
   );
 
   const activeTab = tabs[activeTabIndex] ?? blankTab();
@@ -172,7 +182,7 @@ export function LectureManagementNoteRow({
   // 도착해 최신 입력을 덮어쓸 수 있고, 화면은 최신 값이 저장된 줄 알고 임시 보관본까지 지운다.
   // 앞 요청이 끝나면 saveState가 바뀌어 이 효과가 다시 돌고, 그때 남은 변경을 이어서 저장한다.
   useEffect(() => {
-    if (!isOpen || !hasUnsavedEdit || saveState === "saving") return;
+    if (!draftReady || !isOpen || !hasUnsavedEdit || saveState === "saving") return;
     // 실패 뒤 편집이 없으면 3초마다 같은 요청을 반복하지 않는다.
     if (saveState === "failed" && failedAtEditVersion === editVersion) return;
 
@@ -182,7 +192,7 @@ export function LectureManagementNoteRow({
     }, AUTOSAVE_DELAY_MS);
 
     return () => window.clearTimeout(timer);
-  }, [isOpen, hasUnsavedEdit, pendingValue, editVersion, saveState, failedAtEditVersion, persist]);
+  }, [draftReady, isOpen, hasUnsavedEdit, pendingValue, editVersion, saveState, failedAtEditVersion, persist]);
 
   // 저장에 실패한 동안에만 간격을 늘려 가며 다시 시도한다. 평소에는 아무 요청도 보내지 않는다.
   useEffect(() => {
@@ -199,16 +209,26 @@ export function LectureManagementNoteRow({
     return () => window.clearTimeout(timer);
   }, [isOpen, saveState, hasUnsavedEdit, pendingValue, editVersion, retryCount, saveFailure, persist]);
 
-  // 편집 중인 내용은 브라우저에도 보관하고, 서버 저장이 끝나면 지운다.
+  // Runtime queues writes/removals per owner and scope; never write a plaintext draft.
   useEffect(() => {
-    if (!isOpen || editVersion === 0) return;
+    if (!draftReady || !isOpen || editVersion === 0) return;
+    let cancelled = false;
+    const task = runActiveDraftTask(() => !cancelled && active(), () => hasUnsavedEdit
+      ? writeDraft(operationId, { linkDraft, mode: editedMode, tabs, updatedAt: new Date().toISOString() })
+      : clearDraft(operationId).then(() => true, () => false));
+    if (!task) return;
+    void task.then(ok => {
+      if (!cancelled && active()) setDraftError(ok ? "" : "개인 초안을 보관하지 못했습니다. 입력을 유지하고 창을 닫지 마세요.");
+    });
+    return () => { cancelled = true; };
+  }, [active, draftReady, isOpen, editVersion, hasUnsavedEdit, operationId, linkDraft, editedMode, tabs]);
 
-    if (hasUnsavedEdit) {
-      writeDraft(operationId, { linkDraft, mode: editedMode, tabs, updatedAt: new Date().toISOString() });
-    } else {
-      clearDraft(operationId);
-    }
-  }, [isOpen, editVersion, hasUnsavedEdit, operationId, linkDraft, editedMode, tabs]);
+  useEffect(() => {
+    if (!hasUnsavedEdit) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [hasUnsavedEdit]);
 
   return (
     <div className={`archive-item-row ${done ? "done" : "missing"}`}>
@@ -237,22 +257,26 @@ export function LectureManagementNoteRow({
               </button>
             </div>
 
+            {legacy ? <p role="status">{LEGACY_DRAFT_NOTICE}</p> : null}
+            {draftError ? <p role="alert">{draftError}</p> : null}
+            {!draftReady ? <p role="status">개인 초안을 확인하는 중입니다.</p> : null}
             {recoverableDraft ? (
               <div className="lecture-note-draft-banner" role="status">
                 <span>
                   이 브라우저에 저장되지 않은 내용이 있습니다 ({formatClock(new Date(recoverableDraft.updatedAt))} 기준). 복원할까요?
                 </span>
                 <div className="lecture-note-actions">
-                  <button onClick={restoreDraft} type="button">
+                  <button disabled={!draftReady} onClick={restoreDraft} type="button">
                     복원
                   </button>
-                  <button onClick={discardDraft} type="button">
+                  <button disabled={!draftReady} onClick={discardDraft} type="button">
                     버리기
                   </button>
                 </div>
               </div>
             ) : null}
 
+            <fieldset disabled={!draftReady || Boolean(recoverableDraft)} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
             {SHOW_LECTURE_TEXT_MODE ? (
               <div className="lecture-note-tabbar">
                 <div className="lecture-note-tabs">
@@ -383,6 +407,7 @@ export function LectureManagementNoteRow({
               </div>
             )}
 
+            </fieldset>
             <div className="lecture-note-footer">
               <div className="lecture-note-footer-start">
                 <span aria-live="polite" className={`lecture-note-save-status ${saveState === "failed" ? "failed" : ""}`}>
@@ -406,7 +431,14 @@ export function LectureManagementNoteRow({
     </div>
   );
 
-  function openDialog() {
+  async function openDialog() {
+    if (!active()) return;
+    const readSequence = ++readSequenceRef.current;
+    setDraftReady(false);
+    setDraftError("");
+    setRecoverableDraft(null);
+    setLegacy(hasLegacyDraft(lectureLegacyDraftKey(operationId)));
+    setIsOpen(true);
     const initialTabs = parseLectureNote(value, startDate);
     const initialMode = resolveInitialMode(value);
     const initialLink = isNavigableHref(value) ? value : "";
@@ -427,17 +459,17 @@ export function LectureManagementNoteRow({
     const initialComposed = initialMode === "link" ? initialLink.trim() : composeLectureNote(withFallbackDates(initialTabs));
     setLastSavedValue(initialComposed);
 
-    // 이전에 서버 저장이 안 된 채 닫힌 내용이 브라우저에 남아 있으면 복원할지 묻는다. 서버 값과 같으면 조용히 지운다.
+    // 계정별 암호화 초안이 남아 있으면 복원할지 묻고, 열기만으로는 삭제하지 않는다.
     // 미저장 기록은 유일한 사본일 수 있으므로 오래됐다는 이유로 삭제하지 않는다.
-    const draft = readDraft(operationId);
-    if (draft && composeDraftValue(draft) !== initialComposed) {
-      setRecoverableDraft(draft);
-    } else {
-      if (draft) clearDraft(operationId);
-      setRecoverableDraft(null);
+    try {
+      const draft = await readDraft(operationId);
+      if (!active() || readSequence !== readSequenceRef.current) return;
+      if (draft && composeDraftValue(draft) !== initialComposed) setRecoverableDraft(draft);
+      // Equal saved values need no implicit deletion while opening the dialog.
+      setDraftReady(true);
+    } catch {
+      if (active() && readSequence === readSequenceRef.current) setDraftError("개인 초안을 읽지 못했습니다. 다시 연결한 뒤 열어 주세요.");
     }
-
-    setIsOpen(true);
   }
 
   function restoreDraft() {
@@ -455,9 +487,12 @@ export function LectureManagementNoteRow({
     setEditVersion((current) => current + 1);
   }
 
-  function discardDraft() {
-    clearDraft(operationId);
-    setRecoverableDraft(null);
+  async function discardDraft() {
+    if (!active() || !draftReady) return;
+    setDraftReady(false);
+    try { await clearDraft(operationId); }
+    catch { if (active()) { setDraftReady(true); setDraftError("개인 초안을 지우지 못해 기존 내용을 유지합니다."); } return; }
+    if (active()) { setRecoverableDraft(null); setDraftReady(true); }
   }
 
   function composeDraftValue(draft: StoredDraft): string {
@@ -465,14 +500,15 @@ export function LectureManagementNoteRow({
   }
 
   async function closeDialog() {
-    if (inFlightRef.current) return;
+    if (!active() || inFlightRef.current) return;
 
     // 서버가 거절한 요청은 닫을 때 다시 보내도 결과가 같아 창이 영영 닫히지 않는다. 그 뒤 편집이 없었다면
     // 현재 내용이 브라우저에 실제로 보관됐을 때만 닫는다(다음에 열 때 복원을 묻는다).
     const rejectedWithoutEdit = saveState === "failed" && saveFailure?.kind === "rejected" && failedAtEditVersion === editVersion;
 
     if (hasUnsavedEdit && rejectedWithoutEdit) {
-      const backedUp = writeDraft(operationId, { linkDraft, mode: editedMode, tabs, updatedAt: new Date().toISOString() });
+      const backedUp = await writeDraft(operationId, { linkDraft, mode: editedMode, tabs, updatedAt: new Date().toISOString() });
+      if (!active() || latestPendingRef.current.editVersion !== editVersion) return;
       if (!backedUp) {
         setSaveFailure({
           kind: "rejected",
@@ -488,6 +524,8 @@ export function LectureManagementNoteRow({
       if (!saved) return;
     }
 
+    if (!active()) return;
+    readSequenceRef.current++;
     setIsOpen(false);
     setSaveState("idle");
 

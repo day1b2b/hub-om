@@ -1,0 +1,45 @@
+작성 상태: 부모 실행 전용, NOT_RUN. 제품/Carver fixture와 독립된 health-tests 경로.
+기준 35104776c1ae4f42696d06e0e836ead29a786fb3, 실제 runtime 원본9개.
+원본 사본 없음: 기준 commit→blob ID→git blob bytes→Git SHA1/SHA256 검증 후 메모리 로딩.
+명시 runtime edge만 허용하며 실제 설치한 NextResponse/Prisma/pg 사용. 원본/current 별도 process.
+package/lock/schema/실제 ts-loader는 baseline bytes와 비교; drift는 실패, 원본 우회 없음.
+원본 경로/해시는 실행 provenance에 출력하며 source bytes/실명/오류원문은 출력하지 않는다.
+
+부모 준비:
+- 소유 PG127.0.0.1:56754, user synthetic, DB health_test, password/query 없는 postgresql URL.
+- HEALTH_TEST_PG_URL=postgresql://synthetic@127.0.0.1:56754/health_test
+- HEALTH_TEST_PG_UNAVAILABLE_URL=postgresql://synthetic@127.0.0.1:56755/health_test
+- data_directory /private/tmp/hub-om-health-20260930/pg. 성공worker의 별도 setup read로 확인.
+- 56755 미사용/닫힘은 부모가 소유 검증. fixture는 서버를 시작하거나 종료하지 않는다.
+- caller 생성 임시키 PII_ACTIVE_KEY_ID / PII_ENCRYPTION_KEYS / PII_INDEX_KEY.
+  encryption/index 키는 독립된 base64 32byte, 실제 운영키/실env 파일 사용 금지.
+- schema/업무 seed 불필요. SELECT 1 연결 확인만, Mongo27854는 이 파일에서 접근하지 않는다.
+
+정확한 명령(저장소 루트; 임시키와 URL 변수는 부모가 합성 값으로 먼저 설정):
+env -i PATH="$PATH" HOME="$HOME" LC_ALL=C TZ=UTC NODE_ENV=test \
+ HEALTH_DATABASE_TESTS=1 HEALTH_TEST_PG_URL="$HEALTH_TEST_PG_URL" \
+ HEALTH_TEST_PG_UNAVAILABLE_URL="$HEALTH_TEST_PG_UNAVAILABLE_URL" \
+ PII_ACTIVE_KEY_ID="$PII_ACTIVE_KEY_ID" PII_ENCRYPTION_KEYS="$PII_ENCRYPTION_KEYS" \
+ PII_INDEX_KEY="$PII_INDEX_KEY" \
+ node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs \
+ --import ./scripts/test-health-baseline-loader.mjs --test \
+ src/lib/data/health-tests/baseline.postgres.integration.test.ts
+
+6사례 × 원본/current 별도worker:
+production 실제PG 성공 / 실제closed endpoint / 키형식오류 / 빈scope+키형식오류,
+development 키형식오류 / 빈scope+키형식오류.
+성공은200 전체 literal; 실패는503 전체 literal. 원본development의 실제 privacy/guard 오류만
+명시한 literal로 비교하고 새 고정오류와의 의도차이를 인정. content-type/전체headers/dynamic,
+실제 NextResponse instanceof, import I/O0, SELECT1 또는 guard/query0 관찰.
+pg observer는 실제 connect/query에 위임하며 위반은 catch밖 누적. 쓰기/다른query는 차단.
+연결 identity preflight는 health쿼리 수에서 별도이며 guard/closed 사례에는 preflight 연결없음.
+끝에 실제 생성 singleton의 $disconnect 후 실제 stream close 이벤트를 최대3초 기다려 확인.
+Client end 또는 destroy요청만으로 close성공을 대신하지 않음. close미관찰은 계속FAIL.
+실패전 안전한 status/계수/boolean/bodySHA/관찰된close수만 기록; 미검증 body/URI는 출력하지 않음.
+timeout20초 TERM→5초KILL→close대기,
+후속사례 STOP/cleanup 추정 금지. DB/서버/포트 철거는 부모 소유.
+
+음성대조: 원본byte/loader drift, 실제 resolver current탈출, 잘못된 HTTP/쿼리/연결계수/삼켜진위반.
+한계: 전체 Next 서버/proxy/auth 제외, Mongo ping/timeout/A-B scope, 실제 배포 환경은 별도 담당.
+stdout는0, console은관찰위반; stderr원문 비출력/URI·키 검사+hash 기록.
+이 파일은 DB접속을 agent가 수행했거나 original/current 실행을 수락했다는 기록이 아니다.

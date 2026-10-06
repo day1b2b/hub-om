@@ -1,11 +1,12 @@
 import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { authorizeSatisfactionMatching } from "@/lib/auth/satisfactionMatchingAccess";
-import { parseGoogleSpreadsheetUrl, readGoogleSheetRows } from "@/lib/data/googleSheetsImport";
-import { getGoogleB2BAccessToken } from "@/lib/googleCalendar/calendarWriteClient";
+import { parseGoogleSpreadsheetUrl } from "@/lib/data/googleSheetsImport";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
+import { getSatisfactionSource } from "@/lib/data/satisfactionSource";
 import { planSatisfactionApply } from "@/lib/data/satisfactionApplyPlan";
 import { matchSatisfactionRow, sheetValuesToRows } from "@/lib/data/satisfactionSheet";
+import { runSatisfactionRequest } from "@/lib/data/satisfactionComposition";
 import type { OperationCandidate } from "@/lib/data/operationMatch/matchOperation";
 
 export const dynamic = "force-dynamic";
@@ -24,8 +25,6 @@ export const dynamic = "force-dynamic";
 async function activityPOST(request: Request) {
   const access = await authorizeSatisfactionMatching();
   if (!access.ok) return access.response;
-  const { session } = access;
-
   try {
     const body = (await request.json().catch(() => ({}))) as {
       spreadsheetUrl?: string;
@@ -42,15 +41,14 @@ async function activityPOST(request: Request) {
       );
     }
 
+    const repository = getOperationRepository();
+    const source = getSatisfactionSource();
     const { spreadsheetId } = parseGoogleSpreadsheetUrl(sheetUrl);
-    // 개별 사용자 권한이 아니라 전용 B2B 구글 계정(캘린더 OAuth와 공용)으로 시트를 읽는다.
-    const accessToken = await getGoogleB2BAccessToken();
-    const values = await readGoogleSheetRows(accessToken, spreadsheetId, tabTitle);
+    const values = await source.readRows(spreadsheetId, tabTitle);
     const headerRowNumber =
       Number.isInteger(body.headerRowNumber) && (body.headerRowNumber ?? 0) > 0 ? Number(body.headerRowNumber) : 1;
     const sheetRows = sheetValuesToRows(values, headerRowNumber);
 
-    const repository = getOperationRepository();
     const operations = await repository.listOperations();
     const candidates: OperationCandidate[] = operations.map((operation) => ({
       id: operation.id,
@@ -79,9 +77,7 @@ async function activityPOST(request: Request) {
       try {
         await repository.updateOperation(item.operationId, { avgSatisfaction: item.value });
         applied.push({ course: item.course, date: item.date, overall: item.value, operation: item.label });
-        console.info(
-          `[satisfaction:apply] by=${session.user?.email ?? "unknown"} operationId=${item.operationId} value=${item.value} recordId=${item.recordId}`
-        );
+        console.info("[satisfaction:apply] applied");
       } catch (error) {
         failed.push({
           course: item.course,
@@ -106,4 +102,4 @@ async function activityPOST(request: Request) {
   }
 }
 
-export const POST = withActivity("/api/admin/satisfaction/apply", "POST", activityPOST);
+export const POST = withActivity("/api/admin/satisfaction/apply", "POST", activityPOST, runSatisfactionRequest);

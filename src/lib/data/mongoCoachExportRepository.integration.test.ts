@@ -1,0 +1,118 @@
+import assert from "node:assert/strict";
+import { randomBytes, randomUUID } from "node:crypto";
+import { registerHooks } from "node:module";
+import { mock, test } from "node:test";
+import { MongoClient } from "mongodb";
+import { runWithDataRepositories } from "./dataRepositoryContext";
+import { MongoCoachExportRepository, prepareMongoCoachExportStore, COACH_EXPORT_MODELS } from "./mongoCoachExportRepository";
+import { MongoCoachWriteRepository, prepareMongoCoachWriteStore } from "./mongoCoachWriteRepository";
+import { MongoRequestAuditRepository, prepareMongoRequestAuditStore } from "./mongoRequestAuditRepository";
+import { MongoCoachTokenRepository, prepareMongoCoachTokenStore } from "./mongoCoachTokenRepository";
+import { MongoCoachTokenRotationRepository, prepareMongoCoachTokenRotationStore } from "./mongoCoachTokenRotationRepository";
+import { MongoOperationStore, operationMongoValidator } from "./mongoOperationStore";
+import { decodeMongoRuntimeDocument } from "./mongoRuntimeCodec";
+const actorEmail = "synthetic-export@day1company.co.kr";
+let authSession: { user: { email: string; name: string }; expires: string } | null = null;
+mock.module("../../auth", { namedExports: { auth: async () => authSession } });
+const hook = registerHooks({ resolve(specifier, context, next) { return next(specifier === "next/server" || specifier === "next/navigation" ? `${specifier}.js` : specifier, context); } });
+const route = await import("../../app/api/coaches/export/route");
+const ownRoute = await import("../../app/api/coach/me/route");
+const rotateRoute = await import("../../app/api/coaches/[id]/regenerate-token/route");
+const { validateCoachToken } = await import("../coaches/coachTokenAuth");
+hook.deregister();
+const uri = process.env.MONGODB_COACH_ACCESS_TEST_URI;
+test("actual export authorization, encrypted batch audit, CSV safety and rollback on Mongo8", { skip: !uri, timeout: 120_000 }, async () => {
+  const url = new URL(uri!);
+  assert.equal(url.protocol, "mongodb:"); assert.ok(["127.0.0.1", "localhost", "[::1]"].includes(url.hostname)); assert.ok(url.port);
+  assert.equal(url.username, ""); assert.equal(url.password, ""); assert.ok(!url.pathname || url.pathname === "/");
+  const client = new MongoClient(uri!, { serverSelectionTimeoutMS: 5000 });
+  const options = { client, databaseName: `hub_om_shadow_export_${randomBytes(8).toString("hex")}`, namespace: "shadow_export", allowShadowWrites: true as const };
+  const keys = ["PII_ACTIVE_KEY_ID", "PII_ENCRYPTION_KEYS", "PII_INDEX_KEY", "PII_ALLOW_PLAINTEXT_READS", "DATABASE_URL", "ADMIN_EMAILS", "DEV_AUTH_BYPASS", "SKILLFLO_COACH_URL_TEMPLATE"];
+  const saved = new Map(keys.map(key => [key, process.env[key]]));
+  process.env.PII_ACTIVE_KEY_ID = "fixture"; process.env.PII_ENCRYPTION_KEYS = JSON.stringify({ fixture: randomBytes(32).toString("base64") });
+  process.env.PII_INDEX_KEY = randomBytes(32).toString("base64"); process.env.PII_ALLOW_PLAINTEXT_READS = "false";
+  process.env.ADMIN_EMAILS = actorEmail; process.env.SKILLFLO_COACH_URL_TEMPLATE = "https://example.invalid/coach?token={token}";
+  delete process.env.DATABASE_URL; delete process.env.DEV_AUTH_BYPASS;
+  let connected = false;
+  try {
+    await client.connect(); connected = true;
+    await prepareMongoCoachWriteStore(options); await prepareMongoCoachExportStore(options); await prepareMongoRequestAuditStore(options);
+    await prepareMongoCoachTokenStore(options); await prepareMongoCoachTokenRotationStore(options);
+    const writes = await MongoCoachWriteRepository.open(options), coachExport = await MongoCoachExportRepository.open(options), audit = await MongoRequestAuditRepository.open(options);
+    const store = new MongoOperationStore(options, COACH_EXPORT_MODELS);
+    const a = await writes.createCoach({ name: "가상가", phone: "+821012345678", email: "synthetic-a@example.invalid" });
+    const b = await writes.createCoach({ name: "가상나", email: "=1+1" });
+    const deleted = await writes.createCoach({ name: "가상삭제", email: "deleted@example.invalid" });
+    await writes.deleteCoach(deleted.id, "synthetic@example.invalid");
+    const request = (value: unknown) => new Request("https://example.invalid/api/coaches/export", { method: "POST", body: JSON.stringify(value) });
+    const coachToken = await MongoCoachTokenRepository.open(options), coachTokenRotation = await MongoCoachTokenRotationRepository.open(options);
+    const scope = { coachExport, coachToken, coachTokenRotation, requestActivity: audit };
+    await runWithDataRepositories(scope, async () => {
+      // Real permission guard, mocked OAuth/session acquisition only.
+      await assert.rejects(route.POST(request({ coachIds: [a.id] })), /권한/);
+      await assert.rejects(rotateRoute.POST(request({}), { params: Promise.resolve({ id: a.id }) }), /NEXT_REDIRECT/);
+      authSession = { user: { email: "ordinary@day1company.co.kr", name: "Synthetic" }, expires: "" };
+      await assert.rejects(route.POST(request({ coachIds: [a.id] })), /권한/);
+      assert.equal(await store.collection("CoachPrivateAccessLog").countDocuments(), 0);
+      authSession = { user: { email: actorEmail, name: "Synthetic admin" }, expires: "" };
+      delete process.env.ADMIN_EMAILS;
+      await assert.rejects(route.POST(request({ coachIds: [a.id] })), /권한/);
+      process.env.ADMIN_EMAILS = actorEmail;
+      const oldToken = (await store.one("Coach", { _id: a.id }))!.accessToken as string;
+      const ownRequest = (token: string) => new Request(`https://example.invalid/api/coach/me?token=${encodeURIComponent(token)}`);
+      const own = await ownRoute.GET(ownRequest(oldToken));
+      assert.equal(own.status, 200); assert.ok(!(await own.text()).includes(oldToken));
+      const rotation = await rotateRoute.POST(request({}), { params: Promise.resolve({ id: a.id.toUpperCase() }) });
+      assert.equal(rotation.status, 200); assert.equal(rotation.headers.get("cache-control"), "private, no-store");
+      const newToken = (await rotation.json()).accessToken as string;
+      assert.ok(newToken && newToken !== oldToken);
+      assert.equal(await validateCoachToken(oldToken), null);
+      assert.equal((await validateCoachToken(newToken))?.id, a.id);
+      assert.equal((await ownRoute.GET(ownRequest(oldToken))).status, 401);
+      assert.equal((await ownRoute.GET(ownRequest(newToken))).status, 200);
+      assert.equal((await rotateRoute.POST(request({}), { params: Promise.resolve({ id: deleted.id }) })).status, 404);
+      const requestLogs = await client.db(options.databaseName).collection(`${options.namespace}_ActivityRequest`).find({}).toArray();
+      const plainLogs = requestLogs.map(row => decodeMongoRuntimeDocument("ActivityRequest", row));
+      assert.ok(!JSON.stringify(plainLogs).includes(oldToken)); assert.ok(!JSON.stringify(plainLogs).includes(newToken));
+      assert.ok(plainLogs.some(row => row.route === "/api/coach/me" && row.actorType === "token_request" && row.actorEmail === null));
+      assert.equal((await route.POST(request({ coachIds: [null, 42] }))).status, 400);
+      assert.equal((await route.POST(request({ coachIds: ["invalid-id"] }))).status, 400);
+      assert.equal((await route.POST(request({ coachIds: Array.from({ length: 20_001 }, () => randomUUID()) }))).status, 400);
+      const empty = await route.POST(request({ coachIds: [randomUUID(), deleted.id] }));
+      assert.equal(empty.status, 200); assert.equal(Buffer.from(await empty.arrayBuffer()).toString(), "\uFEFF");
+      assert.equal(await store.collection("CoachPrivateAccessLog").countDocuments(), 0);
+      for (const type of ["phone", "email", "mail-merge"] as const) {
+        const response = await route.POST(request({ coachIds: [b.id.toUpperCase(), deleted.id, a.id, a.id.toUpperCase(), randomUUID()], type }));
+        assert.equal(response.status, 200); assert.equal(response.headers.get("cache-control"), "private, no-store");
+        const csv = Buffer.from(await response.arrayBuffer()).toString();
+        assert.ok(csv.startsWith("\uFEFF")); assert.ok(csv.indexOf("가상가") < csv.indexOf("가상나")); assert.ok(!csv.includes("가상삭제"));
+        assert.equal((csv.match(/가상가/g) ?? []).length, 1);
+        if (type === "phone") assert.ok(csv.includes("'+821012345678"));
+        else assert.ok(csv.includes("'=1+1"));
+        if (type === "mail-merge") assert.ok(csv.includes("https://example.invalid/coach?token="));
+        else assert.ok(!csv.includes("https://example.invalid"));
+        const logs = await store.scan("CoachPrivateAccessLog", { context: `coach_export:${type}` });
+        assert.equal(logs.length, 2); assert.ok(logs.every(row => row.accessedByEmail === actorEmail));
+      }
+      const rawLogs = await store.collection("CoachPrivateAccessLog").find({}).toArray();
+      assert.ok(!JSON.stringify(rawLogs).includes(actorEmail));
+      const rawProfile = (await store.collection("CoachPrivateProfile").findOne({ _id: a.id }))!;
+      assert.ok(!JSON.stringify(rawProfile).includes("synthetic-a@example.invalid"));
+      assert.equal(decodeMongoRuntimeDocument("CoachPrivateProfile", rawProfile).email, "synthetic-a@example.invalid");
+      delete process.env.SKILLFLO_COACH_URL_TEMPLATE;
+      const noTemplate = Buffer.from(await (await route.POST(request({ coachIds: [a.id], type: "mail-merge" }))).arrayBuffer()).toString();
+      assert.ok(noTemplate.endsWith('""')); assert.ok(!noTemplate.includes("token="));
+      const count = await store.collection("CoachPrivateAccessLog").countDocuments();
+      await store.db.command({ collMod: store.collection("CoachPrivateAccessLog").collectionName, validator: { $and: [operationMongoValidator("CoachPrivateAccessLog"), { coachId: { $ne: b.id } }] } });
+      await assert.rejects(route.POST(request({ coachIds: [a.id, b.id], type: "email" })), /COACH_EXPORT_FAILED/);
+      assert.equal(await store.collection("CoachPrivateAccessLog").countDocuments(), count);
+      await store.db.command({ collMod: store.collection("CoachPrivateAccessLog").collectionName, validator: operationMongoValidator("CoachPrivateAccessLog") });
+      await assert.rejects(runWithDataRepositories({ requestActivity: audit }, () => route.POST(request({ coachIds: [a.id] }))), /DATA_REPOSITORY_NOT_CONFIGURED/);
+      assert.equal(await store.collection("CoachPrivateAccessLog").countDocuments(), count);
+    });
+  } finally {
+    authSession = null;
+    try { if (connected) await client.db(options.databaseName).dropDatabase(); }
+    finally { try { await client.close(); } finally { for (const [key,value] of saved) { if (value === undefined) delete process.env[key]; else process.env[key]=value; } } }
+  }
+});

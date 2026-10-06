@@ -1,0 +1,13 @@
+# 운영 승격 Plan v1 — 구현 전 독립 검토용
+
+1. [Shell] 선행통합HEAD를기준으로기존importPromotionService.ts와actualPOST를동결한다. 단순Prisma호환프록시와일반createOperation반복호출은관계·감사·단일transaction을깨므로거절한다. 좁은PromotionRepository/transaction port와순수후보·값변환을추출하고기존export경로는유지한다. scope없으면동일PGadapter/PG명단을사용하고scope있으면promotion/teamMembers/후처리effect/requestActivity를명시주입한다. API는필요scope전체를업무쓰기전에검사한다.
+2. [Core] 원래run sourceType notion차단,미연결원천전체를복호화sheetko→rownumasc로처리한다(200상한추가금지). run없음/연결행만있음은기존빈요약. validationErrors→OM→LD→회사→과정→시작일→종료일→역순날짜의차단우선순위와문구·summary카운트를유지한다. 원문JSON/숫자/문자열변환·Unicode/공백·enum fallback·회차/날짜/금액규칙을임의개선하지않는다.
+3. [Core] 각eligible행은지문조회(삭제표시포함)→기존활성업무키조회→기업/과정upsert→운영create 순서다. 삭제운영복원은기존buildOperationSessionValueData필드+deletedAt/By만수정하고operationId/과정/지문/기타수동필드는보존한다. 기존활성건은원천link만수정. 지문없음은원래randomID,지문앞12문자collision은unique오류전체abort이며자동수정/삭제/새정책없음.
+4. [Core] Mongo는한snapshot transaction으로기업/과정/운영/source link/변경감사를묶는다. 원천행의nullable relation과필수FK를검증한다. 과정명복원과동일내부guard를predicate조회전획득하여새원천link의phantom/삭제경쟁을보호한다. 기본writer가같은행을바꾸면writeconflict후전체재조회한다. 고유키경쟁중초기guardupsert만별도제한retry,업무unique나unknowncommit을무조건재실행하지않는다. source문서에는기존mutationaudit제외를유지한다.
+5. [Core] 기존codec/validator/HMACunique와PGnumeric(14,2)의반올림/overflow규칙을사용한다. completeMongoRow만으로채울수없는업무default는기존schema에서명시한다. Course counter는기존공유__counter를사용하고준비는명시highwater/maxstored를확인하며open에서수리하지않는다. PGsequence는실패해도번호를소비하고Mongo는transactionrollback하므로번호열동일성을주장하지않고단조고유성/기존최대보존/고갈을검증한다. 준비된counter/restoreguard 없으면거부한다.
+6. [Core] 전체60초예산은roster조회·retry를포함하며scan15초/20k/32MiB제한초과시전체abort한다. key/cipher/HMAC손상·후반오류·감사실패는민감본문없이failclosed,승인된blockedReasons응답복호화는허용한다. unknowncommit은전체없음/전체반영을구분하고자동복구하지않는다.
+7. [Core] actualPOST기존workspaceguard/withActivity/revalidation/HTTP400계약유지. 정확한공개Notion차단문구만원형허용하고비정형예외는고정문구로비노출한다. Calendar는commit후딱기존호출옵션(dryRun:false,notify기본false)로전체backfill port를호출한다. 예외는고정로그만남기고이미commit된promotion성공을유지한다. Mongo scope에서port누락은commit전거부한다. 실제Google호출·메일·PG fallback0을검증한다. 후속CalendarTask가실제저장/잠금/원천adapter를연결한다.
+8. [Check] 원본PG/currentPG/nativeMongo 3방향oracle와actualPOST검증. 모델전논리필드/summary/감사exact집합·민감비노출,생성/기존연결/복원/잘못된날짜금액/중복앞12collision/전체201행/순서/재실행/동시promotion·기존writer·courseNameRestore,sequence/중간실패rollback/unknowncommit/기한/미준비를검증한다. 원본은공유신규core를사용하지않는다. generatedUUID/시각만참조·호출구간을확인후정규화하고순서/nullable/요약차이를지우지않는다. 실제키/원천없음.
+9. [Shell] 영향검사후일반/type/lint/build/전체Mongo,독립검토및gap보완,소유합성정리,문서·macro·coverage·digest·handoff갱신,최신dev/총괄fetch후featurecommitpush/총괄FF/원격SHA대조. 이어Calendar/원천·Drive/감사/백업health/앱전체조립을진행한다. 이번승격완료를전체이전/실백업·복원완료로표현하지않는다.
+
+독립검토에서특히확정할점: 좁은port의exact메서드와PG감사변화,restore guard가보호하는역의존관계,최초중복upsert의경쟁결과집합,postcommit효과의scope선검사와PG기본의lazy呼出유지,고유키·sequenceの차이검증허용범위. 운영적열린결정은여기서임의결정하지않는다.

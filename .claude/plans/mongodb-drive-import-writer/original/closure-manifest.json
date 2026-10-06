@@ -1,0 +1,539 @@
+{
+  "baseline": "3c72e6997e057b7811e128e12ca6b354065de66a",
+  "roots": [
+    "scripts/run-drive-import-dry-run.mjs",
+    "scripts/assert-legacy-storage.mjs",
+    "src/lib/driveImports/googleDriveOperationScanner.ts"
+  ],
+  "files": [
+    {
+      "originPath": "scripts/run-drive-import-dry-run.mjs",
+      "gitBlob": "b6c3a722dd4b06fa5fd2d546a6a65e7489059e4e",
+      "sha256": "89fc0d3a20b2ef3fa83b15f13d930dbb845f285482af702ef2e3fea968ef218d",
+      "storage": "immutable-git-object",
+      "role": "runtime",
+      "edges": [
+        {
+          "specifier": "./assert-legacy-storage.mjs",
+          "typeOnly": false,
+          "target": "scripts/assert-legacy-storage.mjs"
+        },
+        {
+          "specifier": "node:fs",
+          "typeOnly": false,
+          "external": true
+        },
+        {
+          "specifier": "pg",
+          "typeOnly": false,
+          "external": true
+        },
+        {
+          "specifier": "../src/lib/driveImports/googleDriveOperationScanner.ts",
+          "typeOnly": false,
+          "target": "src/lib/driveImports/googleDriveOperationScanner.ts"
+        }
+      ]
+    },
+    {
+      "originPath": "scripts/assert-legacy-storage.mjs",
+      "gitBlob": "3c3fcb61d167b61ad4f8797e6a99ec33b5c95b27",
+      "sha256": "f723e9748de11d7a964ad984a600caf9fcb149e08367eb55ee2c08d37deeaf36",
+      "storage": "immutable-git-object",
+      "role": "runtime",
+      "edges": []
+    },
+    {
+      "originPath": "src/lib/driveImports/googleDriveOperationScanner.ts",
+      "gitBlob": "011189a18112ed61868516051427218ffe7012af",
+      "sha256": "072585ed6a90334d70d77906fd2d466713a2eb1b9aacb3c364abb905ff4ed58c",
+      "storage": "immutable-git-object",
+      "role": "runtime",
+      "edges": [
+        {
+          "specifier": "node:crypto",
+          "typeOnly": false,
+          "external": true
+        },
+        {
+          "specifier": "node:zlib",
+          "typeOnly": false,
+          "external": true
+        },
+        {
+          "specifier": "./driveImportTypes",
+          "typeOnly": true,
+          "target": "src/lib/driveImports/driveImportTypes.ts"
+        },
+        {
+          "specifier": "@/lib/data/operationTypes",
+          "typeOnly": true,
+          "target": "src/lib/data/operationTypes.ts"
+        },
+        {
+          "specifier": "@/lib/data/satisfaction",
+          "typeOnly": false,
+          "target": "src/lib/data/satisfaction.ts"
+        }
+      ]
+    },
+    {
+      "originPath": "src/lib/data/satisfaction.ts",
+      "gitBlob": "6e2ecc177af3e5236cd3198190fff4881149c703",
+      "sha256": "946fa01af043a823db5a3f64ef7769458dd19ee498a703b97c616065389fd1b3",
+      "storage": "immutable-git-object",
+      "role": "runtime",
+      "edges": []
+    },
+    {
+      "originPath": "package.json",
+      "gitBlob": "04c8f87a9bfb1d15eb320be921acedebbce0661d",
+      "sha256": "18cbffad7b5337a20d34c459b3e15749cf2269c067ba386ecb3e63efe82724c2",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "package-lock.json",
+      "gitBlob": "3f9c804309375ccd4b61ec0ed292da2a74b61413",
+      "sha256": "b13b6c8086b022c81bb20dd2e12c565005826848603de27cdf9b337641c615e6",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/schema.prisma",
+      "gitBlob": "84a248c8a7b2b63923d23308e5b513698439845d",
+      "sha256": "849c4b29afb089cc22f1080241364f7d69d2f5f1f67dc9ef9be1c7ee23dd1e63",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "scripts/ts-loader.mjs",
+      "gitBlob": "37315323e7bdfdc1917dc54cff43e6360ae2462d",
+      "sha256": "f7ac158521822709f3d4fb8d0eb3f63836a6e287ed080924fee88a3f53c3ec5c",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260605023919_init/migration.sql",
+      "gitBlob": "dbdbec60e25ee6d121484a65b9be769c5352a2a3",
+      "sha256": "d8a6804cb1c67beb43dfd45c567df0b5f1a2dff8d105ae9e822973caac728b39",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260610053000_add_team_members/migration.sql",
+      "gitBlob": "715c110f2b5820b755c3af034761b9ad3d8cbbf7",
+      "sha256": "379a2549cd17f0f112f29b050d107fa8578ae1225d7c3310235b0ef75f0e4c65",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260611064000_add_team_member_roles/migration.sql",
+      "gitBlob": "1df1394ad0069647cae11afd32a3143929bb40b3",
+      "sha256": "8e26c84f157027f9e9e4953081be40f397b2f8cd0825ef2e782a14add6430dbc",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260614190000_add_drive_import_runs/migration.sql",
+      "gitBlob": "1ad48da0ec6141140f1bddab0bb644111688040c",
+      "sha256": "de6ceae6a622f2ac985e36fe9fdd21ce50909fcf8f4d4fd7c208c18c492d39b1",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260615015000_make_team_member_source_team_nullable/migration.sql",
+      "gitBlob": "de9386745b76d7cbb8af08a11a1c6cc6f5b5ff4f",
+      "sha256": "7084f064fb9ea1c7ae329c4d8c04135c8f23399a79a69597e124e5da2be67e39",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260615020500_rename_team_members_to_members/migration.sql",
+      "gitBlob": "7f17d03a08594e913587a7164792ec58b9d38c96",
+      "sha256": "21e710ae4372b480194ae88b4f50be143e0d145b95d468b39d9c864d2aa0ceb4",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260629023708_add_coach_domain/migration.sql",
+      "gitBlob": "1cb916bb6fc05ab02750b3cc50b577cf14ed6541",
+      "sha256": "234484295fae88efdcf5f5858a1d1152eeb80cde036ff10d12bc44863fb45d7d",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260629031828_add_coach_private_access_log/migration.sql",
+      "gitBlob": "d60da205d4aee5f6054ad5785ce9eb2d596231f1",
+      "sha256": "02e0050e747d428cc5da4af60bc304322a541679b095d693ee418849fbb5d9ef",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260629043000_restore_uuid_defaults_for_import_tables/migration.sql",
+      "gitBlob": "f3df648b4785b62227ecffe6a46a8a41f905967f",
+      "sha256": "df63042d1d97b8ccb2815c8b56b2ab41e5404265fa0a21a21bdfd55e24bd08ff",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260629044500_add_coach_updated_at_defaults/migration.sql",
+      "gitBlob": "e0e9f70c5aace55a7b179989b484ce97ee839240",
+      "sha256": "ccc047e0a5b3b0430799ed21b9e87a4586c20140aace41951b0d7642d208af30",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260629070000_add_coachdb_archive_tables/migration.sql",
+      "gitBlob": "406f329471f87190919c5c732fb4ab7bb4dc1f1c",
+      "sha256": "14ab5e7258f01b1a61b8aa1628e874d8e142edc27eae28e1fce4a5e61eddf30d",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260629082000_add_coach_access_token/migration.sql",
+      "gitBlob": "5d1e99adb4e4559a288cfd0fee8cc8f0ef353ffe",
+      "sha256": "cb7163cb0fc55b9e8733145a49795de4706a2ba552e876aa313ebf4d6fd55257",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260629083000_add_coach_schedule_access_logs/migration.sql",
+      "gitBlob": "7988eafe57cab58e2e9f78b4a0629c7e28918717",
+      "sha256": "f00dcd17ae734bfb6cc3a9445cf7a85953065054b582c741d9124b767e259b73",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260629084000_add_coach_operational_fields/migration.sql",
+      "gitBlob": "1758b4805f4545cfe8147959edf35991eb2eedf9",
+      "sha256": "f653d32700570f19493b6f14bad659b2be7a1ab81a0492302dd9582bf788b9d2",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260629085000_add_coach_sync_logs/migration.sql",
+      "gitBlob": "6761c5f3640766329fe8e2bb20af78694c30a9f2",
+      "sha256": "2c9525bfd34348039b18da966debad70fb19cd3b8d0da8432eb80f980d1b5feb",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260708161914_add_lecture_management_note/migration.sql",
+      "gitBlob": "6dc858a1ff050e0e8207d8d69ab9d1d3feae34b7",
+      "sha256": "6eefc9eb3844f069cdc461380f907f019d23658b96c0cce9f48b2c58c67d67f2",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260713150000_add_team_user/migration.sql",
+      "gitBlob": "2f58eea05a3a56567c82fc79da1885906bb9ba85",
+      "sha256": "82b8b9a0a590a6b530113b2f2bad62ac98dbf6a3768c540338fcc899783da574",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260723062051_add_coach_day_reservation/migration.sql",
+      "gitBlob": "405b21d4d8f13dbb292124030ae137100655634f",
+      "sha256": "90057e89bf6cb683ab3841a956afbf7701caf2c0d1d229855a7a26d979f99845",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260723094138_coach_day_reservation_confirmed_engagement/migration.sql",
+      "gitBlob": "8324fc3cc9a431fa8469d60c98253cbe8eecec24",
+      "sha256": "8195dc1ff28584c7329c4088745e881b25f8c55fe238a5d64817ee250a036516",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260723113115_coach_notion_page_id/migration.sql",
+      "gitBlob": "fbe2e246819016bada746154e788c278de54830e",
+      "sha256": "f611893ad9adae590413e40b729a8721dd4a4199419808b9ff642ded3da4492e",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260723141243_coach_content_entry/migration.sql",
+      "gitBlob": "ee6b79f1df4305fcf6c0d57db188ab15365939f8",
+      "sha256": "9ee7ab922db0ac34f7c67a2dbdba0576047593ef170a87284645ca1bfb985ab0",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260723142308_coach_engagement_review_flag/migration.sql",
+      "gitBlob": "98440f4a991318f752186ae2910918c0d69005ad",
+      "sha256": "750dbe2fa7896fb909a988c802c76bcb0875703cc0c313f4b83d3e7caffe0994",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260723221557_add_announcements/migration.sql",
+      "gitBlob": "8f2a1653756197570737bc66bd8ba5bf8d975580",
+      "sha256": "7913a237dfe839f7cb8509c09a5dd1a9daa6757fe83224ebdc3fdb24cf9aec97",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260724000000_announcement_attachments/migration.sql",
+      "gitBlob": "8438cf58d86e181e3c38106cb4c84a4a91b2ecd1",
+      "sha256": "326f08f07104815a6a85662d37d5d771e52de6e8f5a07f1ea82305cc8b719334",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260724200000_add_team_user_role/migration.sql",
+      "gitBlob": "7bdbb70849eb1bf5006427c6d2c1c68407703504",
+      "sha256": "4c27ef01b9e203fa0dac612c7fe21d09092813a451da5b0d713050d7809b029d",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260731030000_restore_coachdb_archive_tables/migration.sql",
+      "gitBlob": "d8a2e20bd2baa05f583e0be9df8f95638c72d542",
+      "sha256": "e1b04fd79985ea8036dd1fef77cb99ebf31fcecaf53bccc59143e7bae4112afd",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260806000000_add_sales_revenue_sync_log/migration.sql",
+      "gitBlob": "47e0bcffd48093288ffbd4e0e86bdbaf4df36ffd",
+      "sha256": "ae9d9533687f48cf19685b823cea0047c684cfd83f31c35eeec0234b984de59b",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260810055002_add_onsite_om/migration.sql",
+      "gitBlob": "88d63002dd73b2701991e7aaf9c2ba518f8e71cf",
+      "sha256": "90ca50d382ca34658a5cc286215b92ed53f2cd8e4ea1641cc5f2fd3236f1ff54",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260811140000_add_instructor_notes/migration.sql",
+      "gitBlob": "60988262f4558d3cfb50564d26f41e7e3f75293e",
+      "sha256": "64a9ad3b19039b17eb7e4ce5b91796dc500ed3052977525c57af3953dbae5142",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260814030000_add_om_request/migration.sql",
+      "gitBlob": "768f43b9fdaccee752fd8754634d189a7711c800",
+      "sha256": "ac781da0dd14ac1c9b2c22f3d5a2ef284274c0c65a0260b69661ecf7ba2494bd",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260814160000_add_course_process_seq/migration.sql",
+      "gitBlob": "4a397fca53c9d1f7b794549fb7a2c95bb251a139",
+      "sha256": "c6c53a2e6659e71c3576e2721c03dfc61f73c817e047e2b3676c85c1ae47a1d7",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260814180000_add_om_request_operation_id/migration.sql",
+      "gitBlob": "1de61bf991895fbb012ae75db3d16f4be9adb61b",
+      "sha256": "6dc07912df7c6fe45bdacf9aff31c2b7ff14c8d499e88d75be827ad41c70688c",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260815090000_add_course_category_and_tools/migration.sql",
+      "gitBlob": "f402cd0831351e440f7c44fb0e5094ee105d2314",
+      "sha256": "697e895b437bddb1d8eb1f15dadf1c95cfef10190d83aff80d8972403f0a6547",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260819190000_add_satisfaction_survey_status/migration.sql",
+      "gitBlob": "041909107427c0e58d5565ee937b688332350134",
+      "sha256": "6fc0ecc633444741cbdff0d13e0c6dda064d7d18beb9af26073b24ea14e8a7a7",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260821140000_add_calendar_event_links/migration.sql",
+      "gitBlob": "e5455d0f2d14e21339b262096cd5461f77938210",
+      "sha256": "42f68dc8f87d1aaa7af824c7a15b99725c943480f3250a849f823be2c169dfa9",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260825100000_instructor_notes_notion_no_key/migration.sql",
+      "gitBlob": "31535f331ae0d38c457467c7bb70ed0edccc26b2",
+      "sha256": "c6f31f5d4405e3f9518906f1c497c7166fb5b2c0f48cd39e491ebb4923cd3dfa",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260902120000_add_operation_session_education_dates/migration.sql",
+      "gitBlob": "4fa5d76173003dd2383f56312af09a8b8612f444",
+      "sha256": "ad08d73c85191fc6f0eeec20a75994cdf89f99225dc4aeeb7ae8075abd12aa42",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260902190000_add_course_id_labels/migration.sql",
+      "gitBlob": "fc7f91df60bb098687d777bc242ad0e00e42bf77",
+      "sha256": "fc729bd1b706d5f74bb5074722db306cbdce1f4b75930cca7592b5bfca3251c0",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260903090000_calendar_event_per_education_day/migration.sql",
+      "gitBlob": "ec9027f7ac243853fd375675ea5a87b0e02960dd",
+      "sha256": "bf7be48cf711347bbdde6766990059282602ebc0e9f204f8434afd6e70869576",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260904140000_coaches_id_keys/migration.sql",
+      "gitBlob": "76c80f38abb304c42790bda8aa9864d3d8c77684",
+      "sha256": "6c3ee0a48e9de3ee60d5b5b79bf851a27e28a91379ba55ea489c051c1af347bb",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260907090000_activity_logs/migration.sql",
+      "gitBlob": "6c6ac6987461e9ee2e483644172d58edf9fab35e",
+      "sha256": "92e51efd37127f7f12101e6490508d09674e98dd16aa1dc8dcac852152800ebf",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260909150000_pii_encryption/migration.sql",
+      "gitBlob": "da0e73dc5ea464815f856cbe7d169e1a93e1f793",
+      "sha256": "c5b7f99c1de4d092ef647ed3b22fe28343699a9c5eea4d6b910d846258ba6668",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260911120000_add_om_request_result_report_needed/migration.sql",
+      "gitBlob": "e3dd70f4fb6b38d5a91b02b595de6444dcd6e305",
+      "sha256": "ab14566f1f355648f659fd0d21b331df9ce210366200a1e9bb2a33fe05c57f62",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260921110000_pii_activity_allowlist_followup/migration.sql",
+      "gitBlob": "2d227ba85728aaab2ee2d502ce2581e6629cc96b",
+      "sha256": "ba62b498fd38207497ca235fae67b8c9fee75f2d7fa0eb042c40490460f5709c",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    },
+    {
+      "originPath": "prisma/migrations/20260923090000_pii_source_engagement_ids/migration.sql",
+      "gitBlob": "1cd6bdf6e0379d271f8077faa89ca5a63b9da61f",
+      "sha256": "3c80023ec6d9fc48ab0eaee21c8b9a7200656e269923e76c8a325e2b5b4e31f5",
+      "storage": "immutable-git-object",
+      "role": "runtime-support",
+      "edges": []
+    }
+  ],
+  "externalPackagesOrBuiltins": [
+    "node:crypto",
+    "node:fs",
+    "node:zlib",
+    "pg"
+  ],
+  "migrationPrefixes": {
+    "legacy": 17,
+    "no_defaults": 18,
+    "current": 45
+  },
+  "migrations": [
+    "prisma/migrations/20260605023919_init/migration.sql",
+    "prisma/migrations/20260610053000_add_team_members/migration.sql",
+    "prisma/migrations/20260611064000_add_team_member_roles/migration.sql",
+    "prisma/migrations/20260614190000_add_drive_import_runs/migration.sql",
+    "prisma/migrations/20260615015000_make_team_member_source_team_nullable/migration.sql",
+    "prisma/migrations/20260615020500_rename_team_members_to_members/migration.sql",
+    "prisma/migrations/20260629023708_add_coach_domain/migration.sql",
+    "prisma/migrations/20260629031828_add_coach_private_access_log/migration.sql",
+    "prisma/migrations/20260629043000_restore_uuid_defaults_for_import_tables/migration.sql",
+    "prisma/migrations/20260629044500_add_coach_updated_at_defaults/migration.sql",
+    "prisma/migrations/20260629070000_add_coachdb_archive_tables/migration.sql",
+    "prisma/migrations/20260629082000_add_coach_access_token/migration.sql",
+    "prisma/migrations/20260629083000_add_coach_schedule_access_logs/migration.sql",
+    "prisma/migrations/20260629084000_add_coach_operational_fields/migration.sql",
+    "prisma/migrations/20260629085000_add_coach_sync_logs/migration.sql",
+    "prisma/migrations/20260708161914_add_lecture_management_note/migration.sql",
+    "prisma/migrations/20260713150000_add_team_user/migration.sql",
+    "prisma/migrations/20260723062051_add_coach_day_reservation/migration.sql",
+    "prisma/migrations/20260723094138_coach_day_reservation_confirmed_engagement/migration.sql",
+    "prisma/migrations/20260723113115_coach_notion_page_id/migration.sql",
+    "prisma/migrations/20260723141243_coach_content_entry/migration.sql",
+    "prisma/migrations/20260723142308_coach_engagement_review_flag/migration.sql",
+    "prisma/migrations/20260723221557_add_announcements/migration.sql",
+    "prisma/migrations/20260724000000_announcement_attachments/migration.sql",
+    "prisma/migrations/20260724200000_add_team_user_role/migration.sql",
+    "prisma/migrations/20260731030000_restore_coachdb_archive_tables/migration.sql",
+    "prisma/migrations/20260806000000_add_sales_revenue_sync_log/migration.sql",
+    "prisma/migrations/20260810055002_add_onsite_om/migration.sql",
+    "prisma/migrations/20260811140000_add_instructor_notes/migration.sql",
+    "prisma/migrations/20260814030000_add_om_request/migration.sql",
+    "prisma/migrations/20260814160000_add_course_process_seq/migration.sql",
+    "prisma/migrations/20260814180000_add_om_request_operation_id/migration.sql",
+    "prisma/migrations/20260815090000_add_course_category_and_tools/migration.sql",
+    "prisma/migrations/20260819190000_add_satisfaction_survey_status/migration.sql",
+    "prisma/migrations/20260821140000_add_calendar_event_links/migration.sql",
+    "prisma/migrations/20260825100000_instructor_notes_notion_no_key/migration.sql",
+    "prisma/migrations/20260902120000_add_operation_session_education_dates/migration.sql",
+    "prisma/migrations/20260902190000_add_course_id_labels/migration.sql",
+    "prisma/migrations/20260903090000_calendar_event_per_education_day/migration.sql",
+    "prisma/migrations/20260904140000_coaches_id_keys/migration.sql",
+    "prisma/migrations/20260907090000_activity_logs/migration.sql",
+    "prisma/migrations/20260909150000_pii_encryption/migration.sql",
+    "prisma/migrations/20260911120000_add_om_request_result_report_needed/migration.sql",
+    "prisma/migrations/20260921110000_pii_activity_allowlist_followup/migration.sql",
+    "prisma/migrations/20260923090000_pii_source_engagement_ids/migration.sql"
+  ]
+}

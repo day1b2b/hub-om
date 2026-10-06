@@ -1,9 +1,12 @@
 import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { saveInstructorNote, type InstructorNote } from "@/lib/data/instructorWikiStore";
+import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
+import { runInstructorWikiRequest } from "@/lib/data/instructorWikiComposition";
 
 // 강사위키 OM 입력값 저장. 강사명 기준으로 부분 병합.
 async function activityPOST(request: Request) {
+  await requireWorkspaceSession();
   try {
     const body = (await request.json()) as { name?: string } & InstructorNote;
     const { name, ...patch } = body;
@@ -17,4 +20,4 @@ async function activityPOST(request: Request) {
   }
 }
 
-export const POST = withActivity("/api/instructor-wiki/save", "POST", activityPOST);
+export const POST = withActivity("/api/instructor-wiki/save", "POST", activityPOST, runInstructorWikiRequest);

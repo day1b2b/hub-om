@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { matchSatisfactionRow, toSatisfactionSheetRow } from "@/lib/data/satisfactionSheet";
 import { planRoundApply } from "@/lib/data/satisfactionRoundApply";
+import { runSatisfactionRequest } from "@/lib/data/satisfactionComposition";
 import type { OperationCandidate } from "@/lib/data/operationMatch/matchOperation";
 
 /**
@@ -140,10 +141,7 @@ async function activityPOST(request: Request) {
     const byOther =
       submitter !== "" && ownerText !== "" && !ownerText.toLowerCase().includes(submitter.split("@")[0]);
 
-    console.info(
-      `[satisfaction:round-apply] by=${body.manager ?? "unknown"} operationId=${decision.operationId} ` +
-        `value=${decision.value} previous=${decision.previous ?? "(빈칸)"} recordId=${row.recordId}`
-    );
+    console.info("[satisfaction:round-apply] applied");
 
     return NextResponse.json({
       ok: true,
@@ -164,4 +162,4 @@ async function activityPOST(request: Request) {
   }
 }
 
-export const POST = withActivity("/api/satisfaction/round-apply", "POST", activityPOST);
+export const POST = withActivity("/api/satisfaction/round-apply", "POST", activityPOST, runSatisfactionRequest);

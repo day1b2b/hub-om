@@ -2,6 +2,7 @@ import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
+import { runOperationWriteRequest } from "@/lib/data/operationWriteComposition";
 import { scanOperationDriveFolder } from "@/lib/driveImports/googleDriveOperationScanner";
 
 export const dynamic = "force-dynamic";
@@ -38,4 +39,4 @@ async function activityPOST(request: Request, { params }: RouteContext) {
   return NextResponse.json({ ok: true, result });
 }
 
-export const POST = withActivity("/api/operations/[operationId]/drive-import/candidates", "POST", activityPOST);
+export const POST = withActivity("/api/operations/[operationId]/drive-import/candidates", "POST", activityPOST, runOperationWriteRequest);

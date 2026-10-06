@@ -1,59 +1,51 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { blankTab } from "./lectureNoteModel";
-import { clearDraft, readDraft, writeDraft, type StoredDraft } from "./lectureNoteDraftStorage";
+import { clearDraft, readDraft, writeDraft, type LectureDraftPort, type StoredDraft } from "./lectureNoteDraftStorage";
 
-function memoryStorage() {
-  const values = new Map<string, string>();
+function memoryPort(): LectureDraftPort {
+  const values = new Map<string, unknown>();
   return {
-    getItem: (key: string) => values.get(key) ?? null,
-    setItem: (key: string, value: string) => { values.set(key, value); },
-    removeItem: (key: string) => { values.delete(key); }
+    async read<T>(kind: string, id: string) { return (structuredClone(values.get(`${kind}:${id}`)) ?? null) as T | null; },
+    async write(kind, id, value) { values.set(`${kind}:${id}`, structuredClone(value)); },
+    async remove(kind, id) { values.delete(`${kind}:${id}`); }
   };
 }
+const oldDraft: StoredDraft = { linkDraft: "", mode: "text", updatedAt: "2000-01-01T00:00:00.000Z", tabs: [{ ...blankTab("2000-01-01"), courseSummary: "가상 미저장 기록" }] };
 
-const oldDraft: StoredDraft = {
-  linkDraft: "", mode: "text", updatedAt: "2000-01-01T00:00:00.000Z",
-  tabs: [{ ...blankTab("2000-01-01"), courseSummary: "서버에 없는 유일한 기록" }]
-};
-
-test("30일이 지난 미저장 기록도 그대로 복원할 수 있다", () => {
-  const storage = memoryStorage();
-  writeDraft("old", oldDraft, storage);
-  assert.deepEqual(readDraft("old", storage), oldDraft);
-  assert.deepEqual(readDraft("old", storage), oldDraft);
+test("오래된 강의 초안도 async 개인 저장소에서 복원하며 회차를 분리한다", async () => {
+  const port = memoryPort();
+  assert.equal(await writeDraft("old", oldDraft, port), true);
+  assert.deepEqual(await readDraft("old", port), oldDraft);
+  await clearDraft("other", port);
+  assert.equal(await readDraft("other", port), null);
+  assert.deepEqual(await readDraft("old", port), oldDraft);
+  await clearDraft("old", port);
+  assert.equal(await readDraft("old", port), null);
 });
 
-test("다른 회차를 읽거나 지워도 미저장 기록은 유지된다", () => {
-  const storage = memoryStorage();
-  writeDraft("old", oldDraft, storage);
-  assert.equal(readDraft("other", storage), null);
-  clearDraft("other", storage);
-  assert.deepEqual(readDraft("old", storage), oldDraft);
-  clearDraft("old", storage);
-  assert.equal(readDraft("old", storage), null);
+test("write promise commit 이전에는 보관 성공을 반환하지 않는다", async () => {
+  let commit!: () => void;
+  const port = memoryPort();
+  let completed = false;
+  const result = writeDraft("op", oldDraft, { ...port, write: () => new Promise<void>(resolve => { commit = resolve; }) }).then(value => { completed = true; return value; });
+  await Promise.resolve();
+  assert.equal(completed, false);
+  commit();
+  assert.equal(await result, true);
 });
 
-test("브라우저 보관 성공은 실제로 다시 읽을 수 있을 때만 반환한다", () => {
-  const storage = memoryStorage();
-  assert.equal(writeDraft("op", oldDraft, storage), true);
-  assert.deepEqual(readDraft("op", storage), oldDraft);
-  assert.equal(writeDraft("op", oldDraft, { ...storage, setItem: () => {} , getItem: () => null }), false);
+test("저장 실패는 실패로 반환하고 기존 입력을 대체하지 않는다", async () => {
+  const port = memoryPort();
+  await writeDraft("op", oldDraft, port);
+  assert.equal(await writeDraft("op", { ...oldDraft, linkDraft: "https://example.test/new" }, { ...port, write: async () => { throw new Error("Quota"); } }), false);
+  assert.deepEqual(await readDraft("op", port), oldDraft);
 });
 
-test("용량 초과로 새 보관이 실패하면 실패를 알리고 기존 보관본을 유지한다", () => {
-  const storage = memoryStorage();
-  writeDraft("op", oldDraft, storage);
-  const full = { ...storage, setItem: () => { throw new Error("QuotaExceededError"); } };
-  assert.equal(writeDraft("op", { ...oldDraft, linkDraft: "https://new.example" }, full), false);
-  assert.deepEqual(readDraft("op", storage), oldDraft);
-});
-
-test("저장소 접근이 차단돼도 보관 성공으로 처리하지 않는다", () => {
-  const blocked = {
-    getItem: () => { throw new Error("SecurityError"); },
-    setItem: () => { throw new Error("SecurityError"); },
-    removeItem: () => {}
-  };
-  assert.equal(writeDraft("op", oldDraft, blocked), false);
+test("잠김·손상 read와 remove 실패를 빈 초안이나 삭제 성공으로 숨기지 않는다", async () => {
+  const port = memoryPort();
+  await assert.rejects(readDraft("op", { ...port, read: async () => { throw new Error("Locked"); } }));
+  await port.write("lecture-note", "op", { ...oldDraft, tabs: [null] });
+  await assert.rejects(readDraft("op", port));
+  await assert.rejects(clearDraft("op", { ...port, remove: async () => { throw new Error("Locked"); } }));
 });

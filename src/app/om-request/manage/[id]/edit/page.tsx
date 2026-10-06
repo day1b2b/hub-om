@@ -8,6 +8,7 @@ import { getOmRequest } from "@/lib/data/omRequest/omRequestLocalRepository";
 import { isOmRequestAuthor } from "@/lib/data/omRequest/omRequestTypes";
 import { getInstructorNoteRepository } from "@/lib/data/instructorNoteRepositoryFactory";
 import { OmRequestForm } from "@/app/om-request/OmRequestForm";
+import { runOmRequestPagesRequest } from "@/lib/data/omRequestPagesComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,10 @@ interface Props {
 
 export default async function OmRequestEditPage({ params }: Props) {
   const session = await requireWorkspaceSession();
+  return runOmRequestPagesRequest(() => renderOmRequestEditPage({ params }, session));
+}
+
+async function renderOmRequestEditPage({ params }: Props, session: Awaited<ReturnType<typeof requireWorkspaceSession>>) {
   const { id } = await params;
   const request = await getOmRequest(id);
   if (!request) notFound();

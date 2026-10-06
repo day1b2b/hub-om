@@ -1,9 +1,11 @@
+import { operationSubmissionSubjectConflict } from "@/lib/auth/operationSubmissionSubject";
 import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server.js";
 import { readLimitedJson, RequestBodyTooLargeError } from "@/lib/http/readLimitedJson";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { parseEducationDatesText } from "@/lib/data/operationCalculations";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
+import { runOperationWriteRequest } from "@/lib/data/operationWriteComposition";
 import type {
   ArchiveStatus,
   EducationFormat,
@@ -83,6 +85,8 @@ interface ApplyPatch {
 
 async function activityPOST(request: Request, { params }: RouteContext) {
   const session = await requireWorkspaceSession();
+  const subjectConflict = operationSubmissionSubjectConflict(request, session);
+  if (subjectConflict) return subjectConflict;
 
   let body: { patches?: ApplyPatch[] } | null;
   try {
@@ -263,4 +267,4 @@ function appendText(currentValue: string, nextValue: string): string {
   return `${current}\n\n${next}`;
 }
 
-export const POST = withActivity("/api/operations/[operationId]/drive-import/apply", "POST", activityPOST);
+export const POST = withActivity("/api/operations/[operationId]/drive-import/apply", "POST", activityPOST, runOperationWriteRequest);

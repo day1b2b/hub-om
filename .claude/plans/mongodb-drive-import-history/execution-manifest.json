@@ -1,0 +1,107 @@
+{
+  "scope": "mongodb-drive-import-history",
+  "baseline": "73a137ac8b8fe16bf6128b81529ab35d6de01031",
+  "branch": "feature/20260930-mongodb-drive-import-history",
+  "runtime": {
+    "node": "24.19.0",
+    "postgresql": "17.9",
+    "mongodb": "8.0.30",
+    "environment": "env -i"
+  },
+  "evidence": "/Users/ga/.cache/hub-om-verification/20260930-drive-import-history",
+  "evidenceManifestSha256": "94a1ed337db76c32a3cefbd72bbfc47235bbfd7e4c4c116045a5ba6620de79af",
+  "sourceFinalSha256": "7d8c03ecd4a737a1a636761d133f21ef29ebe8b43c66e36a2984a4c459e759fd",
+  "checks": {
+    "general": {
+      "pass": 957,
+      "skip": 83,
+      "exit": 0,
+      "log": "logs/unit-final.log"
+    },
+    "pgGate": {
+      "pass": 1,
+      "skip": 0,
+      "exit": 0,
+      "internalTags": 26,
+      "log": "logs/pg-gate-extended.log"
+    },
+    "parity": {
+      "pass": 1,
+      "skip": 0,
+      "exit": 0,
+      "internalCases": [
+        55,
+        55,
+        48
+      ],
+      "log": "logs/parity-gap-fixed.log"
+    },
+    "page": {
+      "pass": [
+        7,
+        8,
+        8
+      ],
+      "skip": [
+        0,
+        0,
+        0
+      ],
+      "exit": [
+        0,
+        0,
+        0
+      ],
+      "logs": [
+        "logs/page-original-pg-accepted.log",
+        "logs/page-current-pg-accepted.log",
+        "logs/page-native-accepted.log"
+      ]
+    },
+    "nativeScope": {
+      "pass": 79,
+      "skip": 0,
+      "exit": 0,
+      "log": "logs/native-final.log"
+    },
+    "calendarAdjacent": {
+      "pass": 24,
+      "skip": 0,
+      "exit": 0,
+      "log": "logs/calendar-context-regression.log"
+    },
+    "typecheck": {
+      "exit": 0,
+      "log": "logs/typecheck-page-final.log"
+    },
+    "lint": {
+      "exit": 0,
+      "errors": 0,
+      "existingWarnings": 7,
+      "log": "logs/lint-final.log"
+    },
+    "build": {
+      "exit": 0,
+      "log": "logs/build-final.log"
+    }
+  },
+  "countPolicy": "Overlapping suites and internal cases are not summed; related native regression, not full Mongo rerun",
+  "sourceDeltaAfterNative": "Only driveImportHistoryPage.test.ts lint harness; all three page backends/type/lint/general rechecked; product unchanged",
+  "cleanup": {
+    "portsClosed": [
+      56750,
+      27850
+    ],
+    "removedOwnedDbpaths": [
+      "/private/tmp/hub-om-drive-import-history-20260930/pg",
+      "/private/tmp/hub-om-drive-import-history-20260930/mongo"
+    ],
+    "pgTablesEmpty": true,
+    "mongoOwnedDatabases": 0,
+    "mongoOwnedOperations": 0,
+    "borrowedBinaryPreserved": true
+  },
+  "realBackupEvidence": 0,
+  "wholeApplicationCutoverComplete": false,
+  "integration": "See integration-review.md"
+}
