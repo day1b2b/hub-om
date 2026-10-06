@@ -16,16 +16,19 @@ test("namespace recovery requires explicit frozen, distinct shadow namespaces", 
 
 test("native namespace recovery preserves documents, validators, indexes and rejects reuse", { skip: !uri, timeout: 120_000 }, async () => {
   const client = new MongoClient(uri!);
-  const databaseName = `hub_om_shadow_recovery_${randomBytes(6).toString("hex")}`;
+  const databaseName = process.env.MONGODB_DB_NAME ?? decodeURIComponent(new URL(uri!).pathname.slice(1));
   const sourceNamespace = `shadow_source_${randomBytes(6).toString("hex")}`;
   const targetNamespace = `shadow_target_${randomBytes(6).toString("hex")}`;
+  assert.ok(databaseName, "native recovery test requires a database name in MONGODB_DB_NAME or the URI path");
   try {
     await client.connect();
     const db = client.db(databaseName);
     await db.createCollection(`${sourceNamespace}_Rows`, { validator: { value: { $type: "string" } }, validationLevel: "strict", validationAction: "error", collation: { locale: "simple" } });
     const rows = db.collection<Document & { _id: string }>(`${sourceNamespace}_Rows`);
     await rows.createIndex({ value: 1 }, { name: "value_unique", unique: true });
-    await rows.insertMany([{ _id: "a", value: "one" }, { _id: "b", value: "two" }]);
+    await rows.insertMany([{ _id: "a", value: "one" }, { _id: "b", value: "two" }, { _id: "c", value: "deleted-before-recovery" }]);
+    await rows.updateOne({ _id: "b" }, { $set: { value: "two-updated" } });
+    await rows.deleteOne({ _id: "c" });
     await db.createCollection(`${sourceNamespace}___counter`, { validator: { value: { $type: "int" } }, validationLevel: "strict", validationAction: "error" });
     await db.collection<Document & { _id: string }>(`${sourceNamespace}___counter`).insertOne({ _id: "Course.processSeq", value: 42 });
     const result = await recoverMongoNamespace({ client, databaseName, sourceNamespace, targetNamespace, sourceWritesFrozen: true });
@@ -36,7 +39,9 @@ test("native namespace recovery preserves documents, validators, indexes and rej
     assert.ok((await db.collection(`${targetNamespace}_Rows`).listIndexes().toArray()).some(index => index.name === "value_unique" && index.unique));
     await assert.rejects(recoverMongoNamespace({ client, databaseName, sourceNamespace, targetNamespace, sourceWritesFrozen: true }), (error: unknown) => error instanceof MongoNamespaceRecoveryError && error.code === "TARGET_NOT_EMPTY");
   } finally {
-    await client.db(databaseName).dropDatabase().catch(() => undefined);
+    const db = client.db(databaseName);
+    const names = await db.listCollections({}, { nameOnly: true }).toArray().catch(() => []);
+    await Promise.all(names.filter(({ name }) => name.startsWith(`${sourceNamespace}_`) || name.startsWith(`${targetNamespace}_`)).map(({ name }) => db.collection(name).drop().catch(() => undefined)));
     await client.close();
   }
 });
