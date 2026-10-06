@@ -310,9 +310,14 @@ test("OM assignment actual handlers: native transactions, authorization, scoped 
     }
     function assertSafeLogs(start: number) {
       for (const values of logs.slice(start)) {
-        assert.equal(values.length, 1, "Log only a fixed message, never an exception object");
+        assert.ok(values.length === 1 || values.length === 2, "Log only a fixed message and an optional safe diagnostic");
         assert.equal(typeof values[0], "string");
         assert.match(String(values[0]), /^\[(om-request|activity)\]/);
+        if (values.length === 2) {
+          assert.ok(values[1] && typeof values[1] === "object" && !Array.isArray(values[1]));
+          assert.ok(Object.keys(values[1] as object).every(key => ["name", "code", "messageCode"].includes(key)));
+          assert.equal(typeof (values[1] as { name?: unknown }).name, "string");
+        }
       }
       const output = inspect(logs.slice(start), { depth: 12 });
       for (const value of [PRIVATE_ERROR, manager.user.email, author.user.email]) assert.ok(!output.includes(value));
@@ -704,7 +709,9 @@ test("OM assignment actual handlers: native transactions, authorization, scoped 
       assertSafeLogs(logStart);
       if (unresolved) {
         assert.deepEqual(body, { error: "배정을 처리하지 못했습니다. 잠시 후 다시 확인해주세요." });
-        assert.deepEqual(logs.slice(logStart), [["[om-request] 배정 확인 또는 저장 실패"]]);
+        assert.deepEqual(logs.slice(logStart), [["[om-request] 배정 확인 또는 저장 실패", {
+          name: "Error", code: "OM_ASSIGNMENT_TRANSACTION_FAILED"
+        }]]);
       } else {
         assert.equal(body.assignedOm, OM);
         assert.deepEqual(logs.slice(logStart), []);

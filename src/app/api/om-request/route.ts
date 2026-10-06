@@ -10,6 +10,7 @@ import { getOmRequestRepository, getOmRequestNotifier } from "@/lib/data/omReque
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { getOmCustomToolsRepository } from "@/lib/data/omRequest/omCustomToolsLocalRepository";
 import { runOmRequestWriteRequest } from "@/lib/data/omRequestWriteComposition";
+import { safeErrorDiagnostic } from "@/lib/observability/safeErrorDiagnostic";
 
 async function activityPOST(request: Request) {
   try {
@@ -38,14 +39,14 @@ async function activityPOST(request: Request) {
         const withOperationId = await setOmRequestOperationId(created.id, operationId);
         if (withOperationId) created.operationId = withOperationId.operationId;
       }
-    } catch {
-      console.error("[om-request] 운영현황 자동 연결 실패(무시):");
+    } catch (error) {
+      console.error("[om-request] 운영현황 자동 연결 실패(무시)", safeErrorDiagnostic(error));
     }
 
     try {
       addCustomTools(extractUnknownTools(created.tools ?? "", listCustomTools()));
-    } catch {
-      console.error("[om-request] 커스텀 툴 저장 실패(무시):");
+    } catch (error) {
+      console.error("[om-request] 커스텀 툴 저장 실패(무시)", safeErrorDiagnostic(error));
     }
 
     let slackThread: { channel: string; ts: string } | null = null;
@@ -65,8 +66,8 @@ async function activityPOST(request: Request) {
         sessions: created.sessions,
         notes: created.notes,
       });
-    } catch {
-      console.error("[om-request] Slack 접수 알림 실패(무시):");
+    } catch (error) {
+      console.error("[om-request] Slack 접수 알림 실패(무시)", safeErrorDiagnostic(error));
     }
 
     // 배정 시 같은 스레드에 댓글·LD 태깅을 하기 위해 스레드/이메일 저장
@@ -78,13 +79,13 @@ async function activityPOST(request: Request) {
           slackChannel: slackThread?.channel,
           slackThreadTs: slackThread?.ts,
         })) ?? created;
-    } catch {
-      console.error("[om-request] Slack 메타 저장 실패(무시):");
+    } catch (error) {
+      console.error("[om-request] Slack 메타 저장 실패(무시)", safeErrorDiagnostic(error));
     }
 
     return NextResponse.json(withMeta, { status: 201 });
-  } catch {
-    console.error("[om-request] 요청 저장 실패:");
+  } catch (error) {
+    console.error("[om-request] 요청 저장 실패", safeErrorDiagnostic(error));
     return NextResponse.json({ error: "저장 실패" }, { status: 500 });
   }
 }

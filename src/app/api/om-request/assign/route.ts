@@ -7,6 +7,7 @@ import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { getOmAssignmentCalendar, getOmAssignmentNotifier } from "@/lib/data/omRequest/omAssignmentEffects";
 import { canManageOmRequestAssignment } from "@/lib/auth/omRequestAssignmentAccess";
 import { runOmRequestWriteRequest } from "@/lib/data/omRequestWriteComposition";
+import { safeErrorDiagnostic } from "@/lib/observability/safeErrorDiagnostic";
 
 async function resolveCurrentUser(): Promise<{ name: string; email?: string | null }> {
   if (process.env.DEV_AUTH_BYPASS === "true" && process.env.NODE_ENV !== "production") {
@@ -61,8 +62,8 @@ async function assignment(request: Request, preview: boolean) {
       try {
         const operation = await operations.getOperationById(operationId);
         if (operation) await calendar.reflectOperationUpdated(operation);
-      } catch {
-        console.error("[om-request] 배정 저장 후 캘린더 반영 실패");
+      } catch (error) {
+        console.error("[om-request] 배정 저장 후 캘린더 반영 실패", safeErrorDiagnostic(error));
       }
     }
     if (nextOm && assignmentChanged) {
@@ -78,14 +79,14 @@ async function assignment(request: Request, preview: boolean) {
           channel: updated.slackChannel,
           threadTs: updated.slackThreadTs,
         });
-      } catch {
-        console.error("[om-request] Slack 배정 알림 실패(무시)");
+      } catch (error) {
+        console.error("[om-request] Slack 배정 알림 실패(무시)", safeErrorDiagnostic(error));
       }
     }
     return NextResponse.json(updated, { headers: noStore });
   } catch (err) {
     if (err instanceof OmAssignmentConflict) return NextResponse.json({ error: err.message }, { status: 409, headers: noStore });
-    console.error("[om-request] 배정 확인 또는 저장 실패");
+    console.error("[om-request] 배정 확인 또는 저장 실패", safeErrorDiagnostic(err));
     return NextResponse.json({ error: "배정을 처리하지 못했습니다. 잠시 후 다시 확인해주세요." }, { status: 500, headers: noStore });
   }
 }

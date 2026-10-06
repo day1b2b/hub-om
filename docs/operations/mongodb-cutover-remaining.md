@@ -227,3 +227,16 @@ Drive 결과 snapshot의 회사명·과정명은 2026-09-30 암호화 정책·co
 ## 2026-10-01 배포 selector manifest 후속
 
 `feature/20261001-mongodb-deployment-selector-manifest`에서 기능군 selector 35개와 안전한 PostgreSQL 기본 예시를 자동 대조하고, 완전한 PostgreSQL/Mongo 기대 상태를 DB 연결 없이 점검한다. 이는 운영 env·Coolify·예약 설정 변경이나 namespace readiness 증거가 아니다. 실제 A/B 백업·각 복원·실데이터 복사·외부 원천·배포·최종 전환과 `dev → main`은 미완료다.
+
+## 2026-10-06 운영 무변경 사전 검증 보강
+
+운영 앱·DB·환경변수·배포·selector를 변경하지 않고 다음을 확인했다.
+
+- 업무요청 실제 Mongo handler 18개 시나리오에서 저장, 연결 회차 생성, readback, 권한, 암호화 저장, 감사, Slack 부수 실패 격리를 확인했다.
+- OM 배정 실제 Mongo handler 20개, repository 27개, 교차 writer 39개 시나리오에서 preview/confirm, 권한, 원자 rollback, commit 응답 유실, 일정 writer와의 공용 잠금 순서를 확인했다.
+- 일정 writer가 OM 배정과 같은 catalog guard를 쓰는 현재 계약에 맞게 오래된 경쟁 검증을 수정했다. 배정이 guard를 보유한 동안 일정 writer가 기다리고, 배정 commit 뒤 일정 변경과 감사가 반영되는 순서를 실제 MongoDB replica set에서 확인했다.
+- 업무요청·배정·Calendar·Slack 실패 로그에는 예외 메시지나 stack 대신 제한된 `name`, `code`, `messageCode`만 남기도록 보강했다. 합성 개인정보·연결 문자열은 로그에 남지 않는지 검증했다.
+- 전체 자동 검증은 1,378 pass, 176 opt-in skip, 0 fail이었다. 별도 실제 Mongo 검증과 함께 lint 0 error, typecheck, production build를 통과했다. lint의 기존 warning 7건은 이번 변경 범위 밖이다.
+- 배포 selector manifest, 35개 모델/129개 개인정보 필드 암호문 roundtrip, shadow 복사 resume·digest·참조 검증도 다시 통과했다.
+
+이 결과는 운영 전환 승인이 아니다. 실제 운영 네트워크의 읽기 전용 연결 재확인, PostgreSQL 최신 변경분·삭제 dry-run, 기능군별 격리 배포와 30분 관찰, 최종 A/B 백업·각 격리 복원, 실제 selector 변경, 전환 뒤 Mongo 신규 쓰기를 PostgreSQL에 보존하는 복귀 절차는 남아 있다. 특히 역방향 변경분 보존 도구가 검증되기 전에는 쓰기 전환을 승인하지 않는다.

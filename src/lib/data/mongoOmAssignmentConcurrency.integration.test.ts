@@ -379,7 +379,10 @@ test("OM assignment V10–V12 native cross-writer evidence", { skip: !uri, timeo
     } else { assert.equal(row.deletedAt, null); assert.notDeepEqual(row.updatedAt, oldDate); }
   }
 
-  for (const writer of writers) {
+  // Operation.update participates in the same catalog guard as assignment. It
+  // cannot commit while assignment is held at the business-write boundary;
+  // the dedicated guard-serialization case below covers that ordering.
+  for (const writer of writers.filter(writer => writer !== "Operation.update")) {
     await suite.test(`V11 real ${writer} commits before overlapping A write: native112 + full re-read + A409`, async () => {
       const f = await fixture(true);
       try {
@@ -423,13 +426,13 @@ test("OM assignment V10–V12 native cross-writer evidence", { skip: !uri, timeo
           const commit = evidence.entries.findIndex(entry => entry.owner === assignmentId && entry.name === "commitTransaction");
           const writerStart = evidence.entries.findIndex(entry => entry.owner === writerId);
           assert.ok(commit >= 0 && writerStart > commit, "A is committed before the actual writer starts");
-          if (writer !== "Operation.update" && writer !== "AdminDatabase.cell") assert.equal((await f.row(f.s2)).omName, nextOm);
+          if (writer !== "AdminDatabase.cell") assert.equal((await f.row(f.s2)).omName, nextOm);
         } finally { evidence.stop(); }
       } finally { await f.cleanup(); }
     });
   }
 
-  for (const writer of ["Operation.update", "Operation.delete", "DeletedOperation.restore", "AdminDatabase.cell"] as const) {
+  for (const writer of ["Operation.delete", "DeletedOperation.restore", "AdminDatabase.cell"] as const) {
     await suite.test(`V11 ${writer} on A-noop S1 after A snapshot: both commit, valid one-way A→writer`, async () => {
       const f = await fixture();
       try {
@@ -453,6 +456,33 @@ test("OM assignment V10–V12 native cross-writer evidence", { skip: !uri, timeo
       } finally { await f.cleanup(); }
     });
   }
+
+  await suite.test("V11 Operation.update waits on the shared catalog guard and commits after A", async () => {
+    const f = await fixture(true);
+    try {
+      const preview = await f.preview(), assignmentId = randomUUID(), writerId = randomUUID();
+      const hold = holdAssignment(f, assignmentId), evidence = observe(f);
+      const pendingAssignment = attributed(assignmentId, () => f.confirm(preview.token)); void pendingAssignment.catch(() => {});
+      try {
+        await waitHeld(hold.held, pendingAssignment);
+        let writerSettled = false;
+        const pendingWriter = attributed(writerId, () => write(f, "Operation.update"), "/synthetic/Operation.update")
+          .finally(() => { writerSettled = true; });
+        await new Promise(resolve => setTimeout(resolve, 100));
+        assert.equal(writerSettled, false, "operation writer must wait for assignment's shared guard");
+        hold.release.resolve();
+        assert.deepEqual((await pendingAssignment).operationIds, [f.s2.operationId]);
+        await pendingWriter;
+        assert.equal((await f.requests.getOmRequest(f.existing.id))?.assignedOm, nextOm);
+        await assertWriterValue(f, "Operation.update");
+        await assertAudits(f, assignmentId, [["operation_sessions", String(f.s2.id), "update"], ["om_requests", f.existing.id, "update"]]);
+        await assertAudits(f, writerId, writerAudits(f, "Operation.update"));
+        evidence.assertBusinessBeforeAudit(assignmentId, "OperationSession", String(f.s2.id));
+        evidence.assertBusinessBeforeAudit(assignmentId, "OmRequest", f.existing.id);
+        evidence.assertBusinessBeforeAudit(writerId, "OperationSession", String(f.s2.id));
+      } finally { hold.release.resolve(); hold.patch.mock.restore(); evidence.stop(); }
+    } finally { await f.cleanup(); }
+  });
 
   const metadataCases = ["extra-operation", "duplicate-operation", "second-request", "duplicate-request", "delete-operation-creation", "delete-request-creation", "edit-route", "retain-valid-metadata"] as const;
   type MetadataCase = typeof metadataCases[number];
