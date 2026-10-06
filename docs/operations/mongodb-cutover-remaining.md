@@ -252,3 +252,20 @@ Drive 결과 snapshot의 회사명·과정명은 2026-09-30 암호화 정책·co
 - 실제 C1 암호문 표본 복호화 성공
 
 초기 C1 기준 56,395행보다 47행 많다. 이는 연결 실패가 아니라 C1 이후 Mongo 사본에 추가된 변경분이 있다는 뜻이다. 최종 전환 전 PostgreSQL 최신 변경분·삭제 dry-run과 모델별 digest 대조에서 이 차이를 해소해야 한다. 따라서 격리 앱의 연결 차단은 해결됐지만, 이 결과만으로 실제 selector 전환을 승인하지 않는다.
+
+## 2026-10-07 최신 변경·삭제 읽기 전용 대조
+
+운영 앱·배포·selector와 PostgreSQL 데이터를 변경하지 않고, 운영 PostgreSQL은 `REPEATABLE READ READ ONLY` 트랜잭션으로만 읽고 격리 앱의 C1 Mongo namespace와 ID 집합을 대조했다. 대조 중 접속값·키·개인정보·행 ID는 출력하거나 기록하지 않았다.
+
+- 대조 시점의 PostgreSQL 35개 모델 합계는 56,635행, C1 Mongo 사본은 56,442행이었다. 차이는 5개 모델에만 있었다.
+- `Course`: PostgreSQL 708 / Mongo 707, Mongo 누락 2 / Mongo에만 존재 1
+- `OperationSession`: PostgreSQL 1,436 / Mongo 1,435, Mongo 누락 2 / Mongo에만 존재 1
+- `CalendarEventLink`: PostgreSQL 251 / Mongo 249, Mongo 누락 10 / Mongo에만 존재 8
+- `ActivityRequest`: 대조 중 PostgreSQL 감사행이 계속 증가했으며 한 시점에 PostgreSQL 10,047 / Mongo 9,879, Mongo 누락 191 / Mongo에만 존재 23
+- `ActivityChange`: PostgreSQL 9,877 / Mongo 9,853, Mongo 누락 61 / Mongo에만 존재 37
+
+따라서 단순 추가 적재로는 최종 상태를 만들 수 없다. C1 이후 생성뿐 아니라 삭제 또는 ID 교체가 있으며, 최종 freeze 뒤 새 전체 snapshot/new namespace를 만드는 계획을 유지해야 한다. 공통 ID의 비개인정보 값은 `ActivityRequest` 9,856행과 `ActivityChange` 9,816행에서 일치했다. 다른 세 모델은 표현 정규화를 더 보강해야 하므로 논리 값 일치로 판정하지 않았다.
+
+같은 읽기 전용 snapshot export 진단에서 `ActivityRequest` 2행의 `actorEmailPiiIndex`와 `actorNamePiiIndex`가 현재 `PII_INDEX_KEY`로 재계산한 값과 모두 달라 `INDEX_MISMATCH`가 발생했다. 두 행은 약 1초 간격으로 연속 생성됐다. 원문 개인정보와 행 식별자는 노출하지 않았다. PostgreSQL을 수정하지 않고 원인을 분류했으며, 이 상태에서는 기존 exporter가 의도대로 실패한다. 최종 export 전에 Cfinal 백업을 먼저 확보하고, 두 파생 인덱스의 승인된 재계산 또는 원본 행을 메모리에서 정규화하는 별도 검증 경로를 확정해야 한다.
+
+현재 판정은 **Cfinal과 selector 전환 차단**이다. 이유는 (1) 삭제를 포함한 최종 전체 복사가 아직 없고, (2) 파생 HMAC 2행 불일치가 해소되지 않았고, (3) 전환 후 Mongo 신규 쓰기를 PostgreSQL 또는 새 Mongo 후보에 무손실로 보존하는 복구 경로가 아직 검증되지 않았기 때문이다. 이 세 조건을 통과하기 전에는 Mongo 일반 쓰기를 열지 않는다.
