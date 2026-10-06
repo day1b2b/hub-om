@@ -1,0 +1,337 @@
+{
+  "method": "Replace the affected files with their final-source execution; do not sum overlapping tests.",
+  "first": {
+    "log": "full-mongo-first.log",
+    "tap": {
+      "tests": 823,
+      "pass": 823,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "wrapperExit": 1,
+    "limitation": "Complete TAP followed by wrapper unbound-variable error; in-flight driver modification is the suspected cause. Not a single final-source all-green command."
+  },
+  "replacement": {
+    "log": "mongo-impact-final.log",
+    "tap": {
+      "tests": 369,
+      "pass": 369,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "wrapperExit": 0,
+    "files": 13
+  },
+  "parentIntegrityFix": {
+    "log": "mongo-parent-fixed.log",
+    "tap": {
+      "tests": 82,
+      "pass": 82,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "wrapperExit": 0,
+    "files": 2
+  },
+  "finalFileCount": 49,
+  "finalUniqueTests": 833,
+  "files": {
+    "src/lib/data/mongoActivityReadHandlers.integration.test.ts": {
+      "firstPass": 10,
+      "finalPass": 10,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "e513720bb59fd7d311b330c09affa586c9302185e96b4dd0e7027513f39fda65"
+    },
+    "src/lib/data/mongoActivityReadRepository.integration.test.ts": {
+      "firstPass": 30,
+      "finalPass": 30,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "7863d3221e49eb843e4495339092907aed0dc8bbc15264aba64e43d004ced441"
+    },
+    "src/lib/data/mongoAdminDatabaseHandlers.integration.test.ts": {
+      "firstPass": 11,
+      "finalPass": 11,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "86a871ffef500d72d55bdba1610f829a9f57d4fb6bb1186b7871dbe8625202ab"
+    },
+    "src/lib/data/mongoAdminDatabaseRepository.integration.test.ts": {
+      "firstPass": 43,
+      "finalPass": 43,
+      "finalLog": "mongo-impact-final.log",
+      "testSourceSha256": "6ec3440f6024e340c0e8860c0c77b9f43aaa507b050bca926689991de6f326a4"
+    },
+    "src/lib/data/mongoAnnouncementHandlers.integration.test.ts": {
+      "firstPass": 13,
+      "finalPass": 13,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "b1509508bbe77e0dc7e98d2a99753d096e2afc1d06d948a07899a83dd98d7646"
+    },
+    "src/lib/data/mongoAnnouncementRepository.integration.test.ts": {
+      "firstPass": 30,
+      "finalPass": 30,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "894a340b9140b2647c1408e43d5dc0cf4399a28f6cdd826e67b7e8a763f99f06"
+    },
+    "src/lib/data/mongoApiContext.integration.test.ts": {
+      "firstPass": 1,
+      "finalPass": 1,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "2aaf281df6254b026e92da965b546b1c252fadd454129236f52a53cd688f19a5"
+    },
+    "src/lib/data/mongoCoachAdminRepository.integration.test.ts": {
+      "firstPass": 5,
+      "finalPass": 5,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "7898cf0440cfe722c7e5696f6b9642ff2bf1a0a3dc25c334c169b53a09a36f62"
+    },
+    "src/lib/data/mongoCoachContentHandlers.integration.test.ts": {
+      "firstPass": 6,
+      "finalPass": 6,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "771e80e90c758672951c492be01fc8382e59302d8fa326d256eae44e2ea0723a"
+    },
+    "src/lib/data/mongoCoachContentRepository.integration.test.ts": {
+      "firstPass": 42,
+      "finalPass": 42,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "2f9a626de12fc5b183769c04c7dbc5e105695be88c07ad8e0163b5f1ad83f057"
+    },
+    "src/lib/data/mongoCoachEngagementRepository.integration.test.ts": {
+      "firstPass": 17,
+      "finalPass": 17,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "34bbd53a2d16d3d040fa7d80f733cd839a40dd124d6f04d3217c9aeb0be62f72"
+    },
+    "src/lib/data/mongoCoachExportRepository.integration.test.ts": {
+      "firstPass": 1,
+      "finalPass": 1,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "8213846956706c3d5986c1f3ff298926de8fca4eca2e2c16d189314b4d3902f9"
+    },
+    "src/lib/data/mongoCoachManagementRepository.integration.test.ts": {
+      "firstPass": 1,
+      "finalPass": 1,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "e481aa3a60f424daea1ac8a81681d1c81d8d942857779c08c4f4af538cd66046"
+    },
+    "src/lib/data/mongoCoachManagerMyPagePage.integration.test.ts": {
+      "firstPass": 6,
+      "finalPass": 6,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "2c4befa228f0f52bfbb931380303a6f5157a99688c5b7cb512ad082b3d369972"
+    },
+    "src/lib/data/mongoCoachManagerMyPageRepository.integration.test.ts": {
+      "firstPass": 21,
+      "finalPass": 21,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "e1f2b48eb79f83d13309fa064cb2364d833279fd6b2e1aaf713a68697defbb06"
+    },
+    "src/lib/data/mongoCoachNotionSyncRepository.integration.test.ts": {
+      "firstPass": 23,
+      "finalPass": 23,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "e92fdcc265b12705d31eca0014de29f18d63b0691c067a58102216373e836d1a"
+    },
+    "src/lib/data/mongoCoachRepository.integration.test.ts": {
+      "firstPass": 1,
+      "finalPass": 1,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "e3ea64aae0181b778fb55e62ca5f64d916ab7b2759f178a74e8a28547756a0c5"
+    },
+    "src/lib/data/mongoCoachScheduleRepository.integration.test.ts": {
+      "firstPass": 14,
+      "finalPass": 14,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "235557959bafa70c287e224e5ed3a6f1ffcb3f81a33afa03597c57b0bc20c3c8"
+    },
+    "src/lib/data/mongoCoachSheetSyncRepository.integration.test.ts": {
+      "firstPass": 25,
+      "finalPass": 25,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "638c446869c5287fa7eab1840d6037fd53f68b6bb39e1ed379ffbe857e2ff9ef"
+    },
+    "src/lib/data/mongoCoachTokenBackfillRepository.integration.test.ts": {
+      "firstPass": 24,
+      "finalPass": 24,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "a3661155ed4e012be23f1a15138e79ebb1799ddea1a64d514a3da9302e55b533"
+    },
+    "src/lib/data/mongoCoachTokenRepository.integration.test.ts": {
+      "firstPass": 1,
+      "finalPass": 1,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "efa14866eae95eab7b3dce6f63c106bdea9ac0cf81f7cda855721e7a176a1373"
+    },
+    "src/lib/data/mongoCoachTokenRotationRepository.integration.test.ts": {
+      "firstPass": 1,
+      "finalPass": 1,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "f188380ed7fe95e6d231362359ed7daad5c611965fd61b571b3c433d6cc55098"
+    },
+    "src/lib/data/mongoCoachWriteRepository.integration.test.ts": {
+      "firstPass": 1,
+      "finalPass": 1,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "efb21e9645d8bc700576756b86e565d974b5f47865ea22b9cbda65ecf2245a25"
+    },
+    "src/lib/data/mongoCourseAdminHandlers.integration.test.ts": {
+      "firstPass": 6,
+      "finalPass": 6,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "596e49c643dffb99ef7c53dc667ceb0a97566b4ae5276e065d2f330b08804cee"
+    },
+    "src/lib/data/mongoCourseAdminRepository.integration.test.ts": {
+      "firstPass": 23,
+      "finalPass": 23,
+      "finalLog": "mongo-impact-final.log",
+      "testSourceSha256": "b3660359d771cbb8467dadc645256dab8a7334bd753bed475e0c635233545917"
+    },
+    "src/lib/data/mongoCourseNameRestoreHandlers.integration.test.ts": {
+      "firstPass": 7,
+      "finalPass": 7,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "4258a6b0976ee4c9ccc39899223861c239fe734d9315ec6c6648039a72c9eea8"
+    },
+    "src/lib/data/mongoCourseNameRestoreRepository.integration.test.ts": {
+      "firstPass": 31,
+      "finalPass": 31,
+      "finalLog": "mongo-impact-final.log",
+      "testSourceSha256": "98190817b48acbc5037357fe0fc0dfb89c49d8d2ab48f8f3bc1b29982e476f12"
+    },
+    "src/lib/data/mongoDeletedOperationHandlers.integration.test.ts": {
+      "firstPass": 7,
+      "finalPass": 7,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "8720f2f05ba4a2d079084eecea2de7eeec41530baeed059ffeac6879639daaf2"
+    },
+    "src/lib/data/mongoDeletedOperationRepository.integration.test.ts": {
+      "firstPass": 28,
+      "finalPass": 28,
+      "finalLog": "mongo-impact-final.log",
+      "testSourceSha256": "214e8a9f44d3b15561a6ebbad9163794813e56d6a9d6799e909b53cb147fda40"
+    },
+    "src/lib/data/mongoImportPromotionHandlers.integration.test.ts": {
+      "firstPass": 16,
+      "finalPass": 22,
+      "finalLog": "mongo-parent-fixed.log",
+      "testSourceSha256": "bbaadbd1b99f9b7c86a9ed2cf76a549df72c633906667b1ce1f03e44c28a2a3b"
+    },
+    "src/lib/data/mongoImportPromotionRepository.integration.test.ts": {
+      "firstPass": 56,
+      "finalPass": 60,
+      "finalLog": "mongo-parent-fixed.log",
+      "testSourceSha256": "f295b5641daecc248c2558a867bee4fabe4dcaac5fb08f4ff6775f1b44135a0c"
+    },
+    "src/lib/data/mongoImportRepository.integration.test.ts": {
+      "firstPass": 30,
+      "finalPass": 30,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "335ea5f9b47b7f076b8dfc19f85a9a8d3583712ab97a4d801b73772513c638d7"
+    },
+    "src/lib/data/mongoImportStagingHandlers.integration.test.ts": {
+      "firstPass": 16,
+      "finalPass": 16,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "a6afd9cf7d7921665e76e382ee8df9553b8ae78c054732c386315b3ede6bf43e"
+    },
+    "src/lib/data/mongoInstructorNoteRepository.integration.test.ts": {
+      "firstPass": 1,
+      "finalPass": 1,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "af9f8865907520f34b37028c686da6aff4bd20da8b5e92c8a9caa8d649d8edb0"
+    },
+    "src/lib/data/mongoInstructorNotionHandlers.integration.test.ts": {
+      "firstPass": 10,
+      "finalPass": 10,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "d276fec501d88e2a06803db246560acb480c52769a8554dd2a1b89372b2efb79"
+    },
+    "src/lib/data/mongoInstructorNotionSync.integration.test.ts": {
+      "firstPass": 25,
+      "finalPass": 25,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "36340152c0b870774734773bf3f1ebdeb4b3be3006f301c5f583d5c7cf309c13"
+    },
+    "src/lib/data/mongoOmAssignmentConcurrency.integration.test.ts": {
+      "firstPass": 41,
+      "finalPass": 41,
+      "finalLog": "mongo-impact-final.log",
+      "testSourceSha256": "91ddac21a2d0f53b5de6309ecf0ddc97fa3cdb628a4c64b79b604871b7d53812"
+    },
+    "src/lib/data/mongoOmAssignmentHandlers.integration.test.ts": {
+      "firstPass": 20,
+      "finalPass": 20,
+      "finalLog": "mongo-impact-final.log",
+      "testSourceSha256": "9b95e40d7c4eed779dc68dda8fa5ed0848c7e91203b13ebcbdd4a7d501ff3f87"
+    },
+    "src/lib/data/mongoOmAssignmentRepository.integration.test.ts": {
+      "firstPass": 25,
+      "finalPass": 25,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "8f84db4ce515f067466b959bb5a319a15b58c86b9473131dd26673319586d6dc"
+    },
+    "src/lib/data/mongoOmRequestHandlers.integration.test.ts": {
+      "firstPass": 19,
+      "finalPass": 19,
+      "finalLog": "mongo-impact-final.log",
+      "testSourceSha256": "5e83cd37895e3d4f0681f572152ac0493a4775614b92c2c601596386cea7eab3"
+    },
+    "src/lib/data/mongoOmRequestRepository.integration.test.ts": {
+      "firstPass": 13,
+      "finalPass": 13,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "763f1101355b6875aab6e41969628dbbaf6cb49670750afbabd84e40edf5d3ef"
+    },
+    "src/lib/data/mongoOperationBackfillHandlers.integration.test.ts": {
+      "firstPass": 6,
+      "finalPass": 6,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "7af73cd906cb6d7e07d72b962ce42dd93322672e2bf119c7dc29489c7123e771"
+    },
+    "src/lib/data/mongoOperationBackfillRepository.integration.test.ts": {
+      "firstPass": 36,
+      "finalPass": 36,
+      "finalLog": "mongo-impact-final.log",
+      "testSourceSha256": "73ded31d1eef7939ccbed069cec0a76bb2d38d32a8dc31f26867e87af7804b8b"
+    },
+    "src/lib/data/mongoOperationRepository.integration.test.ts": {
+      "firstPass": 17,
+      "finalPass": 17,
+      "finalLog": "mongo-impact-final.log",
+      "testSourceSha256": "f6687505a417d7325b871ca77a1be0b6a3395c0e5dbd777950d00b06dcfbc2ac"
+    },
+    "src/lib/data/mongoSalesRevenueHandlers.integration.test.ts": {
+      "firstPass": 17,
+      "finalPass": 17,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "f49635284e04b2d1ed09a6e1ab62161ca7a08a64a819b61636643659041ae649"
+    },
+    "src/lib/data/mongoSalesRevenueSync.integration.test.ts": {
+      "firstPass": 28,
+      "finalPass": 28,
+      "finalLog": "mongo-impact-final.log",
+      "testSourceSha256": "7d9abaa4d3f6c8ad68ad910dfa2c37c44ee545b9becf214891316a71cef744ba"
+    },
+    "src/lib/data/mongoSatisfactionRoundApply.integration.test.ts": {
+      "firstPass": 9,
+      "finalPass": 9,
+      "finalLog": "mongo-impact-final.log",
+      "testSourceSha256": "cf1687382118776511a777839f6d2c0df0f7c06cd26a0fa715be4408cf49390f"
+    },
+    "src/lib/data/mongoTeamMemberRepository.test.ts": {
+      "firstPass": 8,
+      "finalPass": 8,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "c29424f0f1f356c504bf7f959c3ce5f27b5a9304c2bd0094f24fc525a6b532c9"
+    },
+    "src/lib/data/teamUsers/mongoTeamUserRepository.integration.test.ts": {
+      "firstPass": 1,
+      "finalPass": 1,
+      "finalLog": "full-mongo-first.log",
+      "testSourceSha256": "0d0c49b9522cb217b5792b16c590be6eed171b923decda46febd8cd9cbe6fe37"
+    }
+  }
+}

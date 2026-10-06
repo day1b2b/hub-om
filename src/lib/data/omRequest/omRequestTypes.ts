@@ -79,20 +79,18 @@ export function omRequestStatusLabel(status: OmRequest["status"]): string {
 
 // 파트별 지정 권한자. 이 매핑은 OM 지정(배정) 액션의 파트 관리자 확인에 쓰인다.
 export function omRequestManagerName(team: string): string | null {
-  if (team.includes("1파트")) return "김정선";
-  if (team.includes("2파트")) return "조여경";
-  if (team.includes("3파트")) return "이혜림";
+  if (team.trim() === "1파트" || team.trim() === "AX 1파트") return "김정선";
+  if (team.trim() === "2파트" || team.trim() === "AX 2파트") return "조여경";
+  if (team.trim() === "3파트" || team.trim() === "AX 3파트") return "이혜림";
   return null;
 }
 
 // 파트 구분 없이 모든 파트의 지정 권한을 갖는 이메일. 이현정(OM) 요청으로 추가됨.
 const OM_REQUEST_ASSIGN_OVERRIDE_EMAILS = ["hyeonjeong.lee@day1company.co.kr"];
 
-export function canManageOmRequestAssignment(team: string, userName: string, userEmail?: string | null): boolean {
-  if (userEmail && OM_REQUEST_ASSIGN_OVERRIDE_EMAILS.includes(userEmail.trim().toLowerCase())) return true;
-  const managerName = omRequestManagerName(team);
-  if (!managerName) return true;
-  return userName.trim() === managerName.trim();
+/** 기존 승인된 전 파트 지정 계정만 유지한다. 로그인 이메일 검증은 서버에서 수행한다. */
+export function hasOmRequestAssignmentOverride(email: string): boolean {
+  return OM_REQUEST_ASSIGN_OVERRIDE_EMAILS.includes(email);
 }
 
 // 요청 작성자 판별. 작성자 식별은 접수 시점에 세션에서 저장한 ldEmail로만 한다(ld는

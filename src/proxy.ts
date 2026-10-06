@@ -6,7 +6,8 @@ export const config = {
   //   api/sales/lookup            코스ID·고객사명 조회
   //   api/team-users/lookup       멤버 이메일→이름 조회
   //   api/satisfaction/round-apply 만족도 회차 단위 반영
+  // Quarantine routes authenticate themselves; skip proxy body cloning (default 10 MiB).
   matcher: [
-    "/((?!api/auth|api/health|api/sales/lookup|api/team-users/lookup|api/satisfaction/round-apply|_next/static|_next/image|favicon.ico|.*\\..*).*)"
+    "/((?!api/auth|api/health|api/browser-drafts/quarantine/(?:seal|verify)$|api/sales/lookup|api/team-users/lookup|api/satisfaction/round-apply|_next/static|_next/image|favicon.ico|.*\\..*).*)"
   ]
 };

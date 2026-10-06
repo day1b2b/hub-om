@@ -1,0 +1,1416 @@
+
+> hub-om@0.1.0 test
+> node --experimental-strip-types --experimental-test-module-mocks --experimental-loader ./scripts/ts-loader.mjs --test "src/**/*.test.ts"
+
+(node:66046) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66046) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+(node:66046) DeprecationWarning: mock.module(): options.namedExports is deprecated. Use options.exports instead.
+✔ 관리자 미리보기는 삭제를 실행하지 않는다 (15.823834ms)
+✔ 관리자도 원본 회차 ID만으로 삭제할 수 없다 (2.514ms)
+✔ 인증되지 않은 요청은 삭제 서비스에 도달하지 않는다 (0.306625ms)
+✔ 기존 서버 인증도 명시적으로 선택한 미리보기 토큰만 전달한다 (0.339083ms)
+✔ 크기 초과 본문은 서비스 호출 전에 413으로 거절한다 (2.288791ms)
+(node:66046) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/app/api/admin/calendar/backfill-events/route.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66047) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66047) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+(node:66047) DeprecationWarning: mock.module(): options.namedExports is deprecated. Use options.exports instead.
+✔ 관리자가 아니면 조회와 쓰기 모두 서비스 호출 전에 거절한다 (25.423958ms)
+✔ null·잘못된 타입·중복·건수 초과·누락된 계획은 400이고 쓰지 않는다 (4.501875ms)
+✔ 잘못된 JSON과 실제 32KiB 초과 본문은 400·413이고 쓰지 않는다 (0.328667ms)
+✔ 관리자·선택 목록·계획을 전달하고 충돌은 409, 내부 오류는 노출하지 않는다 (0.852416ms)
+(node:66047) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/app/api/admin/course-name-restore/route.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66048) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66048) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+(node:66048) DeprecationWarning: mock.module(): options.namedExports is deprecated. Use options.exports instead.
+✔ keys belong only to the signed-in subject; body/query identity is never trusted (19.2625ms)
+✔ unauthenticated and non-workspace sessions get private 401, never a redirect or dev bypass (2.178541ms)
+✔ old sessions without provider subject require reauthentication and never fall back to email (0.485916ms)
+✔ foreign, missing, null and deceptive origins are refused before authentication (1.415708ms)
+✔ configuration and auth failures return a generic private error without material (0.369167ms)
+✔ production accepts a configured public HTTPS Origin with an internal standalone request URL (0.401375ms)
+✔ production without canonical origin fails closed before auth, despite plausible forwarded headers (0.168042ms)
+✔ dedicated origin overrides AUTH_URL and forwarded host cannot authorize another site (0.355333ms)
+✔ malformed or insecure production origin configuration never falls back to request/forwarded headers (0.250166ms)
+(node:66048) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/app/api/browser-drafts/keyring/route.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66049) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66049) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+(node:66049) DeprecationWarning: mock.module(): options.namedExports is deprecated. Use options.exports instead.
+✔ 미리보기는 권한을 await하고 쓰기나 외부 반영 없이 no-store로 반환한다 (12.232083ms)
+✔ 확인한 취소만 원자 저장 이후 캘린더에 전달한다 (0.330083ms)
+✔ 확인한 수동 배정 변경은 commit 이후 캘린더와 Slack을 반영한다 (0.28325ms)
+✔ 권한 없는 preview/write는 async guard 이후 종료한다 (0.398083ms)
+✔ 익명은 대상 정보 조회 전에 거부한다 (0.277709ms)
+✔ 토큰 누락과 변경 충돌은409이며 외부 반영하지 않는다 (0.432042ms)
+✔ 동일 요청 OM도 수동으로 달라진 회차가 있으므로 확인토큰을 검증한다 (0.1995ms)
+✔ 누락·공백·숫자 담당자는 취소 null로 해석하지 않는다 (0.562166ms)
+(node:66049) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/app/api/om-request/assign/route.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66050) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66050) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+(node:66050) DeprecationWarning: mock.module(): options.namedExports is deprecated. Use options.exports instead.
+✔ 10만 자에 10만 자를 이어 붙이면 저장 없이 413을 반환한다 (29.245584ms)
+✔ 구분 줄바꿈을 포함한 최종 값이 상한이면 저장하고 한 자 초과는 거절한다 (1.641167ms)
+✔ 기존 초과 기록을 짧게 교체하면 복구할 수 있다 (1.495042ms)
+✔ 이미 포함된 텍스트를 다시 append해도 중복 저장하지 않는다 (0.530334ms)
+✔ 뒤 항목이 상한을 넘으면 앞 항목도 부분 저장하지 않는다 (0.47475ms)
+✔ 실제 요청 본문이 2MB를 넘으면 헤더 유무와 무관하게 저장하지 않는다 (12.25575ms)
+✔ null 본문과 null patch는 500 대신 400으로 반환한다 (0.337083ms)
+✔ 재개 계정이 바뀌었거나 실제 subject가 없으면 Drive 적용 조회/쓰기 전409이다 (0.3875ms)
+✔ 일치하는 재개 헤더와 헤더 없는 기존 Drive 적용은 모두 지원한다 (0.199042ms)
+(node:66050) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/app/api/operations/%5BoperationId%5D/drive-import/apply/route.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66051) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66051) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+(node:66051) DeprecationWarning: mock.module(): options.namedExports is deprecated. Use options.exports instead.
+✔ 첫 회차 응답 유실 후 동일 요청은 기존 ID, 내용 변경은409, 다른 사용자는 다른 ID (11.319583ms)
+✔ 인증 완료 전 어떤 repository 조회/쓰기나 기존 응답 반환도 하지 않는다 (0.5385ms)
+✔ 같은 회차 재시도는 회차 중복 검사보다 먼저 성공으로 복원한다 (0.75075ms)
+✔ 초기 replay miss 직후 경쟁 요청이 성공해도 중복409 대신 그 결과를 반환한다 (0.263542ms)
+✔ 잘못된 요청 키는 생성을 시작하지 않는다 (0.20775ms)
+✔ 날짜 역전은 쓰기 시작 전이라는 명시적 응답으로 입력 수정을 허용한다 (0.17225ms)
+✔ 실제 교육일이 있으면 시작/종료일은 실제 교육일에서 파생되므로 유효하게 등록한다 (0.337375ms)
+✔ 재개 계정과 현재 세션이 다르거나 실제 subject가 없으면 생성/재생 조회 전409이다 (0.3595ms)
+✔ subject 헤더는 정확히 일치해야 하며 기존 헤더 없는 호출은 세션subject가 없어도 호환된다 (0.380333ms)
+✔ soft-delete된 회차의 재시도는 조기 성공이나 신규 생성 대신409이다 (0.252416ms)
+✔ 같은키의 본문을 다음 회차로 바꿔도 조기 replay나 중복 검사를 우회해 생성하지 않는다 (0.211792ms)
+(node:66051) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/app/api/operations/creationRoutes.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66052) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 배정 저장은 영향 회차/현재 이름/ID 배정을 보여준 뒤 승인 token으로만 쓴다 (126.857792ms)
+✔ 배정 취소 미리보기에서 돌아가기는 쓰지 않고 승인하면 null로 보낸다 (18.731334ms)
+✔ 409는 확인 팝업을 닫고 새로운 미리보기를 요구한다 (20.492542ms)
+✔ 네트워크 오류는 재시도 가능하고 같은 렌더의 중복 확인 클릭은 한 번만 쓴다 (99.76075ms)
+✔ 확인 후 쓰기 네트워크 오류는 팝업과 token을 유지해 재시도한다 (5.717875ms)
+(node:66052) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/app/om-request/manage/%5Bid%5D/AssignForm.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66053) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 신규등록 UI는 암호화 write commit을 기다린 뒤에만 첫 POST를 시작한다 (184.552125ms)
+✔ 암호화 quota/read 오류는 POST·삭제 없이 기존 입력과 ciphertext를 보존한다 (126.487375ms)
+✔ 복구 snapshot의 owner/team/key/body와 회차 순서를 유지한다 (75.214625ms)
+✔ 회차 요청 사이 runtime owner/status/generation 변경은 다음 POST와 정리를 차단한다 (107.769917ms)
+✔ legacy 키 존재 시 값 읽기·삭제·암호화 draft 조회 없이 신규등록을 차단한다 (73.834167ms)
+✔ page subject 누락·불일치는 숨기고 요청 중 subject 전환도 다음 POST를 막는다 (87.880459ms)
+✔ 복구 후 후속회차 응답 유실에서도 동일 키·본문·순서로 안전하게 재시도한다 (23.237167ms)
+✔ 다른 탭의 write 충돌은 기존 암호문을 보존하고 첫 POST를 차단한다 (6.798125ms)
+✔ 서버 성공 후 clear 충돌은 다른 탭 암호문을 삭제하지 않는다 (48.085083ms)
+(node:66053) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/app/operations/new/OperationCreateForm.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66054) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 단일 선택은 쉼표가 포함된 이름 전체로 검색·검증한다 (1.220833ms)
+✔ 다중 선택은 완료된 이름과 다음 검색어를 구분한다 (0.0655ms)
+(node:66054) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/components/nameComboboxRules.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66055) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 운영현황에서 OM 배정만 된 과정도 표에 뜬다 (0.615375ms)
+✔ 요청과 운영을 합쳐 시작일 순으로 정렬한다 (6.913166ms)
+✔ 요청과 짝이 되는 운영은 표에 두 번 뜨지 않는다 (0.084084ms)
+✔ 시작일 없는 줄은 뒤로 보낸다 (0.066667ms)
+✔ LD·강사가 비면 미정/-로 채운다 (0.062084ms)
+✔ 같은 과정의 여러 회차는 총 회차로 센다 (1.0685ms)
+✔ 코스ID가 비어도 기업+과정명으로 회차를 묶는다 (0.240375ms)
+✔ 기업명·과정명이 비어 있어도 터지지 않는다 (0.1655ms)
+✔ 연간·상시형 운영은 alwaysOn으로 표시한다 (2.668584ms)
+✔ 그 밖의 운영유형은 alwaysOn이 아니다 (0.145167ms)
+✔ 담당 과정(업무요청)은 운영유형이 없어 alwaysOn이 아니다 (0.06ms)
+(node:66055) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/features/dashboard/myCourseRows.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66056) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ OM·현장운영 칸의 이름을 중복 없이 모은다 (12.417791ms)
+✔ 담당이 잡히면 진단하지 않는다 (0.216959ms)
+✔ 이름이 운영 현황 표기와 맞는데 0건이면 이름을 지목하지 않는다 (0.379667ms)
+✔ 이름이 운영 현황 어디에도 없으면 진단한다 (0.247375ms)
+✔ 이메일 중복은 이름이 맞아도 알린다 (0.150375ms)
+✔ 내 이름과 겹치는 표기를 앞에 보여 준다 (0.1505ms)
+✔ 명단 미등록(이름 없음)은 별도 화면이 맡으므로 진단하지 않는다 (0.099625ms)
+✔ 운영 현황 자체가 비면 이름 문제로 몰지 않는다 (0.0685ms)
+(node:66056) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/features/dashboard/omNameDiagnosis.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66057) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 현장운영 OM에만 내 이름이 있으면 지원 건이다 (0.514042ms)
+✔ 담당 OM이면 현장에 가더라도 지원 건이 아니다 (0.064875ms)
+✔ 담당·현장 양쪽에 이름이 여러 명이어도 담당이 우선한다 (0.049875ms)
+✔ 여러 명 중 현장운영에만 있으면 지원 건이다 (0.050667ms)
+✔ 어느 칸에도 없으면 지원 건이 아니다 (0.044292ms)
+✔ 이름 표기 흔들림(괄호·공백·대소문자)을 흡수한다 (0.306416ms)
+✔ 내 이름이 없으면(명단 미등록) 지원 건으로 보지 않는다 (0.188541ms)
+✔ 캘린더 이름은 지원 건에만 표시를 붙인다 (0.100667ms)
+(node:66057) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/features/dashboard/onsiteLabel.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66058) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 살아있는 운영과 짝인 요청은 남긴다 (0.628292ms)
+✔ 운영이 지워진 요청은 걷어낸다 (0.060166ms)
+✔ 운영이 아직 없는 접수 건은 남긴다 (0.052875ms)
+✔ operationId가 죽었어도 코스ID가 살아 있으면 남긴다 (0.049375ms)
+✔ 코스ID가 빈 요청은 코스ID로 살려 주지 않는다 (0.045833ms)
+✔ 살아있는 운영이 하나도 없으면 연결됐던 요청은 모두 걷어낸다 (0.04525ms)
+✔ 요청이 없으면 빈 배열 (0.035333ms)
+(node:66058) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/features/dashboard/orphanRequests.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66059) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 코스ID와 시작일이 같으면 담당 과정이 대표한다 (1.137792ms)
+✔ 코스ID가 같아도 다른 회차는 남긴다 (0.10825ms)
+✔ 운영에 시작일이 없으면 코스ID만으로 걸러내지 않는다 (0.053667ms)
+✔ 코스ID가 비어 있어도 operationId로 짝을 맞춘다 (0.196666ms)
+✔ 코스ID가 빈 요청 때문에 무관한 운영이 사라지지 않는다 (0.061542ms)
+✔ 담당 과정이 없으면 아무것도 걸러내지 않는다 (0.046333ms)
+✔ 코스ID가 나중에 채워져 운영이 따로 생겨도 같은 날짜면 잡는다 (0.46175ms)
+✔ 교육 일정 차수가 없는 담당 과정은 아무것도 대표하지 못한다 (0.043792ms)
+✔ 차수 날짜가 빈 문자열이어도 대표하지 못한다 (0.056667ms)
+(node:66059) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/features/dashboard/requestDedup.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66060) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 같은 courseId의 운영이 있으면 운영 현황으로 간다 (2.297625ms)
+✔ courseId 매칭이 없으면 접수 때 생성된 운영으로 간다 (0.076167ms)
+✔ courseId 매칭이 operationId보다 우선한다 (0.061375ms)
+✔ 운영을 못 찾으면 담당관리 상세로 폴백한다 (0.042167ms)
+✔ courseId가 비어 있어도 폴백이 동작한다 (0.048542ms)
+(node:66060) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/features/dashboard/requestHref.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66061) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 닫기 중 세 번 연속 입력이 바뀌면 마지막 입력 저장 전에는 닫지 않는다 (0.644708ms)
+✔ 추가 저장에는 최신 편집 버전을 전달하고 마지막 입력이 저장된 뒤 닫는다 (0.074958ms)
+✔ 후속 저장이 실패하면 닫지 않고 같은 요청을 즉시 반복하지 않는다 (0.061542ms)
+(node:66061) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/features/operations/flushLectureNote.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66062) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 날짜 앞 메모·인원·섹션 순서·미등록 태그를 저장 왕복에서 보존한다 (1.107542ms)
+✔ 태그만 있는 기록도 저장되고 회차별로 중복을 제거한다 (0.144042ms)
+✔ 같은 날짜 병합은 태그 합집합과 서로 다른 인원을 보존한다 (0.123333ms)
+✔ 태그 없는 붙여넣기는 기존 태그를 지우지 않고 다른 탭을 바꾸지 않는다 (0.094167ms)
+✔ 구버전 초안과 태그 포함 초안을 모두 복원한다 (0.187375ms)
+(node:66062) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/features/operations/lectureIssueTags.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66064) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 오래된 강의 초안도 async 개인 저장소에서 복원하며 회차를 분리한다 (0.78075ms)
+✔ write promise commit 이전에는 보관 성공을 반환하지 않는다 (0.086625ms)
+✔ 저장 실패는 실패로 반환하고 기존 입력을 대체하지 않는다 (0.110417ms)
+✔ 잠김·손상 read와 remove 실패를 빈 초안이나 삭제 성공으로 숨기지 않는다 (0.156458ms)
+(node:66064) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/features/operations/lectureNoteDraftStorage.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66065) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 내용도 날짜도 없는 빈 탭은 저장 대상에서 빠진다 (3.82025ms)
+✔ 내용은 있는데 날짜가 빈 탭만 시작일로 채운다 (8.613125ms)
+✔ 날짜만 있고 내용이 없는 탭은 그대로 저장한다 (0.565291ms)
+✔ 새 날짜 탭은 아직 쓰지 않은 교육일을 먼저 제안한다 (0.097333ms)
+✔ 교육일을 모두 썼거나 교육일 정보가 없으면 마지막 날짜 다음 날을 제안한다 (2.60725ms)
+✔ 쓴 날짜가 하나도 없으면 시작일을 제안한다 (0.103958ms)
+✔ 저장한 기록은 다시 열 때 같은 탭으로 돌아온다 (2.178ms)
+✔ 날짜가 빈 기록을 채울 때 이미 쓰인 날짜는 피한다 (0.100375ms)
+✔ 날짜가 빈 기록이 여러 개면 서로 다른 날짜를 받는다 (0.388083ms)
+✔ 다른 탭이 이미 쓰는 날짜인지 알려준다 (0.3575ms)
+✔ 날짜가 여러 개 든 글을 붙여넣으면 날짜별 탭으로 나눈다 (0.535833ms)
+✔ 붙여넣은 날짜가 이미 있는 탭이면 그 탭의 칸을 채우고, 비어 있지 않은 칸은 붙여넣은 값이 우선한다 (3.031417ms)
+✔ 날짜 제목 없이 칸 제목만 있는 글은 지금 보고 있는 탭에 채운다 (0.181666ms)
+✔ 날짜 제목 앞에 붙은 내용은 지금 보고 있는 탭에, 뒤는 해당 날짜 탭에 들어간다 (0.169375ms)
+✔ 붙여넣기 분리가 필요한 글인지 판단한다 (0.245625ms)
+✔ 칸 제목 앞에 적힌 글은 버리지 않고 강의 요약 앞에 붙인다 (0.132167ms)
+✔ 칸 제목이 없는 글은 통째로 강의 요약이 된다 (0.086541ms)
+✔ 칸 제목이 뒤바뀐 글도 다른 칸의 글이 섞여 두 번 저장되지 않는다 (0.084125ms)
+✔ 학습 인원 줄은 칸 제목 앞에서만 읽고 본문 안의 같은 표현은 요약에 그대로 둔다 (0.056166ms)
+✔ 저장 형식 그대로 다시 읽으면 칸 내용이 늘거나 줄지 않는다 (0.1255ms)
+✔ 날짜 제목의 표기가 달라도 같은 날로 읽어 탭이 두 개 생기지 않는다 (0.2535ms)
+✔ 달력에 없는 날짜는 yyyy-mm-dd로 바꾸지 않고 적힌 대로 둔다 (0.080625ms)
+✔ 임시 보관본에 같은 날짜 탭이 둘 있으면 글을 잃지 않고 하나로 합친다 (0.234333ms)
+✔ 날짜 제목 뒤에 다른 글이 붙은 줄은 날짜 제목으로 읽지 않는다 (4.043834ms)
+✔ 같은 날짜의 서로 다른 학습 인원은 병합·저장·재복원 후에도 모두 남는다 (0.318167ms)
+✔ 학습 인원이 비었거나 같으면 불필요한 구분자를 추가하지 않는다 (0.192291ms)
+✔ 옛 보관본의 점·슬래시·한글 날짜는 정규화한 뒤 한 탭으로 복원한다 (2.180875ms)
+✔ 날짜가 없는 기록끼리는 합치지 않고 잘못된 날짜 제목도 보존한다 (0.197625ms)
+(node:66065) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/features/operations/lectureNoteModel.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66066) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 다운로드 CSV를 스프레드시트로 읽고 붙여넣어도 비연속 실제교육일이 유지된다 (3.069958ms)
+✔ 기존 지역 포함 8열 붙여넣기 계약을 유지한다 (0.274959ms)
+(node:66066) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/features/operations/operationCreateTemplate.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66067) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ legacy 안내는 key 이름만 확인하고 소유 미확인 내용을 읽거나 삭제하지 않는다 (0.345834ms)
+✔ legacy 저장소 접근 차단은 plaintext fallback 없이 처리한다 (0.065417ms)
+✔ 지연 저장과 삭제는 예약 시점이 아닌 실행 직전의 세션을 확인한다 (2.585292ms)
+✔ 읽기 await 중 세션이 바뀌면 이어지는 삭제를 호출하지 않는다 (2.730041ms)
+(node:66067) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/features/operations/operationDraftSession.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66068) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66068) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/features/operations/operationSubmission.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 암호문 commit이 끝나기 전에는 네트워크를 시작하지 않는다 (18.762292ms)
+✔ 첫/후속 commit 응답 유실 뒤 암호문을 복구해 동일 키·본문·회차순서로 재개한다 (4.67375ms)
+✔ quota와 계정변경은 기존 암호문을 보존하고 첫 POST를 막는다 (3.071917ms)
+✔ 복구 owner/team 불일치·손상은 암호문을 삭제하거나 빈 신규등록으로 바꾸지 않는다 (1.908709ms)
+✔ 계정이 응답 대기 중 변경되면 후속 회차 전송을 중단한다 (0.663ms)
+✔ 첫 회차 확정 무저장400만 구분하고 후속400은 snapshot을 보존한다 (3.63675ms)
+✔ 후속 날짜 오류는 암호문 쓰기와 첫 네트워크 전 차단하고 실제교육일을 우선한다 (0.751875ms)
+✔ legacy 평문은 값 읽기·귀속·삭제 없이 존재만 확인한다 (0.439166ms)
+(node:66069) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ owner·generation·subject를 고정하고 팀 scope에는 이메일을 넣지 않는다 (1.4115ms)
+✔ 읽기 전 쓰기 금지, 두 탭의 신규등록 충돌은 기존 snapshot을 보존하고 POST0 (2.662667ms)
+✔ 같은 snapshot을 재개한 두 탭 중 오래된 clear는 새 등록을 삭제하지 않는다 (0.3965ms)
+(node:66069) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/features/operations/operationSubmissionStore.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66070) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 기업별로 묶고 기업명 가나다순으로 돌려준다 (7.326083ms)
+✔ 기업명이 빈 행은 위키에 세우지 않는다 (0.10725ms)
+✔ 담당 OM·LD를 중복 없이 모은다 (0.098042ms)
+✔ 같은 코스ID·과정명 회차를 한 코스로 묶고 회차를 센다 (0.09475ms)
+✔ 코스ID가 같아도 과정명이 다르면 다른 코스로 센다 (0.12925ms)
+✔ 링크는 회차 중 하나라도 있으면 있는 것으로 본다 (0.064584ms)
+✔ 만족도는 숫자로 읽히는 회차만 평균한다 (0.070166ms)
+✔ 만족도가 하나도 없으면 -로 둔다 (0.042042ms)
+✔ 강사가 셋 이상이면 두 명까지 쓰고 나머지는 수로 접는다 (0.061667ms)
+✔ 일정이 없으면 -로 둔다 (0.078375ms)
+✔ 운영 이력은 첫 회차부터 순서대로 온다 (0.108041ms)
+✔ 같은 날짜면 회차 번호 순으로 세운다 (0.09575ms)
+✔ 일정이 없는 회차는 맨 뒤로 보낸다 (0.056666ms)
+✔ 연도 목록을 오름차순으로 모은다 (0.060875ms)
+✔ 공백만 다른 표기는 같은 기업으로 묶고 많이 쓰인 표기를 대표로 쓴다 (0.067959ms)
+✔ 공백 외의 차이는 합치지 않는다 (0.074708ms)
+✔ 과정명이 비어 있어도 정렬에서 터지지 않는다 (0.0705ms)
+✔ companyId가 있으면 기업명 표기가 달라도 한 기업으로 묶는다 (0.049792ms)
+✔ companyId가 다르면 기업명이 같아도 나눈다 (0.046334ms)
+✔ companyId가 없으면 기업명으로 묶는다(공백·대소문자 무시) (0.036458ms)
+✔ companyId가 있는 행과 없는 행은 섞지 않는다 (0.036209ms)
+(node:66070) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/features/wiki/companyWikiModel.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66071) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 공백·구분자로 나열된 강사명을 분리한다 (0.759875ms)
+✔ 이름 자리에 들어온 자리표시자는 걸러낸다 (0.068875ms)
+✔ 이름에 포함된 글자는 자리표시자로 오인하지 않는다 (0.053833ms)
+✔ 노션에만 있는 강사를 코스 없는 항목으로 합친다 (5.611459ms)
+✔ 노션 카테고리가 합칠 때 함께 붙는다 (0.071625ms)
+✔ 동명이인은 운영 항목에 붙이지 않고 각각 세운다 (0.0755ms)
+✔ 상세 주소는 NO가 있으면 NO, 없으면 이름 (0.0515ms)
+✔ 카테고리별로 묶고 미지정은 맨 뒤에 둔다 (0.120875ms)
+✔ 연결된 표기의 코스 이력을 노션 강사 항목으로 합친다 (0.162833ms)
+✔ 연결 대상이 목록에 없으면 빈 항목을 만들어 이력을 옮긴다 (0.097917ms)
+✔ 자기 자신을 가리키는 연결은 무시한다 (0.055125ms)
+✔ 연결이 없으면 목록을 그대로 둔다 (0.033375ms)
+(node:66071) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/features/wiki/instructorWikiModel.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66072) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66072) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+(node:66072) DeprecationWarning: mock.module(): options.namedExports is deprecated. Use options.exports instead.
+✔ activity API checks administrator access before querying or parsing filters (1.521708ms)
+✔ usage metrics deny non-admins before parsing dates or reading data (0.243292ms)
+✔ legacy history also uses the global administrator guard (0.144917ms)
+(node:66072) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/activity/access.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66073) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ every exported API method has a tracking wrapper or explicit exclusion (203.450333ms)
+✔ every database table and scalar field has a reviewed policy; SQL allow lists match (9.090416ms)
+(node:66073) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/activity/coverage.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66074) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+﹣ activity triggers and attribution on isolated PostgreSQL (0.267834ms) # SKIP
+(node:66074) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/activity/database.integration.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66075) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66075) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+(node:66075) DeprecationWarning: mock.module(): options.namedExports is deprecated. Use options.exports instead.
+✔ feed requires a configured dedicated bearer key (7.501916ms)
+✔ feed period uses KST dates and summary ignores cursor and table filters (2.728084ms)
+✔ feed rejects unauthenticated requests before parsing or DB access (1.564083ms)
+(node:66075) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/activity/feed.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66076) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ today metrics respect KST midnight and exclude monitoring and automated traffic from people (2.16625ms)
+✔ legacy records preserve action filtering and stable date/id pagination (0.275375ms)
+✔ labels never reinterpret a redacted value or truncation object as a name (0.0695ms)
+(node:66076) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/activity/global-pages.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66077) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Korean inclusive dates convert to UTC half-open bounds (2.217ms)
+✔ reject invalid dates, inverted ranges and malformed cursors (0.230667ms)
+✔ stable cursor uses timestamp and ID without requiring the cursor row to survive retention (0.124459ms)
+(node:66077) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/activity/query.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66078) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66078) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+(node:66078) DeprecationWarning: mock.module(): options.namedExports is deprecated. Use options.exports instead.
+✔ records only metadata, uses trusted identity and links request context (8.991334ms)
+✔ token requests are never attributed to an unrelated browser session (0.317125ms)
+✔ logging failure cannot turn a successful handler into an error (2.259417ms)
+✔ thrown failures remain failures and redirects retain their status (1.24625ms)
+(node:66078) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/activity/request.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66079) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Prisma 오류에서 code를 꺼낸다 (0.359ms)
+✔ 기업명 중복은 합칠 수 없다는 것까지 알려준다 (0.12575ms)
+✔ 멤버명 중복도 같은 안내를 쓴다 (0.045709ms)
+✔ 이름이 아닌 칼럼의 중복은 일반 문구로 (0.043708ms)
+✔ 행이 사라진 경우는 새로고침을 안내한다 (0.041334ms)
+✔ 참조 제약은 참조 중이라고 알려준다 (0.035375ms)
+✔ 모르는 오류는 어떤 칼럼인지라도 알려준다 (0.040667ms)
+✔ 조사를 받침에 맞춘다 (0.046167ms)
+✔ 영문 라벨에도 조사를 붙여 문장을 만든다 (0.056542ms)
+(node:66079) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/admin/databaseCellError.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66080) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ ADMIN_EMAILS가 비어 있으면 아무도 PII를 볼 수 없다 (fail-closed) (0.450042ms)
+✔ ADMIN_EMAILS 목록에 있는 워크스페이스 계정만 허용 (0.082833ms)
+✔ ADMIN_EMAILS에 있어도 워크스페이스 도메인이 아니면 거부 (0.066125ms)
+✔ 이메일이 없으면 거부 (0.058916ms)
+(node:66080) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/auth/coachPiiViewer.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66081) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66081) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+(node:66081) DeprecationWarning: mock.module(): options.namedExports is deprecated. Use options.exports instead.
+✔ 승인된 파트 관리자와 유일하게 연결된 세션 이메일만 허용한다 (0.595ms)
+✔ 익명·외부·비정상 이메일과 알 수 없는 팀은 명단 조회 전 거절한다 (0.394667ms)
+✔ 이름/이메일 중복, 미등록, 조회 실패는 권한을 추정하지 않는다 (0.3155ms)
+✔ 기존 명시 승인 override만 보존하고 unknown team에서는 사용하지 않는다 (0.978291ms)
+(node:66081) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/auth/omRequestAssignmentAccess.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66082) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66082) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+(node:66082) DeprecationWarning: mock.module(): options.namedExports is deprecated. Use options.exports instead.
+✔ 미설정·false·잘못된 설정은 관리자 확인 전에 404로 닫힌다 (15.47125ms)
+✔ 명시적으로 켜도 관리자 인증에 실패하면 403으로 거부한다 (0.357459ms)
+✔ 명시적으로 켜고 관리자이면 기존 기능에서 쓸 세션을 돌려준다 (0.106667ms)
+✔ 다시 끄면 이전 요청이 허용됐어도 다음 요청은 차단한다 (0.15ms)
+(node:66082) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/auth/satisfactionMatchingAccess.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66083) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 노션 ID를 연결 키로, 사번은 값으로 읽는다 (0.688958ms)
+✔ 사번 0과 공란은 값이 없는 것으로 본다(발급 전) (0.146833ms)
+✔ 사번이 텍스트로 적혀 있어도 숫자만 뽑는다 (0.5595ms)
+✔ 속성 이름이 'No ID'여도 연결 키로 읽는다 (0.070708ms)
+✔ 속성 이름이 후보에 없어도 unique_id 타입이면 읽는다 (0.06775ms)
+✔ ID가 없는 행은 null이다 (이 경우에만 이름으로 식별) (0.05775ms)
+✔ number 타입 '번호'는 연결 키로 쓰지 않는다 (0.040792ms)
+✔ 이름이 없으면 건너뛴다 (0.038458ms)
+✔ 근무유형은 신규·기존 태그를 걸러내고 정규화한다 (0.075ms)
+(node:66083) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/coaches/notionCoachMap.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66084) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 행 번호 없는 열 전체 범위('A:Q')도 데이터 행을 모두 읽는다 (2.55275ms)
+✔ 취소선이 그어진 셀을 struckCells로 표시한다 (0.57225ms)
+✔ 행 번호를 명시한 범위도 동일하게 동작한다 (0.316167ms)
+(node:66084) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/coaches/xlsxReader.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66085) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66085) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+(node:66085) DeprecationWarning: mock.module(): options.namedExports is deprecated. Use options.exports instead.
+(node:66085) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/data/calendarReflectingOperationRepository.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ educationDates만 수정해도 캘린더를 갱신한다 (1.947125ms)
+✔ educationDates만 수정해도 캘린더를 갱신한다 (0.10425ms)
+✔ instructors만 수정해도 캘린더를 갱신한다 (0.07175ms)
+✔ 비용만 수정하면 캘린더를 호출하지 않는다 (0.087458ms)
+✔ 생성 응답 유실 후 기존 회차를 재생할 때 캘린더 생성 부수 작업을 반복하지 않는다 (0.122583ms)
+(node:66086) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ latest non-null completed public/coaches token matches source ID; dry-run never writes (6.171125ms)
+✔ coach and archive scans cross page boundaries with bounded reads (4.802292ms)
+✔ a write failure rolls back the complete run (0.445667ms)
+✔ malformed non-string token fails without disclosing its value (0.348208ms)
+✔ CLI defaults to dry-run and rejects unknown, conflicting or unconfirmed writes (0.225292ms)
+✔ encrypted repository decrypts archive JSON and writes ciphertext plus blind index (45.679833ms)
+✔ CLI entry point rejects invalid flags before env loading or DB access without raw errors (273.561084ms)
+(node:66086) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/data/coachAccessTokenBackfill.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66087) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 공개 계층 prismaCoachRepository.ts에 민감(PII) 식별자가 등장하지 않는다 (0.775417ms)
+✔ 공개 계층 coachRepository.ts에 민감(PII) 식별자가 등장하지 않는다 (0.101625ms)
+✔ coachPrivateAccess.ts는 fail-closed 게이트(assertCoachPiiAccess)를 호출한다 (0.563584ms)
+(node:66087) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/data/coachPii.guard.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66088) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 후보가 없으면 null (1.060416ms)
+✔ 후보가 하나면 고객사·과정명 둘 다 채운다 (0.343209ms)
+✔ 후보가 여럿이면 과정명은 채우지 않는다 — 틀린 과정명이 시트까지 흘러가는 것을 막는다 (0.065292ms)
+✔ 후보들의 고객사까지 갈리면 아무것도 채우지 않는다 (0.052125ms)
+✔ 앞뒤 공백은 정리해서 채운다 (0.053833ms)
+✔ 코스ID가 같은 과정만 골라낸다 (0.140208ms)
+✔ 코스ID에 제로폭 문자가 섞여 있어도 찾는다 — 원문 비교면 놓친다 (0.060625ms)
+✔ 엑셀에서 온 .0 꼬리가 붙어 있어도 찾는다 (0.038667ms)
+✔ 앞뒤 공백이 있어도 찾는다 (0.043458ms)
+✔ 부분만 겹치는 코스ID는 고르지 않는다 (0.072667ms)
+✔ target이 비면 아무것도 고르지 않는다 (0.055167ms)
+✔ 최근 회차가 있는 과정을 앞에, 회차 없는 과정을 뒤에 둔다 (12.866584ms)
+✔ 고객사명 일부만 쳐도 그 고객사 과정이 나온다 (0.227542ms)
+✔ 최근 회차가 있는 과정이 앞에 온다 (0.0635ms)
+✔ 과정명 조각으로 더 좁힐 수 있다 (0.059792ms)
+✔ 코스ID가 아직 안 채워진 과정도 후보에 넣는다 — 감추면 왜 안 보이는지 알 수 없다 (0.086666ms)
+✔ 대소문자·연속 공백·제로폭 문자를 무시하고 찾는다 (0.050666ms)
+✔ limit보다 하나 더 돌려준다 — 호출자가 '더 있음'을 알 수 있게 (0.039375ms)
+✔ 고객사명이 비면 아무것도 돌려주지 않는다 — 전체를 쏟지 않는다 (0.029791ms)
+✔ 찾는 고객사가 없으면 빈 목록 (0.031708ms)
+(node:66088) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/data/courseLookup.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66089) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+﹣ 과정명 복원: 격리 PostgreSQL의 데이터·경합·감사 원자성 (0.282167ms) # SKIP
+(node:66089) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/data/courseNameRestore.integration.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66090) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 필수 4개가 다 있으면 부족한 것이 없다 (1.651958ms)
+✔ 비어 있는 필드를 라벨로 알려준다 (0.109792ms)
+✔ 여러 개가 비면 모두 알려준다 (0.0525ms)
+✔ 값이 "-"이거나 공백이면 비어 있는 것으로 본다 (0.053541ms)
+✔ 날짜가 있는데 형식이 아니면 형식 확인이라고 알려준다 (0.087542ms)
+✔ 점·슬래시 구분 날짜도 받아들인다 (0.0585ms)
+✔ 정의되지 않은 값도 비어 있는 것으로 본다 (0.045458ms)
+✔ 날짜 파서는 형식이 맞을 때만 값을 준다 (0.059084ms)
+(node:66090) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/data/importPromotionFields.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66091) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 같은 지문이면 항상 같은 operationId가 나온다 (0.502166ms)
+✔ 지문이 다르면 다른 operationId가 나온다 (0.063ms)
+✔ 팀이 다르면 다른 operationId가 나온다 (0.040583ms)
+✔ 지문 앞 12자만 대문자로 쓴다 (0.034ms)
+✔ 지문이 없으면 매번 다른 값이 나온다 (0.233541ms)
+✔ 신규·복원 공통 저장 데이터가 현장투입 "Y"를 보존한다 (0.230625ms)
+✔ 신규·복원 공통 저장 데이터가 현장투입 " y "를 보존한다 (0.070666ms)
+✔ 신규·복원 공통 저장 데이터가 현장투입 "N"를 보존한다 (0.049792ms)
+✔ 신규·복원 공통 저장 데이터가 현장투입 "n"를 보존한다 (0.059042ms)
+✔ 신규·복원 공통 저장 데이터가 현장투입 "일부"를 보존한다 (0.140458ms)
+✔ 신규·복원 공통 저장 데이터가 현장투입 "일부필요"를 보존한다 (0.187375ms)
+✔ 신규·복원 공통 저장 데이터가 현장투입 ""를 보존한다 (0.088208ms)
+✔ 신규·복원 공통 저장 데이터가 현장투입 "확인필요"를 보존한다 (0.074708ms)
+✔ 신규·복원 공통 저장 데이터가 현장투입 "unexpected"를 보존한다 (0.047333ms)
+(node:66091) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/data/importPromotionService.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66092) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 노션 ID는 대시·URL 형태를 벗겨 32자 hex로 맞춘다 (0.458375ms)
+✔ 다른 노트를 가리키는 notionId만 수동 연결로 본다 (0.365833ms)
+✔ 본체 자신은 연결 대상에서 빠진다 (0.059292ms)
+✔ 가리키는 대상이 없는 notionId는 무시한다 (0.047459ms)
+✔ 같은 노션 ID를 두 노트가 가지면 syncedAt이 최신인 쪽을 정본으로 본다 (0.080084ms)
+✔ syncedAt이 같으면 이름이 짧은 쪽을 정본으로 본다(결정적) (0.070584ms)
+(node:66092) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/data/instructorWikiStore.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66093) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66093) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/data/localJsonTeamMemberRepository.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+▶ team-member local files decrypt and fail closed except when missing
+  ✔ missing files preserve default rosters (1.271958ms)
+  ✔ encrypted payload restores owners and roles (7.232833ms)
+  ✔ plaintext and malformed files do not fall back (5.390459ms)
+  ✔ wrong context, corrupt ciphertext and missing key do not fall back (3.744208ms)
+  ✔ invalid decrypted payload and unreadable path do not fall back (12.26075ms)
+✔ team-member local files decrypt and fail closed except when missing (35.909125ms)
+(node:66094) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66094) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+(node:66094) DeprecationWarning: mock.module(): options.namedExports is deprecated. Use options.exports instead.
+(node:66094) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/data/localOperationAtomicWrite.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ write 실패 시 원본 유지, 암호문 임시파일 정리, 재시도 가능 (20.277375ms)
+✔ rename 실패 시 원본 유지, 암호문 임시파일 정리, 재시도 가능 (19.890917ms)
+(node:66095) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66095) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/data/localOperationCreation.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 암호화 파일에서도 동시 재시도·재시작·수정·삭제 이후 등록 이력을 보존한다 (87.877584ms)
+✔ legacy array: 허용된 평문을 읽고 수정 시 전체 암호화 (15.006208ms)
+✔ legacy object: 허용된 평문을 읽고 수정 시 전체 암호화 (14.145583ms)
+✔ legacy receipts: 허용된 평문을 읽고 수정 시 전체 암호화 (26.850542ms)
+✔ 평문 읽기 비허용 및 쓰기 키 누락은 원본을 바꾸지 않는다 (33.196417ms)
+✔ key 오류 시 모든 쓰기 거부·원본 보존·이후 복구 (51.132333ms)
+✔ aad 오류 시 모든 쓰기 거부·원본 보존·이후 복구 (47.764583ms)
+✔ tamper 오류 시 모든 쓰기 거부·원본 보존·이후 복구 (31.523542ms)
+✔ 손상된 receipt null 거부 (5.826833ms)
+✔ 손상된 receipt [] 거부 (6.096375ms)
+✔ 손상된 receipt "bad" 거부 (7.01675ms)
+✔ 손상된 receipt {"invalid":"id"} 거부 (10.014625ms)
+✔ 손상된 receipt {"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa":"manual-request-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"} 거부 (37.269792ms)
+✔ 다른 파일의 등록 이력은 독립이며 파일별 직렬화에서 새 요청을 잃지 않는다 (86.0445ms)
+✔ legacy array의 유실된 receipt를 기존 요청 ID로 복구하고 중복을 막는다 (38.577625ms)
+✔ legacy object의 유실된 receipt를 기존 요청 ID로 복구하고 중복을 막는다 (48.313833ms)
+✔ 이미 중복된 legacy 요청 행은 임의 선택하거나 덮어쓰지 않는다 (20.492875ms)
+✔ legacy 행을 재시도 전에 삭제해도 생성 이력을 복구해 재생성을 막는다 (40.163041ms)
+(node:66097) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66097) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+(node:66097) DeprecationWarning: mock.module(): options.namedExports is deprecated. Use options.exports instead.
+✔ 가려진 감사값으로도 정확한 생성 연결만 미리보고 개인정보 없는 10분 토큰을 발급한다 (9.172417ms)
+✔ 확인 후 수동 이름/ID를 모두 변경하고 무관한 같은 과정 회차는 그대로 둔다 (0.63575ms)
+✔ 배정 취소는 ID도 비우고 예정만 필요로 되돌리며 완료 상태는 유지한다 (0.47325ms)
+✔ 필요에서 최초 배정은 예정으로, 동일값 확인 재시도는 추가 쓰기/반영 대상이 없다 (0.685042ms)
+✔ 토큰 형식/서명/유효기한 변조와 만료는 어떤 쓰기도 하지 않는다 (2.302542ms)
+✔ 토큰은 로그인 주체와 새 담당자에 묶인다 (1.076ms)
+✔ 팀/요청 배정/상태/일정과 대상 OM/ID/상태/갱신시각 변경은 확인을 무효화한다 (3.782916ms)
+✔ 회차 추가·삭제·대표 연결 교체도 미리보기 뒤 저장 전에 차단한다 (0.890625ms)
+✔ 잘못된 총 회차수·일정·미연결·누락/삭제된 대표 회차는 구체적409 대상이다 (0.507208ms)
+✔ 생성 감사 누락·다른 요청·배치 혼합·중복·잘못된 method/action은 연결 근거가 아니다 (1.069ms)
+✔ 생성 로그의 회차가 삭제/누락된 경우 전체 저장을 차단한다 (0.2365ms)
+✔ 요청 또는 두 번째 회차 저장 실패는 같은 트랜잭션의 변경을 전부 롤백한다 (0.4285ms)
+✔ 동시 변경 Serializable 실패는 롤백하고409로 반환한다 (0.204167ms)
+✔ 로컬 JSON은 연결 유무와 무관하게 preview/write를 안전하게 거부한다 (0.095875ms)
+✔ 서명 secret 없이는 preview를 발급하지 않으며 기존 NEXTAUTH_SECRET은 사용한다 (0.221375ms)
+(node:66097) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/data/omRequest/omRequestAssignment.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66098) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66098) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+(node:66098) DeprecationWarning: mock.module(): options.namedExports is deprecated. Use options.exports instead.
+✔ 같은 과정에서 OM이 비어있는 다른 회차에도 배정 결과를 전파한다 (1.039917ms)
+✔ 이미 다른 OM이 개별 지정된 회차는 덮어쓰지 않는다 (0.093792ms)
+✔ 다른 과정의 회차는 건드리지 않는다 (0.081834ms)
+✔ 대표 회차는 자기 자신 값과 무관하게 항상 갱신한다 (0.115583ms)
+(node:66098) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/data/omRequest/omRequestOperationLink.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66100) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 네 조건을 모두 채우면 아카이빙 완료다 (0.759958ms)
+✔ 코스ID나 강의관리가 비면 완료가 아니다 (0.172792ms)
+✔ 만족도 조사를 하는 회차는 만족도가 비면 완료가 아니다 (0.130833ms)
+✔ 조사하지 않는 회차(불필요)는 만족도가 비어도 완료가 된다 (0.091625ms)
+✔ 조사하지 않는 회차라도 나머지 조건은 그대로 요구한다 (0.107333ms)
+✔ 결과보고서는 '유'일 때만 링크를 요구한다 (0.106708ms)
+✔ 종료일이 지나지 않았으면 조건과 무관하게 아카이빙전이다 (1.35625ms)
+✔ 종료일이 지난 뒤에는 조건 충족 여부로 갈린다 (0.232584ms)
+✔ 아카이빙에서 빠진 항목을 이름으로 알려준다 (0.600709ms)
+✔ 조사하지 않는 회차는 만족도를 요구하지 않는다 (0.105875ms)
+✔ 결과보고서가 유가 아니면 링크를 요구하지 않는다 (0.053667ms)
+✔ 여러 개가 빠지면 모두 알려준다 (0.051792ms)
+✔ 연속된 실제 교육일은 구간으로 묶어 보여준다 (0.131834ms)
+✔ 쉬는 날로 끊긴 실제 교육일은 구간을 나눠 쉼표로 보여준다 (0.059666ms)
+✔ 띄엄띄엄 흩어진 실제 교육일은 날짜를 하나씩 나열한다 (0.044791ms)
+✔ 교육일이 하루뿐이면 구간 표시 없이 그 날짜만 보여준다 (0.029167ms)
+✔ 입력 순서가 뒤섞여 있어도 날짜순으로 정렬해 구간을 만든다 (0.144625ms)
+✔ 연속된 교육일은 구간으로 묶고 같은 달은 일자만 쓴다 (0.112875ms)
+✔ 전체가 연속이면 구간 하나로 줄인다 (0.187292ms)
+✔ 달이 바뀌는 연속 구간은 끝에 월을 붙인다 (0.098625ms)
+✔ 해가 바뀌면 연도까지 다시 붙인다 (0.161375ms)
+✔ 순서가 뒤섞이고 중복이 있어도 정렬해 묶는다 (0.584125ms)
+✔ 하루짜리는 날짜 하나만 쓴다 (0.048375ms)
+✔ 빈 목록과 읽을 수 없는 값은 빈 문자열이다 (0.035916ms)
+✔ 교육일이 끊기면 막대가 구간마다 하나씩 나온다 (7.579167ms)
+✔ 교육일이 전부 연속이면 막대 하나로 묶인다 (0.560125ms)
+✔ 교육일이 없는 옛 회차는 시작일~종료일 한 구간으로 떨어진다 (3.944458ms)
+✔ 형식이 틀린 교육일만 있으면 기간으로 떨어진다(조용히 빈 캘린더가 되지 않게) (0.08575ms)
+(node:66100) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/data/operationCalculations.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66106) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 같은 키와 같은 본문은 JSON 키 순서와 무관하게 같은 식별자다 (0.822208ms)
+✔ 같은 키로 본문을 바꾸거나 삭제된 회차를 다시 만들면 충돌이다 (0.257875ms)
+✔ 다른 사용자와 API 경로는 같은 키로 기존 자료를 조회할 수 없다 (0.110875ms)
+✔ 선택 헤더가 없으면 기존 생성이며 부적절한 키나 익명 키는 거부한다 (0.068875ms)
+(node:66106) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/data/operationCreationIdentity.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66107) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 정확히 한 후보가 일치하면 그 id를 반환한다 (2.812166ms)
+✔ 두 후보 이상이 일치하면 null을 반환한다 (1.324833ms)
+✔ 일치하는 후보가 없으면 null을 반환한다 (0.211667ms)
+✔ 앞뒤 공백과 내부 연속 공백, 대소문자를 정규화해 일치시킨다 (0.117625ms)
+✔ 기간이 충분히 겹치면 같은 운영으로 매칭한다 (0.109042ms)
+✔ 기간이 겹치지 않으면 null을 반환한다 (0.325666ms)
+✔ 후보가 비어 있으면 null을 반환한다 (0.14075ms)
+✔ 회사명이 함께 적힌 engagement도 course 후보와 매칭한다 (0.232709ms)
+✔ 시간 정보가 있으면 상위 후보를 가르는 보조 기준으로 사용한다 (0.383792ms)
+✔ engagement 대표 기간이 달라도 개별 투입일이 운영 기간 안에 있으면 매칭한다 (0.298041ms)
+✔ coach_text가 있으면 동률 후보를 가르는 보조 기준으로 사용한다 (0.166959ms)
+✔ courseId가 양쪽에 있고 일치하면 과정명이 달라도 매칭한다 (0.090333ms)
+✔ courseId가 같아도 일정이 맞지 않으면 매칭하지 않는다(날짜 게이트 유지) (0.103625ms)
+✔ 같은 courseId를 가진 여러 세션은 일정으로 구분한다 (0.117125ms)
+✔ courseId가 한쪽에만 있으면 기존 과정명 매칭으로 폴백한다 (0.081583ms)
+(node:66107) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/data/operationMatch/matchOperation.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66108) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66108) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+(node:66108) DeprecationWarning: mock.module(): options.namedExports is deprecated. Use options.exports instead.
+✔ Prisma는 같은 transaction의 잠금→조회 후 생성하고 재전송은 회사/과정을 다시 수정하지 않는다 (9.494125ms)
+✔ 같은 범위에서 본문이 다르거나 삭제된 행이면 아무 write 없이 거부한다 (0.338167ms)
+✔ 암호화 transaction adapter에서도 요청 잠금·ID 조회를 유지하고 개인정보를 암호화한 채 재생한다 (15.826875ms)
+✔ 실제 getOperationById는 soft-delete된 영수증 행을 null로 반환한다 (0.159667ms)
+(node:66108) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/data/prismaOperationCreation.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66109) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66109) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+(node:66109) DeprecationWarning: mock.module(): options.namedExports is deprecated. Use options.exports instead.
+✔ courseIdLabel만 바꿔도 관련 테이블과 함께 회차의 수정자를 기록한다 (0.955958ms)
+✔ courseCategory만 바꿔도 관련 테이블과 함께 회차의 수정자를 기록한다 (0.132166ms)
+✔ tools만 바꿔도 관련 테이블과 함께 회차의 수정자를 기록한다 (0.098916ms)
+✔ 관련 필드를 비우는 수정도 수정자를 기록한다 (0.127083ms)
+✔ 회차 필드와 관련 필드를 함께 수정할 때 데이터와 수정자를 함께 쓴다 (0.125917ms)
+✔ 실제 수정 항목이 없으면 수정자만 덮어쓰지 않는다 (0.088209ms)
+✔ 수정자를 전달하지 않는 기존 호출은 이전 수정자를 덮어쓰지 않는다 (4.230375ms)
+(node:66109) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/data/prismaOperationRepository.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66111) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 마지막 회차를 맨 위로 옮기면 1회차가 되고 나머지가 한 칸씩 밀린다 (0.709084ms)
+✔ 앞 회차가 비어 있던 과정은 한 번 옮기면 1부터 연속이 된다 (0.076625ms)
+✔ 제자리에 놓으면 바꿀 것이 없다 (0.05175ms)
+✔ 회차 일부만 보내면 거절한다(나머지 번호를 짐작하지 않는다) (0.082042ms)
+✔ 다른 과정의 회차나 중복이 섞이면 거절한다 (0.058291ms)
+✔ moveRoundInOrder는 뽑아낸 뒤 그 자리에 넣는다 (0.071583ms)
+✔ 범위를 벗어난 자리는 양 끝으로 붙인다 (0.044167ms)
+(node:66111) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/data/roundReorder.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66113) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ matched + 미입력 회차 → 반영 대상 (0.455583ms)
+✔ 이미 값이 있는 회차는 절대 덮어쓰지 않는다 (0.067375ms)
+✔ 공백만 있는 기존 값은 미입력으로 보고 채운다 (0.049916ms)
+✔ 모호·미매칭은 반영 대상이 아니다 (0.047875ms)
+✔ 시트 만족도 값이 비면 쓰지 않는다 (0.050083ms)
+✔ 매칭 운영 정보를 못 찾으면 missing으로 드러낸다(조용히 넘기지 않음) (0.041958ms)
+✔ 여러 건 혼합: 반영 1 · 보존 1 · 값없음 1 (0.070916ms)
+(node:66113) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/data/satisfactionApplyPlan.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66114) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 빈 칸이면 채운다 (0.4685ms)
+✔ 기존 값이 있어도 덮어쓴다 — 시트가 원본이다 (0.096375ms)
+✔ 값이 같으면 쓰지 않는다 (0.045625ms)
+✔ 만족도가 비면 쓰지 않는다 (0.0395ms)
+✔ 모호하면 쓰지 않는다 (0.049333ms)
+✔ 미매칭이면 쓰지 않고 사유를 그대로 전한다 (0.040417ms)
+✔ 매칭됐는데 운영 정보를 못 찾으면 조용히 넘기지 않는다 (0.997291ms)
+✔ 쓰기 키는 행 id 가 아니라 업무 키(operationId) 다 (0.078333ms)
+✔ 값이 같아 안 쓰는 경우에도 키는 업무 키다 (0.060792ms)
+✔ 업무 키가 없으면 쓰지 않고 알린다 (0.081959ms)
+✔ 어떤 경우에도 사용자에게 보여줄 문장이 있다 (0.10425ms)
+(node:66114) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/data/satisfactionRoundApply.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66115) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 날짜 정규화: yymmdd → ISO (0.511042ms)
+✔ 강사명 정규화: 직함 제거 (0.181ms)
+✔ 행 파싱: 표준 형태로 변환 (0.295208ms)
+✔ EngagementKey 변환: 단일 강의일을 시작=종료로 매핑 (0.494459ms)
+✔ 매칭: 과정명+일정이 정확히 맞는 운영 1건이면 matched (1.721166ms)
+✔ 매칭: 운영 기간이 여러 날이어도 강의일이 그 안이면 matched (0.560042ms)
+✔ 매칭: 같은 과정·일정 후보가 둘이면 ambiguous(오매칭 방지) (0.664709ms)
+✔ 매칭: 맞는 후보가 없으면 unmatched (0.50275ms)
+✔ courseId 충돌 방지: 같은 courseId라도 과정명·강사·일정이 다르면 서로 다른 운영에 매칭 (0.79325ms)
+✔ EngagementKey 변환: courseId도 전달한다 (0.352917ms)
+✔ 매칭: 운영 코스ID에 보이지 않는 문자(zero-width space)가 섞여 있어도 matched (0.3715ms)
+✔ 매칭: 기준 미달(점수 0) 후보만 있으면 ambiguous가 아니라 unmatched + 사유 (0.42425ms)
+✔ 미매칭 사유: 코스ID 운영은 있으나 일정이 어긋나면 일정 확인을 안내 (0.276375ms)
+✔ 매칭: 운영 등록명이 시트와 달라도 courseId가 같고 일정이 맞으면 matched (0.255542ms)
+✔ CSV 파싱: 헤더 매핑 + 따옴표 안 쉼표 처리 (0.67225ms)
+✔ sheetValuesToRows: 헤더 행 번호 + 빈 행 제외 (1.0535ms)
+(node:66115) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/data/satisfactionSheet.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66116) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 중복이 없으면 빈 배열 (0.578125ms)
+✔ 같은 이메일 행을 이름과 함께 묶는다 (0.111292ms)
+✔ 앞뒤 공백·대소문자만 다른 이메일도 중복으로 본다 (0.046958ms)
+✔ 이메일이 빈 행은 서로 중복으로 묶지 않는다 (0.040333ms)
+✔ 여러 중복 그룹을 이메일 순으로 돌려준다 (6.987292ms)
+✔ 이름이 서로 다른 중복은 namesDiffer가 참 (0.11875ms)
+✔ 이름이 같은 중복은 namesDiffer가 거짓 (0.197917ms)
+(node:66116) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/data/teamUsers/duplicateEmails.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66117) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Date를 로컬 기준 YYYY-MM-DD로 쓴다 (0.906834ms)
+✔ 형식이 아니면 파싱하지 않는다 (0.298791ms)
+✔ 이번 달 · 다음 달 범위 (0.70625ms)
+✔ 연말에서 다음 달은 해를 넘긴다 (0.099083ms)
+✔ 2월 말일을 정확히 잡는다(윤년 포함) (0.662166ms)
+✔ 이번 분기 · 올해 범위 (0.103292ms)
+✔ 분기는 1·4·7·10월에서 시작한다 (0.058792ms)
+✔ 기간이 겹치면 포함한다 (0.091042ms)
+✔ 종료일이 없으면 시작일 하루로 본다 (0.058458ms)
+✔ 일정이 없는 과정은 기간 필터가 숨기지 않는다 (0.08075ms)
+✔ 전체 범위는 아무것도 걸러내지 않는다 (0.045167ms)
+(node:66117) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/dateRange.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66118) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66118) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/eslintCompatibility.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Next의 React·Hooks·접근성·TypeScript 검사는 호환 처리 후에도 실제 위반을 탐지한다 (908.057ms)
+(node:66119) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+[gcal-reverse] fixture 캘린더 원복 실패: simulated failure
+[gcal-reverse] fixture 캘린더 원복 실패: 캘린더 이벤트가 없어 갱신하지 못했습니다. 기존 DB 반영 여부를 확인하세요.
+[gcal-reverse] fixture 캘린더 원복 실패: 역반영 계획 후 회차가 변경되어 적용하지 않았습니다. 다시 계획을 생성하세요.
+[gcal-reverse] fixture 캘린더 원복 실패: 역반영 계획 후 매핑이 변경되어 적용하지 않았습니다.
+[gcal-reverse] fixture 교육일 반영: 2026-09-07 → 2026-09-07 / 시간 10:00 ~ 17:00 →  (event=event)
+[gcal-reverse] fixture 제목 원복 (event=event)
+[gcal-reverse] fixture 캘린더 원복 실패: 역반영 계획 후 Google 일정이 변경되었습니다.
+(node:66119) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+(node:66119) DeprecationWarning: mock.module(): options.namedExports is deprecated. Use options.exports instead.
+✔ 일부 반영 실패는 전체 ok=false로 반환한다 (0.725083ms)
+✔ 사라진 이벤트의 원복을 성공으로 보고하지 않는다 (0.12925ms)
+✔ 종일 일정으로 바꾸면 회차의 기존 시간도 빈 값으로 갱신한다 (0.271542ms)
+✔ 계획 단계가 실패하면 쓰기를 시작하지 않는다 (0.06625ms)
+✔ 계획 후 수정된 회차는 덮어쓰지 않는다 (0.157834ms)
+✔ 계획 후 교체된 매핑은 적용하지 않는다 (1.980625ms)
+✔ 계획 후 다시 수정된 Google 일정은 적용하지 않는다 (0.899834ms)
+(node:66119) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/googleCalendar/applyCalendarReverseSync.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66120) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 매핑이 없는 예정 회차는 교육일 구간마다 이벤트를 계획한다 (7.337ms)
+✔ 교육일이 없는 회차는 소급에서 제외한다(기간 통블록 방지) (0.078667ms)
+✔ 이미 매핑된 교육일은 빼고 빠진 날짜만 계획한다(부분 소급·재실행 안전) (0.157666ms)
+✔ 모든 교육일이 매핑돼 있으면 계획 없이 alreadyComplete로만 센다 (0.106333ms)
+✔ 마지막 교육일이 기준일보다 이르면 지난 회차로 보고 제외한다 (0.05025ms)
+✔ 담당 OM의 팀에서 파트를 못 뽑으면 파트 캘린더 없음으로 건너뛴다(2파트 원인 b 진단) (0.161834ms)
+✔ 적용 실행에서 쓰기 불가 캘린더는 권한 없음으로 건너뛴다(2파트 원인 a 방어) (0.097167ms)
+✔ dryRun처럼 writableCalendarIds가 null이면 권한과 무관하게 계획에 남긴다 (0.082333ms)
+(node:66120) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/googleCalendar/backfillCalendarEventsRules.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66121) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66121) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+(node:66121) DeprecationWarning: mock.module(): options.namedExports is deprecated. Use options.exports instead.
+✔ 삭제 조건에 회차와 날짜뿐 아니라 조회한 캘린더·이벤트 ID를 포함한다 (0.632042ms)
+✔ 매핑 이동도 이벤트 식별자가 일치해야 하며 변경된 매핑은 거절한다 (0.242208ms)
+(node:66121) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/googleCalendar/calendarEventLinkRepository.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66122) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66122) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+(node:66122) DeprecationWarning: mock.module(): options.namedExports is deprecated. Use options.exports instead.
+✔ 정방향과 소급의 동시 생성이 같은 Google 이벤트를 사용한다 (13.254167ms)
+✔ Google 성공 후 DB 저장 실패를 가정한 재시도는 기존 이벤트를 연결한다 (2.027792ms)
+✔ 생성 응답 유실 후 재시도도 중복 생성하지 않는다 (1.812708ms)
+✔ 삭제된 교육일을 다시 추가해도 재시도는 동일한 새 세대에 연결한다 (5.6625ms)
+✔ 표식이 다른 이벤트와 충돌하면 임의 연결이나 추가 생성을 하지 않는다 (0.340708ms)
+✔ 사람이 삭제한 기존 이벤트의 복구도 이전 ID별로 재시도 가능하다 (0.248042ms)
+✔ 역반영으로 다른 날짜에 연결된 이벤트를 원래 날짜에 다시 연결하지 않는다 (0.2015ms)
+(node:66122) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/googleCalendar/calendarIdempotentCreate.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66123) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66123) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+(node:66123) DeprecationWarning: mock.module(): options.namedExports is deprecated. Use options.exports instead.
+﹣ 격리 DB에서 경합·다른 회차·재진입·실패 후 잠금 해제를 검증 (0.259542ms) # SKIP
+(node:66123) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/googleCalendar/calendarOperationLock.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66124) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 담당 OM으로 파트를 정한다(LD는 파트 판정에 안 쓰임) (1.859834ms)
+✔ 담당 OM이 비어 있으면 요청 LD 소속 파트로 정한다(OM 후지정 사각지대 방지) (0.21375ms)
+✔ LD는 파트 판정에만 쓰고 초대 대상에는 넣지 않는다(D3) (0.12425ms)
+✔ 담당 OM은 있지만 소속에서 파트를 못 뽑으면 LD 파트로 떨어진다 (0.13575ms)
+✔ OM·LD 둘 다 파트를 못 뽑으면 partKey는 null (0.133416ms)
+✔ 배정 전 자리표시자(배정필요)는 OM으로 치지 않아 LD 파트로 떨어진다 (0.141709ms)
+(node:66124) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/googleCalendar/calendarParticipants.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66125) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 일치하면 할 일이 없다 (9.458209ms)
+✔ 표식과 다른 구간으로 옮겨졌으면(사람이 고침) 운영현황에 반영한다 (0.201834ms)
+✔ 시간만 바뀌어도 표식과 다르면 반영 대상이다 (0.100417ms)
+✔ 이벤트가 표식 그대로인데 운영현황과 다르면(hub-om 쓰기가 안 닿음) 캘린더를 되돌린다 (0.380291ms)
+✔ 표식이 있으면 회차 수정 시각을 몰라도 사람의 수정을 반영한다 (0.105917ms)
+✔ 표식이 없는 옛 이벤트는 회차 수정 시각을 모르면 운영현황을 덮어쓰지 않는다 (0.080417ms)
+✔ 표식이 없는 옛 이벤트는 운영현황이 더 최신이면 캘린더를 되돌린다(폴백) (0.075667ms)
+✔ 제목·장소만 바뀌었으면 원복 대상이다 (0.064875ms)
+✔ 날짜와 제목이 함께 바뀌면 날짜는 반영하고 제목은 원복한다 (0.076625ms)
+✔ 원본이 삭제되면 아무 것도 하지 않는다(캘린더 삭제는 반영하지 않음) (0.082125ms)
+✔ 원본이 삭제된 회차는 매핑을 지우지 않는다(다음 정방향 반영이 되살리지 않도록) (0.092375ms)
+✔ 운영현황에서 빠진 구간은 손대지 않고 건너뛴다 (0.062375ms)
+✔ 교육일이 없으면 기간 이벤트로 보고 시작·종료를 반영한다 (0.078708ms)
+✔ 연속 구간마다 이벤트를 하나씩 만든다 (0.09025ms)
+✔ 제목은 회차 제목 그대로이고 설명에 교육일 목록이 들어간다 (0.080042ms)
+✔ 전체가 연속이면 이벤트 1건으로 묶인다 (0.047667ms)
+✔ 시간 표기를 못 읽으면 구간 전체를 종일 일정으로 만든다 (0.125083ms)
+✔ 교육일이 없으면 기간 이벤트 1건이고 키는 시작일이다 (0.037541ms)
+✔ 형식이 틀린 교육일과 중복은 걸러진다 (0.056083ms)
+✔ 구간을 옮기면 그 구간의 날짜가 함께 움직인다 (0.089667ms)
+✔ 구간 길이를 늘리면 늘어난 날까지 교육일이 된다 (0.04075ms)
+✔ 옮긴 구간이 다른 교육일과 겹치면 충돌로 알린다 (0.034125ms)
+✔ 같은 자리로 옮기면 아무것도 바뀌지 않는다 (0.029208ms)
+✔ 종일 일정의 종료일은 배타적이라 하루를 뺀다 (0.041625ms)
+✔ 시간 지정 일정은 여러 날에 걸쳐도 시작·종료 날짜를 각각 읽는다 (0.027375ms)
+✔ 표식이 있으면 hub-om 저장 25초 뒤의 수정도 사람의 수정으로 반영한다 (2026-09-04 실측 재현) (0.059541ms)
+✔ 표식이 없는 옛 이벤트: hub-om이 방금 쓴 잔향(1초 차이)은 사람의 수정으로 보지 않는다 (0.053875ms)
+✔ 표식이 없는 옛 이벤트: 시차를 충분히 넘기면 사람의 수정으로 본다 (0.038333ms)
+✔ 종일 일정도 표식으로 판정한다 (0.0495ms)
+✔ 이벤트 본문마다 자기 구간의 날짜·시간 표식이 들어간다 (0.037042ms)
+(node:66125) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/googleCalendar/calendarReverseSync.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66126) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+[gcal] 구글 일시 오류(503) — 800ms 후 한 번 다시 읽습니다
+(node:66126) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+(node:66126) DeprecationWarning: mock.module(): options.namedExports is deprecated. Use options.exports instead.
+✔ 마지막 페이지까지 읽으면 이벤트를 모두 반환한다 (26.188459ms)
+✔ 10페이지가 마지막이면 정상 반환한다 (1.19175ms)
+✔ 10페이지 뒤에 결과가 남으면 부분 결과를 전체처럼 반환하지 않는다 (0.833959ms)
+✔ 소급 삭제는 미리보기 ETag를 전달하고 Google 충돌을 성공으로 처리하지 않는다 (0.616458ms)
+✔ 권한 상실로 인한 404는 소급 삭제 성공으로 처리하지 않는다 (0.225292ms)
+✔ 일시 오류로 볼 상태코드만 재시도 대상이다 (0.076625ms)
+(node:66126) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/googleCalendar/calendarWriteClient.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 읽기가 일시 오류를 한 번 만나면 다시 읽어 성공한다 (802.445917ms)
+[gcal] 구글 일시 오류(503) — 800ms 후 한 번 다시 읽습니다
+✔ 읽기가 두 번 다 일시 오류면 오류를 올린다(지속 고장은 알림으로 간다) (801.183666ms)
+✔ 권한·설정 오류(4xx)는 다시 읽지 않는다 (0.32725ms)
+✔ 쓰기는 일시 오류라도 다시 부르지 않는다(중복 생성 방지) (0.158416ms)
+(node:66127) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66127) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+(node:66127) DeprecationWarning: mock.module(): options.namedExports is deprecated. Use options.exports instead.
+✔ 정방향·출처 불명 이벤트는 삭제 미리보기에서 제외한다 (0.791167ms)
+✔ 서명 변조 또는 만료 토큰은 어떤 삭제도 시작하지 않는다 (1.117709ms)
+✔ 미리보기 이후 회차·매핑·Google 변경은 각각 삭제를 거절한다 (0.227125ms)
+✔ 부분 실패는 실제 삭제 수를 보고하고 성공한 매핑만 정리한다 (0.3575ms)
+✔ Google 삭제 후 DB 실패도 같은 미리보기로 매핑 정리를 재시도한다 (0.200375ms)
+✔ 회차 범위와 이벤트 상한을 넘으면 미리보기·적용을 거절한다 (0.292333ms)
+✔ 토큰 만료 후에도 이미 삭제된 Google 이벤트의 매핑 정리만 재시도할 수 있다 (0.225042ms)
+(node:66127) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/googleCalendar/cleanupBackfilledCalendarEvents.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66128) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 알림 문구에 과정·사유·담당·상세가 담긴다 (0.403625ms)
+✔ 담당 OM이 비면 '미배정'으로 표기한다 (0.071833ms)
+✔ HUB_OM_BASE_URL이 있으면 운영 상세를 링크로 넣는다 (0.082084ms)
+✔ roundNo에 이미 '회차'가 붙어 있으면 그대로 둔다 (0.062542ms)
+(node:66128) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/googleCalendar/notifyCalendarReflectSkip.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66129) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ parseTimeRange는 구분자가 달라도 시작·종료 시각을 읽는다 (0.77125ms)
+✔ parseTimeRange는 못 읽거나 뒤집힌 시간을 null로 돌려준다 (0.0975ms)
+✔ nextDay는 월말에도 하루를 더한다 (0.902917ms)
+✔ buildEventSummary는 노션 기입 규칙과 같은 표기를 만든다 (0.161125ms)
+✔ 1파트는 [강의관리] 기업명_과정명_N회차 표기를 쓴다 (0.097542ms)
+✔ 1파트가 아니면 제목 표기가 바뀌지 않는다 (0.295791ms)
+✔ buildCalendarEventBody가 파트를 제목까지 전달한다 (0.702542ms)
+✔ 시간 표기가 있으면 시각 지정 일정이 된다 (0.247625ms)
+✔ 시간 표기가 없으면 종일 일정이 되고 종료일은 배타적이다 (0.102667ms)
+✔ 게스트는 일정을 고칠 수 있지만 참석자를 늘릴 수는 없다 (D6) (0.1475ms)
+✔ 본문에 hub-om이 쓴 날짜·시간 표식(hubOmSchedule)이 함께 들어간다 (0.082833ms)
+✔ 설명 머리말이 실제 동작(수정 반영·삭제 무반영)을 안내한다 (0.084666ms)
+✔ 운영 상세 주소는 '링크' 글자에 심는다(HTML 앵커) (0.091917ms)
+✔ HUB_OM_BASE_URL이 없으면 운영 상세 줄 자체를 넣지 않는다 (0.055042ms)
+✔ resolvePartCalendarId는 파트 키로 캘린더를 찾는다 (1.6385ms)
+✔ extractPartKey는 두 표기에서 같은 키를 뽑는다 (0.054375ms)
+✔ 참석자가 늘면 달라진 것으로 본다 (0.066792ms)
+✔ 같은 사람이 담당·현장을 겸해도 목록이 그대로면 달라지지 않았다 (0.041ms)
+✔ 순서와 대소문자 차이는 무시한다 (0.596541ms)
+✔ 참석자가 빠지면 달라진 것으로 본다 (0.173708ms)
+✔ 이벤트를 못 읽었으면(null) 메일을 다시 보내지 않는다 (0.082291ms)
+(node:66129) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/googleCalendar/operationCalendarEvent.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66130) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+[gcal] fixture 반영 건너뜀: 이메일 미확인 참석자 테스트 담당자
+[gcal] fixture 삭제 반영 실패: Error: simulated failure
+    at deleteEvent (file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/googleCalendar/reflectOperationToCalendar.test.ts:24:86)
+    at reflectOperationDeleteUnlocked (file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/googleCalendar/reflectOperationToCalendar.ts:169:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async reflectOperationDelete (file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/googleCalendar/reflectOperationToCalendar.ts:178:9)
+    at async TestContext.<anonymous> (file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/googleCalendar/reflectOperationToCalendar.test.ts:46:3)
+    at async Test.run (node:internal/test_runner/test:1389:7)
+    at async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+(node:66130) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+(node:66130) DeprecationWarning: mock.module(): options.namedExports is deprecated. Use options.exports instead.
+✔ 장소와 담당자를 비우면 Google PATCH에도 빈 값을 전달한다 (2.889833ms)
+✔ 담당자 이메일 해석 실패는 기존 참석자 삭제로 이어지지 않는다 (0.171792ms)
+✔ 두 번째 일정 삭제가 실패해도 첫 번째 성공한 매핑은 정리된다 (0.36825ms)
+✔ 매핑 없는 신규 회차는 잠금 도입 후에도 생성된다 (0.101959ms)
+✔ 역반영 직후 원본 이벤트는 다시 덮어쓰지 않는다 (0.1055ms)
+✔ 생성 후 삭제된 회차를 오래된 객체로 다시 생성하지 않는다 (0.075083ms)
+(node:66130) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/googleCalendar/reflectOperationToCalendar.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66131) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 매핑된 구간의 제목·설명만 뽑는다 — 날짜·시간·참석자는 patch에 들어가지 않는다 (9.446417ms)
+✔ 파트 제목 규칙을 따른다(1파트는 [강의관리] 표기) (0.152542ms)
+✔ 운영현황에 없는 교육일 매핑은 null — 정방향 반영이 정리할 몫이다 (0.07875ms)
+(node:66131) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/googleCalendar/refreshCalendarEventTexts.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66132) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Content-Length 없이 보낸 2MB 초과 요청을 거절한다 (13.493625ms)
+✔ 작은 Content-Length를 보내도 실제 본문 크기로 거절한다 (0.570541ms)
+✔ 상한과 같은 UTF-8 바이트 수는 허용하고 한 바이트 초과는 거절한다 (0.702042ms)
+✔ 헤더가 상한을 넘으면 본문을 읽지 않는다 (0.255375ms)
+✔ 여러 청크의 합계가 상한을 넘으면 업로드를 취소한다 (4.162833ms)
+✔ UTF-8 문자가 청크 경계에서 잘려도 JSON을 복원한다 (0.865209ms)
+✔ 깨진 JSON은 파싱 오류로 반환한다 (0.197125ms)
+(node:66132) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/http/readLimitedJson.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66133) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 강사 페이지를 InstructorNote로 매핑한다 (1.71075ms)
+✔ 개인정보(연락처·이메일·생년월일)는 저장 대상에서 제거된다 (0.151375ms)
+✔ 강사명이 없으면 건너뛴다(null) (0.056875ms)
+✔ 소속정보가 여러 개면 콤마로 합쳐 담는다 (0.490541ms)
+✔ 섭외지양 여부가 비어 있으면 false다 (0.125ms)
+✔ 빈 값·미지정 속성은 프로필에서 빠진다 (0.075917ms)
+✔ 노션 NO(ID)를 읽어 연결 키로 담는다 (0.070458ms)
+✔ NO가 없으면 건너뛴다(null) (0.0435ms)
+(node:66133) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/instructors/notionInstructorMap.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66134) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ two concurrent missing-record CAS writers have exactly one winner (1.847ms)
+✔ CAS compares the complete persisted record and stale overwrite/delete preserve a newer record (1.36ms)
+✔ undefined revision preserves legacy unconditional write/remove behavior (0.226875ms)
+✔ request success followed by transaction abort never replaces the existing record (0.141042ms)
+(node:66134) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/privacy/accountDraftStore.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ a write resolves only after transaction completion, not request success (2.007667ms)
+✔ quota and unsupported strict durability reject without overwriting (0.330917ms)
+✔ current guard rejects stale identity before write and after the CAS read/mutation (0.198ms)
+✔ queued CAS snapshots input before opening the database (0.112208ms)
+✔ CAS removal also preserves the record on identity change, quota, or post-delete abort (0.140208ms)
+(node:66135) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66135) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/privacy/browserDraftCrypto.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ serialized vault and draft survive a fresh unlock without serializing the secret or raw key (59.475292ms)
+✔ created and unlocked data keys reject raw export (60.687125ms)
+✔ same input uses a fresh nonce and different ciphertext each time (1.333ms)
+✔ wrong secret, owner and wrapped-key tampering fail closed (199.916416ms)
+✔ authenticated vault salt, nonce and KDF iterations cannot be altered (147.850958ms)
+✔ other accounts, draft kinds and operation IDs cannot decrypt the draft (0.650666ms)
+✔ draft ciphertext, nonce, metadata and unexpected plaintext fields fail closed (0.48925ms)
+✔ invalid vault metadata and hostile iteration counts are rejected before KDF (0.560875ms)
+✔ envelope validation rejects malformed encoding and out-of-bounds ciphertext (0.154833ms)
+✔ undefined or cyclic drafts, invalid scope and extractable keys are rejected (0.418833ms)
+✔ independent vaults use random salts and data keys even with identical owner and secret (48.425ms)
+(node:66136) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ authenticated subject deterministically derives opaque owner and a dedicated 256-bit key (1.475333ms)
+✔ different accounts and HKDF key IDs have separate key domains (0.195917ms)
+✔ master rotation preserves owner and retained old keys, without coupling auth secret rotation (5.461042ms)
+✔ missing, malformed, oversized or unsupported key configuration fails without revealing material (3.661875ms)
+✔ master and owner keys cannot duplicate each other or any retained master (0.117792ms)
+✔ known authentication and PII key material cannot be reused, including base64url form (0.260167ms)
+✔ email, missing identity, non-Google identity and ambiguous subjects are refused (0.071125ms)
+(node:66136) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/privacy/browserDraftKeyring.server.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66137) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66137) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/privacy/browserDraftRuntime.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ ready tab saves offline; restart is locked and online same-account recovery succeeds (17.544208ms)
+✔ another owner cannot read A and key rotation preserves old encrypted draft reads (4.091083ms)
+✔ lock during pending key response cannot revive a key or expose another identity (0.513459ms)
+✔ quota/tampering preserve existing storage and pending operation gets invalidated by logout (1.897791ms)
+✔ per-scope queue preserves caller order and caller mutations cannot alter the saved snapshot (1.343333ms)
+✔ session transport failure/503 are unavailable, whereas real 401 and another subject revoke identity (0.799875ms)
+✔ actual server-derived keyring contract imports and decrypts across rotation (7.830792ms)
+(node:66138) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66138) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/privacy/browserDraftStore.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ native adapter waits for transaction commit and preserves previous ciphertext after abort/quota (53.597916ms)
+✔ vault collisions and migration add collisions never overwrite existing envelopes (1.002167ms)
+✔ public storage API rejects plaintext, extra properties, and unversioned envelopes before opening IDB (0.807875ms)
+✔ storage snapshots validated envelopes before asynchronous opening (0.369125ms)
+✔ legacy migration commits and decrypt-verifies before removal, with safe retry after interruption (136.27275ms)
+✔ unknown/mismatched legacy owner, invalid JSON and failed commit preserve the source (56.764792ms)
+✔ legacy migration refuses existing or concurrent destination collisions (101.65725ms)
+✔ source changes, invalid committed ciphertext and removal denial are incomplete and never delete the source (148.942833ms)
+✔ migration requires a readable committed owner vault and correct secret (148.239958ms)
+✔ immutable recovery and unchanged vault commit together with strict durability (1.086583ms)
+✔ strict durability unsupported or failed recovery commit forbids legacy source removal (97.4825ms)
+✔ concurrent mutable draft overwrite after verification snapshot cannot erase migrated recovery (48.448292ms)
+(node:66139) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ every persisted scalar has an explicit encryption classification (3.475083ms)
+✔ encrypted fields never enter activity value allow-lists (0.1005ms)
+(node:66139) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/privacy/coverage.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66140) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ randomized authenticated encryption, Unicode, empty values and purpose binding (1.314875ms)
+✔ missing/invalid keys and plaintext reads fail closed (0.074834ms)
+✔ key rotation reads old ciphertext and lookup hashes are independent and purpose-bound (0.2955ms)
+(node:66140) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/privacy/crypto.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66141) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+﹣ PII migration and application paths against a dedicated, disposable PostgreSQL database (0.266875ms) # SKIP
+(node:66141) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/privacy/database.integration.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66142) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ large tables narrow substring candidates by ordinary AND filters, with no plaintext query (16.659125ms)
+✔ OR, private NOT and multiple predicates preserve the plaintext result set (1.421084ms)
+✔ text predicates, insensitive mode and null have explicit semantics (0.642042ms)
+✔ exact lookup uses the blind index without scanning (0.16725ms)
+✔ scan boundaries reject excess rows before attempting decryption and never truncate (348.709958ms)
+✔ private sorting reads keys first, pages before payload, and preserves projection and stable ties (6.548417ms)
+✔ private sorting excludes omitted PK, retains null ordering, and rejects unsupported pagination (0.658125ms)
+✔ private sorting accepts 20,000 keys but rejects 20,001 before decrypting payload (323.906542ms)
+✔ undefined and empty private AND branches never narrow an OR candidate set (0.668792ms)
+✔ caller-owned transactions retain one payload read for private sorting (0.886458ms)
+(node:66142) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/privacy/database.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66144) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ local-file team-users migration is read-only by default, atomic, private and repeatable (429.526292ms)
+✔ local-file team-members migration is read-only by default, atomic, private and repeatable (371.887167ms)
+(node:66144) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/privacy/local-files.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66145) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66145) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+(node:66145) DeprecationWarning: mock.module(): options.namedExports is deprecated. Use options.exports instead.
+(node:66145) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/privacy/om-assignment.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 암호화된 일정·수동 담당자와 마스킹 감사기록에서도 미리보기→재배정→취소가 호환된다 (13.385166ms)
+✔ 암호화 어댑터에서 요청 저장 실패 시 회차 암호문도 원상태로 롤백한다 (1.252916ms)
+(node:66146) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ UTC로 자정을 넘긴 시각도 한국 날짜로는 다음날이면 다음날로 계산한다 (14.825333ms)
+✔ UTC로 아직 같은 날이면 한국 날짜도 같은 날이다 (0.141208ms)
+(node:66146) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/seoulDate.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66147) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 로그인 계정 이름이 레거시 1·2팀 명단과 우연히 겹쳐도 자동으로 스코프를 좁히지 않는다 (0.34125ms)
+✔ ?team= 파라미터가 명시되면 그 값을 그대로 쓴다 (0.061792ms)
+✔ 파라미터도 없고 매칭될 이름도 없으면 전체를 본다 (0.0475ms)
+(node:66147) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/teamScope.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66149) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 값이 살아 있으면 다시 읽지 않는다 (0.372459ms)
+✔ 진행 중인 읽기를 onPending으로 공개하면 그 사이 호출은 새로 읽지 않는다 (0.080666ms)
+✔ onPending을 안 주면 진행 중 읽기를 알 수 없어 요청마다 새로 읽는다(콜백이 필요한 이유) (0.053958ms)
+✔ 읽기가 실패하면 캐시가 오염되지 않고 다음 호출이 다시 읽는다 (0.149833ms)
+(node:66149) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/timedCache.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:66151) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 상한 안에 끝나면 결과를 그대로 준다 (0.527875ms)
+(node:66151) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-browser-drafts-integration/src/lib/waitAtMost.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-browser-drafts-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 상한을 넘기면 null을 주고 원래 읽기는 계속 돈다 (61.21625ms)
+✔ 상한 안에 실패하면 그 실패를 그대로 올린다 (0.344583ms)
+ℹ tests 684
+ℹ suites 0
+ℹ pass 680
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 4
+ℹ todo 0
+ℹ duration_ms 3120.156792

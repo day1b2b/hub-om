@@ -5,6 +5,7 @@ import { listTeamUsers } from "@/lib/data/teamUsers/teamUserRepository";
 import { UserManagement } from "./UserManagement";
 import { InstructorMemberPanel } from "./InstructorMemberPanel";
 import { PracticeCoachMemberPanel } from "./PracticeCoachMemberPanel";
+import { runUserAdminRequest } from "@/lib/data/userAdminComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
   await requireAdminSession();
   const params = await searchParams;
   const selectedTab = resolveTab(firstParam(params.tab));
-  const users = selectedTab === "ld-om" ? await listTeamUsers() : [];
+  const users = selectedTab === "ld-om" ? await runUserAdminRequest(() => listTeamUsers()) : [];
 
   return (
     <main className="dashboard-shell">

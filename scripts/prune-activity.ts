@@ -1,20 +1,17 @@
 import { config } from "dotenv";
-import { getPrismaClient } from "../src/lib/data/prisma";
-import { pruneActivityBatch } from "../src/lib/activity/retention";
+import { pathToFileURL } from "node:url";
+import { runActivityPruneCli } from "../src/lib/data/activityPruneCliRuntime";
 
-config({ path: ".env.local" });
-config({ path: ".env" });
-const prisma = getPrismaClient();
-let requests = 0;
-let changes = 0;
-try {
-  for (;;) {
-    const result = await prisma.$transaction(pruneActivityBatch, { timeout: 10000 });
-    requests += result.requests;
-    changes += result.changes;
-    if (result.requests < 1000 && result.changes < 1000) break;
-  }
-  console.log(JSON.stringify({ deletedRequests: requests, deletedChanges: changes }));
-} finally {
-  await prisma.$disconnect();
+async function main(): Promise<void> {
+  await runActivityPruneCli(process.argv.slice(2), process.env, () => {
+    config({ path: ".env.local" });
+    config({ path: ".env" });
+  }, (summary) => console.log(JSON.stringify(summary)));
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch(() => {
+    console.error("ACTIVITY_PRUNE_FAILED");
+    process.exitCode = 1;
+  });
 }

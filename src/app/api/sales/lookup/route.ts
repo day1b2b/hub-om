@@ -3,8 +3,10 @@ import { NextResponse } from "next/server";
 import { resolveCourseLookup } from "@/lib/data/courseLookup";
 import { normalizeCourseId } from "@/lib/data/operationCalculations";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
-import { hasSalesmapConfig, SalesmapSourceReader } from "@/lib/sourceReads/salesmapSourceReader";
+import { getSalesRevenueSource } from "@/lib/data/salesRevenueSyncRepositoryFactory";
 import { waitAtMost } from "@/lib/waitAtMost";
+import { runSalesLookupRequest } from "@/lib/data/salesLookupComposition";
+import { safeSalesRevenueIssue } from "@/lib/data/salesRevenueSourceIssues";
 
 /**
  * 코스ID → {고객사, 과정명} 읽기 전용 조회.
@@ -132,14 +134,15 @@ async function activityGET(request: Request) {
   }
 
   // 2) 운영현황에 없으면 세일즈맵으로 폴백.
-  if (!hasSalesmapConfig()) {
+  const salesSource = getSalesRevenueSource();
+  if (!salesSource.isConfigured()) {
     return NextResponse.json(
       { ok: false, configured: false, error: "세일즈맵이 설정되지 않았습니다." },
       { status: 200 }
     );
   }
 
-  const readPromise = new SalesmapSourceReader().readSalesRecords();
+  const readPromise = salesSource.readSalesRecords();
   // 시간이 지나 먼저 응답한 뒤에 읽기가 실패하면 처리되지 않은 rejection이 되므로 미리 받아둔다.
   void readPromise.catch(() => undefined);
 
@@ -156,7 +159,7 @@ async function activityGET(request: Request) {
 
   if (read.status === "failed") {
     return NextResponse.json(
-      { ok: false, error: read.issues[0]?.message ?? "세일즈맵 딜을 읽지 못했습니다." },
+      { ok: false, error: read.issues[0] ? safeSalesRevenueIssue(read.issues[0]) : "세일즈맵 딜을 읽지 못했습니다." },
       { status: 502 }
     );
   }
@@ -217,4 +220,4 @@ function deriveCompanyAndCourse(
   };
 }
 
-export const GET = withActivity("/api/sales/lookup", "GET", activityGET);
+export const GET = withActivity("/api/sales/lookup", "GET", activityGET, runSalesLookupRequest);

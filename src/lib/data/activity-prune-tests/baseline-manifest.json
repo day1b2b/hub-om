@@ -1,0 +1,90 @@
+{
+  "baseline": "b333931a2e7d281b697baf20a75bdf13b8e2b094",
+  "runtimeFiles": 10,
+  "files": [
+    {
+      "path": "scripts/prune-activity.ts",
+      "blob": "2d740105478e6ae154bdc2ef0377baae371b56a2",
+      "sha256": "a6376d6a821e26fb53cdd8821c74bb0813e2d353f7bf20a7461d7f2cd339958d",
+      "runtime": true
+    },
+    {
+      "path": "src/lib/activity/retention.ts",
+      "blob": "a0965926fc357530aa7f82f2e2ba8a5ee1758100",
+      "sha256": "7b0a1fd6c9863a7518fd83c3918158139c010ee95c0b441fe8ed1c8ece605fef",
+      "runtime": true
+    },
+    {
+      "path": "src/lib/data/prisma.ts",
+      "blob": "c21a9727eff09de0ec345ab7a91875a2fe5fffe1",
+      "sha256": "08ea73e75978f4443d3b718d9ba1e57165930ea00407ecab26ff7ab26e2fcfec",
+      "runtime": true
+    },
+    {
+      "path": "src/lib/data/dataRepositoryContext.ts",
+      "blob": "abfeb4a0941fd2342d42a4a7758de1c6b1915804",
+      "sha256": "dbc54aae425a46723083e3885f23da76babf389f7c80943dac740e01c274376f",
+      "runtime": true
+    },
+    {
+      "path": "src/lib/privacy/crypto.ts",
+      "blob": "5fdc65dc2da8c3b926b3609f4b20040f24dca2bd",
+      "sha256": "0be0cb082cc55f5ec88b2cc7af4900e67afcf94293a0224420a58bb35dc38d3e",
+      "runtime": true
+    },
+    {
+      "path": "src/lib/privacy/database.ts",
+      "blob": "62bb6c444e46aed14fbfa58c52b266692732bf35",
+      "sha256": "c92c776dabed04f180717c1bbdadf504ec25f6bc5c35a771f71671cac47d9fe3",
+      "runtime": true
+    },
+    {
+      "path": "src/lib/privacy/fields.ts",
+      "blob": "08302ff3804fb4a57c5080625d93b6e6ea18694e",
+      "sha256": "935ea53af7c100436600af67ab98fcab14e98f8d87f1f3baa2ced169fe50e52d",
+      "runtime": true
+    },
+    {
+      "path": "src/lib/privacy/fields.json",
+      "blob": "59c315cc51220cc6e97dfc37f58c2d4b52a6ec5b",
+      "sha256": "1fcf533af95362b496b0a30314a4944cab087fdd79f18d362c7815278bc0e15d",
+      "runtime": true
+    },
+    {
+      "path": "src/lib/activity/database.ts",
+      "blob": "290492c391b60a4dc3775a75ef0fc5ce810d0139",
+      "sha256": "56b05be1e92768355da9bf5c4c6c3f2edfc70328cfa42e8d55e2954754449f85",
+      "runtime": true
+    },
+    {
+      "path": "src/lib/activity/context.ts",
+      "blob": "2462183bf8f16f64be1b536de53c251f720f1443",
+      "sha256": "c1e3bc3f3fec2a816df8048346b5a2518e11e92c9e27b5abf637ddb8f0289ef4",
+      "runtime": true
+    },
+    {
+      "path": "package.json",
+      "blob": "04c8f87a9bfb1d15eb320be921acedebbce0661d",
+      "sha256": "18cbffad7b5337a20d34c459b3e15749cf2269c067ba386ecb3e63efe82724c2",
+      "runtime": false
+    },
+    {
+      "path": "package-lock.json",
+      "blob": "3f9c804309375ccd4b61ec0ed292da2a74b61413",
+      "sha256": "b13b6c8086b022c81bb20dd2e12c565005826848603de27cdf9b337641c615e6",
+      "runtime": false
+    },
+    {
+      "path": "prisma/schema.prisma",
+      "blob": "84a248c8a7b2b63923d23308e5b513698439845d",
+      "sha256": "849c4b29afb089cc22f1080241364f7d69d2f5f1f67dc9ef9be1c7ee23dd1e63",
+      "runtime": false
+    },
+    {
+      "path": "scripts/ts-loader.mjs",
+      "blob": "37315323e7bdfdc1917dc54cff43e6360ae2462d",
+      "sha256": "f7ac158521822709f3d4fb8d0eb3f63836a6e287ed080924fee88a3f53c3ec5c",
+      "runtime": false
+    }
+  ]
+}

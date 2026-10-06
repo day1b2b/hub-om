@@ -1,0 +1,32 @@
+작성자는 실행하지 않음. 원본gate parent통과 이후 별도 parity runner.
+소유 PG/Mongo로 다른 worker와 동시실행 금지. 관련 PG테이블 empty, migration parent선행.
+기존 gate/loader/manifest 및 frozen txt 변경없음.
+
+env -i PATH="$PATH" HOME="$HOME" LC_ALL=C NODE_ENV=test \
+ PG_SHEETS_TEST_DATABASE_URL='postgresql://synthetic@127.0.0.1:56751/sheets_import_test' \
+ PG_SHEETS_TEST_DATA_DIRECTORY='/private/tmp/hub-om-google-sheets-import-20260930/pg' \
+ MONGODB_SHEETS_TEST_URI='mongodb://127.0.0.1:27851/?replicaSet=sheetsimport20260930' \
+ SHEETS_IMPORT_PARITY=1 \
+ node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs --test \
+ .claude/plans/mongodb-google-sheets-import/original/parity-runner.fixture.ts
+
+정적검사/실행은 부모만. current/native 실행 전에 부모 typecheck 및 실제 gate결과 확인.
+7 closure controls(조회3roots byte/undeclared edge + actual loader drift),
+original/current PG별도process → explicit native actualhandler 순서.
+후속 worker는 전 단계 exit/cleanup 확인한 뒤 시작. timeout후 observedexit 대기/중단/소유잔존감사.
+
+normal whole HTTP/store semantic/summary/detail, nullable/fileName/sourceName fallback,
+199/201 actual 저장→preview200/201번째제외, 정상명단행/오류행,
+동일요청 중복/재요청중복/다른팀/historical notion원천 음성대조,
+원본 header 실패순서 및 year별 distinctsourceName 실제저장,
+backend 실제ID/starttime summary정렬/wholeDTO bijection,
+PG overlap 2read-beforecommit 및 firstcommit-beforesecondread.
+source/token/privacy/audit 실패/ACKretry 세부 V3V4V6V7은 다른 담당 검사와 별도.
+V2 helper 전체matrix는 부모 소유 googleSheetsImportSource.test.ts 담당.
+
+UUID/시각만 explicit bijection/관찰범위로 검증후 ledger기호로 치환.
+PG HMAC companion 확인후 내부검색필드제거, Mongo fullcodec 인증후 companion제거.
+업무semantic fields/wholeDTO는 literal exact. sentinel 3모델 whole raw state/count불변.
+실제source HTTP는 합성fetch 응답만, network0. 암호화키 worker내랜덤.
+PG선행 empty/소유endpoint/advisorylock확인; 종료시 worker생성데이터만 정리.
+Mongo 랜덤 ownedshadow DB만 drop. 기존gate와 미리실행한결과 합산금지.

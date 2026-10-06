@@ -1,7 +1,8 @@
 import { AnnouncementList } from "@/features/announcements/AnnouncementList";
 import { requireAdminSession } from "@/lib/auth/requireAdminSession";
-import { getPrismaClient } from "@/lib/data/prisma";
+import { getAnnouncementRepository } from "@/lib/data/announcements/announcementRepositoryFactory";
 import type { AnnouncementSummary } from "@/lib/data/announcements/announcementTypes";
+import { runAnnouncementRequest } from "@/lib/data/announcementComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -12,19 +13,7 @@ export default async function AnnouncementsPage() {
   let loadFailed = false;
 
   try {
-    const prisma = getPrismaClient();
-    const rows = await prisma.announcement.findMany({
-      where: { deletedAt: null },
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        title: true,
-        authorName: true,
-        authorEmail: true,
-        createdAt: true,
-        updatedAt: true
-      }
-    });
+    const rows = await runAnnouncementRequest(() => getAnnouncementRepository().list());
     announcements = rows.map((row) => ({
       id: row.id,
       title: row.title,

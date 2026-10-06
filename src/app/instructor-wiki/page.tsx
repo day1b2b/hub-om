@@ -11,12 +11,16 @@ import { requireAdminSession } from "@/lib/auth/requireAdminSession";
 import { getCoachRepository } from "@/lib/data/coachRepositoryFactory";
 import { listInstructorNotes, resolveNotionLinkTargets } from "@/lib/data/instructorWikiStore";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
+import { runCoachPublicRequest } from "@/lib/data/coachPublicComposition";
 
 export const dynamic = "force-dynamic";
 
 export default async function InstructorWikiPage() {
   await requireAdminSession();
+  return runCoachPublicRequest(renderInstructorWikiPage);
+}
 
+async function renderInstructorWikiPage() {
   let entries: InstructorWikiEntry[] = [];
   let loadFailed = false;
 

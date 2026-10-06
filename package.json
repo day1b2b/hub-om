@@ -44,7 +44,8 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "sanitize-html": "^2.17.7",
-    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
+    "mongodb": "7.2.0"
   },
   "devDependencies": {
     "@eslint/compat": "2.1.1",
@@ -60,5 +61,6 @@
   "overrides": {
     "hasown": "2.0.2",
     "postcss": "8.5.15"
-  }
+  },
+  "optionalDependencies": {}
 }

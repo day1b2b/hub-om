@@ -110,7 +110,8 @@ let cachedSalesRead: TimedCacheEntry<SourceReadResult<SalesRecord>> | null = nul
 export class SalesmapSourceReader implements OperationSourceReader {
   private readonly disabledReader = new DisabledOperationSourceReader();
 
-  constructor(private readonly config = readSalesmapConfig()) {}
+  private readonly config: SalesmapConfig;
+  constructor(config = readSalesmapConfig()) { this.config = config; }
 
   readCourseBoard(): Promise<SourceReadResult<CourseBoardRecord>> {
     return this.disabledReader.readCourseBoard();
