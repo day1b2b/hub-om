@@ -71,6 +71,8 @@
 
 ## 다음 MongoDB 이전의 재개 조건
 
+실행 순서와 완료 증거는 [MongoDB 전환 TODO](mongodb-cutover-todo.md)에 기록합니다.
+
 아래 항목이 모두 충족되기 전에는 MongoDB selector를 운영에서 사용하지 않습니다.
 
 - [ ] 기능군별 전환 목록과 순서 확정
