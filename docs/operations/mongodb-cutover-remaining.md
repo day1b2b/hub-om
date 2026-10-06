@@ -269,3 +269,17 @@ Drive 결과 snapshot의 회사명·과정명은 2026-09-30 암호화 정책·co
 같은 읽기 전용 snapshot export 진단에서 `ActivityRequest` 2행의 `actorEmailPiiIndex`와 `actorNamePiiIndex`가 현재 `PII_INDEX_KEY`로 재계산한 값과 모두 달라 `INDEX_MISMATCH`가 발생했다. 두 행은 약 1초 간격으로 연속 생성됐다. 원문 개인정보와 행 식별자는 노출하지 않았다. PostgreSQL을 수정하지 않고 원인을 분류했으며, 이 상태에서는 기존 exporter가 의도대로 실패한다. 최종 export 전에 Cfinal 백업을 먼저 확보하고, 두 파생 인덱스의 승인된 재계산 또는 원본 행을 메모리에서 정규화하는 별도 검증 경로를 확정해야 한다.
 
 현재 판정은 **Cfinal과 selector 전환 차단**이다. 이유는 (1) 삭제를 포함한 최종 전체 복사가 아직 없고, (2) 파생 HMAC 2행 불일치가 해소되지 않았고, (3) 전환 후 Mongo 신규 쓰기를 PostgreSQL 또는 새 Mongo 후보에 무손실로 보존하는 복구 경로가 아직 검증되지 않았기 때문이다. 이 세 조건을 통과하기 전에는 Mongo 일반 쓰기를 열지 않는다.
+
+## 2026-10-07 파생 인덱스 불일치 복구와 새 격리 적재
+
+운영 PostgreSQL 행을 수정하지 않고 파생 HMAC 불일치를 처리하는 명시적 내보내기 경로를 추가했다. 이 경로는 평문 원천의 읽기 전용 내보내기에서만 사용할 수 있으며, 기존 값이 현재 검색 키와 다른 파생 인덱스만 메모리에서 비운 뒤 기존 암호화 codec이 다시 계산하고 검증한다. 기본 내보내기와 암호화 원천 모드는 계속 실패 폐쇄로 동작한다.
+
+- 구현 커밋: `d89b7e6` (`fix: 최종 내보내기 파생 인덱스 안전 복구`)
+- 안전 오류 코드 보강: `044b706` (`fix: 격리 적재 안전 오류 코드 기록`)
+- 관련 codec·export 테스트 16개, typecheck, 변경 파일 lint 통과
+- 격리 앱에서 운영 PostgreSQL을 읽기 전용 snapshot으로 내보내기 성공
+- 35개 모델 56,653행 처리, 파생 인덱스 4개 재계산
+- 새 insert-only 격리 namespace에 56,653행 적재 후 개별 readback, 모델별 건수·digest, 전체 참조 관계 검증 성공
+- 같은 namespace에 35개 모델 runtime validator·index와 snapshot sequence 기준 준비 성공
+
+이 작업은 운영 앱, 운영 selector, 운영 환경변수, 운영 PostgreSQL 데이터와 운영 배포를 변경하지 않았다. 결과의 `cutoverAuthorized`, `liveChangesSynchronized`는 모두 `false`이고 `finalFrozenRunRequired`는 `true`다. 따라서 파생 HMAC 불일치는 해소됐지만, Cfinal A/B 백업과 각 격리 복원, 최종 쓰기 제한 뒤 새 전체 snapshot, sequence 재확인, 전환 후 신규 쓰기 보존·복귀 검증을 완료하기 전에는 Mongo 일반 쓰기를 열지 않는다.
