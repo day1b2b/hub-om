@@ -106,19 +106,17 @@ jobs:
           node-version: "24"
 
       - name: Collect changed files (PR only)
-        id: changed
         run: |
           if [ -n "${{ github.base_ref }}" ]; then
             git fetch origin "${{ github.base_ref }}" --depth=1 || true
-            CHANGED=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD" | tr '\n' ',' || true)
+            git diff --name-only "origin/${{ github.base_ref }}...HEAD" > "$RUNNER_TEMP/changed-files.txt" || true
           else
-            CHANGED=""
+            : > "$RUNNER_TEMP/changed-files.txt"
           fi
-          echo "files=$CHANGED" >> "$GITHUB_OUTPUT"
 
       - name: API 권한 커버리지 점검
         env:
-          CHANGED_FILES: ${{ steps.changed.outputs.files }}
+          CHANGED_FILES_FILE: ${{ runner.temp }}/changed-files.txt
         run: node scripts/security/check-api-auth.mjs
 
       - name: 로그 개인정보 노출 점검

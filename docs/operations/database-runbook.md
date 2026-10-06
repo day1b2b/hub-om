@@ -66,6 +66,20 @@ Claude Code는 사용자가 백업 확인 여부와 실행 범위를 명시하�
 - Coolify에서 `NODE_ENV=production`의 `Available at Buildtime`은 끕니다.
 - buildtime에 `NODE_ENV=production`이 들어가면 `npm ci`가 devDependencies를 생략해 TypeScript/빌드 도구가 빠질 수 있습니다.
 
+## DB backend 전환 규칙
+
+DB 종류나 repository/backend selector를 바꾸는 작업은 일반 배포와 분리합니다.
+
+- 관련 PR에는 데이터/기술 책임자가 확인한 `database-change-reviewed` 라벨이 필요합니다.
+- 운영 selector를 새 DB로 바꾸는 PR에는 `database-cutover-approved` 라벨도 필요합니다.
+- 읽기와 쓰기를 한 배포에서 함께 전환하지 않습니다.
+- 쓰기 selector는 한 배포에 하나만 전환합니다.
+- 운영과 같은 네트워크 경계에서 연결 및 핵심 업무 smoke test가 통과해야 합니다.
+- 오류율 증가, DB 연결 실패, composition 실패가 한 건이라도 새로 발생하면 다음 단계로 진행하지 않고 직전 이미지와 selector로 복구합니다.
+- 런타임 롤백 뒤에는 `dev`와 `main`도 같은 정상 트리로 즉시 영구 복구합니다.
+
+2026-10-06 MongoDB 전환 장애의 근거와 전체 재개 조건은 [장애 회고](2026-10-06-mongodb-cutover-incident.md)를 따릅니다.
+
 ## Drive 조회 이력 저장
 
 Drive import 후보 검색/조회는 표준 운영 데이터를 바로 수정하지 않고 별도 이력 테이블에 저장합니다.

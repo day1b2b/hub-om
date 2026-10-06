@@ -82,9 +82,20 @@ function matchesAny(source, signals) {
   return signals.some((re) => re.test(source));
 }
 
+const changedFileInput = (() => {
+  if (process.env.CHANGED_FILES_FILE) {
+    try {
+      return readFileSync(process.env.CHANGED_FILES_FILE, "utf8");
+    } catch {
+      return "";
+    }
+  }
+  return (process.env.CHANGED_FILES ?? "").replaceAll(",", "\n");
+})();
+
 const changed = new Set(
-  (process.env.CHANGED_FILES ?? "")
-    .split(",")
+  changedFileInput
+    .split("\n")
     .map((s) => s.trim())
     .filter(Boolean)
     .map(toPosix)
