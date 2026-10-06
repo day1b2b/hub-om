@@ -5,6 +5,8 @@
 // 초대해야 하는 이 기능은 B2B 전용 계정 OAuth(refresh token)를 쓴다.
 // 배경과 결정은 docs/plans/2026-08-19-operations-calendar-reflect.md (D3·D5) 참고.
 
+import { normalizeLegacyUtf8Mojibake } from "@/lib/textEncoding";
+
 const PART_KEYS = ["1파트", "2파트", "3파트"] as const;
 
 export interface CalendarWriteCredentials {
@@ -50,7 +52,7 @@ export function resolvePartCalendarId(part: string | null | undefined): string {
     const sep = entry.indexOf(":");
     if (sep === -1) continue;
 
-    const key = entry.slice(0, sep).trim();
+    const key = normalizeLegacyUtf8Mojibake(entry.slice(0, sep).trim());
     const calendarId = entry.slice(sep + 1).trim();
     if (key && calendarId && key === partKey) return calendarId;
   }
@@ -79,7 +81,7 @@ export function listPartCalendars(): { partKey: string; calendarId: string }[] {
     const sep = entry.indexOf(":");
     if (sep === -1) continue;
 
-    const partKey = entry.slice(0, sep).trim();
+    const partKey = normalizeLegacyUtf8Mojibake(entry.slice(0, sep).trim());
     const calendarId = entry.slice(sep + 1).trim();
     if (!partKey || !calendarId || seen.has(calendarId)) continue;
 
