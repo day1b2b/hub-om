@@ -26,6 +26,7 @@ function fakeClient() {
   const collection = (collectionName: string) => {
     const model = modelOf(collectionName);
     return {
+      collectionName,
       findOne: async (filter: MongoRow) => records.get(model)?.find(row => matches(row, filter)) ?? null,
       find: (filter: MongoRow) => {
         let rows = (records.get(model) ?? []).filter(row => matches(row, filter));
@@ -50,7 +51,16 @@ function fakeClient() {
       deleteMany: async (filter: MongoRow) => { records.set(model, (records.get(model) ?? []).filter(row => !matches(row, filter))); }
     };
   };
-  const client = { db: () => ({ command: async () => ({ setName: "synthetic", logicalSessionTimeoutMinutes: 30 }), collection }), startSession: () => ({
+  const client = { db: () => ({ command: async (command: MongoRow) => {
+    if (typeof command.find === "string") {
+      const model = modelOf(command.find), filter = (command.filter ?? {}) as MongoRow;
+      const rows = (records.get(model) ?? []).filter(row => matches(row, filter))
+        .sort((a, b) => a._id < b._id ? -1 : a._id > b._id ? 1 : 0)
+        .slice(0, Number(command.limit ?? 100));
+      return { cursor: { id: 0, firstBatch: rows } };
+    }
+    return { setName: "synthetic", logicalSessionTimeoutMinutes: 30 };
+  }, collection }), startSession: () => ({
     withTransaction: async (work: () => Promise<unknown>, options: unknown) => {
       attempts++;
       assert.deepEqual(options, { readConcern: { level: "snapshot" }, writeConcern: { w: "majority", j: true }, readPreference: "primary", timeoutMS: 30_000 });
