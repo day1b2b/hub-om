@@ -24,6 +24,10 @@ function isNextControlFlow(error: unknown) {
   const digest = error instanceof Error ? (error as Error & { digest?: unknown }).digest : undefined;
   return digest === "NEXT_HTTP_ERROR_FALLBACK;404" || (typeof digest === "string" && /^NEXT_REDIRECT;(?:replace|push);.*;(?:303|307|308);$/.test(digest));
 }
+function safeFailureCode(error: unknown): string {
+  const message = error instanceof Error ? error.message : "UNKNOWN";
+  return /^[A-Z0-9_:\- ]{1,160}$/.test(message) ? message : "REDACTED";
+}
 export async function runOperationPagesRequest<T>(work: () => Promise<T>, environment: MongoCompositionEnvironment = process.env, dependencies: OperationPagesCompositionDependencies = defaults): Promise<T> {
   const backend = environment.OPERATION_PAGES_BACKEND?.trim() || "postgres";
   if (backend === "postgres") return work();
@@ -36,6 +40,7 @@ export async function runOperationPagesRequest<T>(work: () => Promise<T>, enviro
     return await runtime.run(work);
   } catch (error) {
     if (isNextControlFlow(error)) throw error;
+    console.error("OPERATION_PAGES_COMPOSITION_FAILED", safeFailureCode(error));
     throw new Error("OPERATION_PAGES_COMPOSITION_FAILED");
   } finally { if (client) try { await client.close(); } catch {} }
 }

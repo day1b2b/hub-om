@@ -57,5 +57,10 @@ export async function openMongoOperationPagesRuntime(options: Options): Promise<
     return Object.freeze({ repositories, run<T>(work: () => T): T {
       return runWithDataRepositories(repositories, () => runWithLockedRepositoryScope(work));
     } });
-  } catch { throw new Error("MONGO_OPERATION_PAGES_RUNTIME_FAILED"); }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "UNKNOWN";
+    const code = /^[A-Z0-9_:\- ]{1,160}$/.test(message) ? message : "REDACTED";
+    console.error("MONGO_OPERATION_PAGES_RUNTIME_FAILED", code);
+    throw new Error("MONGO_OPERATION_PAGES_RUNTIME_FAILED");
+  }
 }
