@@ -69,6 +69,8 @@ health·백업·배포 entrypoint의 Prisma migration 실행 및 활성 CLI/예�
 
 C1 결과는 최종 전환 승인이 아니다. 마지막 쓰기 중지 뒤의 최종 export 또는 delta·삭제 동기화, sequence 재확인, Cfinal 시점의 A/B 암호화 백업과 각 격리 복원, production selector 변경·배포, 전환 후 검증과 새 Mongo 쓰기를 보존하는 복귀 절차가 남아 있다.
 
+2026-10-07에 전환 후 쓰기 보존을 위한 **전진 복구 경로**를 격리 환경에서 검증했다. frozen source namespace를 새 target namespace로 복제하면서 문서, validator, index, 내부 counter를 보존하고, 복제 전후 source digest와 target digest를 재대조한다. 합성 생성·수정·삭제 시나리오가 2 pass/0 fail로 통과했고, C1 전체 데이터 복구 리허설은 41개 collection, 56,656개 document, 5,514,075 byte에서 source 불변·target digest 일치로 통과했다. 이 결과는 운영 selector 변경이나 최종 전환 승인이 아니며, Cfinal 백업·복원과 최종 동기화 게이트는 그대로 남는다.
+
 
 1. DB·필수 첨부/파일·암호화 키·복구 설정의 범위와 서로 독립된 백업 위치 A/B, 접근·용량·키 안전 보관·검증 지표·중단/복귀 조건을 확정한다. 각 백업의 무결성과 격리 복원을 별도로 검증한다. 실제 운영 접근과 쓰기는 승인된 범위/백업 확인이 필요하다.
 2. PG legacy 평문/암호화·HMAC·필수 schema 상태를 확인하고, 전환 방식에 필요한 schema/codec 호환성을 확인한다. 원본 PG backfill/enforce는 자동 선행조건이 아니며, 필요한 경우 별도 승인된 적용·복구 순서를 따른다. 기존 shadow는 자동 삭제/수리하지 않고 새 namespace 복사 또는 명시 변환 절차를 따른다.
