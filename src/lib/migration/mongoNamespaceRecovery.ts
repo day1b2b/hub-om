@@ -31,7 +31,10 @@ function hashDocument(hash: ReturnType<typeof createHash>, suffix: string, docum
 
 async function capture(db: Db, namespace: string, session: ClientSession): Promise<{ collections: CapturedCollection[]; digest: string; documents: number; bytes: number }> {
   const prefix = `${namespace}_`;
-  const infos = (await db.listCollections({}, { nameOnly: false, session }).toArray())
+  // MongoDB forbids listCollections/listIndexes in multi-document transactions.
+  // Source writes are explicitly frozen; metadata is read outside the transaction,
+  // while documents use one snapshot and are rechecked after materialization.
+  const infos = (await db.listCollections({}, { nameOnly: false }).toArray())
     .filter(info => info.name.startsWith(prefix))
     .sort((left, right) => left.name.localeCompare(right.name));
   check(infos.length > 0 && infos.length <= MAX_COLLECTIONS, "SOURCE_COLLECTION_COVERAGE");
@@ -43,7 +46,7 @@ async function capture(db: Db, namespace: string, session: ClientSession): Promi
     const suffix = info.name.slice(prefix.length);
     check(suffix.length > 0 && !suffix.includes("\0"), "SOURCE_COLLECTION_NAME");
     const collection = db.collection(info.name, { promoteBuffers: false });
-    const indexes = await collection.listIndexes({ session }).toArray();
+    const indexes = await collection.listIndexes().toArray();
     const documents = await collection.find({}, { session, collation: { locale: "simple" } }).sort({ _id: 1 }).toArray();
     for (const document of documents) {
       documentCount++;
