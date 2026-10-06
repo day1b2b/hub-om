@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { shadowJobCommand } from "./shadowJobCommand";
 import { newShadowExportDirectory } from "./postgresShadowExport";
@@ -32,6 +33,13 @@ test("shadow job prepares only an explicit copied shadow namespace", () => {
   assert.equal(command.env.MONGODB_SHADOW_NAMESPACE, "shadow_rehearsal_01");
   assert.equal(command.env.DATABASE_URL, undefined);
   assert.equal(command.env.MONGODB_PRODUCTION_DATABASE, undefined);
+});
+test("shadow runtime preparation covers both production write runtime boundaries", () => {
+  const source = readFileSync(new URL("../../../scripts/prepare-mongodb-shadow-runtime.ts", import.meta.url), "utf8");
+  assert.match(source, /prepareMongoReadStore\(options, mongoModelNames\)/);
+  assert.match(source, /prepareMongoCalendarRuntimeStore\(\{ \.\.\.options, processSequenceHighWater \}\)/);
+  assert.match(source, /openMongoOperationWriteRuntime\(options\)/);
+  assert.match(source, /openMongoOmRequestWriteRuntime\(/);
 });
 test("shadow job rejects missing gates, migration startup, arbitrary scripts and path escapes", () => {
   for (const args of [[], ["server.js"], ["export", "plaintext"], ["export", "plaintext", "--allow-read-only-source-export", "extra"],
