@@ -8,48 +8,20 @@
  */
 
 import { config } from "dotenv";
-import pg from "pg";
-
-const { Client } = pg;
-
-config({ path: ".env.local" });
-config({ path: ".env" });
-
-const apply = process.argv.includes("--apply");
+import { runOnsiteRequiredBackfillCli } from "../src/lib/data/onsiteRequiredBackfillCliRuntime";
 
 async function main(): Promise<void> {
-  const targetUrl = process.env.DATABASE_URL;
-  if (!targetUrl) {
-    console.error("[backfill-onsite-required-y] DATABASE_URL이 없어 실행을 중단합니다.");
-    process.exit(1);
-  }
-
+  const apply = process.argv.includes("--apply");
   console.log(`[backfill-onsite-required-y] 모드: ${apply ? "apply (실제 쓰기)" : "dry-run (쓰기 없음)"}`);
-
-  const client = new Client({ connectionString: targetUrl });
-  await client.connect();
-
-  try {
-    const count = await client.query<{ count: string }>(
-      `SELECT count(*)::text AS count FROM operation_sessions WHERE deleted_at IS NULL AND onsite_required <> 'Y'`
-    );
-    const affected = count.rows[0]?.count ?? "0";
-
-    if (!apply) {
-      console.log(`[backfill-onsite-required-y] dry-run: onsite_required != 'Y' 대상 ${affected}건 -> 'Y'로 변경 예정`);
-      return;
-    }
-
-    const result = await client.query(
-      `UPDATE operation_sessions SET onsite_required = 'Y' WHERE deleted_at IS NULL AND onsite_required <> 'Y'`
-    );
-    console.log(`[backfill-onsite-required-y] apply: ${result.rowCount ?? 0}건 갱신 (대상 ${affected}건)`);
-  } finally {
-    await client.end();
-  }
+  const summary = await runOnsiteRequiredBackfillCli(process.argv.slice(2), process.env, () => {
+    config({ path: ".env.local" }); config({ path: ".env" });
+  });
+  console.log(summary.apply
+    ? `[backfill-onsite-required-y] apply: ${summary.updatedCount}건 갱신 (대상 ${summary.targetCount}건)`
+    : `[backfill-onsite-required-y] dry-run: onsite_required != 'Y' 대상 ${summary.targetCount}건 -> 'Y'로 변경 예정`);
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
+main().catch(() => {
+  console.error("[backfill-onsite-required-y] 실패. 인자·저장소 설정·DB 연결을 점검하세요.");
+  process.exitCode = 1;
 });

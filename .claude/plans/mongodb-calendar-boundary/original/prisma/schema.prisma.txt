@@ -1,0 +1,1068 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum OperationStatus {
+  ASSIGNMENT_NEEDED  @map("assignment_needed")
+  ASSIGNMENT_PLANNED @map("assignment_planned")
+  ACTIVE             @map("active")
+  DONE               @map("done")
+  RETROSPECTIVE_DONE @map("retrospective_done")
+  ARCHIVE_NEEDED     @map("archive_needed")
+
+  @@map("operation_status")
+}
+
+enum ArchiveStatus {
+  NOT_READY @map("not_ready")
+  NEEDED    @map("needed")
+  DONE      @map("done")
+
+  @@map("archive_status")
+}
+
+enum EducationFormat {
+  OFFLINE      @map("offline")
+  REMOTE       @map("remote")
+  BLENDED      @map("blended")
+  FLIPPED      @map("flipped")
+  NEEDS_REVIEW @map("needs_review")
+
+  @@map("education_format")
+}
+
+enum OperationChannel {
+  ONSITE          @map("onsite")
+  LIVE_ONLINE     @map("live_online")
+  ONLINE_PLATFORM @map("online_platform")
+  BLENDED         @map("blended")
+  NEEDS_REVIEW    @map("needs_review")
+
+  @@map("operation_channel")
+}
+
+enum OperationType {
+  LECTURE       @map("lecture")
+  SHORT         @map("short")
+  MEDIUM        @map("medium")
+  MID_TERM_LONG @map("mid_term_long")
+  MID_LONG      @map("mid_long")
+  LONG          @map("long")
+  ANNUAL        @map("annual")
+  ALWAYS_ON     @map("always_on")
+  NEEDS_REVIEW  @map("needs_review")
+
+  @@map("operation_type")
+}
+
+enum OnsiteRequired {
+  Y
+  N
+  PARTIAL
+  UNKNOWN
+
+  @@map("onsite_required")
+}
+
+enum ResultReportStatus {
+  YES           @map("yes")
+  NO            @map("no")
+  NOT_REQUIRED  @map("not_required")
+  NEEDS_REVIEW  @map("needs_review")
+
+  @@map("result_report_status")
+}
+
+enum SatisfactionSurveyStatus {
+  NOT_REQUIRED  @map("not_required")
+  NEEDS_REVIEW  @map("needs_review")
+
+  @@map("satisfaction_survey_status")
+}
+
+enum ImportStatus {
+  PENDING               @map("pending")
+  COMPLETED             @map("completed")
+  COMPLETED_WITH_ERRORS @map("completed_with_errors")
+  FAILED                @map("failed")
+
+  @@map("import_status")
+}
+
+enum SourceTeam {
+  TEAM_1  @map("team_1")
+  TEAM_2  @map("team_2")
+  UNKNOWN @map("unknown")
+
+  @@map("source_team")
+}
+
+enum MemberRole {
+  OM @map("om")
+  LD @map("ld")
+
+  @@map("member_role")
+}
+
+model Company {
+  id             String   @id @default(uuid()) @db.Uuid
+  name           String
+  normalizedName String   @unique @map("normalized_name")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  courses Course[]
+
+  @@map("companies")
+}
+
+model Course {
+  id            String        @id @default(uuid()) @db.Uuid
+  // hub-om이 직접 채번하는 "과정ID"(화면에는 PRC-000123처럼 노출, formatProcessId 참고).
+  // 코스ID(courseId)는 사내 다른 시스템이 나중에 채워 넣는 값이라 요청 시점엔 비어있을 수
+  // 있지만, processSeq는 과정(Course) 행이 생기는 즉시 DB가 채번하므로 항상 존재한다.
+  processSeq    Int           @unique @default(autoincrement()) @map("process_seq")
+  companyId     String        @map("company_id") @db.Uuid
+  courseId      String        @map("course_id")
+  name          String        @map("course_name")
+  operationType OperationType @default(NEEDS_REVIEW) @map("operation_type")
+  // om-request 접수 시 함께 받는 과정 카테고리 소분류/사용 Tool. 회차마다 다르지 않고
+  // 과정(Course) 공통 속성이라 courseId/courseName과 같은 레벨에 둔다.
+  courseCategory String?      @map("course_category")
+  tools          String?
+  revenue       Decimal?      @db.Decimal(14, 2)
+  revenueRaw    String?       @map("revenue_raw")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  company  Company           @relation(fields: [companyId], references: [id])
+  sessions OperationSession[]
+
+  @@unique([companyId, courseId, name])
+  @@index([courseId])
+  @@map("courses")
+}
+
+// 코스ID(백오피스 코스ID) 단위 라벨 = "코스ID명". 과정(Course.name = "과정명")과는
+// 독립적인 테이블이다 — 같은 코스ID 아래 커리큘럼이 다른 과정이 여러 개 있어도
+// 코스ID명은 courseId 하나당 한 행만 있고, "과정명"을 고쳐도 이 값은 바뀌지 않는다.
+// (과거엔 courseName 컬럼 하나를 공유해서, "코스ID명"을 고치면 그 코스ID를 쓰는
+// 서로 다른 과정들의 courseRecordId가 전부 같은 Course로 재배정되며 병합되는
+// 사고가 있었다 — 그 사고를 구조적으로 막기 위해 분리함.)
+model CourseIdLabel {
+  id        String   @id @default(uuid()) @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  courseId  String   @map("course_id")
+  label     String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([companyId, courseId])
+  @@map("course_id_labels")
+}
+
+model OperationSession {
+  id                    String             @id @default(uuid()) @db.Uuid
+  operationId           String             @unique @map("operation_id")
+  courseRecordId        String             @map("course_record_id") @db.Uuid
+  sourceFingerprint     String?            @unique @map("source_fingerprint")
+  validationErrors      Json?              @map("validation_errors")
+  operationStatus       OperationStatus    @default(ASSIGNMENT_NEEDED) @map("operation_status")
+  archiveStatus         ArchiveStatus      @default(NOT_READY) @map("archive_status")
+  educationFormat       EducationFormat    @default(NEEDS_REVIEW) @map("education_format")
+  educationFormatRaw    String?            @map("education_format_raw")
+  operationChannel      OperationChannel   @default(NEEDS_REVIEW) @map("operation_channel")
+  roundNo               String?            @map("round_no")
+  educationDays         String?            @map("education_days")
+  startDate             DateTime           @map("start_date") @db.Date
+  endDate               DateTime           @map("end_date") @db.Date
+  // 실제 교육이 있는 날짜만 담는다(예: 9/3, 9/4, 9/7 — 주말 제외). startDate/endDate는
+  // 이 값들의 최소/최대로 자동 계산해 유지하며, 기존 정렬·필터·기간 계산과의 호환을 위해 남겨둔다.
+  // 비어 있으면(과거 데이터) startDate~endDate 사이 모든 날짜가 교육일이라는 기존 가정을 그대로 따른다.
+  educationDates        DateTime[]         @map("education_dates") @db.Date
+  operationMonth        String?            @map("operation_month")
+  sessionDurationDays   Int?               @map("session_duration_days")
+  sessionDurationType   OperationType?     @map("session_duration_type")
+  timeText              String?            @map("time_text")
+  omName                String?            @map("om_name")
+  ldName                String?            @map("ld_name")
+  instructorsText       String?            @map("instructors_text")
+  coachText             String?            @map("coach_text")
+  region                String?
+  onsiteRequired        OnsiteRequired     @default(UNKNOWN) @map("onsite_required")
+  onsiteText            String?            @map("onsite_text")
+  onsiteOmName          String?            @map("onsite_om_name")
+  specialNotes          String?            @map("special_notes")
+  operationIssue        String?            @map("operation_issue")
+  omUpdate              String?            @map("om_update")
+  driveLink             String?            @map("drive_link")
+  operationDetail       String?            @map("operation_detail")
+  companyWikiLink       String?            @map("company_wiki_link")
+  instructorWikiLink    String?            @map("instructor_wiki_link")
+  costRaw               String?            @map("cost_raw")
+  profitRaw             String?            @map("profit_raw")
+  totalCost             Decimal?           @map("total_cost") @db.Decimal(14, 2)
+  instructorCost        Decimal?           @map("instructor_cost") @db.Decimal(14, 2)
+  operationCost         Decimal?           @map("operation_cost") @db.Decimal(14, 2)
+  avgSatisfaction       String?            @map("avg_satisfaction")
+  instructorSatisfaction String?           @map("instructor_satisfaction")
+  hasSatisfactionSurvey SatisfactionSurveyStatus @default(NEEDS_REVIEW) @map("has_satisfaction_survey")
+  hasResultReport       ResultReportStatus @default(NEEDS_REVIEW) @map("has_result_report")
+  resultReportLink      String?            @map("result_report_link")
+  lectureManagementLink String?            @map("lecture_management_link")
+  lectureManagementNote String?            @map("lecture_management_note")
+  padletLink            String?            @map("padlet_link")
+  createdBy             String?            @map("created_by")
+  updatedBy             String?            @map("updated_by")
+  omUserId              String?            @map("om_user_id")
+  ldUserId              String?            @map("ld_user_id")
+  deletedAt             DateTime?          @map("deleted_at")
+  deletedBy             String?            @map("deleted_by")
+  createdAt             DateTime           @default(now()) @map("created_at")
+  updatedAt             DateTime           @updatedAt @map("updated_at")
+
+  course        Course                  @relation(fields: [courseRecordId], references: [id])
+  sourceRecords OperationSourceRecord[]
+  driveImportResults DriveImportResult[]
+  coachEngagements   CoachEngagement[]
+
+  @@index([courseRecordId])
+  @@index([operationStatus])
+  @@index([archiveStatus])
+  @@index([startDate])
+  @@index([omUserId])
+  @@index([ldUserId])
+  @@map("operation_sessions")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  educationFormatRawPiiIndex String? @map("education_format_raw_pii_index")
+  omNamePiiIndex String? @map("om_name_pii_index")
+  ldNamePiiIndex String? @map("ld_name_pii_index")
+  instructorsTextPiiIndex String? @map("instructors_text_pii_index")
+  coachTextPiiIndex String? @map("coach_text_pii_index")
+  regionPiiIndex String? @map("region_pii_index")
+  onsiteTextPiiIndex String? @map("onsite_text_pii_index")
+  onsiteOmNamePiiIndex String? @map("onsite_om_name_pii_index")
+  specialNotesPiiIndex String? @map("special_notes_pii_index")
+  operationIssuePiiIndex String? @map("operation_issue_pii_index")
+  omUpdatePiiIndex String? @map("om_update_pii_index")
+  driveLinkPiiIndex String? @map("drive_link_pii_index")
+  operationDetailPiiIndex String? @map("operation_detail_pii_index")
+  companyWikiLinkPiiIndex String? @map("company_wiki_link_pii_index")
+  instructorWikiLinkPiiIndex String? @map("instructor_wiki_link_pii_index")
+  costRawPiiIndex String? @map("cost_raw_pii_index")
+  profitRawPiiIndex String? @map("profit_raw_pii_index")
+  avgSatisfactionPiiIndex String? @map("avg_satisfaction_pii_index")
+  instructorSatisfactionPiiIndex String? @map("instructor_satisfaction_pii_index")
+  resultReportLinkPiiIndex String? @map("result_report_link_pii_index")
+  lectureManagementLinkPiiIndex String? @map("lecture_management_link_pii_index")
+  lectureManagementNotePiiIndex String? @map("lecture_management_note_pii_index")
+  padletLinkPiiIndex String? @map("padlet_link_pii_index")
+  createdByPiiIndex String? @map("created_by_pii_index")
+  updatedByPiiIndex String? @map("updated_by_pii_index")
+  omUserIdPiiIndex String? @map("om_user_id_pii_index")
+  ldUserIdPiiIndex String? @map("ld_user_id_pii_index")
+  deletedByPiiIndex String? @map("deleted_by_pii_index")
+}
+
+model DriveImportRun {
+  id                           String       @id @default(uuid()) @db.Uuid
+  mode                         String       @default("dry_run")
+  status                       ImportStatus @default(PENDING)
+  operationCount               Int          @default(0) @map("operation_count")
+  scannedRefCount              Int          @default(0) @map("scanned_ref_count")
+  scanFoundFolderCount         Int          @default(0) @map("scan_found_folder_count")
+  scanIssueCount               Int          @default(0) @map("scan_issue_count")
+  folderSearchCount            Int          @default(0) @map("folder_search_count")
+  folderSearchWithCandidatesCount Int       @default(0) @map("folder_search_with_candidates_count")
+  avgSatisfactionCandidateCount Int         @default(0) @map("avg_satisfaction_candidate_count")
+  instructorSatisfactionCandidateCount Int  @default(0) @map("instructor_satisfaction_candidate_count")
+  instructorCandidateCount     Int          @default(0) @map("instructor_candidate_count")
+  suspiciousCandidateCount     Int          @default(0) @map("suspicious_candidate_count")
+  errorCount                   Int          @default(0) @map("error_count")
+  summary                      Json?
+  notes                        String?
+  startedAt                    DateTime     @default(now()) @map("started_at")
+  finishedAt                   DateTime?    @map("finished_at")
+
+  results DriveImportResult[]
+
+  @@index([startedAt])
+  @@index([status])
+  @@map("drive_import_runs")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  notesPiiIndex String? @map("notes_pii_index")
+}
+
+model DriveImportResult {
+  id                 String   @id @default(uuid()) @db.Uuid
+  runId              String   @map("run_id") @db.Uuid
+  operationSessionId String?  @map("operation_session_id") @db.Uuid
+  operationId        String   @map("operation_id")
+  companyName        String   @map("company_name")
+  courseName         String   @map("course_name")
+  startDate          DateTime? @map("start_date") @db.Date
+  endDate            DateTime? @map("end_date") @db.Date
+  inputKind          String   @map("input_kind")
+  inputValue         String?  @map("input_value")
+  resultKind         String   @map("result_kind")
+  folderId           String?  @map("folder_id")
+  folderTitle        String?  @map("folder_title")
+  folderUrl          String?  @map("folder_url")
+  fileCount          Int      @default(0) @map("file_count")
+  candidateCount     Int      @default(0) @map("candidate_count")
+  keyCandidates      Json?    @map("key_candidates")
+  folderCandidates   Json?    @map("folder_candidates")
+  issues             Json?
+  error              String?
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  run DriveImportRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  operationSession OperationSession? @relation(fields: [operationSessionId], references: [id])
+
+  @@index([runId])
+  @@index([operationSessionId])
+  @@index([operationId])
+  @@index([resultKind])
+  @@map("drive_import_results")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  inputValuePiiIndex String? @map("input_value_pii_index")
+  folderIdPiiIndex String? @map("folder_id_pii_index")
+  folderTitlePiiIndex String? @map("folder_title_pii_index")
+  folderUrlPiiIndex String? @map("folder_url_pii_index")
+  errorPiiIndex String? @map("error_pii_index")
+}
+
+model Member {
+  id             String     @id @default(uuid()) @db.Uuid
+  role           MemberRole?
+  sourceTeam     SourceTeam? @map("source_team")
+  name           String
+  normalizedName String     @map("normalized_name")
+  roleTitle      String?    @map("role_title")
+  calendarId     String?    @map("calendar_id")
+  isActive       Boolean    @default(true) @map("is_active")
+  displayOrder   Int?       @map("display_order")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+
+  @@unique([role, sourceTeam, normalizedName])
+  @@index([sourceTeam, isActive])
+  @@index([role, sourceTeam, isActive])
+  @@map("members")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  namePiiIndex String? @map("name_pii_index")
+  normalizedNamePiiIndex String? @map("normalized_name_pii_index")
+  roleTitlePiiIndex String? @map("role_title_pii_index")
+  calendarIdPiiIndex String? @map("calendar_id_pii_index")
+  @@unique([role, sourceTeam, normalizedNamePiiIndex])
+}
+
+model DataImportRun {
+  id             String       @id @default(uuid()) @db.Uuid
+  sourceTeam     SourceTeam   @default(UNKNOWN) @map("source_team")
+  sourceType     String       @map("source_type")
+  sourceName     String       @map("source_name")
+  workbookName   String?      @map("workbook_name")
+  fileName       String?      @map("file_name")
+  status         ImportStatus @default(PENDING)
+  rowCount       Int          @default(0) @map("row_count")
+  successCount   Int          @default(0) @map("success_count")
+  errorCount     Int          @default(0) @map("error_count")
+  importedBy     String?      @map("imported_by")
+  startedAt      DateTime     @default(now()) @map("started_at")
+  finishedAt     DateTime?    @map("finished_at")
+  notes          String?
+  validationLogs Json?        @map("validation_logs")
+
+  sourceRecords OperationSourceRecord[]
+
+  @@index([sourceTeam])
+  @@index([sourceType])
+  @@index([startedAt])
+  @@map("data_import_runs")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  sourceNamePiiIndex String? @map("source_name_pii_index")
+  workbookNamePiiIndex String? @map("workbook_name_pii_index")
+  fileNamePiiIndex String? @map("file_name_pii_index")
+  importedByPiiIndex String? @map("imported_by_pii_index")
+  notesPiiIndex String? @map("notes_pii_index")
+}
+
+model OperationSourceRecord {
+  id                 String            @id @default(uuid()) @db.Uuid
+  importRunId        String            @map("import_run_id") @db.Uuid
+  operationSessionId String?           @map("operation_session_id") @db.Uuid
+  sourceTeam         SourceTeam        @default(UNKNOWN) @map("source_team")
+  sourceWorkbook     String            @map("source_workbook")
+  sourceSheet        String            @map("source_sheet")
+  sourceRowNumber    Int               @map("source_row_number")
+  headerRowNumber    Int?              @map("header_row_number")
+  sourceFingerprint  String?           @map("source_fingerprint")
+  rowSnapshot        Json              @map("row_snapshot")
+  mappedFields       Json?             @map("mapped_fields")
+  unmappedFields     Json?             @map("unmapped_fields")
+  validationErrors   Json?             @map("validation_errors")
+  createdAt          DateTime          @default(now()) @map("created_at")
+
+  importRun        DataImportRun      @relation(fields: [importRunId], references: [id])
+  operationSession OperationSession?  @relation(fields: [operationSessionId], references: [id])
+
+  @@unique([importRunId, sourceSheet, sourceRowNumber])
+  @@index([operationSessionId])
+  @@index([sourceTeam])
+  @@index([sourceSheet])
+  @@index([sourceFingerprint])
+  @@map("operation_source_records")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  sourceWorkbookPiiIndex String? @map("source_workbook_pii_index")
+  sourceSheetPiiIndex String? @map("source_sheet_pii_index")
+  @@unique([importRunId, sourceSheetPiiIndex, sourceRowNumber])
+}
+
+enum CoachStatus {
+  PENDING  @map("pending")
+  ACTIVE   @map("active")
+  INACTIVE @map("inactive")
+
+  @@map("coach_status")
+}
+
+enum CoachEngagementStatus {
+  SCHEDULED   @map("scheduled")
+  IN_PROGRESS @map("in_progress")
+  COMPLETED   @map("completed")
+  CANCELLED   @map("cancelled")
+
+  @@map("coach_engagement_status")
+}
+
+enum CoachEngagementSource {
+  SHEET  @map("sheet")
+  MANUAL @map("manual")
+
+  @@map("coach_engagement_source")
+}
+
+model Coach {
+  @@index([normalizedNamePiiIndex])
+  id             String      @id @default(uuid()) @db.Uuid
+  sourceCoachId  String      @unique @map("source_coach_id")
+  accessToken    String?     @unique @map("access_token")
+  name           String      // 운영상 식별자 (무분별 노출 금지)
+  normalizedName String      @map("normalized_name")
+  workType       String?     @map("work_type")
+  status         CoachStatus @default(ACTIVE) // coach-db 활동 상태
+  statusNote     String?     @map("status_note")
+  returnDate     DateTime?   @map("return_date") @db.Date
+  selfNote       String?     @map("self_note")
+  portfolioUrl   String?     @map("portfolio_url")
+  availabilityDetail String? @map("availability_detail")
+  managerNote    String?     @map("manager_note")
+  dxTag          String?     @map("dx_tag")
+  // 사번. 연결 키는 아니고 값으로만 담는다. 계약시트(조교실습코치_일반계약요청)도 같은 사번을 쓰므로
+  // 나중에 원천을 이어 붙일 때 필요하다. 발급 전인 코치는 null이다.
+  employeeNo     String?     @unique @map("employee_no")
+  // 노션 코치 DB의 ID(auto increment). 노션↔사이트 연결 키다.
+  // 이름은 노션에서 바뀔 수 있고 동명이인도 있어 키로 쓸 수 없다.
+  // 노션에 없는 코치(계약시트로만 들어온 행)는 null이며, 그 경우에만 이름으로 식별한다.
+  notionNo       Int?        @unique @map("notion_no")
+  notionPageId   String?     @map("notion_page_id") // 노션 코치 DB의 해당 코치 페이지 ID (바로가기 링크용)
+  isActive       Boolean     @default(true) @map("is_active") // hub-om 운영 노출 여부 (status와 의미 분리)
+  displayOrder   Int?        @map("display_order")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+  deletedAt      DateTime?   @map("deleted_at")
+  deletedBy      String?     @map("deleted_by")
+
+  privateProfile      CoachPrivateProfile?
+  fields              CoachField[]
+  curriculums         CoachCurriculum[]
+  schedules           CoachSchedule[]
+  engagements         CoachEngagement[]
+  engagementSchedules CoachEngagementSchedule[]
+  privateAccessLogs   CoachPrivateAccessLog[]
+  scheduleAccessLogs  CoachScheduleAccessLog[]
+  dayReservations     CoachDayReservation[]
+  contentEntries      CoachContentEntry[]
+
+  @@index([normalizedName])
+  @@index([status, isActive])
+  @@map("coaches")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  sourceCoachIdPiiIndex String? @unique @map("source_coach_id_pii_index")
+  accessTokenPiiIndex String? @unique @map("access_token_pii_index")
+  namePiiIndex String? @map("name_pii_index")
+  normalizedNamePiiIndex String? @map("normalized_name_pii_index")
+  workTypePiiIndex String? @map("work_type_pii_index")
+  statusNotePiiIndex String? @map("status_note_pii_index")
+  returnDateEncrypted String? @map("return_date_encrypted")
+  selfNotePiiIndex String? @map("self_note_pii_index")
+  portfolioUrlPiiIndex String? @map("portfolio_url_pii_index")
+  availabilityDetailPiiIndex String? @map("availability_detail_pii_index")
+  managerNotePiiIndex String? @map("manager_note_pii_index")
+  dxTagPiiIndex String? @map("dx_tag_pii_index")
+  employeeNoPiiIndex String? @unique @map("employee_no_pii_index")
+  notionPageIdPiiIndex String? @map("notion_page_id_pii_index")
+  deletedByPiiIndex String? @map("deleted_by_pii_index")
+}
+
+enum CoachContentEntryKind {
+  NOTE
+  EDIT_HISTORY
+}
+
+model CoachContentEntry {
+  id          String                 @id @default(uuid()) @db.Uuid
+  coachId     String                 @map("coach_id") @db.Uuid
+  kind        CoachContentEntryKind
+  content     String
+  authorEmail String?                @map("author_email")
+  authorName  String?                @map("author_name")
+  sourceField String?                @map("source_field") // 수정이력용: 변경된 필드 식별자 (예: coaches.managerNote)
+  flaggedAt   DateTime?              @map("flagged_at") // 메모 "경고" 표시
+  createdAt   DateTime               @default(now()) @map("created_at")
+  updatedAt   DateTime               @updatedAt @map("updated_at")
+  deletedAt   DateTime?              @map("deleted_at")
+
+  coach Coach @relation(fields: [coachId], references: [id], onDelete: Cascade)
+
+  @@index([coachId])
+  @@index([kind])
+  @@map("coach_content_entries")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  contentPiiIndex String? @map("content_pii_index")
+  authorEmailPiiIndex String? @map("author_email_pii_index")
+  authorNamePiiIndex String? @map("author_name_pii_index")
+}
+
+model CoachPrivateAccessLog {
+  id              String   @id @default(uuid()) @db.Uuid
+  coachId         String   @map("coach_id") @db.Uuid
+  accessedByEmail String   @map("accessed_by_email")
+  accessedAt      DateTime @default(now()) @map("accessed_at")
+  context         String?  // 예: "coach_detail", "engagement_feedback"
+  coach           Coach    @relation(fields: [coachId], references: [id], onDelete: Cascade)
+
+  @@index([coachId, accessedAt])
+  @@index([accessedByEmail, accessedAt])
+  @@map("coach_private_access_logs")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  accessedByEmailPiiIndex String? @map("accessed_by_email_pii_index")
+}
+
+model CoachPrivateProfile {
+  coachId     String    @id @map("coach_id") @db.Uuid
+  employeeId  String?   @map("employee_id")
+  phone       String?
+  email       String?
+  birthDate   DateTime? @map("birth_date") @db.Date
+  affiliation String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  coach Coach @relation(fields: [coachId], references: [id], onDelete: Cascade)
+
+  @@map("coach_private_profiles")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  employeeIdPiiIndex String? @map("employee_id_pii_index")
+  phonePiiIndex String? @map("phone_pii_index")
+  emailPiiIndex String? @map("email_pii_index")
+  birthDateEncrypted String? @map("birth_date_encrypted")
+  affiliationPiiIndex String? @map("affiliation_pii_index")
+}
+
+model CoachFieldMaster {
+  id      String       @id @default(uuid()) @db.Uuid
+  name    String       @unique
+  coaches CoachField[]
+
+  @@map("coach_field_masters")
+}
+
+model CoachCurriculumMaster {
+  id      String            @id @default(uuid()) @db.Uuid
+  name    String            @unique
+  coaches CoachCurriculum[]
+
+  @@map("coach_curriculum_masters")
+}
+
+model CoachField {
+  coachId String @map("coach_id") @db.Uuid
+  tagId   String @map("tag_id") @db.Uuid
+  coach   Coach            @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  tag     CoachFieldMaster @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([coachId, tagId])
+  @@map("coach_fields")
+}
+
+model CoachCurriculum {
+  coachId String @map("coach_id") @db.Uuid
+  tagId   String @map("tag_id") @db.Uuid
+  coach   Coach                 @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  tag     CoachCurriculumMaster @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([coachId, tagId])
+  @@map("coach_curriculums")
+}
+
+model CoachSchedule {
+  id               String   @id @default(uuid()) @db.Uuid
+  sourceScheduleId String   @unique @map("source_schedule_id")
+  coachId          String   @map("coach_id") @db.Uuid
+  date             DateTime @db.Date
+  startTime        String   @map("start_time")
+  endTime          String   @map("end_time")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  coach Coach @relation(fields: [coachId], references: [id], onDelete: Cascade)
+
+  @@index([coachId, date])
+  @@map("coach_schedules")
+}
+
+// 코치 일정 화면에서 매니저들이 같은 코치·날짜에 중복으로 연락하지 않도록
+// 남기는 가벼운 예약(선점) 표시. 실제 투입 확정 기록은 CoachEngagement가 담당한다.
+model CoachDayReservation {
+  id              String    @id @default(uuid()) @db.Uuid
+  coachId         String    @map("coach_id") @db.Uuid
+  date            DateTime  @db.Date
+  reservedByEmail String    @map("reserved_by_email")
+  reservedByName  String    @map("reserved_by_name")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  cancelledAt     DateTime? @map("cancelled_at")
+
+  // 예약이 실제 투입 확정으로 이어져 자동 취소된 경우, 그 확정 건을 가리킨다.
+  // (마이페이지의 "확정된 과정" 목록에 과정명·기간·코치를 보여주는 데 사용)
+  confirmedEngagementId String? @map("confirmed_engagement_id") @db.Uuid
+
+  coach               Coach            @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  confirmedEngagement CoachEngagement? @relation(fields: [confirmedEngagementId], references: [id], onDelete: SetNull)
+
+  @@index([coachId, date])
+  @@index([confirmedEngagementId])
+  @@map("coach_day_reservations")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  reservedByEmailPiiIndex String? @map("reserved_by_email_pii_index")
+  reservedByNamePiiIndex String? @map("reserved_by_name_pii_index")
+}
+
+model CoachScheduleAccessLog {
+  id                String    @id @default(uuid()) @db.Uuid
+  sourceAccessLogId String?   @unique @map("source_access_log_id")
+  coachId           String    @map("coach_id") @db.Uuid
+  yearMonth         String    @map("year_month")
+  accessedAt        DateTime  @default(now()) @map("accessed_at")
+  lastEditedAt      DateTime? @map("last_edited_at")
+
+  coach Coach @relation(fields: [coachId], references: [id], onDelete: Cascade)
+
+  @@unique([coachId, yearMonth])
+  @@index([yearMonth])
+  @@map("coach_schedule_access_logs")
+}
+
+model CoachEngagement {
+  id                 String                @id @default(uuid()) @db.Uuid
+  sourceEngagementId String                @unique @map("source_engagement_id")
+  coachId            String                @map("coach_id") @db.Uuid
+  operationSessionId String?               @map("operation_session_id") @db.Uuid
+  courseName         String                @map("course_name")
+  status             CoachEngagementStatus @default(SCHEDULED)
+  source             CoachEngagementSource @default(MANUAL)
+  startDate          DateTime              @map("start_date") @db.Date
+  endDate            DateTime              @map("end_date") @db.Date
+  startTime          String?               @map("start_time")
+  endTime            String?               @map("end_time")
+  rating             Int?                  @db.SmallInt
+  rehire             Boolean?
+  feedback           String?               // private 성격 강함 → admin 전용
+  reviewFlaggedAt    DateTime?             @map("review_flagged_at") // 콘텐츠 관리 탭의 리뷰 "경고" 표시
+  hiredById          String?               @map("hired_by_id")
+  hiredByText        String?               @map("hired_by_text") // private 취급
+  createdAt          DateTime              @default(now()) @map("created_at")
+
+  coach              Coach                 @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  operationSession   OperationSession?     @relation(fields: [operationSessionId], references: [id])
+  schedules          CoachEngagementSchedule[]
+  confirmedFromReservations CoachDayReservation[]
+
+  @@index([coachId])
+  @@index([operationSessionId])
+  @@map("coach_engagements")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  sourceEngagementIdPiiIndex String? @unique @map("source_engagement_id_pii_index")
+  feedbackPiiIndex String? @map("feedback_pii_index")
+  hiredByIdPiiIndex String? @map("hired_by_id_pii_index")
+  hiredByTextPiiIndex String? @map("hired_by_text_pii_index")
+}
+
+model CoachEngagementSchedule {
+  id                         String    @id @default(uuid()) @db.Uuid
+  sourceEngagementScheduleId String    @unique @map("source_engagement_schedule_id")
+  engagementId               String    @map("engagement_id") @db.Uuid
+  coachId                    String    @map("coach_id") @db.Uuid
+  date                       DateTime  @db.Date
+  startTime                  String    @map("start_time")
+  endTime                    String    @map("end_time")
+  cancelledAt                DateTime? @map("cancelled_at")
+
+  engagement CoachEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+  coach      Coach           @relation(fields: [coachId], references: [id], onDelete: Cascade)
+
+  @@index([coachId, date])
+  @@index([date])
+  @@map("coach_engagement_schedules")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  sourceEngagementScheduleIdPiiIndex String? @unique @map("source_engagement_schedule_id_pii_index")
+}
+
+model CoachImportRun {
+  id                    String       @id @default(uuid()) @db.Uuid
+  mode                  String       @default("dry_run")
+  status                ImportStatus @default(PENDING)
+  coachCount            Int          @default(0) @map("coach_count")
+  engagementCount       Int          @default(0) @map("engagement_count")
+  scheduleCount         Int          @default(0) @map("schedule_count")
+  matchedOperationCount Int          @default(0) @map("matched_operation_count")
+  errorCount            Int          @default(0) @map("error_count")
+  summary               Json?
+  notes                 String?
+  startedAt             DateTime     @default(now()) @map("started_at")
+  finishedAt            DateTime?    @map("finished_at")
+
+  @@index([startedAt])
+  @@map("coach_import_runs")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  notesPiiIndex String? @map("notes_pii_index")
+}
+
+model CoachSyncLog {
+  id          String    @id @default(uuid()) @db.Uuid
+  type        String
+  status      String
+  totalRows   Int       @default(0) @map("total_rows")
+  created     Int       @default(0)
+  updated     Int       @default(0)
+  skipped     Int       @default(0)
+  errors      Int       @default(0)
+  errorDetail String?   @map("error_detail")
+  triggeredBy String    @map("triggered_by")
+  startedAt   DateTime  @default(now()) @map("started_at")
+  finishedAt  DateTime? @map("finished_at")
+
+  @@index([type, startedAt])
+  @@map("coach_sync_logs")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  errorDetailPiiIndex String? @map("error_detail_pii_index")
+  triggeredByPiiIndex String? @map("triggered_by_pii_index")
+}
+
+model SalesRevenueSyncLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  status      String
+  applied     Boolean  @default(false)
+  readCount   Int      @default(0) @map("read_count")
+  matched     Int      @default(0)
+  filled      Int      @default(0)
+  changed     Int      @default(0)
+  unchanged   Int      @default(0)
+  updatedRows Int      @default(0) @map("updated_rows")
+  unmatched   Int      @default(0)
+  ambiguous   Int      @default(0)
+  triggeredBy String   @map("triggered_by")
+  detail      Json?
+  startedAt   DateTime @default(now()) @map("started_at")
+
+  @@index([startedAt])
+  @@map("sales_revenue_sync_logs")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  triggeredByPiiIndex String? @map("triggered_by_pii_index")
+}
+
+model TeamUser {
+  id        String      @id @default(uuid()) @db.Uuid
+  name      String
+  email     String
+  slackId   String      @map("slack_id")
+  team      String?
+  role      MemberRole?
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  @@map("team_users")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  namePiiIndex String? @map("name_pii_index")
+  emailPiiIndex String? @map("email_pii_index")
+  slackIdPiiIndex String? @map("slack_id_pii_index")
+}
+
+// OM 업무 요청. 과거 로컬 JSON 파일(om-requests.json) 저장에서 Postgres로 이관.
+// 문자열 상태/구분값(배정필요 등)과 세션 배열은 앱 표준 타입 그대로 저장한다.
+model OmRequest {
+  id                  String   @id @default(uuid()) @db.Uuid
+  status              String
+  assignedOm          String?  @map("assigned_om")
+  ldEmail             String?  @map("ld_email")
+  slackChannel        String?  @map("slack_channel")
+  slackThreadTs       String?  @map("slack_thread_ts")
+  // 접수 시점에 courseId 없이 자동 생성한 운영현황 회차(첫 차수)의 operationId.
+  // FK는 걸지 않는다 — 앱 전체가 courseId/operationId를 느슨한 join key로 다루는 방식과 동일.
+  operationId         String?  @map("operation_id")
+  team                String
+  ld                  String
+  company             String
+  businessNumber      String?  @map("business_number")
+  trainingType        String   @map("training_type")
+  courseId            String   @map("course_id")
+  courseName          String   @map("course_name")
+  courseCategoryMajor String?  @map("course_category_major")
+  courseCategory      String   @map("course_category")
+  tools               String?
+  instructorName      String   @map("instructor_name")
+  syncupLink          String   @map("syncup_link")
+  driveLink           String   @map("drive_link")
+  skillfloSetup       String   @map("skillflo_setup")
+  skillmatchSetup     String   @map("skillmatch_setup")
+  onSiteOperation     String   @map("onsite_operation")
+  coachRequest        String   @map("coach_request")
+  resultReportNeeded  String   @default("N") @map("result_report_needed")
+  totalSessions       Int      @map("total_sessions")
+  sessions            Json
+  notes               String
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([operationId])
+  @@map("om_requests")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  assignedOmPiiIndex String? @map("assigned_om_pii_index")
+  ldEmailPiiIndex String? @map("ld_email_pii_index")
+  ldPiiIndex String? @map("ld_pii_index")
+  businessNumberPiiIndex String? @map("business_number_pii_index")
+  instructorNamePiiIndex String? @map("instructor_name_pii_index")
+  syncupLinkPiiIndex String? @map("syncup_link_pii_index")
+  driveLinkPiiIndex String? @map("drive_link_pii_index")
+  notesPiiIndex String? @map("notes_pii_index")
+}
+
+model Announcement {
+  id          String    @id @default(uuid()) @db.Uuid
+  title       String
+  content     String
+  authorEmail String    @map("author_email")
+  authorName  String?   @map("author_name")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+  deletedBy   String?   @map("deleted_by")
+
+  attachments AnnouncementAttachment[]
+
+  @@index([deletedAt, createdAt])
+  @@map("announcements")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  titlePiiIndex String? @map("title_pii_index")
+  contentPiiIndex String? @map("content_pii_index")
+  authorEmailPiiIndex String? @map("author_email_pii_index")
+  authorNamePiiIndex String? @map("author_name_pii_index")
+  deletedByPiiIndex String? @map("deleted_by_pii_index")
+}
+
+model AnnouncementAttachment {
+  id             String   @id @default(uuid()) @db.Uuid
+  announcementId String   @map("announcement_id") @db.Uuid
+  fileName       String   @map("file_name")
+  mimeType       String   @map("mime_type")
+  size           Int
+  data           Bytes
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+
+  @@index([announcementId])
+  @@map("announcement_attachments")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  fileNamePiiIndex String? @map("file_name_pii_index")
+}
+
+// coach-db 원본 보관용 테이블. 데이터 적재는 scripts/archive-coach-db.ts로만 한다.
+// schema에 등록해두지 않으면 prisma migrate dev가 drift로 판단해 DROP 마이그레이션을
+// 자동 생성한다 (20260723062051에서 실제로 발생해 20260731에 복원함).
+model CoachdbArchiveSnapshot {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sourceDatabase String    @map("source_database")
+  sourceSchema   String    @default("public") @map("source_schema")
+  tableCount     Int       @default(0) @map("table_count")
+  rowCount       Int       @default(0) @map("row_count")
+  status         String    @default("running")
+  errorMessage   String?   @map("error_message")
+  startedAt      DateTime  @default(now()) @map("started_at")
+  finishedAt     DateTime? @map("finished_at")
+
+  rows CoachdbArchiveRow[]
+
+  @@map("coachdb_archive_snapshots")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  errorMessagePiiIndex String? @map("error_message_pii_index")
+}
+
+model CoachdbArchiveRow {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  snapshotId  String   @map("snapshot_id") @db.Uuid
+  tableSchema String   @map("table_schema")
+  tableName   String   @map("table_name")
+  rowKey      String   @map("row_key")
+  rowData     Json     @map("row_data")
+  archivedAt  DateTime @default(now()) @map("archived_at")
+
+  snapshot CoachdbArchiveSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([snapshotId, tableSchema, tableName, rowKey], map: "coachdb_archive_rows_snapshot_table_key_unique")
+  @@index([tableSchema, tableName], map: "coachdb_archive_rows_table_idx")
+  @@index([snapshotId], map: "coachdb_archive_rows_snapshot_idx")
+  @@index([rowData(ops: JsonbOps)], map: "coachdb_archive_rows_data_gin_idx", type: Gin)
+  @@map("coachdb_archive_rows")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  rowKeyPiiIndex String? @map("row_key_pii_index")
+  @@unique([snapshotId, tableSchema, tableName, rowKeyPiiIndex])
+}
+
+// 강사위키에서 OM이 입력하는 값과 노션 강사 DB 스냅샷을 강사명 기준으로 보관한다.
+// 로컬(dev)에서는 .local/instructor-wiki.json, 배포에서는 이 테이블을 쓴다
+// (instructorNoteRepositoryFactory가 OPERATION_DATA_SOURCE로 분기).
+// notionProfile은 노션에서 가져온 읽기 전용 스냅샷이라 OM 입력 컬럼과 분리해 둔다.
+// 같은 컬럼에 섞으면 재수집 때 OM 수정분이 덮이거나 노션 값이 OM 값으로 굳는다.
+model InstructorNote {
+  @@index([instructorNamePiiIndex])
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  // 노션 강사 DB의 ID(auto increment, 화면상 "NO"). 노션↔사이트 연결 키다.
+  // 강사명은 노션에서 바뀔 수 있고 동명이인(같은 이름의 서로 다른 강사)도 있어 키로 쓸 수 없다.
+  // 노션에 없는 강사(운영현황에만 있는 표기)는 null이며, 그 경우에만 이름으로 식별한다.
+  notionNo       Int?      @unique @map("notion_no")
+  // 노션에서 온 이름. 동명이인이 각각 한 행을 가지므로 unique가 아니다.
+  instructorName String    @map("instructor_name")
+  displayName    String?   @map("display_name")
+  notionId       String?   @map("notion_id")
+  partnerId      String?   @map("partner_id")
+  notes          String?
+  recruitAvoid   Boolean   @default(false) @map("recruit_avoid")
+  // 연락처·이메일·생년월일은 개인정보라 DB에 두지 않는다. 로컬(.local) 파일에만 남긴다.
+  // notionProfile에도 넣지 않는다 (instructorNotePii.ts에서 걷어냄).
+  notionProfile  Json?     @map("notion_profile")
+  notionSyncedAt DateTime? @map("notion_synced_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  @@index([recruitAvoid], map: "instructor_notes_recruit_avoid_idx")
+  @@index([instructorName], map: "instructor_notes_instructor_name_idx")
+  @@map("instructor_notes")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  instructorNamePiiIndex String? @map("instructor_name_pii_index")
+  displayNamePiiIndex String? @map("display_name_pii_index")
+  notionIdPiiIndex String? @map("notion_id_pii_index")
+  partnerIdPiiIndex String? @map("partner_id_pii_index")
+  notesPiiIndex String? @map("notes_pii_index")
+}
+
+// 운영 1건(OperationSession.operationId)의 **실제 교육일 1일 ↔ 구글 이벤트 1건** 매핑.
+// 회차 기간에 쉬는 날이 섞이면 기간 이벤트 하나로는 교육 없는 날까지 일정이 잡히므로
+// 교육일마다 이벤트를 따로 만든다. 실제 교육일이 없는 회차는 시작일 1건으로 둔다.
+// OperationSession에 컬럼을 붙이지 않고 분리한 이유는 로컬 JSON 저장소와 스키마를
+// 맞출 필요가 없고, 연동을 껐다 켜도 운영 데이터가 오염되지 않기 때문이다.
+// 캘린더가 바뀔 수 있어(담당 OM의 파트 변경) calendarId도 함께 보관한다.
+model CalendarEventLink {
+  id          String   @id @default(uuid()) @db.Uuid
+  operationId String   @map("operation_id")
+  calendarId  String   @map("calendar_id")
+  eventId     String   @map("event_id")
+  eventDate   DateTime @map("event_date") @db.Date
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@unique([operationId, eventDate])
+  @@index([operationId])
+  @@index([calendarId, eventId])
+  @@map("calendar_event_links")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  calendarIdPiiIndex String? @map("calendar_id_pii_index")
+  eventIdPiiIndex String? @map("event_id_pii_index")
+}
+
+// API metadata only. Never store payloads, credentials, IP addresses or raw URLs.
+model ActivityRequest {
+  @@index([actorEmailPiiIndex])
+  id         String   @id @db.Uuid
+  occurredAt DateTime @default(dbgenerated("clock_timestamp()")) @map("occurred_at") @db.Timestamptz(3)
+  actorEmail String?  @map("actor_email")
+  actorName  String?  @map("actor_name")
+  actorType  String   @map("actor_type")
+  route      String
+  method     String
+  status     Int
+  durationMs Int      @map("duration_ms")
+
+  @@index([occurredAt, id])
+  @@index([actorEmail, occurredAt, id])
+  @@map("activity_requests")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  actorEmailPiiIndex String? @map("actor_email_pii_index")
+  actorNamePiiIndex String? @map("actor_name_pii_index")
+}
+
+// Database triggers write this in the same transaction as the affected business row.
+// No relation to the target or request: deleting either must not delete this history.
+model ActivityChange {
+  @@index([actorEmailPiiIndex])
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  occurredAt DateTime @default(dbgenerated("clock_timestamp()")) @map("occurred_at") @db.Timestamptz(3)
+  requestId  String   @map("request_id") @db.Uuid
+  actorEmail String?  @map("actor_email")
+  actorName  String?  @map("actor_name")
+  actorType  String   @map("actor_type")
+  route      String
+  method     String
+  targetType String   @map("target_type")
+  targetId   String   @map("target_id")
+  action     String
+  changes    Json
+
+  @@index([occurredAt, id])
+  @@index([actorEmail, occurredAt, id])
+  @@index([targetType, targetId, occurredAt, id])
+  @@index([requestId])
+  @@map("activity_changes")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  actorEmailPiiIndex String? @map("actor_email_pii_index")
+  actorNamePiiIndex String? @map("actor_name_pii_index")
+}

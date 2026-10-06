@@ -1,6 +1,7 @@
 import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { listTeamUsers } from "@/lib/data/teamUsers/teamUserRepository";
+import { runUserAdminRequest } from "@/lib/data/userAdminComposition";
 
 /**
  * 팀 멤버 이메일 → 이름 조회 (서버 간 호출용, 읽기 전용)
@@ -59,4 +60,4 @@ async function activityGET(request: Request) {
   }
 }
 
-export const GET = withActivity("/api/team-users/lookup", "GET", activityGET);
+export const GET = withActivity("/api/team-users/lookup", "GET", activityGET, runUserAdminRequest);

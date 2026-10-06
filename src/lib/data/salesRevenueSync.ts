@@ -1,5 +1,6 @@
-import { getPrismaClient } from "@/lib/data/prisma";
-import { hasSalesmapConfig, SalesmapSourceReader } from "@/lib/sourceReads/salesmapSourceReader";
+import { getSalesRevenueSyncRepository, getSalesRevenueSource } from "./salesRevenueSyncRepositoryFactory";
+import type { SalesRevenueSyncRepository, SalesRevenueSource } from "./salesRevenueSyncRepository";
+import { safeSalesRevenueIssue } from "./salesRevenueSourceIssues";
 
 /**
  * 세일즈맵 매출을 hub-om `courses.revenue`에 반영한다.
@@ -62,15 +63,7 @@ export interface SalesRevenueSyncResult {
   issues: string[];
 }
 
-interface CourseRow {
-  id: string;
-  courseId: string;
-  name: string;
-  revenue: unknown;
-  company: { name: string } | null;
-}
-
-export async function runSalesRevenueSync({
+async function executeSalesRevenueSync({
   apply,
   actorEmail,
   multiDealResolutions = {}
@@ -82,12 +75,12 @@ export async function runSalesRevenueSync({
    * 지정 안 하면 기본 '합산'. 금액이 같은 중복 딜은 이 설정과 무관하게 1건 금액만 자동 반영한다.
    */
   multiDealResolutions?: Record<string, MultiDealMode>;
-}): Promise<SalesRevenueSyncResult> {
-  if (!hasSalesmapConfig()) {
+}, repository: SalesRevenueSyncRepository, source: SalesRevenueSource): Promise<SalesRevenueSyncResult> {
+  if (!source.isConfigured()) {
     return emptyResult("disabled", ["세일즈맵 토큰(SALESMAP_API_TOKEN)이 설정되지 않았습니다."], false);
   }
 
-  const read = await new SalesmapSourceReader().readSalesRecords();
+  const read = await source.readSalesRecords();
   const records = read.items.filter(
     (record): record is typeof record & { courseId: string; revenue: number } =>
       Boolean(record.courseId) && record.revenue != null
@@ -100,19 +93,15 @@ export async function runSalesRevenueSync({
   }
 
   if (read.status === "failed") {
-    return emptyResult(read.status, read.issues.map((issue) => issue.message), true);
+    return emptyResult(read.status, read.issues.map(safeSalesRevenueIssue), true);
   }
 
-  const prisma = getPrismaClient();
   // hub-om 코스ID에 눈에 안 보이는 문자(제로폭 공백 등)나 공백이 섞여 매칭이 안 되는 경우가 있어,
   // 양쪽 코스ID를 정규화(보이지 않는 문자 제거 + trim)한 뒤 맞춘다.
   const normalizedRecordIds = new Set(records.map((record) => normalizeCourseId(record.courseId)));
-  const courses: CourseRow[] = await prisma.course.findMany({
-    where: { courseId: { not: "" } },
-    select: { id: true, courseId: true, name: true, revenue: true, company: { select: { name: true } } }
-  });
+  const courses = await repository.listCourses();
 
-  const coursesByCourseId = new Map<string, CourseRow[]>();
+  const coursesByCourseId = new Map<string, typeof courses>();
   for (const course of courses) {
     const normalized = normalizeCourseId(course.courseId);
     if (!normalized || !normalizedRecordIds.has(normalized)) continue;
@@ -214,23 +203,13 @@ export async function runSalesRevenueSync({
 
   // 일부만 읽은(partial) 상태에서는 값이 부분 합산일 수 있으므로 실제 쓰기를 막는다.
   const blockedByPartial = apply && read.status === "partial";
-  const issues = read.issues.map((issue) => issue.message);
+  const issues = read.issues.map(safeSalesRevenueIssue);
   let updatedRows = 0;
 
   if (apply && !blockedByPartial && pendingUpdates.length > 0) {
     // 전부 성공 아니면 전부 취소(중간 실패 시 절반만 써지는 것 방지).
     // 첫 대량 반영(수백 건)에서도 기본 시간제한에 걸리지 않도록 인터랙티브 트랜잭션 + 넉넉한 timeout.
-    await prisma.$transaction(
-      async (tx) => {
-        for (const update of pendingUpdates) {
-          await tx.course.update({
-            where: { id: update.id },
-            data: { revenue: update.revenue, revenueRaw: String(update.revenue) }
-          });
-        }
-      },
-      { timeout: 120_000, maxWait: 10_000 }
-    );
+    await repository.applyUpdates(pendingUpdates);
     updatedRows = pendingUpdates.length;
   }
 
@@ -260,27 +239,25 @@ export async function runSalesRevenueSync({
   // 감사 로그: 실제 반영 시도(POST)만 기록한다. 로그 실패가 동기화를 막지 않도록 격리한다.
   if (apply) {
     try {
-      await prisma.salesRevenueSyncLog.create({
-        data: {
-          status: result.readStatus,
-          applied: result.applied,
-          readCount: result.readCount,
-          matched: result.matchedCourseIds,
-          filled: result.filled,
-          changed: result.changed,
-          unchanged: result.unchanged,
-          updatedRows: result.updatedRows,
-          unmatched: result.unmatchedCourseIds.length,
-          ambiguous: result.multiCourseIds.length,
-          triggeredBy: actorEmail,
-          detail: {
-            unmatchedCourseIds: result.unmatchedCourseIds.slice(0, 500),
-            multiCourseIds: result.multiCourseIds.slice(0, 500),
-            multiDealCourseIds: result.multiDealCourseIds.slice(0, 500).map((m) => m.courseId),
-            excludedCourseIds: result.excludedCourseIds.slice(0, 500),
-            dedupedCourseIds: result.dedupedCourseIds.slice(0, 500),
-            issues: result.issues
-          }
+      await repository.recordLog({
+        status: result.readStatus,
+        applied: result.applied,
+        readCount: result.readCount,
+        matched: result.matchedCourseIds,
+        filled: result.filled,
+        changed: result.changed,
+        unchanged: result.unchanged,
+        updatedRows: result.updatedRows,
+        unmatched: result.unmatchedCourseIds.length,
+        ambiguous: result.multiCourseIds.length,
+        triggeredBy: actorEmail,
+        detail: {
+          unmatchedCourseIds: result.unmatchedCourseIds.slice(0, 500),
+          multiCourseIds: result.multiCourseIds.slice(0, 500),
+          multiDealCourseIds: result.multiDealCourseIds.slice(0, 500).map((m) => m.courseId),
+          excludedCourseIds: result.excludedCourseIds.slice(0, 500),
+          dedupedCourseIds: result.dedupedCourseIds.slice(0, 500),
+          issues: result.issues
         }
       });
     } catch {
@@ -321,4 +298,19 @@ function emptyResult(readStatus: string, issues: string[], configured: boolean):
     changes: [],
     issues
   };
+}
+
+/** IO errors can include source payloads, keys or database parameters. */
+export async function runSalesRevenueSyncWithRepositories(...args: Parameters<typeof executeSalesRevenueSync>): Promise<SalesRevenueSyncResult> {
+  try { return await executeSalesRevenueSync(...args); }
+  catch { throw new Error("SALES_REVENUE_SYNC_FAILED"); }
+}
+
+/** Resolve both explicit services before any source or default database work. */
+export async function runSalesRevenueSync(input: Parameters<typeof runSalesRevenueSyncWithRepositories>[0]): Promise<SalesRevenueSyncResult> {
+  try {
+    const repository = getSalesRevenueSyncRepository();
+    const source = getSalesRevenueSource();
+    return await runSalesRevenueSyncWithRepositories(input, repository, source);
+  } catch { throw new Error("SALES_REVENUE_SYNC_FAILED"); }
 }

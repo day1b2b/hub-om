@@ -2,6 +2,7 @@ import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
 import { runLectureFollowUpReminders } from "@/lib/reminders/lectureFollowUpReminder";
+import { runLectureFollowUpRequest } from "@/lib/data/lectureFollowUpComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -38,17 +39,19 @@ async function requireReminderAccess(request: Request): Promise<string> {
 async function reminderJsonResponse(handler: () => Promise<unknown>) {
   try {
     return NextResponse.json(await handler());
-  } catch (error) {
+  } catch {
+    // Repository, file and remote errors may contain private values.
+    console.error("[reminder] 처리 실패");
     return NextResponse.json(
       {
         ok: false,
-        error: error instanceof Error ? error.message : String(error)
+        error: "알림을 처리하지 못했습니다."
       },
       { status: 500 }
     );
   }
 }
 
-export const GET = withActivity("/api/reminders/lecture-followup", "GET", activityGET);
+export const GET = withActivity("/api/reminders/lecture-followup", "GET", activityGET, runLectureFollowUpRequest);
 
-export const POST = withActivity("/api/reminders/lecture-followup", "POST", activityPOST);
+export const POST = withActivity("/api/reminders/lecture-followup", "POST", activityPOST, runLectureFollowUpRequest);

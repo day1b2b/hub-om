@@ -1,5 +1,6 @@
 import { CompositeOperationSourceReader, hasBuiltInSourceConfig } from "./compositeSourceReader";
 import { DisabledOperationSourceReader } from "./disabledSourceReader";
+import { getDataRepositoryOverride } from "../data/dataRepositoryContext";
 import type { OperationSourceReader } from "./sourceReadTypes";
 
 interface SourceReaderModule {
@@ -7,6 +8,9 @@ interface SourceReaderModule {
 }
 
 export async function getOperationSourceReader(): Promise<OperationSourceReader> {
+  const override = getDataRepositoryOverride("operationSourceReader");
+  if (override) return override;
+
   const moduleName = process.env.OPERATION_SOURCE_READER_MODULE?.trim();
 
   if (!moduleName) {

@@ -1,3 +1,4 @@
+import { calendarErrorMessage } from "@/lib/googleCalendar/calendarErrors";
 import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
@@ -19,7 +20,7 @@ async function activityGET(request: Request) {
     return NextResponse.json(await planCalendarReverseSync());
   } catch (error) {
     return NextResponse.json(
-      { ok: false, error: error instanceof Error ? error.message : String(error) },
+      { ok: false, error: calendarErrorMessage(error) },
       { status: 500 }
     );
   }
@@ -32,7 +33,7 @@ async function activityPOST(request: Request) {
     return NextResponse.json(await applyCalendarReverseSync());
   } catch (error) {
     return NextResponse.json(
-      { ok: false, error: error instanceof Error ? error.message : String(error) },
+      { ok: false, error: calendarErrorMessage(error) },
       { status: 500 }
     );
   }

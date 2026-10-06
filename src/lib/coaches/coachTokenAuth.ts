@@ -1,14 +1,6 @@
-import { CoachStatus } from "@prisma/client";
-import { getPrismaClient } from "@/lib/data/prisma";
-
-export interface PublicCoachTokenContext {
-  id: string;
-  sourceCoachId: string;
-  name: string;
-  workType: string | null;
-  status: CoachStatus;
-  accessToken: string;
-}
+import { getCoachTokenRepository } from "@/lib/data/coachTokenRepositoryFactory";
+import type { PublicCoachTokenContext } from "@/lib/data/coachTokenRepository";
+export type { PublicCoachTokenContext } from "@/lib/data/coachTokenRepository";
 
 export function extractCoachToken(request: Request): string | null {
   const url = new URL(request.url);
@@ -23,27 +15,5 @@ export function extractCoachToken(request: Request): string | null {
 
 export async function validateCoachToken(token: string | null): Promise<PublicCoachTokenContext | null> {
   if (!token) return null;
-
-  const prisma = getPrismaClient();
-  const coach = await prisma.coach.findFirst({
-    where: {
-      accessToken: token,
-      deletedAt: null
-    },
-    select: {
-      id: true,
-      sourceCoachId: true,
-      name: true,
-      workType: true,
-      status: true,
-      accessToken: true
-    }
-  });
-
-  if (!coach?.accessToken) return null;
-
-  return {
-    ...coach,
-    accessToken: coach.accessToken
-  };
+  return getCoachTokenRepository().findByToken(token);
 }

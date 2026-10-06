@@ -66,8 +66,9 @@ let cachedCalendarRead: TimedCacheEntry<SourceReadResult<CalendarResourceEvent>>
 
 export class GoogleCalendarSourceReader implements OperationSourceReader {
   private readonly disabledReader = new DisabledOperationSourceReader();
+  private readonly config: GoogleCalendarConfig;
 
-  constructor(private readonly config = readGoogleCalendarConfig()) {}
+  constructor(config = readGoogleCalendarConfig()) { this.config = config; }
 
   readCourseBoard(): Promise<SourceReadResult<CourseBoardRecord>> {
     return this.disabledReader.readCourseBoard();

@@ -44,13 +44,13 @@ export async function notifyCalendarReflectSkip(operation: OperationSession, rea
       (user) => (user.email ?? "").trim().toLowerCase() === email.toLowerCase()
     );
     if (!target?.slackId) {
-      console.warn(`[gcal-alert] 수신자(${email})의 Slack ID를 명단에서 찾지 못해 알림을 건너뜀`);
+      console.warn("[gcal-alert] CALENDAR_ALERT_RECIPIENT_NOT_FOUND");
       return;
     }
 
     const sent = await sendSlackDirectMessage(target.slackId, buildCalendarReflectSkipMessage(operation, reason));
-    if (!sent) console.warn(`[gcal-alert] ${operation.operationId} 반영 건너뜀 DM 발송 실패`);
-  } catch (error) {
-    console.error("[gcal-alert] 반영 건너뜀 알림 전송 오류:", error);
+    if (!sent) console.warn("[gcal-alert] CALENDAR_ALERT_SEND_FAILED");
+  } catch {
+    console.error("[gcal-alert] CALENDAR_ALERT_FAILED");
   }
 }

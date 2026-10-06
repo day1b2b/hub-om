@@ -6,10 +6,14 @@ import { filterOmRequestsByAssignee, filterOperationsByOm, resolveOmNameByEmail 
 import { findTeamUsersByEmail } from "@/lib/data/teamUsers/teamUserRepository";
 import { listOmRequests } from "@/lib/data/omRequest/omRequestLocalRepository";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
+import { runOverviewPagesRequest } from "@/lib/data/overviewPagesComposition";
 
 export const dynamic = "force-dynamic";
 
 export default async function MyDashboardPage() {
+  return runOverviewPagesRequest(renderMyDashboardPage);
+}
+async function renderMyDashboardPage() {
   const session = await requireWorkspaceSession();
   const omName = await resolveOmNameByEmail(session.user?.email);
 

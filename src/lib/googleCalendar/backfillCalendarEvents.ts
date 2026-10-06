@@ -1,3 +1,5 @@
+import { assertCalendarScopeReady } from "./calendarScope";
+import { calendarErrorMessage } from "./calendarErrors";
 import { calendarOperationRevision } from "./calendarOperationRevision";
 import { withCalendarOperationLock } from "./calendarOperationLock";
 // 매핑 없는 예정 회차를 구글 캘린더에 소급 생성하는 관리자 도구의 오케스트레이터.
@@ -134,6 +136,7 @@ function toOutcome(item: BackfillPlanItem, result: BackfillOutcomeResult): Backf
 export async function backfillMissingCalendarEvents(
   options: BackfillCalendarOptions
 ): Promise<BackfillCalendarResult> {
+  assertCalendarScopeReady();
   const from = resolveFrom(options.from);
   const limit = options.limit && options.limit > 0 ? options.limit : DEFAULT_INSERT_LIMIT;
   const notifyAttendees = options.notifyAttendees === true;
@@ -199,7 +202,7 @@ export async function backfillMissingCalendarEvents(
       accessRole = await readCalendarAccessRole(calendarId);
       accessRoleByCalendar.set(calendarId, accessRole);
     } catch (error) {
-      accessError = error instanceof Error ? error.message : String(error);
+      accessError = calendarErrorMessage(error);
     }
     calendarInfos.push({
       partKey,
@@ -294,9 +297,9 @@ export async function backfillMissingCalendarEvents(
       outcomes.push(toOutcome(item, "inserted"));
     } catch (error) {
       failedOperations += 1;
-      const detail = error instanceof Error ? error.message : String(error);
+      const detail = calendarErrorMessage(error);
       outcomes.push({ ...toOutcome(item, "failed"), detail });
-      console.error(`[gcal-backfill] ${item.operationId} 소급 생성 실패:`, detail);
+      console.error("[gcal-backfill] CALENDAR_BACKFILL_FAILED");
     }
   }
 

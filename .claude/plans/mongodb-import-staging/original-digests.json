@@ -1,0 +1,12 @@
+{
+  "src/lib/data/importReadOriginal.fixture.ts": {
+    "original": "src/lib/data/prismaImportRepository.ts",
+    "baseline": "8e19638881581593a8c79660892ddbab364d1d25",
+    "sha256": "3d0e8761a2f930bff626ce5e4fa6f4b1df1d368b41805a42a7b1c52ed847796b"
+  },
+  "src/lib/data/importStagingOriginal.fixture.ts": {
+    "original": "src/lib/data/importStagingWriter.ts",
+    "baseline": "8e19638881581593a8c79660892ddbab364d1d25",
+    "sha256": "5d35a855273cb728faa3ffa5c01c6c1270359231c5c1cfb39e4ea475ffb98c12"
+  }
+}
