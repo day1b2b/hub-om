@@ -1,7 +1,6 @@
 import { withActivity } from "@/lib/activity/request";
 import { requireInstructorSyncAccess, syncNotionInstructors } from "@/lib/instructors/notionInstructorSync";
 import { syncJsonResponse } from "@/lib/coaches/syncRouteResponse";
-import { runInstructorSyncRequest } from "@/lib/data/instructorSyncComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +22,6 @@ async function activityPOST(request: Request) {
   });
 }
 
-export const GET = withActivity("/api/admin/sync-notion-instructors", "GET", activityGET, runInstructorSyncRequest);
+export const GET = withActivity("/api/admin/sync-notion-instructors", "GET", activityGET);
 
-export const POST = withActivity("/api/admin/sync-notion-instructors", "POST", activityPOST, runInstructorSyncRequest);
+export const POST = withActivity("/api/admin/sync-notion-instructors", "POST", activityPOST);

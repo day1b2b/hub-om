@@ -1,6 +1,5 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { decodePrivateJson } from "../privacy/crypto";
 import { DEFAULT_RESOURCE_OWNER_ROSTER, DEFAULT_TEAM_MEMBER_ROLE_ROSTER } from "./defaultTeamMemberRoster";
 import type { SourceTeam } from "./operationTypes";
 import type { ResourceOwnerRoster, TeamMemberRepository, TeamMemberRoleRoster } from "./teamMemberRepository";
@@ -16,11 +15,7 @@ interface LocalTeamMemberPayload {
 }
 
 export class LocalJsonTeamMemberRepository implements TeamMemberRepository {
-  private readonly fileName: string;
-
-  constructor(fileName = "team-members.json") {
-    this.fileName = fileName;
-  }
+  constructor(private readonly fileName = "team-members.json") {}
 
   async listResourceOwners(): Promise<ResourceOwnerRoster> {
     const members = await this.readMembers();
@@ -65,18 +60,14 @@ export class LocalJsonTeamMemberRepository implements TeamMemberRepository {
       const absolutePath = path.resolve(localDir, localFileName);
 
       if (!absolutePath.startsWith(`${localDir}${path.sep}`)) {
-        throw new Error("Local team-member file must be inside .local.");
+        return null;
       }
 
       const raw = await readFile(absolutePath, "utf8");
-      const parsed = decodePrivateJson(raw.trimEnd(), "local:team-members") as LocalTeamMemberPayload;
-      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || (parsed.members !== undefined && !Array.isArray(parsed.members))) {
-        throw new Error("Invalid local team-member data.");
-      }
+      const parsed = JSON.parse(raw) as LocalTeamMemberPayload;
       return parsed.members ?? [];
-    } catch (error) {
-      if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") return null;
-      throw error;
+    } catch {
+      return null;
     }
   }
 }

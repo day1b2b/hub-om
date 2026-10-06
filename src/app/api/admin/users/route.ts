@@ -4,7 +4,6 @@ import { NextResponse } from "next/server";
 import { denyIfNotAdmin } from "@/lib/auth/apiAdminGuard";
 import { createTeamUser, DuplicateTeamUserEmailError, listTeamUsers } from "@/lib/data/teamUsers/teamUserRepository";
 import type { TeamUserInput } from "@/lib/data/teamUsers/teamUserTypes";
-import { runUserAdminRequest } from "@/lib/data/userAdminComposition";
 
 async function activityGET() {
   const denied = await denyIfNotAdmin();
@@ -53,6 +52,6 @@ async function activityPOST(request: Request) {
   }
 }
 
-export const GET = withActivity("/api/admin/users", "GET", activityGET, runUserAdminRequest);
+export const GET = withActivity("/api/admin/users", "GET", activityGET);
 
-export const POST = withActivity("/api/admin/users", "POST", activityPOST, runUserAdminRequest);
+export const POST = withActivity("/api/admin/users", "POST", activityPOST);

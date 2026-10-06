@@ -3,9 +3,6 @@ import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { isSameCourse } from "@/lib/data/operationCalculations";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
-import { retryOperationCalendarDelete } from "@/lib/googleCalendar/reflectOperationToCalendar";
-import { getDataRepositoryOverride } from "@/lib/data/dataRepositoryContext";
-import { runOperationWriteRequest } from "@/lib/data/operationWriteComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -22,14 +19,6 @@ async function activityDELETE(_request: Request, { params }: RouteContext) {
   const operation = await repository.getOperationById(operationId);
 
   if (!operation) {
-    const scopedCalendar = getDataRepositoryOverride("calendarPersistence");
-    const localOnly = !scopedCalendar && (process.env.OPERATION_DATA_SOURCE === "local" || !process.env.DATABASE_URL);
-    if (!localOnly) {
-      const recovery = await retryOperationCalendarDelete(operationId);
-      if (recovery !== "not-found") {
-        return NextResponse.json({ ok: true, calendarCleanup: recovery });
-      }
-    }
     return NextResponse.json({ ok: false, error: "Operation not found." }, { status: 404 });
   }
 
@@ -61,4 +50,4 @@ async function activityDELETE(_request: Request, { params }: RouteContext) {
   return NextResponse.json({ ok: true });
 }
 
-export const DELETE = withActivity("/api/operations/[operationId]", "DELETE", activityDELETE, runOperationWriteRequest);
+export const DELETE = withActivity("/api/operations/[operationId]", "DELETE", activityDELETE);

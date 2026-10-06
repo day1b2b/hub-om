@@ -75,7 +75,7 @@ export class CalendarReflectingOperationRepository implements OperationRepositor
 
   async createOperation(input: CreateOperationInput): Promise<OperationSession> {
     const operation = await this.inner.createOperation(input);
-    if (!operation.creationReplayed) await reflectOperationCreated(operation);
+    await reflectOperationCreated(operation);
     return operation;
   }
 

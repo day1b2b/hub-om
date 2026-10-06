@@ -1,8 +1,7 @@
 // 구글 캘린더 쓰기 클라이언트. refresh token으로 access token을 갱신하고
 // events.insert / patch / delete만 호출한다. 읽기는 sourceReads 쪽 reader가 담당한다.
 
-import { assertCalendarLockActive, calendarLockSignal } from "./calendarOperationLock";
-import { CALENDAR_ERROR_MESSAGE, calendarErrorMessage } from "./calendarErrors";
+import { calendarLockSignal } from "./calendarOperationLock";
 import { createHash } from "node:crypto";
 import { readCalendarWriteCredentials } from "./calendarWriteConfig";
 
@@ -14,59 +13,38 @@ const EXPIRY_MARGIN_MS = 60_000;
 
 let cachedToken: { value: string; expiresAt: number } | null = null;
 
-async function safeFetch(input: string, init: RequestInit): Promise<Response> {
-  try {
-    return await fetch(input, init);
-  } catch {
-    throw new Error(CALENDAR_ERROR_MESSAGE);
-  }
-}
-
-async function readJson<T>(response: Response): Promise<T> {
-  try {
-    return await response.json() as T;
-  } catch {
-    throw new Error(CALENDAR_ERROR_MESSAGE);
-  }
-}
-
 async function getAccessToken(): Promise<string> {
-  try {
-    if (cachedToken && cachedToken.expiresAt > Date.now() + EXPIRY_MARGIN_MS) {
-      return cachedToken.value;
-    }
-
-    const credentials = readCalendarWriteCredentials();
-    if (!credentials) throw new Error("구글 캘린더 쓰기 자격증명(GOOGLE_CAL_OAUTH_*)이 없습니다.");
-
-    await assertCalendarLockActive();
-    const response = await safeFetch(TOKEN_ENDPOINT, {
-      method: "POST",
-      signal: requestSignal(),
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        client_id: credentials.clientId,
-        client_secret: credentials.clientSecret,
-        refresh_token: credentials.refreshToken,
-        grant_type: "refresh_token"
-      })
-    });
-
-    const payload = await readJson<{ access_token?: string; expires_in?: number }>(response);
-    if (!payload.access_token) {
-      // 토큰 값 자체는 로그에 남기지 않는다.
-      throw new Error(CALENDAR_ERROR_MESSAGE);
-    }
-
-    cachedToken = {
-      value: payload.access_token,
-      expiresAt: Date.now() + (payload.expires_in ?? 3600) * 1000
-    };
-
+  if (cachedToken && cachedToken.expiresAt > Date.now() + EXPIRY_MARGIN_MS) {
     return cachedToken.value;
-  } catch (error) {
-    throw new Error(calendarErrorMessage(error));
   }
+
+  const credentials = readCalendarWriteCredentials();
+  if (!credentials) throw new Error("구글 캘린더 쓰기 자격증명(GOOGLE_CAL_OAUTH_*)이 없습니다.");
+
+  const response = await fetch(TOKEN_ENDPOINT, {
+    method: "POST",
+    signal: requestSignal(),
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: credentials.clientId,
+      client_secret: credentials.clientSecret,
+      refresh_token: credentials.refreshToken,
+      grant_type: "refresh_token"
+    })
+  });
+
+  const payload = (await response.json()) as { access_token?: string; expires_in?: number; error?: string };
+  if (!payload.access_token) {
+    // 토큰 값 자체는 로그에 남기지 않는다.
+    throw new Error(`access token 갱신 실패: ${payload.error ?? response.status}`);
+  }
+
+  cachedToken = {
+    value: payload.access_token,
+    expiresAt: Date.now() + (payload.expires_in ?? 3600) * 1000
+  };
+
+  return cachedToken.value;
 }
 
 /** 테스트와 자격증명 교체 상황을 위해 캐시를 비운다. */
@@ -108,9 +86,8 @@ function requestSignal(): AbortSignal {
 
 async function sendCalendarRequest(path: string, init: RequestInit): Promise<Response> {
   const accessToken = await getAccessToken();
-  await assertCalendarLockActive();
 
-  return safeFetch(`${CALENDAR_API}${path}`, {
+  return fetch(`${CALENDAR_API}${path}`, {
     ...init,
     signal: requestSignal(),
     headers: {
@@ -143,31 +120,26 @@ const READ_RETRY_DELAY_MS = 800;
  * 500으로 올라가 알림이 나간다 — 안전망은 그대로 두고 일시 오류만 흡수한다.
  */
 async function callCalendar(path: string, init: RequestInit): Promise<Response> {
+  const isRead = (init.method ?? "GET").toUpperCase() === "GET";
+  if (!isRead) return sendCalendarRequest(path, init);
+
   try {
-    const isRead = (init.method ?? "GET").toUpperCase() === "GET";
-    if (!isRead) return await sendCalendarRequest(path, init);
+    const response = await sendCalendarRequest(path, init);
+    if (!shouldRetryCalendarRead(response.status)) return response;
 
-    try {
-      const response = await sendCalendarRequest(path, init);
-      if (!shouldRetryCalendarRead(response.status)) return response;
-
-      // 쓰지 않을 응답의 본문은 닫아준다. 열어두면 연결이 남는다.
-      void response.body?.cancel().catch(() => {});
-      console.warn("[gcal] CALENDAR_READ_RETRY");
-    } catch (error) {
-      // 잠금으로 끊긴 요청은 의도된 중단이므로 다시 부르지 않는다.
-      if (calendarLockSignal()?.aborted) throw error;
-
-      console.warn("[gcal] CALENDAR_READ_RETRY");
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, READ_RETRY_DELAY_MS));
-    await assertCalendarLockActive();
-
-    return await sendCalendarRequest(path, init);
+    // 쓰지 않을 응답의 본문은 닫아준다. 열어두면 연결이 남는다.
+    void response.body?.cancel();
+    console.warn(`[gcal] 구글 일시 오류(${response.status}) — ${READ_RETRY_DELAY_MS}ms 후 한 번 다시 읽습니다`);
   } catch (error) {
-    throw new Error(calendarErrorMessage(error));
+    // 잠금으로 끊긴 요청은 의도된 중단이므로 다시 부르지 않는다.
+    if (calendarLockSignal()?.aborted) throw error;
+
+    console.warn(`[gcal] 구글 요청이 끊겨 한 번 다시 읽습니다:`, error instanceof Error ? error.message : error);
   }
+
+  await new Promise((resolve) => setTimeout(resolve, READ_RETRY_DELAY_MS));
+
+  return sendCalendarRequest(path, init);
 }
 
 // 새 일정과 취소는 참석자가 반드시 알아야 하므로 메일을 보낸다(sendUpdates=all).
@@ -204,9 +176,9 @@ export async function insertEvent(
     body: JSON.stringify(body)
   });
 
-  if (!response.ok) throw new Error(CALENDAR_ERROR_MESSAGE);
+  if (!response.ok) throw new Error(`events.insert 실패(${response.status}): ${await response.text()}`);
 
-  const created = await readJson<{ id?: string }>(response);
+  const created = (await response.json()) as { id?: string };
   if (!created.id) throw new Error("events.insert 응답에 eventId가 없습니다.");
 
   return created.id;
@@ -239,16 +211,16 @@ export async function insertOperationEvent(
       body: JSON.stringify({ ...body, id, extendedProperties: { private: privateProperties } })
     });
     if (response.ok) {
-      const created = await readJson<{ id?: string }>(response);
+      const created = await response.json() as { id?: string };
       if (created.id !== id) throw new Error("events.insert 응답의 생성 식별자가 일치하지 않습니다.");
       return id;
     }
-    if (response.status !== 409) throw new Error(CALENDAR_ERROR_MESSAGE);
+    if (response.status !== 409) throw new Error(`events.insert 실패(${response.status})`);
 
     // 409만으로 성공으로 간주하지 않는다. 실제 이벤트와 우리 생성 표식을 확인한다.
     const existing = await callCalendar(`/calendars/${encodeURIComponent(calendarId)}/events/${id}`, { method: "GET" });
-    if (!existing.ok) throw new Error(CALENDAR_ERROR_MESSAGE);
-    const event = await readJson<{ id?: string; status?: string; extendedProperties?: { private?: Record<string, string> } }>(existing);
+    if (!existing.ok) throw new Error(`기존 생성 이벤트 확인 실패(${existing.status}). 같은 요청으로 재시도하세요.`);
+    const event = await existing.json() as { id?: string; status?: string; extendedProperties?: { private?: Record<string, string> } };
     if (event.id !== id) throw new Error("기존 생성 이벤트의 식별자가 다릅니다.");
     if (event.status === "cancelled") continue;
     if (event.extendedProperties?.private?.hubOmCreationKey !== id) {
@@ -276,9 +248,9 @@ export async function readCalendarAccessRole(calendarId: string): Promise<string
   );
 
   if (response.status === 404) return null;
-  if (!response.ok) throw new Error(CALENDAR_ERROR_MESSAGE);
+  if (!response.ok) throw new Error(`calendarList.get 실패(${response.status}): ${await response.text()}`);
 
-  const payload = await readJson<{ accessRole?: string }>(response);
+  const payload = (await response.json()) as { accessRole?: string };
   return payload.accessRole ?? null;
 }
 
@@ -304,7 +276,7 @@ export async function patchEvent(
   );
 
   if (response.status === 404 || response.status === 410) return "missing";
-  if (!response.ok) throw new Error(CALENDAR_ERROR_MESSAGE);
+  if (!response.ok) throw new Error(`events.patch 실패(${response.status}): ${await response.text()}`);
 
   return "updated";
 }
@@ -322,7 +294,7 @@ export async function readEventAttendees(calendarId: string, eventId: string): P
 
     if (!response.ok) return null;
 
-    const payload = await readJson<{ attendees?: { email?: string }[] }>(response);
+    const payload = (await response.json()) as { attendees?: { email?: string }[] };
 
     return (payload.attendees ?? []).map((attendee) => attendee.email ?? "").filter(Boolean);
   } catch {
@@ -347,7 +319,7 @@ export async function deleteEvent(calendarId: string, eventId: string, options?:
     return;
   }
 
-  throw new Error(CALENDAR_ERROR_MESSAGE);
+  throw new Error(`events.delete 실패(${response.status}): ${await response.text()}`);
 }
 
 // ── 역반영용 읽기 ────────────────────────────────────────────────
@@ -407,9 +379,9 @@ export async function listUpdatedEvents(calendarId: string, updatedMinIso: strin
       method: "GET"
     });
 
-    if (!response.ok) throw new Error(CALENDAR_ERROR_MESSAGE);
+    if (!response.ok) throw new Error(`events.list 실패(${response.status}): ${await response.text()}`);
 
-    const payload = await readJson<CalendarEventListResponse>(response);
+    const payload = (await response.json()) as CalendarEventListResponse;
 
     for (const item of payload.items ?? []) {
       if (!item.id) continue;
@@ -435,8 +407,8 @@ export async function listUpdatedEvents(calendarId: string, updatedMinIso: strin
 
 export async function readCalendarEventVersion(calendarId: string, eventId: string): Promise<{ updated: string; etag: string; status: string }> {
   const response = await callCalendar(`/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}?fields=updated,etag,status`, { method: "GET" });
-  if (!response.ok) throw new Error(CALENDAR_ERROR_MESSAGE);
-  const event = await readJson<{ updated?: string; etag?: string; status?: string }>(response);
+  if (!response.ok) throw new Error(`이벤트 최신 상태 조회 실패(${response.status})`);
+  const event = await response.json() as { updated?: string; etag?: string; status?: string };
   if (!event.updated || !event.etag || event.status === "cancelled") throw new Error("이벤트가 삭제되었거나 버전 정보를 확인할 수 없습니다.");
   return { updated: event.updated, etag: event.etag, status: event.status ?? "confirmed" };
 }
@@ -447,8 +419,8 @@ export async function readCalendarCreationProof(calendarId: string, eventId: str
     await requireCalendarCleanupAccess(calendarId);
     return null;
   }
-  if (!response.ok) throw new Error(CALENDAR_ERROR_MESSAGE);
-  const event = await readJson<{ id?: string; etag?: string; status?: string; extendedProperties?: { private?: Record<string, string> } }>(response);
+  if (!response.ok) throw new Error(`생성 출처 조회 실패(${response.status})`);
+  const event = await response.json() as { id?: string; etag?: string; status?: string; extendedProperties?: { private?: Record<string, string> } };
   if (event.id !== eventId || !event.etag) throw new Error("Google 이벤트 식별자 또는 버전이 올바르지 않습니다.");
   return { etag: event.etag, status: event.status ?? "confirmed", source: event.extendedProperties?.private?.hubOmCreationSource, creationKey: event.extendedProperties?.private?.hubOmCreationKey };
 }

@@ -3,7 +3,6 @@ import { requireAdminSession } from "@/lib/auth/requireAdminSession";
 import { getCoachRepository } from "@/lib/data/coachRepositoryFactory";
 import { fetchKoreanHolidays } from "@/lib/holidayApi";
 import type { CoachScheduleDashboard } from "@/lib/data/coachTypes";
-import { runCoachPublicRequest } from "@/lib/data/coachPublicComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -13,10 +12,8 @@ interface CoachSchedulePageProps {
 
 export default async function CoachSchedulePage({ searchParams }: CoachSchedulePageProps) {
   const session = await requireAdminSession();
-  return runCoachPublicRequest(() => renderCoachSchedulePage(searchParams, session.user?.email ?? ""));
-}
+  const currentUserEmail = session.user?.email ?? "";
 
-async function renderCoachSchedulePage(searchParams: CoachSchedulePageProps["searchParams"], currentUserEmail: string) {
   const params = await searchParams;
   const yearMonth = resolveYearMonth(firstParam(params.yearMonth));
   const dateParam = firstParam(params.date);

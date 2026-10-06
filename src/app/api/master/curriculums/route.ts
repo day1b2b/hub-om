@@ -1,14 +1,14 @@
 import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
-import { getCoachAdminRepository } from "@/lib/data/coachAdminRepositoryFactory";
-import { runCoachAdminRequest } from "@/lib/data/coachAdminComposition";
+import { getPrismaClient } from "@/lib/data/prisma";
 
 export const dynamic = "force-dynamic";
 
 async function activityGET() {
   await requireWorkspaceSession();
-  const curriculums = await getCoachAdminRepository().listMasters("curriculums");
+  const prisma = getPrismaClient();
+  const curriculums = await prisma.coachCurriculumMaster.findMany({ orderBy: { name: "asc" } });
   return NextResponse.json({ ok: true, curriculums });
 }
 
@@ -21,11 +21,16 @@ async function activityPOST(request: Request) {
     return NextResponse.json({ ok: false, error: "커리큘럼명이 필요합니다." }, { status: 400 });
   }
 
-  const curriculum = await getCoachAdminRepository().ensureMaster("curriculums", name);
+  const prisma = getPrismaClient();
+  const curriculum = await prisma.coachCurriculumMaster.upsert({
+    where: { name },
+    create: { name },
+    update: {}
+  });
 
   return NextResponse.json({ ok: true, curriculum }, { status: 201 });
 }
 
-export const GET = withActivity("/api/master/curriculums", "GET", activityGET, runCoachAdminRequest);
+export const GET = withActivity("/api/master/curriculums", "GET", activityGET);
 
-export const POST = withActivity("/api/master/curriculums", "POST", activityPOST, runCoachAdminRequest);
+export const POST = withActivity("/api/master/curriculums", "POST", activityPOST);

@@ -2,9 +2,8 @@ import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
 import { type MultiDealMode, type SalesRevenueSyncResult, runSalesRevenueSync } from "@/lib/data/salesRevenueSync";
-import { getSalesRevenueNotifier, getSalesRevenueSource, getSalesRevenueSyncRepository } from "@/lib/data/salesRevenueSyncRepositoryFactory";
-import type { SalesRevenueNotifier } from "@/lib/data/salesRevenueSyncRepository";
-import { runSalesSyncRequest } from "@/lib/data/salesSyncComposition";
+import { listTeamUsers } from "@/lib/data/teamUsers/teamUserRepository";
+import { sendSlackDirectMessage } from "@/lib/slack/notifySlack";
 
 export const dynamic = "force-dynamic";
 
@@ -55,12 +54,39 @@ async function requireSalesSyncAccess(request?: Request): Promise<{ actorEmail: 
   return { actorEmail: session.user?.email ?? "admin-session", viaCron: false };
 }
 
-/** Failed commits may have an unknown outcome; never promise rollback in an error alert. */
-function buildFailureText(result: SalesRevenueSyncResult | null, failed = false): string {
+/**
+ * 자동 동기화가 실패했을 때만 담당자에게 슬랙 DM. 성공은 알리지 않는다.
+ * 대상 = SALES_SYNC_ALERT_EMAILS(쉼표 구분). 비어 있으면 아무에게도 보내지 않는다(안전 기본값).
+ * 알림 자체의 실패는 동기화 결과를 가리지 않도록 삼킨다.
+ */
+async function notifySalesSyncFailure(text: string): Promise<void> {
+  const raw = process.env.SALES_SYNC_ALERT_EMAILS?.trim();
+  if (!raw) return;
+  const targets = raw
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+  if (targets.length === 0) return;
+
+  try {
+    const users = await listTeamUsers();
+    for (const email of targets) {
+      const user = users.find((candidate) => candidate.email?.trim().toLowerCase() === email);
+      if (user?.slackId) {
+        await sendSlackDirectMessage(user.slackId, text);
+      }
+    }
+  } catch {
+    // 알림 실패는 조용히 넘어간다 — 동기화 결과 자체를 가리면 안 된다.
+  }
+}
+
+/** 자동 반영 실패/미반영 결과를 사람이 읽을 한 줄로. (기존 매출은 트랜잭션·partial 차단으로 보존된다) */
+function buildFailureText(result: SalesRevenueSyncResult | null, error?: unknown): string {
   const head = ":chart_with_upwards_trend: 세일즈맵 매출 자동 동기화";
-  if (failed) {
-    const message = "SALES_REVENUE_SYNC_FAILED";
-    return `${head}\n:x: 동기화 중 오류가 발생했습니다. 관리자 화면에서 반영 결과를 확인해 주세요.\n원인: ${message}`;
+  if (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return `${head}\n:x: 오류로 중단됐어요. 이번 달 매출은 갱신되지 않았습니다(기존 매출은 그대로예요).\n원인: ${message}`;
   }
   if (result && !result.configured) {
     return `${head}\n:warning: 설정 문제로 실행되지 않았어요.\n원인: ${result.issues[0] ?? "세일즈맵 미설정"}`;
@@ -76,20 +102,12 @@ async function handle(apply: boolean, request?: Request) {
   }
   const { actorEmail, viaCron } = access;
 
-  let notifier: SalesRevenueNotifier | undefined;
-  const notify = async (text: string) => { try { await notifier?.notifyFailure(text); } catch { /* Best effort after business decision. */ } };
   try {
-    const candidate = getSalesRevenueNotifier();
-    // Preflight all scoped services before allowing even a failure notification.
-    // Default adapter construction has no database/source side effects.
-    getSalesRevenueSyncRepository();
-    getSalesRevenueSource();
-    notifier = candidate;
     const multiDealResolutions = apply ? await readMultiDealResolutions(request) : {};
     const result = await runSalesRevenueSync({ apply, actorEmail, multiDealResolutions });
 
     if (!result.configured) {
-      if (viaCron && apply) await notify(buildFailureText(result));
+      if (viaCron && apply) await notifySalesSyncFailure(buildFailureText(result));
       return NextResponse.json(
         { ok: false, error: result.issues[0] ?? "세일즈맵이 설정되지 않았습니다." },
         { status: 400 }
@@ -98,19 +116,19 @@ async function handle(apply: boolean, request?: Request) {
 
     // 자동 반영인데 partial 등으로 실제 쓰기가 막힌 경우 = 사람이 화면을 안 보므로 알린다.
     if (viaCron && apply && !result.applied) {
-      await notify(buildFailureText(result));
+      await notifySalesSyncFailure(buildFailureText(result));
     }
 
     return NextResponse.json({ ok: true, dryRun: !apply, result });
-  } catch {
-    if (viaCron && apply) await notify(buildFailureText(null, true));
+  } catch (error) {
+    if (viaCron && apply) await notifySalesSyncFailure(buildFailureText(null, error));
     return NextResponse.json(
-      { ok: false, error: "SALES_REVENUE_SYNC_FAILED" },
+      { ok: false, error: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }
 }
 
-export const GET = withActivity("/api/admin/sales-revenue", "GET", activityGET, runSalesSyncRequest);
+export const GET = withActivity("/api/admin/sales-revenue", "GET", activityGET);
 
-export const POST = withActivity("/api/admin/sales-revenue", "POST", activityPOST, runSalesSyncRequest);
+export const POST = withActivity("/api/admin/sales-revenue", "POST", activityPOST);

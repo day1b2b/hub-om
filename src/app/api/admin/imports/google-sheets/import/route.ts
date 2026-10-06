@@ -1,13 +1,10 @@
 import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
-import { parseGoogleSpreadsheetUrl } from "@/lib/data/googleSheetsImport";
-import { getGoogleSheetsImportSource, googleSheetsImportError } from "@/lib/data/googleSheetsImportSource";
-import { getDataRepositoryOverride } from "@/lib/data/dataRepositoryContext";
+import { parseGoogleSpreadsheetUrl, readGoogleSheetRows } from "@/lib/data/googleSheetsImport";
 import { storeParsedImport } from "@/lib/data/importStagingWriter";
 import { parseImportTable } from "@/lib/data/importUploadParser";
 import type { SourceTeam } from "@prisma/client";
-import { runGoogleSheetsImportRequest } from "@/lib/data/googleSheetsImportComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -38,13 +35,7 @@ async function activityPOST(request: Request) {
     }
 
     const { spreadsheetId } = parseGoogleSpreadsheetUrl(body.spreadsheetUrl ?? "");
-    const source = getGoogleSheetsImportSource();
-    // Resolve the complete immutable scope before any source or roster IO.
-    // Outside a scope these checks do not construct or connect a PG repository.
-    getDataRepositoryOverride("imports");
-    getDataRepositoryOverride("teamMembers");
-    getDataRepositoryOverride("instructorNote");
-    const rows = await source.readRows(accessToken, spreadsheetId, tabTitle);
+    const rows = await readGoogleSheetRows(accessToken, spreadsheetId, tabTitle);
     const parsed = parseImportTable(rows, body.headerRowNumber || 1, {
       defaultYear: parseImportYear(body.importYear)
     });
@@ -74,7 +65,7 @@ async function activityPOST(request: Request) {
     });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, error: googleSheetsImportError(error, "import") },
+      { ok: false, error: error instanceof Error ? error.message : "스프레드시트를 가져오지 못했습니다." },
       { status: 400 }
     );
   }
@@ -92,4 +83,4 @@ function parseSourceTeam(value: string | undefined): SourceTeam {
   return "UNKNOWN";
 }
 
-export const POST = withActivity("/api/admin/imports/google-sheets/import", "POST", activityPOST, work => runGoogleSheetsImportRequest("import", work));
+export const POST = withActivity("/api/admin/imports/google-sheets/import", "POST", activityPOST);

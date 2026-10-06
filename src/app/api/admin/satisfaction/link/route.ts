@@ -1,12 +1,11 @@
 import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { authorizeSatisfactionMatching } from "@/lib/auth/satisfactionMatchingAccess";
-import { parseGoogleSpreadsheetUrl } from "@/lib/data/googleSheetsImport";
+import { parseGoogleSpreadsheetUrl, readGoogleSheetRows } from "@/lib/data/googleSheetsImport";
+import { getGoogleB2BAccessToken } from "@/lib/googleCalendar/calendarWriteClient";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
-import { getSatisfactionSource } from "@/lib/data/satisfactionSource";
 import { planSatisfactionApply } from "@/lib/data/satisfactionApplyPlan";
 import { sheetValuesToRows, type SatisfactionMatchResult } from "@/lib/data/satisfactionSheet";
-import { runSatisfactionRequest } from "@/lib/data/satisfactionComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +22,8 @@ export const dynamic = "force-dynamic";
 async function activityPOST(request: Request) {
   const access = await authorizeSatisfactionMatching();
   if (!access.ok) return access.response;
+  const { session } = access;
+
   try {
     const body = (await request.json().catch(() => ({}))) as {
       recordId?: string;
@@ -50,10 +51,10 @@ async function activityPOST(request: Request) {
       );
     }
 
-    const repository = getOperationRepository();
-    const source = getSatisfactionSource();
     const { spreadsheetId } = parseGoogleSpreadsheetUrl(sheetUrl);
-    const values = await source.readRows(spreadsheetId, tabTitle);
+    // 개별 사용자 권한이 아니라 전용 B2B 구글 계정(캘린더 OAuth와 공용)으로 시트를 읽는다.
+    const accessToken = await getGoogleB2BAccessToken();
+    const values = await readGoogleSheetRows(accessToken, spreadsheetId, tabTitle);
     const headerRowNumber =
       Number.isInteger(body.headerRowNumber) && (body.headerRowNumber ?? 0) > 0 ? Number(body.headerRowNumber) : 1;
     const sheetRows = sheetValuesToRows(values, headerRowNumber);
@@ -66,6 +67,7 @@ async function activityPOST(request: Request) {
       );
     }
 
+    const repository = getOperationRepository();
     const operations = await repository.listOperations();
     const operationsById = new Map(operations.map((operation) => [operation.id, operation]));
     if (!operationsById.has(operationId)) {
@@ -83,7 +85,9 @@ async function activityPOST(request: Request) {
       try {
         await repository.updateOperation(item.operationId, { avgSatisfaction: item.value });
         applied.push({ operation: item.label, value: item.value });
-        console.info("[satisfaction:link] applied");
+        console.info(
+          `[satisfaction:link] by=${session.user?.email ?? "unknown"} operationId=${item.operationId} value=${item.value} recordId=${item.recordId}`
+        );
       } catch (error) {
         failed.push({ error: error instanceof Error ? error.message : "연결 실패" });
       }
@@ -98,4 +102,4 @@ async function activityPOST(request: Request) {
   }
 }
 
-export const POST = withActivity("/api/admin/satisfaction/link", "POST", activityPOST, runSatisfactionRequest);
+export const POST = withActivity("/api/admin/satisfaction/link", "POST", activityPOST);

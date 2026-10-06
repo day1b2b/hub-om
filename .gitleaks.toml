@@ -11,8 +11,6 @@ description = "비밀이 아님이 확인된 값 / 검사 제외 경로"
 regexes = [
   # 로컬 개발 전용 대체 시크릿 (운영에서는 환경변수로 주입, 실제 비밀 아님)
   '''hub-om-local-development-auth-secret''',
-  # TypeScript repository 타입명. Etsy 토큰 규칙의 오탐이며 값/자격 증명이 아님.
-  '''CoachSheetSyncRepository''',
 ]
 paths = [
   '''(^|/)package-lock\.json$''',

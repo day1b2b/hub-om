@@ -1,8 +1,8 @@
 import { withActivity } from "@/lib/activity/request";
+import { OnsiteRequired } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
-import { getOperationBackfillRepository } from "@/lib/data/operationBackfillRepositoryFactory";
-import { runAdminMaintenanceRequest } from "@/lib/data/adminMaintenanceComposition";
+import { getPrismaClient } from "@/lib/data/prisma";
 
 export const dynamic = "force-dynamic";
 
@@ -18,21 +18,28 @@ export const dynamic = "force-dynamic";
 async function activityGET() {
   await assertAdminSession();
 
-  const targetCount = await getOperationBackfillRepository().countOnsiteRequiredTargets();
+  const prisma = getPrismaClient();
+  const targetCount = await prisma.operationSession.count({
+    where: { deletedAt: null, onsiteRequired: { not: OnsiteRequired.Y } }
+  });
 
   return NextResponse.json({ ok: true, targetCount });
 }
 
 async function activityPOST() {
-  await assertAdminSession();
+  const session = await assertAdminSession();
 
-  const updatedCount = await getOperationBackfillRepository().applyOnsiteRequiredBackfill();
+  const prisma = getPrismaClient();
+  const result = await prisma.operationSession.updateMany({
+    where: { deletedAt: null, onsiteRequired: { not: OnsiteRequired.Y } },
+    data: { onsiteRequired: OnsiteRequired.Y }
+  });
 
-  console.info(`[onsite-required-backfill] updated=${updatedCount}`);
+  console.info(`[onsite-required-backfill] by=${session.user?.email ?? "unknown"} updated=${result.count}`);
 
-  return NextResponse.json({ ok: true, updatedCount });
+  return NextResponse.json({ ok: true, updatedCount: result.count });
 }
 
-export const GET = withActivity("/api/admin/onsite-required-backfill", "GET", activityGET, runAdminMaintenanceRequest);
+export const GET = withActivity("/api/admin/onsite-required-backfill", "GET", activityGET);
 
-export const POST = withActivity("/api/admin/onsite-required-backfill", "POST", activityPOST, runAdminMaintenanceRequest);
+export const POST = withActivity("/api/admin/onsite-required-backfill", "POST", activityPOST);

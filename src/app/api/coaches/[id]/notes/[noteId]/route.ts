@@ -2,7 +2,6 @@ import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { deleteNote, toggleNoteWarning, updateNote } from "@/lib/coaches/contentEntries";
-import { runChangesRequest } from "@/lib/data/changesComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +39,6 @@ async function activityDELETE(_request: Request, { params }: RouteContext) {
   return NextResponse.json({ ok: true });
 }
 
-export const PATCH = withActivity("/api/coaches/[id]/notes/[noteId]", "PATCH", activityPATCH, runChangesRequest);
+export const PATCH = withActivity("/api/coaches/[id]/notes/[noteId]", "PATCH", activityPATCH);
 
-export const DELETE = withActivity("/api/coaches/[id]/notes/[noteId]", "DELETE", activityDELETE, runChangesRequest);
+export const DELETE = withActivity("/api/coaches/[id]/notes/[noteId]", "DELETE", activityDELETE);

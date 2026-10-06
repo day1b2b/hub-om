@@ -3,7 +3,6 @@ import { NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { buildSessionSheetWorkbook, SESSION_SHEET_FILE_NAME } from "@/lib/data/omRequest/omSessionSheet";
-import { runOmSessionTemplateRequest } from "@/lib/data/omSessionTemplateComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -21,4 +20,4 @@ async function activityGET() {
   });
 }
 
-export const GET = withActivity("/api/om-request/session-template", "GET", activityGET, runOmSessionTemplateRequest);
+export const GET = withActivity("/api/om-request/session-template", "GET", activityGET);
