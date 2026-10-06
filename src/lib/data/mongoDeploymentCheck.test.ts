@@ -11,6 +11,7 @@ const mongoEnvironment = () => Object.fromEntries([
   ["MONGODB_URI", "mongodb://127.0.0.1:27017"], ["MONGODB_SHADOW_DATABASE", "hub_om_shadow_deployment"],
   ["MONGODB_SHADOW_NAMESPACE", "shadow_deployment"], ["PII_ENCRYPTION_KEYS", JSON.stringify({ fixture: key })],
   ["PII_ACTIVE_KEY_ID", "fixture"], ["PII_INDEX_KEY", index], ["RUN_DB_MIGRATIONS", "false"],
+  ["PII_ALLOW_PLAINTEXT_READS", "false"],
 ]);
 
 test("deployment manifest matches every production composition selector and .env.example defaults", () => {
@@ -27,10 +28,12 @@ test("deployment manifest matches every production composition selector and .env
 
 test("deployment preflight accepts only one exact declared state", () => {
   assert.deepEqual(checkMongoDeploymentEnvironment("postgres", {}), { readyFor: "postgres", selectorCount: 35 });
+  assert.deepEqual(checkMongoDeploymentEnvironment("postgres-legacy-pii", { PII_ALLOW_PLAINTEXT_READS: "true" }), { readyFor: "postgres-legacy-pii", selectorCount: 35 });
+  assert.throws(() => checkMongoDeploymentEnvironment("postgres-legacy-pii", { PII_ALLOW_PLAINTEXT_READS: "false" }), /MONGODB_DEPLOYMENT_CONFIGURATION_INVALID/);
   const mongo = mongoEnvironment();
   assert.deepEqual(checkMongoDeploymentEnvironment("mongodb-shadow", mongo), { readyFor: "mongodb-shadow", selectorCount: 35 });
   for (const patch of [{ ACTIVITY_READ_BACKEND: "postgres" }, { ACTIVITY_READ_BACKEND: "mongo" }, { RUN_DB_MIGRATIONS: "true" },
-    { PII_INDEX_KEY: key }, { PII_ACTIVE_KEY_ID: " fixture " }, { MONGODB_URI: "mongodb://127.0.0.1:not-a-port" },
+    { PII_INDEX_KEY: key }, { PII_ACTIVE_KEY_ID: " fixture " }, { PII_ALLOW_PLAINTEXT_READS: "true" }, { MONGODB_URI: "mongodb://127.0.0.1:not-a-port" },
     { MONGODB_URI: "mongodb+srv://example.invalid:27017" }]) {
     assert.throws(() => checkMongoDeploymentEnvironment("mongodb-shadow", { ...mongo, ...patch }), /^Error: MONGODB_DEPLOYMENT_CONFIGURATION_INVALID$/);
   }
@@ -39,6 +42,7 @@ test("deployment preflight accepts only one exact declared state", () => {
 
 test("deployment preflight requires one exact expectation argument", () => {
   assert.equal(parseMongoDeploymentExpectation(["--expect=postgres"]), "postgres");
+  assert.equal(parseMongoDeploymentExpectation(["--expect=postgres-legacy-pii"]), "postgres-legacy-pii");
   assert.equal(parseMongoDeploymentExpectation(["--expect=mongodb-shadow"]), "mongodb-shadow");
   for (const args of [[], ["--expect=mongo"], ["--expect=postgres", "extra"]]) assert.throws(() => parseMongoDeploymentExpectation(args));
 });
