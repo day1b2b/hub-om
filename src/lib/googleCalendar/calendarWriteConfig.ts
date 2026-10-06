@@ -33,7 +33,8 @@ export function readCalendarWriteCredentials(): CalendarWriteCredentials | null 
  */
 export function extractPartKey(value: string | null | undefined): string | null {
   if (!value) return null;
-  return PART_KEYS.find((key) => value.includes(key)) ?? null;
+  const normalizedValue = normalizeLegacyUtf8Mojibake(value);
+  return PART_KEYS.find((key) => normalizedValue.includes(key)) ?? null;
 }
 
 /**
