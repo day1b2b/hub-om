@@ -51,6 +51,7 @@ export async function createLinkedOperationForOmRequest(request: OmRequest): Pro
 
     const input: CreateOperationInput = {
       archiveStatus: "아카이빙전",
+      calendarPartKey: request.team,
       coach: "",
       companyName: request.company,
       companyWikiLink: "",
