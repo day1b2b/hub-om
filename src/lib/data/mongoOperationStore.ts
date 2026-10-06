@@ -43,24 +43,36 @@ export class MongoOperationStore {
     const rows: MongoRow[] = []; let bytes = 0;
     const deadline = performance.now() + 15_000;
     let lastId: string | undefined;
-    // Driver 7.2 adds invalid maxTimeMS to getMore under transaction CSOT and
-    // forbids cursor timeout overrides. Single-batch keyset reads avoid getMore
-    // without relying on internal driver properties or batch byte size.
+    // Driver 7.2 can still issue getMore after find({ singleBatch: true }) when
+    // a transaction has CSOT. MongoDB rejects the propagated maxTimeMS on that
+    // getMore. Send the bounded find command directly so every keyset page is
+    // returned only in firstBatch and the server closes the cursor itself.
     while (true) {
       const remaining = Math.ceil(deadline - performance.now());
       assertMongo(remaining > 0, "SCAN_TIMEOUT");
-      const cursor = this.collection(model).find(lastId === undefined ? filter : { $and: [filter, { _id: { $gt: lastId } }] },
-        { session, maxTimeMS: remaining, singleBatch: true, batchSize: 100, collation: { locale: "simple" } }).sort({ _id: 1 }).limit(100);
-      let count = 0;
-      try { for await (const row of cursor) {
-        count++; lastId = row._id;
+      const query = lastId === undefined ? filter : { $and: [filter, { _id: { $gt: lastId } }] };
+      const response = await this.db.command({
+        find: this.collection(model).collectionName,
+        filter: query,
+        sort: { _id: 1 },
+        limit: 100,
+        batchSize: 100,
+        singleBatch: true,
+        collation: { locale: "simple" },
+        maxTimeMS: remaining,
+      }, { session });
+      const batch = response.cursor?.firstBatch;
+      const cursorId = response.cursor?.id;
+      assertMongo(Array.isArray(batch) && (cursorId === 0 || cursorId?.isZero?.() === true), "SCAN_CURSOR_NOT_CLOSED");
+      for (const row of batch as MongoRuntimeDocument[]) {
+        lastId = row._id;
         bytes += BSON.calculateObjectSize(row);
         assertMongo(rows.length < MONGO_SCAN_ROWS && bytes <= MONGO_SCAN_BYTES, "SCAN_LIMIT_EXCEEDED");
         rows.push(decodeMongoRuntimeDocument(model, row));
-      } } finally { await cursor.close(); }
+      }
       assertMongo(performance.now() <= deadline, "SCAN_TIMEOUT");
       // A short batch can be caused by BSON size; only an empty page proves EOF.
-      if (count === 0) break;
+      if (batch.length === 0) break;
     }
     return rows;
   }
