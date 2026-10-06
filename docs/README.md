@@ -44,3 +44,4 @@ AI 작업자는 먼저 [operations/manager-ai-workflow.md](operations/manager-ai
 - [operations/source-automation-todo.md](operations/source-automation-todo.md): 엑셀 수기 입력을 실제 원천 자동화로 대체하기 위한 TODO.
 - [operations/excel-initial-migration.md](operations/excel-initial-migration.md): 엑셀을 초기 이관 원천으로 사용하는 기준.
 - [operations/lecture-followup-reminder.md](operations/lecture-followup-reminder.md): 회차 종료 후 담당 OM에게 보내는 마무리 DM 알림(D+1 등록, D+7 등록·회고)의 기준과 설정 방법.
+- [operations/mongodb-cutover-todo.md](operations/mongodb-cutover-todo.md): MongoDB 전환 재개를 위한 단계별 TODO, 완료 증거, 중단·복구 기준.
