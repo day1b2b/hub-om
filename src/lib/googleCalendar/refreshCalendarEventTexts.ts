@@ -1,4 +1,3 @@
-import { calendarErrorMessage } from "./calendarErrors";
 import { withCalendarOperationLock } from "./calendarOperationLock";
 import { calendarOperationRevision } from "./calendarOperationRevision";
 // 이미 캘린더에 올라간 이벤트의 **설명·제목만** 현재 규칙으로 다시 쓴다(관리자 도구).
@@ -115,8 +114,8 @@ export async function refreshCalendarEventTexts(options: { dryRun: boolean }): P
       if (outcome.result === "missing") outcome.detail = "이벤트가 캘린더에 없음(사람이 지움) — hub-om 저장 시 재생성";
     } catch (error) {
       outcome.result = "failed";
-      outcome.detail = calendarErrorMessage(error);
-      console.error("[gcal-refresh] CALENDAR_REFRESH_FAILED");
+      outcome.detail = error instanceof Error ? error.message : String(error);
+      console.error(`[gcal-refresh] ${link.operationId} ${link.eventDate} 설명 갱신 실패:`, outcome.detail);
     }
   }
 

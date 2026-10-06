@@ -2,12 +2,11 @@ import Link from "next/link";
 import { AppSidebar } from "@/components/AppSidebar";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import {
-  getDriveImportHistoryRepository,
+  readLatestDriveImportRun,
   type StoredDriveImportCandidate,
   type StoredDriveImportRunResult
 } from "@/lib/driveImports/driveImportResults";
 import { getStoredTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFactory";
-import { runDriveImportPageRequest } from "@/lib/data/driveImportPageComposition";
 import { resolveTeamScope, teamScopeSearchParam } from "@/lib/teamScope";
 
 export const dynamic = "force-dynamic";
@@ -17,19 +16,17 @@ interface DriveImportRunsPageProps {
 }
 
 export default async function DriveImportRunsPage({ searchParams }: DriveImportRunsPageProps) {
-  return runDriveImportPageRequest(async () => {
-    const session = await requireWorkspaceSession();
-    const teamMemberRepository = getStoredTeamMemberRepository();
-    const driveHistoryRepository = getDriveImportHistoryRepository();
-    const [ownerRoster, params, latestRun] = await Promise.all([
-      teamMemberRepository.listResourceOwners(),
-      searchParams,
-      driveHistoryRepository.readLatestDriveImportRun()
-    ]);
-    const teamScope = resolveTeamScope(params, session, ownerRoster);
-    const teamQuery = teamScopeSearchParam(teamScope);
+  const session = await requireWorkspaceSession();
+  const teamMemberRepository = getStoredTeamMemberRepository();
+  const [ownerRoster, params, latestRun] = await Promise.all([
+    teamMemberRepository.listResourceOwners(),
+    searchParams,
+    readLatestDriveImportRun()
+  ]);
+  const teamScope = resolveTeamScope(params, session, ownerRoster);
+  const teamQuery = teamScopeSearchParam(teamScope);
 
-    return (
+  return (
     <main className="dashboard-shell">
       <AppSidebar label="Drive import" teamScope={teamScope} />
 
@@ -122,8 +119,7 @@ export default async function DriveImportRunsPage({ searchParams }: DriveImportR
         )}
       </section>
     </main>
-    );
-  });
+  );
 }
 
 function Metric({ caption, label, value }: { caption: string; label: string; value: number | string }) {

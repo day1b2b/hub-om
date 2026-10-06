@@ -1,4 +1,3 @@
-import { calendarErrorMessage } from "./calendarErrors";
 import { reflectOperationUpdated } from "./reflectOperationToCalendar";
 import { withCalendarOperationLock, withoutCalendarReflection } from "./calendarOperationLock";
 import { calendarOperationRevision } from "./calendarOperationRevision";
@@ -11,7 +10,7 @@ import { calendarOperationRevision } from "./calendarOperationRevision";
 //    교육일이 등록되지 않은 옛 회차는 startDate·endDate·timeText를 직접 쓴다.
 //  - 대상은 캘린더 매핑이 있는 회차 중 판정이 잡힌 건만이다.
 //  - 1회 실행 상한(CALENDAR_REVERSE_SYNC_MAX_APPLY, 기본 20건)을 넘으면 한 건도 적용하지 않는다.
-//  - 처리 로그는 고정 코드만 남기고, 변경 내용은 승인된 결과 DTO에만 돌려준다.
+//  - 바꾼 값은 이전값→새값으로 로그에 남긴다([gcal-reverse] 접두어로 Coolify 런타임 로그에서 검색).
 //
 // 한계: 시간(timeText)은 회차 단위 값이다. 매니저가 특정 교육일의 시간만 바꿔도 그 회차
 // 전체 시간이 바뀌고, 다른 교육일 이벤트도 다음 반영에서 같은 시간으로 맞춰진다.
@@ -83,8 +82,8 @@ export async function applyCalendarReverseSync(): Promise<ReverseSyncApplyResult
       outcomes.push({ item, applied: true, detail });
       appliedCount += 1;
     } catch (error) {
-      const message = calendarErrorMessage(error);
-      console.error("[gcal-reverse] CALENDAR_REVERSE_FAILED");
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`[gcal-reverse] ${item.operationId} ${item.action} 실패:`, message);
       outcomes.push({ item, applied: false, detail: message });
       failedCount += 1;
     }
@@ -123,7 +122,7 @@ async function applyScheduleToOperation(item: ReverseSyncItem, etag: string): Pr
       extendedProperties: expected.extendedProperties
     }, { expectedEtag: etag });
     if (revertFields.length > 0) {
-      console.info("[gcal-reverse] CALENDAR_FIELDS_REVERTED");
+      console.info(`[gcal-reverse] ${item.operationId} ${revertFields.join(", ")} 원복 (event=${item.eventId})`);
     }
   }
 
@@ -162,7 +161,10 @@ async function applyEducationRunChange(
 
   const before = item.eventDate === item.eventEndDate ? item.eventDate : `${item.eventDate}~${item.eventEndDate}`;
   const after = to.startDate === to.endDate ? to.startDate : `${to.startDate}~${to.endDate}`;
-  console.info("[gcal-reverse] CALENDAR_EDUCATION_DATES_APPLIED");
+  console.info(
+    `[gcal-reverse] ${item.operationId} 교육일 반영: ${before} → ${after}` +
+      `${timeChanged ? ` / 시간 ${operation.timeText} → ${to.timeText}` : ""} (event=${item.eventId})`
+  );
 
   return `교육일 ${before} → ${after}${timeChanged ? ` · 시간 ${to.timeText}` : ""}`;
 }
@@ -179,7 +181,7 @@ async function applyRangeChange(
   });
 
   const summary = `${to.startDate}~${to.endDate} ${to.timeText}`.trim();
-  console.info("[gcal-reverse] CALENDAR_RANGE_APPLIED");
+  console.info(`[gcal-reverse] ${item.operationId} 기간 반영: ${summary} (event=${item.eventId})`);
 
   return `날짜·시간 반영 (${summary})`;
 }
@@ -204,7 +206,7 @@ async function revertEventToOperation(item: ReverseSyncItem, etag: string): Prom
   }, { expectedEtag: etag });
 
   const fields = item.revertFields?.join(", ") ?? "";
-  console.info("[gcal-reverse] CALENDAR_EVENT_REVERTED");
+  console.info(`[gcal-reverse] ${item.operationId} 원복: ${fields} (event=${item.eventId})`);
 
   return `캘린더 원복 (${fields})`;
 }

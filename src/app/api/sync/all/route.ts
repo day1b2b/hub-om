@@ -1,4 +1,3 @@
-import { assertCoachSyncReady } from "@/lib/coaches/coachSyncReadiness";
 import { withActivity } from "@/lib/activity/request";
 import { requireCoachSyncAccess } from "@/lib/coaches/syncAuth";
 import { syncContractSheetEngagements } from "@/lib/coaches/contractSheetSync";
@@ -7,14 +6,12 @@ import { syncSamsungSchedule } from "@/lib/coaches/samsungScheduleSync";
 import type { SyncResult } from "@/lib/coaches/syncTypes";
 import { runCoachSyncWithLog } from "@/lib/coaches/syncLog";
 import { syncJsonResponse } from "@/lib/coaches/syncRouteResponse";
-import { runCoachSyncRequest } from "@/lib/data/coachSyncComposition";
 
 export const dynamic = "force-dynamic";
 
 async function activityGET(request: Request) {
   return syncJsonResponse(async () => {
     await requireCoachSyncAccess(request);
-    assertCoachSyncReady("all", true);
     const result = await runAll(true);
     return { ok: true, dryRun: true, result };
   });
@@ -23,7 +20,6 @@ async function activityGET(request: Request) {
 async function activityPOST(request: Request) {
   return syncJsonResponse(async () => {
     const triggeredBy = await requireCoachSyncAccess(request);
-    assertCoachSyncReady("all", false);
     const result = await runCoachSyncWithLog("all", triggeredBy, () => runAll(false));
     return { ok: true, result };
   });
@@ -44,6 +40,6 @@ async function runAll(dryRun: boolean): Promise<SyncResult> {
   };
 }
 
-export const GET = withActivity("/api/sync/all", "GET", activityGET, runCoachSyncRequest);
+export const GET = withActivity("/api/sync/all", "GET", activityGET);
 
-export const POST = withActivity("/api/sync/all", "POST", activityPOST, runCoachSyncRequest);
+export const POST = withActivity("/api/sync/all", "POST", activityPOST);

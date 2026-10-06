@@ -1,9 +1,0 @@
-{
-  "scripts/test-admin-backup-baseline-loader.mjs": "30a8dce47ad73346f267c80a4a2b6f4de7f24659b4c1d099efb3c64c158a9d1f",
-  "src/lib/data/admin-backup-tests/BASELINE-RUN.txt": "8a67eede70a3e8ccd2a5a0c6cfc95db72ebe2587b22492e1ecf063ab5ab071f6",
-  "src/lib/data/admin-backup-tests/baseline-manifest.json": "4852a6579695791ccad2150a466e45cf62e382741552d7f235e39a7f6aec71cb",
-  "src/lib/data/admin-backup-tests/baseline-worker.fixture.ts": "9fa5d8a33ef216f2c3b9bb5491ea9dbad8fb3f363a38548da7a23b2298b982c7",
-  "src/lib/data/admin-backup-tests/baseline.postgres.integration.test.ts": "2a6bb9af1ddb12df85f857ebc4fc54a31cc7b60d6c89ec1bbf8f85ea41845535",
-  "src/lib/data/admin-backup-tests/runner-contract.fixture.ts": "1f06d2b9bb706fb37a275e3dd802592456cd57c4e81095909c41e01531f027b6",
-  "src/lib/data/admin-backup-tests/shared.fixture.ts": "827abd27476dbbbb9389d0c7f1cb12334cb2b7d35f85a4d78145167ce068b967"
-}

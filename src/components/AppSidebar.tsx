@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { lockBrowserDrafts } from "@/lib/privacy/browserDraftRuntime";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { useCanAccessSatisfactionMatching, useIsAdmin } from "@/lib/auth/RoleContext";
@@ -54,7 +53,7 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
         <button
           type="button"
           className="sidebar-signout"
-          onClick={() => { lockBrowserDrafts(); void signOut({ redirectTo: "/sign-in" }); }}
+          onClick={() => signOut({ redirectTo: "/sign-in" })}
         >
           로그아웃
         </button>

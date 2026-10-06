@@ -1,8 +1,7 @@
 import { notFound } from "next/navigation";
 import { ImportRunDetailView } from "@/features/imports/ImportAdminDashboard";
 import { requireAdminSession } from "@/lib/auth/requireAdminSession";
-import { getImportRepository } from "@/lib/data/importRepositoryFactory";
-import { runImportPagesRequest } from "@/lib/data/importPagesComposition";
+import { PrismaImportRepository } from "@/lib/data/prismaImportRepository";
 
 export const dynamic = "force-dynamic";
 
@@ -13,15 +12,15 @@ interface ImportRunPageProps {
 }
 
 export default async function ImportRunPage({ params }: ImportRunPageProps) {
-  return runImportPagesRequest(async () => {
-    await requireAdminSession();
+  await requireAdminSession();
 
-    const { id } = await params;
-    const repository = getImportRepository();
-    const run = await repository.getImportRunById(id);
+  const { id } = await params;
+  const repository = new PrismaImportRepository();
+  const run = await repository.getImportRunById(id);
 
-    if (!run) notFound();
+  if (!run) {
+    notFound();
+  }
 
-    return <ImportRunDetailView run={run} />;
-  });
+  return <ImportRunDetailView run={run} />;
 }

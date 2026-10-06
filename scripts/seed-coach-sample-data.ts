@@ -1,4 +1,3 @@
-import { withPrivacyDatabase } from "../src/lib/privacy/database";
 /**
  * 로컬 개발용 실습코치 샘플 데이터 시드.
  *
@@ -24,7 +23,7 @@ if (!databaseUrl) {
   process.exit(1);
 }
 
-const prisma = withPrivacyDatabase(new PrismaClient({ adapter: new PrismaPg(databaseUrl) }));
+const prisma = new PrismaClient({ adapter: new PrismaPg(databaseUrl) });
 
 function normalizeName(value: string): string {
   return value.trim().replace(/\s+/g, " ").toLowerCase();

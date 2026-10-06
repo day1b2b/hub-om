@@ -3,9 +3,7 @@ import { NextResponse } from "next/server";
 import type { SourceTeam } from "@prisma/client";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { storeParsedImport } from "@/lib/data/importStagingWriter";
-import { getNotionImportSource, notionImportError } from "@/lib/data/notionImportSource";
-import { getDataRepositoryOverride } from "@/lib/data/dataRepositoryContext";
-import { runNotionImportRequest } from "@/lib/data/notionImportComposition";
+import { readNotionDatabaseImport } from "@/lib/data/notionImport";
 
 export const dynamic = "force-dynamic";
 
@@ -38,12 +36,7 @@ async function activityPOST(request: Request) {
       );
     }
 
-    const source = getNotionImportSource();
-    // Resolve the complete scope before source or roster IO; default PG stays lazy.
-    getDataRepositoryOverride("imports");
-    getDataRepositoryOverride("teamMembers");
-    getDataRepositoryOverride("instructorNote");
-    const result = await source.readDatabase({
+    const result = await readNotionDatabaseImport({
       databaseUrlOrId: notionUrl,
       token
     });
@@ -73,7 +66,7 @@ async function activityPOST(request: Request) {
     });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, error: notionImportError(error) },
+      { ok: false, error: error instanceof Error ? error.message : "Notion 데이터를 가져오지 못했습니다." },
       { status: 400 }
     );
   }
@@ -97,9 +90,4 @@ function getConfiguredNotionDatabase(sourceTeam: SourceTeam) {
   return process.env.NOTION_IMPORT_DATABASE_ID || process.env.NOTION_IMPORT_DATABASE_URL;
 }
 
-export const POST = withActivity(
-  "/api/admin/imports/notion/import",
-  "POST",
-  activityPOST,
-  work => runNotionImportRequest(work)
-);
+export const POST = withActivity("/api/admin/imports/notion/import", "POST", activityPOST);

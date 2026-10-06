@@ -4,8 +4,6 @@ import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { isSameCourse } from "@/lib/data/operationCalculations";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { planRoundReorder } from "@/lib/data/roundReorder";
-import { activityContext } from "@/lib/activity/context";
-import { runOperationWriteRequest } from "@/lib/data/operationWriteComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +22,7 @@ interface RouteContext {
 }
 
 async function activityPOST(request: Request, { params }: RouteContext) {
-  await requireWorkspaceSession();
+  const session = await requireWorkspaceSession();
   const { operationId } = await params;
   const repository = getOperationRepository();
   const baseOperation = await repository.getOperationById(operationId);
@@ -56,17 +54,19 @@ async function activityPOST(request: Request, { params }: RouteContext) {
     for (const change of plan.changes) {
       await repository.updateOperation(change.operationId, { roundNo: change.toRoundNo });
     }
-  } catch {
-    console.error("[round-reorder] ROUND_REORDER_FAILED");
-    return NextResponse.json({ ok: false, error: "회차 순서를 바꾸지 못했습니다." }, { status: 400 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "회차 순서를 바꾸지 못했습니다.";
+    console.error(`[round-reorder] ${operationId} 실패:`, message);
+
+    return NextResponse.json({ ok: false, error: message }, { status: 400 });
   }
 
-  console.info("[round-reorder] ROUND_REORDER_COMPLETED", {
-    requestId: activityContext.getStore()?.requestId ?? null,
-    changedCount: plan.changes.length
-  });
+  console.info(
+    `[round-reorder] ${operationId} 순서 변경 (${session.user?.email ?? "unknown"}): ` +
+      plan.changes.map((change) => `${change.fromRoundNo}→${change.toRoundNo}`).join(", ")
+  );
 
   return NextResponse.json({ ok: true, changes: plan.changes });
 }
 
-export const POST = withActivity("/api/operations/[operationId]/rounds/reorder", "POST", activityPOST, runOperationWriteRequest);
+export const POST = withActivity("/api/operations/[operationId]/rounds/reorder", "POST", activityPOST);

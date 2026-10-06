@@ -6,7 +6,6 @@ import {
   notionIdKey,
   saveInstructorNote
 } from "@/lib/data/instructorWikiStore";
-import { runInstructorWikiRequest } from "@/lib/data/instructorWikiComposition";
 
 /**
  * "이 강사는 노션의 이 강사" 수동 연결 저장.
@@ -62,4 +61,4 @@ async function activityPOST(request: Request) {
   }
 }
 
-export const POST = withActivity("/api/instructor-wiki/link", "POST", activityPOST, runInstructorWikiRequest);
+export const POST = withActivity("/api/instructor-wiki/link", "POST", activityPOST);

@@ -1,9 +1,9 @@
 import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
+import { CoachContentEntryKind } from "@prisma/client";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { createNote } from "@/lib/coaches/contentEntries";
-import { getCoachContentRepository } from "@/lib/data/coachContentRepositoryFactory";
-import { runChangesRequest } from "@/lib/data/changesComposition";
+import { getPrismaClient } from "@/lib/data/prisma";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +15,12 @@ async function activityGET(_request: Request, { params }: RouteContext) {
   await requireWorkspaceSession();
   const { id } = await params;
 
-  const notes = await getCoachContentRepository().listNotes(id);
+  const prisma = getPrismaClient();
+  const notes = await prisma.coachContentEntry.findMany({
+    where: { coachId: id, kind: CoachContentEntryKind.NOTE, deletedAt: null },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, content: true, authorName: true, flaggedAt: true, createdAt: true }
+  });
 
   return NextResponse.json({ ok: true, notes });
 }
@@ -36,6 +41,6 @@ async function activityPOST(request: Request, { params }: RouteContext) {
   return NextResponse.json({ ok: true, note });
 }
 
-export const GET = withActivity("/api/coaches/[id]/notes", "GET", activityGET, runChangesRequest);
+export const GET = withActivity("/api/coaches/[id]/notes", "GET", activityGET);
 
-export const POST = withActivity("/api/coaches/[id]/notes", "POST", activityPOST, runChangesRequest);
+export const POST = withActivity("/api/coaches/[id]/notes", "POST", activityPOST);

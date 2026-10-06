@@ -2,10 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppSidebar } from "@/components/AppSidebar";
 import { requireAdminSession } from "@/lib/auth/requireAdminSession";
-import { getAnnouncementRepository } from "@/lib/data/announcements/announcementRepositoryFactory";
+import { getPrismaClient } from "@/lib/data/prisma";
 import { AnnouncementActions } from "@/features/announcements/AnnouncementActions";
 import { sanitizeAnnouncementContent } from "@/lib/data/announcements/sanitizeAnnouncementContent";
-import { runAnnouncementRequest } from "@/lib/data/announcementComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +16,22 @@ export default async function AnnouncementDetailPage({ params }: Props) {
   await requireAdminSession();
   const { id } = await params;
 
-  const announcement = await runAnnouncementRequest(() => getAnnouncementRepository().getDetailPage(id));
+  const prisma = getPrismaClient();
+  const announcement = await prisma.announcement.findFirst({
+    where: { id, deletedAt: null },
+    select: {
+      id: true,
+      title: true,
+      content: true,
+      authorName: true,
+      authorEmail: true,
+      createdAt: true,
+      attachments: {
+        select: { id: true, fileName: true, size: true },
+        orderBy: { createdAt: "asc" }
+      }
+    }
+  });
 
   if (!announcement) notFound();
 

@@ -4,7 +4,6 @@ import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { getStoredTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFactory";
 import { listTeamUsers } from "@/lib/data/teamUsers/teamUserRepository";
 import { filterOperationsByTeamScope, resolveTeamScope } from "@/lib/teamScope";
-import { runOverviewPagesRequest } from "@/lib/data/overviewPagesComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -13,9 +12,6 @@ interface DashboardProps {
 }
 
 export default async function DashboardPage({ searchParams }: DashboardProps) {
-  return runOverviewPagesRequest(() => renderDashboardPage({ searchParams }));
-}
-async function renderDashboardPage({ searchParams }: DashboardProps) {
   const session = await requireWorkspaceSession();
 
   const repository = getOperationRepository();

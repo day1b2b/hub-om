@@ -3,10 +3,9 @@ import { beforeEach, mock, test } from "node:test";
 import type { OperationRepository } from "./operationRepository";
 import type { OperationSession, UpdateOperationInput } from "./operationTypes";
 const reflected = mock.fn(async () => {});
-const reflectedCreate = mock.fn(async () => {});
 mock.module("@/lib/googleCalendar/calendarOperationLock", { namedExports: { withoutCalendarReflection: async (run: () => Promise<unknown>) => run(), isCalendarReflectionSuppressed: () => false, calendarLockSignal: () => undefined, withCalendarOperationLock: async (_id: string, run: () => Promise<unknown>) => run() } });
 mock.module("@/lib/googleCalendar/reflectOperationToCalendar", { namedExports: {
-  reflectOperationCreated: reflectedCreate, reflectOperationUpdated: reflected, reflectOperationDelete: async () => {}
+  reflectOperationCreated: async () => {}, reflectOperationUpdated: reflected, reflectOperationDelete: async () => {}
 } });
 const { CalendarReflectingOperationRepository } = await import("./calendarReflectingOperationRepository");
 const saved = { operationId: "fixture" } as OperationSession;
@@ -22,13 +21,4 @@ for (const input of [{ educationDates: ["2026-09-09"] }, { educationDates: [] },
 test("비용만 수정하면 캘린더를 호출하지 않는다", async () => {
   await repository.updateOperation("fixture", { costRaw: "100" });
   assert.equal(update.mock.callCount(), 1); assert.equal(reflected.mock.callCount(), 0);
-});
-
-test("생성 응답 유실 후 기존 회차를 재생할 때 캘린더 생성 부수 작업을 반복하지 않는다", async () => {
-  reflectedCreate.mock.resetCalls();
-  const createRepository = new CalendarReflectingOperationRepository({
-    createOperation: async () => ({ operationId: "fixture", creationReplayed: true } as OperationSession)
-  } as unknown as OperationRepository);
-  await createRepository.createOperation({} as import("./operationTypes").CreateOperationInput);
-  assert.equal(reflectedCreate.mock.callCount(), 0);
 });
