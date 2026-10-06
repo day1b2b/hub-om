@@ -3,7 +3,6 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { isAllowedWorkspaceEmail } from "@/lib/auth/workspaceAccess";
 import { readSourceStatuses } from "@/lib/sourceReads";
-import { runSourceReadStatusRequest } from "@/lib/data/sourceReadStatusComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -22,9 +21,4 @@ async function activityGET() {
   });
 }
 
-export const GET = withActivity(
-  "/api/source-reads/status",
-  "GET",
-  activityGET,
-  work => runSourceReadStatusRequest(work)
-);
+export const GET = withActivity("/api/source-reads/status", "GET", activityGET);

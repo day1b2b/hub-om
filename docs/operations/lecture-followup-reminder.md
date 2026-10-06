@@ -103,12 +103,7 @@ node -e "fetch('http://127.0.0.1:3000/api/reminders/lecture-followup',{method:'P
 
 - `날짜|단계|회차|담당자` 키를 파일에 남겨 같은 날 두 번 실행돼도 같은 회차 DM이 두 번 가지 않는다. 로그는 14일치만 보관한다.
 - 이 로그는 컨테이너 임시 디렉터리에 있어 재배포·재시작 시 사라진다. 그 경우 최악의 결과는 같은 날 DM 1회 중복이다. DB 테이블을 새로 만들지 않기 위한 선택이다.
-- 읽기와 발송, 파일 기록은 하나의 원자 연산이 아니다. 여러 요청이나 여러 인스턴스가 완전히 동시에 실행되면 둘 다 발송 전 상태를 읽을 수 있으므로 exactly-once를 보장하지 않는다. 예약 작업은 한 인스턴스에서 직렬 실행하고, 응답이 끝난 뒤의 재시도만 중복 방지 대상으로 본다.
 - 발송 상한(`REMINDER_MAX_DM_PER_RUN`)을 넘으면 한 건도 보내지 않고 `ok: false`와 경고를 돌려준다.
-
-## Mongo shadow runtime 검증
-
-`MongoLectureFollowUpRuntime`은 운영 회차, 팀 사용자와 요청 감사를 같은 명시 Mongo namespace로 묶고 Slack 발송은 명시 port로, 중복 로그는 HMAC 키만 저장하는 Mongo 원자 선점 collection으로 구성한다. 합성 검증에서는 실제 Slack과 로컬 파일을 쓰지 않고 GET 미리보기, 동시 bearer POST 중 한 요청만 발송, 완료 후 재실행, 대상별 발송 실패, 기록 완료 실패의 중복 차단, 권한 거부와 비공개 오류 비노출을 확인한다. 외부 Slack 성공과 Mongo 완료 기록은 단일 transaction이 아니므로 완료 기록 실패 시 선점을 유지한다. 생산 기본 backend, 기존 임시 파일 정책, Coolify 예약 설정은 바꾸지 않는다.
 
 ## 코드 위치
 

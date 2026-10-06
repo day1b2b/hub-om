@@ -3,7 +3,6 @@ import { requireCoachSyncAccess } from "@/lib/coaches/syncAuth";
 import { runCoachSyncWithLog } from "@/lib/coaches/syncLog";
 import { syncSamsungSchedule } from "@/lib/coaches/samsungScheduleSync";
 import { syncJsonResponse } from "@/lib/coaches/syncRouteResponse";
-import { runCoachSyncRequest } from "@/lib/data/coachSyncComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +22,6 @@ async function activityPOST(request: Request) {
   });
 }
 
-export const GET = withActivity("/api/sync/samsung-schedule", "GET", activityGET, runCoachSyncRequest);
+export const GET = withActivity("/api/sync/samsung-schedule", "GET", activityGET);
 
-export const POST = withActivity("/api/sync/samsung-schedule", "POST", activityPOST, runCoachSyncRequest);
+export const POST = withActivity("/api/sync/samsung-schedule", "POST", activityPOST);

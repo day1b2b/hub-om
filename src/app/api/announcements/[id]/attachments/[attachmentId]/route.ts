@@ -1,8 +1,7 @@
 import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
-import { getAnnouncementRepository } from "@/lib/data/announcements/announcementRepositoryFactory";
-import { runAnnouncementRequest } from "@/lib/data/announcementComposition";
+import { getPrismaClient } from "@/lib/data/prisma";
 
 export const dynamic = "force-dynamic";
 
@@ -17,9 +16,12 @@ async function activityGET(_request: Request, { params }: RouteContext) {
   await assertAdminSession();
 
   const { id, attachmentId } = await params;
-  const repository = getAnnouncementRepository();
+  const prisma = getPrismaClient();
 
-  const attachment = await repository.download(id, attachmentId);
+  const attachment = await prisma.announcementAttachment.findFirst({
+    where: { id: attachmentId, announcementId: id, announcement: { deletedAt: null } },
+    select: { fileName: true, mimeType: true, data: true }
+  });
 
   if (!attachment) {
     return NextResponse.json({ ok: false, error: "첨부파일을 찾을 수 없습니다." }, { status: 404 });
@@ -33,9 +35,4 @@ async function activityGET(_request: Request, { params }: RouteContext) {
   });
 }
 
-export const GET = withActivity(
-  "/api/announcements/[id]/attachments/[attachmentId]",
-  "GET",
-  activityGET,
-  runAnnouncementRequest
-);
+export const GET = withActivity("/api/announcements/[id]/attachments/[attachmentId]", "GET", activityGET);

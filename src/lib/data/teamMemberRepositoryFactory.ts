@@ -1,12 +1,9 @@
-import { getDataRepositoryOverride } from "./dataRepositoryContext";
 import type { TeamMemberRepository } from "./teamMemberRepository";
 import { LocalJsonTeamMemberRepository } from "./localJsonTeamMemberRepository";
 import { getNotionTeamMemberRepository } from "./notionTeamMemberRepository";
 import { PrismaTeamMemberRepository } from "./prismaTeamMemberRepository";
 
 export function getTeamMemberRepository(): TeamMemberRepository {
-  const override = getDataRepositoryOverride("teamMembers");
-  if (override) return override;
   const fallback = getFallbackTeamMemberRepository();
 
   if (process.env.OPERATION_DATA_SOURCE !== "notion") {
@@ -17,7 +14,7 @@ export function getTeamMemberRepository(): TeamMemberRepository {
 }
 
 export function getStoredTeamMemberRepository(): TeamMemberRepository {
-  return getDataRepositoryOverride("teamMembers") ?? getFallbackTeamMemberRepository();
+  return getFallbackTeamMemberRepository();
 }
 
 function getFallbackTeamMemberRepository(): TeamMemberRepository {

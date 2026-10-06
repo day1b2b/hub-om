@@ -1,17 +1,14 @@
 import { ImportAdminDashboard } from "@/features/imports/ImportAdminDashboard";
 import { requireAdminSession } from "@/lib/auth/requireAdminSession";
-import { getImportRepository } from "@/lib/data/importRepositoryFactory";
-import { runImportPagesRequest } from "@/lib/data/importPagesComposition";
+import { PrismaImportRepository } from "@/lib/data/prismaImportRepository";
 
 export const dynamic = "force-dynamic";
 
 export default async function ImportRunsPage() {
-  return runImportPagesRequest(async () => {
-    await requireAdminSession();
+  await requireAdminSession();
 
-    const repository = getImportRepository();
-    const runs = await repository.listImportRuns();
+  const repository = new PrismaImportRepository();
+  const runs = await repository.listImportRuns();
 
-    return <ImportAdminDashboard runs={runs} />;
-  });
+  return <ImportAdminDashboard runs={runs} />;
 }

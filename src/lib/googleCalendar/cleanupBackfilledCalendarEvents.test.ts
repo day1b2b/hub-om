@@ -18,7 +18,7 @@ mock.module("@/lib/data/operationRepositoryFactory", { namedExports: { getOperat
 mock.module("./calendarEventLinkRepository", { namedExports: {
   listCalendarEventLinks: async () => [...links],
   deleteMatchingCalendarEventLink: async (link: CalendarEventLink) => {
-    if (dbFailure) throw new Error("private-db-error@example.test");
+    if (dbFailure) throw new Error("DB fixture failure");
     links = links.filter(entry => entry.eventId !== link.eventId);
   }
 } });
@@ -90,17 +90,4 @@ test("토큰 만료 후에도 이미 삭제된 Google 이벤트의 매핑 정리
   proofs.clear();
   assert.equal((await applyBackfilledCalendarCleanup([expired])).ok, true);
   assert.equal(links.length, 0); assert.deepEqual(deleted, []);
-});
-
-
-test("삭제 후 저장 실패는 실제 삭제 집계를 보존하고 원문을 숨긴다", async () => {
-  const selected = await tokens();
-  dbFailure = true;
-  const result = await applyBackfilledCalendarCleanup(selected);
-  assert.equal(result.deletedEvents, 1);
-  assert.equal(result.failedEvents, 1);
-  assert.equal(result.outcomes[0].googleDeleted, true);
-  assert.equal(result.outcomes[0].operationId, first.operationId);
-  assert.equal(result.outcomes[0].eventId, first.eventId);
-  assert.equal(result.outcomes[0].detail, "캘린더 작업을 처리하지 못했습니다.");
 });

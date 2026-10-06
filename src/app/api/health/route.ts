@@ -1,25 +1,28 @@
 import { NextResponse } from "next/server";
-import { getDatabaseHealthRepository } from "@/lib/data/databaseHealthFactory";
-import { runHealthRequest } from "@/lib/data/healthComposition";
+import { getPrismaClient } from "@/lib/data/prisma";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    return await runHealthRequest(async () => {
-      await getDatabaseHealthRepository().check();
+    const prisma = getPrismaClient();
+    await prisma.$queryRaw`SELECT 1`;
 
-      return NextResponse.json({
-        ok: true,
-        database: "connected"
-      });
+    return NextResponse.json({
+      ok: true,
+      database: "connected"
     });
-  } catch {
+  } catch (error) {
     return NextResponse.json(
       {
         ok: false,
         database: "unavailable",
-        error: "Health check failed"
+        error:
+          process.env.NODE_ENV === "production"
+            ? "Health check failed"
+            : error instanceof Error
+              ? error.message
+              : "Unknown health check error"
       },
       { status: 503 }
     );

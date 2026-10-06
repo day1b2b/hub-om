@@ -4,7 +4,6 @@ import { NextResponse } from "next/server";
 import { denyIfNotAdmin } from "@/lib/auth/apiAdminGuard";
 import { updateTeamUsersRole } from "@/lib/data/teamUsers/teamUserRepository";
 import type { TeamUserRole } from "@/lib/data/teamUsers/teamUserTypes";
-import { runUserAdminRequest } from "@/lib/data/userAdminComposition";
 
 const VALID_ROLES: TeamUserRole[] = ["ld", "om"];
 
@@ -31,4 +30,4 @@ async function activityPOST(request: Request) {
   }
 }
 
-export const POST = withActivity("/api/admin/users/role", "POST", activityPOST, runUserAdminRequest);
+export const POST = withActivity("/api/admin/users/role", "POST", activityPOST);

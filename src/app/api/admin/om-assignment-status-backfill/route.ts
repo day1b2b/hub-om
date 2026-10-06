@@ -1,10 +1,13 @@
 import { withActivity } from "@/lib/activity/request";
+import { OperationStatus as PrismaOperationStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
-import { getOperationBackfillRepository } from "@/lib/data/operationBackfillRepositoryFactory";
-import { runAdminMaintenanceRequest } from "@/lib/data/adminMaintenanceComposition";
+import { ASSIGNMENT_NEEDED_VALUES } from "@/lib/data/operationCalculations";
+import { getPrismaClient } from "@/lib/data/prisma";
 
 export const dynamic = "force-dynamic";
+
+const PLACEHOLDER_OM_VALUES = ["", ...Array.from(ASSIGNMENT_NEEDED_VALUES)];
 
 /**
  * OM은 이미 배정됐는데 operationStatus가 "배정필요"에 멈춰있는 건을 "배정예정"으로
@@ -24,21 +27,36 @@ export const dynamic = "force-dynamic";
 async function activityGET() {
   await assertAdminSession();
 
-  const targetCount = await getOperationBackfillRepository().countOmAssignmentStatusTargets();
+  const prisma = getPrismaClient();
+  const targetCount = await prisma.operationSession.count({
+    where: {
+      deletedAt: null,
+      operationStatus: PrismaOperationStatus.ASSIGNMENT_NEEDED,
+      omName: { not: null, notIn: PLACEHOLDER_OM_VALUES }
+    }
+  });
 
   return NextResponse.json({ ok: true, targetCount });
 }
 
 async function activityPOST() {
-  await assertAdminSession();
+  const session = await assertAdminSession();
 
-  const updatedCount = await getOperationBackfillRepository().applyOmAssignmentStatusBackfill();
+  const prisma = getPrismaClient();
+  const result = await prisma.operationSession.updateMany({
+    where: {
+      deletedAt: null,
+      operationStatus: PrismaOperationStatus.ASSIGNMENT_NEEDED,
+      omName: { not: null, notIn: PLACEHOLDER_OM_VALUES }
+    },
+    data: { operationStatus: PrismaOperationStatus.ASSIGNMENT_PLANNED }
+  });
 
-  console.info(`[om-assignment-status-backfill] updated=${updatedCount}`);
+  console.info(`[om-assignment-status-backfill] by=${session.user?.email ?? "unknown"} updated=${result.count}`);
 
-  return NextResponse.json({ ok: true, updatedCount });
+  return NextResponse.json({ ok: true, updatedCount: result.count });
 }
 
-export const GET = withActivity("/api/admin/om-assignment-status-backfill", "GET", activityGET, runAdminMaintenanceRequest);
+export const GET = withActivity("/api/admin/om-assignment-status-backfill", "GET", activityGET);
 
-export const POST = withActivity("/api/admin/om-assignment-status-backfill", "POST", activityPOST, runAdminMaintenanceRequest);
+export const POST = withActivity("/api/admin/om-assignment-status-backfill", "POST", activityPOST);

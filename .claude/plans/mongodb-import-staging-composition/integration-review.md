@@ -1,3 +1,0 @@
-# 파일 가져오기 composition 통합 검토
-
-총괄 `ed14a5fa429e3b02ca2660529b58d7ddfc7f333a`에서 시작했다. 제품 SHA `eac74bb`는 실제 로컬 MongoDB, 전체 회귀, typecheck/lint/build와 독립 리뷰 P0-P3 0을 통과했다. 생산 기본 backend는 PostgreSQL이며 운영 이전은 미완료다.

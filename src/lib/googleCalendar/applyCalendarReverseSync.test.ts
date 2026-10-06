@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { afterEach, beforeEach, mock, test } from "node:test";
+import { beforeEach, mock, test } from "node:test";
 import type { ReverseSyncPlan } from "./calendarReverseSync";
 import type { ReverseSyncItem } from "./calendarReverseSyncRules";
 import type { UpdateOperationInput } from "@/lib/data/operationTypes";
@@ -24,7 +24,7 @@ mock.module("@/lib/data/operationRepositoryFactory", { namedExports: { getOperat
   getOperationById: async () => ({ operationId: "fixture", educationDates: ["2026-09-07"], timeText: "10:00 ~ 17:00" }),
   updateOperation: async (_id: string, input: UpdateOperationInput) => { updates.push(input); }
 }) } });
-mock.module("./calendarWriteClient", { namedExports: { readCalendarEventVersion: async () => ({ updated: eventUpdated, etag: "fixture-etag" }), patchEvent: async () => { if (failPatch) throw new Error("private-reverse-error@example.test"); return patchResult; } } });
+mock.module("./calendarWriteClient", { namedExports: { readCalendarEventVersion: async () => ({ updated: eventUpdated, etag: "fixture-etag" }), patchEvent: async () => { if (failPatch) throw new Error("simulated failure"); return patchResult; } } });
 mock.module("./calendarEventLinkRepository", { namedExports: { listCalendarEventLinks: async () => mapped ? [item] : [], moveCalendarEventLinkDate: async () => {} } });
 mock.module("./operationCalendarEvent", { namedExports: { buildCalendarEventBodies: () => [{ eventDate: "2026-09-07", body: { summary: "fixture", extendedProperties: { private: { hubOmSchedule: "allday" } } } }] } });
 mock.module("./calendarReverseSyncRules", { namedExports: { replaceEducationRun: () => ({ dates: ["2026-09-07"], conflict: false }) } });
@@ -69,17 +69,4 @@ test("계획 후 다시 수정된 Google 일정은 적용하지 않는다", asyn
   eventUpdated = "2026-09-07T02:00:00Z";
   const result = await applyCalendarReverseSync();
   assert.equal(result.ok, false); assert.match(result.outcomes[0].detail, /Google 일정이 변경/); assert.equal(updates.length, 0);
-});
-
-
-afterEach(() => mock.restoreAll());
-test("역반영 실패 detail과 모든 로그에 원문 오류·식별자를 넣지 않는다", async () => {
-  const logs: unknown[][] = [];
-  for (const level of ["log", "info", "warn", "error", "debug"] as const) mock.method(console, level, (...args: unknown[]) => { logs.push(args); });
-  failPatch = true;
-  const result = await applyCalendarReverseSync();
-  assert.equal(result.failedCount, 1);
-  assert.equal(result.outcomes[0].detail, "캘린더 작업을 처리하지 못했습니다.");
-  assert.deepEqual(result.outcomes[0].item, item);
-  assert.deepEqual(logs, [["[gcal-reverse] CALENDAR_REVERSE_FAILED"]]);
 });

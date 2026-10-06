@@ -1,4 +1,3 @@
-import { calendarErrorMessage } from "@/lib/googleCalendar/calendarErrors";
 import { readLimitedJson, RequestBodyTooLargeError } from "@/lib/http/readLimitedJson";
 import { previewBackfilledCalendarCleanup, applyBackfilledCalendarCleanup } from "@/lib/googleCalendar/cleanupBackfilledCalendarEvents";
 import { withActivity } from "@/lib/activity/request";
@@ -30,7 +29,7 @@ async function activityGET(request: Request) {
     return Response.json(await backfillMissingCalendarEvents({ dryRun: true, ...parseOptions(request) }));
   } catch (error) {
     return Response.json(
-      { ok: false, error: calendarErrorMessage(error) },
+      { ok: false, error: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }
@@ -43,7 +42,7 @@ async function activityPOST(request: Request) {
     return Response.json(await backfillMissingCalendarEvents({ dryRun: false, ...parseOptions(request) }));
   } catch (error) {
     return Response.json(
-      { ok: false, error: calendarErrorMessage(error) },
+      { ok: false, error: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }
@@ -95,7 +94,7 @@ async function activityDELETE(request: Request) {
     }
     return Response.json(await applyBackfilledCalendarCleanup(body.tokens));
   } catch (error) {
-    return Response.json({ ok: false, error: calendarErrorMessage(error) }, { status: error instanceof RequestBodyTooLargeError ? 413 : 400 });
+    return Response.json({ ok: false, error: error instanceof Error ? error.message : String(error) }, { status: error instanceof RequestBodyTooLargeError ? 413 : 400 });
   }
 }
 export const DELETE = withActivity("/api/admin/calendar/backfill-events", "DELETE", activityDELETE);

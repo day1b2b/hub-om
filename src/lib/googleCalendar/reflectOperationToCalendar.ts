@@ -23,6 +23,10 @@ import {
   type CalendarEventLink
 } from "./calendarEventLinkRepository";
 
+function logSkip(operationId: string, reason: string): void {
+  console.warn(`[gcal] ${operationId} 반영 건너뜀: ${reason}`);
+}
+
 /**
  * 기능을 켜기 전부터 있던 과정은 캘린더에 올리지 않는다.
  * 그런 과정을 누가 수정했다는 이유로 뒤늦게 초대 메일이 나가면 받는 사람이 당황한다.
@@ -45,12 +49,12 @@ async function reflectOperationUnlocked(operation: OperationSession, trigger: Re
     const targets = await resolveCalendarTargets(operation);
     if (targets.unresolvedNames.length > 0) {
       // 초대만 빠뜨리고 일정은 그대로 만든다.
-      console.warn("[gcal] CALENDAR_ATTENDEES_UNRESOLVED", targets.unresolvedNames.length);
+      logSkip(operation.operationId, `이메일 미확인 참석자 ${targets.unresolvedNames.join(", ")}`);
     }
 
     const calendarId = resolvePartCalendarId(targets.partKey);
     if (!calendarId) {
-      console.warn("[gcal] CALENDAR_PART_NOT_FOUND");
+      logSkip(operation.operationId, `파트 캘린더를 찾지 못함(파트=${targets.partKey ?? "없음"})`);
       // 무음 누락 방지: 파트를 못 정하면(담당 OM 미배정 + 요청 LD 소속이 파트 아님) 담당자에게
       // DM으로 알린다. 생성 시점만 알린다 — 같은 과정을 다시 저장할 때마다 반복 알림이 가지 않게.
       if (trigger === "created") {
@@ -117,7 +121,9 @@ async function reflectOperationUnlocked(operation: OperationSession, trigger: Re
           eventId: recreatedId,
           eventDate: plan.eventDate
         });
-        console.info("[gcal] CALENDAR_EVENT_RECREATED");
+        console.info(
+          `[gcal] ${operation.operationId} ${plan.eventDate} 이벤트가 캘린더에 없어 다시 만듦(hub-om 저장 시점) — event=${recreatedId}`
+        );
         continue;
       }
 
@@ -135,8 +141,8 @@ async function reflectOperationUnlocked(operation: OperationSession, trigger: Re
       await deleteEvent(link.calendarId, link.eventId);
       await deleteMatchingCalendarEventLink(link);
     }
-  } catch {
-    console.error("[gcal] CALENDAR_REFLECT_FAILED");
+  } catch (error) {
+    console.error(`[gcal] ${operation.operationId} 반영 실패:`, error);
   }
 }
 
@@ -148,8 +154,8 @@ async function reflectOperation(operation: OperationSession, trigger: ReflectTri
       if (!current) return; // 생성 직후 취소·삭제된 회차를 오래된 객체로 되살리지 않는다.
       await reflectOperationUnlocked(current, trigger, skipEventId);
     });
-  } catch {
-    console.error("[gcal] CALENDAR_REFLECT_LOCK_FAILED");
+  } catch (error) {
+    console.error(`[gcal] ${operation.operationId} 반영 잠금 실패:`, error);
   }
 }
 
@@ -167,37 +173,23 @@ export function reflectOperationUpdated(operation: OperationSession, skipEventId
 }
 
 /** 취소·삭제. 회차에 걸린 이벤트를 모두 지우고 매핑도 정리한다(스펙 D4). */
-export type CalendarDeleteRecovery = "not-found" | "completed" | "pending";
-
-async function reflectOperationDeleteUnlocked(operationId: string): Promise<CalendarDeleteRecovery> {
+async function reflectOperationDeleteUnlocked(operationId: string): Promise<void> {
   try {
+    if (!isCalendarWriteEnabled()) return;
+
     const existing = await listCalendarEventLinks(operationId);
-    if (existing.length === 0) return "not-found";
-    if (!isCalendarWriteEnabled()) return "pending";
+    if (existing.length === 0) return;
 
     for (const link of existing) {
       await deleteEvent(link.calendarId, link.eventId);
       await deleteMatchingCalendarEventLink(link);
     }
-    return "completed";
-  } catch {
-    console.error("[gcal] CALENDAR_DELETE_FAILED");
-    return "pending";
+  } catch (error) {
+    console.error(`[gcal] ${operationId} 삭제 반영 실패:`, error);
   }
 }
 
 export async function reflectOperationDelete(operationId: string): Promise<void> {
   try { await withCalendarOperationLock(operationId, () => reflectOperationDeleteUnlocked(operationId)); }
-  catch { console.error("[gcal] CALENDAR_DELETE_LOCK_FAILED"); }
-}
-
-/** Retries only a leftover Calendar mapping after the business row was already soft-deleted. */
-export async function retryOperationCalendarDelete(operationId: string): Promise<CalendarDeleteRecovery> {
-  try {
-    if ((await listCalendarEventLinks(operationId)).length === 0) return "not-found";
-    const result = await withCalendarOperationLock(operationId, () => reflectOperationDeleteUnlocked(operationId));
-    // A concurrent retry may have completed between the preflight and lock acquisition.
-    return result === "not-found" ? "completed" : result;
-  }
-  catch { console.error("[gcal] CALENDAR_DELETE_LOCK_FAILED"); return "pending"; }
+  catch (error) { console.error(`[gcal] ${operationId} 삭제 잠금 실패:`, error); }
 }

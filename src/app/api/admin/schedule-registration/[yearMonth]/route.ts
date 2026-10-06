@@ -1,9 +1,9 @@
 import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
+import { CoachStatus } from "@prisma/client";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { buildSkillfloCoachUrl } from "@/lib/coaches/skillfloCoachUrl";
-import { getCoachContentRepository } from "@/lib/data/coachContentRepositoryFactory";
-import { runChangesRequest } from "@/lib/data/changesComposition";
+import { getPrismaClient } from "@/lib/data/prisma";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +23,18 @@ async function activityGET(_request: Request, { params }: RouteContext) {
     return NextResponse.json({ ok: false, error: "월 형식이 올바르지 않습니다." }, { status: 400 });
   }
 
-  const { coaches, accessLogs } = await getCoachContentRepository().getScheduleRegistration(yearMonth);
+  const prisma = getPrismaClient();
+  const [coaches, accessLogs] = await Promise.all([
+    prisma.coach.findMany({
+      where: { status: CoachStatus.ACTIVE, deletedAt: null },
+      select: { id: true, name: true, workType: true, accessToken: true },
+      orderBy: { normalizedName: "asc" }
+    }),
+    prisma.coachScheduleAccessLog.findMany({
+      where: { yearMonth },
+      select: { coachId: true, lastEditedAt: true }
+    })
+  ]);
 
   const logMap = new Map(accessLogs.map((log) => [log.coachId, log]));
 
@@ -50,4 +61,4 @@ async function activityGET(_request: Request, { params }: RouteContext) {
   return NextResponse.json({ ok: true, yearMonth, counts, coaches: rows });
 }
 
-export const GET = withActivity("/api/admin/schedule-registration/[yearMonth]", "GET", activityGET, runChangesRequest);
+export const GET = withActivity("/api/admin/schedule-registration/[yearMonth]", "GET", activityGET);

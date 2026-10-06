@@ -1,5 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
-import type { ActivityChangeRow, ActivityPresentedChange } from "../data/activityReads/activityReadRepository";
+import type { ActivityChange, PrismaClient } from "@prisma/client";
 type Change = { before?: unknown; after?: unknown; redacted?: boolean };
 export function changedText(changes: unknown, field: string) {
   const change = (changes as Record<string, Change>)?.[field];
@@ -7,7 +6,7 @@ export function changedText(changes: unknown, field: string) {
   const value = change.after ?? change.before;
   return typeof value === "string" ? value : undefined;
 }
-export async function loadActivityLabels(db: PrismaClient, rows: ActivityChangeRow[]) {
+export async function describeChanges(db: PrismaClient, rows: ActivityChange[]) {
   const ids = (kind: string) => rows.filter(r => r.targetType === kind && /^[0-9a-f-]{36}$/i.test(r.targetId)).map(r => r.targetId);
   const operationIds = rows.flatMap(r => r.targetType === "calendar_event_links" ? [changedText(r.changes, "operation_id")].filter((v): v is string => Boolean(v)) : []);
   const [operations, coaches, courses, companies, notes, engagements] = await Promise.all([
@@ -18,17 +17,6 @@ export async function loadActivityLabels(db: PrismaClient, rows: ActivityChangeR
     db.coachContentEntry.findMany({ where: { id: { in: ids("coach_content_entries") } }, select: { id: true, coach: { select: { id: true, name: true, deletedAt: true } } } }),
     db.coachEngagement.findMany({ where: { id: { in: ids("coach_engagements") } }, select: { id: true, coach: { select: { id: true, name: true, deletedAt: true } } } })
   ]);
-  return { operations, coaches, courses, companies, notes, engagements };
-}
-export type ActivityLabelRows = Awaited<ReturnType<typeof loadActivityLabels>>;
-
-export async function describeChanges(db: PrismaClient, rows: ActivityChangeRow[]): Promise<ActivityPresentedChange[]> {
-  return formatActivityChanges(rows, await loadActivityLabels(db, rows));
-}
-
-/** Formatting is shared; backend lookups preserve their own storage contracts. */
-export function formatActivityChanges(rows: ActivityChangeRow[], labels: ActivityLabelRows): ActivityPresentedChange[] {
-  const { operations, coaches, courses, companies, notes, engagements } = labels;
   return rows.map(row => {
     const op = operations.find(o => row.targetType === "operation_sessions" ? o.id === row.targetId : row.targetType === "calendar_event_links" && o.operationId === changedText(row.changes, "operation_id"));
     const coach = row.targetType === "coaches" ? coaches.find(c => c.id === row.targetId)

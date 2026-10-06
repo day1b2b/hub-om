@@ -1,17 +1,12 @@
 import { AppSidebar } from "@/components/AppSidebar";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { listOmRequests } from "@/lib/data/omRequest/omRequestLocalRepository";
-import { runOmRequestPagesRequest } from "@/lib/data/omRequestPagesComposition";
 import { OmRequestTable } from "./OmRequestTable";
 
 export const dynamic = "force-dynamic";
 
 export default async function OmRequestManagePage() {
   await requireWorkspaceSession();
-  return runOmRequestPagesRequest(renderOmRequestManagePage);
-}
-
-async function renderOmRequestManagePage() {
   const requests = (await listOmRequests()).sort(
     (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
   );

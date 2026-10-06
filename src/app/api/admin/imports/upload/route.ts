@@ -4,18 +4,10 @@ import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { storeParsedImport } from "@/lib/data/importStagingWriter";
 import { parseImportFile, parseXlsxImport } from "@/lib/data/importUploadParser";
 import type { SourceTeam } from "@prisma/client";
-import { runImportStagingRequest } from "@/lib/data/importStagingComposition";
 
 export const dynamic = "force-dynamic";
 
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
-const IMPORT_STAGING_ERROR = "파일을 import staging에 저장하지 못했습니다.";
-const PUBLIC_IMPORT_ERRORS = new Set([
-  "CSV, JSON, 엑셀(xlsx) 파일만 업로드할 수 있습니다.",
-  "엑셀 파일에서 시트를 찾지 못했습니다.",
-  "JSON은 object 배열이거나 { rows: [...] } 형태여야 합니다.",
-  "헤더로 사용할 행을 찾지 못했습니다. 시트에 제목 행과 데이터가 있는지 확인해 주세요."
-]);
 
 async function activityPOST(request: Request) {
   const session = await requireWorkspaceSession();
@@ -72,7 +64,7 @@ async function activityPOST(request: Request) {
     return NextResponse.json(
       {
         ok: false,
-        error: error instanceof Error && PUBLIC_IMPORT_ERRORS.has(error.message) ? error.message : IMPORT_STAGING_ERROR
+        error: error instanceof Error ? error.message : "파일을 import staging에 저장하지 못했습니다."
       },
       { status: 400 }
     );
@@ -105,4 +97,4 @@ function inferSourceType(fileName: string) {
   return "upload";
 }
 
-export const POST = withActivity("/api/admin/imports/upload", "POST", activityPOST, work => runImportStagingRequest("upload", work));
+export const POST = withActivity("/api/admin/imports/upload", "POST", activityPOST);

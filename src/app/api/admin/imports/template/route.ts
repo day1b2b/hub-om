@@ -2,7 +2,6 @@ import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import * as XLSX from "xlsx";
-import { runImportStagingRequest } from "@/lib/data/importStagingComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -127,4 +126,4 @@ async function activityGET() {
   });
 }
 
-export const GET = withActivity("/api/admin/imports/template", "GET", activityGET, work => runImportStagingRequest("template", work));
+export const GET = withActivity("/api/admin/imports/template", "GET", activityGET);

@@ -51,12 +51,12 @@ async function botPost(channel: string, text: string, threadTs?: string): Promis
     });
     const data = (await res.json()) as { ok: boolean; ts?: string; error?: string };
     if (!data.ok) {
-      console.error("[notifySlack] chat.postMessage 실패");
+      console.error("[notifySlack] chat.postMessage 실패:", data.error);
       return null;
     }
     return { ts: data.ts ?? "" };
-  } catch {
-    console.error("[notifySlack] chat.postMessage 예외");
+  } catch (err) {
+    console.error("[notifySlack] chat.postMessage 예외:", err);
     return null;
   }
 }
@@ -264,12 +264,12 @@ async function openDirectMessageChannel(slackId: string): Promise<string | null>
     });
     const data = (await res.json()) as { ok: boolean; channel?: { id?: string }; error?: string };
     if (!data.ok) {
-      console.error("[notifySlack] conversations.open 실패");
+      console.error("[notifySlack] conversations.open 실패:", data.error);
       return null;
     }
     return data.channel?.id ?? null;
-  } catch {
-    console.error("[notifySlack] conversations.open 예외");
+  } catch (err) {
+    console.error("[notifySlack] conversations.open 예외:", err);
     return null;
   }
 }

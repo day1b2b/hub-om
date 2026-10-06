@@ -1,19 +1,29 @@
 import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
-import { getAnnouncementRepository } from "@/lib/data/announcements/announcementRepositoryFactory";
+import { getPrismaClient } from "@/lib/data/prisma";
 import type { AnnouncementSummary } from "@/lib/data/announcements/announcementTypes";
 import { MAX_ATTACHMENT_BYTES, MAX_ATTACHMENT_COUNT } from "@/lib/data/announcements/announcementAttachmentLimits";
 import { announcementContentToPlainText, sanitizeAnnouncementContent } from "@/lib/data/announcements/sanitizeAnnouncementContent";
-import { runAnnouncementRequest } from "@/lib/data/announcementComposition";
 
 export const dynamic = "force-dynamic";
 
 async function activityGET() {
   await assertAdminSession();
 
-  const repository = getAnnouncementRepository();
-  const rows = await repository.list();
+  const prisma = getPrismaClient();
+  const rows = await prisma.announcement.findMany({
+    where: { deletedAt: null },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      title: true,
+      authorName: true,
+      authorEmail: true,
+      createdAt: true,
+      updatedAt: true
+    }
+  });
 
   const announcements: AnnouncementSummary[] = rows.map((row) => ({
     id: row.id,
@@ -59,8 +69,25 @@ async function activityPOST(request: Request) {
     }))
   );
 
-  const repository = getAnnouncementRepository();
-  const created = await repository.create({ title, content, authorEmail: session.user?.email ?? "", authorName: session.user?.name ?? null, attachments: attachmentsData });
+  const prisma = getPrismaClient();
+  const created = await prisma.announcement.create({
+    data: {
+      title,
+      content,
+      authorEmail: session.user?.email ?? "",
+      authorName: session.user?.name ?? null,
+      attachments: { create: attachmentsData }
+    },
+    select: {
+      id: true,
+      title: true,
+      content: true,
+      authorName: true,
+      authorEmail: true,
+      createdAt: true,
+      updatedAt: true
+    }
+  });
 
   return NextResponse.json(
     {
@@ -79,6 +106,6 @@ function stringValue(value: FormDataEntryValue | null): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-export const GET = withActivity("/api/announcements", "GET", activityGET, runAnnouncementRequest);
+export const GET = withActivity("/api/announcements", "GET", activityGET);
 
-export const POST = withActivity("/api/announcements", "POST", activityPOST, runAnnouncementRequest);
+export const POST = withActivity("/api/announcements", "POST", activityPOST);

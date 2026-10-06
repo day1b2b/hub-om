@@ -1,10 +1,9 @@
-import { encodePrivateJson, decodePrivateJson } from "@/lib/privacy/crypto";
 import fs from "fs";
 import os from "os";
 import path from "path";
 import { shiftDateString } from "./reminderDates";
 
-// 같은 날 앞선 실행이 끝난 뒤 다시 실행돼도 같은 회차 DM이 두 번 가지 않게
+// 같은 날 두 번 실행돼도(스케줄 재시도, 수동 실행이 겹칠 때) 같은 회차 DM이 두 번 가지 않게
 // 발송한 키를 파일에 남긴다. 컨테이너가 재시작되면 사라지지만 최악의 결과가
 // "같은 날 DM 1회 중복"이라, DB 테이블(마이그레이션)을 새로 만들지 않고 임시 파일을 쓴다.
 const RETENTION_DAYS = 14;
@@ -20,13 +19,14 @@ function logFile(): string {
 
 function readEntries(): SentEntry[] {
   const file = logFile();
-  if (!fs.existsSync(/* turbopackIgnore: true */ file)) return [];
+  if (!fs.existsSync(file)) return [];
 
   try {
-    const parsed = decodePrivateJson(fs.readFileSync(/* turbopackIgnore: true */ file, "utf-8"), "local:reminder-sent") as SentEntry[];
+    const parsed = JSON.parse(fs.readFileSync(file, "utf-8")) as SentEntry[];
     return Array.isArray(parsed) ? parsed.filter((entry) => Boolean(entry?.date && entry?.key)) : [];
   } catch {
-    throw new Error("발송 기록 복호화에 실패했습니다. 중복 발송을 막기 위해 중단합니다.");
+    // 손상된 로그는 무시한다. 최악의 결과는 중복 발송이라 여기서 멈추지 않는다.
+    return [];
   }
 }
 
@@ -42,9 +42,9 @@ export function appendSentKeys(today: string, keys: string[]): void {
   const merged = [...kept, ...keys.map((key) => ({ date: today, key }))];
 
   try {
-    fs.writeFileSync(logFile(), encodePrivateJson(merged, "local:reminder-sent"), { encoding: "utf-8", mode: 0o600 });
-  } catch {
+    fs.writeFileSync(logFile(), JSON.stringify(merged, null, 2), "utf-8");
+  } catch (error) {
     // 로그를 못 써도 발송 자체는 이미 성공한 상태다. 실패만 남기고 넘어간다.
-    console.error("[reminder] 발송 로그 저장 실패");
+    console.error("[reminder] 발송 로그 저장 실패:", error);
   }
 }
