@@ -201,6 +201,19 @@ test("resolvePartCalendarId는 파트 키로 캘린더를 찾는다", () => {
   }
 });
 
+test("resolvePartCalendarId는 이전 설정의 UTF-8 mojibake 파트 키도 복구한다", () => {
+  const previous = process.env.GOOGLE_CAL_PART_CALENDARS;
+  const mojibakePart = Buffer.from("1파트", "utf8").toString("latin1");
+  process.env.GOOGLE_CAL_PART_CALENDARS = `${mojibakePart}:one@group.calendar.google.com`;
+
+  try {
+    assert.equal(resolvePartCalendarId("1파트"), "one@group.calendar.google.com");
+  } finally {
+    if (previous === undefined) delete process.env.GOOGLE_CAL_PART_CALENDARS;
+    else process.env.GOOGLE_CAL_PART_CALENDARS = previous;
+  }
+});
+
 test("extractPartKey는 두 표기에서 같은 키를 뽑는다", () => {
   assert.equal(extractPartKey("AX 1파트"), "1파트");
   assert.equal(extractPartKey("3파트"), "3파트");
