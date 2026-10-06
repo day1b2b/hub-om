@@ -1,9 +1,10 @@
 import { MongoClient } from "mongodb";
 import { mongoModelNames } from "../src/lib/migration/mongoDocumentCodec";
 import { configuredMongoUri, mongoConnectionOptions, shadowDatabaseName } from "../src/lib/mongodb/connection";
-import { prepareMongoOperationStore } from "../src/lib/data/mongoOperationStore";
 import { prepareMongoReadStore } from "../src/lib/data/mongoReadStore";
-import { prepareMongoRequestAuditStore } from "../src/lib/data/mongoRequestAuditRepository";
+import { prepareMongoCalendarRuntimeStore } from "../src/lib/data/mongoCalendarRuntime";
+import { openMongoOperationWriteRuntime } from "../src/lib/data/mongoOperationWriteRuntime";
+import { openMongoOmRequestWriteRuntime } from "../src/lib/data/mongoOmRequestWriteRuntime";
 
 async function main() {
   const [namespace, sequence, confirmation, ...extra] = process.argv.slice(2);
@@ -18,8 +19,18 @@ async function main() {
     const options = { client, databaseName, namespace, allowShadowWrites: true as const };
     // Validate every copied document before adopting the runtime validators and indexes.
     await prepareMongoReadStore(options, mongoModelNames);
-    await prepareMongoOperationStore({ ...options, processSequenceHighWater });
-    await prepareMongoRequestAuditStore(options);
+    // Operation and OM-request writes share this Calendar-aware boundary. It
+    // also prepares the operation store, request audit, internal lease
+    // collection and TeamUser write guard required by production open-only
+    // runtimes.
+    await prepareMongoCalendarRuntimeStore({ ...options, processSequenceHighWater });
+    await openMongoOperationWriteRuntime(options);
+    await openMongoOmRequestWriteRuntime({ ...options,
+      omAssignmentCalendar: { async reflectOperationUpdated() {} },
+      omAssignmentNotifier: { async notifyAssigned() {} },
+      omCustomTools: { list: () => [], add() {} },
+      omRequestNotifier: { async notifyCreated() { return null; } },
+    });
     console.log(JSON.stringify({ status: "shadow-runtime-ready", modelCount: mongoModelNames.length, namespace, readyForCutover: false }));
   } finally {
     await client.close();

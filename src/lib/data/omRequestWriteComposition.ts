@@ -24,19 +24,29 @@ function isNextControlFlow(error: unknown) {
   const digest = error instanceof Error ? (error as Error & { digest?: unknown }).digest : undefined;
   return digest === "NEXT_HTTP_ERROR_FALLBACK;404" || (typeof digest === "string" && /^NEXT_REDIRECT;(?:replace|push);.*;(?:303|307|308);$/.test(digest));
 }
+function safeCode(error: unknown): string {
+  const message = error instanceof Error ? error.message : "";
+  return /^[A-Z][A-Z0-9_]{2,80}$/.test(message) ? message : "UNKNOWN";
+}
 export async function runOmRequestWriteRequest<T>(work: () => Promise<T>, environment: MongoCompositionEnvironment = process.env, dependencies: OmRequestWriteCompositionDependencies = defaults): Promise<T> {
   const backend = environment.OM_REQUEST_WRITE_BACKEND?.trim() || "postgres";
   if (backend === "postgres") return work();
   if (backend !== "mongodb-shadow") throw new Error("OM_REQUEST_WRITE_COMPOSITION_FAILED");
   let client: Client | undefined;
+  let stage = "configuration";
   try {
     const { databaseName, namespace } = requireMongoShadowComposition(environment);
+    stage = "ports";
     const ports = dependencies.getPorts();
+    stage = "connect";
     client = dependencies.createClient(environment); await client.connect();
+    stage = "open";
     const runtime = await dependencies.openRuntime({ client, databaseName, namespace, allowShadowWrites: true, ...ports });
+    stage = "work";
     return await runtime.run(work);
   } catch (error) {
     if (isNextControlFlow(error)) throw error;
+    console.error(`[om-request] OM_REQUEST_WRITE_COMPOSITION_FAILED stage=${stage} cause=${safeCode(error)}`);
     throw new Error("OM_REQUEST_WRITE_COMPOSITION_FAILED");
   }
   finally { if (client) try { await client.close(); } catch {} }

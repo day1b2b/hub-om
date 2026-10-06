@@ -20,6 +20,9 @@
 - 실제 운영 데이터 수정/삭제: 없음
 - Coolify 설정 변경: 없음
 - 새 환경변수 또는 secret: 없음
+- repository/backend selector 변경: 없음
+- DB 경로 변경 시 `database-change-reviewed` 라벨: 해당 없음
+- 운영 selector 전환 시 `database-cutover-approved` 라벨: 해당 없음
 
 ## 검증
 
@@ -49,4 +52,5 @@
 - 검증 실패가 없습니다.
 - 실제 운영 데이터 수정/삭제가 포함되어 있지 않습니다.
 - DB, 권한, 배포 설정 변경이 있다면 필요한 확인이 끝났습니다.
+- DB 경로 또는 운영 selector 변경이면 책임자 승인 라벨과 단계별 rollback 계획이 있습니다.
 - PR 설명에 남은 차단 이슈가 없습니다.

@@ -116,7 +116,7 @@ jobs:
 
       - name: API 권한 커버리지 점검
         env:
-          CHANGED_FILES_PATH: ${{ runner.temp }}/changed-files.txt
+          CHANGED_FILES_FILE: ${{ runner.temp }}/changed-files.txt
         run: node scripts/security/check-api-auth.mjs
 
       - name: 로그 개인정보 노출 점검

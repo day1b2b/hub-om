@@ -82,11 +82,10 @@ function matchesAny(source, signals) {
   return signals.some((re) => re.test(source));
 }
 
-const changedSource = (() => {
-  const changedFilesPath = process.env.CHANGED_FILES_PATH;
-  if (changedFilesPath) {
+const changedFileInput = (() => {
+  if (process.env.CHANGED_FILES_FILE) {
     try {
-      return readFileSync(changedFilesPath, "utf8");
+      return readFileSync(process.env.CHANGED_FILES_FILE, "utf8");
     } catch {
       return "";
     }
@@ -95,8 +94,8 @@ const changedSource = (() => {
 })();
 
 const changed = new Set(
-  changedSource
-    .split(/\r?\n/)
+  changedFileInput
+  .split("\n")
     .map((s) => s.trim())
     .filter(Boolean)
     .map(toPosix)
