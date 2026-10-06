@@ -295,3 +295,16 @@ Drive 결과 snapshot의 회사명·과정명은 2026-09-30 암호화 정책·co
 전환 후 Mongo namespace의 현재 상태를 원본 수정 없이 새 namespace로 복제하는 `mongoNamespaceRecovery`와 명시적 CLI를 추가했다. 이 경로는 source writer가 중지됐다는 명시적 조건에서 모든 namespace collection의 문서, validator, collation, index, 내부 counter·guard·감사 데이터를 새 후보에 복제한다. 복제 전 snapshot digest, 복제 후 source 재대조, target 전체 digest·개수 대조가 모두 같을 때만 `recovery-verified`를 반환한다. source가 바뀌거나 target이 이미 존재하거나 범위·용량 제한을 넘으면 실패하며 부분 target을 자동 승격·삭제하지 않는다.
 
 단위 검사는 잘못된 freeze·namespace·target 재사용을 차단한다. 실제 격리 Mongo 검사에서는 생성·수정·삭제가 반영된 source, 내부 counter, validator, unique index를 새 namespace로 복원하고 원본·후보의 BSON digest 일치와 재사용 거절을 확인해야 한다. 이 도구 자체는 selector 변경이나 cutover를 승인하지 않으며, 실제 격리 검사와 복구 후보 앱 검증을 통과하기 전에는 Cwrite 차단을 유지한다.
+
+## 2026-10-07 최신 dev 안전장치 통합
+
+검증된 MongoDB 전환 구현을 유지한 상태에서 `dev`의 OM 요청 회귀 수정, DB 변경 검토 차단, 사고 대응 문서와 전환 TODO를 선별 통합했다. PostgreSQL 복귀 커밋이 전환 코드 2,121개 파일을 삭제하고 공통 인터페이스를 PostgreSQL 전용으로 되돌리는 일반 병합 결과는 사용하지 않았다.
+
+- 통합 커밋: `6f371e6`
+- typecheck 통과
+- 전체 테스트 1,559건 중 1,381건 통과, 178건 opt-in skip, 실패 0
+- lint 오류 0, 기존 경고 7
+- production build 통과
+- DB 변경 검토 규칙 테스트 4건 통과
+
+운영 앱·운영 PostgreSQL·환경변수·selector·배포는 변경하지 않았다. 실제 전환은 Cfinal A/B 백업과 각 격리 복원, 최종 freeze snapshot·sequence 확인, 전환 후 기능 검증과 복귀 증거를 모두 통과한 뒤에만 진행한다.
