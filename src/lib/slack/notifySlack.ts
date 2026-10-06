@@ -2,6 +2,7 @@ import { listTeamUsers } from "@/lib/data/teamUsers/teamUserRepository";
 import type { TeamUser } from "@/lib/data/teamUsers/teamUserTypes";
 import { omRequestManagerName } from "@/lib/data/omRequest/omRequestTypes";
 import { formatEducationDatesCompact, parseEducationDatesText } from "@/lib/data/operationCalculations";
+import { normalizeLegacyUtf8Mojibake } from "@/lib/textEncoding";
 
 // ── Slack 발송 방식 ────────────────────────────────────────────────
 // 1순위: 봇 토큰(SLACK_BOT_TOKEN) + chat.postMessage.
@@ -24,7 +25,7 @@ function resolveChannel(team: string): string {
   for (const entry of raw.split(",")) {
     const sep = entry.indexOf(":");
     if (sep === -1) continue;
-    const key = entry.slice(0, sep).trim();
+    const key = normalizeLegacyUtf8Mojibake(entry.slice(0, sep).trim());
     const channel = entry.slice(sep + 1).trim();
     if (key && channel && team.includes(key)) return channel;
   }
