@@ -283,3 +283,9 @@ Drive 결과 snapshot의 회사명·과정명은 2026-09-30 암호화 정책·co
 - 같은 namespace에 35개 모델 runtime validator·index와 snapshot sequence 기준 준비 성공
 
 이 작업은 운영 앱, 운영 selector, 운영 환경변수, 운영 PostgreSQL 데이터와 운영 배포를 변경하지 않았다. 결과의 `cutoverAuthorized`, `liveChangesSynchronized`는 모두 `false`이고 `finalFrozenRunRequired`는 `true`다. 따라서 파생 HMAC 불일치는 해소됐지만, Cfinal A/B 백업과 각 격리 복원, 최종 쓰기 제한 뒤 새 전체 snapshot, sequence 재확인, 전환 후 신규 쓰기 보존·복귀 검증을 완료하기 전에는 Mongo 일반 쓰기를 열지 않는다.
+
+## 2026-10-07 Mongo 신규 쓰기 전진 복구 도구
+
+전환 후 Mongo namespace의 현재 상태를 원본 수정 없이 새 namespace로 복제하는 `mongoNamespaceRecovery`와 명시적 CLI를 추가했다. 이 경로는 source writer가 중지됐다는 명시적 조건에서 모든 namespace collection의 문서, validator, collation, index, 내부 counter·guard·감사 데이터를 새 후보에 복제한다. 복제 전 snapshot digest, 복제 후 source 재대조, target 전체 digest·개수 대조가 모두 같을 때만 `recovery-verified`를 반환한다. source가 바뀌거나 target이 이미 존재하거나 범위·용량 제한을 넘으면 실패하며 부분 target을 자동 승격·삭제하지 않는다.
+
+단위 검사는 잘못된 freeze·namespace·target 재사용을 차단한다. 실제 격리 Mongo 검사에서는 생성·수정·삭제가 반영된 source, 내부 counter, validator, unique index를 새 namespace로 복원하고 원본·후보의 BSON digest 일치와 재사용 거절을 확인해야 한다. 이 도구 자체는 selector 변경이나 cutover를 승인하지 않으며, 실제 격리 검사와 복구 후보 앱 검증을 통과하기 전에는 Cwrite 차단을 유지한다.
