@@ -86,22 +86,26 @@ export class MongoOperationStore {
   }
   /** Keep complete authenticated documents, but select the latest relation on the server. */
   async latestBy(model: "OperationSourceRecord" | "OperationSession", foreignKey: string, ids: string[], dateField: string, session?: ClientSession): Promise<MongoRow[]> {
-    const cursor = this.collection(model).aggregate<MongoRuntimeDocument>([
-      { $match: { [foreignKey]: { $in: ids }, ...(model === "OperationSession" ? { deletedAt: null } : {}) } },
-      { $sort: { [foreignKey]: 1, [dateField]: -1, _id: 1 } },
-      { $group: { _id: `$${foreignKey}`, document: { $first: "$$ROOT" } } },
-      { $replaceRoot: { newRoot: "$document" } },
-      { $limit: MONGO_SCAN_ROWS + 1 }
-    ], { session, maxTimeMS: 15_000, collation: { locale: "simple" } });
-    const result: MongoRow[] = []; let bytes = 0;
-    try {
-      for await (const row of cursor) {
-        bytes += BSON.calculateObjectSize(row);
-        assertMongo(result.length < MONGO_SCAN_ROWS && bytes <= MONGO_SCAN_BYTES, "SCAN_LIMIT_EXCEEDED");
-        result.push(decodeMongoRuntimeDocument(model, row));
+    if (ids.length === 0) return [];
+    // Avoid aggregate getMore inside a CSOT transaction. MongoDB rejects the
+    // driver's propagated maxTimeMS on a non-awaitData getMore command. scan()
+    // already uses closed, bounded keyset pages, so select the latest row from
+    // that authenticated result without opening another server cursor.
+    const rows = await this.scan(model, {
+      [foreignKey]: { $in: ids },
+      ...(model === "OperationSession" ? { deletedAt: null } : {}),
+    }, session);
+    const latest = new Map<string, MongoRow>();
+    const timestamp = (value: unknown) => value instanceof Date ? value.getTime() : new Date(String(value)).getTime();
+    for (const row of rows) {
+      const key = String(row[foreignKey]);
+      const current = latest.get(key);
+      if (!current || timestamp(row[dateField]) > timestamp(current[dateField]) ||
+        (timestamp(row[dateField]) === timestamp(current[dateField]) && String(row.id) < String(current.id))) {
+        latest.set(key, row);
       }
-      return result;
-    } finally { await cursor.close(); }
+    }
+    return [...latest.values()];
   }
 }
 
