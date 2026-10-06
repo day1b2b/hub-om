@@ -1,3 +1,5 @@
+import type { OperationCreationIdentity } from "./operationCreationIdentity";
+
 export type OperationStatus =
   | "배정필요"
   | "배정예정"
@@ -56,6 +58,8 @@ export interface CourseLookupCandidate {
 }
 
 export interface OperationSession {
+  /** 생성 요청 재전송 결과에만 사용하며 DB에 저장하지 않는다. */
+  creationReplayed?: boolean;
   id: string;
   operationId: string;
   sourceTeam?: SourceTeam;
@@ -128,6 +132,8 @@ export interface OperationSession {
 }
 
 export interface CreateOperationInput {
+  /** API에서 생성한 멱등 요청 식별자. */
+  creationIdentity?: OperationCreationIdentity;
   archiveStatus: ArchiveStatus;
   coach: string;
   companyName: string;

@@ -431,17 +431,10 @@ async function loadArchivedCoachPublicDetail(sourceCoachId: string): Promise<Arc
   let rows: Array<{ row_data: Record<string, unknown> | null }>;
 
   try {
-    rows = await prisma.$queryRaw<Array<{ row_data: Record<string, unknown> | null }>>`
-      SELECT ar.row_data
-      FROM coachdb_archive_rows ar
-      JOIN coachdb_archive_snapshots s ON s.id = ar.snapshot_id
-      WHERE s.status = 'completed'
-        AND ar.table_schema = 'public'
-        AND ar.table_name = 'coaches'
-        AND ar.row_key = ${sourceCoachId}
-      ORDER BY s.started_at DESC
-      LIMIT 1
-    `;
+    rows = (await prisma.coachdbArchiveRow.findMany({
+      where: { snapshot: { status: "completed" }, tableSchema: "public", tableName: "coaches", rowKey: sourceCoachId },
+      orderBy: { snapshot: { startedAt: "desc" } }, take: 1, select: { rowData: true }
+    })).map(row => ({ row_data: row.rowData as Record<string, unknown> | null }));
   } catch (error) {
     // coachdb_archive_rows/snapshots는 scripts/archive-coach-db.ts로만 생성되는 테이블이라
     // (원본 coach-db에 접근 못 하는) 로컬 개발 DB에는 아예 없을 수 있다. 그 경우는 없는 걸로

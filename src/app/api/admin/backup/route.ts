@@ -1,7 +1,8 @@
 import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertCoachPiiAccess } from "@/lib/auth/requireAdminSession";
-import { getPrismaClient } from "@/lib/data/prisma";
+import { getAdminBackupRepository } from "@/lib/data/adminBackupFactory";
+import { runAdminBackupRequest } from "@/lib/data/adminBackupComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -11,39 +12,7 @@ async function activityPOST(request: Request) {
     await assertCoachPiiAccess();
   }
 
-  const prisma = getPrismaClient();
-  const [
-    coaches,
-    privateProfiles,
-    fields,
-    curriculums,
-    coachFields,
-    coachCurriculums,
-    schedules,
-    scheduleAccessLogs,
-    engagements,
-    engagementSchedules,
-    importRuns,
-    archiveSnapshots
-  ] = await Promise.all([
-    prisma.coach.findMany(),
-    prisma.coachPrivateProfile.findMany(),
-    prisma.coachFieldMaster.findMany(),
-    prisma.coachCurriculumMaster.findMany(),
-    prisma.coachField.findMany(),
-    prisma.coachCurriculum.findMany(),
-    prisma.coachSchedule.findMany(),
-    prisma.coachScheduleAccessLog.findMany(),
-    prisma.coachEngagement.findMany(),
-    prisma.coachEngagementSchedule.findMany(),
-    prisma.coachImportRun.findMany(),
-    prisma.$queryRaw<Array<{ id: string; table_count: number; row_count: number; status: string; started_at: Date; finished_at: Date | null }>>`
-      SELECT id, table_count, row_count, status, started_at, finished_at
-      FROM coachdb_archive_snapshots
-      ORDER BY started_at DESC
-      LIMIT 20
-    `
-  ]);
+  const { coaches, privateProfiles, fields, curriculums, coachFields, coachCurriculums, schedules, scheduleAccessLogs, engagements, engagementSchedules, importRuns, archiveSnapshots } = await getAdminBackupRepository().read();
 
   const backup = {
     exportedAt: new Date().toISOString(),
@@ -92,4 +61,4 @@ function isAuthorizedBySecret(request: Request): boolean {
   return authorization === `Bearer ${configured}`;
 }
 
-export const POST = withActivity("/api/admin/backup", "POST", activityPOST);
+export const POST = withActivity("/api/admin/backup", "POST", activityPOST, runAdminBackupRequest);

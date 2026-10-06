@@ -3,6 +3,7 @@ import { CoachDetailView } from "@/features/coaches/CoachDetail";
 import { requireAdminSession } from "@/lib/auth/requireAdminSession";
 import { getCoachRepository } from "@/lib/data/coachRepositoryFactory";
 import type { CoachDetailTab } from "@/features/coaches/CoachDetail";
+import { runCoachPublicRequest } from "@/lib/data/coachPublicComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,10 @@ interface CoachDetailPageProps {
 
 export default async function CoachDetailPage({ params, searchParams }: CoachDetailPageProps) {
   await requireAdminSession();
+  return runCoachPublicRequest(() => renderCoachDetailPage({ params, searchParams }));
+}
+
+async function renderCoachDetailPage({ params, searchParams }: CoachDetailPageProps) {
   const { id } = await params;
   const query = await searchParams;
   const selectedTab = resolveTab(firstParam(query.tab));

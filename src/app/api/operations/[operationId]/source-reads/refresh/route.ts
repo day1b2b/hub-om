@@ -7,6 +7,7 @@ import {
   type OperationDiscussionRefreshSource
 } from "@/lib/data/operationCollaboration";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
+import { runOperationWriteRequest } from "@/lib/data/operationWriteComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -67,4 +68,4 @@ function parseRefreshSource(value: unknown): OperationDiscussionRefreshSource {
   return "all";
 }
 
-export const POST = withActivity("/api/operations/[operationId]/source-reads/refresh", "POST", activityPOST);
+export const POST = withActivity("/api/operations/[operationId]/source-reads/refresh", "POST", activityPOST, runOperationWriteRequest);

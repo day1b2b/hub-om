@@ -1,0 +1,55 @@
+(node:10960) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:10960) ExperimentalWarning: Module mocking is an experimental feature and might change at any time
+(node:10960) DeprecationWarning: mock.module(): options.namedExports is deprecated. Use options.exports instead.
+(node:10960) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-local-storage-integration/src/lib/data/localOperationAtomicWrite.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-local-storage-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ write 실패 시 원본 유지, 암호문 임시파일 정리, 재시도 가능 (17.69825ms)
+✔ rename 실패 시 원본 유지, 암호문 임시파일 정리, 재시도 가능 (18.567167ms)
+(node:10961) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:10961) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-local-storage-integration/src/lib/data/localOperationCreation.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-local-storage-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 암호화 파일에서도 동시 재시도·재시작·수정·삭제 이후 등록 이력을 보존한다 (53.029958ms)
+✔ legacy array: 허용된 평문을 읽고 수정 시 전체 암호화 (11.987875ms)
+✔ legacy object: 허용된 평문을 읽고 수정 시 전체 암호화 (9.922958ms)
+✔ legacy receipts: 허용된 평문을 읽고 수정 시 전체 암호화 (9.960125ms)
+✔ 평문 읽기 비허용 및 쓰기 키 누락은 원본을 바꾸지 않는다 (3.117458ms)
+✔ key 오류 시 모든 쓰기 거부·원본 보존·이후 복구 (6.694708ms)
+✔ aad 오류 시 모든 쓰기 거부·원본 보존·이후 복구 (5.711958ms)
+✔ tamper 오류 시 모든 쓰기 거부·원본 보존·이후 복구 (6.337875ms)
+✔ 손상된 receipt null 거부 (1.6215ms)
+✔ 손상된 receipt [] 거부 (1.417209ms)
+✔ 손상된 receipt "bad" 거부 (1.207792ms)
+✔ 손상된 receipt {"invalid":"id"} 거부 (1.032166ms)
+✔ 손상된 receipt {"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa":"manual-request-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"} 거부 (1.134583ms)
+✔ 다른 파일의 등록 이력은 독립이며 파일별 직렬화에서 새 요청을 잃지 않는다 (24.394ms)
+✔ legacy array의 유실된 receipt를 기존 요청 ID로 복구하고 중복을 막는다 (15.887542ms)
+✔ legacy object의 유실된 receipt를 기존 요청 ID로 복구하고 중복을 막는다 (15.81ms)
+✔ 이미 중복된 legacy 요청 행은 임의 선택하거나 덮어쓰지 않는다 (5.486417ms)
+✔ legacy 행을 재시도 전에 삭제해도 생성 이력을 복구해 재생성을 막는다 (11.788667ms)
+(node:10962) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("./scripts/ts-loader.mjs", pathToFileURL("./")); register("./scripts/ts-loader.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ 같은 키와 같은 본문은 JSON 키 순서와 무관하게 같은 식별자다 (0.839042ms)
+✔ 같은 키로 본문을 바꾸거나 삭제된 회차를 다시 만들면 충돌이다 (0.231584ms)
+✔ 다른 사용자와 API 경로는 같은 키로 기존 자료를 조회할 수 없다 (0.114ms)
+✔ 선택 헤더가 없으면 기존 생성이며 부적절한 키나 익명 키는 거부한다 (0.072416ms)
+(node:10962) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/ga/workspace/hub-om-local-storage-integration/src/lib/data/operationCreationIdentity.test.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/ga/workspace/hub-om-local-storage-integration/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 24
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 297.721917

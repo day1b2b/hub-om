@@ -1,0 +1,11 @@
+{
+  "base": "75125c9644d6c8265fbdae59e5c9d450247170ef",
+  "source": "src/lib/data/importPromotionService.ts",
+  "fixture": "src/lib/data/importPromotionOriginal.fixture.ts",
+  "sha256": "2d98a237b295c973ad0d9c8e12b726989341f390d513aad9ede055045ad73aa9",
+  "route": {
+    "source": "src/app/api/admin/imports/[id]/promote/route.ts",
+    "fixture": ".claude/plans/mongodb-import-promotion/original-route.fixture.txt",
+    "sha256": "1af91db9f00445caf1e980bc2a3fea312f4731763b7effbc3a3885d54d2bd33d"
+  }
+}

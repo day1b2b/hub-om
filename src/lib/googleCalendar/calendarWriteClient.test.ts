@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, mock, test } from "node:test";
-mock.module("./calendarOperationLock", { namedExports: { calendarLockSignal: () => undefined, withCalendarOperationLock: async (_id: string, run: () => Promise<unknown>) => run() } });
+mock.module("./calendarOperationLock", { namedExports: { assertCalendarLockActive: async () => {}, calendarLockSignal: () => undefined, withCalendarOperationLock: async (_id: string, run: () => Promise<unknown>) => run() } });
 mock.module("./calendarWriteConfig", { namedExports: { readCalendarWriteCredentials: () => ({ clientId: "fixture", clientSecret: "fixture", refreshToken: "fixture" }) } });
 const { listUpdatedEvents, resetAccessTokenCache, deleteEvent, shouldRetryCalendarRead } = await import("./calendarWriteClient");
 let pages = 0;
@@ -35,7 +35,7 @@ test("소급 삭제는 미리보기 ETag를 전달하고 Google 충돌을 성공
     assert.match(String(url), /sendUpdates=none/);
     return new Response("changed", { status: 412 });
   });
-  await assert.rejects(deleteEvent("cal", "event", { expectedEtag: "preview-v1", notifyAttendees: false }), /412/);
+  await assert.rejects(deleteEvent("cal", "event", { expectedEtag: "preview-v1", notifyAttendees: false }), { message: "캘린더 작업을 처리하지 못했습니다." });
 });
 test("권한 상실로 인한 404는 소급 삭제 성공으로 처리하지 않는다", async () => {
   mock.method(globalThis, "fetch", async (url: string | URL | Request) => {
@@ -83,7 +83,7 @@ test("읽기가 두 번 다 일시 오류면 오류를 올린다(지속 고장�
     return new Response("still broken", { status: 503 });
   });
 
-  await assert.rejects(listUpdatedEvents("cal", "2026-09-09T00:00:00.000Z"), /events\.list 실패\(503\)/);
+  await assert.rejects(listUpdatedEvents("cal", "2026-09-09T00:00:00.000Z"), { message: "캘린더 작업을 처리하지 못했습니다." });
   assert.equal(calls, 2);
 });
 
@@ -96,7 +96,7 @@ test("권한·설정 오류(4xx)는 다시 읽지 않는다", async () => {
     return new Response("forbidden", { status: 403 });
   });
 
-  await assert.rejects(listUpdatedEvents("cal", "2026-09-09T00:00:00.000Z"), /events\.list 실패\(403\)/);
+  await assert.rejects(listUpdatedEvents("cal", "2026-09-09T00:00:00.000Z"), { message: "캘린더 작업을 처리하지 못했습니다." });
   assert.equal(calls, 1);
 });
 

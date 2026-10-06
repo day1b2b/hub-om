@@ -1,8 +1,8 @@
 import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
-import { formatProcessId } from "@/lib/data/operationCalculations";
-import { getPrismaClient } from "@/lib/data/prisma";
+import { getCourseAdminRepository } from "@/lib/data/courseAdminRepositoryFactory";
+import { runAdminMaintenanceRequest } from "@/lib/data/adminMaintenanceComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -24,17 +24,7 @@ async function activityGET(request: Request) {
     return NextResponse.json({ ok: false, error: "과정ID 형식이 올바르지 않습니다. 예: PRC-000533" }, { status: 400 });
   }
 
-  const prisma = getPrismaClient();
-  const course = await prisma.course.findUnique({
-    where: { processSeq },
-    select: {
-      id: true,
-      processSeq: true,
-      name: true,
-      company: { select: { name: true } },
-      sessions: { where: { deletedAt: null }, select: { id: true } }
-    }
-  });
+  const course = await getCourseAdminRepository().findCourse(processSeq);
 
   if (!course) {
     return NextResponse.json({ ok: false, error: "해당 과정ID를 찾을 수 없습니다." }, { status: 404 });
@@ -42,14 +32,8 @@ async function activityGET(request: Request) {
 
   return NextResponse.json({
     ok: true,
-    course: {
-      courseRecordId: course.id,
-      processId: formatProcessId(course.processSeq),
-      companyName: course.company.name,
-      courseName: course.name,
-      activeSessionCount: course.sessions.length
-    }
+    course
   });
 }
 
-export const GET = withActivity("/api/admin/courses/lookup", "GET", activityGET);
+export const GET = withActivity("/api/admin/courses/lookup", "GET", activityGET, runAdminMaintenanceRequest);
