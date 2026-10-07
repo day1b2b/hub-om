@@ -7,6 +7,11 @@ const CREATE_ROUTE = "/api/om-request";
 const check = (value, code) => { if (!value) throw new Error(code); };
 const day = value => value instanceof Date ? value.toISOString().slice(0, 10) : "";
 const digest = value => createHash("sha256").update(BSON.serialize(value)).digest("hex");
+const operationFingerprint = row => createHash("sha256").update(JSON.stringify({
+  id: row._id, operationId: row.operationId, courseRecordId: row.courseRecordId,
+  startDate: day(row.startDate), endDate: day(row.endDate), deletedAt: row.deletedAt instanceof Date ? row.deletedAt.toISOString() : null,
+  roundNo: row.roundNo, updatedAt: row.updatedAt instanceof Date ? row.updatedAt.toISOString() : null
+})).digest("hex");
 
 function decrypt(value, context, env) {
   const parts = String(value ?? "").split(":");
@@ -105,7 +110,7 @@ export async function diagnoseExistingLinks(client, env) {
       const selected = planExistingLinks(request, operations, sessionsOf(request, env));
       result.exactRepairable++;
       result.targets.push({ requestId: request._id, requestDigest: digest(request), operationIds: selected.map(row => row._id),
-        operationDigests: selected.map(row => digest(row)), previousLinkCount: links.count });
+        operationDigests: selected.map(operationFingerprint), previousLinkCount: links.count });
     } catch { result.blocked++; }
   }
   return result;
@@ -128,7 +133,7 @@ export async function repairExactExistingLinks(client, env, targets) {
         check(operations.length === target.operationIds.length, "OPERATION_DISAPPEARED");
         for (const row of operations) {
           const expected = target.operationDigests[target.operationIds.indexOf(row._id)];
-          check(expected && digest(row) === expected, "OPERATION_CHANGED");
+          check(expected && operationFingerprint(row) === expected, "OPERATION_CHANGED");
         }
         check(await collection("ActivityChange").countDocuments({ targetType: "om_requests", targetId: request._id,
           route: REPAIR_ROUTE, method: "POST", action: "link" }, { session }) === 0, "ALREADY_REPAIRED");
