@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { resolveEditableInfoTargets } from "./editableInfoTargets";
 
 type SaveState = "idle" | "saving" | "failed";
 
@@ -19,9 +20,10 @@ interface EditableInfoItemProps {
   fields: EditableInfoItemField[];
   label: string;
   operationId: string;
+  operationIds?: string[];
 }
 
-export function EditableInfoItem({ displayValue, fields, label, operationId }: EditableInfoItemProps) {
+export function EditableInfoItem({ displayValue, fields, label, operationId, operationIds }: EditableInfoItemProps) {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [drafts, setDrafts] = useState(() => toDraftValues(fields));
@@ -139,24 +141,25 @@ export function EditableInfoItem({ displayValue, fields, label, operationId }: E
       value: (drafts[field.name] ?? "").trim()
     }));
 
-    let response: Response;
+    const results = await Promise.all(
+      resolveEditableInfoTargets(operationId, operationIds).map(async (targetOperationId) => {
+        try {
+          const response = await fetch(`/api/operations/${encodeURIComponent(targetOperationId)}/drive-import/apply`, {
+            method: "POST",
+            headers: {
+              "content-type": "application/json"
+            },
+            body: JSON.stringify({ patches })
+          });
+          const payload = (await response.json().catch(() => ({}))) as { ok?: boolean };
+          return response.ok && payload.ok === true;
+        } catch {
+          return false;
+        }
+      })
+    );
 
-    try {
-      response = await fetch(`/api/operations/${encodeURIComponent(operationId)}/drive-import/apply`, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json"
-        },
-        body: JSON.stringify({ patches })
-      });
-    } catch {
-      setSaveState("failed");
-      return;
-    }
-
-    const payload = (await response.json().catch(() => ({}))) as { ok?: boolean };
-
-    if (!response.ok || !payload.ok) {
+    if (!results.every(Boolean)) {
       setSaveState("failed");
       return;
     }
