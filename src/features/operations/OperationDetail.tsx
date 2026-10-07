@@ -207,6 +207,7 @@ export function OperationDetail({
                   fields={[{ name: "om", options: personOptions.om, type: "name-select", value: operation.om }]}
                   label="OM"
                   operationId={operation.operationId}
+                  operationIds={courseOperationIds}
                 />
                 <EditableInfoItem
                   displayValue={operation.ld || "미정"}
@@ -778,4 +779,3 @@ function averageSatisfaction(values: number[]) {
 function isNumber(value: number | null): value is number {
   return value !== null;
 }
-
