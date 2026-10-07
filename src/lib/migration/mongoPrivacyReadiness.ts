@@ -52,7 +52,9 @@ export function encryptLegacyMongoPrivacyFields(model: string, document: Documen
   changedFields: readonly string[];
 }> {
   const fields = privacyFields[model]?.fields ?? {};
-  const next = structuredClone(document);
+  // Preserve BSON scalar prototypes (Decimal128, Binary, Date). We only replace
+  // top-level privacy fields, so a shallow copy isolates every mutation needed here.
+  const next = { ...document };
   const changedFields: string[] = [];
   for (const [field, policy] of Object.entries(fields)) {
     const storedField = policy.storage ?? field;

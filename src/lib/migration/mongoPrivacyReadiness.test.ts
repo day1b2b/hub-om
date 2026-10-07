@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { randomBytes } from "node:crypto";
+import { Decimal128 } from "mongodb";
 import { encryptField } from "../privacy/fields";
 import { encryptLegacyMongoPrivacyFields, mongoPrivacyViolations } from "./mongoPrivacyReadiness";
 
@@ -64,6 +65,16 @@ test("stored JSON null is privacy-safe and remains byte-shape compatible", () =>
   assert.deepEqual(converted.document, source);
   assert.deepEqual(converted.changedFields, []);
   assert.deepEqual(mongoPrivacyViolations("DriveImportRun", source), []);
+});
+
+test("isolated conversion preserves BSON scalar prototypes", () => {
+  const decimal = Decimal128.fromString("123.45");
+  const source = { _id: "fixture", amount: decimal };
+  const converted = encryptLegacyMongoPrivacyFields("Course", source);
+  assert.notEqual(converted.document, source);
+  assert.equal(converted.document.amount, decimal);
+  assert.ok(converted.document.amount instanceof Decimal128);
+  assert.deepEqual(converted.changedFields, []);
 });
 
 test("isolated conversion encrypts legacy values without mutating source or unrelated ciphertext", () => {
