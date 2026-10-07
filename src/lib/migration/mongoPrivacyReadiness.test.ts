@@ -37,6 +37,35 @@ test("isolated conversion preserves explicit audit metadata exception", () => {
   assert.deepEqual(converted.changedFields, []);
 });
 
+test("isolated conversion preserves the stored JSON tag required by Mongo validators", () => {
+  const saved = new Map(names.map(name => [name, process.env[name]]));
+  Object.assign(process.env, {
+    PII_ENCRYPTION_KEYS: JSON.stringify({ fixture: randomBytes(32).toString("base64") }),
+    PII_ACTIVE_KEY_ID: "fixture",
+    PII_INDEX_KEY: randomBytes(32).toString("base64"),
+    PII_ALLOW_PLAINTEXT_READS: "false",
+  });
+  try {
+    const source = { _id: "fixture", rowData: { $json: { synthetic: "private" } } };
+    const converted = encryptLegacyMongoPrivacyFields("CoachdbArchiveRow", source);
+    assert.deepEqual(converted.changedFields, ["rowData"]);
+    assert.ok("$json" in converted.document.rowData);
+    assert.ok("__pii" in converted.document.rowData.$json);
+    assert.deepEqual(mongoPrivacyViolations("CoachdbArchiveRow", converted.document), []);
+    assert.deepEqual(source.rowData, { $json: { synthetic: "private" } });
+  } finally {
+    for (const [name, value] of saved) value === undefined ? delete process.env[name] : process.env[name] = value;
+  }
+});
+
+test("stored JSON null is privacy-safe and remains byte-shape compatible", () => {
+  const source = { _id: "fixture", summary: { $jsonNull: true } };
+  const converted = encryptLegacyMongoPrivacyFields("DriveImportRun", source);
+  assert.deepEqual(converted.document, source);
+  assert.deepEqual(converted.changedFields, []);
+  assert.deepEqual(mongoPrivacyViolations("DriveImportRun", source), []);
+});
+
 test("isolated conversion encrypts legacy values without mutating source or unrelated ciphertext", () => {
   const saved = new Map(names.map(name => [name, process.env[name]]));
   Object.assign(process.env, {
