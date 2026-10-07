@@ -8,11 +8,12 @@ const check = (value, code) => { if (!value) throw new Error(code); };
 const day = value => value instanceof Date ? value.toISOString().slice(0, 10) : "";
 const digest = value => createHash("sha256").update(BSON.serialize(value)).digest("hex");
 const idKey = value => typeof value === "string" ? value : BSON.EJSON.stringify(value, { relaxed: false });
-const operationFingerprint = row => createHash("sha256").update(JSON.stringify({
-  id: idKey(row._id), operationId: row.operationId, courseRecordId: idKey(row.courseRecordId),
+const operationSnapshot = row => ({
+  id: idKey(row._id), operationId: String(row.operationId ?? ""), courseRecordId: idKey(row.courseRecordId),
   startDate: day(row.startDate), endDate: day(row.endDate), deletedAt: row.deletedAt instanceof Date ? row.deletedAt.toISOString() : null,
-  roundNo: row.roundNo, updatedAt: row.updatedAt instanceof Date ? row.updatedAt.toISOString() : null
-})).digest("hex");
+  roundNo: row.roundNo == null ? null : String(row.roundNo)
+});
+const operationFingerprint = row => createHash("sha256").update(JSON.stringify(operationSnapshot(row))).digest("hex");
 
 function decrypt(value, context, env) {
   const parts = String(value ?? "").split(":");
