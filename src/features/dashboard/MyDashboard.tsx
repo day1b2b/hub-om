@@ -67,36 +67,48 @@ export function MyDashboard({ assignedRequests, diagnosis, omName, operations }:
 
   // 담당 과정(요청)과 운영은 같은 과정을 양쪽에서 들고 있다. 요청 쪽 표현(차수/세팅 정보)이
   // 더 풍부하므로 요청이 대표하고, 짝이 되는 운영은 제거한다(캘린더·사전세팅에 두 번 뜨지 않게).
-  // 짝짓기는 operationId 우선 → courseId. 코스ID를 안 적고 접수한 과정도 자동 생성된 운영의
-  // operationId를 갖고 있어서, 코스ID 없이도 대시보드에 정상으로 뜬다. 자세한 규칙은 requestDedup.ts.
+  // 짝짓기는 operationId → 코스ID+시작일 → (코스ID가 없을 때만) 기업명+과정명+시작일 순이다.
+  // 요청에 적히는 operationId는 1차수 하나뿐이라, 2차수부터는 마지막 규칙이 받아 준다.
+  // 자세한 규칙은 requestDedup.ts.
   const isRepresentedByRequest = createRequestMatcher(assignedRequests);
+
+  // 운영 현황 일정을 두 벌로 모은다. 전체(operationEvents)는 D-day가, 담당 과정이 대표하지
+  // 않는 것만 추린 쪽(unrepresentedOperationEvents)은 캘린더가 쓴다.
+  // 접수로 자동 생성된 운영은 담당 과정 쪽 막대가 대표하므로 캘린더에서는 빼지만,
+  // D-day는 "운영 현황 기준"이라 빼면 안 된다 — 빼면 접수로 들어온 과정이 D-day에서 사라진다.
+  const operationEvents: CalendarEvent[] = [];
+  const unrepresentedOperationEvents: CalendarEvent[] = [];
+  for (const operation of operations) {
+    // 현장운영지원 표기는 "내가 지원자로 들어간 건"에만 붙인다. 담당 OM인 과정에는
+    // 현장에 가더라도 붙이지 않는다 — 그 표기의 목적이 담당 과정과의 구별이라서다.
+    const onsite = isOnsiteSupportForViewer(operation, omName);
+    const represented = isRepresentedByRequest(operation);
+
+    // 실제 교육일의 연속 구간마다 막대를 하나씩. 기간 하나로 그리면 쉬는 날까지 일정이 뜬다.
+    for (const run of resolveOperationCalendarRuns(operation)) {
+      const start = parseDate(run.start);
+      const end = parseDate(run.end) ?? start;
+      if (!start || !end) continue;
+
+      const event: CalendarEvent = {
+        id: `op-${operation.operationId}-${run.start}`,
+        source: "operation",
+        label: calendarLabel(operation.companyName, onsite),
+        company: operation.companyName,
+        course: operation.courseName,
+        start: stripTime(start),
+        end: stripTime(end),
+        href: `/operations/${operation.operationId}`,
+        onsite
+      };
+      operationEvents.push(event);
+      if (!represented) unrepresentedOperationEvents.push(event);
+    }
+  }
+
   // 캘린더는 운영 + 나의 담당 과정을 모두 반영한다(담당 과정에 새 과정이 추가되면 캘린더에도 자동 표시).
   const calendarEvents: CalendarEvent[] = [
-    ...operations.flatMap((operation) => {
-      if (isRepresentedByRequest(operation)) return []; // 담당 과정의 차수 이벤트로 대체
-      // 현장운영지원 표기는 "내가 지원자로 들어간 건"에만 붙인다. 담당 OM인 과정에는
-      // 현장에 가더라도 붙이지 않는다 — 그 표기의 목적이 담당 과정과의 구별이라서다.
-      const onsite = isOnsiteSupportForViewer(operation, omName);
-
-      // 실제 교육일의 연속 구간마다 막대를 하나씩. 기간 하나로 그리면 쉬는 날까지 일정이 뜬다.
-      return resolveOperationCalendarRuns(operation).flatMap((run) => {
-        const start = parseDate(run.start);
-        const end = parseDate(run.end) ?? start;
-        if (!start || !end) return [];
-
-        return [{
-          id: `op-${operation.operationId}-${run.start}`,
-          source: "operation" as const,
-          label: calendarLabel(operation.companyName, onsite),
-          company: operation.companyName,
-          course: operation.courseName,
-          start: stripTime(start),
-          end: stripTime(end),
-          href: `/operations/${operation.operationId}`,
-          onsite
-        }];
-      });
-    }),
+    ...unrepresentedOperationEvents,
     ...assignedRequests.flatMap((request) => {
       // 교육 일정 차수(세션)를 각 날짜에 개별 표시한다. 세션에 dateEnd가 있으면 그 기간만큼 막대로.
       const multiSession = request.sessions.length > 1;
@@ -283,7 +295,9 @@ export function MyDashboard({ assignedRequests, diagnosis, omName, operations }:
   // 담당 관리(업무요청)는 접수 단계라 아직 배정되지 않은 과정도 있어서, 섞으면
   // "나한테 배정 안 된 과정"이 가장 임박한 일정으로 떴다.
   // 캘린더(내 과정 일정)는 그대로 둘 다 보여 준다 — 거기선 접수 건도 알아야 한다.
-  const nextEvents = selectDdayEvents(calendarEvents, today, 4);
+  // 캘린더용 목록이 아니라 운영 현황 전체(operationEvents)를 넘긴다 — 캘린더용은 담당 과정과
+  // 짝인 운영을 빼 놓아서, 그걸 쓰면 접수로 들어온 과정이 D-day에서 통째로 빠진다.
+  const nextEvents = selectDdayEvents(operationEvents, today, 4);
   const [nextEvent, ...upcomingAfterNext] = nextEvents;
 
   return (

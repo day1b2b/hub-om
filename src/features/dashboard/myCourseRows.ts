@@ -1,3 +1,4 @@
+import type { RepresentableOperation } from "./requestDedup";
 import type { OmRequest } from "@/lib/data/omRequest/omRequestTypes";
 import type { OperationSession } from "@/lib/data/operationTypes";
 
@@ -57,7 +58,7 @@ function courseKey(operation: OperationSession): string {
 export function buildMyCourseRows(
   requests: ReadonlyArray<OmRequest>,
   operations: ReadonlyArray<OperationSession>,
-  isRepresentedByRequest: (operation: { courseId?: null | string; operationId: string; startDate?: null | string }) => boolean,
+  isRepresentedByRequest: (operation: RepresentableOperation) => boolean,
   scheduleRange: (request: OmRequest) => { start: string; end: string },
   hrefForRequest: (request: OmRequest) => string
 ): MyCourseRow[] {
