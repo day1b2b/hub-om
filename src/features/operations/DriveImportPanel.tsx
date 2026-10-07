@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { browserDrafts } from "@/lib/privacy/browserDraftRuntime";
 import { useBrowserDraftSession } from "@/components/BrowserDraftProvider";
-import { hasLegacyDraft, LEGACY_DRAFT_NOTICE, LOCKED_DRAFT_NOTICE, runActiveDraftTask, useDraftActivity } from "./operationDraftSession";
+import { hasLegacyDraft, LEGACY_DRAFT_NOTICE, runActiveDraftTask, useDraftActivity } from "./operationDraftSession";
+import { LockedDriveImportPanel } from "./DraftUnavailableFallbacks";
 import type { OperationSession } from "@/lib/data/operationTypes";
 import { summarizeSatisfactionValue } from "@/lib/data/satisfaction";
 import type {
@@ -113,7 +114,7 @@ const BLOCKED_COURSE_CANDIDATE_VALUES = new Set([
 
 export function DriveImportPanel({ operation }: DriveImportPanelProps) {
   const session = useBrowserDraftSession();
-  if (session.status !== "ready") return <p role="status">{LOCKED_DRAFT_NOTICE}</p>;
+  if (session.status !== "ready") return <LockedDriveImportPanel operation={operation} />;
   return <ReadyDriveImportPanel key={`${session.ownerId}:${session.generation}:${operation.operationId}`} operation={operation} />;
 }
 
