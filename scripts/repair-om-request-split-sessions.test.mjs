@@ -38,6 +38,22 @@ test('명시적으로 허용한 배정완료 회차는 기존 배정을 보존�
   assert.equal(plan.length, 4);
   assert.ok(plan.every(row => row.after.omUserId === 'synthetic-user' && row.after.operationStatus === 'ASSIGNMENT_PLANNED'));
 });
+test('요청의 여러 날 구간과 명시 교육일을 원본 범위 안에서 보존한다', () => {
+  const f = fixture();
+  f.sessions = [
+    { date: '2099-01-01', dateEnd: '2099-01-02', educationDatesText: '2099-01-01, 2099-01-02', duration: '2' },
+    { date: '2099-01-03', dateEnd: '2099-01-03', duration: '1' },
+    { date: '2099-02-01', dateEnd: '2099-02-03', duration: '3' }
+  ];
+  f.request.totalSessions = 3;
+  const plan = planSessionSplit(f.request, f.operations, f.sessions, env);
+  assert.deepEqual(plan.map(row => dayRange(row.after)), [
+    ['2099-01-01', '2099-01-02', ['2099-01-01', '2099-01-02']],
+    ['2099-01-03', '2099-01-03', ['2099-01-03']],
+    ['2099-02-01', '2099-02-03', ['2099-02-01', '2099-02-02', '2099-02-03']]
+  ]);
+});
+function dayRange(row) { return [row.startDate.toISOString().slice(0, 10), row.endDate.toISOString().slice(0, 10), row.educationDates.map(value => value.toISOString().slice(0, 10))]; }
 test('중복 날짜·원본 구간 밖 날짜·대표 누락·구간 중첩은 거부한다', () => {
   const mutations = [f => { f.sessions[1].date = f.sessions[0].date; }, f => { f.sessions[1].date = '2099-01-10'; f.sessions[1].dateEnd = '2099-01-10'; },
     f => { f.request.operationId = 'missing'; }, f => { f.operations[1].startDate = new Date('2099-01-01'); }];
