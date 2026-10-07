@@ -99,7 +99,7 @@ export async function diagnoseExistingLinks(client, env) {
   const { collection } = collectionScope(client, env);
   const requests = await collection("OmRequest").find({ operationId: { $type: "string" } }).toArray();
   const operations = await collection("OperationSession").find({}).toArray();
-  const result = { scanned: requests.length, healthy: 0, repaired: 0, exactRepairable: 0, blocked: 0, targets: [] };
+  const result = { scanned: requests.length, healthy: 0, repaired: 0, exactRepairable: 0, blocked: 0, blockedReasons: {}, targets: [] };
   for (const request of requests) {
     const links = await creationLinks(collection, request);
     if (links.kind === "repair") { result.repaired++; continue; }
@@ -113,7 +113,11 @@ export async function diagnoseExistingLinks(client, env) {
       result.exactRepairable++;
       result.targets.push({ requestId: request._id, requestDigest: digest(request), operationIds: selected.map(row => row._id),
         operationKeys: selected.map(row => idKey(row._id)), operationDigests: selected.map(operationFingerprint), previousLinkCount: links.count });
-    } catch { result.blocked++; }
+    } catch (error) {
+      result.blocked++;
+      const code = error instanceof Error && /^[A-Z_]+$/.test(error.message) ? error.message : "UNKNOWN";
+      result.blockedReasons[code] = (result.blockedReasons[code] ?? 0) + 1;
+    }
   }
   return result;
 }
@@ -171,7 +175,7 @@ async function main() {
     const diagnosis = await diagnoseExistingLinks(client, process.env);
     if (mode === "--diagnose") {
       console.log(JSON.stringify({ scanned: diagnosis.scanned, healthy: diagnosis.healthy, repaired: diagnosis.repaired,
-        exactRepairable: diagnosis.exactRepairable, blocked: diagnosis.blocked }));
+        exactRepairable: diagnosis.exactRepairable, blocked: diagnosis.blocked, blockedReasons: diagnosis.blockedReasons }));
       return;
     }
     const repaired = await repairExactExistingLinks(client, process.env, diagnosis.targets);
