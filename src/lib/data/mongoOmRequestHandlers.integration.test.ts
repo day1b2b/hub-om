@@ -330,19 +330,19 @@ test("OM request actual handlers/server pages: native CRUD + intake, scoped assi
       }
     });
 
-    await suite.test("native operation failure keeps accepted request; partial second-round failure is not retroactively atomic", async () => {
+    await suite.test("native operation failure keeps accepted request and cleans up partial rounds", async () => {
       for (const partial of [false, true]) {
         const body = input(), sides = sideCounts(), start = logs.length;
         const created = await withValidator("OperationSession", partial ? { roundNo: { $ne: "2" } } : { _id: { $exists: false } }, () => create(body));
         assert.equal(created.operationId, undefined); assert.equal(created.ldEmail, author.user.email);
         assert.ok(await repo.getOmRequest(created.id));
-        assert.equal((await scope.operations.listOperations()).filter(row => row.courseId === body.courseId).length, partial ? 1 : 0);
+        assert.equal((await scope.operations.listOperations()).filter(row => row.courseId === body.courseId).length, 0);
         assert.equal(notifications.length, sides.notifications + 1); assert.equal(added.length, sides.adds + 1);
         assertNoPrivateError(start, author.user.email, body.notes); assertIsolated();
       }
     });
 
-    await suite.test("report patch failure after round creation preserves partial updates and rolls back failed audit", async () => {
+    await suite.test("report patch failure after round creation cleans up all created rounds", async () => {
       for (const failedRound of ["1", "2"]) {
         const body = input(), sides = sideCounts(), start = logs.length;
         const response = await withValidator("OperationSession", {
@@ -357,16 +357,10 @@ test("OM request actual handlers/server pages: native CRUD + intake, scoped assi
         assert.ok(stored); assert.equal(stored.operationId, undefined);
         const rounds = (await scope.operations.listOperations()).filter(row => row.courseId === body.courseId)
           .sort((a, b) => String(a.roundNo).localeCompare(String(b.roundNo)));
-        assert.equal(rounds.length, 2);
-        assert.deepEqual(rounds.map(row => row.hasResultReport), failedRound === "1"
-          ? ["확인필요", "확인필요"] : ["불필요", "확인필요"]);
+        assert.equal(rounds.length, 0);
         const audits = await store.scan("ActivityChange", { requestId: response.headers.get("X-Request-Id") });
         const roundAudits = audits.filter(row => row.targetType === "operation_sessions");
-        assert.deepEqual(roundAudits.filter(row => row.action === "create").map(row => row.targetId).sort(), rounds.map(row => row.id).sort());
-        const updates = roundAudits.filter(row => row.action === "update");
-        assert.deepEqual(updates.map(row => row.targetId), failedRound === "1" ? [] : [rounds[0].id]);
-        if (updates.length) assert.deepEqual((updates[0].changes as Record<string, unknown>).has_result_report,
-          { before: "needs_review", after: "not_required" });
+        assert.equal(roundAudits.filter(row => row.action === "create").length, 0);
         assert.equal(notifications.length, sides.notifications + 1); assert.equal(added.length, sides.adds + 1);
         assertNoPrivateError(start, author.user.email, body.notes); assertIsolated();
       }
