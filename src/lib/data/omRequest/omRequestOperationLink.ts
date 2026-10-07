@@ -98,19 +98,20 @@ export async function createLinkedOperationForOmRequest(request: OmRequest): Pro
       createdOperationIds.push(operation.operationId);
     }
 
-  // createOperation()은 결과보고서 여부를 항상 "확인필요"로 만든다 — om-request에서
-  // "결과보고서: N"으로 접수됐으면(불필요) 별도 patch로 덮어써 운영현황과 값을 맞춘다.
-  // /operations/new(OperationCreateForm)의 동일 패턴을 그대로 따른 것.
-    if (request.resultReportNeeded === "N") {
-      for (const operationId of createdOperationIds) {
-        await repository.updateOperation(operationId, { hasResultReport: "불필요" });
-      }
-    }
   } catch (error) {
     for (const operationId of [...createdOperationIds].reverse()) {
       try { await repository.deleteOperation(operationId, request.ld); } catch { /* preserve original failure */ }
     }
     throw error;
+  }
+
+  // createOperation()은 결과보고서 여부를 항상 "확인필요"로 만든다 — om-request에서
+  // "결과보고서: N"으로 접수됐으면(불필요) 별도 patch로 덮어써 운영현황과 값을 맞춘다.
+  // 이 보정은 회차 생성 이후의 별도 단계이며, 실패해도 생성된 회차를 삭제하지 않는다.
+  if (request.resultReportNeeded === "N") {
+    for (const operationId of createdOperationIds) {
+      await repository.updateOperation(operationId, { hasResultReport: "불필요" });
+    }
   }
 
   return firstOperationId;
