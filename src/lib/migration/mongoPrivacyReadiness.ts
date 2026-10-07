@@ -38,6 +38,8 @@ export function encryptLegacyMongoPrivacyFields(model: string, document: Documen
     const storedField = policy.storage ?? field;
     const value = document[storedField];
     if (value == null || storedEncrypted(policy, value)) continue;
+    // This JSON is an explicit reviewed exception and must retain its validator shape.
+    if (policy.allowAuditMetadata && policy.type === "Json") continue;
     next[storedField] = encryptField(model, field, value);
     if (policy.index) next[policy.index] = indexField(model, field, value);
     changedFields.push(storedField);

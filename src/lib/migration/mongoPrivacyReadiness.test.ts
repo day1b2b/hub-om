@@ -30,6 +30,13 @@ test("explicit audit metadata exception does not block plaintext-read shutdown",
   assert.deepEqual(mongoPrivacyViolations("ActivityChange", { changes: { safeMetadata: true } }), []);
 });
 
+test("isolated conversion preserves explicit audit metadata exception", () => {
+  const source = { changes: { safeMetadata: true } };
+  const converted = encryptLegacyMongoPrivacyFields("ActivityChange", source);
+  assert.deepEqual(converted.document, source);
+  assert.deepEqual(converted.changedFields, []);
+});
+
 test("isolated conversion encrypts legacy values without mutating source or unrelated ciphertext", () => {
   const saved = new Map(names.map(name => [name, process.env[name]]));
   Object.assign(process.env, {
