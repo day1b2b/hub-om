@@ -29,6 +29,15 @@ test('기존 배정·비용·원천 연결이 있으면 자동 분할을 거부�
     assert.throws(() => planSessionSplit(f.request, f.operations, f.sessions, env));
   }
 });
+test('명시적으로 허용한 배정완료 회차는 기존 배정을 보존해 분할한다', () => {
+  const f = fixture();
+  Object.assign(f.request, { assignedOm: 'encrypted-assignee', status: '배정완료' });
+  for (const row of f.operations) Object.assign(row, { omName: 'encrypted-assignee', omUserId: 'synthetic-user', operationStatus: 'ASSIGNMENT_PLANNED' });
+  assert.throws(() => planSessionSplit(f.request, f.operations, f.sessions, env), /REQUEST_ALREADY_ASSIGNED/);
+  const plan = planSessionSplit(f.request, f.operations, f.sessions, env, new Date(0), { allowAssigned: true });
+  assert.equal(plan.length, 4);
+  assert.ok(plan.every(row => row.after.omUserId === 'synthetic-user' && row.after.operationStatus === 'ASSIGNMENT_PLANNED'));
+});
 test('중복 날짜·원본 구간 밖 날짜·대표 누락·구간 중첩은 거부한다', () => {
   const mutations = [f => { f.sessions[1].date = f.sessions[0].date; }, f => { f.sessions[1].date = '2099-01-10'; f.sessions[1].dateEnd = '2099-01-10'; },
     f => { f.request.operationId = 'missing'; }, f => { f.operations[1].startDate = new Date('2099-01-01'); }];

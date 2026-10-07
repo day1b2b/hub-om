@@ -28,14 +28,18 @@ function privateField(row, name, value, env) {
 }
 
 /** Narrow repair: split unassigned date ranges into explicitly requested single days. */
-export function planSessionSplit(request, operations, sessions, env, now = new Date()) {
-  check(request.assignedOm === null && request.status === '배정필요', 'REQUEST_ALREADY_ASSIGNED');
+export function planSessionSplit(request, operations, sessions, env, now = new Date(), options = {}) {
+  const allowAssigned = options.allowAssigned === true;
+  if (!allowAssigned) check(request.assignedOm === null && request.status === '배정필요', 'REQUEST_ALREADY_ASSIGNED');
+  else check(['배정필요', '배정완료'].includes(request.status), 'REQUEST_STATUS_UNSAFE');
   check(Array.isArray(sessions) && sessions.length === request.totalSessions && sessions.length > operations.length && operations.length > 0, 'INVALID_SESSION_COUNT');
   check(new Set(sessions.map(s => s.date)).size === sessions.length, 'DUPLICATE_DATES');
   check(new Set(operations.map(o => o.courseRecordId)).size === 1, 'MIXED_COURSES');
   check(operations.some(o => o.operationId === request.operationId), 'REPRESENTATIVE_MISSING');
   for (const row of operations) {
-    check(!row.deletedAt && row.operationStatus === 'ASSIGNMENT_NEEDED' && row.omName === null && row.omUserId === null, 'OPERATION_ALREADY_USED');
+    check(!row.deletedAt && (allowAssigned
+      ? ['ASSIGNMENT_NEEDED', 'ASSIGNMENT_PLANNED'].includes(row.operationStatus)
+      : row.operationStatus === 'ASSIGNMENT_NEEDED' && row.omName === null && row.omUserId === null), 'OPERATION_ALREADY_USED');
     check(!row.sourceFingerprint, 'IMPORTED_OPERATION');
     check(['totalCost', 'instructorCost', 'operationCost'].every(key => row[key] === null || Number(String(row[key])) === 0), 'FINANCIAL_DATA_PRESENT');
     check(sessions.filter(s => s.date === day(row.startDate)).length === 1, 'ORIGINAL_START_NOT_RETAINED');
@@ -91,7 +95,7 @@ export async function repairFromBackup(client, env, requestId, backupId, apply =
       check(await collection('CoachEngagement').countDocuments({ operationSessionId: { $in: ids } }, { session }) === 0, 'COACH_DEPENDENCY');
       check(await collection('OperationSourceRecord').countDocuments({ operationSessionId: { $in: ids } }, { session }) === 0, 'SOURCE_DEPENDENCY');
       const sessions = JSON.parse(decrypt(request.sessions.$json.__pii, 'OmRequest.sessions', env));
-      const plan = planSessionSplit(request, operations, sessions, env);
+      const plan = planSessionSplit(request, operations, sessions, env, new Date(), { allowAssigned: true });
       const summary = { apply, requestId, backupId, retained: operations.length, inserted: plan.length - operations.length,
         rounds: plan.map(p => ({ roundNo: p.after.roundNo, date: day(p.after.startDate), operationId: p.after.operationId })) };
       if (!apply) return summary;

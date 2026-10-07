@@ -119,7 +119,7 @@ export async function diagnoseExistingLinks(client, env) {
       if (error instanceof Error && error.message === "OPERATION_NOT_FOUND" && representative) {
         try {
           const course = operations.filter(row => row.courseRecordId === representative.courseRecordId && !row.deletedAt);
-          planSessionSplit(request, course, sessionsOf(request, env), env);
+          planSessionSplit(request, course, sessionsOf(request, env), env, new Date(), { allowAssigned: true });
           const ids = course.map(row => row._id);
           const coachDependencies = await collection("CoachEngagement").countDocuments({ operationSessionId: { $in: ids } });
           const sourceDependencies = await collection("OperationSourceRecord").countDocuments({ operationSessionId: { $in: ids } });
