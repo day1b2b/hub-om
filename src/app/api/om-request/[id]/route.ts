@@ -33,6 +33,10 @@ async function activityPATCH(request: Request, { params }: Props) {
 
     getOmCustomToolsRepository();
     const body = (await request.json()) as OmRequestInput;
+    // 요청 수정은 운영 회차를 생성/삭제하지 않는다. 회차 수만 바뀌면 이후 OM 배정이 막힌다.
+    if (existing.operationId && (body.totalSessions !== existing.totalSessions || body.sessions?.length !== existing.sessions.length)) {
+      return NextResponse.json({ error: "운영현황에 연결된 요청은 회차 수를 바로 변경할 수 없습니다. 연결된 운영 회차와 함께 조정하도록 관리자에게 요청해 주세요." }, { status: 409 });
+    }
     const updated = await updateOmRequest(id, body);
     if (!updated) return NextResponse.json({ error: "요청 없음" }, { status: 404 });
     try {
