@@ -35,14 +35,18 @@ function timeTextOf(session: OmRequest["sessions"][number]): string {
  * 반환하는 operationId는 첫 회차(1차수)를 대표로 가리킨다.
  */
 export async function createLinkedOperationForOmRequest(request: OmRequest): Promise<string | null> {
-  const sessions = request.sessions.filter((session) => session.date);
+  const sessions = request.sessions;
   if (sessions.length === 0) return null;
+  if (sessions.length !== request.totalSessions || sessions.some((session) => !session.date?.trim())) {
+    throw new Error("OM_REQUEST_SESSION_INPUT_INVALID");
+  }
 
   const repository = getOperationRepository();
   let firstOperationId: string | null = null;
   const createdOperationIds: string[] = [];
 
-  for (const [index, session] of sessions.entries()) {
+  try {
+    for (const [index, session] of sessions.entries()) {
     // 세션에 실제 교육일을 따로 적어뒀으면(예: 9/3, 9/4, 9/7) 그 값을 우선한다 — date~dateEnd는
     // 그 사이 모든 날짜가 교육일이라고 가정하지만, 중간에 쉬는 날이 있는 회차는 그 가정이 틀리다.
     const educationDates = session.educationDatesText
@@ -89,18 +93,24 @@ export async function createLinkedOperationForOmRequest(request: OmRequest): Pro
       totalCost: null
     };
 
-    const operation = await repository.createOperation(input);
-    if (!firstOperationId) firstOperationId = operation.operationId;
-    createdOperationIds.push(operation.operationId);
-  }
+      const operation = await repository.createOperation(input);
+      if (!firstOperationId) firstOperationId = operation.operationId;
+      createdOperationIds.push(operation.operationId);
+    }
 
   // createOperation()은 결과보고서 여부를 항상 "확인필요"로 만든다 — om-request에서
   // "결과보고서: N"으로 접수됐으면(불필요) 별도 patch로 덮어써 운영현황과 값을 맞춘다.
   // /operations/new(OperationCreateForm)의 동일 패턴을 그대로 따른 것.
-  if (request.resultReportNeeded === "N") {
-    for (const operationId of createdOperationIds) {
-      await repository.updateOperation(operationId, { hasResultReport: "불필요" });
+    if (request.resultReportNeeded === "N") {
+      for (const operationId of createdOperationIds) {
+        await repository.updateOperation(operationId, { hasResultReport: "불필요" });
+      }
     }
+  } catch (error) {
+    for (const operationId of [...createdOperationIds].reverse()) {
+      try { await repository.deleteOperation(operationId, request.ld); } catch { /* preserve original failure */ }
+    }
+    throw error;
   }
 
   return firstOperationId;
