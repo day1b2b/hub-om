@@ -239,6 +239,12 @@ test("복구 배치에 다른 요청이 섞이면 배정을 차단한다", async
   await assert.rejects(preview(), OmAssignmentConflict);
   assert.deepEqual(writes, []);
 });
+test("단일 회차라도 빈 복구 연결을 대표 회차로 대체하지 않는다", async () => {
+  row.totalSessions = 1; row.sessions = row.sessions.slice(0, 1);
+  history.push(...repairedLinks([]));
+  await assert.rejects(preview(), OmAssignmentConflict);
+  assert.deepEqual(writes, []);
+});
 test("단일 회차 요청은 회차 생성 감사가 누락돼도 저장된 대표 연결로 안전하게 복구한다", async () => {
   row.totalSessions = 1;
   row.sessions = [row.sessions[0]];

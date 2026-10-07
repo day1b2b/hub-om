@@ -83,7 +83,7 @@ export async function readAssignmentState(tx: OmAssignmentTransaction, existing:
   // linked operation creation audit is absent. For an exact one-session request,
   // the persisted representative link is the complete set and is safe to use.
   // Never infer siblings for multi-session or partially audited requests.
-  if (operationIds.length === 0 && count === 1) operationIds = [representative.id];
+  if (route === CREATE_ROUTE && operationIds.length === 0 && count === 1) operationIds = [representative.id];
   if (operationIds.length !== count || new Set(operationIds).size !== count || !operationIds.includes(representative.id)) {
     throw new OmAssignmentConflict("요청한 회차 수와 확인된 연결 회차 수가 다릅니다. 누락된 연결을 확인해 주세요.");
   }
