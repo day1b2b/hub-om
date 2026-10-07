@@ -1,6 +1,7 @@
 import { BSON, MongoClient } from "mongodb";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { pathToFileURL } from "node:url";
+import { planSessionSplit, repairFromBackup } from "./repair-om-request-split-sessions.mjs";
 
 export const REPAIR_ROUTE = "/maintenance/om-request-session-repair";
 const CREATE_ROUTE = "/api/om-request";
@@ -99,7 +100,8 @@ export async function diagnoseExistingLinks(client, env) {
   const { collection } = collectionScope(client, env);
   const requests = await collection("OmRequest").find({ operationId: { $type: "string" } }).toArray();
   const operations = await collection("OperationSession").find({}).toArray();
-  const result = { scanned: requests.length, healthy: 0, repaired: 0, exactRepairable: 0, blocked: 0, blockedReasons: {}, targets: [] };
+  const result = { scanned: requests.length, healthy: 0, repaired: 0, exactRepairable: 0, splitRepairable: 0,
+    blocked: 0, blockedReasons: {}, targets: [], splitTargets: [] };
   for (const request of requests) {
     const links = await creationLinks(collection, request);
     if (links.kind === "repair") { result.repaired++; continue; }
@@ -114,12 +116,50 @@ export async function diagnoseExistingLinks(client, env) {
       result.targets.push({ requestId: request._id, requestDigest: digest(request), operationIds: selected.map(row => row._id),
         operationKeys: selected.map(row => idKey(row._id)), operationDigests: selected.map(operationFingerprint), previousLinkCount: links.count });
     } catch (error) {
+      if (error instanceof Error && error.message === "OPERATION_NOT_FOUND" && representative) {
+        try {
+          const course = operations.filter(row => row.courseRecordId === representative.courseRecordId && !row.deletedAt);
+          planSessionSplit(request, course, sessionsOf(request, env), env);
+          const ids = course.map(row => row._id);
+          const coachDependencies = await collection("CoachEngagement").countDocuments({ operationSessionId: { $in: ids } });
+          const sourceDependencies = await collection("OperationSourceRecord").countDocuments({ operationSessionId: { $in: ids } });
+          check(coachDependencies === 0, "COACH_DEPENDENCY");
+          check(sourceDependencies === 0, "SOURCE_DEPENDENCY");
+          result.splitRepairable++;
+          result.splitTargets.push({ requestId: request._id, requestDigest: digest(request), operationIds: ids,
+            operationKeys: ids.map(idKey), operationDigests: course.map(operationFingerprint), previousLinkCount: links.count });
+          continue;
+        } catch (splitError) {
+          error = splitError;
+        }
+      }
       result.blocked++;
       const code = error instanceof Error && /^[A-Z_]+$/.test(error.message) ? error.message : "UNKNOWN";
       result.blockedReasons[code] = (result.blockedReasons[code] ?? 0) + 1;
     }
   }
   return result;
+}
+
+export async function repairSplitExistingLinks(client, env, targets) {
+  const { collection } = collectionScope(client, env);
+  const repaired = [];
+  for (const target of targets) {
+    const request = await collection("OmRequest").findOne({ _id: target.requestId });
+    check(request && digest(request) === target.requestDigest, "REQUEST_CHANGED");
+    const operations = await collection("OperationSession").find({ _id: { $in: target.operationIds } }).toArray();
+    check(operations.length === target.operationIds.length, "OPERATION_DISAPPEARED");
+    for (const row of operations) {
+      const expected = target.operationDigests[target.operationKeys.indexOf(idKey(row._id))];
+      check(expected && operationFingerprint(row) === expected, "OPERATION_CHANGED");
+    }
+    const backupId = randomUUID();
+    const payload = BSON.EJSON.stringify({ request, operations, previousLinkCount: target.previousLinkCount }, { relaxed: false });
+    await collection("MaintenanceBackup").insertOne({ _id: backupId, requestId: request._id, createdAt: new Date(),
+      kind: "om-request-session-split", payload, sha256: createHash("sha256").update(payload).digest("hex") });
+    repaired.push(await repairFromBackup(client, env, request._id, backupId, true));
+  }
+  return repaired;
 }
 
 export async function repairExactExistingLinks(client, env, targets) {
@@ -168,14 +208,21 @@ export async function repairExactExistingLinks(client, env, targets) {
 
 async function main() {
   const mode = process.argv[2] ?? "--diagnose";
-  check(["--diagnose", "--apply-exact"].includes(mode), "EXPLICIT_MODE_REQUIRED");
+  check(["--diagnose", "--apply-exact", "--apply-split"].includes(mode), "EXPLICIT_MODE_REQUIRED");
   const client = new MongoClient(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 5000 });
   try {
     await client.connect();
     const diagnosis = await diagnoseExistingLinks(client, process.env);
     if (mode === "--diagnose") {
       console.log(JSON.stringify({ scanned: diagnosis.scanned, healthy: diagnosis.healthy, repaired: diagnosis.repaired,
-        exactRepairable: diagnosis.exactRepairable, blocked: diagnosis.blocked, blockedReasons: diagnosis.blockedReasons }));
+        exactRepairable: diagnosis.exactRepairable, splitRepairable: diagnosis.splitRepairable,
+        blocked: diagnosis.blocked, blockedReasons: diagnosis.blockedReasons }));
+      return;
+    }
+    if (mode === "--apply-split") {
+      const repaired = await repairSplitExistingLinks(client, process.env, diagnosis.splitTargets);
+      const after = await diagnoseExistingLinks(client, process.env);
+      console.log(JSON.stringify({ repaired: repaired.length, remainingSplit: after.splitRepairable, blocked: after.blocked }));
       return;
     }
     const repaired = await repairExactExistingLinks(client, process.env, diagnosis.targets);
