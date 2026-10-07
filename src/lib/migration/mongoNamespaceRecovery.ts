@@ -1,5 +1,6 @@
 import { BSON, type ClientSession, type CollectionInfo, type Db, type Document, type IndexDescription, type IndexDescriptionInfo, type MongoClient } from "mongodb";
 import { createHash } from "node:crypto";
+import { encryptLegacyMongoPrivacyFields, mongoPrivacyViolations } from "./mongoPrivacyReadiness";
 
 const NAMESPACE = /^shadow_[A-Za-z0-9_-]{1,80}$/;
 const MAX_COLLECTIONS = 128;
@@ -27,6 +28,35 @@ function hashDocument(hash: ReturnType<typeof createHash>, suffix: string, docum
   hash.update(JSON.stringify([suffix, bytes.length]) + "\n");
   hash.update(bytes);
   return bytes.length;
+}
+
+function digestCaptured(collections: CapturedCollection[]) {
+  const hash = createHash("sha256");
+  let documents = 0;
+  let bytes = 0;
+  for (const collection of collections) {
+    for (const document of collection.documents) {
+      documents++;
+      bytes += hashDocument(hash, collection.suffix, document);
+    }
+  }
+  return { digest: hash.digest("hex"), documents, bytes };
+}
+
+function encryptCaptured(collections: CapturedCollection[]) {
+  let changedDocuments = 0;
+  let changedFields = 0;
+  const transformed = collections.map(collection => ({
+    ...collection,
+    documents: collection.documents.map(document => {
+      const result = encryptLegacyMongoPrivacyFields(collection.suffix, document);
+      if (result.changedFields.length) changedDocuments++;
+      changedFields += result.changedFields.length;
+      check(mongoPrivacyViolations(collection.suffix, result.document).length === 0, "TARGET_PRIVACY_VIOLATION");
+      return result.document;
+    }),
+  }));
+  return { collections: transformed, changedDocuments, changedFields, ...digestCaptured(transformed) };
 }
 
 async function capture(db: Db, namespace: string, session: ClientSession): Promise<{ collections: CapturedCollection[]; digest: string; documents: number; bytes: number }> {
@@ -132,5 +162,59 @@ export async function recoverMongoNamespace(input: {
       sourceUnchanged: true as const, targetVerified: true as const, cutoverAuthorized: false as const });
   } catch (error) {
     throw error instanceof MongoNamespaceRecoveryError ? error : new MongoNamespaceRecoveryError("RECOVERY_COPY_FAILED");
+  }
+}
+
+/**
+ * Copies a frozen source namespace into a new isolated namespace while
+ * encrypting only legacy privacy fields. The source namespace is read twice
+ * and never mutated. The target is accepted only when its exact BSON digest
+ * matches the expected transformed documents and contains no plaintext
+ * privacy violations.
+ */
+export async function createEncryptedMongoNamespace(input: {
+  client: MongoClient;
+  databaseName: string;
+  sourceNamespace: string;
+  targetNamespace: string;
+  sourceWritesFrozen: true;
+}) {
+  check(input.sourceWritesFrozen === true, "SOURCE_FREEZE_REQUIRED");
+  check(NAMESPACE.test(input.sourceNamespace) && NAMESPACE.test(input.targetNamespace) && input.sourceNamespace !== input.targetNamespace, "NAMESPACE");
+  const db = input.client.db(input.databaseName);
+  await assertTargetAbsent(db, input.targetNamespace);
+  const before = await digestCurrent(input.client, db, input.sourceNamespace);
+  const expected = encryptCaptured(before.collections);
+  try {
+    await materialize(db, input.targetNamespace, expected.collections);
+    const [sourceAfter, target] = await Promise.all([
+      digestCurrent(input.client, db, input.sourceNamespace),
+      digestCurrent(input.client, db, input.targetNamespace),
+    ]);
+    check(sourceAfter.digest === before.digest && sourceAfter.documents === before.documents && sourceAfter.bytes === before.bytes, "SOURCE_CHANGED_DURING_RECOVERY");
+    check(target.digest === expected.digest && target.documents === expected.documents && target.bytes === expected.bytes, "TARGET_CONTENT_MISMATCH");
+    check(target.collections.length === before.collections.length, "TARGET_COLLECTION_MISMATCH");
+    for (const collection of target.collections) {
+      for (const document of collection.documents) {
+        check(mongoPrivacyViolations(collection.suffix, document).length === 0, "TARGET_PRIVACY_VIOLATION");
+      }
+    }
+    return Object.freeze({
+      status: "encrypted-namespace-verified" as const,
+      sourceNamespace: input.sourceNamespace,
+      targetNamespace: input.targetNamespace,
+      collectionCount: before.collections.length,
+      documentCount: before.documents,
+      sourceDigest: before.digest,
+      targetDigest: expected.digest,
+      changedDocuments: expected.changedDocuments,
+      changedFields: expected.changedFields,
+      sourceUnchanged: true as const,
+      targetVerified: true as const,
+      privacyReady: true as const,
+      cutoverAuthorized: false as const,
+    });
+  } catch (error) {
+    throw error instanceof MongoNamespaceRecoveryError ? error : new MongoNamespaceRecoveryError("ENCRYPTED_NAMESPACE_COPY_FAILED");
   }
 }
