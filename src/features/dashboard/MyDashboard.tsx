@@ -8,6 +8,7 @@ import { missingArchiveItems, resolveOperationCalendarRuns } from "@/lib/data/op
 import { buildMyCourseRows } from "./myCourseRows";
 import { ALL_RANGE, getMonthRange, overlapsDateRange } from "@/lib/dateRange";
 import type { OmNameDiagnosis } from "./omNameDiagnosis";
+import { selectDdayEvents } from "./ddayEvents";
 import { calendarLabel, isOnsiteSupportForViewer } from "./onsiteLabel";
 import { createRequestMatcher } from "./requestDedup";
 import { requestHref } from "./requestHref";
@@ -85,6 +86,7 @@ export function MyDashboard({ assignedRequests, diagnosis, omName, operations }:
 
         return [{
           id: `op-${operation.operationId}-${run.start}`,
+          source: "operation" as const,
           label: calendarLabel(operation.companyName, onsite),
           company: operation.companyName,
           course: operation.courseName,
@@ -107,6 +109,7 @@ export function MyDashboard({ assignedRequests, diagnosis, omName, operations }:
         if (!start || !end) return [];
         return [{
           id: `req-${request.id}-${index}`,
+          source: "request" as const,
           label: multiSession ? `${baseLabel} ${index + 1}차` : baseLabel,
           company: request.company,
           course: request.courseName,
@@ -276,9 +279,11 @@ export function MyDashboard({ assignedRequests, diagnosis, omName, operations }:
       ]
     }
   ];
-  // 다음 과정 D-day: 운영 + 담당 과정을 모두 고려해 임박한 순으로 몇 개를 보여 준다.
-  // 하나만 보여 주면 그 과정을 치른 뒤 다음이 무엇인지 캘린더를 뒤져야 했다.
-  const nextEvents = findNextEvents(calendarEvents, today, 4);
+  // 다음 과정 D-day: 운영 현황에 실제로 배정된 과정만 본다.
+  // 담당 관리(업무요청)는 접수 단계라 아직 배정되지 않은 과정도 있어서, 섞으면
+  // "나한테 배정 안 된 과정"이 가장 임박한 일정으로 떴다.
+  // 캘린더(내 과정 일정)는 그대로 둘 다 보여 준다 — 거기선 접수 건도 알아야 한다.
+  const nextEvents = selectDdayEvents(calendarEvents, today, 4);
   const [nextEvent, ...upcomingAfterNext] = nextEvents;
 
   return (
@@ -469,7 +474,7 @@ export function MyDashboard({ assignedRequests, diagnosis, omName, operations }:
           <section className="dashboard-panel">
             <div className="section-title">
               <h2>다음 과정 D-day</h2>
-              <span>다가오는 예정 과정 {nextEvents.length}건</span>
+              <span>운영 현황 기준 · 다가오는 {nextEvents.length}건</span>
             </div>
             {nextEvent ? (
               <>
@@ -586,6 +591,14 @@ interface CalendarEvent {
   href: string;
   /** 현장운영지원 과정. label에 "_현장운영지원"이 붙고, 막대에 테두리도 준다. */
   onsite: boolean;
+  /**
+   * 이 일정이 어디서 왔는지.
+   *
+   * 캘린더는 둘 다 보여 주지만 D-day는 운영 현황 기준만 쓴다. 담당 관리(업무요청)는
+   * 접수 단계라 아직 운영현황에 배정되지 않은 과정도 들어 있어서, 그걸 D-day에 섞으면
+   * "나한테 배정 안 된 과정"이 가장 임박한 일정으로 뜬다.
+   */
+  source: "operation" | "request";
 }
 
 // 기업별로 캘린더 막대 색을 다르게. 같은 기업은 항상 같은 색(이름 해시 기반).
@@ -842,20 +855,6 @@ function stripTime(value: Date) {
  * 캘린더를 뒤져야 했다. 며칠 안에 몰린 과정을 한눈에 보려면 몇 개는 같이 보여야 한다.
  * 같은 날 시작하는 과정이 여러 개면 기업·과정명 순으로 세워 순서가 흔들리지 않게 한다.
  */
-function findNextEvents(events: CalendarEvent[], today: Date, limit: number): CalendarEvent[] {
-  const todayTime = stripTime(today).getTime();
-
-  return events
-    .filter((event) => event.start.getTime() >= todayTime)
-    .sort((a, b) => {
-      const diff = a.start.getTime() - b.start.getTime();
-      if (diff !== 0) return diff;
-      const byCompany = a.label.localeCompare(b.label, "ko");
-      return byCompany !== 0 ? byCompany : a.course.localeCompare(b.course, "ko");
-    })
-    .slice(0, limit);
-}
-
 /** D-0은 "D-DAY"로 쓴다. 숫자 0은 남은 날이 없다는 뜻으로 잘 안 읽힌다. */
 function ddayText(days: number): string {
   return days === 0 ? "D-DAY" : `D-${days}`;
