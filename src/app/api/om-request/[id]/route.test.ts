@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { registerHooks } from "node:module";
 import { beforeEach, mock, test } from "node:test";
 
 let linked = true;
@@ -18,7 +19,8 @@ mock.module("@/lib/data/omRequest/omRequestLocalRepository", { namedExports: {
 mock.module("@/lib/data/omRequest/omCustomToolsLocalRepository", { namedExports: {
   getOmCustomToolsRepository: () => ({}), listCustomTools: () => [], addCustomTools: () => { tools++; }
 } });
-const { PATCH } = await import("./route");
+const hooks = registerHooks({ resolve(specifier, context, next) { return next(specifier === "next/server" ? "next/server.js" : specifier, context); } });
+const { PATCH } = await import("./route"); hooks.deregister();
 const save = (body: unknown) => PATCH(new Request("https://synthetic.invalid/api/om-request/synthetic-request", {
   method: "PATCH", body: JSON.stringify(body)
 }), { params: Promise.resolve({ id: "synthetic-request" }) });
