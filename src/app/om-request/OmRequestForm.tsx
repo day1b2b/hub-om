@@ -260,6 +260,7 @@ export function OmRequestForm({
   defaultTeam,
   initialData,
   requestId,
+  sessionCountLocked = false,
   knownCompanies = [],
   knownInstructors = []
 }: {
@@ -268,6 +269,7 @@ export function OmRequestForm({
   defaultTeam?: string;
   initialData?: OmRequestInput;
   requestId?: string;
+  sessionCountLocked?: boolean;
   knownCompanies?: string[];
   knownInstructors?: string[];
 }) {
@@ -637,6 +639,8 @@ export function OmRequestForm({
           <label className="om-session-count-field">
             <span>총 회차<RequiredMark /></span>
             <input
+              aria-describedby={sessionCountLocked ? "om-session-count-locked-hint" : undefined}
+              disabled={sessionCountLocked}
               min={1}
               max={30}
               required
@@ -647,17 +651,26 @@ export function OmRequestForm({
           </label>
           <div className="om-session-toolbar-actions">
             <a className="secondary-action" download href="/api/om-request/session-template">샘플 시트 다운로드</a>
-            <label className="secondary-action om-session-upload-label">
+            <label
+              aria-disabled={sessionCountLocked}
+              className={`secondary-action om-session-upload-label${sessionCountLocked ? " disabled" : ""}`}
+            >
               엑셀로 일괄 입력
               <input
                 accept=".xlsx"
                 className="om-session-upload-input"
+                disabled={sessionCountLocked}
                 onChange={handleSessionSheetUpload}
                 type="file"
               />
             </label>
           </div>
         </div>
+        {sessionCountLocked ? (
+          <p className="om-field-hint" id="om-session-count-locked-hint">
+            운영현황에 연결된 요청은 여기서 회차 수를 바꿀 수 없습니다. 기존 회차의 일정·시간·장소는 수정할 수 있습니다. 회차 추가 또는 감소가 필요하면 관리자에게 연결 회차 조정을 요청해 주세요.
+          </p>
+        ) : null}
         {sheetError && <p className="om-request-error">{sheetError}</p>}
 
         <div className="om-sessions-table">

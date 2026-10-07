@@ -11814,6 +11814,11 @@ button.coach-doc-reserve-chip:disabled {
   text-decoration: none;
 }
 
+.om-session-toolbar-actions .secondary-action.disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .om-session-upload-label {
   cursor: pointer;
   position: relative;
