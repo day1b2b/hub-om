@@ -118,16 +118,19 @@ export async function diagnoseExistingLinks(client, env) {
     } catch (error) {
       if (error instanceof Error && error.message === "OPERATION_NOT_FOUND" && representative) {
         try {
-          const course = operations.filter(row => row.courseRecordId === representative.courseRecordId && !row.deletedAt);
-          planSessionSplit(request, course, sessionsOf(request, env), env, new Date(), { allowAssigned: true });
-          const ids = course.map(row => row._id);
+          check(links.kind === "create" && links.operationIds.length > 0, "ORIGINAL_LINKS_REQUIRED");
+          const originalKeys = new Set(links.operationIds.map(idKey));
+          const originals = operations.filter(row => originalKeys.has(idKey(row._id)) && !row.deletedAt);
+          check(originals.length === originalKeys.size, "ORIGINAL_OPERATION_MISSING");
+          planSessionSplit(request, originals, sessionsOf(request, env), env, new Date(), { allowAssigned: true });
+          const ids = originals.map(row => row._id);
           const coachDependencies = await collection("CoachEngagement").countDocuments({ operationSessionId: { $in: ids } });
           const sourceDependencies = await collection("OperationSourceRecord").countDocuments({ operationSessionId: { $in: ids } });
           check(coachDependencies === 0, "COACH_DEPENDENCY");
           check(sourceDependencies === 0, "SOURCE_DEPENDENCY");
           result.splitRepairable++;
           result.splitTargets.push({ requestId: request._id, requestDigest: digest(request), operationIds: ids,
-            operationKeys: ids.map(idKey), operationDigests: course.map(operationFingerprint), previousLinkCount: links.count });
+            operationKeys: ids.map(idKey), operationDigests: originals.map(operationFingerprint), previousLinkCount: links.count });
           continue;
         } catch (splitError) {
           error = splitError;
