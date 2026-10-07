@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { browserDrafts } from "@/lib/privacy/browserDraftRuntime";
 import { useBrowserDraftSession } from "@/components/BrowserDraftProvider";
-import { hasLegacyDraft, LEGACY_DRAFT_NOTICE, LOCKED_DRAFT_NOTICE, runActiveDraftTask, useDraftActivity } from "./operationDraftSession";
+import { hasLegacyDraft, LEGACY_DRAFT_NOTICE, runActiveDraftTask, useDraftActivity } from "./operationDraftSession";
 import { useRouter } from "next/navigation";
 import { isNavigableHref, toHref } from "@/lib/links";
 import {
@@ -22,6 +22,7 @@ import {
 } from "./lectureNoteModel";
 import { flushLectureNote, type PendingLectureNote } from "./flushLectureNote";
 import { clearDraft, readDraft, writeDraft, lectureLegacyDraftKey, type NoteMode, type StoredDraft } from "./lectureNoteDraftStorage";
+import { LockedLectureManagementNoteRow } from "./DraftUnavailableFallbacks";
 
 type SaveState = "idle" | "saving" | "saved" | "failed";
 
@@ -83,7 +84,7 @@ function resolveInitialMode(value: string): NoteMode {
 
 export function LectureManagementNoteRow(props: LectureManagementNoteRowProps) {
   const session = useBrowserDraftSession();
-  if (session.status !== "ready") return <span role="status">{LOCKED_DRAFT_NOTICE}</span>;
+  if (session.status !== "ready") return <LockedLectureManagementNoteRow done={props.done} value={props.value} />;
   return <ReadyLectureManagementNoteRow key={`${session.ownerId}:${session.generation}:${props.operationId}`} {...props} />;
 }
 
