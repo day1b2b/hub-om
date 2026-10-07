@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 import type { OmRequest } from "./omRequestTypes";
 
 const CREATE_ROUTE = "/api/om-request";
+export const REPAIR_LINK_ROUTE = "/maintenance/om-request-session-repair";
 export const TOKEN_TTL_MS = 10 * 60 * 1000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const creationSelect = { requestId: true, route: true, method: true, targetType: true, targetId: true, action: true } as const;
@@ -33,9 +34,9 @@ export function normalizedInput(nextOm: string | null, actorEmail: string) {
   if (!actor) throw new OmAssignmentConflict("로그인 정보를 확인한 뒤 다시 시도해 주세요.");
   return { nextOm: nextOm?.trim() || null, actor };
 }
-function isCreation(entry: Creation, type: string): boolean {
-  return entry.targetType === type && entry.route === CREATE_ROUTE && entry.method === "POST" &&
-    entry.action === "create" && UUID.test(entry.requestId) && UUID.test(entry.targetId);
+function isCreation(entry: Creation, type: string, route = CREATE_ROUTE, action = "create"): boolean {
+  return entry.targetType === type && entry.route === route && entry.method === "POST" &&
+    entry.action === action && UUID.test(entry.requestId) && UUID.test(entry.targetId);
 }
 function expectedSessionCount(sessions: Prisma.JsonValue, totalSessions: number): number {
   if (!Array.isArray(sessions) || !Number.isInteger(totalSessions) || totalSessions < 1 || sessions.length !== totalSessions ||
@@ -55,19 +56,26 @@ export async function readAssignmentState(tx: OmAssignmentTransaction, existing:
   const count = expectedSessionCount(request.sessions, request.totalSessions);
   const representative = await tx.getOperation(request.operationId);
   if (!representative || representative.deletedAt) throw new OmAssignmentConflict("연결된 대표 회차가 없거나 삭제되었습니다. 배정을 변경하지 않았습니다.");
-  const requestCreations = await tx.listCreations({
+  const repairs = await tx.listCreations({
+    targetType: "om_requests", targetId: request.id, route: REPAIR_LINK_ROUTE, method: "POST", action: "link"
+  });
+  // An approved repair records the complete explicit set under its own batch.
+  // Never forge historical creation metadata or infer siblings by course/name.
+  const route = repairs.length ? REPAIR_LINK_ROUTE : CREATE_ROUTE;
+  const action = repairs.length ? "link" : "create";
+  const requestCreations = repairs.length ? repairs : await tx.listCreations({
     targetType: "om_requests", targetId: request.id, route: CREATE_ROUTE, method: "POST", action: "create"
   });
-  if (requestCreations.length !== 1 || !isCreation(requestCreations[0], "om_requests") || requestCreations[0].targetId !== request.id) {
+  if (requestCreations.length !== 1 || !isCreation(requestCreations[0], "om_requests", route, action) || requestCreations[0].targetId !== request.id) {
     throw new OmAssignmentConflict("요청의 생성 근거가 없거나 여러 건입니다. 전체 회차 연결을 확인해 주세요.");
   }
   const requestId = requestCreations[0].requestId;
   const batch = await tx.listCreations({
-    requestId, route: CREATE_ROUTE, method: "POST", action: "create", targetType: { in: ["om_requests", "operation_sessions"] }
+    requestId, route, method: "POST", action, targetType: { in: ["om_requests", "operation_sessions"] }
   });
   // One HTTP creation batch must contain exactly this one request. No course/name expansion.
   const batchRequests = batch.filter((entry) => entry.targetType === "om_requests");
-  if (batchRequests.length !== 1 || batchRequests[0].targetId !== request.id || batch.some((entry) => entry.requestId !== requestId || !isCreation(entry, entry.targetType) || !["om_requests", "operation_sessions"].includes(entry.targetType))) {
+  if (batchRequests.length !== 1 || batchRequests[0].targetId !== request.id || batch.some((entry) => entry.requestId !== requestId || !isCreation(entry, entry.targetType, route, action) || !["om_requests", "operation_sessions"].includes(entry.targetType))) {
     throw new OmAssignmentConflict("회차 생성 근거가 서로 겹치거나 올바르지 않습니다. 연결을 확인해 주세요.");
   }
   let operationIds = batch.filter((entry) => entry.targetType === "operation_sessions").map((entry) => entry.targetId);

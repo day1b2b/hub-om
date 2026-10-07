@@ -206,6 +206,39 @@ test("생성 로그의 회차가 삭제/누락된 경우 전체 저장을 차단
   operations.splice(1, 1);
   await assert.rejects(preview(), /누락되었거나 삭제/);
 });
+
+function repairedLinks(ids: string[]) {
+  return [creation("om_requests", requestId, id(200)), ...ids.map(target => creation("operation_sessions", target, id(200)))]
+    .map(entry => ({ ...entry, route: "/maintenance/om-request-session-repair", action: "link" }));
+}
+test("승인 복구의 명시 연결 배치로 2→4회차를 검증하고 원래 생성 이력은 보존한다", async () => {
+  row.totalSessions = 4;
+  row.sessions.push({ date: "2026-10-03" }, { date: "2026-10-04" });
+  operations.push(operation(14), operation(15));
+  const original = structuredClone(history);
+  history.push(...repairedLinks([id(11), id(12), id(14), id(15)]));
+  const result = await preview();
+  assert.equal(result.count, 4);
+  await assign(result.token);
+  assert.equal(operations[2].omName, "다른 요청 담당");
+  assert.deepEqual(history.slice(0, original.length), original);
+  assert.deepEqual(writes, [id(11), id(12), id(14), id(15), "request"]);
+});
+test("불완전하거나 중복된 복구 연결은 원래 생성 이력으로 우회하지 않는다", async () => {
+  const original = structuredClone(history);
+  for (const links of [repairedLinks([id(11)]), repairedLinks([id(11), id(11)]),
+    [...repairedLinks([id(11), id(12)]), repairedLinks([])[0]], repairedLinks([id(12), id(13)])]) {
+    history = [...original, ...links];
+    await assert.rejects(preview(), OmAssignmentConflict);
+    assert.deepEqual(writes, []);
+  }
+});
+test("복구 배치에 다른 요청이 섞이면 배정을 차단한다", async () => {
+  const links = repairedLinks([id(11), id(12)]);
+  history.push(...links, { ...links[0], targetId: id(99) });
+  await assert.rejects(preview(), OmAssignmentConflict);
+  assert.deepEqual(writes, []);
+});
 test("단일 회차 요청은 회차 생성 감사가 누락돼도 저장된 대표 연결로 안전하게 복구한다", async () => {
   row.totalSessions = 1;
   row.sessions = [row.sessions[0]];

@@ -450,7 +450,10 @@ export function OmRequestForm({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(form)
         });
-        if (!res.ok) throw new Error("저장에 실패했습니다.");
+        if (!res.ok) {
+          const result = await res.json().catch(() => null);
+          throw new Error(typeof result?.error === "string" ? result.error : "저장에 실패했습니다.");
+        }
         router.push(`/om-request/manage/${requestId}`);
         router.refresh();
       } else {
