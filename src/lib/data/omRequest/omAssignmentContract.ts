@@ -70,7 +70,12 @@ export async function readAssignmentState(tx: OmAssignmentTransaction, existing:
   if (batchRequests.length !== 1 || batchRequests[0].targetId !== request.id || batch.some((entry) => entry.requestId !== requestId || !isCreation(entry, entry.targetType) || !["om_requests", "operation_sessions"].includes(entry.targetType))) {
     throw new OmAssignmentConflict("회차 생성 근거가 서로 겹치거나 올바르지 않습니다. 연결을 확인해 주세요.");
   }
-  const operationIds = batch.filter((entry) => entry.targetType === "operation_sessions").map((entry) => entry.targetId);
+  let operationIds = batch.filter((entry) => entry.targetType === "operation_sessions").map((entry) => entry.targetId);
+  // Early Mongo cutover requests can have the request creation audit while the
+  // linked operation creation audit is absent. For an exact one-session request,
+  // the persisted representative link is the complete set and is safe to use.
+  // Never infer siblings for multi-session or partially audited requests.
+  if (operationIds.length === 0 && count === 1) operationIds = [representative.id];
   if (operationIds.length !== count || new Set(operationIds).size !== count || !operationIds.includes(representative.id)) {
     throw new OmAssignmentConflict("요청한 회차 수와 확인된 연결 회차 수가 다릅니다. 누락된 연결을 확인해 주세요.");
   }
