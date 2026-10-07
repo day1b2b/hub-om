@@ -7,6 +7,7 @@ const CREATE_ROUTE = "/api/om-request";
 const check = (value, code) => { if (!value) throw new Error(code); };
 const day = value => value instanceof Date ? value.toISOString().slice(0, 10) : "";
 const digest = value => createHash("sha256").update(BSON.serialize(value)).digest("hex");
+const idKey = value => typeof value === "string" ? value : BSON.EJSON.stringify(value, { relaxed: false });
 const operationFingerprint = row => createHash("sha256").update(JSON.stringify({
   id: row._id, operationId: row.operationId, courseRecordId: row.courseRecordId,
   startDate: day(row.startDate), endDate: day(row.endDate), deletedAt: row.deletedAt instanceof Date ? row.deletedAt.toISOString() : null,
@@ -58,7 +59,7 @@ export function planExistingLinks(request, operations, sessions) {
     check(matches.length === 1, matches.length ? "AMBIGUOUS_OPERATION" : "OPERATION_NOT_FOUND");
     return { ...matches[0], expectedRoundNo: String(index + 1) };
   });
-  check(new Set(selected.map(row => row._id)).size === request.totalSessions, "DUPLICATE_OPERATION");
+  check(new Set(selected.map(row => idKey(row._id))).size === request.totalSessions, "DUPLICATE_OPERATION");
   check(selected.some(row => row.operationId === request.operationId), "REPRESENTATIVE_EXCLUDED");
   return selected;
 }
@@ -110,7 +111,7 @@ export async function diagnoseExistingLinks(client, env) {
       const selected = planExistingLinks(request, operations, sessionsOf(request, env));
       result.exactRepairable++;
       result.targets.push({ requestId: request._id, requestDigest: digest(request), operationIds: selected.map(row => row._id),
-        operationDigests: selected.map(operationFingerprint), previousLinkCount: links.count });
+        operationKeys: selected.map(row => idKey(row._id)), operationDigests: selected.map(operationFingerprint), previousLinkCount: links.count });
     } catch { result.blocked++; }
   }
   return result;
@@ -132,7 +133,7 @@ export async function repairExactExistingLinks(client, env, targets) {
         const operations = await collection("OperationSession").find({ _id: { $in: target.operationIds } }, { session }).toArray();
         check(operations.length === target.operationIds.length, "OPERATION_DISAPPEARED");
         for (const row of operations) {
-          const expected = target.operationDigests[target.operationIds.indexOf(row._id)];
+          const expected = target.operationDigests[target.operationKeys.indexOf(idKey(row._id))];
           check(expected && operationFingerprint(row) === expected, "OPERATION_CHANGED");
         }
         check(await collection("ActivityChange").countDocuments({ targetType: "om_requests", targetId: request._id,
