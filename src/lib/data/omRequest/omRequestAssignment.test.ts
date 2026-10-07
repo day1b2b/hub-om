@@ -206,6 +206,19 @@ test("생성 로그의 회차가 삭제/누락된 경우 전체 저장을 차단
   operations.splice(1, 1);
   await assert.rejects(preview(), /누락되었거나 삭제/);
 });
+test("단일 회차 요청은 회차 생성 감사가 누락돼도 저장된 대표 연결로 안전하게 복구한다", async () => {
+  row.totalSessions = 1;
+  row.sessions = [row.sessions[0]];
+  operations = [operations[0]];
+  history = [creation("om_requests", requestId)];
+  const result = await preview();
+  assert.equal(result.count, 1);
+  assert.deepEqual(result.operations.map(operation => operation.operationId), [operations[0].operationId]);
+});
+test("다회차 요청은 회차 생성 감사가 없을 때 형제 회차를 추측하지 않는다", async () => {
+  history = [creation("om_requests", requestId)];
+  await assert.rejects(preview(), /요청한 회차 수와 확인된 연결 회차 수가 다릅니다/);
+});
 test("요청 또는 두 번째 회차 저장 실패는 같은 트랜잭션의 변경을 전부 롤백한다", async () => {
   const { token } = await preview();
   const before = structuredClone({ row, operations });
