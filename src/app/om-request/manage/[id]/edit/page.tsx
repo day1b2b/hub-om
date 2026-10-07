@@ -69,6 +69,7 @@ async function renderOmRequestEditPage({ params }: Props, session: Awaited<Retur
           ldName={ldName}
           initialData={initialData}
           requestId={id}
+          sessionCountLocked={Boolean(request.operationId)}
           knownInstructors={knownInstructors}
         />
       </section>
