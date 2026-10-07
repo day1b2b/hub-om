@@ -4,8 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { browserDrafts } from "@/lib/privacy/browserDraftRuntime";
 import { useBrowserDraftSession } from "@/components/BrowserDraftProvider";
-import { hasLegacyDraft, LEGACY_DRAFT_NOTICE, LOCKED_DRAFT_NOTICE, runActiveDraftTask, useDraftActivity } from "./operationDraftSession";
+import { hasLegacyDraft, LEGACY_DRAFT_NOTICE, runActiveDraftTask, useDraftActivity } from "./operationDraftSession";
 import type { OperationSession } from "@/lib/data/operationTypes";
+import { LockedIssueReviewEditor } from "./DraftUnavailableFallbacks";
 
 interface IssueReviewEditorProps {
   operation: OperationSession;
@@ -40,7 +41,7 @@ type IssueReviewDraft = {
 
 export function IssueReviewEditor({ operation }: IssueReviewEditorProps) {
   const session = useBrowserDraftSession();
-  if (session.status !== "ready") return <p role="status">{LOCKED_DRAFT_NOTICE}</p>;
+  if (session.status !== "ready") return <LockedIssueReviewEditor operation={operation} />;
   return <ReadyIssueReviewEditor key={`${session.ownerId}:${session.generation}:${operation.operationId}`} operation={operation} />;
 }
 
