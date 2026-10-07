@@ -122,7 +122,7 @@ export async function diagnoseExistingLinks(client, env) {
           const originalKeys = new Set(links.operationIds.map(idKey));
           const originals = operations.filter(row => originalKeys.has(idKey(row._id)) && !row.deletedAt);
           check(originals.length === originalKeys.size, "ORIGINAL_OPERATION_MISSING");
-          planSessionSplit(request, originals, sessionsOf(request, env), env, new Date(), { allowAssigned: true });
+          planSessionSplit(request, originals, sessionsOf(request, env), env, new Date(), { allowAssigned: true, allowOutOfRange: true });
           const ids = originals.map(row => row._id);
           const coachDependencies = await collection("CoachEngagement").countDocuments({ operationSessionId: { $in: ids } });
           const sourceDependencies = await collection("OperationSourceRecord").countDocuments({ operationSessionId: { $in: ids } });
