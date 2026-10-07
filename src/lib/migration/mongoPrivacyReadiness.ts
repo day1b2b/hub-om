@@ -1,5 +1,5 @@
 import type { Document } from "mongodb";
-import { privacyFields, storedEncrypted } from "../privacy/fields";
+import { encryptField, indexField, privacyFields, storedEncrypted } from "../privacy/fields";
 
 export type MongoPrivacyViolation = Readonly<{ model: string; field: string }>;
 
@@ -20,4 +20,27 @@ export function mongoPrivacyViolations(model: string, document: Document): Mongo
     if (!storedEncrypted(policy, value)) violations.push(Object.freeze({ model, field: storedField }));
   }
   return violations;
+}
+
+/**
+ * Builds a new document for an isolated namespace. The source object is never
+ * mutated. Existing ciphertext remains byte-identical; only legacy plaintext
+ * fields and their lookup companions are replaced.
+ */
+export function encryptLegacyMongoPrivacyFields(model: string, document: Document): Readonly<{
+  document: Document;
+  changedFields: readonly string[];
+}> {
+  const fields = privacyFields[model]?.fields ?? {};
+  const next = structuredClone(document);
+  const changedFields: string[] = [];
+  for (const [field, policy] of Object.entries(fields)) {
+    const storedField = policy.storage ?? field;
+    const value = document[storedField];
+    if (value == null || storedEncrypted(policy, value)) continue;
+    next[storedField] = encryptField(model, field, value);
+    if (policy.index) next[policy.index] = indexField(model, field, value);
+    changedFields.push(storedField);
+  }
+  return Object.freeze({ document: next, changedFields: Object.freeze(changedFields) });
 }
