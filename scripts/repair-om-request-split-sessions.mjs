@@ -60,6 +60,10 @@ export function planSessionSplit(request, operations, sessions, env, now = new D
     check(sessions.filter(s => s.date === day(row.startDate)).length === 1, 'ORIGINAL_START_NOT_RETAINED');
   }
   const seen = new Set();
+  const ordered = [...operations].sort((left, right) => Number(left.roundNo) - Number(right.roundNo));
+  const hasStableRounds = ordered.every((row, index) => String(row.roundNo) === String(index + 1));
+  const assignmentKey = row => JSON.stringify({ operationStatus: row.operationStatus, omUserId: row.omUserId ?? null,
+    omName: row.omName ? decrypt(row.omName, 'OperationSession.omName', env) : null });
   const intervals = sessions.map(s => ({ start: dateAt(s.date), end: dateAt(s.dateEnd || s.date) }));
   check(intervals.every((value, index) => intervals.every((other, otherIndex) => index === otherIndex || value.end < other.start || other.end < value.start)), 'OVERLAPPING_REQUEST_SESSIONS');
   const planned = sessions.map((s, index) => {
@@ -67,8 +71,14 @@ export function planSessionSplit(request, operations, sessions, env, now = new D
     const date = dateAt(s.date), endDate = dateAt(s.dateEnd || s.date), educationDates = datesForSession(s);
     check(Number.isFinite(date.getTime()) && day(date) === s.date && day(endDate) === (s.dateEnd || s.date), 'INVALID_DATE');
     const candidates = operations.filter(o => o.startDate <= date && endDate <= o.endDate);
-    check(candidates.length === 1, 'AMBIGUOUS_SOURCE_RANGE');
-    const source = candidates[0], reuse = day(source.startDate) === s.date;
+    check(candidates.length > 0, 'SOURCE_RANGE_NOT_FOUND');
+    if (candidates.length > 1) {
+      check(hasStableRounds, 'AMBIGUOUS_SOURCE_RANGE');
+      check(new Set(candidates.map(assignmentKey)).size === 1, 'AMBIGUOUS_ASSIGNMENT_SOURCE');
+    }
+    const indexed = ordered[index];
+    const source = indexed && candidates.includes(indexed) ? indexed : candidates.find(row => !seen.has(row._id)) ?? candidates[0];
+    const reuse = !seen.has(source._id) && (day(source.startDate) === s.date || candidates.length > 1);
     const next = { ...source, _id: reuse ? source._id : randomUUID(), operationId: reuse ? source.operationId : `manual-${randomUUID()}`,
       roundNo: String(index + 1), startDate: date, endDate, educationDates, operationMonth: s.date.slice(0, 7),
       sessionDurationDays: educationDates.length, educationDays: s.duration || null, timeText: s.timeStart && s.timeEnd ? `${s.timeStart} ~ ${s.timeEnd}` : null,
