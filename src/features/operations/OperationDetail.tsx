@@ -18,6 +18,7 @@ import { EditableSessionRegionCell } from "./EditableSessionRegionCell";
 import { EditableSessionScheduleCell } from "./EditableSessionScheduleCell";
 import { EditableToolsItem } from "./EditableToolsItem";
 import { IssueReviewEditor } from "./IssueReviewEditor";
+import { CourseNotesCandidates } from "./CourseNotesCandidates";
 import { LectureManagementNoteRow } from "./LectureManagementNoteRow";
 import { OnsiteRequiredConditionSelect } from "./OnsiteRequiredConditionSelect";
 import { OperationDiscussionPanel } from "./OperationDiscussionPanel";
@@ -416,6 +417,7 @@ export function OperationDetail({
             {SHOW_BULK_EDIT_ROUNDS ? <BulkSaveRoundsButton /> : null}
             </EditAllRoundsProvider>
           </section>
+          <CourseNotesCandidates operations={courseOperations} />
 
           {courseGroups.length > 0 ? (
             <section className="detail-section course-groups-section">
