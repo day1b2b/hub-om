@@ -8,6 +8,7 @@ export interface OmRequestRepository {
   updateOmRequest(id: string, input: OmRequestInput): Promise<OmRequest | null>;
   deleteOmRequest(id: string): Promise<boolean>;
   setOmRequestOperationId(id: string, operationId: string): Promise<OmRequest | null>;
+  syncAssignedOmByOperationId?(operationId: string, assignedOm: string | null): Promise<OmRequest | null>;
   setOmRequestSlackMeta(id: string, meta: { ldEmail?: string; slackChannel?: string; slackThreadTs?: string }): Promise<OmRequest | null>;
 }
 export interface OmCustomToolsRepository { list(): string[]; add(names: string[]): void }
