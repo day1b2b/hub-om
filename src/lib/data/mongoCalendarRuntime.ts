@@ -6,19 +6,21 @@ import { MongoCalendarOperationLock, prepareMongoCalendarLeaseStore, type MongoC
 import { MongoCalendarPersistence, prepareMongoCalendarPersistenceStore } from "./mongoCalendarPersistence";
 import { MongoImportPromotionRepository, prepareMongoImportPromotionStore } from "./mongoImportPromotionRepository";
 import { MongoOperationRepository } from "./mongoOperationRepository";
+import { MongoOmRequestRepository, prepareMongoOmRequestStore } from "./mongoOmRequestRepository";
 import { prepareMongoOperationStore } from "./mongoOperationStore";
 import { prepareMongoReadStore, TEAM_READ_MODELS } from "./mongoReadStore";
 import { MongoRequestAuditRepository, prepareMongoRequestAuditStore } from "./mongoRequestAuditRepository";
 import { MongoTeamMemberRepository } from "./mongoTeamMemberRepository";
 import { MongoTeamUserRepository, prepareMongoTeamUserStore } from "./teamUsers/mongoTeamUserRepository";
 
-type ScopeKey = "operations" | "teamUsers" | "teamMembers" | "importPromotion" | "importPromotionCalendar" | "requestActivity" | "calendarPersistence" | "calendarLock";
+type ScopeKey = "operations" | "omRequests" | "teamUsers" | "teamMembers" | "importPromotion" | "importPromotionCalendar" | "requestActivity" | "calendarPersistence" | "calendarLock";
 export type MongoCalendarRepositories = Readonly<Pick<DataRepositories, ScopeKey>>;
 /** Explicit setup, never called by open/runtime or a production factory. */
 export async function prepareMongoCalendarRuntimeStore(options: MongoCalendarOptions & { processSequenceHighWater: number }): Promise<void> {
   await prepareMongoCalendarPersistenceStore(options);
   await prepareMongoCalendarLeaseStore(options);
   await prepareMongoOperationStore(options);
+  await prepareMongoOmRequestStore({ ...options, allowShadowWrites: true });
   await prepareMongoImportPromotionStore(options);
   await prepareMongoReadStore(options, TEAM_READ_MODELS);
   await prepareMongoTeamUserStore(options);
@@ -27,8 +29,8 @@ export async function prepareMongoCalendarRuntimeStore(options: MongoCalendarOpt
 /** No environment selector and no credentials. All ports are opened on one client/database/namespace. */
 export async function openMongoCalendarRuntime(options: MongoCalendarOptions & { reflectOperations?: boolean }) {
   const lock = await MongoCalendarOperationLock.open(options);
-  const [persistence, rawOperations, teamUsers, teamMembers, importPromotion, requestActivity] = await Promise.all([
-    MongoCalendarPersistence.open(options, lock), MongoOperationRepository.open(options), MongoTeamUserRepository.open(options),
+  const [persistence, rawOperations, omRequests, teamUsers, teamMembers, importPromotion, requestActivity] = await Promise.all([
+    MongoCalendarPersistence.open(options, lock), MongoOperationRepository.open(options), MongoOmRequestRepository.open({ ...options, allowShadowWrites: true }), MongoTeamUserRepository.open(options),
     MongoTeamMemberRepository.open(options), MongoImportPromotionRepository.open(options), MongoRequestAuditRepository.open(options)
   ]);
   // Choose the final wrapper before registering object identities. Never replace
@@ -41,7 +43,7 @@ export async function openMongoCalendarRuntime(options: MongoCalendarOptions & {
     }
   };
   const repositories: MongoCalendarRepositories = Object.freeze({
-    operations, teamUsers, teamMembers, importPromotion, requestActivity,
+    operations, omRequests, teamUsers, teamMembers, importPromotion, requestActivity,
     calendarPersistence: persistence, calendarLock: lock,
     importPromotionCalendar: Object.freeze({ assertReady, backfillMissingCalendarEvents })
   });

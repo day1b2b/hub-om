@@ -6,6 +6,7 @@ import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { parseEducationDatesText } from "@/lib/data/operationCalculations";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { runOperationWriteRequest } from "@/lib/data/operationWriteComposition";
+import { syncLinkedOmRequestAssignment } from "@/lib/data/omRequest/omRequestOperationLink";
 import type {
   ArchiveStatus,
   EducationFormat,
@@ -135,6 +136,7 @@ async function activityPOST(request: Request, { params }: RouteContext) {
 
   // 누가 고쳤는지 남긴다. 삭제(deletedBy)는 이미 기록하는데 수정만 빠져 있었다.
   const updatedOperation = await repository.updateOperation(operationId, update, session.user?.email ?? undefined);
+  if (update.om !== undefined) await syncLinkedOmRequestAssignment(operationId, update.om || null);
 
   return NextResponse.json({ ok: true, operation: updatedOperation });
 }
