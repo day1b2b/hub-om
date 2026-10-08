@@ -110,3 +110,57 @@ test("차수 날짜가 빈 문자열이어도 대표하지 못한다", () => {
   ]);
   assert.equal(isRepresented({ courseId: "261578", operationId: "op-9", startDate: "2026-11-16" }), false);
 });
+
+test("코스ID 없는 2차수 운영도 같은 기업·과정·날짜면 담당 과정이 대표한다", () => {
+  // 실제 증상(2026-10-07 제보): 접수로 자동 생성된 운영은 차수마다 한 건씩 만들어지는데
+  // 요청에 적히는 operationId는 1차수 하나뿐이고 코스ID도 비어 있다. 그래서 2차수부터
+  // 짝을 못 찾아 운영 막대와 요청 막대가 같은 날 나란히 그려졌다.
+  const isRepresented = createRequestMatcher([
+    request({
+      courseId: "",
+      operationId: "op-round1",
+      sessions: [session("2026-11-09"), session("2026-11-16")]
+    })
+  ]);
+  assert.equal(isRepresented({ companyName: "샘플전자", courseId: "", courseName: "AI 활용 과정", operationId: "op-round1", startDate: "2026-11-09" }), true);
+  assert.equal(isRepresented({ companyName: "샘플전자", courseId: "", courseName: "AI 활용 과정", operationId: "op-round2", startDate: "2026-11-16" }), true);
+});
+
+test("기업·과정이 같아도 요청에 없는 날짜의 회차는 남긴다", () => {
+  const isRepresented = createRequestMatcher([
+    request({ courseId: "", operationId: "op-round1", sessions: [session("2026-11-09")] })
+  ]);
+  assert.equal(isRepresented({ companyName: "샘플전자", courseId: "", courseName: "AI 활용 과정", operationId: "op-round2", startDate: "2026-12-01" }), false);
+});
+
+test("기업명이나 과정명이 다르면 이름으로 짝짓지 않는다", () => {
+  const isRepresented = createRequestMatcher([
+    request({ courseId: "", operationId: "op-round1", sessions: [session("2026-11-09")] })
+  ]);
+  assert.equal(isRepresented({ companyName: "다른전자", courseId: "", courseName: "AI 활용 과정", operationId: "op-x", startDate: "2026-11-09" }), false);
+  assert.equal(isRepresented({ companyName: "샘플전자", courseId: "", courseName: "다른 과정", operationId: "op-x", startDate: "2026-11-09" }), false);
+});
+
+test("기업명·과정명이 비어 있으면 이름으로 짝짓지 않는다", () => {
+  // 빈 문자열끼리 맞아떨어져 무관한 운영이 사라지는 것을 막는다.
+  const isRepresented = createRequestMatcher([
+    request({ company: "", courseName: "", courseId: "", operationId: "op-round1", sessions: [session("2026-11-09")] })
+  ]);
+  assert.equal(isRepresented({ companyName: "", courseId: "", courseName: "", operationId: "op-x", startDate: "2026-11-09" }), false);
+});
+
+test("코스ID가 있는 운영은 이름 폴백을 쓰지 않는다", () => {
+  // 코스ID가 있으면 회차 구분이 정확하므로 그 규칙만 쓴다. 이름까지 보면
+  // 코스ID를 공유하는 다른 회차가 다시 묶여 사라질 수 있다.
+  const isRepresented = createRequestMatcher([
+    request({ courseId: "261578", operationId: "op-round1", sessions: [session("2026-11-16")] })
+  ]);
+  assert.equal(isRepresented({ companyName: "샘플전자", courseId: "261578", courseName: "AI 활용 과정", operationId: "op-x", startDate: "2026-11-02" }), false);
+});
+
+test("기업명 공백 표기가 달라도 같은 기업으로 본다", () => {
+  const isRepresented = createRequestMatcher([
+    request({ company: "샘플 전자", courseId: "", operationId: "op-round1", sessions: [session("2026-11-09")] })
+  ]);
+  assert.equal(isRepresented({ companyName: "샘플  전자 ", courseId: "", courseName: "AI 활용 과정", operationId: "op-x", startDate: "2026-11-09" }), true);
+});
