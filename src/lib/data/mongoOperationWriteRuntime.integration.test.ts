@@ -99,6 +99,13 @@ test("operation write runtime composes create, round, reorder, delete, Calendar 
     const first = created.operation as { operationId: string }; assert.ok(first.operationId); assert.equal(remote.active().length, 1);
     const added = await checked(await invoke(() => roundsRoute.POST(request(`/api/operations/${first.operationId}/rounds`, { roundNo: "2", startDate: "2099-12-02", endDate: "2099-12-02", educationDates: "2099-12-02" }, randomUUID()), { params: Promise.resolve({ operationId: first.operationId }) })), "/api/operations/[operationId]/rounds");
     const second = added.operation as { operationId: string }; assert.ok(second.operationId); assert.equal(remote.active().length, 2);
+    const createdOperation = await runtime.repositories.operations.getOperationById(first.operationId); assert.ok(createdOperation?.courseRecordId);
+    await runtime.repositories.operations.upsertCourseCommonNote(createdOperation.courseRecordId, { specialNotes: "Synthetic common note", operationIssue: "", omUpdate: "" }, actor.user.email);
+    assert.equal((await runtime.repositories.operations.getOperationById(first.operationId))?.courseCommonNote?.specialNotes, "Synthetic common note");
+    assert.equal((await runtime.repositories.operations.listOperations()).find(operation => operation.operationId === first.operationId)?.courseCommonNote?.specialNotes, "Synthetic common note");
+    await runtime.repositories.operations.deleteCourseCommonNote(createdOperation.courseRecordId, actor.user.email);
+    assert.equal((await runtime.repositories.operations.getOperationById(first.operationId))?.courseCommonNote, undefined);
+    assert.equal((await runtime.repositories.operations.listOperations()).find(operation => operation.operationId === first.operationId)?.courseCommonNote, undefined);
     const reordered = await checked(await invoke(() => reorderRoute.POST(request(`/api/operations/${first.operationId}/rounds/reorder`, { orderedOperationIds: [second.operationId, first.operationId] }), { params: Promise.resolve({ operationId: first.operationId }) })), "/api/operations/[operationId]/rounds/reorder");
     assert.equal((reordered.changes as unknown[]).length, 2); assert.equal(remote.active().length, 2);
     const patchesBeforeApply = remote.calls("event", "PATCH").length;
