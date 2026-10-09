@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getCourseNoteCandidates } from "./CourseNotesCandidates";
+import { getCourseNoteCandidates } from "./courseNotesCandidateModel";
 import type { OperationSession } from "@/lib/data/operationTypes";
 
 function operation(values: Partial<OperationSession>): OperationSession {
