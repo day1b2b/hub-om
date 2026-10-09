@@ -2,6 +2,7 @@ import type { OperationRepository } from "./operationRepository";
 import { getOperationRepository } from "./operationRepositoryFactory";
 import { disconnectPrismaClient } from "./prisma";
 import { planCourseCommonNoteBackfill } from "./courseCommonNoteBackfill";
+import { getDataRepositoryOverride } from "./dataRepositoryContext";
 
 export interface CourseCommonNoteBackfillSummary {
   apply: boolean;
@@ -28,9 +29,10 @@ export async function runCourseCommonNoteBackfillCommand(
   }
   let result: CourseCommonNoteBackfillSummary | undefined;
   let failed = false;
+  const scoped = getDataRepositoryOverride("operations");
   try {
-    loadEnvironment();
-    const repository = dependencies.repository();
+    if (!scoped) loadEnvironment();
+    const repository = scoped ?? dependencies.repository();
     const plan = planCourseCommonNoteBackfill(await repository.listOperations());
     let updatedCount = 0;
     if (apply) {
@@ -41,7 +43,7 @@ export async function runCourseCommonNoteBackfillCommand(
     }
     result = { apply, courseCount: plan.courseCount, candidateCount: plan.candidateCount, conflictCourseCount: plan.conflictCourseCount, skippedExistingFieldCount: plan.skippedExistingFieldCount, updatedCount };
   } catch { failed = true; }
-  finally { try { await dependencies.close(); } catch { failed = true; } }
+  finally { if (!scoped) try { await dependencies.close(); } catch { failed = true; } }
   if (failed || !result) throw new Error("COURSE_COMMON_NOTE_BACKFILL_FAILED");
   return result;
 }

@@ -1,11 +1,11 @@
 import { config } from "dotenv";
-import { runCourseCommonNoteBackfillCommand } from "../src/lib/data/courseCommonNoteBackfillCommand";
+import { runCourseCommonNoteBackfillCli } from "../src/lib/data/courseCommonNoteBackfillCliRuntime";
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const apply = args.includes("--apply");
   console.log(`[backfill-course-common-notes] 모드: ${apply ? "apply (실제 쓰기)" : "dry-run (쓰기 없음)"}`);
-  const summary = await runCourseCommonNoteBackfillCommand(args, () => {
+  const summary = await runCourseCommonNoteBackfillCli(args, process.env, () => {
     config({ path: ".env.local" });
     config({ path: ".env" });
   });
