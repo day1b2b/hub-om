@@ -6,8 +6,7 @@ import { useEffect, useState } from "react";
 type Placement = "bottom" | "right";
 
 export function CourseNotesWorkspace({ common, rounds, className = "" }: { common: ReactNode; rounds: Array<{ label: string; content: ReactNode; operationId: string }>; className?: string }) {
-  const [selected, setSelected] = useState(0);
-  const [tab, setTab] = useState<"common" | "round">("common");
+  const [selected, setSelected] = useState<"common" | number>("common");
   const [placement, setPlacement] = useState<Placement>("bottom");
   const [canDockRight, setCanDockRight] = useState(false);
 
@@ -22,7 +21,8 @@ export function CourseNotesWorkspace({ common, rounds, className = "" }: { commo
   }, []);
 
   const effectivePlacement = placement === "right" && canDockRight ? "right" : "bottom";
-  const round = rounds[selected];
+  const isCommon = selected === "common";
+  const round = typeof selected === "number" ? rounds[selected] : undefined;
 
   function changePlacement(next: Placement) {
     setPlacement(next);
@@ -37,13 +37,10 @@ export function CourseNotesWorkspace({ common, rounds, className = "" }: { commo
       </div>
     </div>
     <div className="course-notes-tabs" role="tablist" aria-label="메모 범위 선택">
-      <button className={tab === "common" ? "active" : ""} onClick={() => setTab("common")} role="tab" aria-selected={tab === "common"} type="button">과정 공통</button>
-      <button className={tab === "round" ? "active" : ""} onClick={() => setTab("round")} role="tab" aria-selected={tab === "round"} type="button">회차별</button>
+      <button className={isCommon ? "active" : ""} onClick={() => setSelected("common")} role="tab" aria-selected={isCommon} type="button">과정 공통</button>
+      {rounds.map((item, index) => <button key={item.operationId} className={selected === index ? "active" : ""} onClick={() => setSelected(index)} role="tab" aria-selected={selected === index} type="button">{item.label}</button>)}
     </div>
-    {tab === "round" ? <div className="course-notes-round-picker" role="tablist" aria-label="회차 선택">
-      {rounds.map((item, index) => <button key={item.operationId} className={index === selected ? "active" : ""} onClick={() => setSelected(index)} role="tab" aria-selected={index === selected} type="button">{item.label}</button>)}
-    </div> : null}
-    <div className="course-notes-tab-panel">{tab === "common" ? common : round?.content}</div>
+    <div className="course-notes-tab-panel">{isCommon ? common : round?.content}</div>
     {!canDockRight && placement === "right" ? <p className="course-notes-placement-hint" role="status">현재 화면 너비에서는 메모를 본문 아래에 표시합니다.</p> : null}
   </section>;
 }
