@@ -5,7 +5,6 @@ import { useBrowserDraftSession } from "@/components/BrowserDraftProvider";
 import type { CourseCommonNote as CourseCommonNoteValue } from "@/lib/data/operationTypes";
 import { browserDrafts } from "@/lib/privacy/browserDraftRuntime";
 import { runActiveDraftTask, useDraftActivity } from "./operationDraftSession";
-import { commonNoteEntries } from "./courseCommonNoteModel";
 import { confirmedSaveTime, memoSaveStatusText, type MemoSaveState } from "./memoSaveStatus";
 
 export { commonNoteEntries } from "./courseCommonNoteModel";
@@ -134,7 +133,6 @@ function ReadyCourseCommonNote({ note, onDirtyChange, operationId }: { note?: Co
       </div>
     </fieldset>
     {detail ? <p className={`issue-save-detail ${saveState}`} role={saveState === "failed" ? "alert" : "status"}>{detail}</p> : null}
-    {!values.specialNotes && !values.operationIssue && !values.omUpdate && commonNoteEntries(note ?? EMPTY).length === 0 ? <p className="course-notes-empty">등록된 공통 메모가 없습니다.</p> : null}
   </div>;
 }
 
