@@ -281,6 +281,7 @@ export function OperationDetail({
                   existingRoundNumbers={existingRoundNumbers}
                   instructorOptions={instructorOptions}
                 />
+                <a className="notes-jump-link" href="#operation-notes">메모로 이동</a>
                 {SHOW_BULK_EDIT_ROUNDS && courseOperations.length > 1 ? <BulkEditRoundsButton /> : null}
               </div>
             </div>
