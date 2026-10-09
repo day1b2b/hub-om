@@ -425,6 +425,7 @@ export function OperationDetail({
           </section>
 
           <CourseNotesWorkspace
+            className="wide-detail-section"
             rounds={courseOperations.map((round) => ({
               label: `${round.roundNo || "미정"}회차`,
               operationId: round.operationId,

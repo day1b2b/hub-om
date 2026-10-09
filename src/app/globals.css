@@ -13998,3 +13998,5 @@ button.coach-doc-reserve-chip:disabled {
 .course-notes-actions { display: flex; gap: 8px; margin-top: 16px; }
 .course-notes-copy-button { background: #fff; border: 1px solid #9db59a; border-radius: 6px; color: #52724d; cursor: pointer; font-weight: 700; padding: 10px 16px; }
 .course-notes-actions .course-notes-apply-button { margin-top: 0; }
+.course-notes-workspace.wide-detail-section { width: 100%; }
+.course-notes-workspace .course-notes-tab-panel { width: 100%; }
