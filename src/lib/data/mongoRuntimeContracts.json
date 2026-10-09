@@ -259,6 +259,28 @@
       }
     ]
   },
+  "CourseCommonNote": {
+    "collection": "course_common_notes",
+    "primaryKey": ["id"],
+    "fields": {
+      "id": {"type": "String", "nullable": false, "list": false, "uuid": true, "dateOnly": false},
+      "courseRecordId": {"type": "String", "nullable": false, "list": false, "uuid": true, "dateOnly": false},
+      "specialNotes": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
+      "operationIssue": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
+      "omUpdate": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
+      "createdBy": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
+      "updatedBy": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
+      "createdAt": {"type": "DateTime", "nullable": false, "list": false, "uuid": false, "dateOnly": false},
+      "updatedAt": {"type": "DateTime", "nullable": false, "list": false, "uuid": false, "dateOnly": false},
+      "specialNotesPiiIndex": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
+      "operationIssuePiiIndex": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
+      "omUpdatePiiIndex": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
+      "createdByPiiIndex": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
+      "updatedByPiiIndex": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false}
+    },
+    "references": [{"fields": ["courseRecordId"], "targetModel": "Course", "targetFields": ["id"]}],
+    "uniqueKeys": [{"fields": ["id"], "nullsDistinct": true}, {"fields": ["courseRecordId"], "nullsDistinct": true}]
+  },
   "OperationSession": {
     "collection": "operation_sessions",
     "primaryKey": [
