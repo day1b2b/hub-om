@@ -23,7 +23,7 @@ export function verifyClosure() {
     const approved = origin === "prisma/schema.prisma"
       ? new Set([entries.get(origin)!.sha256, "bf3c956c6e78ac5cad4c869bb0da0e82bc84ed171b339726c8a8b2574ab257b1", "0a9358ca6f01ee0823744f5aad9e5e1166162ecdecbac425c5085e7dfc845e79"])
       : origin === "package.json"
-        ? new Set([entries.get(origin)!.sha256, "db7b820da07179e8bb496b16cc29d4eb7ce6008001a499d17e49ae2b927aecf9"])
+        ? new Set([entries.get(origin)!.sha256, "db7b820da07179e8bb496b16cc29d4eb7ce6008001a499d17e49ae2b927aecf9", "1e91e98faddcf3d0eead152d96efce12cd72915bff73800edda7fda78333ef7c"])
         : origin === "package-lock.json"
           ? new Set([entries.get(origin)!.sha256, "d0f363d9567760347fd1b342be55e93db815e436a719bc3fc8db27489dc636c2"])
           : new Set([entries.get(origin)!.sha256]);
