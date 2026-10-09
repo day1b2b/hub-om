@@ -6,14 +6,25 @@ const NOTE_FIELDS = [
   ["omUpdate", "메모"]
 ] as const;
 
-export function CourseNotesCandidates({ operations }: { operations: OperationSession[] }) {
-  const rows = NOTE_FIELDS.map(([field, label]) => {
+export type CourseNoteCandidate = {
+  field: (typeof NOTE_FIELDS)[number][0];
+  label: string;
+  values: Array<{ roundNo: string; value: string }>;
+  commonCandidate: boolean;
+};
+
+export function getCourseNoteCandidates(operations: OperationSession[]): CourseNoteCandidate[] {
+  return NOTE_FIELDS.map(([field, label]) => {
     const values = operations
       .map((operation) => ({ roundNo: operation.roundNo || "미정", value: operation[field].trim() }))
       .filter((item) => item.value.length > 0);
     const uniqueValues = new Set(values.map((item) => item.value));
     return { field, label, values, commonCandidate: uniqueValues.size === 1 && values.length >= 2 };
   });
+}
+
+export function CourseNotesCandidates({ operations }: { operations: OperationSession[] }) {
+  const rows = getCourseNoteCandidates(operations);
 
   if (rows.every((row) => row.values.length === 0)) return null;
 
