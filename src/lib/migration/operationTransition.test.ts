@@ -31,7 +31,7 @@ test("archived four-model manifest covers its golden fixtures and rejects the ne
   assert.notEqual(createHash("sha256").update(schema).digest("hex"), transitionManifest.sourceSchemaSha256);
   const allModels = [...schema.matchAll(/^model (\w+) \{/gm)].map(m => m[1]);
   assert.deepEqual([...Object.keys(transitionManifest.models), ...transitionManifest.deferredModels].sort(), allModels.sort());
-  assert.equal(transitionManifest.deferredModels.length, 31);
+  assert.equal(transitionManifest.deferredModels.length, 32);
   for (const [name, model] of Object.entries(transitionManifest.models)) {
     const scalarNames = Object.keys(source()[name][0]);
     const storedNames = Object.keys(model.fields);

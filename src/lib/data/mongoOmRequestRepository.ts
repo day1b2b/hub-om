@@ -109,6 +109,21 @@ export class MongoOmRequestRepository implements OmRequestRepository {
   }
   updateOmRequest(id: string, input: OmRequestInput) { return this.patch(id, () => inputPatch(input)); }
   setOmRequestOperationId(id: string, operationId: string) { return this.patch(id, () => ({ operationId })); }
+  syncAssignedOmByOperationId(operationId: string, assignedOm: string | null) {
+    const om = assignedOm?.trim() || null;
+    const status = om ? "배정완료" : "배정필요";
+    return this.transaction(async (session, check) => {
+      const before = await this.store.one("OmRequest", { operationId }, session);
+      if (!before) return null;
+      const after = completeMongoRow("OmRequest", { ...before, assignedOm: om, status });
+      const encoded = encodeMongoRuntimeDocument("OmRequest", after);
+      check();
+      const result = await this.store.collection("OmRequest").updateOne({ _id: String(before.id) }, { $set: { assignedOm: encoded.assignedOm, assignedOmPiiIndex: encoded.assignedOmPiiIndex, status: encoded.status } }, { session });
+      assertMongo(result.matchedCount === 1, "OM_REQUEST_MISSING");
+      await this.audit(before, after, session, { assignedOm: om, status });
+      return dto(after);
+    });
+  }
   setOmRequestSlackMeta(id: string, meta: { ldEmail?: string; slackChannel?: string; slackThreadTs?: string }) {
     return this.patch(id, () => ({ ...(meta.ldEmail ? { ldEmail: meta.ldEmail } : {}), ...(meta.slackChannel ? { slackChannel: meta.slackChannel } : {}), ...(meta.slackThreadTs ? { slackThreadTs: meta.slackThreadTs } : {}) }));
   }

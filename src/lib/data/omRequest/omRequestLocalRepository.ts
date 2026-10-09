@@ -9,6 +9,10 @@ export function createOmRequest(input: OmRequestInput) { return getOmRequestRepo
 export function updateOmRequest(id: string, input: OmRequestInput) { return getOmRequestRepository().updateOmRequest(id, input); }
 export function deleteOmRequest(id: string) { return getOmRequestRepository().deleteOmRequest(id); }
 export function setOmRequestOperationId(id: string, operationId: string) { return getOmRequestRepository().setOmRequestOperationId(id, operationId); }
+export function syncAssignedOmByOperationId(operationId: string, assignedOm: string | null) {
+  const repository = getOmRequestRepository();
+  return repository.syncAssignedOmByOperationId?.(operationId, assignedOm) ?? Promise.resolve(null);
+}
 export function setOmRequestSlackMeta(id: string, meta: { ldEmail?: string; slackChannel?: string; slackThreadTs?: string }) { return getOmRequestRepository().setOmRequestSlackMeta(id, meta); }
 
 // The confirmed multi-round assignment boundary is a separate migration unit.

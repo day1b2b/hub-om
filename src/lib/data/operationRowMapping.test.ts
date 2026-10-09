@@ -15,6 +15,7 @@ function row(): OperationSessionRow {
     course: {
       id: "course-fixture", processSeq: 123, companyId: "company-fixture", courseId: "COURSE-EXAMPLE",
       name: "Synthetic course", operationType: "SHORT", courseCategory: null, tools: null,
+      commonNote: { specialNotes: "Synthetic common note", operationIssue: null, omUpdate: "Synthetic update" },
       revenue: "1200.50", company: { id: "company-fixture", name: "Synthetic company" }
     },
     sourceRecords: [{ sourceTeam: "TEAM_2" }], operationStatus: "ACTIVE",
@@ -39,7 +40,7 @@ test("row mapping preserves the complete operation DTO and exact decimal inputs"
     id: "session-fixture", operationId: "operation-fixture", sourceTeam: "2팀", processId: "PRC-000123",
     courseRecordId: "course-fixture", courseId: "COURSE-EXAMPLE", courseIdLabel: "Synthetic label",
     companyId: "company-fixture", companyName: "Synthetic company", courseName: "Synthetic course",
-    courseCategory: "", tools: "", om: "Synthetic OM", ld: "", onsiteOm: "", operationStatus: "진행중",
+    courseCategory: "", tools: "", courseCommonNote: { specialNotes: "Synthetic common note", operationIssue: "", omUpdate: "Synthetic update" }, om: "Synthetic OM", ld: "", onsiteOm: "", operationStatus: "진행중",
     archiveStatus: "아카이빙전", educationFormat: "비대면", educationFormatRaw: "", operationChannel: "live_online",
     operationType: "단기", operationTypeRaw: "단기", roundNo: "", educationDays: "",
     educationDates: ["2099-09-01", "2099-09-03"], startDate: "2099-09-01", endDate: "2099-09-03",
@@ -60,6 +61,7 @@ test("empty source, legacy nullable fields and invalid numeric data keep existin
   input.validationErrors = { ignored: true };
   input.course.revenue = null;
   input.totalCost = "invalid";
+  input.course.commonNote = null;
   const result = toOperationSession(input, "");
   assert.equal(result.sourceTeam, "미분류");
   assert.equal(result.sessionDurationType, "검토필요");
@@ -68,6 +70,7 @@ test("empty source, legacy nullable fields and invalid numeric data keep existin
   assert.equal(result.revenue, null);
   assert.equal(result.totalCost, null);
   assert.equal(result.profit, null);
+  assert.equal(result.courseCommonNote, undefined);
 });
 
 test("runtime labels roundtrip all enum values without importing a database client", () => {

@@ -115,5 +115,6 @@
   "DELETE /api/admin/calendar/backfill-events": "tracked",
   "GET /api/admin/course-name-restore": "tracked",
   "POST /api/admin/course-name-restore": "tracked",
-  "GET /api/admin/activity/usage": "excluded: 이용 현황을 확인하는 조회 자체는 이용 통계에 포함하지 않음"
+  "GET /api/admin/activity/usage": "excluded: 이용 현황을 확인하는 조회 자체는 이용 통계에 포함하지 않음",
+  "PUT /api/operations/[operationId]/common-note": "공통 메모 저장"
 }

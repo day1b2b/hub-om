@@ -31,7 +31,7 @@ export function LockedIssueReviewEditor({ operation }: { operation: OperationSes
           {lockedIssueValues(operation).map(({ field, label, value }) => (
             <div className="issue-editor-field" key={field}>
               <div className="issue-editor-field-head"><label htmlFor={`issue-editor-${field}`}>{label}</label></div>
-              <textarea id={`issue-editor-${field}`} rows={7} value={value} readOnly />
+              <textarea id={`issue-editor-${field}`} rows={4} value={value} readOnly />
             </div>
           ))}
         </div>
