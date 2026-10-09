@@ -14,6 +14,7 @@ const allowed: Record<string, Set<string>> = {
   Member: new Set(["role", "sourceTeam"]),
   Course: new Set(["companyId", "courseId", "name", "operationType", "courseCategory", "revenue"]),
   CourseIdLabel: new Set(["companyId", "courseId", "label"]),
+  CourseCommonNote: new Set(["courseRecordId"]),
   Coach: new Set(["name", "workType", "status", "returnDate", "dxTag", "isActive", "displayOrder"]),
   CoachEngagement: new Set(["coachId", "operationSessionId", "courseName", "status", "source", "startDate", "endDate", "startTime", "endTime", "rating", "rehire", "reviewFlaggedAt"]),
   CoachEngagementSchedule: new Set(["engagementId", "coachId", "date", "startTime", "endTime", "cancelledAt"]),

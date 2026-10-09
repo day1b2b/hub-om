@@ -7,12 +7,15 @@ import { useBrowserDraftSession } from "@/components/BrowserDraftProvider";
 import { hasLegacyDraft, LEGACY_DRAFT_NOTICE, runActiveDraftTask, useDraftActivity } from "./operationDraftSession";
 import type { OperationSession } from "@/lib/data/operationTypes";
 import { LockedIssueReviewEditor } from "./DraftUnavailableFallbacks";
+import { confirmedSaveTime, memoSaveStatusText, type MemoSaveState } from "./memoSaveStatus";
 
 interface IssueReviewEditorProps {
+  onDirtyChange?: (dirty: boolean) => void;
   operation: OperationSession;
+  targetLabel?: string;
 }
 
-type SaveState = "idle" | "saving" | "saved" | "failed";
+type SaveState = MemoSaveState;
 
 const EDIT_FIELDS = [
   {
@@ -39,13 +42,13 @@ type IssueReviewDraft = {
   values: Partial<IssueReviewValues>;
 };
 
-export function IssueReviewEditor({ operation }: IssueReviewEditorProps) {
+export function IssueReviewEditor({ onDirtyChange, operation, targetLabel = "메모" }: IssueReviewEditorProps) {
   const session = useBrowserDraftSession();
   if (session.status !== "ready") return <LockedIssueReviewEditor operation={operation} />;
-  return <ReadyIssueReviewEditor key={`${session.ownerId}:${session.generation}:${operation.operationId}`} operation={operation} />;
+  return <ReadyIssueReviewEditor key={`${session.ownerId}:${session.generation}:${operation.operationId}`} onDirtyChange={onDirtyChange} operation={operation} targetLabel={targetLabel} />;
 }
 
-function ReadyIssueReviewEditor({ operation }: IssueReviewEditorProps) {
+function ReadyIssueReviewEditor({ onDirtyChange, operation, targetLabel = "메모" }: IssueReviewEditorProps) {
   const active = useDraftActivity();
   const [submissionSubject] = useState(() => browserDrafts.getSubject());
   const [initialOperation] = useState(operation);
@@ -55,6 +58,7 @@ function ReadyIssueReviewEditor({ operation }: IssueReviewEditorProps) {
   const [values, setValues] = useState<IssueReviewValues>(() => operationValues(operation));
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [message, setMessage] = useState("");
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
   const [draftReady, setDraftReady] = useState(false);
   const hasChanges = useMemo(
@@ -64,6 +68,8 @@ function ReadyIssueReviewEditor({ operation }: IssueReviewEditorProps) {
       values.omUpdate !== baseValues.omUpdate,
     [baseValues, values]
   );
+
+  useEffect(() => { onDirtyChange?.(hasChanges); }, [hasChanges, onDirtyChange]);
 
   useEffect(() => {
     let cancelled = false;
@@ -109,6 +115,24 @@ function ReadyIssueReviewEditor({ operation }: IssueReviewEditorProps) {
   }, [active, draftReady, hasChanges, operation.operationId, saveState, values]);
 
   useEffect(() => {
+    const handleApply = (event: Event) => {
+      const detail = (event as CustomEvent<Partial<IssueReviewValues>>).detail;
+      if (!detail || !["specialNotes", "operationIssue", "omUpdate"].every((field) => typeof detail[field as keyof IssueReviewValues] === "string")) return;
+      setValues({
+        specialNotes: detail.specialNotes ?? "",
+        operationIssue: detail.operationIssue ?? "",
+        omUpdate: detail.omUpdate ?? ""
+      });
+      setSaveState("idle");
+      setDraftSavedAt(null);
+      setMessage("선택한 회차 메모를 불러왔습니다. 저장하려면 아래 저장 버튼을 누르세요.");
+    };
+
+    window.addEventListener("course-common-note-apply", handleApply);
+    return () => window.removeEventListener("course-common-note-apply", handleApply);
+  }, []);
+
+  useEffect(() => {
     if (!hasChanges) return;
 
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -138,11 +162,12 @@ function ReadyIssueReviewEditor({ operation }: IssueReviewEditorProps) {
                   [editField.field]: event.target.value
                 }));
                 setSaveState("idle");
+                setSavedAt(null);
                 setDraftSavedAt(null);
                 setMessage("");
               }}
               placeholder={editField.placeholder}
-              rows={7}
+              rows={4}
               value={values[editField.field]}
             />
           </div>
@@ -151,20 +176,21 @@ function ReadyIssueReviewEditor({ operation }: IssueReviewEditorProps) {
 
       <div className="issue-editor-footer">
         <div className="issue-review-summary">
+          <span aria-live="polite" className={`issue-save-message ${saveState}`}>{memoSaveStatusText(saveState, hasChanges, savedAt ? confirmedSaveTime(savedAt) : null)}</span>
           {draftSavedAt ? (
-            <small>{formatDraftTime(draftSavedAt)} 임시 저장됨 · 나만 보임, 아직 반영 안 됨</small>
+            <small>{formatDraftTime(draftSavedAt)} 개인 초안 보관 · 서버에 저장되지 않음</small>
           ) : null}
         </div>
         <div className="issue-editor-actions">
-          {message ? <span className={`issue-save-message ${saveState}`}>{message}</span> : null}
           <button disabled={!hasChanges || saveState === "saving"} onClick={resetDraft} type="button">
             작성 취소
           </button>
           <button disabled={!hasChanges || saveState === "saving"} onClick={saveNotes} type="button">
-            {saveState === "saving" ? "저장 중" : "저장하기"}
+            {saveState === "saving" ? "저장 중…" : saveState === "failed" ? "다시 시도" : `${targetLabel} 저장`}
           </button>
         </div>
       </div></fieldset>
+      {message ? <p className={`issue-save-detail ${saveState}`} role={saveState === "failed" ? "alert" : "status"}>{message}</p> : null}
     </div>
   );
 
@@ -183,6 +209,7 @@ function ReadyIssueReviewEditor({ operation }: IssueReviewEditorProps) {
     setValues(baseValues);
     setDraftSavedAt(null);
     setSaveState("idle");
+    setSavedAt(null);
     setMessage("마지막 저장 내용으로 되돌림");
   }
 
@@ -211,7 +238,7 @@ function ReadyIssueReviewEditor({ operation }: IssueReviewEditorProps) {
     } catch {
       if (!active()) return;
       setSaveState("failed");
-      setMessage("저장 요청 실패 · 잠시 후 다시 시도해 주세요");
+      setMessage("저장하지 못했습니다. 네트워크 연결을 확인한 뒤 다시 시도해 주세요.");
       return;
     }
 
@@ -220,20 +247,21 @@ function ReadyIssueReviewEditor({ operation }: IssueReviewEditorProps) {
     if (!active()) return;
     if (!response.ok || !payload.ok) {
       setSaveState("failed");
-      setMessage(payload.error ?? "저장하지 못했습니다.");
+      setMessage(response.status === 401 ? "로그인이 만료되었습니다. 다시 로그인한 뒤 재시도해 주세요." : response.status === 403 ? "이 메모를 저장할 권한이 없습니다." : payload.error ?? "저장하지 못했습니다. 다시 시도해 주세요.");
       return;
     }
 
     setBaseValues(values);
     try { await browserDrafts.remove("issue-review", operation.operationId); }
     catch {
-      if (active()) { setSaveState("saved"); setMessage("서버 저장 완료 · 개인 초안 정리는 실패했습니다."); router.refresh(); }
+      if (active()) { setSaveState("saved"); setSavedAt(new Date()); setMessage("서버 저장은 완료했지만 개인 초안을 정리하지 못했습니다."); router.refresh(); }
       return;
     }
     if (!active()) return;
     setDraftSavedAt(null);
     setSaveState("saved");
-    setMessage("저장 완료 · 모두에게 반영됨");
+    setSavedAt(new Date());
+    setMessage("");
     router.refresh();
   }
 }

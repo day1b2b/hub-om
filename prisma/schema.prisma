@@ -141,10 +141,37 @@ model Course {
 
   company  Company           @relation(fields: [companyId], references: [id])
   sessions OperationSession[]
+  commonNote CourseCommonNote?
 
   @@unique([companyId, courseId, name])
   @@index([courseId])
   @@map("courses")
+}
+
+// 과정 전체에 적용되는 메모. 기존 회차별 메모(OperationSession)는 보존한다.
+model CourseCommonNote {
+  id             String   @id @default(uuid()) @db.Uuid
+  courseRecordId String   @unique @map("course_record_id") @db.Uuid
+  specialNotes   String?  @map("special_notes")
+  operationIssue String?  @map("operation_issue")
+  omUpdate       String?  @map("om_update")
+  createdBy      String?  @map("created_by")
+  updatedBy      String?  @map("updated_by")
+  deletedAt      DateTime? @map("deleted_at")
+  deletedBy      String?   @map("deleted_by")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  specialNotesPiiIndex   String? @map("special_notes_pii_index")
+  operationIssuePiiIndex String? @map("operation_issue_pii_index")
+  omUpdatePiiIndex       String? @map("om_update_pii_index")
+  createdByPiiIndex      String? @map("created_by_pii_index")
+  updatedByPiiIndex      String? @map("updated_by_pii_index")
+  deletedByPiiIndex      String? @map("deleted_by_pii_index")
+
+  course Course @relation(fields: [courseRecordId], references: [id])
+
+  @@index([deletedAt])
+  @@map("course_common_notes")
 }
 
 // 코스ID(백오피스 코스ID) 단위 라벨 = "코스ID명". 과정(Course.name = "과정명")과는

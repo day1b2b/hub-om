@@ -15,6 +15,8 @@ import { normalizeLookupName, selectCoursesByCompany } from "./courseLookup";
 import type { OperationRepository } from "./operationRepository";
 import type {
   CourseLookupCandidate,
+  CourseCommonNote,
+  CourseCommonNoteInput,
   CreateOperationInput,
   OperationSession,
   UpdateOperationInput
@@ -206,6 +208,16 @@ export class LocalJsonOperationRepository implements OperationRepository {
   async getOperationById(operationId: string): Promise<OperationSession | null> {
     const operations = await this.listOperations();
     return operations.find((operation) => operation.operationId === operationId) ?? null;
+  }
+
+  async upsertCourseCommonNote(courseRecordId: string, input: CourseCommonNoteInput): Promise<CourseCommonNote> {
+    return this.serializeWrite(async () => {
+      const operations = await this.listOperations(); const note = { specialNotes: normalizeVisibleText(input.specialNotes), operationIssue: normalizeVisibleText(input.operationIssue), omUpdate: normalizeVisibleText(input.omUpdate) };
+      await this.writeOperations(operations.map(operation => operation.courseRecordId === courseRecordId ? { ...operation, courseCommonNote: note } : operation)); return note;
+    });
+  }
+  async deleteCourseCommonNote(courseRecordId: string): Promise<void> {
+    await this.serializeWrite(async () => { const operations = await this.listOperations(); await this.writeOperations(operations.map(operation => operation.courseRecordId === courseRecordId ? { ...operation, courseCommonNote: undefined } : operation)); });
   }
 
   /** 로컬 JSON 저장소는 생성 시각을 기록하지 않는다(로컬 개발 전용 백엔드). */

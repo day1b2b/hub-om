@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { MongoServerError, type ClientSession } from "mongodb";
 import type { OperationRepository } from "./operationRepository";
-import type { CreateOperationInput, OperationSession, UpdateOperationInput } from "./operationTypes";
+import type { CourseCommonNote, CourseCommonNoteInput, CreateOperationInput, OperationSession, UpdateOperationInput } from "./operationTypes";
 import { assertCreationReplay, creationOperationId, creationOperationPrefix } from "./operationCreationIdentity";
 import { buildOperationMonth, deriveDateRangeFromEducationDates, deriveSessionDurationDays, deriveSessionDurationType, normalizeCourseId, summarizeOperations } from "./operationCalculations";
 import { normalizeLookupName, selectCoursesByCompany, selectCoursesByCourseId, type CourseLookupRow } from "./courseLookup";
@@ -95,8 +95,9 @@ export class MongoOperationRepository implements OperationRepository {
     const company = await this.store.one("Company", { _id: course.companyId as string }, session);
     assertMongo(company, "MISSING_COMPANY");
     const label = await this.store.one("CourseIdLabel", { companyId: company.id, courseId: course.courseId }, session);
+    const commonNote = await this.store.one("CourseCommonNote", { courseRecordId: course.id }, session);
     const sources = await this.store.latestBy("OperationSourceRecord", "operationSessionId", [id(row)], "createdAt", session);
-    return toOperationSession({ ...row, course: { ...course, company }, sourceRecords: sources.slice(0,1) } as unknown as OperationSessionRow, label?.label as string ?? "");
+    return toOperationSession({ ...row, course: { ...course, commonNote, company }, sourceRecords: sources.slice(0,1) } as unknown as OperationSessionRow, label?.label as string ?? "");
   }
   private async get(operationId: string, session?: ClientSession): Promise<OperationSession | null> {
     const row = await this.store.one("OperationSession", { operationId, deletedAt: null }, session);
@@ -113,6 +114,17 @@ export class MongoOperationRepository implements OperationRepository {
       return row.createdAt;
     });
   }
+  async upsertCourseCommonNote(courseRecordId: string, input: CourseCommonNoteInput, actorEmail?: string): Promise<CourseCommonNote> {
+    return this.transaction(async session => {
+      const previous = await this.store.one("CourseCommonNote", { courseRecordId }, session);
+      const now = new Date();
+      const row = await this.write("CourseCommonNote", { ...(previous ?? { id: randomUUID(), courseRecordId, createdAt: now, createdBy: actorEmail ?? null }), specialNotes: nullableText(input.specialNotes), operationIssue: nullableText(input.operationIssue), omUpdate: nullableText(input.omUpdate), updatedAt: now, updatedBy: actorEmail ?? previous?.updatedBy ?? null, deletedAt: null, deletedBy: null }, previous, session);
+      return { specialNotes: row.specialNotes as string ?? "", operationIssue: row.operationIssue as string ?? "", omUpdate: row.omUpdate as string ?? "" };
+    }, true);
+  }
+  async deleteCourseCommonNote(courseRecordId: string, actorEmail?: string): Promise<void> {
+    await this.transaction(async session => { const previous = await this.store.one("CourseCommonNote", { courseRecordId, deletedAt: null }, session); if (previous) await this.write("CourseCommonNote", { ...previous, deletedAt: new Date(), deletedBy: actorEmail ?? null, updatedAt: new Date(), updatedBy: actorEmail ?? previous.updatedBy }, previous, session); }, true);
+  }
   async listOperations(): Promise<OperationSession[]> {
     return this.transaction(async session => {
       const rows = await this.store.scan("OperationSession", { deletedAt: null }, session);
@@ -123,10 +135,12 @@ export class MongoOperationRepository implements OperationRepository {
       const companies = await this.store.scan("Company", { _id: { $in: companyIds } }, session);
       const labelPairs = [...new Map(courses.map(course => [JSON.stringify([course.companyId, course.courseId]), { companyId: course.companyId, courseId: course.courseId }])).values()];
       const labels = await this.store.scan("CourseIdLabel", { $or: labelPairs }, session);
+      const commonNotes = await this.store.scan("CourseCommonNote", { courseRecordId: { $in: courses.map(id) } }, session);
       const sources = await this.store.latestBy("OperationSourceRecord", "operationSessionId", rows.map(id), "createdAt", session);
       const courseMap = new Map(courses.map(course => [course.id, course]));
       const companyMap = new Map(companies.map(company => [company.id, company]));
       const labelMap = new Map(labels.map(label => [JSON.stringify([label.companyId, label.courseId]), label.label as string]));
+      const commonNoteMap = new Map(commonNotes.map(note => [note.courseRecordId, note]));
       const latestSource = new Map<unknown, MongoRow>();
       for (const source of sources) {
         const previous = latestSource.get(source.operationSessionId);
@@ -138,7 +152,7 @@ export class MongoOperationRepository implements OperationRepository {
         const company = companyMap.get(course.companyId);
         assertMongo(company, "MISSING_COMPANY");
         const source = latestSource.get(row.id);
-        return toOperationSession({ ...row, course: { ...course, company }, sourceRecords: source ? [source] : [] } as unknown as OperationSessionRow, labelMap.get(JSON.stringify([course.companyId, course.courseId])) ?? "");
+        return toOperationSession({ ...row, course: { ...course, commonNote: commonNoteMap.get(course.id), company }, sourceRecords: source ? [source] : [] } as unknown as OperationSessionRow, labelMap.get(JSON.stringify([course.companyId, course.courseId])) ?? "");
       });
     });
   }

@@ -7,7 +7,7 @@ import { assertMongo, MongoOperationError, stableMongoValue } from "./mongoOpera
 export { assertMongo, MongoOperationError, stableMongoValue };
 
 export type MongoRow = Record<string, unknown>;
-export const OPERATION_MODELS = ["Company", "Course", "CourseIdLabel", "OperationSession", "OperationSourceRecord", "TeamUser", "ActivityChange"] as const;
+export const OPERATION_MODELS = ["Company", "Course", "CourseIdLabel", "CourseCommonNote", "OperationSession", "OperationSourceRecord", "TeamUser", "ActivityChange"] as const;
 const INTERNAL_MODELS = ["__creation", "__counter"];
 export const MONGO_SCAN_ROWS = 20_000;
 export const MONGO_SCAN_BYTES = 32 * 1024 * 1024;

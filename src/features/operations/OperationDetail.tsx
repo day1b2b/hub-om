@@ -17,7 +17,7 @@ import { EditableSessionNamesCell } from "./EditableSessionNamesCell";
 import { EditableSessionRegionCell } from "./EditableSessionRegionCell";
 import { EditableSessionScheduleCell } from "./EditableSessionScheduleCell";
 import { EditableToolsItem } from "./EditableToolsItem";
-import { IssueReviewEditor } from "./IssueReviewEditor";
+import { CourseNotesWorkspace } from "./CourseNotesWorkspace";
 import { LectureManagementNoteRow } from "./LectureManagementNoteRow";
 import { OnsiteRequiredConditionSelect } from "./OnsiteRequiredConditionSelect";
 import { OperationDiscussionPanel } from "./OperationDiscussionPanel";
@@ -279,6 +279,7 @@ export function OperationDetail({
                   existingRoundNumbers={existingRoundNumbers}
                   instructorOptions={instructorOptions}
                 />
+                <a className="notes-jump-link" href="#operation-notes">메모로 이동</a>
                 {SHOW_BULK_EDIT_ROUNDS && courseOperations.length > 1 ? <BulkEditRoundsButton /> : null}
               </div>
             </div>
@@ -416,6 +417,12 @@ export function OperationDetail({
             {SHOW_BULK_EDIT_ROUNDS ? <BulkSaveRoundsButton /> : null}
             </EditAllRoundsProvider>
           </section>
+          <CourseNotesWorkspace
+            className="wide-detail-section"
+            commonNote={operation.courseCommonNote}
+            operationId={operation.operationId}
+            rounds={courseOperations}
+          />
 
           {courseGroups.length > 0 ? (
             <section className="detail-section course-groups-section">
@@ -432,13 +439,6 @@ export function OperationDetail({
               </ul>
             </section>
           ) : null}
-
-          <section className="detail-section wide-detail-section">
-            <div className="section-title">
-              <h2>특이사항</h2>
-            </div>
-            <IssueReviewEditor key={operation.operationId} operation={operation} />
-          </section>
 
           {SHOW_OPERATION_DISCUSSION && (
             <section className="detail-section wide-detail-section slack-discussion-section" id="discussions">
