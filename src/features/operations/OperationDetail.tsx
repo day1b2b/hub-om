@@ -18,7 +18,6 @@ import { EditableSessionRegionCell } from "./EditableSessionRegionCell";
 import { EditableSessionScheduleCell } from "./EditableSessionScheduleCell";
 import { EditableToolsItem } from "./EditableToolsItem";
 import { IssueReviewEditor } from "./IssueReviewEditor";
-import { CourseNotesCandidates } from "./CourseNotesCandidates";
 import { CourseCommonNote } from "./CourseCommonNote";
 import { CourseNotesWorkspace } from "./CourseNotesWorkspace";
 import { LectureManagementNoteRow } from "./LectureManagementNoteRow";
@@ -419,17 +418,13 @@ export function OperationDetail({
             {SHOW_BULK_EDIT_ROUNDS ? <BulkSaveRoundsButton /> : null}
             </EditAllRoundsProvider>
           </section>
-          <section className="detail-section wide-detail-section">
-            <div className="section-title"><h2>특이사항</h2></div>
-            <IssueReviewEditor key={operation.operationId} operation={operation} />
-          </section>
-
           <CourseNotesWorkspace
             className="wide-detail-section"
+            common={<CourseCommonNote note={operation.courseCommonNote} operationId={operation.operationId} />}
             rounds={courseOperations.map((round) => ({
               label: `${round.roundNo || "미정"}회차`,
               operationId: round.operationId,
-              content: <CourseNotesCandidates operations={[round]} />
+              content: <IssueReviewEditor key={round.operationId} operation={round} />
             }))}
           />
 
