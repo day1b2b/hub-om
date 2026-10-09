@@ -12,16 +12,18 @@
 
 ## 실행
 
-이 명령은 `DATABASE_URL`이 가리키는 PostgreSQL만 대상으로 한다. 대상 환경을 확인한 뒤 먼저 조회 전용으로 실행한다.
+기본값은 `DATABASE_URL`이 가리키는 PostgreSQL이다. MongoDB 운영 selector를 사용하는 환경에서는 `--backend=mongodb-shadow`를 명시한다. 대상 환경을 확인한 뒤 먼저 조회 전용으로 실행한다.
 
 ```sh
 npm run db:backfill:course-common-notes -- --dry-run
+npm run db:backfill:course-common-notes -- --backend=mongodb-shadow --dry-run
 ```
 
 실제 반영은 현재 백업과 작업 시간대가 확인된 경우에만 두 확인 플래그를 함께 사용한다.
 
 ```sh
 npm run db:backfill:course-common-notes -- --apply --backup-confirmed --maintenance-confirmed
+npm run db:backfill:course-common-notes -- --backend=mongodb-shadow --apply --backup-confirmed --maintenance-confirmed
 ```
 
 출력에는 과정 수와 판정 수만 포함하며 메모 내용은 출력하지 않는다. 반영 후 dry-run을 다시 실행해 후보가 0건인지 확인한다.
