@@ -167,7 +167,7 @@ function ReadyIssueReviewEditor({ onDirtyChange, operation, targetLabel = "ë©”ëª
                 setMessage("");
               }}
               placeholder={editField.placeholder}
-              rows={7}
+              rows={4}
               value={values[editField.field]}
             />
           </div>
