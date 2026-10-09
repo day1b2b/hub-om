@@ -1,3 +1,5 @@
+"use client";
+
 import type { OperationSession } from "@/lib/data/operationTypes";
 
 import { getCourseNoteCandidates } from "./courseNotesCandidateModel";
