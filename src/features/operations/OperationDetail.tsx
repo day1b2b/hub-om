@@ -421,16 +421,16 @@ export function OperationDetail({
           </section>
           <CourseNotesWorkspace
             common={<CourseCommonNote note={operation.courseCommonNote} operationId={operation.operationId} />}
-            rounds={
-              <>
-                <CourseNotesCandidates operations={courseOperations} />
+            rounds={courseOperations.map((round) => ({
+              label: `${round.roundNo || "미정"}회차`,
+              content: <>
+                <CourseNotesCandidates operations={[round]} />
                 <section className="detail-section wide-detail-section">
                   <div className="section-title"><h2>현재 회차 메모</h2></div>
-                  <IssueReviewEditor key={operation.operationId} operation={operation} />
+                  <IssueReviewEditor key={round.operationId} operation={round} />
                 </section>
               </>
-            }
-            roundCount={courseOperations.length}
+            }))}
           />
 
           {courseGroups.length > 0 ? (
