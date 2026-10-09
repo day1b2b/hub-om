@@ -32,6 +32,16 @@ test("과정 식별자가 없거나 내용이 비어 있으면 반영하지 않�
   assert.equal(plan.candidateCount, 0);
 });
 
+test("일부 회차에만 있는 메모는 과정 공통으로 올리지 않는다", () => {
+  const plan = planCourseCommonNoteBackfill([
+    row({ id: "1", operationIssue: "one round only" }),
+    row({ id: "2", operationIssue: "" }),
+    row({ id: "3", operationIssue: "" }),
+  ]);
+  assert.equal(plan.candidateCount, 0);
+  assert.equal(plan.conflictCourseCount, 1);
+});
+
 test("dry-run은 쓰지 않고 apply는 두 확인 플래그가 있어야 쓴다", async () => {
   let writes = 0;
   const repository = {
