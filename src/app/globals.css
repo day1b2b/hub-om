@@ -14017,3 +14017,8 @@ button.coach-doc-reserve-chip:disabled {
 .course-notes-workspace .issue-editor-grid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
 .course-notes-workspace .issue-editor-field textarea { min-height: 112px; resize: vertical; }
 @media (max-width: 920px) { .course-notes-workspace .issue-editor-grid { grid-template-columns: 1fr; } }
+.course-notes-editor-hint { color: var(--muted); font-size: 12px; margin: 0 0 14px; }
+.course-common-note-editor { padding: 16px; }
+.course-common-note-editor .issue-editor-grid { margin: 0; }
+.course-common-note-editor .issue-editor-field textarea { min-height: 112px; resize: vertical; }
+.course-common-note-editor .issue-editor-footer { margin-top: 14px; }
