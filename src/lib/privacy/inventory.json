@@ -27,6 +27,19 @@
     "createdAt": "operational",
     "updatedAt": "operational"
   },
+  "CourseCommonNote": {
+    "id": "operational",
+    "courseRecordId": "operational",
+    "specialNotes": "encrypted",
+    "operationIssue": "encrypted",
+    "omUpdate": "encrypted",
+    "createdBy": "encrypted",
+    "updatedBy": "encrypted",
+    "deletedAt": "operational",
+    "deletedBy": "encrypted",
+    "createdAt": "operational",
+    "updatedAt": "operational"
+  },
   "OperationSession": {
     "id": "operational",
     "operationId": "operational",

@@ -7,6 +7,8 @@ import { withCalendarOperationLock, isCalendarReflectionSuppressed } from "@/lib
 
 import type { OperationRepository } from "./operationRepository";
 import type {
+  CourseCommonNote,
+  CourseCommonNoteInput,
   CourseLookupCandidate,
   CreateOperationInput,
   OperationSession,
@@ -67,6 +69,14 @@ export class CalendarReflectingOperationRepository implements OperationRepositor
 
   getOperationCreatedAt(operationId: string): Promise<Date | null> {
     return this.inner.getOperationCreatedAt(operationId);
+  }
+
+  upsertCourseCommonNote(courseRecordId: string, input: CourseCommonNoteInput, actorEmail?: string): Promise<CourseCommonNote> {
+    return this.inner.upsertCourseCommonNote(courseRecordId, input, actorEmail);
+  }
+
+  deleteCourseCommonNote(courseRecordId: string, actorEmail?: string): Promise<void> {
+    return this.inner.deleteCourseCommonNote(courseRecordId, actorEmail);
   }
 
   getSummary(): Promise<OperationSummary> {

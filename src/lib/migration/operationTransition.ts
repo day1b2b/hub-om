@@ -29,8 +29,8 @@ const hash = (text: string) => createHash("sha256").update(text).digest("hex");
 
 /** Validate the checked-in proposal itself, in addition to source contract drift. */
 export function assertTransitionManifest(): void {
-  requireCondition(snapshot.version === 1 && modelNames.length === 4 && snapshot.deferredModels.length === 31, "MANIFEST_COVERAGE");
-  requireCondition(new Set([...modelNames, ...snapshot.deferredModels]).size === 35, "MANIFEST_COVERAGE");
+  requireCondition(snapshot.version === 1 && modelNames.length === 4 && snapshot.deferredModels.length === 32, "MANIFEST_COVERAGE");
+  requireCondition(new Set([...modelNames, ...snapshot.deferredModels]).size === 36, "MANIFEST_COVERAGE");
   requireCondition(new Set(Object.values(models).map(model => model.collection)).size === 4, "MANIFEST_COLLECTIONS");
   for (const model of Object.values(models)) {
     requireCondition(model.fields.id?.kind === "uuid" && !model.fields.id.nullable, "MANIFEST_ID");

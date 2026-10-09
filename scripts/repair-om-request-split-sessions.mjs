@@ -6,6 +6,21 @@ export const REPAIR_ROUTE = '/maintenance/om-request-session-repair';
 const check = (ok, message) => { if (!ok) throw new Error(message); };
 const day = date => date.toISOString().slice(0, 10);
 const digest = row => createHash('sha256').update(BSON.serialize(row)).digest('hex');
+const dateAt = value => new Date(`${value}T00:00:00.000Z`);
+function datesForSession(session) {
+  const start = dateAt(session.date), end = dateAt(session.dateEnd || session.date);
+  check(Number.isFinite(start.getTime()) && Number.isFinite(end.getTime()) && start <= end, 'INVALID_DATE');
+  const explicit = [...new Set(String(session.educationDatesText ?? '').match(/\d{4}-\d{2}-\d{2}/g) ?? [])];
+  if (explicit.length) {
+    const values = explicit.map(dateAt);
+    check(values.every(value => Number.isFinite(value.getTime()) && start <= value && value <= end), 'EDUCATION_DATE_OUT_OF_RANGE');
+    return values;
+  }
+  check(!session.educationDatesText?.trim() || start.getTime() === end.getTime(), 'UNPARSEABLE_EDUCATION_DATES');
+  const values = [];
+  for (let value = start; value <= end; value = new Date(value.getTime() + 86_400_000)) values.push(value);
+  return values;
+}
 function decrypt(value, context, env) {
   const parts = value.split(':');
   check(parts.length === 6 && parts[0] === 'pii', 'ENCRYPTED_VALUE_REQUIRED');
@@ -28,30 +43,50 @@ function privateField(row, name, value, env) {
 }
 
 /** Narrow repair: split unassigned date ranges into explicitly requested single days. */
-export function planSessionSplit(request, operations, sessions, env, now = new Date()) {
-  check(request.assignedOm === null && request.status === '배정필요', 'REQUEST_ALREADY_ASSIGNED');
+export function planSessionSplit(request, operations, sessions, env, now = new Date(), options = {}) {
+  const allowAssigned = options.allowAssigned === true;
+  const allowOutOfRange = options.allowOutOfRange === true;
+  if (!allowAssigned) check(request.assignedOm === null && request.status === '배정필요', 'REQUEST_ALREADY_ASSIGNED');
+  else check(['배정필요', '배정완료'].includes(request.status), 'REQUEST_STATUS_UNSAFE');
   check(Array.isArray(sessions) && sessions.length === request.totalSessions && sessions.length > operations.length && operations.length > 0, 'INVALID_SESSION_COUNT');
   check(new Set(sessions.map(s => s.date)).size === sessions.length, 'DUPLICATE_DATES');
   check(new Set(operations.map(o => o.courseRecordId)).size === 1, 'MIXED_COURSES');
   check(operations.some(o => o.operationId === request.operationId), 'REPRESENTATIVE_MISSING');
   for (const row of operations) {
-    check(!row.deletedAt && row.operationStatus === 'ASSIGNMENT_NEEDED' && row.omName === null && row.omUserId === null, 'OPERATION_ALREADY_USED');
+    check(!row.deletedAt && (allowAssigned
+      ? ['ASSIGNMENT_NEEDED', 'ASSIGNMENT_PLANNED'].includes(row.operationStatus)
+      : row.operationStatus === 'ASSIGNMENT_NEEDED' && row.omName === null && row.omUserId === null), 'OPERATION_ALREADY_USED');
     check(!row.sourceFingerprint, 'IMPORTED_OPERATION');
     check(['totalCost', 'instructorCost', 'operationCost'].every(key => row[key] === null || Number(String(row[key])) === 0), 'FINANCIAL_DATA_PRESENT');
     check(sessions.filter(s => s.date === day(row.startDate)).length === 1, 'ORIGINAL_START_NOT_RETAINED');
   }
   const seen = new Set();
+  const ordered = [...operations].sort((left, right) => Number(left.roundNo) - Number(right.roundNo));
+  const hasStableRounds = ordered.every((row, index) => String(row.roundNo) === String(index + 1));
+  const assignmentKey = row => JSON.stringify({ operationStatus: row.operationStatus, omUserId: row.omUserId ?? null,
+    omName: row.omName ? decrypt(row.omName, 'OperationSession.omName', env) : null });
+  const intervals = sessions.map(s => ({ start: dateAt(s.date), end: dateAt(s.dateEnd || s.date) }));
+  check(intervals.every((value, index) => intervals.every((other, otherIndex) => index === otherIndex || value.end < other.start || other.end < value.start)), 'OVERLAPPING_REQUEST_SESSIONS');
   const planned = sessions.map((s, index) => {
-    check(/^\d{4}-\d{2}-\d{2}$/.test(s.date) && (!s.dateEnd || s.dateEnd === s.date), 'SINGLE_DAY_REQUIRED');
-    const date = new Date(`${s.date}T00:00:00.000Z`);
-    check(Number.isFinite(date.getTime()) && day(date) === s.date, 'INVALID_DATE');
-    check(!s.educationDatesText || s.educationDatesText.trim() === s.date, 'MULTI_DAY_SESSION');
-    const candidates = operations.filter(o => o.startDate <= date && date <= o.endDate);
-    check(candidates.length === 1, 'AMBIGUOUS_SOURCE_RANGE');
-    const source = candidates[0], reuse = day(source.startDate) === s.date;
+    check(/^\d{4}-\d{2}-\d{2}$/.test(s.date) && (!s.dateEnd || /^\d{4}-\d{2}-\d{2}$/.test(s.dateEnd)), 'INVALID_DATE');
+    const date = dateAt(s.date), endDate = dateAt(s.dateEnd || s.date), educationDates = datesForSession(s);
+    check(Number.isFinite(date.getTime()) && day(date) === s.date && day(endDate) === (s.dateEnd || s.date), 'INVALID_DATE');
+    const indexed = ordered[index];
+    let candidates = operations.filter(o => o.startDate <= date && endDate <= o.endDate);
+    if (candidates.length === 0 && allowOutOfRange) {
+      check(hasStableRounds && new Set(operations.map(assignmentKey)).size === 1, 'SOURCE_RANGE_NOT_FOUND');
+      candidates = indexed ? [indexed] : [ordered.at(-1)];
+    }
+    check(candidates.length > 0 && candidates[0], 'SOURCE_RANGE_NOT_FOUND');
+    if (candidates.length > 1) {
+      check(hasStableRounds, 'AMBIGUOUS_SOURCE_RANGE');
+      check(new Set(candidates.map(assignmentKey)).size === 1, 'AMBIGUOUS_ASSIGNMENT_SOURCE');
+    }
+    const source = indexed && candidates.includes(indexed) ? indexed : candidates.find(row => !seen.has(row._id)) ?? candidates[0];
+    const reuse = !seen.has(source._id) && (day(source.startDate) === s.date || allowOutOfRange || candidates.length > 1);
     const next = { ...source, _id: reuse ? source._id : randomUUID(), operationId: reuse ? source.operationId : `manual-${randomUUID()}`,
-      roundNo: String(index + 1), startDate: date, endDate: date, educationDates: [date], operationMonth: s.date.slice(0, 7),
-      sessionDurationDays: 1, educationDays: s.duration || null, timeText: s.timeStart && s.timeEnd ? `${s.timeStart} ~ ${s.timeEnd}` : null,
+      roundNo: String(index + 1), startDate: date, endDate, educationDates, operationMonth: s.date.slice(0, 7),
+      sessionDurationDays: educationDates.length, educationDays: s.duration || null, timeText: s.timeStart && s.timeEnd ? `${s.timeStart} ~ ${s.timeEnd}` : null,
       createdAt: reuse ? source.createdAt : now, updatedAt: now };
     privateField(next, 'region', s.location || '', env);
     privateField(next, 'updatedBy', 'approved-session-repair', env);
@@ -91,7 +126,7 @@ export async function repairFromBackup(client, env, requestId, backupId, apply =
       check(await collection('CoachEngagement').countDocuments({ operationSessionId: { $in: ids } }, { session }) === 0, 'COACH_DEPENDENCY');
       check(await collection('OperationSourceRecord').countDocuments({ operationSessionId: { $in: ids } }, { session }) === 0, 'SOURCE_DEPENDENCY');
       const sessions = JSON.parse(decrypt(request.sessions.$json.__pii, 'OmRequest.sessions', env));
-      const plan = planSessionSplit(request, operations, sessions, env);
+      const plan = planSessionSplit(request, operations, sessions, env, new Date(), { allowAssigned: true, allowOutOfRange: true });
       const summary = { apply, requestId, backupId, retained: operations.length, inserted: plan.length - operations.length,
         rounds: plan.map(p => ({ roundNo: p.after.roundNo, date: day(p.after.startDate), operationId: p.after.operationId })) };
       if (!apply) return summary;

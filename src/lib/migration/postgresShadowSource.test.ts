@@ -37,9 +37,9 @@ function fixture() {
   return { pool: { connect: async () => client }, columns, pks, calls, pages, releases: () => releases, fail: () => { failed = true; } };
 }
 const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
-test("all 35 models validated before rows; one read-only snapshot commits then releases", async () => {
+test("all 36 models validated before rows; one read-only snapshot commits then releases", async () => {
   const f = fixture();
-  await withPostgresShadowSnapshot(f.pool, async source => { assert.equal(source.modelNames.length, 35); assert.equal(source.snapshotId, "synthetic-snapshot"); for await (const row of source.rows("Company")) assert.fail(String(row)); });
+  await withPostgresShadowSnapshot(f.pool, async source => { assert.equal(source.modelNames.length, 36); assert.equal(source.snapshotId, "synthetic-snapshot"); for await (const row of source.rows("Company")) assert.fail(String(row)); });
   assert.equal(f.calls[0].sql, "BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
   assert.equal(f.calls.at(-1)!.sql, "COMMIT"); assert.equal(f.releases(), 1);
   assert.ok(f.calls.every(c => !/^(INSERT|UPDATE|DELETE|ALTER|CREATE|DROP)/.test(c.sql)));

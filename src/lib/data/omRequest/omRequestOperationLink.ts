@@ -1,6 +1,7 @@
 import { getDataRepositoryOverride } from "../dataRepositoryContext";
 import { ASSIGNMENT_NEEDED_VALUES, isSameCourse, parseEducationDatesText } from "../operationCalculations";
 import { getOperationRepository } from "../operationRepositoryFactory";
+import { syncAssignedOmByOperationId } from "./omRequestLocalRepository";
 import type { CreateOperationInput } from "../operationTypes";
 import type { OmRequest } from "./omRequestTypes";
 
@@ -144,4 +145,8 @@ export async function syncAssignedOmToLinkedOperation(operationId: string, assig
         });
       })
   );
+}
+
+export async function syncLinkedOmRequestAssignment(operationId: string, assignedOm: string | null): Promise<void> {
+  await syncAssignedOmByOperationId(operationId, assignedOm);
 }

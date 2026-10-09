@@ -1,4 +1,17 @@
 {
+  "CourseCommonNote": {
+    "table": "course_common_notes",
+    "primaryKey": "id",
+    "compoundKeys": [],
+    "fields": {
+      "specialNotes": {"column": "special_notes", "type": "String", "nullable": true, "index": "specialNotesPiiIndex", "indexColumn": "special_notes_pii_index"},
+      "operationIssue": {"column": "operation_issue", "type": "String", "nullable": true, "index": "operationIssuePiiIndex", "indexColumn": "operation_issue_pii_index"},
+      "omUpdate": {"column": "om_update", "type": "String", "nullable": true, "index": "omUpdatePiiIndex", "indexColumn": "om_update_pii_index"},
+      "createdBy": {"column": "created_by", "type": "String", "nullable": true, "index": "createdByPiiIndex", "indexColumn": "created_by_pii_index"},
+      "updatedBy": {"column": "updated_by", "type": "String", "nullable": true, "index": "updatedByPiiIndex", "indexColumn": "updated_by_pii_index"}
+      ,"deletedBy": {"column": "deleted_by", "type": "String", "nullable": true, "index": "deletedByPiiIndex", "indexColumn": "deleted_by_pii_index"}
+    }
+  },
   "OperationSession": {
     "table": "operation_sessions",
     "fields": {
