@@ -25,6 +25,7 @@ export function CourseNotesCandidates({ operations }: { operations: OperationSes
                 <li key={`${row.field}-${item.roundNo}`}>
                   <b>{item.roundNo}회차</b>
                   <pre>{item.value}</pre>
+                  <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("course-common-note-suggestion", { detail: { field: row.field, value: item.value } }))}>이 내용으로 공통 메모 변경</button>
                 </li>
               ))}
             </ul>

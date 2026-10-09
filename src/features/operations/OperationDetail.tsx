@@ -418,7 +418,7 @@ export function OperationDetail({
             {SHOW_BULK_EDIT_ROUNDS ? <BulkSaveRoundsButton /> : null}
             </EditAllRoundsProvider>
           </section>
-          <CourseCommonNote note={operation.courseCommonNote} />
+          <CourseCommonNote note={operation.courseCommonNote} operationId={operation.operationId} />
           <CourseNotesCandidates operations={courseOperations} />
 
           {courseGroups.length > 0 ? (
