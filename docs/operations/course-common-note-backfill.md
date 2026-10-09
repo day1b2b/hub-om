@@ -12,7 +12,7 @@
 
 ## 실행
 
-대상 환경의 `DATABASE_URL`을 확인한 뒤 먼저 조회 전용으로 실행한다.
+이 명령은 `DATABASE_URL`이 가리키는 PostgreSQL만 대상으로 한다. 대상 환경을 확인한 뒤 먼저 조회 전용으로 실행한다.
 
 ```sh
 npm run db:backfill:course-common-notes -- --dry-run
