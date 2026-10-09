@@ -14003,7 +14003,6 @@ button.coach-doc-reserve-chip:disabled {
 .course-notes-round-field strong { color: #697386; display: block; font-size: 12px; }
 .course-notes-round-field pre { margin: 8px 0; white-space: pre-wrap; }
 .course-notes-round-field button { background: #fff; border: 1px solid #9db59a; border-radius: 6px; color: #52724d; cursor: pointer; padding: 6px 8px; }
-.course-notes-empty { color: #9aa3ad; display: block; margin-top: 8px; }
 @media (max-width: 800px) { .course-notes-round-fields { grid-template-columns: 1fr; } }
 .course-round-tabs { display: flex; gap: 6px; overflow-x: auto; padding: 14px 18px 0; }
 .course-round-tabs button { background: #fff; border: 1px solid #dfe4e1; border-radius: 7px 7px 0 0; color: #697386; cursor: pointer; font-weight: 700; padding: 9px 16px; white-space: nowrap; }
