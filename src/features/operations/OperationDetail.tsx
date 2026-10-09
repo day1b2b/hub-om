@@ -419,17 +419,16 @@ export function OperationDetail({
             {SHOW_BULK_EDIT_ROUNDS ? <BulkSaveRoundsButton /> : null}
             </EditAllRoundsProvider>
           </section>
+          <section className="detail-section wide-detail-section">
+            <div className="section-title"><h2>특이사항</h2></div>
+            <IssueReviewEditor key={operation.operationId} operation={operation} />
+          </section>
+
           <CourseNotesWorkspace
             common={<CourseCommonNote note={operation.courseCommonNote} operationId={operation.operationId} />}
             rounds={courseOperations.map((round) => ({
               label: `${round.roundNo || "미정"}회차`,
-              content: <>
-                <CourseNotesCandidates operations={[round]} />
-                <section className="detail-section wide-detail-section">
-                  <div className="section-title"><h2>현재 회차 메모</h2></div>
-                  <IssueReviewEditor key={round.operationId} operation={round} />
-                </section>
-              </>
+              content: <CourseNotesCandidates operations={[round]} />
             }))}
           />
 
