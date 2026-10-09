@@ -109,6 +109,24 @@ function ReadyIssueReviewEditor({ operation }: IssueReviewEditorProps) {
   }, [active, draftReady, hasChanges, operation.operationId, saveState, values]);
 
   useEffect(() => {
+    const handleApply = (event: Event) => {
+      const detail = (event as CustomEvent<Partial<IssueReviewValues>>).detail;
+      if (!detail || !["specialNotes", "operationIssue", "omUpdate"].every((field) => typeof detail[field as keyof IssueReviewValues] === "string")) return;
+      setValues({
+        specialNotes: detail.specialNotes ?? "",
+        operationIssue: detail.operationIssue ?? "",
+        omUpdate: detail.omUpdate ?? ""
+      });
+      setSaveState("idle");
+      setDraftSavedAt(null);
+      setMessage("선택한 회차 메모를 불러왔습니다. 저장하려면 아래 저장 버튼을 누르세요.");
+    };
+
+    window.addEventListener("course-common-note-apply", handleApply);
+    return () => window.removeEventListener("course-common-note-apply", handleApply);
+  }, []);
+
+  useEffect(() => {
     if (!hasChanges) return;
 
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {

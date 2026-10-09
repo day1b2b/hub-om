@@ -425,9 +425,9 @@ export function OperationDetail({
           </section>
 
           <CourseNotesWorkspace
-            common={<CourseCommonNote note={operation.courseCommonNote} operationId={operation.operationId} />}
             rounds={courseOperations.map((round) => ({
               label: `${round.roundNo || "미정"}회차`,
+              operationId: round.operationId,
               content: <CourseNotesCandidates operations={[round]} />
             }))}
           />
