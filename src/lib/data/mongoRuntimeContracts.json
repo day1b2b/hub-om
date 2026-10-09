@@ -270,6 +270,8 @@
       "omUpdate": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
       "createdBy": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
       "updatedBy": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
+      "deletedAt": {"type": "DateTime", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
+      "deletedBy": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
       "createdAt": {"type": "DateTime", "nullable": false, "list": false, "uuid": false, "dateOnly": false},
       "updatedAt": {"type": "DateTime", "nullable": false, "list": false, "uuid": false, "dateOnly": false},
       "specialNotesPiiIndex": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
@@ -277,6 +279,7 @@
       "omUpdatePiiIndex": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
       "createdByPiiIndex": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
       "updatedByPiiIndex": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false}
+      ,"deletedByPiiIndex": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false}
     },
     "references": [{"fields": ["courseRecordId"], "targetModel": "Course", "targetFields": ["id"]}],
     "uniqueKeys": [{"fields": ["id"], "nullsDistinct": true}, {"fields": ["courseRecordId"], "nullsDistinct": true}]

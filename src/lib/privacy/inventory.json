@@ -35,6 +35,8 @@
     "omUpdate": "encrypted",
     "createdBy": "encrypted",
     "updatedBy": "encrypted",
+    "deletedAt": "operational",
+    "deletedBy": "encrypted",
     "createdAt": "operational",
     "updatedAt": "operational"
   },

@@ -52,6 +52,8 @@ export interface CourseCommonNote {
   omUpdate: string;
 }
 
+export type CourseCommonNoteInput = Pick<CourseCommonNote, "specialNotes" | "operationIssue" | "omUpdate">;
+
 /**
  * 코스ID로 찾은 과정(Course) 한 건 — 자동 채움 조회용 최소 정보.
  * 한 코스ID에 과정이 여러 개인 경우가 있어(전체 16~18%) 항상 목록으로 다룬다.

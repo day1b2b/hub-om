@@ -17,6 +17,7 @@ import type { CourseLookupRow } from "./courseLookup";
 import type {
   ArchiveStatus,
   CourseCommonNote,
+  CourseCommonNoteInput,
   CourseLookupCandidate,
   CreateOperationInput,
   EducationFormat,
@@ -253,6 +254,10 @@ function toCourseCommonNote(note: {
   };
 }
 
+function commonNoteData(input: CourseCommonNoteInput) {
+  return { specialNotes: nullableText(input.specialNotes), operationIssue: nullableText(input.operationIssue), omUpdate: nullableText(input.omUpdate) };
+}
+
 export class PrismaOperationRepository implements OperationRepository {
   /**
    * 코스ID로 과정을 찾는다. 운영현황(hub-om DB)이 원천이므로 세일즈맵 딜을 긁지 않고 바로 답한다.
@@ -332,6 +337,19 @@ export class PrismaOperationRepository implements OperationRepository {
       select: { createdAt: true }
     });
     return session?.createdAt ?? null;
+  }
+
+  async upsertCourseCommonNote(courseRecordId: string, input: CourseCommonNoteInput, actorEmail?: string): Promise<CourseCommonNote> {
+    const note = await getPrismaClient().courseCommonNote.upsert({
+      where: { courseRecordId },
+      create: { courseRecordId, ...commonNoteData(input), createdBy: nullableText(actorEmail ?? ""), updatedBy: nullableText(actorEmail ?? "") },
+      update: { ...commonNoteData(input), updatedBy: actorEmail === undefined ? undefined : nullableText(actorEmail), deletedAt: null, deletedBy: null }
+    });
+    return toCourseCommonNote(note);
+  }
+
+  async deleteCourseCommonNote(courseRecordId: string, actorEmail?: string): Promise<void> {
+    await getPrismaClient().courseCommonNote.updateMany({ where: { courseRecordId, deletedAt: null }, data: { deletedAt: new Date(), deletedBy: nullableText(actorEmail ?? "") } });
   }
 
   async createOperation(input: CreateOperationInput): Promise<OperationSession> {

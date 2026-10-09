@@ -210,6 +210,7 @@ function adjacent(noteRows = notes): Partial<DataRepositories> {
   return {
     operations: { listOperations: async () => read([operation]), findCoursesByCourseId: unexpected,
       findCoursesByCompany: unexpected, getOperationById: unexpected, getOperationCreatedAt: unexpected,
+      upsertCourseCommonNote: unexpected, deleteCourseCommonNote: unexpected,
       createOperation: unexpected, updateOperation: unexpected, deleteOperation: unexpected, getSummary: unexpected },
     instructorNote: { listNotes: async () => read(noteRows), getNote: async name => read(noteRows.find(n => n.instructorName === name) ?? {}),
       getNoteByNotionNo: async no => read(noteRows.find(n => n.notionNo === no) ?? {}), saveNote: unexpected, saveNoteByNotionNo: unexpected },

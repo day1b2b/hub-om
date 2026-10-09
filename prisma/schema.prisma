@@ -157,6 +157,8 @@ model CourseCommonNote {
   omUpdate       String?  @map("om_update")
   createdBy      String?  @map("created_by")
   updatedBy      String?  @map("updated_by")
+  deletedAt      DateTime? @map("deleted_at")
+  deletedBy      String?   @map("deleted_by")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
   specialNotesPiiIndex   String? @map("special_notes_pii_index")
@@ -164,9 +166,11 @@ model CourseCommonNote {
   omUpdatePiiIndex       String? @map("om_update_pii_index")
   createdByPiiIndex      String? @map("created_by_pii_index")
   updatedByPiiIndex      String? @map("updated_by_pii_index")
+  deletedByPiiIndex      String? @map("deleted_by_pii_index")
 
   course Course @relation(fields: [courseRecordId], references: [id])
 
+  @@index([deletedAt])
   @@map("course_common_notes")
 }
 

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { MongoServerError, type ClientSession } from "mongodb";
 import type { OperationRepository } from "./operationRepository";
-import type { CreateOperationInput, OperationSession, UpdateOperationInput } from "./operationTypes";
+import type { CourseCommonNote, CourseCommonNoteInput, CreateOperationInput, OperationSession, UpdateOperationInput } from "./operationTypes";
 import { assertCreationReplay, creationOperationId, creationOperationPrefix } from "./operationCreationIdentity";
 import { buildOperationMonth, deriveDateRangeFromEducationDates, deriveSessionDurationDays, deriveSessionDurationType, normalizeCourseId, summarizeOperations } from "./operationCalculations";
 import { normalizeLookupName, selectCoursesByCompany, selectCoursesByCourseId, type CourseLookupRow } from "./courseLookup";
@@ -113,6 +113,17 @@ export class MongoOperationRepository implements OperationRepository {
       assertMongo(row.createdAt instanceof Date && Number.isFinite(row.createdAt.getTime()), "INVALID_OPERATION_CREATED_AT");
       return row.createdAt;
     });
+  }
+  async upsertCourseCommonNote(courseRecordId: string, input: CourseCommonNoteInput, actorEmail?: string): Promise<CourseCommonNote> {
+    return this.transaction(async session => {
+      const previous = await this.store.one("CourseCommonNote", { courseRecordId }, session);
+      const now = new Date();
+      const row = await this.write("CourseCommonNote", { ...(previous ?? { id: randomUUID(), courseRecordId, createdAt: now, createdBy: actorEmail ?? null }), specialNotes: nullableText(input.specialNotes), operationIssue: nullableText(input.operationIssue), omUpdate: nullableText(input.omUpdate), updatedAt: now, updatedBy: actorEmail ?? previous?.updatedBy ?? null, deletedAt: null, deletedBy: null }, previous, session);
+      return { specialNotes: row.specialNotes as string ?? "", operationIssue: row.operationIssue as string ?? "", omUpdate: row.omUpdate as string ?? "" };
+    }, true);
+  }
+  async deleteCourseCommonNote(courseRecordId: string, actorEmail?: string): Promise<void> {
+    await this.transaction(async session => { const previous = await this.store.one("CourseCommonNote", { courseRecordId, deletedAt: null }, session); if (previous) await this.write("CourseCommonNote", { ...previous, deletedAt: new Date(), deletedBy: actorEmail ?? null, updatedAt: new Date(), updatedBy: actorEmail ?? previous.updatedBy }, previous, session); }, true);
   }
   async listOperations(): Promise<OperationSession[]> {
     return this.transaction(async session => {
