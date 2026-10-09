@@ -7685,6 +7685,7 @@ td span {
 }
 
 .issue-editor-grid {
+  align-items: start;
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
