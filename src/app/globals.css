@@ -13995,3 +13995,6 @@ button.coach-doc-reserve-chip:disabled {
 .course-round-tabs button.active { background: #eef4ec; border-color: #9db59a; color: #52724d; }
 .course-notes-round-preview { padding: 18px; }
 .course-notes-apply-button { background: #6f9568; border: 0; border-radius: 6px; color: #fff; cursor: pointer; font-weight: 700; margin-top: 16px; padding: 10px 16px; }
+.course-notes-actions { display: flex; gap: 8px; margin-top: 16px; }
+.course-notes-copy-button { background: #fff; border: 1px solid #9db59a; border-radius: 6px; color: #52724d; cursor: pointer; font-weight: 700; padding: 10px 16px; }
+.course-notes-actions .course-notes-apply-button { margin-top: 0; }
