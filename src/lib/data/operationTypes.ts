@@ -45,6 +45,13 @@ export type ValidationStatus = "정상" | "검토필요";
 
 export type SourceTeam = "1팀" | "2팀" | "미분류";
 
+/** 과정 전체에만 적용되는 메모다. 기존 회차별 메모는 이 값으로 대체하지 않는다. */
+export interface CourseCommonNote {
+  specialNotes: string;
+  operationIssue: string;
+  omUpdate: string;
+}
+
 /**
  * 코스ID로 찾은 과정(Course) 한 건 — 자동 채움 조회용 최소 정보.
  * 한 코스ID에 과정이 여러 개인 경우가 있어(전체 16~18%) 항상 목록으로 다룬다.
@@ -80,6 +87,8 @@ export interface OperationSession {
   courseName: string;
   courseCategory: string;
   tools: string;
+  /** 과정 공통 메모. 아직 없거나 레거시 저장소이면 undefined다. */
+  courseCommonNote?: CourseCommonNote;
   om: string;
   ld: string;
   onsiteOm: string;

@@ -95,8 +95,9 @@ export class MongoOperationRepository implements OperationRepository {
     const company = await this.store.one("Company", { _id: course.companyId as string }, session);
     assertMongo(company, "MISSING_COMPANY");
     const label = await this.store.one("CourseIdLabel", { companyId: company.id, courseId: course.courseId }, session);
+    const commonNote = await this.store.one("CourseCommonNote", { courseRecordId: course.id }, session);
     const sources = await this.store.latestBy("OperationSourceRecord", "operationSessionId", [id(row)], "createdAt", session);
-    return toOperationSession({ ...row, course: { ...course, company }, sourceRecords: sources.slice(0,1) } as unknown as OperationSessionRow, label?.label as string ?? "");
+    return toOperationSession({ ...row, course: { ...course, commonNote, company }, sourceRecords: sources.slice(0,1) } as unknown as OperationSessionRow, label?.label as string ?? "");
   }
   private async get(operationId: string, session?: ClientSession): Promise<OperationSession | null> {
     const row = await this.store.one("OperationSession", { operationId, deletedAt: null }, session);
@@ -123,10 +124,12 @@ export class MongoOperationRepository implements OperationRepository {
       const companies = await this.store.scan("Company", { _id: { $in: companyIds } }, session);
       const labelPairs = [...new Map(courses.map(course => [JSON.stringify([course.companyId, course.courseId]), { companyId: course.companyId, courseId: course.courseId }])).values()];
       const labels = await this.store.scan("CourseIdLabel", { $or: labelPairs }, session);
+      const commonNotes = await this.store.scan("CourseCommonNote", { courseRecordId: { $in: courses.map(id) } }, session);
       const sources = await this.store.latestBy("OperationSourceRecord", "operationSessionId", rows.map(id), "createdAt", session);
       const courseMap = new Map(courses.map(course => [course.id, course]));
       const companyMap = new Map(companies.map(company => [company.id, company]));
       const labelMap = new Map(labels.map(label => [JSON.stringify([label.companyId, label.courseId]), label.label as string]));
+      const commonNoteMap = new Map(commonNotes.map(note => [note.courseRecordId, note]));
       const latestSource = new Map<unknown, MongoRow>();
       for (const source of sources) {
         const previous = latestSource.get(source.operationSessionId);
@@ -138,7 +141,7 @@ export class MongoOperationRepository implements OperationRepository {
         const company = companyMap.get(course.companyId);
         assertMongo(company, "MISSING_COMPANY");
         const source = latestSource.get(row.id);
-        return toOperationSession({ ...row, course: { ...course, company }, sourceRecords: source ? [source] : [] } as unknown as OperationSessionRow, labelMap.get(JSON.stringify([course.companyId, course.courseId])) ?? "");
+        return toOperationSession({ ...row, course: { ...course, commonNote: commonNoteMap.get(course.id), company }, sourceRecords: source ? [source] : [] } as unknown as OperationSessionRow, labelMap.get(JSON.stringify([course.companyId, course.courseId])) ?? "");
       });
     });
   }

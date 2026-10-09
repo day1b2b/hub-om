@@ -16,6 +16,7 @@ import { normalizeLookupName, selectCoursesByCompany, selectCoursesByCourseId } 
 import type { CourseLookupRow } from "./courseLookup";
 import type {
   ArchiveStatus,
+  CourseCommonNote,
   CourseLookupCandidate,
   CreateOperationInput,
   EducationFormat,
@@ -151,7 +152,8 @@ const PRISMA_OPERATION_TYPE: Record<OperationType, PrismaOperationType> = {
 const OPERATION_SESSION_INCLUDE = {
   course: {
     include: {
-      company: true
+      company: true,
+      commonNote: true
     }
   },
   sourceRecords: {
@@ -180,6 +182,7 @@ function toOperationSession(session: OperationSessionRow, courseIdLabel: string)
     courseName: session.course.name,
     courseCategory: session.course.courseCategory ?? "",
     tools: session.course.tools ?? "",
+    ...(session.course.commonNote ? { courseCommonNote: toCourseCommonNote(session.course.commonNote) } : {}),
     om: session.omName ?? "",
     ld: session.ldName ?? "",
     onsiteOm: session.onsiteOmName ?? "",
@@ -235,6 +238,18 @@ function toOperationSession(session: OperationSessionRow, courseIdLabel: string)
     padletLink: session.padletLink ?? "",
     validationStatus: getValidationErrors(session.validationErrors).length > 0 ? "검토필요" : "정상",
     validationErrors: getValidationErrors(session.validationErrors)
+  };
+}
+
+function toCourseCommonNote(note: {
+  specialNotes: string | null;
+  operationIssue: string | null;
+  omUpdate: string | null;
+}): CourseCommonNote {
+  return {
+    specialNotes: note.specialNotes ?? "",
+    operationIssue: note.operationIssue ?? "",
+    omUpdate: note.omUpdate ?? ""
   };
 }
 

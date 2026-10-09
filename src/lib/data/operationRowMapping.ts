@@ -1,6 +1,6 @@
 /** Runtime row-to-DTO mapping; deliberately independent of Prisma, MongoDB and schema files. */
 import type {
-  ArchiveStatus, EducationFormat, OnsiteRequired, OperationChannel, OperationSession,
+  ArchiveStatus, CourseCommonNote, EducationFormat, OnsiteRequired, OperationChannel, OperationSession,
   OperationStatus, OperationType, ResultReportStatus, SatisfactionSurveyStatus, SourceTeam
 } from "./operationTypes";
 import { deriveArchiveStatus, deriveProfit, formatProcessId } from "./operationCalculations";
@@ -19,6 +19,11 @@ export interface OperationCourseRow {
   courseCategory: string | null;
   tools: string | null;
   revenue: RowMoney;
+  commonNote?: {
+    specialNotes: string | null;
+    operationIssue: string | null;
+    omUpdate: string | null;
+  } | null;
   company: OperationCompanyRow;
 }
 export interface OperationSourceRow { sourceTeam: string }
@@ -192,6 +197,7 @@ export function toOperationSession(session: OperationSessionRow, courseIdLabel: 
     courseName: session.course.name,
     courseCategory: session.course.courseCategory ?? "",
     tools: session.course.tools ?? "",
+    ...(session.course.commonNote ? { courseCommonNote: toCourseCommonNote(session.course.commonNote) } : {}),
     om: session.omName ?? "",
     ld: session.ldName ?? "",
     onsiteOm: session.onsiteOmName ?? "",
@@ -247,6 +253,14 @@ export function toOperationSession(session: OperationSessionRow, courseIdLabel: 
     padletLink: session.padletLink ?? "",
     validationStatus: getValidationErrors(session.validationErrors).length > 0 ? "검토필요" : "정상",
     validationErrors: getValidationErrors(session.validationErrors)
+  };
+}
+
+function toCourseCommonNote(note: NonNullable<OperationCourseRow["commonNote"]>): CourseCommonNote {
+  return {
+    specialNotes: note.specialNotes ?? "",
+    operationIssue: note.operationIssue ?? "",
+    omUpdate: note.omUpdate ?? ""
   };
 }
 
