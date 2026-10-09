@@ -421,7 +421,15 @@ export function OperationDetail({
           </section>
           <CourseNotesWorkspace
             common={<CourseCommonNote note={operation.courseCommonNote} operationId={operation.operationId} />}
-            rounds={<CourseNotesCandidates operations={courseOperations} />}
+            rounds={
+              <>
+                <CourseNotesCandidates operations={courseOperations} />
+                <section className="detail-section wide-detail-section">
+                  <div className="section-title"><h2>현재 회차 메모</h2></div>
+                  <IssueReviewEditor key={operation.operationId} operation={operation} />
+                </section>
+              </>
+            }
             roundCount={courseOperations.length}
           />
 
@@ -440,13 +448,6 @@ export function OperationDetail({
               </ul>
             </section>
           ) : null}
-
-          <section className="detail-section wide-detail-section">
-            <div className="section-title">
-              <h2>특이사항</h2>
-            </div>
-            <IssueReviewEditor key={operation.operationId} operation={operation} />
-          </section>
 
           {SHOW_OPERATION_DISCUSSION && (
             <section className="detail-section wide-detail-section slack-discussion-section" id="discussions">
