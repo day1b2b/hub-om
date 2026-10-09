@@ -1,7 +1,6 @@
 import type { CourseCommonNoteInput, OperationSession } from "./operationTypes";
 
 const fields = ["specialNotes", "operationIssue", "omUpdate"] as const;
-type NoteField = typeof fields[number];
 
 export interface CourseCommonNoteBackfillCandidate {
   courseRecordId: string;
@@ -46,11 +45,12 @@ export function planCourseCommonNoteBackfill(operations: OperationSession[]): Co
         skippedExistingFieldCount++;
         continue;
       }
-      const values = [...new Set(rounds.map(round => normalized(round[field])).filter(Boolean))];
-      if (values.length === 1) {
+      const roundValues = rounds.map(round => normalized(round[field]));
+      const values = [...new Set(roundValues.filter(Boolean))];
+      if (values.length === 1 && roundValues.every(Boolean)) {
         input[field] = values[0];
         changed = true;
-      } else if (values.length > 1) {
+      } else if (values.length > 0) {
         conflicted = true;
       }
     }
