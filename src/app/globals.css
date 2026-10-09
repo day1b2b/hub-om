@@ -13980,3 +13980,13 @@ button.coach-doc-reserve-chip:disabled {
 .course-notes-tab-panel .course-notes-candidate li { margin-top: 12px; }
 .course-notes-tab-panel .course-notes-candidate pre { background: #f8faf9; border-radius: 6px; margin: 6px 0; padding: 10px; white-space: pre-wrap; }
 .course-notes-tab-panel .course-notes-candidate button { background: #fff; border: 1px solid #9db59a; border-radius: 6px; color: #52724d; cursor: pointer; padding: 7px 10px; }
+.course-notes-round-list { display: grid; gap: 12px; padding: 18px; }
+.course-notes-round-card { border: 1px solid #e6e8eb; border-radius: 10px; padding: 16px; }
+.course-notes-round-card h3 { color: #263238; font-size: 15px; margin: 0 0 12px; }
+.course-notes-round-fields { display: grid; gap: 12px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.course-notes-round-field { background: #f8faf9; border-radius: 8px; padding: 12px; }
+.course-notes-round-field strong { color: #697386; display: block; font-size: 12px; }
+.course-notes-round-field pre { margin: 8px 0; white-space: pre-wrap; }
+.course-notes-round-field button { background: #fff; border: 1px solid #9db59a; border-radius: 6px; color: #52724d; cursor: pointer; padding: 6px 8px; }
+.course-notes-empty { color: #9aa3ad; display: block; margin-top: 8px; }
+@media (max-width: 800px) { .course-notes-round-fields { grid-template-columns: 1fr; } }
