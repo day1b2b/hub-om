@@ -20,6 +20,7 @@ import { EditableToolsItem } from "./EditableToolsItem";
 import { IssueReviewEditor } from "./IssueReviewEditor";
 import { CourseNotesCandidates } from "./CourseNotesCandidates";
 import { CourseCommonNote } from "./CourseCommonNote";
+import { CourseNotesWorkspace } from "./CourseNotesWorkspace";
 import { LectureManagementNoteRow } from "./LectureManagementNoteRow";
 import { OnsiteRequiredConditionSelect } from "./OnsiteRequiredConditionSelect";
 import { OperationDiscussionPanel } from "./OperationDiscussionPanel";
@@ -418,8 +419,11 @@ export function OperationDetail({
             {SHOW_BULK_EDIT_ROUNDS ? <BulkSaveRoundsButton /> : null}
             </EditAllRoundsProvider>
           </section>
-          <CourseCommonNote note={operation.courseCommonNote} operationId={operation.operationId} />
-          <CourseNotesCandidates operations={courseOperations} />
+          <CourseNotesWorkspace
+            common={<CourseCommonNote note={operation.courseCommonNote} operationId={operation.operationId} />}
+            rounds={<CourseNotesCandidates operations={courseOperations} />}
+            roundCount={courseOperations.length}
+          />
 
           {courseGroups.length > 0 ? (
             <section className="detail-section course-groups-section">
