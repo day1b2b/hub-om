@@ -17,8 +17,6 @@ import { EditableSessionNamesCell } from "./EditableSessionNamesCell";
 import { EditableSessionRegionCell } from "./EditableSessionRegionCell";
 import { EditableSessionScheduleCell } from "./EditableSessionScheduleCell";
 import { EditableToolsItem } from "./EditableToolsItem";
-import { IssueReviewEditor } from "./IssueReviewEditor";
-import { CourseCommonNote } from "./CourseCommonNote";
 import { CourseNotesWorkspace } from "./CourseNotesWorkspace";
 import { LectureManagementNoteRow } from "./LectureManagementNoteRow";
 import { OnsiteRequiredConditionSelect } from "./OnsiteRequiredConditionSelect";
@@ -421,12 +419,9 @@ export function OperationDetail({
           </section>
           <CourseNotesWorkspace
             className="wide-detail-section"
-            common={<CourseCommonNote note={operation.courseCommonNote} operationId={operation.operationId} />}
-            rounds={courseOperations.map((round) => ({
-              label: `${round.roundNo || "미정"}회차`,
-              operationId: round.operationId,
-              content: <IssueReviewEditor key={round.operationId} operation={round} />
-            }))}
+            commonNote={operation.courseCommonNote}
+            operationId={operation.operationId}
+            rounds={courseOperations}
           />
 
           {courseGroups.length > 0 ? (
