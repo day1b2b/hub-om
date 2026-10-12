@@ -64,17 +64,20 @@ async function botPost(channel: string, text: string, threadTs?: string): Promis
 }
 
 /** 폴백: 기존 Incoming Webhook 단일 채널 발송(스레드 불가). */
-async function webhookPost(text: string): Promise<void> {
+/** Returns whether Slack accepted the message; callers that ignore it keep the old best-effort behaviour. */
+async function webhookPost(text: string): Promise<boolean> {
   const url = process.env.SLACK_WEBHOOK_URL?.trim();
-  if (!url) return;
+  if (!url) return false;
   try {
-    await fetch(url, {
+    const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text }),
     });
+    return res.ok;
   } catch (err) {
     console.error("[notifySlack] webhook 발송 예외:", err);
+    return false;
   }
 }
 
@@ -209,12 +212,12 @@ export async function notifyOmRequestCreated(params: {
   if (botToken() && channel) {
     const posted = await botPost(channel, text);
     if (posted?.ts) return { channel, ts: posted.ts };
-    return null;
   }
 
-  // 봇/채널 미설정 → 기존 웹훅 폴백(스레드 저장 불가)
-  await webhookPost(text);
-  return null;
+  // 봇/채널 미설정 또는 봇 발송 실패 → 기존 웹훅 폴백(스레드 저장 불가)
+  if (await webhookPost(text)) return null;
+  // Nothing reached Slack: let the caller tell the requester instead of reporting success.
+  throw new Error("SLACK_OM_REQUEST_NOT_DELIVERED");
 }
 
 // ── 배정 완료 알림 (같은 스레드에 댓글로 태깅) ─────────────────────

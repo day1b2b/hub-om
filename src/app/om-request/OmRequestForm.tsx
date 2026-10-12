@@ -279,6 +279,8 @@ export function OmRequestForm({
   const [sheetError, setSheetError] = useState<string | null>(null);
   // 접수 완료 모달. 제출 버튼이 폼 하단이라 상단 안내를 놓치기 쉬워, 클릭 위치에 바로 뜨는 모달로 확인시킨다.
   const [submitted, setSubmitted] = useState(false);
+  // Saved but Slack did not receive the intake message: the requester must tell the OM lead directly.
+  const [notificationFailed, setNotificationFailed] = useState(false);
   const [openDateEditorIndex, setOpenDateEditorIndex] = useState<number | null>(null);
 
   const [form, setForm] = useState<OmRequestInput>(() => {
@@ -464,7 +466,9 @@ export function OmRequestForm({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(form)
         });
-        if (!res.ok) throw new Error("저장에 실패했습니다.");
+        const result = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(typeof result?.error === "string" ? result.error : "저장에 실패했습니다.");
+        setNotificationFailed(result?.notification === "failed");
         // 접수 성공 → 하단에서 클릭해도 바로 보이도록 화면 중앙 모달로 확인시킨다.
         setSubmitted(true);
         setSubmitting(false);
@@ -797,7 +801,12 @@ export function OmRequestForm({
       >
         <div style={{ background: "#ffffff", color: "#1a1f2b", borderRadius: 16, padding: "30px 26px", maxWidth: 400, width: "100%", textAlign: "center", boxShadow: "0 12px 44px rgba(0,0,0,.28)" }}>
           <div style={{ width: 54, height: 54, borderRadius: "50%", background: "#2f9e44", color: "#fff", display: "grid", placeItems: "center", fontSize: 30, margin: "0 auto 16px" }} aria-hidden="true">✓</div>
-          <h2 style={{ margin: "0 0 22px", fontSize: "1.25rem" }}>요청이 접수되었습니다</h2>
+          <h2 style={{ margin: notificationFailed ? "0 0 12px" : "0 0 22px", fontSize: "1.25rem" }}>요청이 접수되었습니다</h2>
+          {notificationFailed && (
+            <p role="alert" style={{ margin: "0 0 20px", padding: "10px 12px", borderRadius: 10, background: "#fff4e5", color: "#8a4b00", fontSize: 14, lineHeight: 1.5 }}>
+              다만 Slack 접수 알림이 가지 않았습니다. 담당 OM장에게 직접 알려주세요.
+            </p>
+          )}
           <button
             className="primary-action"
             type="button"

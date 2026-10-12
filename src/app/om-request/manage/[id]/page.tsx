@@ -90,6 +90,11 @@ async function renderOmRequestDetailPage({ params }: Props, session: Awaited<Ret
             </div>
             <h1>{request.courseName}</h1>
             <p className="page-subtitle">{request.company} · {request.team} · 접수 {createdAt}</p>
+            {!request.slackThreadTs && (
+              <p className="page-subtitle" style={{ color: "#8a4b00" }}>
+                Slack 접수 스레드가 없습니다. 접수 알림이 가지 않았을 수 있고, 배정 알림은 채널에 단독 메시지로 갑니다.
+              </p>
+            )}
           </div>
           <div className="detail-header-actions">
             {request.operationId ? (
