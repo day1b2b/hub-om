@@ -1,5 +1,5 @@
 import type { MongoClient } from "mongodb";
-import { shadowDatabaseName } from "../mongodb/connection";
+import { mongoDatabaseRoleOf } from "../mongodb/connection";
 import { assertPrivacyConfiguration } from "../privacy/crypto";
 import type { DatabaseHealthRepository } from "./databaseHealthRepository";
 
@@ -10,7 +10,8 @@ export class MongoDatabaseHealthRepository implements DatabaseHealthRepository {
 
   constructor(client: MongoClient, databaseName: string) {
     try {
-      this.databaseName = shadowDatabaseName({ MONGODB_SHADOW_DATABASE: databaseName });
+      if (!mongoDatabaseRoleOf(databaseName)) throw new Error("DATABASE_HEALTH_CHECK_FAILED");
+      this.databaseName = databaseName;
       this.client = client;
     } catch { throw new Error("DATABASE_HEALTH_CHECK_FAILED"); }
   }
