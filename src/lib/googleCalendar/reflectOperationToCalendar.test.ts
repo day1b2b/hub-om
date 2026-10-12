@@ -31,7 +31,7 @@ mock.module("./calendarEventLinkRepository", { namedExports: {
   listCalendarEventLinks: async () => [...links], saveCalendarEventLink: async () => {},
   deleteMatchingCalendarEventLink: async (link: CalendarEventLink) => { links = links.filter(x => x.eventId !== link.eventId); }
 } });
-const { reflectOperationCreated, reflectOperationUpdated, reflectOperationDelete } = await import("./reflectOperationToCalendar");
+const { reflectOperationCreated, reflectOperationUpdated, reflectOperationDelete, retryOperationCalendarDelete } = await import("./reflectOperationToCalendar");
 const operation = { operationId: "fixture" } as OperationSession;
 const first = { operationId: "fixture", calendarId: "cal", eventId: "first", eventDate: "2026-09-07" };
 beforeEach(() => { exists = true; creates = 0; links = [first]; unresolvedNames = []; deleteFailure = ""; createdAt = null; removed.length = 0; patched.length = 0; notifications.length = 0; });
@@ -51,6 +51,22 @@ test("두 번째 일정 삭제가 실패해도 첫 번째 성공한 매핑은 �
   assert.deepEqual(removed, ["first"]); assert.deepEqual(links.map(x => x.eventId), ["second"]);
   deleteFailure = ""; await reflectOperationDelete("fixture");
   assert.deepEqual(removed, ["first", "second"]); assert.equal(links.length, 0);
+});
+
+test("삭제 재시도는 복원된 회차의 일정을 삭제하지 않는다", async () => {
+  await retryOperationCalendarDelete("fixture");
+  assert.deepEqual(removed, []);
+  assert.deepEqual(links, [first]);
+});
+
+test("삭제 재시도는 실패한 매핑을 보존하고 다음 시도에서 완료한다", async () => {
+  exists = false; deleteFailure = "first";
+  assert.equal(await retryOperationCalendarDelete("fixture"), "pending");
+  assert.deepEqual(links, [first]);
+  deleteFailure = "";
+  assert.equal(await retryOperationCalendarDelete("fixture"), "completed");
+  assert.equal(links.length, 0);
+  assert.equal(await retryOperationCalendarDelete("fixture"), "not-found");
 });
 
 test("매핑 없는 신규 회차는 잠금 도입 후에도 생성된다", async () => {

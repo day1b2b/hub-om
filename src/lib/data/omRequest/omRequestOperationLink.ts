@@ -4,6 +4,7 @@ import { getOperationRepository } from "../operationRepositoryFactory";
 import { syncAssignedOmByOperationId } from "./omRequestLocalRepository";
 import type { CreateOperationInput } from "../operationTypes";
 import type { OmRequest } from "./omRequestTypes";
+import type { notifyOmAssigned } from "../../slack/notifySlack";
 
 const PLACEHOLDER_OM_VALUES = new Set(["", ...Array.from(ASSIGNMENT_NEEDED_VALUES)]);
 
@@ -147,6 +148,20 @@ export async function syncAssignedOmToLinkedOperation(operationId: string, assig
   );
 }
 
-export async function syncLinkedOmRequestAssignment(operationId: string, assignedOm: string | null): Promise<void> {
-  await syncAssignedOmByOperationId(operationId, assignedOm);
+export async function syncLinkedOmRequestAssignment(
+  operationId: string,
+  assignedOm: string | null,
+  previousOm: string | null,
+  notify?: typeof notifyOmAssigned
+): Promise<void> {
+  const updated = await syncAssignedOmByOperationId(operationId, assignedOm);
+  const nextOm = assignedOm?.trim() || null;
+  if (!updated || !nextOm || needsOmAssignment(nextOm) || nextOm === (previousOm?.trim() || null)) return;
+  try {
+    const send = notify ?? (await import("../../slack/notifySlack")).notifyOmAssigned;
+    await send({ company: updated.company, courseName: updated.courseName, assignedOm: nextOm,
+      ld: updated.ld, ldEmail: updated.ldEmail, channel: updated.slackChannel, threadTs: updated.slackThreadTs });
+  } catch {
+    console.error("[om-request] OM_ASSIGNMENT_NOTIFICATION_FAILED");
+  }
 }

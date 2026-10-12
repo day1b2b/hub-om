@@ -196,7 +196,11 @@ export async function reflectOperationDelete(operationId: string): Promise<void>
 export async function retryOperationCalendarDelete(operationId: string): Promise<CalendarDeleteRecovery> {
   try {
     if ((await listCalendarEventLinks(operationId)).length === 0) return "not-found";
-    const result = await withCalendarOperationLock(operationId, () => reflectOperationDeleteUnlocked(operationId));
+    const result = await withCalendarOperationLock(operationId, async () => {
+      // A restored/live session must not lose its events during a cleanup retry.
+      if (await getOperationRepository().getOperationById(operationId)) return "not-found" as const;
+      return reflectOperationDeleteUnlocked(operationId);
+    });
     // A concurrent retry may have completed between the preflight and lock acquisition.
     return result === "not-found" ? "completed" : result;
   }
