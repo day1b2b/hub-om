@@ -97,7 +97,7 @@ test("가려진 감사값으로도 정확한 생성 연결만 미리보고 개�
   for (const value of [actor, requestId, "새 담당", "이전 담당", "round-11"]) assert.ok(!result.token.includes(value));
   assert.deepEqual(writes, []);
 });
-test("확인 후 수동 이름/ID를 모두 변경하고 무관한 같은 과정 회차는 그대로 둔다", async () => {
+test("확인 후 수동 이름/ID를 모두 변경하고 무관한 같은 과정 회차는 그대로 둔다 [spec:om-change R1 | 공통]", async () => {
   operations[1].operationStatus = "DONE";
   const result = await assign((await preview()).token);
   assert.deepEqual(result.operationIds, ["round-11", "round-12"]);
