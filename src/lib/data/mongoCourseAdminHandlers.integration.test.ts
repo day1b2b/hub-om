@@ -4,8 +4,8 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { registerHooks } from "node:module";
 import { mock, test } from "node:test";
 import { MongoClient } from "mongodb";
-import { MongoCourseAdminRepository, prepareMongoCourseAdminStore, COURSE_ADMIN_MODELS } from "./mongoCourseAdminRepository";
-import { MongoRequestAuditRepository, prepareMongoRequestAuditStore, REQUEST_AUDIT_MODELS } from "./mongoRequestAuditRepository";
+import { prepareMongoCourseAdminStore, COURSE_ADMIN_MODELS } from "./mongoCourseAdminRepository";
+import { prepareMongoRequestAuditStore, REQUEST_AUDIT_MODELS } from "./mongoRequestAuditRepository";
 import { MongoOperationStore, operationMongoValidator, type MongoRow } from "./mongoOperationStore";
 import { coachFixtureRow } from "./mongoCoachFixtures";
 import { encodeMongoRuntimeDocument } from "./mongoRuntimeCodec";
@@ -17,6 +17,24 @@ const admin: Session = { user: { email: "course-admin@day1company.co.kr", name: 
 mock.module("@/auth", { namedExports: { auth: async () => actors.getStore() ?? null } });
 let pgCalls = 0;
 mock.module("./prisma", { namedExports: { getPrismaClient: () => { pgCalls++; throw new Error("Unexpected PG access"); } } });
+const removedEvents: string[] = [];
+let failingEvent = "";
+mock.module("../googleCalendar/calendarWriteConfig", { namedExports: {
+  ...await import("../googleCalendar/calendarWriteConfig"),
+  isCalendarWriteEnabled: () => true, resolvePartCalendarId: () => "synthetic-calendar"
+} });
+mock.module("../googleCalendar/calendarWriteClient", { namedExports: {
+  ...await import("../googleCalendar/calendarWriteClient"),
+  deleteEvent: async (_calendarId: string, eventId: string) => {
+    if (eventId === failingEvent) throw new Error("Synthetic Calendar failure");
+    removedEvents.push(eventId);
+  },
+  insertOperationEvent: async () => { throw new Error("Unexpected Calendar insert"); },
+  patchEvent: async () => { throw new Error("Unexpected Calendar patch"); },
+  readEventAttendees: async () => []
+} });
+const { prepareMongoCalendarRuntimeStore } = await import("./mongoCalendarRuntime");
+const { openMongoCourseDeletionRuntime } = await import("./courseDeletionComposition");
 const hook = registerHooks({ resolve(specifier, context, next) {
   return next(specifier === "next/server" || specifier === "next/navigation" ? `${specifier}.js` : specifier, context);
 } });
@@ -43,8 +61,9 @@ test("course admin actual handlers retain authorization, DTO and audit boundarie
   try {
     await client.connect(); connected = true;
     await prepareMongoCourseAdminStore(options); await prepareMongoRequestAuditStore(options);
+    await prepareMongoCalendarRuntimeStore({ ...options, processSequenceHighWater: 1000 });
     const store = new MongoOperationStore(options, [...new Set([...COURSE_ADMIN_MODELS, ...REQUEST_AUDIT_MODELS])]);
-    const scope = { courseAdmin: await MongoCourseAdminRepository.open(options), requestActivity: await MongoRequestAuditRepository.open(options) };
+    const scope = (await openMongoCourseDeletionRuntime(options)).repositories;
     const run = <T>(work: () => Promise<T>, actor: Session | null = admin) => runWithDataRepositories(scope, () => actors.run(actor, work));
     const seed = async (model: string, values: MongoRow) => {
       const row = coachFixtureRow(model, values); await store.collection(model).insertOne(encodeMongoRuntimeDocument(model, row)); return row;
@@ -77,8 +96,8 @@ test("course admin actual handlers retain authorization, DTO and audit boundarie
       assert.equal((await run(() => removal.DELETE(del(), params(randomUUID())))).status, 404);
     });
     await suite.test("incomplete scope fails before writes, business errors never fall back", async () => {
-      await assert.rejects(runWithDataRepositories({ courseAdmin: scope.courseAdmin }, () => actors.run(admin, () => removal.DELETE(del(), params(id)))), /DATA_REPOSITORY_NOT_CONFIGURED: requestActivity/);
-      await assert.rejects(runWithDataRepositories({ requestActivity: scope.requestActivity }, () => actors.run(admin, () => removal.DELETE(del(), params(id)))), /DATA_REPOSITORY_NOT_CONFIGURED: courseAdmin/);
+      assert.throws(() => runWithDataRepositories({ courseAdmin: scope.courseAdmin }, () => actors.run(admin, () => removal.DELETE(del(), params(id)))), /CALENDAR_SCOPE_MISMATCH/);
+      assert.throws(() => runWithDataRepositories({ requestActivity: scope.requestActivity }, () => actors.run(admin, () => removal.DELETE(del(), params(id)))), /CALENDAR_SCOPE_MISMATCH/);
       const changes = store.collection("ActivityChange");
       await store.db.command({ collMod: changes.collectionName, validator: { $and: [operationMongoValidator("ActivityChange"), { targetType: { $ne: "operation_sessions" } }] } });
       try { await assert.rejects(run(() => removal.DELETE(del(), params(id)))); }
@@ -88,7 +107,7 @@ test("course admin actual handlers retain authorization, DTO and audit boundarie
     });
     await suite.test("DELETE records encrypted actor and atomic change, preserves course and prior deletion, repeats with zero", async () => {
       const response = await run(() => removal.DELETE(del(), params(id.toUpperCase())));
-      assert.deepEqual(await response.json(), { ok: true, deletedCount: 1 });
+      assert.deepEqual(await response.json(), { ok: true, deletedCount: 1, calendarCleanup: "completed" });
       const requestId = response.headers.get("X-Request-Id"); assert.ok(requestId);
       const changes = await store.scan("ActivityChange", { requestId });
       assert.equal(changes.length, 1); assert.equal(changes[0].action, "delete"); assert.equal(changes[0].targetId, active.id);
@@ -98,17 +117,38 @@ test("course admin actual handlers retain authorization, DTO and audit boundarie
       assert.ok(row?.deletedAt); assert.equal(row?.deletedBy, admin.user.email);
       assert.equal(await store.collection("Course").countDocuments({ _id: id }), 1);
       assert.deepEqual(await store.collection("OperationSession").findOne({ _id: alreadyDeleted.id as string }), beforeDeleted);
-      assert.deepEqual(await (await run(() => removal.DELETE(del(), params(id)))).json(), { ok: true, deletedCount: 0 });
+      assert.deepEqual(await (await run(() => removal.DELETE(del(), params(id)))).json(), { ok: true, deletedCount: 0, calendarCleanup: "completed" });
       assert.equal(await store.collection("ActivityChange").countDocuments(), 1);
       assert.equal((await (await run(() => lookup.GET(get("PRC-533")))).json()).course.activeSessionCount, 0);
     });
     await suite.test("request audit failure remains best effort and logs only fixed text", async () => {
       const messages: unknown[][] = [], logger = mock.method(console, "error", (...args: unknown[]) => { messages.push(args); });
+      const auditFailure = mock.method(scope.requestActivity, "recordRequest", async () => { throw new Error("Synthetic private failure"); });
       try {
-        const response = await runWithDataRepositories({ ...scope, requestActivity: { recordRequest: async () => { throw new Error("Synthetic private failure"); } } }, () => actors.run(admin, () => removal.DELETE(del(), params(id))));
-        assert.equal(response.status, 200); assert.deepEqual(await response.json(), { ok: true, deletedCount: 0 });
+        const response = await run(() => removal.DELETE(del(), params(id)));
+        assert.equal(response.status, 200); assert.deepEqual(await response.json(), { ok: true, deletedCount: 0, calendarCleanup: "completed" });
         assert.deepEqual(messages, [["[activity] API request log write failed"]]);
-      } finally { logger.mock.restore(); }
+      } finally { logger.mock.restore(); auditFailure.mock.restore(); }
+    });
+    await suite.test("course cleanup preserves failed links for retry and never touches another course", async () => {
+      const otherCourse = await seed("Course", { companyId: company.id, name: "Synthetic other course", processSeq: 534 });
+      const otherSession = await seed("OperationSession", { courseRecordId: otherCourse.id });
+      const calendarStore = new MongoOperationStore(options, ["CalendarEventLink"]);
+      for (const [row, eventId] of [[active, "synthetic-first"], [alreadyDeleted, "synthetic-retry"], [otherSession, "synthetic-live"]] as const) {
+        const link = coachFixtureRow("CalendarEventLink", { operationId: row.operationId, calendarId: "synthetic-calendar", eventId, eventDate: new Date("2099-01-01") });
+        await calendarStore.collection("CalendarEventLink").insertOne(encodeMongoRuntimeDocument("CalendarEventLink", link));
+      }
+      failingEvent = "synthetic-retry";
+      const pending = await run(() => removal.DELETE(del(), params(id)));
+      assert.deepEqual(await pending.json(), { ok: true, deletedCount: 0, calendarCleanup: "pending" });
+      assert.deepEqual(removedEvents, ["synthetic-first"]);
+      assert.deepEqual((await calendarStore.scan("CalendarEventLink")).map(row => row.eventId).sort(), ["synthetic-live", "synthetic-retry"]);
+      failingEvent = "";
+      const completed = await run(() => removal.DELETE(del(), params(id)));
+      assert.deepEqual(await completed.json(), { ok: true, deletedCount: 0, calendarCleanup: "completed" });
+      assert.deepEqual(removedEvents, ["synthetic-first", "synthetic-retry"]);
+      assert.deepEqual((await calendarStore.scan("CalendarEventLink")).map(row => row.eventId), ["synthetic-live"]);
+      assert.equal((await store.one("OperationSession", { _id: otherSession.id as string }))?.deletedAt, null);
     });
     const raw = JSON.stringify(await Promise.all(store.models.map(model => store.collection(model).find({}).toArray())));
     for (const marker of [admin.user.email, admin.user.name, "Synthetic confidential course note", "previous@example.invalid"]) assert.ok(!raw.includes(marker));

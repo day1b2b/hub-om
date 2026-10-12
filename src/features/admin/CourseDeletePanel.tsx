@@ -18,6 +18,7 @@ interface LookupResponse {
 
 interface DeleteResponse {
   deletedCount?: number;
+  calendarCleanup?: "pending" | "completed";
   error?: string;
   ok: boolean;
 }
@@ -75,6 +76,9 @@ export function CourseDeletePanel() {
     }
 
     setLastDeletedCount(payload.deletedCount);
+    if (payload.calendarCleanup === "pending") {
+      setError("과정은 삭제됐지만 캘린더 일정 정리가 남았습니다. 같은 과정ID를 조회해 다시 삭제하면 재시도합니다.");
+    }
     setCourse(null);
     setProcessIdInput("");
     setIsDeleting(false);

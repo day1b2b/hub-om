@@ -4,6 +4,12 @@ import { getPrismaClient } from "./prisma";
 
 /** Existing administrator queries, preserving the production PostgreSQL path. */
 export class PrismaCourseAdminRepository implements CourseAdminRepository {
+  async listDeletedCourseOperationIds(courseId: string): Promise<string[]> {
+    const rows = await getPrismaClient().operationSession.findMany({
+      where: { courseRecordId: courseId, deletedAt: { not: null } }, select: { operationId: true }
+    });
+    return rows.map(row => row.operationId);
+  }
   async findCourse(processSeq: number) {
     const course = await getPrismaClient().course.findUnique({
       where: { processSeq },
