@@ -1,3 +1,7 @@
+import { recoverMongoCoachCatalog } from "./mongoCoachCatalogRecovery";
+import { prepareMongoReadStore } from "./mongoReadStore";
+import { MONGO_CHANGES_RUNTIME_MODELS } from "./mongoChangesRuntime";
+import { MONGO_COACH_MANAGEMENT_RUNTIME_MODELS } from "./mongoCoachManagementRuntime";
 import assert from "node:assert/strict";
 import { randomBytes, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -53,6 +57,8 @@ const hooks = registerHooks({
 const fields = await import("../../app/api/master/fields/route");
 const curriculums = await import("../../app/api/master/curriculums/route");
 const deleted = await import("../../app/api/admin/deleted-coaches/route");
+const coaches = await import("../../app/api/coaches/route");
+const registration = await import("../../app/api/admin/schedule-registration/[yearMonth]/route");
 const { default: page } = await import("../../app/coaches/admin/page");
 hooks.deregister();
 
@@ -84,6 +90,8 @@ test("coach admin page and APIs use prepared Mongo composition", { skip: !uri, t
   const namespace = `shadow_coach_admin_${randomBytes(6).toString("hex")}`;
   const environment = {
     COACH_ADMIN_BACKEND: "mongodb-shadow",
+    COACH_MANAGEMENT_BACKEND: "mongodb-shadow",
+    CHANGES_BACKEND: "mongodb-shadow",
     MONGODB_URI: uri!,
     MONGODB_SHADOW_DATABASE: databaseName,
     MONGODB_SHADOW_NAMESPACE: namespace,
@@ -102,7 +110,23 @@ test("coach admin page and APIs use prepared Mongo composition", { skip: !uri, t
     await client.connect();
     const options = { client, databaseName, namespace, allowShadowWrites: true as const };
     await prepareMongoCoachAdminRuntime(options);
+    await prepareMongoReadStore(options, [...new Set([...MONGO_CHANGES_RUNTIME_MODELS, ...MONGO_COACH_MANAGEMENT_RUNTIME_MODELS])]);
     const store = new MongoOperationStore(options, MONGO_COACH_ADMIN_RUNTIME_MODELS);
+    await store.db.collection(`${namespace}_CoachCatalogGuard`).drop();
+    const missingSnapshot = await snapshot(client, databaseName);
+    const affected = [
+      () => page({ searchParams: Promise.resolve({}) }),
+      () => coaches.GET(request("GET")),
+      () => registration.GET(request("GET"), { params: Promise.resolve({ yearMonth: "2099-12" }) }),
+    ];
+    for (const run of affected) await assert.rejects(run, /COMPOSITION_FAILED/);
+    assert.deepEqual(await snapshot(client, databaseName), missingSnapshot);
+    assert.deepEqual(await recoverMongoCoachCatalog(options), { ready: false, missing: true, created: false });
+    await recoverMongoCoachCatalog(options, true);
+    assert.ok(isValidElement(await affected[0]()));
+    assert.equal((await coaches.GET(request("GET"))).status, 200);
+    assert.equal((await registration.GET(request("GET"), { params: Promise.resolve({ yearMonth: "2099-12" }) })).status, 200);
+    assert.equal(pgCalls, 0);
     const seedCoach = async (deletedAt: Date) => {
       const row = coachFixtureRow("Coach", {
         id: randomUUID(),
