@@ -5,7 +5,7 @@ import type { MongoCalendarOptions } from "./mongoCalendarOperationLock";
 import { CALENDAR_PERSISTENCE_MODELS } from "./mongoCalendarPersistence";
 import { IMPORT_PROMOTION_MODELS } from "./mongoImportPromotionRepository";
 import { MongoOmAssignmentRepository, OM_ASSIGNMENT_MODELS, prepareMongoOmAssignmentStore } from "./mongoOmAssignmentRepository";
-import { MongoOmRequestRepository, OM_REQUEST_MODELS, prepareMongoOmRequestStore } from "./mongoOmRequestRepository";
+import { OM_REQUEST_MODELS, prepareMongoOmRequestStore } from "./mongoOmRequestRepository";
 import { MongoOperationStore, OPERATION_MODELS } from "./mongoOperationStore";
 import { REQUEST_AUDIT_MODELS } from "./mongoRequestAuditRepository";
 import { TEAM_READ_MODELS } from "./mongoReadStore";
@@ -49,16 +49,17 @@ export async function openMongoOmRequestWriteRuntime(options: Options): Promise<
   try {
     if (options.allowShadowWrites !== true) throw new Error("gate");
     new MongoOperationStore(options, MONGO_OM_REQUEST_WRITE_MODELS);
-    const [calendar, omAssignment, omRequests] = await Promise.all([
+    const [calendar, omAssignment] = await Promise.all([
       openMongoCalendarRuntime({ ...options, reflectOperations: true }),
-      MongoOmAssignmentRepository.open(options), MongoOmRequestRepository.open(options),
+      MongoOmAssignmentRepository.open(options),
     ]);
     const omAssignmentCalendar: OmAssignmentCalendar = Object.freeze({ reflectOperationUpdated: (operation: Parameters<OmAssignmentCalendar["reflectOperationUpdated"]>[0]) => options.omAssignmentCalendar.reflectOperationUpdated(operation) });
     const omAssignmentNotifier: OmAssignmentNotifier = Object.freeze({ notifyAssigned: (input: Parameters<OmAssignmentNotifier["notifyAssigned"]>[0]) => options.omAssignmentNotifier.notifyAssigned(input) });
     const omCustomTools: OmCustomToolsRepository = Object.freeze({ list: () => options.omCustomTools.list(), add: (names: string[]) => options.omCustomTools.add(names) });
     const omRequestNotifier: OmRequestNotifier = Object.freeze({ notifyCreated: (input: Parameters<OmRequestNotifier["notifyCreated"]>[0]) => options.omRequestNotifier.notifyCreated(input) });
+    // Keep the omRequests instance already registered with the Calendar scope.
     const repositories: MongoOmRequestWriteRepositories = Object.freeze({ ...calendar.repositories, omAssignment,
-      omAssignmentCalendar, omAssignmentNotifier, omCustomTools, omRequestNotifier, omRequests });
+      omAssignmentCalendar, omAssignmentNotifier, omCustomTools, omRequestNotifier });
     registerDataRepositoryScope(repositories);
     return Object.freeze({ repositories, run<T>(work: () => T): T {
       return runWithDataRepositories(repositories, () => runWithLockedRepositoryScope(work));
