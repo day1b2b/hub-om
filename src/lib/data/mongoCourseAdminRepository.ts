@@ -120,4 +120,12 @@ export class MongoCourseAdminRepository implements CourseAdminRepository {
       return count;
     });
   }
+
+  async listDeletedCourseOperationIds(courseId: string): Promise<string[]> {
+    const id = canonicalCourseId(courseId);
+    return this.transaction(30_000, async session => {
+      const rows = await this.store.scan("OperationSession", { courseRecordId: id, deletedAt: { $ne: null } }, session);
+      return rows.map(row => String(row.operationId));
+    });
+  }
 }
