@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { resolveEditableInfoTargets } from "./editableInfoTargets";
 
 type SaveState = "idle" | "saving" | "failed";
+const OM_NOTIFICATION_FAILED_MESSAGE = "저장됐지만 Slack 배정 알림이 가지 않았습니다. 담당 OM에게 직접 알려주세요.";
 
 interface EditableInfoItemField {
   name: string;
@@ -41,6 +42,7 @@ export function EditableInfoItem({ displayValue, fields, label, operationId, ope
             수정
           </button>
         </div>
+        {omNotificationFailed ? <span className="info-item-save-error" role="alert">{OM_NOTIFICATION_FAILED_MESSAGE}</span> : null}
       </div>
     );
   }
@@ -119,11 +121,11 @@ export function EditableInfoItem({ displayValue, fields, label, operationId, ope
         </div>
       </div>
       {saveState === "failed" ? <span className="info-item-save-error">저장하지 못했습니다.</span> : null}
-      {omNotificationFailed ? <span className="info-item-save-error">저장됐지만 Slack 배정 알림이 가지 않았습니다. 담당 OM에게 직접 알려주세요.</span> : null}
     </div>
   );
 
   function startEditing() {
+    setOmNotificationFailed(false);
     setDrafts(toDraftValues(fields));
     setSaveState("idle");
     setIsEditing(true);
