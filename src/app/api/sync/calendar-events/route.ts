@@ -1,3 +1,4 @@
+import { runOperationWriteRequest } from "@/lib/data/operationWriteComposition";
 import { calendarErrorMessage } from "@/lib/googleCalendar/calendarErrors";
 import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
@@ -52,6 +53,6 @@ async function requireCalendarSyncAccess(request: Request): Promise<string> {
   return session.user?.email ?? "admin-session";
 }
 
-export const GET = withActivity("/api/sync/calendar-events", "GET", activityGET);
+export const GET = withActivity("/api/sync/calendar-events", "GET", activityGET, runOperationWriteRequest);
 
-export const POST = withActivity("/api/sync/calendar-events", "POST", activityPOST);
+export const POST = withActivity("/api/sync/calendar-events", "POST", activityPOST, runOperationWriteRequest);

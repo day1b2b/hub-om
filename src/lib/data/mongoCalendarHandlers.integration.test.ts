@@ -15,7 +15,7 @@ import { registerHooks } from "node:module";
 import { mock, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { inspect } from "node:util";
-import { Collection, MongoClient, MongoServerError } from "mongodb";
+import { Collection, Db, MongoClient, MongoServerError } from "mongodb";
 import ts from "typescript";
 import { activityContext } from "../activity/context";
 import { runWithDataRepositories, getDataRepositoryOverride, type DataRepositories } from "./dataRepositoryContext";
@@ -328,10 +328,10 @@ test("Calendar actual API: native runtime, independent synthetic remote and lite
 
     await suite.test("F2 driver read fault at initial Calendar link scan: promotion commits, 200 omits calendar, no OAuth", async () => {
       resetAccessTokenCache(); const f = await fixture(), p: Probe = { paths: [] }; let faults = 0;
-      const find = Collection.prototype.find;
-      const injection = mock.method(Collection.prototype, "find", function (this: Collection, ...args: Parameters<Collection["find"]>) {
-        if (this.collectionName === f.store.collection("CalendarEventLink").collectionName) { faults++; throw new Error(`${PRIVATE_MARKER}-driver-read`); }
-        return Reflect.apply(find, this, args);
+      const command = Db.prototype.command;
+      const injection = mock.method(Db.prototype, "command", function (this: Db, ...args: Parameters<Db["command"]>) {
+        if (this.databaseName === databaseName && args[0].find === f.store.collection("CalendarEventLink").collectionName) { faults++; throw new Error(`${PRIVATE_MARKER}-driver-read`); }
+        return Reflect.apply(command, this, args);
       });
       let response: Response;
       try { response = await promote(f, p); } finally { injection.mock.restore(); }
@@ -508,6 +508,11 @@ test("Calendar actual API: native runtime, independent synthetic remote and lite
       resetAccessTokenCache(); const f = await fixture({ reflecting: true, singleDate: true }); await success(f, await promote(f), 1);
       const event = f.remote.active()[0]; event.status = "cancelled";
       const before = await f.raw(); const mutationCount = f.remote.calls("event").filter(call => call.method !== "GET").length;
+      // Exercise the actual environment composition, not just an injected test scope.
+      const compositionEnv = { OPERATION_WRITE_BACKEND: "mongodb-shadow", MONGODB_URI: uri!, MONGODB_SHADOW_DATABASE: databaseName, MONGODB_SHADOW_NAMESPACE: f.options.namespace };
+      const previous = new Map(Object.keys(compositionEnv).map(key => [key, process.env[key]]));
+      Object.assign(process.env, compositionEnv);
+      try {
       const preview = await api(f, reverseAPI.GET, REVERSE_ROUTE, "GET", undefined, null, true); assert.equal(preview.status, 200);
       const plan = await preview.json(); assert.equal(plan.enabled, true); assert.deepEqual(plan.items, []); assert.equal(plan.calendars[0].linkedEvents, 1);
       await requestAudit(f, preview, REVERSE_ROUTE, null, "GET", true);
@@ -515,6 +520,34 @@ test("Calendar actual API: native runtime, independent synthetic remote and lite
       const result = await applied.json(); assert.equal(result.appliedCount, 0); assert.equal(result.failedCount, 0);
       await requestAudit(f, applied, REVERSE_ROUTE, null, "POST", true); assert.deepEqual(await f.raw(), before);
       assert.equal(f.remote.calls("event").filter(call => call.method !== "GET").length, mutationCount); clean();
+      process.env.MONGODB_SHADOW_NAMESPACE = "shadow_incomplete_reverse";
+      for (const method of ["GET", "POST"] as const) {
+        await assert.rejects(api(f, reverseAPI[method], REVERSE_ROUTE, method, undefined, null, true), /OPERATION_WRITE_COMPOSITION_FAILED/);
+      }
+      assert.equal(pgAdapterCalls, 0); assert.equal(pgPoolCalls, 0);
+      process.env.MONGODB_SHADOW_NAMESPACE = f.options.namespace;
+      const retry = await api(f, reverseAPI.POST, REVERSE_ROUTE, "POST", undefined, null, true);
+      assert.equal(retry.status, 200); assert.equal((await retry.json()).appliedCount, 0);
+      assert.deepEqual(await f.raw(), before);
+      event.status = "confirmed";
+      event.start = { date: "2099-12-03" }; event.end = { date: "2099-12-04" };
+      event.etag = '"synthetic-human-edit"';
+      event.updated = "2099-12-01T01:00:00.000Z";
+      const movedPreview = await api(f, reverseAPI.GET, REVERSE_ROUTE, "GET", undefined, null, true);
+      assert.equal((await movedPreview.json()).counts["운영현황 반영"], 1);
+      const moved = await api(f, reverseAPI.POST, REVERSE_ROUTE, "POST", undefined, null, true);
+      const movedBody = await moved.json();
+      assert.equal(movedBody.appliedCount, 1); assert.equal(movedBody.failedCount, 0);
+      const operation = await f.store.one("OperationSession", { _id: R_ID });
+      assert.deepEqual(operation?.educationDates, [date("2099-12-03")]);
+      const links = await f.store.scan("CalendarEventLink");
+      assert.equal((links[0].eventDate as Date).toISOString().slice(0, 10), "2099-12-03");
+      const movedRetry = await api(f, reverseAPI.POST, REVERSE_ROUTE, "POST", undefined, null, true);
+      assert.equal((await movedRetry.json()).appliedCount, 0);
+      assert.equal(pgAdapterCalls, 0); assert.equal(pgPoolCalls, 0);
+      } finally {
+        for (const [key, value] of previous) { if (value === undefined) delete process.env[key]; else process.env[key] = value; }
+      }
     });
 
     await suite.test("S5 transport subset: actual Calendar API keeps suffix and unknown Korean Google response bodies private", async () => {
