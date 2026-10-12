@@ -153,15 +153,17 @@ export async function syncLinkedOmRequestAssignment(
   assignedOm: string | null,
   previousOm: string | null,
   notify?: typeof notifyOmAssigned
-): Promise<void> {
+): Promise<"sent" | "sent-without-thread" | "failed" | "not-needed"> {
   const updated = await syncAssignedOmByOperationId(operationId, assignedOm);
   const nextOm = assignedOm?.trim() || null;
-  if (!updated || !nextOm || needsOmAssignment(nextOm) || nextOm === (previousOm?.trim() || null)) return;
+  if (!updated || !nextOm || needsOmAssignment(nextOm) || nextOm === (previousOm?.trim() || null)) return "not-needed";
   try {
     const send = notify ?? (await import("../../slack/notifySlack")).notifyOmAssigned;
-    await send({ company: updated.company, courseName: updated.courseName, assignedOm: nextOm,
+    const delivered = await send({ company: updated.company, courseName: updated.courseName, assignedOm: nextOm,
       ld: updated.ld, ldEmail: updated.ldEmail, channel: updated.slackChannel, threadTs: updated.slackThreadTs });
+    return delivered === "channel" ? "sent-without-thread" : "sent";
   } catch {
     console.error("[om-request] OM_ASSIGNMENT_NOTIFICATION_FAILED");
+    return "failed";
   }
 }

@@ -136,7 +136,7 @@ export function AssignForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: request.id, assignedOm: preview.requestedOm, confirmationToken: preview.token })
       });
-      const body = await res.json().catch(() => null) as { error?: string } | null;
+      const body = await res.json().catch(() => null) as { error?: string; notification?: string } | null;
       if (res.status === 409) {
         setPreview(null);
         throw new Error(`${body?.error ?? "배정 정보가 변경되었거나 확인이 만료되었습니다."} 저장 또는 배정 취소를 다시 눌러 현재 회차와 담당자를 확인해주세요.`);
@@ -144,6 +144,8 @@ export function AssignForm({
       if (!res.ok) throw new Error(body?.error ?? "배정을 저장하지 못했습니다. 다시 시도해주세요.");
       setOm(preview.nextOm ?? "");
       setPreview(null);
+      // Saved either way; only the Slack reply is missing, so keep the form and show what to do.
+      if (body?.notification === "failed") setError("배정은 저장됐지만 Slack 배정 알림이 가지 않았습니다. 담당 OM에게 직접 알려주세요.");
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "배정을 저장하지 못했습니다.");
