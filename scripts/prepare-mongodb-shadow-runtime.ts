@@ -1,3 +1,8 @@
+import { openMongoCoachAdminRuntime } from "../src/lib/data/mongoCoachAdminRuntime";
+import { openMongoCoachManagementRuntime } from "../src/lib/data/mongoCoachManagementRuntime";
+import { openMongoChangesRuntime } from "../src/lib/data/mongoChangesRuntime";
+import { MongoOperationStore } from "../src/lib/data/mongoOperationStore";
+import { prepareMongoCoachCatalogGuard } from "../src/lib/data/mongoCoachCatalogGuard";
 import { MongoClient } from "mongodb";
 import { mongoModelNames } from "../src/lib/migration/mongoDocumentCodec";
 import { configuredMongoUri, mongoConnectionOptions, shadowDatabaseName } from "../src/lib/mongodb/connection";
@@ -24,6 +29,7 @@ async function main() {
     // collection and TeamUser write guard required by production open-only
     // runtimes.
     await prepareMongoCalendarRuntimeStore({ ...options, processSequenceHighWater });
+    await prepareMongoCoachCatalogGuard(new MongoOperationStore(options), true);
     await openMongoOperationWriteRuntime(options);
     await openMongoOmRequestWriteRuntime({ ...options,
       omAssignmentCalendar: { async reflectOperationUpdated() {} },
@@ -31,6 +37,9 @@ async function main() {
       omCustomTools: { list: () => [], add() {} },
       omRequestNotifier: { async notifyCreated() { return null; } },
     });
+    await openMongoCoachAdminRuntime(options);
+    await openMongoCoachManagementRuntime(options);
+    await openMongoChangesRuntime(options);
     console.log(JSON.stringify({ status: "shadow-runtime-ready", modelCount: mongoModelNames.length, namespace, readyForCutover: false }));
   } finally {
     await client.close();
