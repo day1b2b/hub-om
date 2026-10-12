@@ -11,4 +11,5 @@ export interface CourseAdminRepository {
   findCourse(processSeq: number): Promise<CourseAdminLookup | null>;
   /** null means no course; zero is a successful no-op, including repeated deletion. */
   softDeleteCourseSessions(courseId: string, deletedBy: string | null): Promise<number | null>;
+  listDeletedCourseOperationIds(courseId: string): Promise<string[]>;
 }
