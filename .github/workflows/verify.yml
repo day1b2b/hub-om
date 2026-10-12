@@ -39,6 +39,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # 기획서(specs/*.spec.md) 규칙 삭제·변경, 예외·알려진 빈칸 추가는 behavior-spec-approved 라벨이 필요하다.
+      - name: Behavior spec change review gate
+        if: github.event_name == 'pull_request'
+        env:
+          SPEC_GUARD_BASE: origin/${{ github.base_ref }}
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: node scripts/spec/check-spec-change-review.mjs
+
+      - name: Behavior spec tool tests
+        run: node --test scripts/spec/spec.test.mjs
+
       - name: Validate Prisma schema
         env:
           DATABASE_URL: postgresql://verify:verify@localhost:5432/verify?schema=public
@@ -68,6 +79,13 @@ jobs:
           DATABASE_URL: postgresql://verify:verify@localhost:5432/verify?schema=public
           OPERATION_DATA_SOURCE: local
         run: npm test
+
+      # 규칙×입구 표: 빈칸(❌), 분류 안 된 입구, specs/STATUS.md 갱신 누락이면 실패한다.
+      - name: Behavior spec status
+        env:
+          DATABASE_URL: postgresql://verify:verify@localhost:5432/verify?schema=public
+          OPERATION_DATA_SOURCE: local
+        run: node scripts/spec/spec-status.mjs --check
 
       - name: Build
         env:
