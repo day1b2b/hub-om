@@ -4,11 +4,14 @@ import { auth } from "@/auth";
 import { isAllowedWorkspaceEmail } from "@/lib/auth/workspaceAccess";
 import { getPrismaClient } from "@/lib/data/prisma";
 import { activityContext, type ActivityContext } from "./context";
+import { isFrozenRequest, isWriteFreezeEnabled, writeFreezeResponse } from "./writeFreeze";
 import { getDataRepositoryOverride, type RequestActivityRepository } from "../data/dataRepositoryContext";
 
 let lastPruned = 0;
 
 async function recordRequest(context: ActivityContext, status: number, durationMs: number, override?: RequestActivityRepository) {
+  // Request logs are writes too; skip them so a frozen database stays unchanged.
+  if (isWriteFreezeEnabled()) return;
   if (override) {
     try { await override.recordRequest(context, status, durationMs); }
     catch { console.error("[activity] API request log write failed"); }
@@ -94,5 +97,10 @@ export function withActivity<Args extends unknown[]>(
       }
     });
   };
-  return (...args: Args): Promise<Response> => compose ? compose(() => tracked(...args)) : tracked(...args);
+  return (...args: Args): Promise<Response> => {
+    // Checked before compose so a frozen save never opens a database runtime.
+    const requestMethod = args[0] instanceof Request ? args[0].method : method;
+    if (isWriteFreezeEnabled() && isFrozenRequest(route, requestMethod)) return Promise.resolve(writeFreezeResponse());
+    return compose ? compose(() => tracked(...args)) : tracked(...args);
+  };
 }

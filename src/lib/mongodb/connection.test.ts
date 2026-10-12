@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { configuredMongoUri, diagnoseMongoConnection, shadowDatabaseName } from "./connection";
+import { assertTestMongoDatabase, configuredMongoUri, diagnoseMongoConnection, shadowDatabaseName } from "./connection";
 import { MongoOperationStore } from "../data/mongoOperationStore";
 
 test("URI alone cannot select a writable shadow database or alter PostgreSQL", () => {
@@ -17,10 +17,29 @@ test("explicit hyphenated validation database is accepted without opening other 
     assert.equal(shadowDatabaseName({ MONGODB_SHADOW_DATABASE: name }), name);
     assert.equal(new MongoOperationStore({ client: client as never, databaseName: name, namespace: "shadow_fixture" }).db.databaseName, name);
   }
-  for (const name of ["hub-om", "hub-om-shadow-production", "hub-om-shadow-validation-extra", "axflo"]) {
+  assert.throws(() => shadowDatabaseName({ MONGODB_SHADOW_DATABASE: "hub-om" }), /EXPLICIT_SHADOW/);
+  for (const name of ["hub-om-shadow-production", "hub-om-shadow-validation-extra", "axflo"]) {
     assert.throws(() => shadowDatabaseName({ MONGODB_SHADOW_DATABASE: name }), /EXPLICIT_SHADOW/);
     assert.throws(() => new MongoOperationStore({ client: client as never, databaseName: name, namespace: "shadow_fixture" }), /SHADOW_DATABASE_REQUIRED/);
   }
+});
+test("explicit production role accepts only production databases", () => {
+  const env = { MONGODB_DATABASE_ROLE: "production" };
+  for (const name of ["hub-om", "hub-om-shadow-validation"]) assert.equal(shadowDatabaseName({ ...env, MONGODB_SHADOW_DATABASE: name }), name);
+  for (const name of ["hub_om_shadow_rehearsal", "hub-om-extra", "admin", ""]) assert.throws(() => shadowDatabaseName({ ...env, MONGODB_SHADOW_DATABASE: name }), /EXPLICIT_SHADOW/);
+});
+test("explicit test role rejects every production database", () => {
+  const env = { MONGODB_DATABASE_ROLE: "test" };
+  assert.equal(shadowDatabaseName({ ...env, MONGODB_SHADOW_DATABASE: "hub_om_shadow_rehearsal" }), "hub_om_shadow_rehearsal");
+  for (const name of ["hub-om", "hub-om-shadow-validation"]) {
+    assert.throws(() => shadowDatabaseName({ ...env, MONGODB_SHADOW_DATABASE: name }), /PRODUCTION_DATABASE_REJECTED_FOR_TEST/);
+    assert.throws(() => assertTestMongoDatabase(name), /PRODUCTION_DATABASE_REJECTED_FOR_TEST/);
+  }
+  assert.throws(() => shadowDatabaseName({ ...env, MONGODB_SHADOW_DATABASE: "axflo" }), /EXPLICIT_SHADOW/);
+  assert.equal(assertTestMongoDatabase("hub_om_shadow_rehearsal"), "hub_om_shadow_rehearsal");
+});
+test("unknown database role fails closed", () => {
+  for (const role of ["prod", "staging", "PRODUCTION"]) assert.throws(() => shadowDatabaseName({ MONGODB_DATABASE_ROLE: role, MONGODB_SHADOW_DATABASE: "hub-om-shadow-validation" }), /MONGODB_DATABASE_ROLE_INVALID/);
 });
 test("diagnostic only issues ping/hello, sanitizes output and closes client", async () => {
   const commands: unknown[] = []; let closed = false;
