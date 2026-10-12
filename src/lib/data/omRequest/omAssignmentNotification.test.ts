@@ -15,12 +15,13 @@ test("operation-detail assignment and reassignment notify the original thread on
   } } as OmRequestRepository;
   await runWithDataRepositories({ omRequests }, async () => {
     const notify = async (input: unknown) => { messages.push(input); };
-    await syncLinkedOmRequestAssignment("operation", "First", null, notify);
-    await syncLinkedOmRequestAssignment("operation", "Second", "First", notify);
+    assert.equal(await syncLinkedOmRequestAssignment("operation", "First", null, async (input: unknown) => { messages.push(input); return "channel" as const; }), "sent-without-thread");
+    assert.equal(await syncLinkedOmRequestAssignment("operation", "Second", "First", async (input: unknown) => { messages.push(input); return "thread" as const; }), "sent");
     assert.equal(messages.length, 2);
     assert.deepEqual(messages[1], { company: "Synthetic", courseName: "Synthetic course", assignedOm: "Second",
       ld: "LD", ldEmail: "ld@example.invalid", channel: "CHANNEL", threadTs: "123.456" });
-    await syncLinkedOmRequestAssignment("operation", " Second ", "Second", notify);
+    assert.equal(await syncLinkedOmRequestAssignment("operation", "Fourth", "Second", async () => { throw new Error("SLACK_OM_ASSIGNMENT_NOT_DELIVERED"); }), "failed");
+    assert.equal(await syncLinkedOmRequestAssignment("operation", " Second ", "Second", notify), "not-needed");
     await syncLinkedOmRequestAssignment("operation", null, "Second", notify);
     await syncLinkedOmRequestAssignment("operation", "배정필요", "Second", notify);
     exists = false;
