@@ -7,6 +7,7 @@ import { deleteOmRequest, getOmRequest, updateOmRequest } from "@/lib/data/omReq
 import { isOmRequestAuthor, type OmRequestInput } from "@/lib/data/omRequest/omRequestTypes";
 import { extractUnknownTools } from "@/lib/data/omRequest/omToolOptions";
 import { runOmRequestWriteRequest } from "@/lib/data/omRequestWriteComposition";
+import { safeErrorDiagnostic } from "@/lib/observability/safeErrorDiagnostic";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -41,11 +42,12 @@ async function activityPATCH(request: Request, { params }: Props) {
     if (!updated) return NextResponse.json({ error: "요청 없음" }, { status: 404 });
     try {
       addCustomTools(extractUnknownTools(updated.tools ?? "", listCustomTools()));
-    } catch {
-      console.error("[om-request] 커스텀 툴 저장 실패(무시):");
+    } catch (error) {
+      console.error("[om-request] 커스텀 툴 저장 실패(무시)", safeErrorDiagnostic(error));
     }
     return NextResponse.json(updated);
-  } catch {
+  } catch (error) {
+    console.error("[om-request] 요청 수정 실패", safeErrorDiagnostic(error));
     return NextResponse.json({ error: "저장 실패" }, { status: 500 });
   }
 }
@@ -69,7 +71,8 @@ async function activityDELETE(_request: Request, { params }: Props) {
     const ok = await deleteOmRequest(id);
     if (!ok) return NextResponse.json({ error: "요청 없음" }, { status: 404 });
     return NextResponse.json({ ok: true });
-  } catch {
+  } catch (error) {
+    console.error("[om-request] 요청 삭제 실패", safeErrorDiagnostic(error));
     return NextResponse.json({ error: "삭제 실패" }, { status: 500 });
   }
 }

@@ -27,11 +27,11 @@ test("deployment manifest matches every production composition selector and .env
 });
 
 test("deployment preflight accepts only one exact declared state", () => {
-  assert.deepEqual(checkMongoDeploymentEnvironment("postgres", {}), { readyFor: "postgres", selectorCount: 35 });
-  assert.deepEqual(checkMongoDeploymentEnvironment("postgres-legacy-pii", { PII_ALLOW_PLAINTEXT_READS: "true" }), { readyFor: "postgres-legacy-pii", selectorCount: 35 });
+  assert.deepEqual(checkMongoDeploymentEnvironment("postgres", {}), { readyFor: "postgres", selectorCount: 35, mongoSelectorCount: 0 });
+  assert.deepEqual(checkMongoDeploymentEnvironment("postgres-legacy-pii", { PII_ALLOW_PLAINTEXT_READS: "true" }), { readyFor: "postgres-legacy-pii", selectorCount: 35, mongoSelectorCount: 0 });
   assert.throws(() => checkMongoDeploymentEnvironment("postgres-legacy-pii", { PII_ALLOW_PLAINTEXT_READS: "false" }), /MONGODB_DEPLOYMENT_CONFIGURATION_INVALID/);
   const mongo = mongoEnvironment();
-  assert.deepEqual(checkMongoDeploymentEnvironment("mongodb-shadow", mongo), { readyFor: "mongodb-shadow", selectorCount: 35 });
+  assert.deepEqual(checkMongoDeploymentEnvironment("mongodb-shadow", mongo), { readyFor: "mongodb-shadow", selectorCount: 35, mongoSelectorCount: 35 });
   for (const patch of [{ ACTIVITY_READ_BACKEND: "postgres" }, { ACTIVITY_READ_BACKEND: "mongo" }, { RUN_DB_MIGRATIONS: "true" },
     { PII_INDEX_KEY: key }, { PII_ACTIVE_KEY_ID: " fixture " }, { PII_ALLOW_PLAINTEXT_READS: "true" }, { MONGODB_URI: "mongodb://127.0.0.1:not-a-port" },
     { MONGODB_URI: "mongodb+srv://example.invalid:27017" }]) {
@@ -40,8 +40,18 @@ test("deployment preflight accepts only one exact declared state", () => {
   assert.throws(() => checkMongoDeploymentEnvironment("postgres", { ACTIVITY_READ_BACKEND: "mongodb-shadow" }), /MONGODB_DEPLOYMENT_CONFIGURATION_INVALID/);
 });
 
+test("runtime preflight accepts a valid staged selector map and rejects incomplete Mongo configuration", () => {
+  assert.deepEqual(checkMongoDeploymentEnvironment("runtime", {}), { readyFor: "runtime", selectorCount: 35, mongoSelectorCount: 0 });
+  const staged = { ...mongoEnvironment(), ...Object.fromEntries(MONGO_RUNTIME_BACKEND_SELECTORS.map(name => [name, "postgres"])),
+    OPERATION_PAGES_BACKEND: "mongodb-shadow", OPERATION_WRITE_BACKEND: "mongodb-shadow" };
+  assert.deepEqual(checkMongoDeploymentEnvironment("runtime", staged), { readyFor: "runtime", selectorCount: 35, mongoSelectorCount: 2 });
+  assert.throws(() => checkMongoDeploymentEnvironment("runtime", { OPERATION_WRITE_BACKEND: "mongodb-shadow" }), /MONGODB_DEPLOYMENT_CONFIGURATION_INVALID/);
+  assert.throws(() => checkMongoDeploymentEnvironment("runtime", { OPERATION_WRITE_BACKEND: "mongo" }), /MONGODB_DEPLOYMENT_CONFIGURATION_INVALID/);
+});
+
 test("deployment preflight requires one exact expectation argument", () => {
   assert.equal(parseMongoDeploymentExpectation(["--expect=postgres"]), "postgres");
+  assert.equal(parseMongoDeploymentExpectation(["--expect=runtime"]), "runtime");
   assert.equal(parseMongoDeploymentExpectation(["--expect=postgres-legacy-pii"]), "postgres-legacy-pii");
   assert.equal(parseMongoDeploymentExpectation(["--expect=mongodb-shadow"]), "mongodb-shadow");
   for (const args of [[], ["--expect=mongo"], ["--expect=postgres", "extra"]]) assert.throws(() => parseMongoDeploymentExpectation(args));
@@ -53,7 +63,7 @@ test("actual deployment check prints only bounded status and fails closed", () =
     env: { PATH: process.env.PATH, NODE_ENV: "test", NODE_NO_WARNINGS: "1", PRIVATE_CANARY: "must-not-print" } });
   const postgres = run("--expect=postgres");
   assert.equal(postgres.status, 0); assert.equal(postgres.stderr, "");
-  assert.deepEqual(JSON.parse(postgres.stdout), { readyFor: "postgres", selectorCount: 35 });
+  assert.deepEqual(JSON.parse(postgres.stdout), { readyFor: "postgres", selectorCount: 35, mongoSelectorCount: 0 });
   const shadow = run("--expect=mongodb-shadow");
   assert.equal(shadow.status, 1); assert.equal(shadow.stdout, "");
   assert.deepEqual(JSON.parse(shadow.stderr), { readyFor: false, code: "MONGODB_DEPLOYMENT_CONFIGURATION_INVALID" });

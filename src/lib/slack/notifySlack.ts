@@ -53,12 +53,14 @@ async function botPost(channel: string, text: string, threadTs?: string): Promis
     });
     const data = (await res.json()) as { ok: boolean; ts?: string; error?: string };
     if (!data.ok) {
-      console.error("[notifySlack] chat.postMessage 실패");
+      // Slack error strings are provider-controlled and may contain private
+      // identifiers. Keep only a fixed diagnostic category in application logs.
+      console.error("[notifySlack] chat.postMessage 실패", { category: "api_error" });
       return null;
     }
     return { ts: data.ts ?? "" };
   } catch {
-    console.error("[notifySlack] chat.postMessage 예외");
+    console.error("[notifySlack] chat.postMessage 예외", { category: "transport_error" });
     return null;
   }
 }
@@ -68,13 +70,14 @@ async function webhookPost(text: string): Promise<void> {
   const url = process.env.SLACK_WEBHOOK_URL?.trim();
   if (!url) return;
   try {
-    await fetch(url, {
+    const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text }),
     });
-  } catch (err) {
-    console.error("[notifySlack] webhook 발송 예외:", err);
+    if (!response.ok) console.error("[notifySlack] webhook 발송 실패", { status: response.status });
+  } catch {
+    console.error("[notifySlack] webhook 발송 예외", { category: "transport_error" });
   }
 }
 

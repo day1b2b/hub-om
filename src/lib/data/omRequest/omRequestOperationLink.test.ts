@@ -12,6 +12,8 @@ interface FixtureOperation {
 
 let operations: FixtureOperation[];
 const updates: Array<{ operationId: string; patch: Record<string, unknown> }> = [];
+const deletes: string[] = [];
+let failCreateAtRound: string | null = null;
 
 mock.module("@/lib/data/operationCalculations", {
   namedExports: {
@@ -32,7 +34,14 @@ mock.module("@/lib/data/operationRepositoryFactory", {
         Object.assign(target, patch);
         updates.push({ operationId, patch });
         return target;
-      }
+      },
+      createOperation: async (input: { roundNo: string }) => {
+        if (input.roundNo === failCreateAtRound) throw new Error("SYNTHETIC_CREATE_FAILED");
+        const operationId = `created-${input.roundNo}`;
+        operations.push({ operationId, courseId: "c1", courseName: "AI 기초", companyName: "테스트기업", om: "", operationStatus: "배정필요" });
+        return { operationId };
+      },
+      deleteOperation: async (operationId: string) => { deletes.push(operationId); operations = operations.filter((row) => row.operationId !== operationId); }
     })
   }
 });
@@ -41,6 +50,8 @@ const { syncAssignedOmToLinkedOperation } = await import("./omRequestOperationLi
 
 beforeEach(() => {
   updates.length = 0;
+  deletes.length = 0;
+  failCreateAtRound = null;
   operations = [
     { operationId: "round-1", courseId: "c1", courseName: "AI 기초", companyName: "테스트기업", om: "", operationStatus: "배정필요" },
     { operationId: "round-2", courseId: "c1", courseName: "AI 기초", companyName: "테스트기업", om: "", operationStatus: "배정필요" },
@@ -56,6 +67,23 @@ test("같은 과정에서 OM이 비어있는 다른 회차에도 배정 결과�
   assert.equal(operations[0].operationStatus, "배정예정");
   assert.equal(operations[1].om, "김정선");
   assert.equal(operations[1].operationStatus, "배정예정");
+});
+
+test("회차 날짜가 누락되면 회차 생성 전에 차단한다", async () => {
+  const { createLinkedOperationForOmRequest } = await import("./omRequestOperationLink");
+  await assert.rejects(() => createLinkedOperationForOmRequest({ totalSessions: 2, sessions: [{ date: "2099-01-01" }, { date: "" }] } as never), /OM_REQUEST_SESSION_INPUT_INVALID/);
+  assert.deepEqual(deletes, []);
+});
+
+test("두 번째 회차 생성 실패 시 먼저 만든 회차를 정리한다", async () => {
+  const { createLinkedOperationForOmRequest } = await import("./omRequestOperationLink");
+  failCreateAtRound = "2";
+  await assert.rejects(() => createLinkedOperationForOmRequest({
+    totalSessions: 2,
+    ld: "synthetic@example.invalid",
+    sessions: [{ date: "2099-01-01" }, { date: "2099-01-02" }]
+  } as never), /SYNTHETIC_CREATE_FAILED/);
+  assert.deepEqual(deletes, ["created-1"]);
 });
 
 test("이미 다른 OM이 개별 지정된 회차는 덮어쓰지 않는다", async () => {

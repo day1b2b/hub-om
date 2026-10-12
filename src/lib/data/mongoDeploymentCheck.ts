@@ -14,7 +14,7 @@ export const MONGO_RUNTIME_BACKEND_SELECTORS = Object.freeze([
   "SATISFACTION_BACKEND", "SOURCE_READ_STATUS_BACKEND", "USER_ADMIN_BACKEND",
 ] as const);
 
-export type MongoDeploymentExpectation = "postgres" | "postgres-legacy-pii" | "mongodb-shadow";
+export type MongoDeploymentExpectation = "runtime" | "postgres" | "postgres-legacy-pii" | "mongodb-shadow";
 
 /** Static deployment preflight only. It never connects to either database. */
 export function checkMongoDeploymentEnvironment(
@@ -22,13 +22,16 @@ export function checkMongoDeploymentEnvironment(
   environment: MongoCompositionEnvironment,
 ) {
   const selectorExpectation = expectation === "mongodb-shadow" ? "mongodb-shadow" : "postgres";
+  let mongoSelectorCount = 0;
   for (const name of MONGO_RUNTIME_BACKEND_SELECTORS) {
     const value = environment[name]?.trim() || "postgres";
-    if (value !== selectorExpectation) throw new Error("MONGODB_DEPLOYMENT_CONFIGURATION_INVALID");
+    if (value !== "postgres" && value !== "mongodb-shadow") throw new Error("MONGODB_DEPLOYMENT_CONFIGURATION_INVALID");
+    if (expectation !== "runtime" && value !== selectorExpectation) throw new Error("MONGODB_DEPLOYMENT_CONFIGURATION_INVALID");
+    if (value === "mongodb-shadow") mongoSelectorCount += 1;
   }
   if (expectation === "postgres-legacy-pii" && environment.PII_ALLOW_PLAINTEXT_READS?.trim() !== "true")
     throw new Error("MONGODB_DEPLOYMENT_CONFIGURATION_INVALID");
-  if (expectation === "mongodb-shadow") {
+  if (expectation === "mongodb-shadow" || mongoSelectorCount > 0) {
     if (environment.PII_ALLOW_PLAINTEXT_READS?.trim() !== "false") throw new Error("MONGODB_DEPLOYMENT_CONFIGURATION_INVALID");
     if (environment.RUN_DB_MIGRATIONS?.trim() === "true") throw new Error("MONGODB_DEPLOYMENT_CONFIGURATION_INVALID");
     try {
@@ -38,11 +41,12 @@ export function checkMongoDeploymentEnvironment(
     }
     catch { throw new Error("MONGODB_DEPLOYMENT_CONFIGURATION_INVALID"); }
   }
-  return Object.freeze({ readyFor: expectation, selectorCount: MONGO_RUNTIME_BACKEND_SELECTORS.length });
+  return Object.freeze({ readyFor: expectation, selectorCount: MONGO_RUNTIME_BACKEND_SELECTORS.length, mongoSelectorCount });
 }
 
 export function parseMongoDeploymentExpectation(argv: readonly string[]): MongoDeploymentExpectation {
   if (argv.length !== 1) throw new Error("MONGODB_DEPLOYMENT_CONFIGURATION_INVALID");
+  if (argv[0] === "--expect=runtime") return "runtime";
   if (argv[0] === "--expect=postgres") return "postgres";
   if (argv[0] === "--expect=postgres-legacy-pii") return "postgres-legacy-pii";
   if (argv[0] === "--expect=mongodb-shadow") return "mongodb-shadow";

@@ -330,13 +330,13 @@ test("OM request actual handlers/server pages: native CRUD + intake, scoped assi
       }
     });
 
-    await suite.test("native operation failure keeps accepted request; partial second-round failure is not retroactively atomic", async () => {
+    await suite.test("native operation failure keeps accepted request and cleans up partial rounds", async () => {
       for (const partial of [false, true]) {
         const body = input(), sides = sideCounts(), start = logs.length;
         const created = await withValidator("OperationSession", partial ? { roundNo: { $ne: "2" } } : { _id: { $exists: false } }, () => create(body));
         assert.equal(created.operationId, undefined); assert.equal(created.ldEmail, author.user.email);
         assert.ok(await repo.getOmRequest(created.id));
-        assert.equal((await scope.operations.listOperations()).filter(row => row.courseId === body.courseId).length, partial ? 1 : 0);
+        assert.equal((await scope.operations.listOperations()).filter(row => row.courseId === body.courseId).length, 0);
         assert.equal(notifications.length, sides.notifications + 1); assert.equal(added.length, sides.adds + 1);
         assertNoPrivateError(start, author.user.email, body.notes); assertIsolated();
       }
