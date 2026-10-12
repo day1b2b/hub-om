@@ -11,6 +11,7 @@ import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { getOmCustomToolsRepository } from "@/lib/data/omRequest/omCustomToolsLocalRepository";
 import { runOmRequestWriteRequest } from "@/lib/data/omRequestWriteComposition";
 import { safeErrorDiagnostic } from "@/lib/observability/safeErrorDiagnostic";
+import { omRequestInputError } from "@/lib/data/omRequest/omRequestInputValidation";
 
 async function activityPOST(request: Request) {
   try {
@@ -26,7 +27,9 @@ async function activityPOST(request: Request) {
     getOperationRepository();
     getOmCustomToolsRepository();
     const notifier = getOmRequestNotifier();
-    const body = (await request.json()) as OmRequestInput;
+    const body = (await request.json().catch(() => null)) as OmRequestInput;
+    const inputError = omRequestInputError(body);
+    if (inputError) return NextResponse.json({ error: inputError }, { status: 400 });
     // 핵심: 요청 저장. 이 단계가 실패하면 진짜 실패다.
     const created = await createOmRequest(body);
 
@@ -50,6 +53,7 @@ async function activityPOST(request: Request) {
     }
 
     let slackThread: { channel: string; ts: string } | null = null;
+    let notification: "sent" | "sent-without-thread" | "failed" = "sent-without-thread";
     try {
       slackThread = await notifier.notifyCreated({
         team: created.team,
@@ -66,7 +70,9 @@ async function activityPOST(request: Request) {
         sessions: created.sessions,
         notes: created.notes,
       });
+      if (slackThread) notification = "sent";
     } catch (error) {
+      notification = "failed";
       console.error("[om-request] Slack 접수 알림 실패(무시)", safeErrorDiagnostic(error));
     }
 
@@ -83,7 +89,8 @@ async function activityPOST(request: Request) {
       console.error("[om-request] Slack 메타 저장 실패(무시)", safeErrorDiagnostic(error));
     }
 
-    return NextResponse.json(withMeta, { status: 201 });
+    // The save succeeded either way; notification tells the form whether Slack actually got it.
+    return NextResponse.json({ ...withMeta, notification }, { status: 201 });
   } catch (error) {
     console.error("[om-request] 요청 저장 실패", safeErrorDiagnostic(error));
     return NextResponse.json({ error: "저장 실패" }, { status: 500 });
