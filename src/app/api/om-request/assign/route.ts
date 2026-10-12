@@ -66,11 +66,12 @@ async function assignment(request: Request, preview: boolean) {
         console.error("[om-request] 배정 저장 후 캘린더 반영 실패", safeErrorDiagnostic(error));
       }
     }
+    let notification: "sent" | "sent-without-thread" | "failed" | "not-needed" = "not-needed";
     if (nextOm && assignmentChanged) {
       // 요청 접수 알림 스레드에 댓글로 OM·LD를 태깅한다(스레드 정보가 있을 때).
       // Slack 알림 실패가 배정 저장까지 되돌리지 않도록 방어적으로 처리한다.
       try {
-        await notifier.notifyAssigned({
+        const delivered = await notifier.notifyAssigned({
           company: updated.company,
           courseName: updated.courseName,
           assignedOm: nextOm,
@@ -79,11 +80,13 @@ async function assignment(request: Request, preview: boolean) {
           channel: updated.slackChannel,
           threadTs: updated.slackThreadTs,
         });
+        notification = delivered === "channel" ? "sent-without-thread" : "sent";
       } catch (error) {
+        notification = "failed";
         console.error("[om-request] Slack 배정 알림 실패(무시)", safeErrorDiagnostic(error));
       }
     }
-    return NextResponse.json(updated, { headers: noStore });
+    return NextResponse.json({ ...updated, notification }, { headers: noStore });
   } catch (err) {
     if (err instanceof OmAssignmentConflict) return NextResponse.json({ error: err.message }, { status: 409, headers: noStore });
     console.error("[om-request] 배정 확인 또는 저장 실패", safeErrorDiagnostic(err));

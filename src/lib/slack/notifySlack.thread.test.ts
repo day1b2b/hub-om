@@ -65,3 +65,26 @@ test("intake notification reports a thread, a webhook-only send, or throws when 
     }
   }
 });
+
+test("assignment notification reports thread or channel delivery and throws when nothing reached Slack", async () => {
+  const saved = { token: process.env.SLACK_OM_REQUEST_BOT_TOKEN, webhook: process.env.SLACK_WEBHOOK_URL };
+  let botOk = true, webhookOk = true;
+  const fetch = mock.method(globalThis, "fetch", async (url: string | URL | Request) =>
+    String(url).startsWith("https://slack.com/") ? Response.json(botOk ? { ok: true, ts: "reply" } : { ok: false }) : new Response(null, { status: webhookOk ? 200 : 500 }));
+  const base = { company: "Synthetic", courseName: "Synthetic course", assignedOm: "Synthetic first", channel: "CHANNEL", threadTs: "original-thread" };
+  try {
+    process.env.SLACK_OM_REQUEST_BOT_TOKEN = "synthetic-token";
+    process.env.SLACK_WEBHOOK_URL = "https://hooks.example.invalid/synthetic";
+    assert.equal(await notifyOmAssigned(base), "thread");
+    botOk = false;
+    assert.equal(await notifyOmAssigned(base), "channel");
+    assert.equal(await notifyOmAssigned({ ...base, threadTs: undefined }), "channel");
+    webhookOk = false;
+    await assert.rejects(notifyOmAssigned(base), /SLACK_OM_ASSIGNMENT_NOT_DELIVERED/);
+  } finally {
+    fetch.mock.restore();
+    for (const [key, value] of [["SLACK_OM_REQUEST_BOT_TOKEN", saved.token], ["SLACK_WEBHOOK_URL", saved.webhook]] as const) {
+      if (value === undefined) delete process.env[key]; else process.env[key] = value;
+    }
+  }
+});
