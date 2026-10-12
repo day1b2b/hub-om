@@ -15,3 +15,5 @@ node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs sc
 `postgres-legacy-pii`는 평문이 실제로 남았는지를 판정하지 않는다. 운영 데이터 상태는 `scripts/encrypt-personal-data.ts`의 읽기 전용 점검으로 별도 확인한다. 점검에서 모든 `plaintext`와 `invalidIndexes`가 0이 되기 전에는 `PII_ALLOW_PLAINTEXT_READS=false`로 바꾸지 않는다.
 
 이 명령은 PostgreSQL·MongoDB·외부 원천에 연결하지 않고 실제 namespace readiness, 데이터 복사, 권한, A/B 백업·복원, 예약 작업과 Coolify 설정을 검증하지 않는다. 따라서 통과 결과만으로 운영 전환을 승인하거나 selector 값을 바꾸면 안 된다.
+
+배포 전에는 정적 selector 검사와 함께 [runtime 준비 검사](mongodb-runtime-recovery.md)의 `scripts/check-mongodb-runtime.ts`를 실행한다. 이 읽기 전용 검사는 Calendar와 코치 관리의 필수 컬렉션 누락을 검출한다. 누락 복구는 백업·범위 승인 뒤 별도 명령으로 수행하며 배포 검사에서 자동 수리하지 않는다.
