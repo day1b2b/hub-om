@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { resolveEditableInfoTargets } from "./editableInfoTargets";
 
 type SaveState = "idle" | "saving" | "failed";
+const OM_NOTIFICATION_FAILED_MESSAGE = "저장됐지만 Slack 배정 알림이 가지 않았습니다. 담당 OM에게 직접 알려주세요.";
 
 interface EditableInfoItemField {
   name: string;
@@ -28,6 +29,8 @@ export function EditableInfoItem({ displayValue, fields, label, operationId, ope
   const [isEditing, setIsEditing] = useState(false);
   const [drafts, setDrafts] = useState(() => toDraftValues(fields));
   const [saveState, setSaveState] = useState<SaveState>("idle");
+  // Saved, but the OM change did not reach Slack: tell the editor to notify the OM directly.
+  const [omNotificationFailed, setOmNotificationFailed] = useState(false);
 
   if (!isEditing) {
     return (
@@ -39,6 +42,7 @@ export function EditableInfoItem({ displayValue, fields, label, operationId, ope
             수정
           </button>
         </div>
+        {omNotificationFailed ? <span className="info-item-save-error" role="alert">{OM_NOTIFICATION_FAILED_MESSAGE}</span> : null}
       </div>
     );
   }
@@ -121,6 +125,7 @@ export function EditableInfoItem({ displayValue, fields, label, operationId, ope
   );
 
   function startEditing() {
+    setOmNotificationFailed(false);
     setDrafts(toDraftValues(fields));
     setSaveState("idle");
     setIsEditing(true);
@@ -151,15 +156,16 @@ export function EditableInfoItem({ displayValue, fields, label, operationId, ope
             },
             body: JSON.stringify({ patches })
           });
-          const payload = (await response.json().catch(() => ({}))) as { ok?: boolean };
-          return response.ok && payload.ok === true;
+          const payload = (await response.json().catch(() => ({}))) as { ok?: boolean; omNotification?: string };
+          return { saved: response.ok && payload.ok === true, notificationFailed: payload.omNotification === "failed" };
         } catch {
-          return false;
+          return { saved: false, notificationFailed: false };
         }
       })
     );
 
-    if (!results.every(Boolean)) {
+    setOmNotificationFailed(results.some((result) => result.notificationFailed));
+    if (!results.every((result) => result.saved)) {
       setSaveState("failed");
       return;
     }

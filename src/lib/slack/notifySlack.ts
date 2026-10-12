@@ -229,7 +229,7 @@ export async function notifyOmAssigned(params: {
   ldEmail?: string;
   channel?: string;
   threadTs?: string;
-}): Promise<void> {
+}): Promise<"thread" | "channel" | void> {
   const users = await loadDirectory();
   const omMention = mentionByName(users, params.assignedOm, params.assignedOm);
   const ldMention = mentionByEmail(users, params.ldEmail, params.ld ?? "");
@@ -245,11 +245,13 @@ export async function notifyOmAssigned(params: {
   // 원 알림 스레드가 있으면 그 스레드에 댓글로 발송
   if (botToken() && params.channel && params.threadTs) {
     const posted = await botPost(params.channel, text, params.threadTs);
-    if (posted) return;
+    if (posted) return "thread";
   }
 
   // 폴백: 스레드 정보가 없으면 기존 웹훅으로 단독 메시지
-  await webhookPost(text);
+  if (await webhookPost(text)) return "channel";
+  // Nothing reached Slack: callers show this to the person who assigned.
+  throw new Error("SLACK_OM_ASSIGNMENT_NOT_DELIVERED");
 }
 
 // ── 개인 DM 발송 ──────────────────────────────────────────────────
