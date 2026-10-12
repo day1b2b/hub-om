@@ -62,3 +62,32 @@ test("thrown failures remain failures and redirects retain their status", async 
   await assert.rejects(withActivity("/api/example", "PATCH", async () => { throw redirect; })());
   assert.equal(rows[1].status, 307);
 });
+
+test("write freeze rejects saves before compose and skips request logs", async () => {
+  setup();
+  process.env.HUB_WRITE_FREEZE = "true";
+  try {
+    let composed = 0, handled = 0;
+    const compose = async <T,>(work: () => Promise<T>) => { composed += 1; return work(); };
+    const save = withActivity("/api/om-request", "POST", async (_request: Request) => { void _request; handled += 1; return new Response(null, { status: 201 }); }, compose);
+    const response = await save(new Request("http://localhost/api/om-request", { method: "POST", body: "{}" }));
+    assert.equal(response.status, 503);
+    assert.equal((await response.json()).code, "WRITE_FREEZE");
+    assert.equal(composed, 0); assert.equal(handled, 0);
+    for (const verb of ["PATCH", "PUT", "DELETE"]) assert.equal((await save(new Request("http://localhost/api/om-request", { method: verb }))).status, 503);
+    const coachRead = withActivity("/api/coach/schedule/[yearMonth]", "GET", async (_request: Request) => { void _request; handled += 1; return new Response("ok"); });
+    assert.equal((await coachRead(new Request("http://localhost/api/coach/schedule/2026-10"))).status, 503);
+    const read = withActivity("/api/operations", "GET", async (_request: Request) => { void _request; handled += 1; return new Response("ok"); }, compose);
+    assert.equal((await read(new Request("http://localhost/api/operations"))).status, 200);
+    assert.equal(handled, 1); assert.equal(rows.length, 0);
+  } finally { delete process.env.HUB_WRITE_FREEZE; }
+});
+test("write freeze is off unless exactly true", async () => {
+  setup();
+  for (const value of [undefined, "", "1", "TRUE", "false"]) {
+    if (value === undefined) delete process.env.HUB_WRITE_FREEZE; else process.env.HUB_WRITE_FREEZE = value;
+    const save = withActivity("/api/om-request", "POST", async (_request: Request) => { void _request; return new Response(null, { status: 201 }); });
+    assert.equal((await save(new Request("http://localhost/api/om-request", { method: "POST" }))).status, 201);
+  }
+  delete process.env.HUB_WRITE_FREEZE;
+});
