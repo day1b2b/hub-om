@@ -16,7 +16,7 @@ test("read domains are explicit; original operation model set stays isolated", (
   for (const models of [[], ["Coach", "Coach"], ["__counter"], ["toString"]]) {
     assert.throws(() => new MongoOperationStore(options, models), /INVALID_MODEL_SET/);
   }
-  assert.throws(() => new MongoOperationStore({...options, databaseName: "hub-om"}, TEAM_READ_MODELS), /SHADOW_DATABASE_REQUIRED/);
+  assert.throws(() => new MongoOperationStore({...options, databaseName: "hub-om-extra"}, TEAM_READ_MODELS), /SHADOW_DATABASE_REQUIRED/);
 });
 test("read validators allow exactly the codec field set including derived composite IDs", () => {
   for (const model of [...COACH_READ_MODELS, ...TEAM_READ_MODELS]) {

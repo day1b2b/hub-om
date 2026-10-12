@@ -23,7 +23,8 @@ export class MongoOperationStore {
   readonly client: MongoClient;
   readonly models: readonly string[];
   constructor(options: MongoOperationOptions, models: readonly string[] = OPERATION_MODELS) {
-    assertMongo(options.databaseName === "hub-om-shadow-validation" || /^hub_om_shadow_[A-Za-z0-9_]{1,64}$/.test(options.databaseName), "SHADOW_DATABASE_REQUIRED");
+    // Structural check only; role filtering (production vs test) is enforced earlier by shadowDatabaseName.
+    assertMongo(options.databaseName === "hub-om" || options.databaseName === "hub-om-shadow-validation" || /^hub_om_shadow_[A-Za-z0-9_]{1,64}$/.test(options.databaseName), "SHADOW_DATABASE_REQUIRED");
     assertMongo(/^shadow_[A-Za-z0-9_-]{1,80}$/.test(options.namespace), "INVALID_NAMESPACE");
     assertMongo(models.length > 0 && new Set(models).size === models.length && models.every(model => Object.hasOwn(mongoRuntimeContracts, model)), "INVALID_MODEL_SET");
     this.models = Object.freeze([...models]);

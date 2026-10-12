@@ -14,9 +14,36 @@ export function configuredMongoUri(env: Record<string, string | undefined> = pro
   return uri;
 }
 
+/** Production databases: "hub-om" is the target, "hub-om-shadow-validation" is the current (transitional) production database. */
+export const PRODUCTION_MONGO_DATABASES: readonly string[] = Object.freeze(["hub-om", "hub-om-shadow-validation"]);
+const TEST_MONGO_DATABASE = /^hub_om_shadow_[a-z0-9_]{1,40}$/;
+export type MongoDatabaseRole = "production" | "test";
+
+export function mongoDatabaseRoleOf(name: string): MongoDatabaseRole | undefined {
+  if (PRODUCTION_MONGO_DATABASES.includes(name)) return "production";
+  return TEST_MONGO_DATABASE.test(name) ? "test" : undefined;
+}
+
+/** Test tools must call this: production databases are rejected regardless of env. */
+export function assertTestMongoDatabase(name: string): string {
+  if (mongoDatabaseRoleOf(name) !== "test") throw new MongoPreparationError("PRODUCTION_DATABASE_REJECTED_FOR_TEST");
+  return name;
+}
+
+/**
+ * MONGODB_DATABASE_ROLE makes the target explicit:
+ * - "production": only a production database
+ * - "test": only a synthetic test database (production is rejected)
+ * - unset: legacy behaviour (hub-om-shadow-validation or a test database), so existing containers keep working.
+ */
 export function shadowDatabaseName(env: Record<string, string | undefined> = process.env): string {
   const name = env.MONGODB_SHADOW_DATABASE;
-  if (!name || (name !== "hub-om-shadow-validation" && !/^hub_om_shadow_[a-z0-9_]{1,40}$/.test(name))) throw new MongoPreparationError("EXPLICIT_SHADOW_DATABASE_REQUIRED");
+  const role = env.MONGODB_DATABASE_ROLE?.trim() || undefined;
+  if (role !== undefined && role !== "production" && role !== "test") throw new MongoPreparationError("MONGODB_DATABASE_ROLE_INVALID");
+  const actual = name ? mongoDatabaseRoleOf(name) : undefined;
+  if (role === "test" && actual === "production") throw new MongoPreparationError("PRODUCTION_DATABASE_REJECTED_FOR_TEST");
+  const allowed = role ? actual === role : name === "hub-om-shadow-validation" || actual === "test";
+  if (!name || !allowed) throw new MongoPreparationError("EXPLICIT_SHADOW_DATABASE_REQUIRED");
   // No URI default database fallback, so diagnostics can never select an existing production DB for writes.
   return name;
 }
