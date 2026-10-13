@@ -41,7 +41,7 @@ async function activityDELETE(_request: Request, { params }: RouteContext) {
 
   if (siblingCount <= 1) {
     return NextResponse.json(
-      { ok: false, error: "마지막 회차는 삭제할 수 없습니다. 과정 자체를 지우려면 관리자에게 문의하세요." },
+      { ok: false, code: "LAST_ROUND", error: "마지막 회차는 삭제할 수 없습니다. 과정 자체를 지우려면 관리자에게 문의하세요." },
       { status: 400 }
     );
   }
@@ -52,6 +52,7 @@ async function activityDELETE(_request: Request, { params }: RouteContext) {
     return NextResponse.json(
       {
         ok: false,
+        code: "FIRST_ROUND",
         error: "1회차는 삭제할 수 없습니다. 이 회차를 없애야 하면 회차 순서를 끌어서 옮긴 뒤 지워주세요."
       },
       { status: 400 }

@@ -38,6 +38,6 @@ test("DELETE counts rounds by course record even when the course ID is empty", a
   try {
     assert.equal((await del("r4")).status, 200); assert.deepEqual(deleted, ["r4"]);
     // 이름이 같아도 다른 과정(course-b)의 회차는 세지 않으므로 그 과정의 마지막 회차로 막힌다.
-    assert.equal((await del("other")).status, 400); assert.deepEqual(deleted, ["r4"]);
+    const rejected = await del("other"); assert.equal(rejected.status, 400); assert.equal((await rejected.json()).code, "LAST_ROUND"); assert.deepEqual(deleted, ["r4"]);
   } finally { rows = []; deleted.length = 0; }
 });
