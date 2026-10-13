@@ -103,7 +103,7 @@ export function OperationCreateForm({ expectedSubject, initialValues = {}, perso
     async function restore() {
       try {
         if (hasLegacyOperationSubmission(window.sessionStorage) || hasLegacyOperationSubmission(window.localStorage)) {
-          throw new Error("서버 반영 여부가 미확정인 이전 등록 정보가 있습니다. 화면 위쪽의 이전 초안 보호 절차를 진행하고 운영 현황을 확인한 뒤 새 등록을 허용해주세요.");
+          throw new Error("서버 반영 여부가 미확정인 이전 등록 정보가 있습니다. 화면 위쪽의 예전 작성 내용 정리 안내를 따라 확인해주세요.");
         }
         const pending = await readOperationSubmission(draftStore!, teamScope);
         if (!active) return;
