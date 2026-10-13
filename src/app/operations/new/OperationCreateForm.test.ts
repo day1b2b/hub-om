@@ -151,7 +151,7 @@ test("회차 요청 사이 runtime owner/status/generation 변경은 다음 POST
 test("legacy 키 존재 시 값 읽기·삭제·암호화 draft 조회 없이 신규등록을 차단한다", async () => {
   const ui = harness({ legacy: true }); await ui.settle();
   assert.equal(ui.button("저장").props.disabled, true);
-  assert.match(ui.text(), /서버 반영 여부가 미확정/);
+  assert.match(ui.text(), /예전 등록 정보를 자동으로 정리하고 있습니다/);
   assert.equal(ui.plaintextReads(), 0); assert.equal(ui.reads(), 0); assert.equal(ui.removals.length, 0); assert.equal(ui.calls.length, 0);
 });
 

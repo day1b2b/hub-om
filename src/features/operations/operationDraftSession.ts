@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { browserDrafts } from "@/lib/privacy/browserDraftRuntime";
 
-export const LEGACY_DRAFT_NOTICE = "예전 방식으로 저장된 작성 내용이 있습니다. 화면 위쪽의 예전 작성 내용 정리 안내를 따라 정리한 뒤 새로고침해주세요.";
+export const LEGACY_DRAFT_NOTICE = "예전 방식으로 저장된 작성 내용을 자동으로 정리하고 있습니다. 잠시 후 새로고침해주세요.";
 export const LOCKED_DRAFT_NOTICE = "개인 초안 보관함을 준비하는 중입니다. 로그인과 연결 상태를 확인해 주세요.";
 
 /** Inspect key names only; legacy values have no verified owner. */
