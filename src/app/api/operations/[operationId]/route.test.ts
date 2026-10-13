@@ -18,6 +18,7 @@ const hooks = registerHooks({ resolve(specifier, context, next) { return next(sp
 const route = await import("./route"); hooks.deregister();
 
 test("local operation backend keeps repeated or missing DELETE at 404 without Calendar persistence", async () => {
+  rows = [];
   try {
     const response = await route.DELETE(new Request("https://example.invalid/api/operations/missing", { method: "DELETE" }), { params: Promise.resolve({ operationId: "missing" }) });
     assert.equal(response.status, 404); assert.deepEqual(await response.json(), { ok: false, error: "Operation not found." }); assert.equal(calendarRetries, 0);
@@ -39,5 +40,37 @@ test("DELETE counts rounds by course record even when the course ID is empty", a
     assert.equal((await del("r4")).status, 200); assert.deepEqual(deleted, ["r4"]);
     // 이름이 같아도 다른 과정(course-b)의 회차는 세지 않으므로 그 과정의 마지막 회차로 막힌다.
     const rejected = await del("other"); assert.equal(rejected.status, 400); assert.equal((await rejected.json()).code, "LAST_ROUND"); assert.deepEqual(deleted, ["r4"]);
+  } finally { rows = []; deleted.length = 0; }
+});
+
+test("유일한 1회차는 삭제가 막힌다", async () => {
+  const base = { courseId: "course", courseName: "Course", companyName: "Company" };
+  rows = [
+    { ...base, operationId: "solo-1", roundNo: "1", courseRecordId: "course-solo" },
+    { ...base, operationId: "solo-2", roundNo: "2", courseRecordId: "course-solo" }
+  ];
+  try {
+    const response = await route.DELETE(new Request("https://example.invalid/api/operations/solo-1", { method: "DELETE" }), { params: Promise.resolve({ operationId: "solo-1" }) });
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), {
+      ok: false,
+      code: "FIRST_ROUND",
+      error: "1회차는 삭제할 수 없습니다. 이 회차를 없애야 하면 회차 순서를 끌어서 옮긴 뒤 지워주세요."
+    });
+    assert.deepEqual(deleted, []);
+  } finally { rows = []; deleted.length = 0; }
+});
+
+test("중복 생성된 1회차는 다른 1회차가 남아있으면 삭제할 수 있다", async () => {
+  const base = { courseId: "course", courseName: "Course", companyName: "Company" };
+  rows = [
+    { ...base, operationId: "dup-1", roundNo: "1", courseRecordId: "course-dup" },
+    { ...base, operationId: "dup-2", roundNo: "1", courseRecordId: "course-dup" }
+  ];
+  try {
+    const response = await route.DELETE(new Request("https://example.invalid/api/operations/dup-2", { method: "DELETE" }), { params: Promise.resolve({ operationId: "dup-2" }) });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { ok: true });
+    assert.deepEqual(deleted, ["dup-2"]);
   } finally { rows = []; deleted.length = 0; }
 });
