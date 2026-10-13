@@ -65,6 +65,8 @@ async function getAccessToken(): Promise<string> {
 
     return cachedToken.value;
   } catch (error) {
+    // 역반영 간헐 500의 원인 단계를 가르기 위한 고정 코드. 토큰·응답 본문은 남기지 않는다.
+    console.error("[gcal] CALENDAR_TOKEN_REFRESH_FAILED");
     throw new Error(calendarErrorMessage(error));
   }
 }
