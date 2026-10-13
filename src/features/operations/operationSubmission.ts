@@ -25,6 +25,11 @@ export class OperationSubmissionValidationError extends Error {
   override name = "OperationSubmissionValidationError";
 }
 
+/** 409: the server already processed this Idempotency-Key (content differs or the operation was deleted). */
+export class OperationSubmissionConflictError extends Error {
+  override name = "OperationSubmissionConflictError";
+}
+
 /** A quarantined registration stays unresolved; copying it never proves server outcome or ownership. */
 export function hasLegacyOperationSubmission(storage: Pick<Storage, "length" | "key">): boolean {
   for (let index = 0; index < storage.length; index++) {
@@ -93,7 +98,7 @@ export async function submitOperationSnapshot(submission: OperationSubmission, r
     assertCurrent();
     const response = await request(url, {
       method: "POST",
-      headers: { "content-type": "application/json", "X-Operation-Submission-Subject": submission.expectedSubject, "Idempotency-Key": `${submission.id}:${index}` },
+      headers: { "content-type": "application/json", ...(submission.expectedSubject ? { "X-Operation-Submission-Subject": submission.expectedSubject } : {}), "Idempotency-Key": `${submission.id}:${index}` },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(30_000)
     });
@@ -102,6 +107,7 @@ export async function submitOperationSnapshot(submission: OperationSubmission, r
     if (index === 0 && response.status === 400 && result.creationNotStarted === true) {
       throw new OperationSubmissionValidationError(result.error ?? "입력값을 확인해주세요.");
     }
+    if (response.status === 409 && !result.ok) throw new OperationSubmissionConflictError(result.error ?? "이미 처리한 등록 요청입니다.");
     if (!response.ok || !result.ok || !result.operation?.operationId) {
       throw new Error(result.error ?? `${body.roundNo}회차를 등록하지 못했습니다. 원래 등록 계속하기로 다시 시도해주세요.`);
     }
@@ -112,7 +118,7 @@ export async function submitOperationSnapshot(submission: OperationSubmission, r
       assertCurrent();
       const response = await request(`/api/operations/${encodeURIComponent(id)}/drive-import/apply`, {
         method: "POST",
-        headers: { "content-type": "application/json", "X-Operation-Submission-Subject": submission.expectedSubject },
+        headers: { "content-type": "application/json", ...(submission.expectedSubject ? { "X-Operation-Submission-Subject": submission.expectedSubject } : {}) },
         body: JSON.stringify({ patches: [{ field: "hasResultReport", action: "replace", value: "불필요" }] }),
         signal: AbortSignal.timeout(30_000)
       });

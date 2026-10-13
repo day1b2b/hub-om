@@ -4,11 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { browserDrafts } from "@/lib/privacy/browserDraftRuntime";
 import { IndexedDbLegacyQuarantineStore } from "@/lib/privacy/legacyDraftQuarantineStore";
 import { acknowledgeLegacyRegistration, legacyQuarantineService, transitionLegacyDrafts, withLegacyTransitionLock, type LegacyTransitionResult } from "@/lib/privacy/legacyDraftTransition";
+import { replayLegacyRegistrations } from "@/lib/privacy/legacyRegistrationReplay";
 import { countLegacyDrafts, countLegacyDraftsByKind, LEGACY_DRAFT_LABELS, legacyDraftKeys, LEGACY_REGISTRATION_UNRESOLVED, isLegacyRegistrationKey, type LegacyDraftCounts } from "@/lib/privacy/legacyDraftSources";
 
 export const LEGACY_TRANSITION_UPDATED = "hub-om:legacy-transition-updated";
 
-export function LegacyDraftTransitionNotice() {
+export function LegacyDraftTransitionNotice({ email }: { email?: string | null }) {
   const [store] = useState(() => new IndexedDbLegacyQuarantineStore());
   const [counts, setCounts] = useState<LegacyDraftCounts | null>(null);
   const [byKind, setByKind] = useState<number[]>([]);
@@ -58,9 +59,20 @@ export function LegacyDraftTransitionNotice() {
     const current = () => active.current && browserDrafts.getSnapshot() === initial && initial.status === "ready";
     try {
       const supportsLocks = !!navigator.locks;
+      // Resend old registrations with their original Idempotency-Key before their plaintext is removed.
+      let replayed = false;
+      if (auto) {
+        const hadMarker = window.localStorage.getItem(LEGACY_REGISTRATION_UNRESOLVED) !== null;
+        const hasRegistration = [window.localStorage, window.sessionStorage].some(storage => legacyDraftKeys(storage).some(isLegacyRegistrationKey));
+        if (hasRegistration) {
+          if (!email || await replayLegacyRegistrations(email) === "retry") return; // Try again on the next visit.
+          replayed = !hadMarker;
+        }
+      }
       const execute = () => transitionLegacyDrafts({ store, service: legacyQuarantineService(), current, removeSession: supportsLocks, removeLocal: supportsLocks && removeLocal });
       const outcome = supportsLocks ? await withLegacyTransitionLock(execute) : await execute();
       if (!current()) return;
+      if (replayed && outcome.remaining.localStorage + outcome.remaining.sessionStorage === 0) await acknowledgeLegacyRegistration(undefined, current);
       setResult(outcome);
       setMessage(supportsLocks ? "" : "이 브라우저는 안전한 정리를 지원하지 않아 보관만 하고 원래 내용은 남겨두었습니다. 최신 Chrome에서 다시 시도해주세요.");
       setSingleWriter(false);
