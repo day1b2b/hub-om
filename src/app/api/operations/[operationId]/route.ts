@@ -35,9 +35,10 @@ async function activityDELETE(_request: Request, { params }: RouteContext) {
 
   // 같은 과정은 Course 내부 ID(courseRecordId)로 센다. 코스ID는 필수가 아니라 비어 있어도 회차가 여러 개일 수 있다.
   // courseRecordId가 없는 외부 원천 항목만 코스ID+과정명+고객사 조합으로 비교한다.
-  const siblingCount = (await repository.listOperations()).filter((candidate) =>
+  const siblings = (await repository.listOperations()).filter((candidate) =>
     operation.courseRecordId ? candidate.courseRecordId === operation.courseRecordId : isSameCourse(candidate, operation)
-  ).length;
+  );
+  const siblingCount = siblings.length;
 
   if (siblingCount <= 1) {
     return NextResponse.json(
@@ -48,7 +49,12 @@ async function activityDELETE(_request: Request, { params }: RouteContext) {
 
   // 1회차는 지울 수 없다(이혜림님이 정한 규칙). 화면 버튼도 막혀 있지만 여기서도 막는다 —
   // 화면만 막으면 직접 호출로 뚫린다. 정말 그 회차를 없애야 하면 끌어서 아래로 옮긴 뒤 지운다.
-  if (operation.roundNo.trim() === "1") {
+  // 단, 같은 과정에 "1회차"가 중복 생성된 경우(예: om-request 중복 접수 후 잔존)는
+  // 어느 쪽이 "진짜" 1회차인지 구분할 수 없어 이 보호를 적용하지 않는다 — 마지막 남은
+  // 1회차까지 지우는 건 위 siblingCount 체크가 그대로 막아준다.
+  const firstRoundSiblingCount = siblings.filter((candidate) => candidate.roundNo.trim() === "1").length;
+
+  if (operation.roundNo.trim() === "1" && firstRoundSiblingCount <= 1) {
     return NextResponse.json(
       {
         ok: false,
