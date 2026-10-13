@@ -10,7 +10,7 @@ import { countLegacyDrafts, legacyDraftKeys, LEGACY_REGISTRATION_UNRESOLVED, isL
 export const LEGACY_TRANSITION_UPDATED = "hub-om:legacy-transition-updated";
 
 /** Users cannot fix these failures; the admin gets a Slack DM instead of an on-screen notice. */
-function reportFailure(reason: "quarantine_failed" | "storage_unavailable" | "locks_unsupported") {
+function reportFailure(reason: "quarantine_failed" | "locks_unsupported") {
   void fetch("/api/browser-drafts/legacy-failure", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason }) }).catch(() => {});
 }
 
@@ -27,7 +27,7 @@ function hasRegistration(): boolean {
  */
 async function cleanUp(email: string | null | undefined, current: () => boolean): Promise<void> {
   const counts = countLegacyDrafts();
-  if (counts.unavailable) { reportFailure("storage_unavailable"); return; }
+  if (counts.unavailable) return; // Private mode etc.: nobody can fix it, so no alert.
   if (counts.localStorage + counts.sessionStorage > 0) {
     if (hasRegistration() && (!email || await replayLegacyRegistrations(email) === "retry")) return; // Retry on the next visit.
     if (!navigator.locks) { reportFailure("locks_unsupported"); return; }

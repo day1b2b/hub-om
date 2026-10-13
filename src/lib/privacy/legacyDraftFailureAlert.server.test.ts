@@ -15,5 +15,12 @@ test("DMs the admin once per hour per reason and counts the suppressed repeats",
   assert.equal(sent.length, 3);
   assert.match(sent[0], /예전 초안 자동 정리 실패/);
   assert.match(sent[2], /같은 사유 1건 더 발생/);
+  assert.match(sent[0], /할 일: Coolify/);
   delete process.env.SLACK_ADMIN_ALERT_EMAIL;
+});
+
+test("does not fall back to another recipient when the tech operator is unset", async () => {
+  process.env.SLACK_CALENDAR_ALERT_EMAIL = "admin@example.test";
+  assert.equal(await notifyLegacyDraftFailure("locks_unsupported", "e@example.test", 10 * 60 * 60 * 1000), "skipped");
+  delete process.env.SLACK_CALENDAR_ALERT_EMAIL;
 });
