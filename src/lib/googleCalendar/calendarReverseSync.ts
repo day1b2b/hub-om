@@ -76,7 +76,7 @@ export async function planCalendarReverseSync(options?: { now?: Date }): Promise
   }
 
   const operations = new Map(
-    (await getOperationRepository().listOperations()).map((operation) => [operation.operationId, operation])
+    (await withFailureCode("CALENDAR_REVERSE_LIST_OPERATIONS_FAILED", () => getOperationRepository().listOperations())).map((operation) => [operation.operationId, operation])
   );
 
   const calendars: ReverseSyncPlan["calendars"] = [];
@@ -85,8 +85,8 @@ export async function planCalendarReverseSync(options?: { now?: Date }): Promise
 
   for (const { partKey, calendarId } of partCalendars) {
     const [events, links] = await Promise.all([
-      listUpdatedEvents(calendarId, updatedMin),
-      findCalendarEventLinksByCalendar(calendarId)
+      withFailureCode("CALENDAR_REVERSE_LIST_EVENTS_FAILED", () => listUpdatedEvents(calendarId, updatedMin)),
+      withFailureCode("CALENDAR_REVERSE_LIST_LINKS_FAILED", () => findCalendarEventLinksByCalendar(calendarId))
     ]);
 
     let linkedEvents = 0;
@@ -107,7 +107,9 @@ export async function planCalendarReverseSync(options?: { now?: Date }): Promise
     calendars.push({ partKey, calendarId, scannedEvents: events.length, linkedEvents });
   }
 
-  const updatedAtByOperation = await findOperationUpdatedAt(pending.map((entry) => entry.link.operationId));
+  const updatedAtByOperation = await withFailureCode("CALENDAR_REVERSE_UPDATED_AT_FAILED", () =>
+    findOperationUpdatedAt(pending.map((entry) => entry.link.operationId))
+  );
   const items: ReverseSyncItem[] = [];
 
   for (const { link, partKey, event } of pending) {
@@ -143,6 +145,19 @@ export async function planCalendarReverseSync(options?: { now?: Date }): Promise
   for (const item of items) counts[item.action] += 1;
 
   return { ...empty, calendars, items: sortItems(items), counts, skipped };
+}
+
+/**
+ * 계획 단계의 실패는 라우트에서 고정 문구 500으로만 보인다. 간헐 500의 원인 단계를
+ * 운영 로그에서 가를 수 있게 고정 코드만 남긴다(오류 본문·데이터는 남기지 않는다).
+ */
+async function withFailureCode<T>(code: string, run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (error) {
+    console.error(`[gcal-reverse] ${code}`);
+    throw error;
+  }
 }
 
 const ACTION_ORDER: ReverseSyncAction[] = ["운영현황 반영", "캘린더 원복"];
