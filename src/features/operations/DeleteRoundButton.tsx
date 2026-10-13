@@ -79,7 +79,8 @@ export function DeleteRoundButton({
 
     if (!response.ok) {
       setIsDeleting(false);
-      alert("삭제하지 못했습니다.");
+      const body = (await response.json().catch(() => null)) as { error?: unknown } | null;
+      alert(typeof body?.error === "string" && body.error ? body.error : "삭제하지 못했습니다.");
       return;
     }
 
