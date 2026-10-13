@@ -28,14 +28,3 @@ export function countLegacyDrafts(access: LegacyStorageAccess = browserLegacySto
   }
   return result;
 }
-export const LEGACY_DRAFT_LABELS = ["강의 노트", "이슈 회고", "드라이브 가져오기", "과정 등록"] as const;
-/** Per-kind totals across both storages, aligned with LEGACY_DRAFT_LABELS. */
-export function countLegacyDraftsByKind(access: LegacyStorageAccess = browserLegacyStorage): number[] {
-  const result = LEGACY_DRAFT_PREFIXES.map(() => 0);
-  for (const kind of ["localStorage", "sessionStorage"] as const) {
-    try {
-      for (const key of legacyDraftKeys(access(kind))) result[LEGACY_DRAFT_PREFIXES.findIndex(prefix => key.startsWith(prefix))]++;
-    } catch { /* countLegacyDrafts reports unavailability. */ }
-  }
-  return result;
-}
