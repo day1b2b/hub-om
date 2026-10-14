@@ -1,6 +1,7 @@
 import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { resolveCourseLookup } from "@/lib/data/courseLookup";
+import { selectLookupRounds } from "@/lib/data/courseLookupRounds";
 import { normalizeCourseId } from "@/lib/data/operationCalculations";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { getSalesRevenueSource } from "@/lib/data/salesRevenueSyncRepositoryFactory";
@@ -26,6 +27,9 @@ import { safeSalesRevenueIssue } from "@/lib/data/salesRevenueSourceIssues";
  *   - 공유 토큰(`COURSE_LOOKUP_TOKEN`)이 있어야만 응답한다. 토큰은 저장소에 두지 않고
  *     배포 환경변수로만 주입한다(세일즈맵 토큰과 동일 원칙).
  *   - 매출(revenue)은 반환하지 않는다 — 자동 채움에 필요한 고객사·과정명만 노출한다.
+ *   - `rounds=1` 을 붙인 호출에만 그 코스ID의 회차(일정·시간·교육 형태·강사)를 함께 돌려준다.
+ *     결과보고서 빌더(edu-report)가 교육 기간·형태·강사를 미리 채우는 용도다. 매출·비용·담당자·링크는 넣지 않는다
+ *     (`courseLookupRounds.ts`). 기존 호출(rounds 없음)의 응답은 그대로다.
  *   - 설정/토큰이 없으면 survey는 기존 로컬 학습으로 폴백하므로, 실패해도 조용히 넘어갈 수 있게
  *     명확한 코드로 응답한다.
  */
@@ -104,10 +108,14 @@ async function activityGET(request: Request) {
   }
 
   // 1) 운영현황(hub-om DB)에서 먼저 찾는다 — 원천이자 가장 빠른 경로.
-  const candidates = await getOperationRepository().findCoursesByCourseId(courseId);
+  const repository = getOperationRepository();
+  const candidates = await repository.findCoursesByCourseId(courseId);
   const resolved = resolveCourseLookup(candidates);
+  const wantRounds = url.searchParams.get("rounds") === "1";
 
   if (resolved && (resolved.company || resolved.courseName)) {
+    // 회차는 요청한 호출에만 — 전체 회차를 읽는 비용이 있고, 기존 자동 채움에는 필요 없다.
+    const rounds = wantRounds ? selectLookupRounds(await repository.listOperations(), courseId) : undefined;
     return NextResponse.json({
       ok: true,
       found: true,
@@ -117,7 +125,8 @@ async function activityGET(request: Request) {
       courseName: resolved.courseName,
       // 한 코스ID에 과정이 여럿이면 과정명은 비워 보낸다(호출자가 안내 문구에 쓴다).
       ambiguous: resolved.ambiguous,
-      candidateCount: resolved.candidateCount
+      candidateCount: resolved.candidateCount,
+      ...(rounds ? { rounds } : {})
     });
   }
 
