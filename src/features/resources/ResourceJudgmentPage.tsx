@@ -68,8 +68,8 @@ interface CalendarItem {
   eventKind?: CalendarResourceEvent["eventKind"];
   href?: string;
   key: string;
-  onsiteOwnerName?: string;
-  ownerName: string;
+  onsiteOwnerNames?: string[];
+  ownerNames: string[];
   startDate: Date;
   title: string;
   type: "operation" | "request" | "source";
@@ -131,7 +131,7 @@ export function ResourceJudgmentPage({
     () =>
       pendingOmRequests.filter((request) =>
         ownerNamesInScope(
-          [getCalendarOperationOwner(request.assignedOm ?? "", resourceOwnerMap)],
+          getCalendarOperationOwners(request.assignedOm ?? "", resourceOwnerMap),
           effectiveOwnerFilter,
           partFilter,
           ownerPartMap
@@ -319,10 +319,12 @@ function CalendarEventCard({ segment }: { segment: CalendarEventSegment }) {
   const content = (
     <>
       <span>
-        {segment.item.ownerName ? <Tag tone={ownerTone(segment.item.ownerName)}>{segment.item.ownerName}</Tag> : null}
-        {segment.item.onsiteOwnerName ? (
-          <Tag tone={ownerTone(segment.item.onsiteOwnerName)}>{`${segment.item.onsiteOwnerName}·현장`}</Tag>
-        ) : null}
+        {segment.item.ownerNames.map((name) => (
+          <Tag key={`owner-${name}`} tone={ownerTone(name)}>{name}</Tag>
+        ))}
+        {(segment.item.onsiteOwnerNames ?? []).map((name) => (
+          <Tag key={`onsite-${name}`} tone={ownerTone(name)}>{`${name}·현장`}</Tag>
+        ))}
         {segment.item.type === "source" ? (
           <Tag tone={segment.item.eventKind === "absence" ? "pink" : "gray"}>{sourceEventLabel(segment.item)}</Tag>
         ) : null}
@@ -463,8 +465,11 @@ function operationToCalendarItems(
   teamQuery: string,
   ownerMap: Map<string, string>
 ): CalendarItem[] {
-  const ownerName = getCalendarOperationOwner(operation.om, ownerMap);
-  const onsiteOwnerName = getCalendarOperationOwner(operation.onsiteOm, ownerMap);
+  const ownerNames = getCalendarOperationOwners(operation.om, ownerMap);
+  // 현장운영에 담당 OM과 같은 사람이 또 들어있는 건 "현장" 칩으로 중복 표시하지 않는다.
+  const onsiteOwnerNames = getCalendarOperationOwners(operation.onsiteOm, ownerMap).filter(
+    (name) => !ownerNames.includes(name)
+  );
 
   return resolveOperationCalendarRuns(operation).flatMap((run) => {
     const startDate = parseDate(run.start);
@@ -477,8 +482,8 @@ function operationToCalendarItems(
       href: `/operations/${operation.operationId}${teamQuery}`,
       // 한 회차가 막대 여러 개가 되므로 구간 시작일까지 키에 넣는다(레인 배치·확장 상태가 섞이지 않게).
       key: `operation-${operation.operationId}-${run.start}`,
-      onsiteOwnerName: onsiteOwnerName && onsiteOwnerName !== ownerName ? onsiteOwnerName : undefined,
-      ownerName,
+      onsiteOwnerNames: onsiteOwnerNames.length > 0 ? onsiteOwnerNames : undefined,
+      ownerNames,
       startDate,
       title: operation.courseName,
       type: "operation" as const
@@ -496,7 +501,7 @@ function sourceEventToCalendarItem(event: CalendarResourceEvent, ownerMap: Map<s
     endDate,
     eventKind: event.eventKind,
     key: `source-${normalizeOwnerName(event.ownerName)}-${event.sourceEventId}`,
-    ownerName: resolveOwnerDisplayName(event.ownerName, ownerMap) ?? event.ownerName,
+    ownerNames: [resolveOwnerDisplayName(event.ownerName, ownerMap) ?? event.ownerName],
     startDate,
     title: event.title,
     type: "source"
@@ -505,7 +510,7 @@ function sourceEventToCalendarItem(event: CalendarResourceEvent, ownerMap: Map<s
 
 // 아직 operation으로 승격되지 않은 om-request도 회차(세션) 단위로 캘린더에 막대를 그린다.
 function omRequestToCalendarItems(request: OmRequest, teamQuery: string, ownerMap: Map<string, string>): CalendarItem[] {
-  const ownerName = getCalendarOperationOwner(request.assignedOm ?? "", ownerMap);
+  const ownerNames = getCalendarOperationOwners(request.assignedOm ?? "", ownerMap);
 
   return request.sessions.flatMap((session, index) => {
     const startDate = parseDate(session.date);
@@ -516,7 +521,7 @@ function omRequestToCalendarItems(request: OmRequest, teamQuery: string, ownerMa
       endDate,
       href: `/om-request/manage/${request.id}${teamQuery}`,
       key: `request-${request.id}-${index}`,
-      ownerName,
+      ownerNames,
       startDate,
       title: request.courseName,
       type: "request" as const
@@ -739,12 +744,14 @@ function getOperationResourceOwners(operation: OperationSession, allowedOwners: 
   ]);
 }
 
-function getCalendarOperationOwner(value: string, allowedOwners: Map<string, string>) {
-  return (
-    splitPersonNames(value, "")
-      .map((owner) => resolveOwnerDisplayName(owner, allowedOwners, false))
-      .find((owner): owner is string => Boolean(owner)) ?? ""
-  );
+// OM/현장운영 칸은 "조경수, 이혜림"처럼 쉼표로 여러 명이 들어올 수 있다. 전부 칩으로 보여준다
+// (예전엔 첫 매칭자만 남기고 나머지를 버렸다 — 2026-10-15 발견).
+function getCalendarOperationOwners(value: string, allowedOwners: Map<string, string>): string[] {
+  const resolved = splitPersonNames(value, "")
+    .map((owner) => resolveOwnerDisplayName(owner, allowedOwners, false))
+    .filter((owner): owner is string => Boolean(owner));
+
+  return [...new Set(resolved)];
 }
 
 function resolveOwnerDisplayName(owner: string, allowedOwners: Map<string, string>, includeFallback = true) {
