@@ -597,6 +597,7 @@ const OPERATIONS_CSV_HEADERS = [
   "총 회차",
   "총 교육일수",
   "싱크업",
+  "강의관리 링크",
   "OM",
   "LD",
   "시작일",
@@ -623,6 +624,7 @@ function downloadOperationsCsv(courseGroups: CourseGroup[], today: Date) {
     `${group.operations.length}`,
     sumEducationDays(group.operations),
     isSafeHttpUrl(group.operationDetail) ? group.operationDetail : "-",
+    isSafeHttpUrl(group.lectureManagementNote) ? group.lectureManagementNote : "-",
     summarizeText(group.operations, (operation) => operation.om, "배정필요"),
     summarizeText(group.operations, (operation) => operation.ld, "미정"),
     group.startDate,
@@ -680,6 +682,7 @@ interface CourseGroup {
   courseName: string;
   endDate: string;
   key: string;
+  lectureManagementNote: string;
   linkOperationId: string;
   operationDetail: string;
   operations: OperationSession[];
@@ -718,6 +721,7 @@ function buildCourseGroup(key: string, operations: OperationSession[], today: Da
     courseName: first.courseName,
     endDate: endDates[endDates.length - 1] ?? "",
     key,
+    lectureManagementNote: operations.find((operation) => operation.lectureManagementNote)?.lectureManagementNote ?? "",
     linkOperationId: representative.operationId,
     operationDetail: operations.find((operation) => operation.operationDetail)?.operationDetail ?? "",
     operations,
