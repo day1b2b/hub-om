@@ -217,6 +217,7 @@ export function OperationDetail({
                   fields={[{ name: "ld", options: personOptions.ld, type: "name-select", value: operation.ld }]}
                   label="LD"
                   operationId={operation.operationId}
+                  operationIds={courseOperationIds}
                 />
                 <OnsiteRequiredConditionSelect
                   rounds={courseOperations.map((candidate) => ({
