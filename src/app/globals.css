@@ -13795,19 +13795,15 @@ button.coach-doc-reserve-chip:disabled {
   max-width: 460px;
 }
 
-.round-reorder-changes {
-  display: grid;
-  gap: 6px;
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.round-reorder-summary {
+  font-size: 13px;
+  font-weight: 700;
+  margin: 10px 0 0;
+  text-align: center;
 }
 
-.round-reorder-changes li {
-  background: #fbfcfe;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  padding: 8px 10px;
+.round-reorder-footer {
+  justify-content: center;
 }
 
 
