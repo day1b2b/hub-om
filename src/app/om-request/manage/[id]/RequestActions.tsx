@@ -16,7 +16,8 @@ export function RequestActions({
 }) {
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
-  const canEdit = isAdmin || isAuthor;
+  // 수정은 OM 배정 전까지만 연다. 배정 후 변경은 담당 OM이 운영현황에서 직접 한다.
+  const canEdit = (isAdmin || isAuthor) && !isAssigned;
   const canDelete = isAdmin || (isAuthor && !isAssigned);
 
   async function handleDelete() {
