@@ -135,9 +135,7 @@ export function RoundReorderProvider({ baseOperationId, children, rounds }: Roun
             ))}
           </p>
 
-          <p className="round-reorder-note">
-            구글 캘린더 일정 제목의 회차 번호도 함께 바뀌지만, 참석자에게 메일 알림은 가지 않아요.
-          </p>
+          <p className="round-reorder-note">구글 캘린더에도 반영됩니다.</p>
 
           {error ? <p className="round-reorder-error">{error}</p> : null}
 
