@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { parseToolsValue, TOOL_GROUPS, TOOL_META_OPTIONS } from "@/lib/data/omRequest/omToolOptions";
+import { resolveEditableInfoTargets } from "./editableInfoTargets";
 
 type SaveState = "idle" | "saving" | "failed";
 
@@ -10,10 +11,17 @@ interface EditableToolsItemProps {
   displayValue: string;
   extraTools?: string[];
   operationId: string;
+  operationIds?: string[];
   value: string;
 }
 
-export function EditableToolsItem({ displayValue, extraTools = [], operationId, value: rawValue }: EditableToolsItemProps) {
+export function EditableToolsItem({
+  displayValue,
+  extraTools = [],
+  operationId,
+  operationIds,
+  value: rawValue
+}: EditableToolsItemProps) {
   const router = useRouter();
   const value = rawValue ?? "";
   const [isOpen, setIsOpen] = useState(false);
@@ -155,24 +163,25 @@ export function EditableToolsItem({ displayValue, extraTools = [], operationId, 
     const nextValue = [...selectedTools, ...(customTools.trim() ? [customTools.trim()] : [])].join(", ");
     const patches = [{ field: "tools", action: "replace" as const, value: nextValue }];
 
-    let response: Response;
+    const results = await Promise.all(
+      resolveEditableInfoTargets(operationId, operationIds).map(async (targetOperationId) => {
+        try {
+          const response = await fetch(`/api/operations/${encodeURIComponent(targetOperationId)}/drive-import/apply`, {
+            method: "POST",
+            headers: {
+              "content-type": "application/json"
+            },
+            body: JSON.stringify({ patches })
+          });
+          const payload = (await response.json().catch(() => ({}))) as { ok?: boolean };
+          return response.ok && payload.ok === true;
+        } catch {
+          return false;
+        }
+      })
+    );
 
-    try {
-      response = await fetch(`/api/operations/${encodeURIComponent(operationId)}/drive-import/apply`, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json"
-        },
-        body: JSON.stringify({ patches })
-      });
-    } catch {
-      setSaveState("failed");
-      return;
-    }
-
-    const payload = (await response.json().catch(() => ({}))) as { ok?: boolean };
-
-    if (!response.ok || !payload.ok) {
+    if (!results.every(Boolean)) {
       setSaveState("failed");
       return;
     }
