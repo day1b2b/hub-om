@@ -9,6 +9,7 @@
     "test": "node --experimental-strip-types --experimental-test-module-mocks --experimental-loader ./scripts/ts-loader.mjs --test \"src/**/*.test.ts\"",
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
+    "check:invoice-form-schema": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/check-invoice-form-schema.ts",
     "db:validate": "prisma validate",
     "db:generate": "prisma generate",
     "db:migrate:dev": "prisma migrate dev",

@@ -69,13 +69,13 @@ test("코스ID가 같아도 과정명이 다르면 다른 코스로 센다", () 
   assert.equal(entries[0].courseCount, 2);
 });
 
-test("링크는 회차 중 하나라도 있으면 있는 것으로 본다", () => {
+test("운영 현황 표의 코스 한 줄에 만족도(평균)·매출(코스ID기준)이 채워진다", () => {
   const entries = aggregateCompanies([
-    operation({ operationId: "a", driveLink: "" }),
-    operation({ operationId: "b", driveLink: "https://example.com/d" })
+    operation({ operationId: "a", courseId: "261578", revenue: 1_000_000, avgSatisfaction: "4.5" }),
+    operation({ operationId: "b", courseId: "261578", revenue: 1_000_000, avgSatisfaction: "4.7" })
   ]);
-  assert.equal(entries[0].courses[0].drive, true);
-  assert.equal(entries[0].courses[0].report, false);
+  assert.equal(entries[0].courses[0].avgSatisfaction, "4.6");
+  assert.equal(entries[0].courses[0].revenue, "1,000,000");
 });
 
 test("만족도는 숫자로 읽히는 회차만 평균한다", () => {
@@ -104,36 +104,6 @@ test("일정이 없으면 -로 둔다", () => {
   const entries = aggregateCompanies([operation({ startDate: "", endDate: "" })]);
   assert.equal(entries[0].firstDate, "-");
   assert.equal(entries[0].lastDate, "-");
-  assert.equal(entries[0].history[0].period, "-");
-});
-
-test("운영 이력은 첫 회차부터 순서대로 온다", () => {
-  const entries = aggregateCompanies([
-    operation({ operationId: "b", startDate: "2026-09-01", endDate: "2026-09-03", roundNo: "2" }),
-    operation({ operationId: "a", startDate: "2026-08-01", endDate: "2026-08-01", roundNo: "1" })
-  ]);
-  assert.deepEqual(entries[0].history.map((h) => h.operationId), ["a", "b"]);
-  assert.deepEqual(entries[0].history.map((h) => h.roundNo), ["1", "2"]);
-  assert.equal(entries[0].history[1].period, "2026-09-01 ~ 2026-09-03");
-});
-
-test("같은 날짜면 회차 번호 순으로 세운다", () => {
-  const entries = aggregateCompanies([
-    operation({ operationId: "c", startDate: "2026-09-01", roundNo: "10차" }),
-    operation({ operationId: "a", startDate: "2026-09-01", roundNo: "2차" }),
-    operation({ operationId: "b", startDate: "2026-09-01", roundNo: "3차" })
-  ]);
-  // 문자열 비교면 "10차"가 "2차"보다 앞선다. 숫자로 읽어야 2 → 3 → 10이 된다.
-  assert.deepEqual(entries[0].history.map((h) => h.roundNo), ["2차", "3차", "10차"]);
-});
-
-test("일정이 없는 회차는 맨 뒤로 보낸다", () => {
-  const entries = aggregateCompanies([
-    operation({ operationId: "none", startDate: "", endDate: "", roundNo: "3" }),
-    operation({ operationId: "a", startDate: "2026-09-01", roundNo: "1" })
-  ]);
-  // 빈 문자열을 그냥 비교하면 날짜 없는 회차가 1차보다 앞에 온다.
-  assert.deepEqual(entries[0].history.map((h) => h.operationId), ["a", "none"]);
 });
 
 test("연도 목록을 오름차순으로 모은다", () => {

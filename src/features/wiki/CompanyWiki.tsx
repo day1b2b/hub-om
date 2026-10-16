@@ -3,13 +3,19 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
-import type { CompanyWikiEntry } from "./companyWikiModel";
+import type { CompanyWikiCourse, CompanyWikiEntry } from "./companyWikiModel";
+import { emptyCompanyBusinessInfo, type CompanyBusinessInfo } from "@/lib/data/companyBusinessInfoTypes";
+import { CompanyBusinessInfoEditor } from "./CompanyBusinessInfoEditor";
+import { buildInvoiceRequestFormUrl } from "@/lib/data/invoiceRequestForm";
+import { isSafeHttpUrl } from "@/components/ExternalTableLink";
 
 interface CompanyWikiProps {
   /** 운영 현황에서 만든 기업 목록. */
   entries: CompanyWikiEntry[];
   /** 운영 현황을 못 읽었을 때. 빈 목록과 구분해서 알려 준다. */
   loadFailed: boolean;
+  /** companyId별 사업자등록증 정보. Map은 서버→클라이언트로 못 넘겨서 일반 객체로 받는다. */
+  businessInfoByCompanyId: Record<string, CompanyBusinessInfo>;
 }
 
 /** 여러 명이면 이름을 이어 붙이고, 없으면 대체 문구. */
@@ -17,10 +23,14 @@ function nameText(names: string[], fallback: string): string {
   return names.length > 0 ? names.join(", ") : fallback;
 }
 
-export function CompanyWiki({ entries, loadFailed }: CompanyWikiProps) {
+const PAGE_SIZE = 20;
+
+export function CompanyWiki({ entries, loadFailed, businessInfoByCompanyId }: CompanyWikiProps) {
   const [selectedName, setSelectedName] = useState<null | string>(null);
   const [query, setQuery] = useState("");
   const [view, setView] = useState<"gallery" | "list">("gallery");
+  const [page, setPage] = useState(1);
+  const [pageInput, setPageInput] = useState("");
 
   // 상세를 열 때 히스토리 항목을 추가해, 브라우저 뒤로가기가 사이트를 벗어나지 않고 목록으로 돌아오게 한다.
   useEffect(() => {
@@ -44,6 +54,27 @@ export function CompanyWiki({ entries, loadFailed }: CompanyWikiProps) {
     return entries.filter((entry) => entry.name.toLowerCase().includes(keyword));
   }, [entries, query]);
 
+  // 검색/목록이 바뀌면 현재 페이지를 유효 범위로 맞춰 빈 페이지가 뜨지 않게 한다.
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const paged = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const pageNumbers = getPageNumbers(currentPage, totalPages);
+
+  function handleQueryChange(value: string) {
+    setQuery(value);
+    setPage(1);
+  }
+
+  function goToPage(target: number) {
+    setPage(Math.min(Math.max(1, target), totalPages));
+  }
+
+  function goToInputPage() {
+    const parsed = Number(pageInput);
+    if (Number.isFinite(parsed) && parsed >= 1) goToPage(Math.floor(parsed));
+    setPageInput("");
+  }
+
   const selected = useMemo(
     () => entries.find((entry) => entry.name === selectedName) ?? null,
     [entries, selectedName]
@@ -55,7 +86,11 @@ export function CompanyWiki({ entries, loadFailed }: CompanyWikiProps) {
 
       <section className="content">
         {selected ? (
-          <CompanyWikiDetail entry={selected} onBack={closeDetail} />
+          <CompanyWikiDetail
+            entry={selected}
+            onBack={closeDetail}
+            businessInfo={selected.companyId ? businessInfoByCompanyId[selected.companyId] : undefined}
+          />
         ) : (
           <>
             <header className="page-header">
@@ -86,7 +121,7 @@ export function CompanyWiki({ entries, loadFailed }: CompanyWikiProps) {
                     <span>🔍</span>
                     <input
                       aria-label="기업명 검색"
-                      onChange={(event) => setQuery(event.target.value)}
+                      onChange={(event) => handleQueryChange(event.target.value)}
                       placeholder="기업명 검색"
                       value={query}
                     />
@@ -97,7 +132,7 @@ export function CompanyWiki({ entries, loadFailed }: CompanyWikiProps) {
                 {view === "gallery" ? (
                   <div className="wiki-gallery">
                     {filtered.length > 0 ? (
-                      filtered.map((entry) => (
+                      paged.map((entry) => (
                         <button className="wiki-card" key={entry.name} onClick={() => openDetail(entry.name)} type="button">
                           <span className="wiki-card-head">
                             <CompanyLogo name={entry.name} />
@@ -137,9 +172,9 @@ export function CompanyWiki({ entries, loadFailed }: CompanyWikiProps) {
                         </thead>
                         <tbody>
                           {filtered.length > 0 ? (
-                            filtered.map((entry, index) => (
+                            paged.map((entry, index) => (
                               <tr key={entry.name}>
-                                <td>{index + 1}</td>
+                                <td>{(currentPage - 1) * PAGE_SIZE + index + 1}</td>
                                 <td>
                                   <button className="row-link row-link--logo" onClick={() => openDetail(entry.name)} type="button">
                                     <CompanyLogo name={entry.name} size="sm" />
@@ -166,6 +201,43 @@ export function CompanyWiki({ entries, loadFailed }: CompanyWikiProps) {
                     </div>
                   </div>
                 )}
+
+                {totalPages > 1 ? (
+                  <nav className="operations-pagination" aria-label="페이지 이동">
+                    <button type="button" className="page-nav" disabled={currentPage <= 1} onClick={() => goToPage(1)}>처음</button>
+                    <button type="button" className="page-nav" disabled={currentPage <= 1} onClick={() => goToPage(currentPage - 1)}>이전</button>
+                    {pageNumbers.map((pageNumber, index) =>
+                      pageNumber === "ellipsis" ? (
+                        <span key={`ellipsis-${index}`} className="page-ellipsis">…</span>
+                      ) : (
+                        <button
+                          key={pageNumber}
+                          type="button"
+                          className={pageNumber === currentPage ? "page-number is-active" : "page-number"}
+                          aria-current={pageNumber === currentPage ? "page" : undefined}
+                          onClick={() => goToPage(pageNumber)}
+                        >
+                          {pageNumber}
+                        </button>
+                      )
+                    )}
+                    <button type="button" className="page-nav" disabled={currentPage >= totalPages} onClick={() => goToPage(currentPage + 1)}>다음</button>
+                    <button type="button" className="page-nav" disabled={currentPage >= totalPages} onClick={() => goToPage(totalPages)}>끝</button>
+                    <span className="page-jump">
+                      <input
+                        aria-label="이동할 페이지 번호"
+                        max={totalPages}
+                        min={1}
+                        onChange={(event) => setPageInput(event.target.value)}
+                        onKeyDown={(event) => { if (event.key === "Enter") goToInputPage(); }}
+                        placeholder={String(currentPage)}
+                        type="number"
+                        value={pageInput}
+                      />
+                      <button type="button" onClick={goToInputPage}>이동</button>
+                    </span>
+                  </nav>
+                ) : null}
               </>
             )}
           </>
@@ -175,7 +247,15 @@ export function CompanyWiki({ entries, loadFailed }: CompanyWikiProps) {
   );
 }
 
-function CompanyWikiDetail({ entry, onBack }: { entry: CompanyWikiEntry; onBack: () => void }) {
+function CompanyWikiDetail({
+  entry,
+  onBack,
+  businessInfo
+}: {
+  entry: CompanyWikiEntry;
+  onBack: () => void;
+  businessInfo?: CompanyBusinessInfo;
+}) {
   const yearText = entry.years.length > 0 ? entry.years.join(", ") : "-";
 
   return (
@@ -203,7 +283,7 @@ function CompanyWikiDetail({ entry, onBack }: { entry: CompanyWikiEntry; onBack:
         <div className="detail-panel">
           <div className="panel-title">위키 요약</div>
           <div className="info-grid">
-            <div className="info-item"><span>매핑 코스</span><strong>{entry.courseCount}건</strong></div>
+            <div className="info-item"><span>운영 현황</span><strong>{entry.courseCount}건</strong></div>
             <div className="info-item"><span>운영 회차</span><strong>{entry.roundCount}건</strong></div>
             <div className="info-item"><span>만족도(평균)</span><strong>{entry.avgSatisfaction}</strong></div>
             <div className="info-item"><span>첫 운영</span><strong>{entry.firstDate}</strong></div>
@@ -212,7 +292,7 @@ function CompanyWikiDetail({ entry, onBack }: { entry: CompanyWikiEntry; onBack:
       </div>
 
       <div className="detail-section">
-        <div className="section-title"><h2>매핑 코스</h2><span>{entry.courseCount}건</span></div>
+        <div className="section-title"><h2>운영 현황 및 계산서 발행 내역</h2><span>{entry.courseCount}건</span></div>
         <div className="table-wrap">
           <table>
             <thead>
@@ -220,12 +300,12 @@ function CompanyWikiDetail({ entry, onBack }: { entry: CompanyWikiEntry; onBack:
                 <th>코스ID</th>
                 <th>과정명</th>
                 <th>회차</th>
-                <th>싱크업+운영상세</th>
-                <th>강의관리시트</th>
-                <th>드라이브</th>
-                <th>결과보고서</th>
+                <th>시작일</th>
+                <th>종료일</th>
                 <th>강사</th>
-                <th>기간</th>
+                <th>만족도(평균)</th>
+                <th>매출(코스ID기준)</th>
+                <th>계산서 발행 요청</th>
               </tr>
             </thead>
             <tbody>
@@ -238,12 +318,12 @@ function CompanyWikiDetail({ entry, onBack }: { entry: CompanyWikiEntry; onBack:
                     </Link>
                   </td>
                   <td>{course.rounds}</td>
-                  <td><LinkPill on={course.syncup} /></td>
-                  <td><LinkPill on={course.lms} /></td>
-                  <td><LinkPill on={course.drive} /></td>
-                  <td><LinkPill on={course.report} /></td>
+                  <td>{course.startDate}</td>
+                  <td>{course.endDate}</td>
                   <td>{course.instructors}</td>
-                  <td>{course.startDate === course.endDate ? course.startDate : `${course.startDate} ~ ${course.endDate}`}</td>
+                  <td>{course.avgSatisfaction}</td>
+                  <td>{course.revenue}</td>
+                  <td><InvoiceRequestLink entry={entry} course={course} businessInfo={businessInfo} /></td>
                 </tr>
               ))}
             </tbody>
@@ -251,49 +331,30 @@ function CompanyWikiDetail({ entry, onBack }: { entry: CompanyWikiEntry; onBack:
         </div>
       </div>
 
-      <div className="detail-section">
-        <div className="section-title"><h2>운영 이력 · 만족도 추이</h2><span>{entry.history.length}건</span></div>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>과정명</th>
-                <th>회차</th>
-                <th>기간</th>
-                <th>만족도</th>
-                <th>진행상태</th>
-              </tr>
-            </thead>
-            <tbody>
-              {entry.history.map((row) => (
-                <tr key={row.key}>
-                  <td>
-                    <Link className="course-link" href={`/operations/${row.operationId}`}>
-                      <strong>{row.courseName}</strong>
-                    </Link>
-                  </td>
-                  <td>{row.roundNo}</td>
-                  <td>{row.period}</td>
-                  <td>{row.satisfaction}</td>
-                  <td>{row.status}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {entry.companyId ? (
+        <CompanyBusinessInfoEditor companyId={entry.companyId} initial={businessInfo ?? emptyCompanyBusinessInfo()} />
+      ) : (
+        <div className="detail-section">
+          <div className="section-title"><h2>사업자등록증 정보</h2></div>
+          <div className="section-body">
+            <div className="empty-state">
+              <strong>이 기업은 아직 사업자등록증 정보를 입력할 수 없습니다.</strong>
+              <span>운영 현황 원천에 기업 식별자(companyId)가 없는 데이터라서 그렇습니다. 업무요청으로 접수된 기업만 입력할 수 있어요.</span>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* 아래 항목은 운영 현황에 없는 정보다. 예전에는 기업명 해시로 만든 값을 채워 넣었는데,
-          실제 담당자 연락처·보안 절차·정산 조건으로 읽힐 수 있어 지어내지 않고 비워 둔다. */}
+      {/* 아래 항목은 운영 현황에도, 사업자등록증 정보에도 없다. 예전에는 기업명 해시로 만든 값을
+          채워 넣었는데, 실제 담당자 연락처·보안 절차로 읽힐 수 있어 지어내지 않고 비워 둔다. */}
       <div className="detail-section">
         <div className="section-title"><h2>아직 기록되지 않은 정보</h2></div>
         <div className="section-body">
           <div className="empty-state">
             <strong>운영 현황에 없는 항목입니다.</strong>
             <span>
-              고객사 담당자 연락처·커뮤니케이션 스타일, 교육장·출입 보안·네트워크·장비,
-              정산 프로세스·증빙 서류, 운영 제언은 운영 현황에서 가져올 수 없어 비워 두었습니다.
-              입력해서 쌓는 기능은 별도로 붙일 예정입니다.
+              고객사 담당자 연락처·커뮤니케이션 스타일, 교육장·출입 보안·네트워크·장비, 운영 제언은
+              운영 현황에서 가져올 수 없어 비워 두었습니다. 입력해서 쌓는 기능은 별도로 붙일 예정입니다.
             </span>
           </div>
         </div>
@@ -302,8 +363,35 @@ function CompanyWikiDetail({ entry, onBack }: { entry: CompanyWikiEntry; onBack:
   );
 }
 
-function LinkPill({ on }: { on: boolean }) {
-  return <span className={on ? "archive-pill done" : "archive-pill needed"}>{on ? "등록" : "미등록"}</span>;
+function InvoiceRequestLink({
+  entry,
+  course,
+  businessInfo
+}: {
+  entry: CompanyWikiEntry;
+  course: CompanyWikiCourse;
+  businessInfo?: CompanyBusinessInfo;
+}) {
+  const href = buildInvoiceRequestFormUrl({
+    courseId: course.courseId,
+    courseName: course.courseName,
+    companyName: entry.name,
+    businessNumber: businessInfo?.businessNumber,
+    representativeName: businessInfo?.representativeName,
+    address: businessInfo?.address,
+    businessType: businessInfo?.businessType,
+    businessItem: businessInfo?.businessItem,
+    invoiceEmail: businessInfo?.invoiceEmail,
+    invoiceEmailSecondary: businessInfo?.invoiceEmailSecondary
+  });
+
+  if (!isSafeHttpUrl(href)) return <span className="muted-inline">-</span>;
+
+  return (
+    <a className="invoice-request-link" href={href} rel="noreferrer" target="_blank">
+      계산서 발행 요청
+    </a>
+  );
 }
 
 // 실제 로고 이미지 대신, 기업명 이니셜 + 결정적 색상 배지(플레이스홀더).
@@ -326,4 +414,24 @@ function CompanyLogo({ name, size = "md" }: { name: string; size?: "sm" | "md" |
       {logoMonogram(name)}
     </span>
   );
+}
+
+// 운영현황 화면(OperationDashboard.tsx)의 페이지네이션과 같은 방식(현재 페이지 중심 3개 창).
+function getPageNumbers(current: number, total: number): Array<number | "ellipsis"> {
+  const windowSize = 3;
+  let start = current - 1;
+  let end = current + 1;
+
+  if (start < 1) {
+    start = 1;
+    end = Math.min(total, windowSize);
+  }
+  if (end > total) {
+    end = total;
+    start = Math.max(1, total - windowSize + 1);
+  }
+
+  const pages: Array<number | "ellipsis"> = [];
+  for (let pageNumber = start; pageNumber <= end; pageNumber += 1) pages.push(pageNumber);
+  return pages;
 }

@@ -98,13 +98,13 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
           </div>
         ) : null}
 
-        {isAdmin ? (
-          <div className="nav-section">
-            <div className="nav-section-title">위키</div>
-            <Link className={isCompanyWikiPage ? "active" : ""} data-icon="🔒" href="/company-wiki">기업 위키</Link>
+        <div className="nav-section">
+          <div className="nav-section-title">위키</div>
+          <Link className={isCompanyWikiPage ? "active" : ""} data-icon="🏢" href="/company-wiki">기업 위키</Link>
+          {isAdmin ? (
             <Link className={isInstructorWikiPage ? "active" : ""} data-icon="🔒" href="/instructor-wiki">강사 위키</Link>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
 
         {isAdmin ? (
           <div className="nav-section">

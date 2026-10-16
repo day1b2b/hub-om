@@ -115,7 +115,25 @@ model Company {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
+  // 사업자등록증 정보. 업무요청(최초 접수) 또는 기업위키 수정 화면에서 채워진다.
+  businessNumber        String?   @map("business_number")
+  representativeName    String?   @map("representative_name")
+  address               String?   @map("address")
+  businessType          String?   @map("business_type")
+  businessItem          String?   @map("business_item")
+  invoiceEmail          String?   @map("invoice_email")
+  invoiceEmailSecondary String?   @map("invoice_email_secondary")
+  businessInfoUpdatedAt DateTime? @map("business_info_updated_at")
+  businessInfoUpdatedBy String?   @map("business_info_updated_by")
+
   courses Course[]
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  businessNumberPiiIndex        String? @map("business_number_pii_index")
+  representativeNamePiiIndex    String? @map("representative_name_pii_index")
+  addressPiiIndex               String? @map("address_pii_index")
+  invoiceEmailPiiIndex          String? @map("invoice_email_pii_index")
+  invoiceEmailSecondaryPiiIndex String? @map("invoice_email_secondary_pii_index")
 
   @@map("companies")
 }

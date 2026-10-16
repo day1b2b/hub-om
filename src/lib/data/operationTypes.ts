@@ -148,6 +148,8 @@ export interface CreateOperationInput {
   /** 파트를 이미 확정한 생성 경로가 Calendar 반영에 전달하는 힌트. DB에는 저장하지 않는다. */
   calendarPartKey?: string;
   archiveStatus: ArchiveStatus;
+  /** 업무요청 접수 시 함께 받은 사업자등록번호. 신규 기업 생성 시에만 Company에 반영한다. */
+  businessNumber?: string;
   coach: string;
   companyName: string;
   companyWikiLink: string;
