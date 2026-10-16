@@ -5339,8 +5339,15 @@ td span {
   display: flex;
   flex-direction: column;
   max-width: min(360px, calc(100vw - 24px));
+  overflow-y: auto;
   position: fixed;
   z-index: 1000;
+}
+
+.session-field-popover .lecture-note-footer {
+  background: var(--surface);
+  bottom: 0;
+  position: sticky;
 }
 
 .session-field-popover-body {
