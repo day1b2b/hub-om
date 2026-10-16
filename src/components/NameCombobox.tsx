@@ -60,6 +60,7 @@ export function NameCombobox({
   function selectOption(option: string) {
     if (multiple) {
       onChange([...committedNames, option].join(", ") + ", ");
+      setOpen(false);
       return;
     }
     onChange(option);
