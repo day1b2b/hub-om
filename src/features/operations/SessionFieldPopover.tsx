@@ -55,10 +55,13 @@ export function SessionFieldPopover({ anchorRef, children, onClose }: SessionFie
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") onClose();
     }
-    document.addEventListener("mousedown", handleOutsideClick);
+    // capture 단계에서 검사해야 한다: NameCombobox 다중 선택에서 옵션을 고르면 그 옵션이
+    // 바로 목록에서 빠지면서 클릭한 버튼이 DOM에서 사라지는데, bubble 단계까지 기다리면
+    // 그 시점엔 이미 버튼이 떨어져 나가 있어 containment 체크가 항상 "바깥 클릭"으로 오판한다.
+    document.addEventListener("mousedown", handleOutsideClick, true);
     document.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("mousedown", handleOutsideClick, true);
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [anchorRef, onClose]);
