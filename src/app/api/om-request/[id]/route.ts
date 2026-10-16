@@ -5,7 +5,7 @@ import { isAdminEmail } from "@/lib/auth/requireAdminSession";
 import { addCustomTools, listCustomTools, getOmCustomToolsRepository } from "@/lib/data/omRequest/omCustomToolsLocalRepository";
 import { deleteOmRequest, getOmRequest, setOmRequestOperationId, updateOmRequest } from "@/lib/data/omRequest/omRequestLocalRepository";
 import { syncOmRequestSessionsToOperations } from "@/lib/data/omRequest/omRequestOperationLink";
-import { planSessionCountChange } from "@/lib/data/omRequest/omRequestSessionPlan";
+import { planSessionCountChange, sessionScheduleChanged } from "@/lib/data/omRequest/omRequestSessionPlan";
 import { isOmRequestAuthor, type OmRequestInput } from "@/lib/data/omRequest/omRequestTypes";
 import { extractUnknownTools } from "@/lib/data/omRequest/omToolOptions";
 import { runOmRequestWriteRequest } from "@/lib/data/omRequestWriteComposition";
@@ -43,7 +43,7 @@ async function activityPATCH(request: Request, { params }: Props) {
     const sessions = Array.isArray(body.sessions) ? body.sessions : [];
     const input = { ...body, sessions, totalSessions: sessions.length };
 
-    // 운영현황에 연결된 요청만 회차 증감을 운영현황·캘린더에 맞춘다. 연결 전 요청은 요청만 고친다.
+    // 운영현황에 연결된 요청만 회차 증감·일정 변경을 운영현황·캘린더에 맞춘다. 연결 전 요청은 요청만 고친다.
     if (existing.operationId) {
       const plan = planSessionCountChange(existing.sessions.length, sessions.length, sessionOrigins);
       if (!plan.ok) return NextResponse.json({ error: plan.error }, { status: 400 });
@@ -52,7 +52,8 @@ async function activityPATCH(request: Request, { params }: Props) {
       if (incomplete !== -1) {
         return NextResponse.json({ error: `${incomplete + 1}회차의 교육일·시작 시간·종료 시간·장소를 모두 입력해 주세요.` }, { status: 400 });
       }
-      if (plan.changed) {
+      const scheduleChanged = plan.origins.some((origin, i) => origin !== null && sessionScheduleChanged(existing.sessions[origin], sessions[i]));
+      if (plan.changed || scheduleChanged) {
         try {
           const firstOperationId = await syncOmRequestSessionsToOperations(existing, { ...existing, ...input }, plan.origins, email);
           if (firstOperationId !== existing.operationId) await setOmRequestOperationId(id, firstOperationId);

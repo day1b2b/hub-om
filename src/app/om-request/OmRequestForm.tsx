@@ -717,7 +717,7 @@ export function OmRequestForm({
         ) : null}
         {linkedToOperation ? (
           <p className="om-field-hint">
-            회차를 늘리거나 지우면 저장할 때 운영현황 회차와 구글 캘린더 일정에도 함께 반영됩니다. 엑셀 일괄 입력은 새 요청에서만 쓸 수 있습니다.
+            회차를 늘리거나 지우거나 일정·시간·장소를 바꾸면 저장할 때 운영현황 회차와 구글 캘린더 일정에도 함께 반영됩니다. 엑셀 일괄 입력은 새 요청에서만 쓸 수 있습니다.
           </p>
         ) : null}
         {sheetError && <p className="om-request-error">{sheetError}</p>}
