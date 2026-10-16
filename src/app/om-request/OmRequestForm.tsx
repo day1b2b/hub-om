@@ -647,6 +647,7 @@ export function OmRequestForm({
               disabled={sessionCountLocked}
               min={1}
               max={30}
+              onFocus={(e) => e.target.select()}
               required
               type="number"
               value={form.totalSessions}
