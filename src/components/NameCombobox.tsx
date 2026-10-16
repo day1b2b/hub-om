@@ -12,8 +12,11 @@ function useCloseOnOutsideClick(open: boolean, onClose: () => void) {
     function handleClick(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) onClose();
     }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+    // capture 단계에서 검사해야 한다: 다중 선택 시 옵션을 고르면 그 옵션이 바로 목록에서
+    // 빠지면서 클릭한 버튼이 DOM에서 사라지는데, bubble 단계까지 기다리면 그 시점엔 이미
+    // 버튼이 떨어져 나가 있어 containment 체크가 항상 "바깥 클릭"으로 오판한다.
+    document.addEventListener("mousedown", handleClick, true);
+    return () => document.removeEventListener("mousedown", handleClick, true);
   }, [open, onClose]);
   return ref;
 }
