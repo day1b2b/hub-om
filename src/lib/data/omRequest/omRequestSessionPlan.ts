@@ -36,3 +36,14 @@ export function planSessionCountChange(existingCount: number, nextCount: number,
   const changed = removedIndexes.length > 0 || origins.some((origin, i) => origin !== i);
   return { ok: true, changed, removedIndexes, origins: origins as SessionOrigin[] };
 }
+
+interface SessionSchedule { date: string; dateEnd?: string; timeStart: string; timeEnd: string; duration: string; location: string; educationDatesText?: string }
+
+/** 운영현황 회차·캘린더에 들어가는 일정 값(교육일·시간·장소)이 바뀌었는지. */
+export function sessionScheduleChanged(before: SessionSchedule, after: SessionSchedule): boolean {
+  const key = (session: SessionSchedule) => [
+    session.date ?? "", session.dateEnd || session.date || "", session.timeStart ?? "", session.timeEnd ?? "",
+    session.duration ?? "", (session.location ?? "").trim(), (session.educationDatesText ?? "").trim()
+  ].join("|");
+  return key(before) !== key(after);
+}

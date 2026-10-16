@@ -42,6 +42,7 @@ mock.module("@/lib/data/operationRepositoryFactory", {
         const target = operations.find((op) => op.operationId === operationId)!;
         Object.assign(target, patch);
         if (patch.roundNo) calls.push(`renumber:${operationId}:${patch.roundNo}`);
+        if ((patch as { startDate?: string }).startDate) calls.push(`schedule:${operationId}:${(patch as { startDate?: string }).startDate}:${(patch as { region?: string }).region}`);
         return target;
       }
     })
@@ -80,6 +81,13 @@ test("추가한 회차는 운영현황 회차를 새로 만들고 지우는 것�
   const first = await syncOmRequestSessionsToOperations(request(3), next, [1, 2, null]);
   assert.deepEqual(calls, ["create:new-1:3", "delete:round-1", "renumber:round-2:1", "renumber:round-3:2"]);
   assert.equal(first, "round-2");
+});
+
+test("남은 회차 중 일정이 바뀐 회차만 운영현황 일정을 고친다", async () => {
+  const before = request(3);
+  const next = { ...request(3), sessions: [before.sessions[0], { ...session("2099-02-02"), location: "바뀐 장소" }, before.sessions[2]] };
+  await syncOmRequestSessionsToOperations(before, next, [0, 1, 2]);
+  assert.deepEqual(calls, ["schedule:round-2:2099-02-02:바뀐 장소"]);
 });
 
 test("운영현황 회차 수가 요청과 다르면 아무것도 바꾸지 않고 거절한다", async () => {

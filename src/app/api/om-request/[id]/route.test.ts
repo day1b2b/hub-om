@@ -62,6 +62,12 @@ test("회차 수가 같은 일반 수정은 운영현황 회차를 건드리지 
   assert.equal(syncs.length, 0);
   assert.equal(writes, 1);
 });
+test("회차 수가 같아도 기존 회차 일정을 바꾸면 운영현황에 반영한다", async () => {
+  const moved = [sessions[0], { ...sessions[1], date: "2099-02-15" }];
+  assert.equal((await save({ totalSessions: 2, sessions: moved, sessionOrigins: [0, 1] })).status, 200);
+  assert.equal(syncs.length, 1);
+  assert.equal(writes, 1);
+});
 test("아직 운영현황에 연결되지 않은 요청은 회차 수를 수정할 수 있다", async () => {
   linked = false;
   assert.equal((await save({ totalSessions: 4, sessions: [...sessions, ...sessions] })).status, 200);

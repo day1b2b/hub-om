@@ -4,7 +4,7 @@ import { getOperationRepository } from "../operationRepositoryFactory";
 import { syncAssignedOmByOperationId } from "./omRequestLocalRepository";
 import type { CreateOperationInput } from "../operationTypes";
 import type { OmRequest } from "./omRequestTypes";
-import type { SessionOrigin } from "./omRequestSessionPlan";
+import { sessionScheduleChanged, type SessionOrigin } from "./omRequestSessionPlan";
 import type { notifyOmAssigned } from "../../slack/notifySlack";
 
 const PLACEHOLDER_OM_VALUES = new Set(["", ...Array.from(ASSIGNMENT_NEEDED_VALUES)]);
@@ -113,7 +113,10 @@ export async function createLinkedOperationForOmRequest(request: OmRequest): Pro
 }
 
 /**
- * 업무 요청 수정에서 회차를 늘리거나 줄인 결과를 운영현황 회차에 맞춘다.
+ * 업무 요청 수정에서 회차를 늘리거나 줄이거나 일정을 바꾼 결과를 운영현황 회차에 맞춘다.
+ *
+ * 남은 회차 중 교육일·시간·장소가 바뀐 회차는 운영현황 회차의 같은 값을 고친다. 요청에서
+ * 바뀌지 않은 회차는 건드리지 않아 운영현황에서 따로 고친 값을 덮어쓰지 않는다.
  *
  * 요청의 회차 하나가 운영현황 회차(OperationSession) 하나다. 지운 회차는 운영현황
  * 삭제(deleteOperation, 숨김 처리)로, 추가한 회차는 새 회차 생성으로 반영하고, 남은 회차는
@@ -160,13 +163,20 @@ export async function syncOmRequestSessionsToOperations(
     for (const operationId of created) await repository.updateOperation(operationId, { hasResultReport: "불필요" });
   }
 
-  // 2) 화면에서 고른 회차를 지운다(숨김 처리 + 캘린더 일정 삭제).
+  // 2) 남은 회차 중 일정이 바뀐 회차를 운영현황에도 고친다(캘린더는 수정 반영으로 따라간다).
+  for (const [index, origin] of origins.entries()) {
+    if (origin === null || !sessionScheduleChanged(existing.sessions[origin], next.sessions[index])) continue;
+    const { educationDates, educationDays, endDate, region, startDate, timeText } = operationInputForSession(next, next.sessions[index], "");
+    await repository.updateOperation(rounds[origin].operationId, { educationDates: educationDates ?? [], educationDays, endDate, region, startDate, timeText });
+  }
+
+  // 3) 화면에서 고른 회차를 지운다(숨김 처리 + 캘린더 일정 삭제).
   const keptIds = new Set(ordered.map((round) => round.operationId));
   for (const round of rounds) {
     if (!keptIds.has(round.operationId)) await repository.deleteOperation(round.operationId, actorEmail);
   }
 
-  // 3) 남은 회차 번호를 화면 순서대로 1..N으로 맞춘다.
+  // 4) 남은 회차 번호를 화면 순서대로 1..N으로 맞춘다.
   for (const [index, round] of ordered.entries()) {
     const roundNo = String(index + 1);
     if (round.roundNo.trim() !== roundNo) await repository.updateOperation(round.operationId, { roundNo });
