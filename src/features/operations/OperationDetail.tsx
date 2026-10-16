@@ -135,12 +135,14 @@ export function OperationDetail({
                   fields={[{ name: "courseId", placeholder: "예: 261326", value: operation.courseId }]}
                   label="코스ID"
                   operationId={operation.operationId}
+                  operationIds={courseOperationIds}
                 />
                 <EditableInfoItem
                   displayValue={operation.courseIdLabel || "미정"}
                   fields={[{ name: "courseIdLabel", placeholder: "예: 2026 AI 역량강화", value: operation.courseIdLabel }]}
                   label="코스ID명"
                   operationId={operation.operationId}
+                  operationIds={courseOperationIds}
                 />
               </div>
             </section>
@@ -163,6 +165,7 @@ export function OperationDetail({
                   ]}
                   label="교육형태"
                   operationId={operation.operationId}
+                  operationIds={courseOperationIds}
                 />
                 <EditableInfoItem
                   displayValue={operation.courseCategory || "미정"}
@@ -176,11 +179,13 @@ export function OperationDetail({
                   ]}
                   label="과정 카테고리 소분류"
                   operationId={operation.operationId}
+                  operationIds={courseOperationIds}
                 />
                 <EditableToolsItem
                   displayValue={operation.tools || "미정"}
                   extraTools={extraTools}
                   operationId={operation.operationId}
+                  operationIds={courseOperationIds}
                   value={operation.tools}
                 />
                 <ResultReportConditionSelect
