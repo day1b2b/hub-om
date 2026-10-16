@@ -13796,10 +13796,15 @@ button.coach-doc-reserve-chip:disabled {
 }
 
 .round-reorder-summary {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
   font-size: 13px;
   font-weight: 700;
-  margin: 10px 0 0;
-  text-align: center;
+  justify-content: center;
+  margin: 0;
+  min-height: 52px;
+  padding: 0 18px;
 }
 
 .round-reorder-footer {
