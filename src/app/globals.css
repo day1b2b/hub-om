@@ -13957,12 +13957,6 @@ button.coach-doc-reserve-chip:disabled {
   padding: 0;
 }
 
-.round-reorder-note {
-  color: var(--muted);
-  font-size: 12px;
-  margin: 12px 0 0;
-}
-
 .round-reorder-error {
   color: var(--red);
   font-size: 13px;

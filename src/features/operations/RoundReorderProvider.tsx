@@ -117,7 +117,7 @@ export function RoundReorderProvider({ baseOperationId, children, rounds }: Roun
           <div className="drive-review-header">
             <div>
               <h2 id="round-reorder-title">회차 순서 바꾸기</h2>
-              <p>끌어놓은 순서대로 회차 번호가 바뀝니다.</p>
+              <p>끌어놓은 순서대로 회차 번호가 바뀌며, 구글 캘린더에도 반영됩니다.</p>
             </div>
             <button aria-label="닫기" disabled={isBusy} onClick={closeConfirm} type="button">
               닫기
@@ -134,8 +134,6 @@ export function RoundReorderProvider({ baseOperationId, children, rounds }: Roun
               </span>
             ))}
           </p>
-
-          <p className="round-reorder-note">구글 캘린더에도 반영됩니다.</p>
 
           {error ? <p className="round-reorder-error">{error}</p> : null}
 
