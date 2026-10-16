@@ -3,7 +3,9 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { isAdminEmail } from "@/lib/auth/requireAdminSession";
 import { addCustomTools, listCustomTools, getOmCustomToolsRepository } from "@/lib/data/omRequest/omCustomToolsLocalRepository";
-import { deleteOmRequest, getOmRequest, updateOmRequest } from "@/lib/data/omRequest/omRequestLocalRepository";
+import { deleteOmRequest, getOmRequest, setOmRequestOperationId, updateOmRequest } from "@/lib/data/omRequest/omRequestLocalRepository";
+import { syncOmRequestSessionsToOperations } from "@/lib/data/omRequest/omRequestOperationLink";
+import { planSessionCountChange } from "@/lib/data/omRequest/omRequestSessionPlan";
 import { isOmRequestAuthor, type OmRequestInput } from "@/lib/data/omRequest/omRequestTypes";
 import { extractUnknownTools } from "@/lib/data/omRequest/omToolOptions";
 import { runOmRequestWriteRequest } from "@/lib/data/omRequestWriteComposition";
@@ -31,13 +33,39 @@ async function activityPATCH(request: Request, { params }: Props) {
       return NextResponse.json({ error: "본인이 작성한 요청만 수정할 수 있습니다." }, { status: 403 });
     }
 
-    getOmCustomToolsRepository();
-    const body = (await request.json()) as OmRequestInput;
-    // 요청 수정은 운영 회차를 생성/삭제하지 않는다. 회차 수만 바뀌면 이후 OM 배정이 막힌다.
-    if (existing.operationId && (body.totalSessions !== existing.totalSessions || body.sessions?.length !== existing.sessions.length)) {
-      return NextResponse.json({ error: "운영현황에 연결된 요청은 회차 수를 바로 변경할 수 없습니다. 연결된 운영 회차와 함께 조정하도록 관리자에게 요청해 주세요." }, { status: 409 });
+    // 관리자도 OM 배정 후에는 수정할 수 없다. 배정 후 변경은 담당 OM이 운영현황에서 직접 한다.
+    if (existing.status === "배정완료") {
+      return NextResponse.json({ error: "OM 배정이 끝난 요청은 수정할 수 없습니다. 변경이 필요하면 담당 OM에게 운영현황 수정을 요청해 주세요." }, { status: 403 });
     }
-    const updated = await updateOmRequest(id, body);
+
+    getOmCustomToolsRepository();
+    const { sessionOrigins, ...body } = (await request.json()) as OmRequestInput & { sessionOrigins?: unknown };
+    const sessions = Array.isArray(body.sessions) ? body.sessions : [];
+    const input = { ...body, sessions, totalSessions: sessions.length };
+
+    // 운영현황에 연결된 요청만 회차 증감을 운영현황·캘린더에 맞춘다. 연결 전 요청은 요청만 고친다.
+    if (existing.operationId) {
+      const plan = planSessionCountChange(existing.sessions.length, sessions.length, sessionOrigins);
+      if (!plan.ok) return NextResponse.json({ error: plan.error }, { status: 400 });
+      // 새로 추가한 회차는 운영현황 회차와 캘린더 일정을 바로 만들므로 일정·시간·장소가 모두 있어야 한다.
+      const incomplete = plan.origins.findIndex((origin, i) => origin === null && !(sessions[i]?.date && sessions[i]?.timeStart && sessions[i]?.timeEnd && sessions[i]?.location?.trim()));
+      if (incomplete !== -1) {
+        return NextResponse.json({ error: `${incomplete + 1}회차의 교육일·시작 시간·종료 시간·장소를 모두 입력해 주세요.` }, { status: 400 });
+      }
+      if (plan.changed) {
+        try {
+          const firstOperationId = await syncOmRequestSessionsToOperations(existing, { ...existing, ...input }, plan.origins, email);
+          if (firstOperationId !== existing.operationId) await setOmRequestOperationId(id, firstOperationId);
+        } catch (error) {
+          if (error instanceof Error && error.message === "OPERATION_ROUND_MISMATCH") {
+            return NextResponse.json({ error: "운영현황의 회차 수가 요청과 달라 회차를 바꿀 수 없습니다. 관리자에게 확인을 요청해 주세요." }, { status: 409 });
+          }
+          console.error("[om-request] OPERATION_ROUND_SYNC_FAILED");
+          return NextResponse.json({ error: "운영현황 회차 반영에 실패했습니다. 운영현황을 확인한 뒤 다시 시도해 주세요." }, { status: 500 });
+        }
+      }
+    }
+    const updated = await updateOmRequest(id, input);
     if (!updated) return NextResponse.json({ error: "요청 없음" }, { status: 404 });
     try {
       addCustomTools(extractUnknownTools(updated.tools ?? "", listCustomTools()));

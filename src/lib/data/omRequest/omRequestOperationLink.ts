@@ -4,6 +4,7 @@ import { getOperationRepository } from "../operationRepositoryFactory";
 import { syncAssignedOmByOperationId } from "./omRequestLocalRepository";
 import type { CreateOperationInput } from "../operationTypes";
 import type { OmRequest } from "./omRequestTypes";
+import type { SessionOrigin } from "./omRequestSessionPlan";
 import type { notifyOmAssigned } from "../../slack/notifySlack";
 
 const PLACEHOLDER_OM_VALUES = new Set(["", ...Array.from(ASSIGNMENT_NEEDED_VALUES)]);
@@ -21,6 +22,54 @@ export const EDUCATION_FORMAT_BY_TRAINING_TYPE: Record<OmRequest["trainingType"]
 
 function timeTextOf(session: OmRequest["sessions"][number]): string {
   return session.timeStart && session.timeEnd ? `${session.timeStart} ~ ${session.timeEnd}` : "";
+}
+
+function operationInputForSession(request: OmRequest, session: OmRequest["sessions"][number], roundNo: string): CreateOperationInput {
+  // 세션에 실제 교육일을 따로 적어뒀으면(예: 9/3, 9/4, 9/7) 그 값을 우선한다 — date~dateEnd는
+  // 그 사이 모든 날짜가 교육일이라고 가정하지만, 중간에 쉬는 날이 있는 회차는 그 가정이 틀리다.
+  const educationDates = session.educationDatesText
+    ? parseEducationDatesText(session.educationDatesText).dates
+    : undefined;
+
+  return {
+    archiveStatus: "아카이빙전",
+    calendarPartKey: request.team,
+    coach: "",
+    companyName: request.company,
+    companyWikiLink: "",
+    costRaw: "",
+    courseCategory: request.courseCategory,
+    courseId: request.courseId,
+    courseName: request.courseName,
+    createdBy: request.ld,
+    driveLink: request.driveLink,
+    educationDays: session.duration || "",
+    educationDates,
+    educationFormat: EDUCATION_FORMAT_BY_TRAINING_TYPE[request.trainingType],
+    endDate: session.dateEnd || session.date,
+    instructorCost: null,
+    instructorWikiLink: "",
+    instructors: request.instructorName,
+    ld: request.ld,
+    lectureManagementLink: "",
+    om: request.assignedOm ?? "",
+    onsiteRequired: request.onSiteOperation === "Y" ? "Y" : "N",
+    operationCost: null,
+    operationDetail: "",
+    operationIssue: "",
+    operationStatus: "배정필요",
+    operationType: "검토필요",
+    padletLink: "",
+    region: session.location || "",
+    resultReportLink: "",
+    revenue: null,
+    roundNo,
+    specialNotes: request.notes || `${request.courseName} - om-request로 접수된 건. 상세 내용 확인 필요`,
+    startDate: session.date,
+    timeText: timeTextOf(session),
+    tools: request.tools ?? "",
+    totalCost: null
+  };
 }
 
 /**
@@ -45,52 +94,7 @@ export async function createLinkedOperationForOmRequest(request: OmRequest): Pro
   const createdOperationIds: string[] = [];
 
   for (const [index, session] of sessions.entries()) {
-    // 세션에 실제 교육일을 따로 적어뒀으면(예: 9/3, 9/4, 9/7) 그 값을 우선한다 — date~dateEnd는
-    // 그 사이 모든 날짜가 교육일이라고 가정하지만, 중간에 쉬는 날이 있는 회차는 그 가정이 틀리다.
-    const educationDates = session.educationDatesText
-      ? parseEducationDatesText(session.educationDatesText).dates
-      : undefined;
-
-    const input: CreateOperationInput = {
-      archiveStatus: "아카이빙전",
-      calendarPartKey: request.team,
-      coach: "",
-      companyName: request.company,
-      companyWikiLink: "",
-      costRaw: "",
-      courseCategory: request.courseCategory,
-      courseId: request.courseId,
-      courseName: request.courseName,
-      createdBy: request.ld,
-      driveLink: request.driveLink,
-      educationDays: session.duration || "",
-      educationDates,
-      educationFormat: EDUCATION_FORMAT_BY_TRAINING_TYPE[request.trainingType],
-      endDate: session.dateEnd || session.date,
-      instructorCost: null,
-      instructorWikiLink: "",
-      instructors: request.instructorName,
-      ld: request.ld,
-      lectureManagementLink: "",
-      om: request.assignedOm ?? "",
-      onsiteRequired: request.onSiteOperation === "Y" ? "Y" : "N",
-      operationCost: null,
-      operationDetail: "",
-      operationIssue: "",
-      operationStatus: "배정필요",
-      operationType: "검토필요",
-      padletLink: "",
-      region: session.location || "",
-      resultReportLink: "",
-      revenue: null,
-      roundNo: String(index + 1),
-      specialNotes: request.notes || `${request.courseName} - om-request로 접수된 건. 상세 내용 확인 필요`,
-      startDate: session.date,
-      timeText: timeTextOf(session),
-      tools: request.tools ?? "",
-      totalCost: null
-    };
-
+    const input = operationInputForSession(request, session, String(index + 1));
     const operation = await repository.createOperation(input);
     if (!firstOperationId) firstOperationId = operation.operationId;
     createdOperationIds.push(operation.operationId);
@@ -106,6 +110,69 @@ export async function createLinkedOperationForOmRequest(request: OmRequest): Pro
   }
 
   return firstOperationId;
+}
+
+/**
+ * 업무 요청 수정에서 회차를 늘리거나 줄인 결과를 운영현황 회차에 맞춘다.
+ *
+ * 요청의 회차 하나가 운영현황 회차(OperationSession) 하나다. 지운 회차는 운영현황
+ * 삭제(deleteOperation, 숨김 처리)로, 추가한 회차는 새 회차 생성으로 반영하고, 남은 회차는
+ * 화면 순서대로 1..N을 다시 매긴다 — 운영현황 회차 삭제(api/operations/[operationId])와 같은
+ * 규칙이다. 구글 캘린더 일정은 저장소의 생성/삭제/수정 반영으로 함께 따라간다.
+ *
+ * 운영현황 쪽 회차 수가 요청과 다르면(운영현황에서 따로 추가/삭제한 경우) 어느 회차가
+ * 어느 회차인지 짐작하지 않고 OPERATION_ROUND_MISMATCH로 거절한다.
+ * 반환값은 바뀐 대표 회차(1회차) operationId다.
+ */
+export async function syncOmRequestSessionsToOperations(
+  existing: OmRequest,
+  next: OmRequest,
+  origins: SessionOrigin[],
+  actorEmail?: string
+): Promise<string> {
+  if (!existing.operationId) throw new Error("OPERATION_ROUND_MISMATCH");
+  const repository = getOperationRepository();
+  const representative = await repository.getOperationById(existing.operationId);
+  if (!representative) throw new Error("OPERATION_ROUND_MISMATCH");
+
+  const rounds = (await repository.listOperations())
+    .filter((candidate) =>
+      representative.courseRecordId ? candidate.courseRecordId === representative.courseRecordId : isSameCourse(candidate, representative)
+    )
+    .sort((a, b) => Number(a.roundNo) - Number(b.roundNo));
+  if (rounds.length !== existing.sessions.length || existing.sessions.some((session) => !session.date)) {
+    throw new Error("OPERATION_ROUND_MISMATCH");
+  }
+
+  // 1) 새 회차를 먼저 만든다 — 생성이 실패하면 아무것도 지우지 않은 상태로 멈춘다.
+  const ordered: { operationId: string; roundNo: string }[] = [];
+  const created: string[] = [];
+  for (const [index, origin] of origins.entries()) {
+    if (origin !== null) {
+      ordered.push(rounds[origin]);
+      continue;
+    }
+    const operation = await repository.createOperation(operationInputForSession(next, next.sessions[index], String(index + 1)));
+    created.push(operation.operationId);
+    ordered.push({ operationId: operation.operationId, roundNo: operation.roundNo });
+  }
+  if (next.resultReportNeeded === "N") {
+    for (const operationId of created) await repository.updateOperation(operationId, { hasResultReport: "불필요" });
+  }
+
+  // 2) 화면에서 고른 회차를 지운다(숨김 처리 + 캘린더 일정 삭제).
+  const keptIds = new Set(ordered.map((round) => round.operationId));
+  for (const round of rounds) {
+    if (!keptIds.has(round.operationId)) await repository.deleteOperation(round.operationId, actorEmail);
+  }
+
+  // 3) 남은 회차 번호를 화면 순서대로 1..N으로 맞춘다.
+  for (const [index, round] of ordered.entries()) {
+    const roundNo = String(index + 1);
+    if (round.roundNo.trim() !== roundNo) await repository.updateOperation(round.operationId, { roundNo });
+  }
+
+  return ordered[0].operationId;
 }
 
 /**
