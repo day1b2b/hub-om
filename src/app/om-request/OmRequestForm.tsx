@@ -260,7 +260,7 @@ export function OmRequestForm({
   defaultTeam,
   initialData,
   requestId,
-  sessionCountLocked = false,
+  linkedToOperation = false,
   knownCompanies = [],
   knownInstructors = []
 }: {
@@ -269,7 +269,7 @@ export function OmRequestForm({
   defaultTeam?: string;
   initialData?: OmRequestInput;
   requestId?: string;
-  sessionCountLocked?: boolean;
+  linkedToOperation?: boolean;
   knownCompanies?: string[];
   knownInstructors?: string[];
 }) {
@@ -309,6 +309,11 @@ export function OmRequestForm({
     return { ...base, courseCategoryMajor: base.courseCategoryMajor || getCourseCategoryMajor(base.courseCategory) || "" };
   });
 
+  // 수정 화면에서 각 회차가 기존 몇 번째 회차였는지(새로 추가한 회차는 null). 서버가 지운 회차를
+  // 정확히 골라 운영현황·캘린더에서도 지우도록 저장할 때 함께 보낸다.
+  const [sessionOrigins, setSessionOrigins] = useState<(number | null)[]>(() => form.sessions.map((_, i) => i));
+  const [sessionCountHint, setSessionCountHint] = useState<string | null>(null);
+
   const [{ custom: initialCustomTools, selected: initialSelectedTools }] = useState(() => parseToolsValue(initialData?.tools ?? "", extraTools));
   const [selectedTools, setSelectedTools] = useState(initialSelectedTools);
   const [customTools, setCustomTools] = useState(initialCustomTools);
@@ -347,19 +352,55 @@ export function OmRequestForm({
 
   function handleTotalSessionsChange(n: number) {
     const count = Math.max(1, Math.min(30, n));
+    const current = form.sessions;
+    setSessionCountHint(null);
+    if (count < current.length) {
+      // 기존 회차는 어느 회차를 지울지 직접 골라야 한다. 숫자를 줄여서는 새로 추가한 끝 회차만 뺀다.
+      const removable = sessionOrigins.slice(count).every((origin) => origin === null);
+      if (requestId && !removable) {
+        setSessionCountHint("기존 회차를 줄이려면 지울 회차의 '삭제' 버튼을 눌러주세요.");
+        return;
+      }
+      setForm((prev) => ({ ...prev, totalSessions: count, sessions: prev.sessions.slice(0, count) }));
+      setSessionOrigins((prev) => prev.slice(0, count));
+      return;
+    }
+    const first = current[0];
+    const added = Array.from({ length: count - current.length }, () => ({
+      ...emptySession(),
+      timeStart: first?.timeStart ?? "",
+      timeEnd: first?.timeEnd ?? "",
+      duration: first?.duration ?? "",
+      location: first?.location ?? ""
+    }));
+    setForm((prev) => ({ ...prev, totalSessions: count, sessions: [...prev.sessions, ...added] }));
+    setSessionOrigins((prev) => [...prev, ...added.map(() => null)]);
+  }
+
+  function removeSession(idx: number) {
+    const session = form.sessions[idx];
+    if (!session || form.sessions.length <= 1) return;
+    // 기존 회차를 지우면 운영현황 회차와 구글 캘린더 일정도 함께 지워진다. 입력된 정보를 보여주고 확인받는다.
+    if (sessionOrigins[idx] !== null) {
+      const filled = [
+        session.date ? `일정 ${summarizeSessionDates(session)}` : "",
+        session.timeStart && session.timeEnd ? `시간 ${session.timeStart}~${session.timeEnd}` : "",
+        session.location ? `장소 ${session.location}` : ""
+      ].filter(Boolean);
+      const lines = [
+        `${idx + 1}회차를 삭제할까요?`,
+        filled.length > 0 ? `입력된 정보: ${filled.join(" / ")}` : "",
+        linkedToOperation ? "저장하면 운영현황 회차(강사·OM 등 입력 정보 포함)와 구글 캘린더 일정도 함께 삭제됩니다." : ""
+      ].filter(Boolean);
+      if (!confirm(lines.join("\n"))) return;
+    }
+    setSessionCountHint(null);
     setForm((prev) => {
-      const current = prev.sessions;
-      if (count <= current.length) return { ...prev, totalSessions: count, sessions: current.slice(0, count) };
-      const first = current[0];
-      const added = Array.from({ length: count - current.length }, () => ({
-        ...emptySession(),
-        timeStart: first?.timeStart ?? "",
-        timeEnd: first?.timeEnd ?? "",
-        duration: first?.duration ?? "",
-        location: first?.location ?? ""
-      }));
-      return { ...prev, totalSessions: count, sessions: [...current, ...added] };
+      const sessions = prev.sessions.filter((_, i) => i !== idx);
+      return { ...prev, totalSessions: sessions.length, sessions };
     });
+    setSessionOrigins((prev) => prev.filter((_, i) => i !== idx));
+    setOpenDateEditorIndex(null);
   }
 
   async function handleSessionSheetUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -390,6 +431,7 @@ export function OmRequestForm({
     }
 
     setForm((prev) => ({ ...prev, totalSessions: rows.length, sessions: rows.map((row) => row.session) }));
+    setSessionOrigins(rows.map(() => null));
   }
 
   function updateSession(idx: number, key: keyof OmRequestSession, value: string) {
@@ -452,7 +494,7 @@ export function OmRequestForm({
         const res = await fetch(`/api/om-request/${requestId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form)
+          body: JSON.stringify({ ...form, sessionOrigins })
         });
         if (!res.ok) {
           const result = await res.json().catch(() => null);
@@ -643,8 +685,7 @@ export function OmRequestForm({
           <label className="om-session-count-field">
             <span>총 회차<RequiredMark /></span>
             <input
-              aria-describedby={sessionCountLocked ? "om-session-count-locked-hint" : undefined}
-              disabled={sessionCountLocked}
+              aria-describedby={sessionCountHint ? "om-session-count-hint" : undefined}
               min={1}
               max={30}
               required
@@ -656,28 +697,31 @@ export function OmRequestForm({
           <div className="om-session-toolbar-actions">
             <a className="secondary-action" download href="/api/om-request/session-template">샘플 시트 다운로드</a>
             <label
-              aria-disabled={sessionCountLocked}
-              className={`secondary-action om-session-upload-label${sessionCountLocked ? " disabled" : ""}`}
+              aria-disabled={linkedToOperation}
+              className={`secondary-action om-session-upload-label${linkedToOperation ? " disabled" : ""}`}
             >
               엑셀로 일괄 입력
               <input
                 accept=".xlsx"
                 className="om-session-upload-input"
-                disabled={sessionCountLocked}
+                disabled={linkedToOperation}
                 onChange={handleSessionSheetUpload}
                 type="file"
               />
             </label>
           </div>
         </div>
-        {sessionCountLocked ? (
-          <p className="om-field-hint" id="om-session-count-locked-hint">
-            운영현황에 연결된 요청은 여기서 회차 수를 바꿀 수 없습니다. 기존 회차의 일정·시간·장소는 수정할 수 있습니다. 회차 추가 또는 감소가 필요하면 관리자에게 연결 회차 조정을 요청해 주세요.
+        {sessionCountHint ? (
+          <p className="om-request-error" id="om-session-count-hint">{sessionCountHint}</p>
+        ) : null}
+        {linkedToOperation ? (
+          <p className="om-field-hint">
+            회차를 늘리거나 지우거나 일정·시간·장소를 바꾸면 저장할 때 운영현황 회차와 구글 캘린더 일정에도 함께 반영됩니다. 엑셀 일괄 입력은 새 요청에서만 쓸 수 있습니다.
           </p>
         ) : null}
         {sheetError && <p className="om-request-error">{sheetError}</p>}
 
-        <div className="om-sessions-table">
+        <div className={`om-sessions-table${requestId ? " om-sessions-table-editable" : ""}`}>
           <div className="om-sessions-header">
             <span>회차</span>
             <span>교육일<em className="required-mark">*</em></span>
@@ -685,6 +729,7 @@ export function OmRequestForm({
             <span>종료 시간<em className="required-mark">*</em></span>
             <span>시수</span>
             <span>장소<em className="required-mark">*</em></span>
+            {requestId ? <span aria-hidden="true" /> : null}
           </div>
           {form.sessions.map((session, idx) => (
             <div className="om-sessions-row" key={idx}>
@@ -729,6 +774,16 @@ export function OmRequestForm({
                 />
                 <AddressSearchButton onSelect={(addr) => updateSession(idx, "location", addr)} />
               </div>
+              {requestId ? (
+                <button
+                  className="session-remove-btn"
+                  disabled={form.sessions.length <= 1}
+                  onClick={() => removeSession(idx)}
+                  type="button"
+                >
+                  삭제
+                </button>
+              ) : null}
             </div>
           ))}
         </div>
