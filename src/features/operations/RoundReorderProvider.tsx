@@ -117,36 +117,39 @@ export function RoundReorderProvider({ baseOperationId, children, rounds }: Roun
           <div className="drive-review-header">
             <div>
               <h2 id="round-reorder-title">회차 순서 바꾸기</h2>
-              <p>회차 번호가 아래처럼 다시 매겨집니다. 일정·강사·만족도는 각 회차에 그대로 붙어 함께 움직입니다.</p>
+              <p>끌어놓은 순서대로 회차 번호가 바뀝니다.</p>
             </div>
             <button aria-label="닫기" disabled={isBusy} onClick={closeConfirm} type="button">
               닫기
             </button>
           </div>
 
-          <ul className="round-reorder-changes">
-            {current.changes.map((change) => (
-              <li key={change.operationId}>
-                <strong>{labelByOperationId.get(change.operationId) ?? `${change.fromRoundNo}회차`}</strong>
+          <p className="round-reorder-summary">
+            {current.changes.map((change, index) => (
+              <span key={change.operationId}>
+                {index > 0 ? ", " : ""}
+                {labelByOperationId.get(change.operationId) ?? `${change.fromRoundNo}회차`}
                 <span aria-hidden="true"> → </span>
-                <span>{change.toRoundNo}회차</span>
-              </li>
+                {change.toRoundNo}회차
+              </span>
             ))}
-          </ul>
+          </p>
 
           <p className="round-reorder-note">
-            바뀐 번호는 구글 캘린더 일정 제목에도 반영됩니다. 참석자에게 메일은 가지 않습니다.
+            구글 캘린더 일정 제목의 회차 번호도 함께 바뀌지만, 참석자에게 메일 알림은 가지 않아요.
           </p>
 
           {error ? <p className="round-reorder-error">{error}</p> : null}
 
-          <div className="drive-review-footer">
-            <button disabled={isBusy} onClick={closeConfirm} type="button">
-              취소
-            </button>
-            <button disabled={isBusy} onClick={() => apply(current.orderedOperationIds)} type="button">
-              {isBusy ? "바꾸는 중" : "순서 바꾸기"}
-            </button>
+          <div className="lecture-note-footer round-reorder-footer">
+            <div className="lecture-note-actions">
+              <button disabled={isBusy} onClick={closeConfirm} type="button">
+                취소
+              </button>
+              <button disabled={isBusy} onClick={() => apply(current.orderedOperationIds)} type="button">
+                {isBusy ? "바꾸는 중" : "순서 바꾸기"}
+              </button>
+            </div>
           </div>
         </section>
       </div>,
