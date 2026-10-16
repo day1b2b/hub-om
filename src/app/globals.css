@@ -11691,7 +11691,8 @@ button.coach-doc-reserve-chip:disabled {
   width: 100%;
 }
 
-.name-combobox-dropdown-option:hover {
+.name-combobox-dropdown-option:hover,
+.name-combobox-dropdown-option--active {
   background: var(--surface-strong);
 }
 
