@@ -27,7 +27,8 @@ async function renderOmRequestEditPage({ params }: Props, session: Awaited<Retur
   if (!request) notFound();
 
   const isAdmin = await resolveSessionIsAdmin();
-  if (!isAdmin && !isOmRequestAuthor(request, session.user?.email)) {
+  // 관리자도 OM 배정 후에는 수정할 수 없다. 배정 후 변경은 담당 OM이 운영현황에서 직접 한다.
+  if (request.status === "배정완료" || (!isAdmin && !isOmRequestAuthor(request, session.user?.email))) {
     redirect(`/om-request/manage/${id}`);
   }
 
@@ -69,7 +70,7 @@ async function renderOmRequestEditPage({ params }: Props, session: Awaited<Retur
           ldName={ldName}
           initialData={initialData}
           requestId={id}
-          sessionCountLocked={Boolean(request.operationId)}
+          linkedToOperation={Boolean(request.operationId)}
           knownInstructors={knownInstructors}
         />
       </section>

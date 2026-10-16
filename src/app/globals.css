@@ -11791,6 +11791,44 @@ button.coach-doc-reserve-chip:disabled {
   text-align: center;
 }
 
+/* 수정 화면: 회차마다 삭제 버튼 칸을 더한다. */
+.om-sessions-table-editable .om-sessions-header,
+.om-sessions-table-editable .om-sessions-row {
+  grid-template-columns: 52px 220px 108px 108px 44px 1fr 52px;
+}
+
+.om-sessions-table-editable .om-sessions-row > .location-input-wrapper {
+  justify-self: stretch;
+}
+
+.om-sessions-table-editable .om-sessions-row > .location-input-wrapper input[type="text"] {
+  text-align: left;
+}
+
+.om-sessions-table-editable .om-sessions-row > .session-remove-btn {
+  justify-self: center;
+}
+
+.session-remove-btn {
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 8px;
+}
+
+.session-remove-btn:hover:not(:disabled) {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.session-remove-btn:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
 .om-sessions-row input:focus {
   border-color: var(--blue);
   outline: none;
