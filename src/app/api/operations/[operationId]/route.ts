@@ -5,6 +5,7 @@ import { isSameCourse } from "@/lib/data/operationCalculations";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { retryOperationCalendarDelete } from "@/lib/googleCalendar/reflectOperationToCalendar";
 import { getDataRepositoryOverride } from "@/lib/data/dataRepositoryContext";
+import { planRoundReorder } from "@/lib/data/roundReorder";
 import { runOperationWriteRequest } from "@/lib/data/operationWriteComposition";
 
 export const dynamic = "force-dynamic";
@@ -66,6 +67,28 @@ async function activityDELETE(_request: Request, { params }: RouteContext) {
   }
 
   await repository.deleteOperation(operationId, session.user?.email ?? undefined);
+
+  // 삭제로 남은 과정 회차에 구멍이 생기지 않도록, 현재 roundNo 순서를 그대로 1..N으로 다시 매긴다.
+  // (드래그 순서 바꾸기와 같은 planRoundReorder를 재사용 — 결과가 다르면 안 바뀐 것처럼 보이는 행동 불일치를 막는다)
+  const remainingSiblings = siblings
+    .filter((candidate) => candidate.operationId !== operationId)
+    .map((candidate) => ({ operationId: candidate.operationId, roundNo: candidate.roundNo }))
+    .sort((a, b) => Number(a.roundNo) - Number(b.roundNo));
+
+  const renumberPlan = planRoundReorder(
+    remainingSiblings,
+    remainingSiblings.map((sibling) => sibling.operationId)
+  );
+
+  if (renumberPlan.ok) {
+    try {
+      for (const change of renumberPlan.changes) {
+        await repository.updateOperation(change.operationId, { roundNo: change.toRoundNo });
+      }
+    } catch {
+      console.error("[round-delete] ROUND_RENUMBER_FAILED", { operationId });
+    }
+  }
 
   return NextResponse.json({ ok: true });
 }
