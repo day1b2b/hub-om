@@ -13795,19 +13795,20 @@ button.coach-doc-reserve-chip:disabled {
   max-width: 460px;
 }
 
-.round-reorder-changes {
-  display: grid;
-  gap: 6px;
-  list-style: none;
+.round-reorder-summary {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 13px;
+  font-weight: 700;
+  justify-content: center;
   margin: 0;
-  padding: 0;
+  min-height: 52px;
+  padding: 0 18px;
 }
 
-.round-reorder-changes li {
-  background: #fbfcfe;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  padding: 8px 10px;
+.round-reorder-footer {
+  justify-content: center;
 }
 
 
@@ -13959,12 +13960,6 @@ button.coach-doc-reserve-chip:disabled {
   list-style: none;
   margin: 0;
   padding: 0;
-}
-
-.round-reorder-note {
-  color: var(--muted);
-  font-size: 12px;
-  margin: 12px 0 0;
 }
 
 .round-reorder-error {
