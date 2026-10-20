@@ -11651,7 +11651,8 @@ button.coach-doc-reserve-chip:disabled {
   width: 100%;
 }
 
-.om-company-dropdown-option:hover {
+.om-company-dropdown-option:hover,
+.om-company-dropdown-option--active {
   background: var(--surface-strong);
 }
 
