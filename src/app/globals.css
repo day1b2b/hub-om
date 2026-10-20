@@ -14078,3 +14078,30 @@ button.coach-doc-reserve-chip:disabled {
 .course-common-note-editor .issue-editor-grid { margin: 0; }
 .course-common-note-editor .issue-editor-field textarea { min-height: 112px; resize: vertical; }
 .course-common-note-editor .issue-editor-footer { margin-top: 0; }
+
+.page-loading {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  justify-content: center;
+  min-height: 60vh;
+  padding: 48px 24px;
+  width: 100%;
+}
+
+.page-loading-spinner {
+  animation: drive-spin 0.8s linear infinite;
+  border: 3px solid var(--line);
+  border-radius: 999px;
+  border-top-color: var(--blue);
+  display: inline-block;
+  flex: 0 0 auto;
+  height: 32px;
+  width: 32px;
+}
+
+.page-loading-label {
+  font-size: 13px;
+}
