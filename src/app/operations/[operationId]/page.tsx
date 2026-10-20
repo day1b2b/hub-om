@@ -49,16 +49,18 @@ async function renderOperationDetailPage({ params, searchParams }: OperationDeta
   ).sort((a, b) => a.localeCompare(b, "ko"));
   // 실습코치 드롭다운 추천용. coach-db(노션 실습코치 DB 동기화) 명단에서 가져온다.
   // 로컬 dev 등 DB 미연결이면 조용히 생략(자유 입력 그대로 저장된다).
-  let coachOptions: string[] = [];
-  try {
-    const coaches = await getCoachRepository().listCoaches();
-    coachOptions = Array.from(new Set(coaches.map((coach) => coach.name.trim()).filter(Boolean))).sort((a, b) =>
-      a.localeCompare(b, "ko")
-    );
-  } catch {
-    coachOptions = [];
-  }
-  const onsiteOmOptions = await resolveOnsiteOmOptionsByEmail(session.user?.email, personOptions.om);
+  // listCoaches/onsiteOmOptions/collaboration은 서로 의존하지 않으므로 병렬로 가져온다
+  // (collaboration은 Slack/메일 등 외부 소스를 읽어 지연이 커서, 직렬 호출이면 상세 페이지 진입이 느려진다).
+  const coachOptionsPromise = getCoachRepository()
+    .listCoaches()
+    .then((coaches) =>
+      Array.from(new Set(coaches.map((coach) => coach.name.trim()).filter(Boolean))).sort((a, b) =>
+        a.localeCompare(b, "ko")
+      )
+    )
+    .catch(() => [] as string[]);
+  const onsiteOmOptionsPromise = resolveOnsiteOmOptionsByEmail(session.user?.email, personOptions.om);
+
   let operation = operations.find((candidate) => candidate.operationId === operationId);
   let allOperations = operations;
 
@@ -81,7 +83,12 @@ async function renderOperationDetailPage({ params, searchParams }: OperationDeta
         (candidate) => normalizeCourseId(candidate.courseId) === normalizeCourseId(operation.courseId)
       )
     : [];
-  const collaboration = await readOperationCollaboration(operation);
+
+  const [coachOptions, onsiteOmOptions, collaboration] = await Promise.all([
+    coachOptionsPromise,
+    onsiteOmOptionsPromise,
+    readOperationCollaboration(operation)
+  ]);
 
   return (
     <OperationDetail
