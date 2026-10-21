@@ -173,6 +173,20 @@ export function encodeMongoRuntimeDocument(name: string, row: Record<string, unk
 /** Complete BSON document only. Missing projected PII or companion fields are an error.
  * Callers project logical fields AFTER authentication; never decode an incomplete DB projection.
  */
+/** Projected read of non-private fields only; private fields always need the full authenticated decode. */
+export function decodeMongoRuntimeFields(name: string, document: Document, fields: readonly string[]): Record<string, unknown> {
+  return safe(() => {
+    const contract = model(name);
+    const policies = Object.entries(privacy[name]?.fields ?? {});
+    const restricted = new Set(policies.flatMap(([field, policy]) => [field, policy.index, policy.storage].filter(Boolean)));
+    check(object(document) && fields.length > 0 && fields.every(field => Object.hasOwn(contract.fields, field) && !restricted.has(field)), "PROJECTED_FIELD_NOT_ALLOWED");
+    return Object.fromEntries(fields.map(field => {
+      const key = field === "id" ? "_id" : field;
+      check(Object.hasOwn(document, key), "TARGET_FIELD_COVERAGE");
+      return [field, fromBson(contract.fields[field], document[key])];
+    }));
+  });
+}
 export function decodeMongoRuntimeDocument(name: string, document: Document): Record<string, unknown> {
   return safe(() => {
     const contract = model(name);
