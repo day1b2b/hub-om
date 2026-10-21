@@ -13,7 +13,6 @@ export type ArchiveStatus = "아카이빙전" | "아카이빙필요" | "완료";
 export type EducationFormat =
   | "오프라인"
   | "비대면"
-  | "온라인"
   | "블렌디드"
   | "플립러닝"
   | "검토필요";

@@ -28,7 +28,6 @@ enum ArchiveStatus {
 enum EducationFormat {
   OFFLINE      @map("offline")
   REMOTE       @map("remote")
-  ONLINE       @map("online")
   BLENDED      @map("blended")
   FLIPPED      @map("flipped")
   NEEDS_REVIEW @map("needs_review")

@@ -41,7 +41,7 @@ interface OperationCreateFormProps {
   teamScope: TeamScope;
 }
 
-const TRAINING_TYPE_OPTIONS: TrainingType[] = ["오프라인", "블렌디드", "비대면", "온라인", "해커톤"];
+const TRAINING_TYPE_OPTIONS: TrainingType[] = ["오프라인", "블렌디드", "비대면", "해커톤"];
 
 type SubmitState = "idle" | "saving" | "failed";
 

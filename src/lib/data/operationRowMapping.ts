@@ -89,7 +89,6 @@ export const OPERATION_STATUS: Record<string, OperationStatus> = {
 export const EDUCATION_FORMAT: Record<string, EducationFormat> = {
   OFFLINE: "오프라인",
   REMOTE: "비대면",
-  ONLINE: "온라인",
   BLENDED: "블렌디드",
   FLIPPED: "플립러닝",
   NEEDS_REVIEW: "검토필요"
@@ -163,7 +162,6 @@ export const DB_SATISFACTION_SURVEY_STATUS: Record<SatisfactionSurveyStatus, str
 export const DB_EDUCATION_FORMAT: Record<EducationFormat, string> = {
   "오프라인": "OFFLINE",
   "비대면": "REMOTE",
-  "온라인": "ONLINE",
   "블렌디드": "BLENDED",
   "플립러닝": "FLIPPED",
   "검토필요": "NEEDS_REVIEW"
