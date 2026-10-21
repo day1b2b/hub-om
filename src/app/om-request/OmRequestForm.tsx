@@ -688,6 +688,7 @@ export function OmRequestForm({
               aria-describedby={sessionCountHint ? "om-session-count-hint" : undefined}
               min={1}
               max={30}
+              onFocus={(e) => e.target.select()}
               required
               type="number"
               value={form.totalSessions}
