@@ -8,7 +8,7 @@ import { mongoModelContracts, encodeMongoDocument, decodeMongoDocument } from ".
 import { canonicalToBson, bsonToCanonical } from "../mongodb/shadowTarget";
 import { privacyFields } from "../privacy/fields";
 import { encrypt } from "../privacy/crypto";
-import { MongoDbNull, MongoJsonNull, MongoRuntimeCodecError, mongoRuntimeContracts, mongoRuntimeModelNames, mongoRuntimeSourceId, mongoRuntimeBlindIndex, encodeMongoRuntimeDocument, decodeMongoRuntimeDocument } from "./mongoRuntimeCodec";
+import { MongoDbNull, MongoJsonNull, MongoRuntimeCodecError, mongoRuntimeContracts, mongoRuntimeModelNames, mongoRuntimeSourceId, mongoRuntimeBlindIndex, encodeMongoRuntimeDocument, decodeMongoRuntimeDocument, decodeMongoRuntimeFields } from "./mongoRuntimeCodec";
 
 const previous = { PII_ENCRYPTION_KEYS: process.env.PII_ENCRYPTION_KEYS, PII_ACTIVE_KEY_ID: process.env.PII_ACTIVE_KEY_ID, PII_INDEX_KEY: process.env.PII_INDEX_KEY, PII_ALLOW_PLAINTEXT_READS: process.env.PII_ALLOW_PLAINTEXT_READS };
 process.env.PII_ENCRYPTION_KEYS = JSON.stringify({ fixture: randomBytes(32).toString("base64") });
@@ -151,4 +151,14 @@ test("compound UUID primary keys retain the migration identifier and blind index
   const encoded = encodeMongoRuntimeDocument("TeamUser", user);
   assert.equal(mongoRuntimeBlindIndex("TeamUser", "name", user.name), encoded.namePiiIndex);
   assert.throws(() => mongoRuntimeBlindIndex("Course", "createdAt", user.name), /NOT_INDEXED_PRIVATE_FIELD/);
+});
+
+test("projected decode reads only non-private fields", () => {
+  const createdAt = new Date("2026-10-01T00:00:00.000Z");
+  assert.deepEqual(decodeMongoRuntimeFields("OperationSourceRecord", { _id: uuid, sourceTeam: "TEAM_2", createdAt }, ["id", "sourceTeam", "createdAt"]), { id: uuid, sourceTeam: "TEAM_2", createdAt });
+  for (const field of ["rowSnapshot", "sourceWorkbook", "sourceWorkbookPiiIndex"]) {
+    assert.throws(() => decodeMongoRuntimeFields("OperationSourceRecord", { _id: uuid, [field]: null }, ["id", field]), (error: unknown) => error instanceof MongoRuntimeCodecError && error.code === "PROJECTED_FIELD_NOT_ALLOWED");
+  }
+  assert.throws(() => decodeMongoRuntimeFields("OperationSourceRecord", { _id: uuid }, ["id", "sourceTeam"]), (error: unknown) => error instanceof MongoRuntimeCodecError && error.code === "TARGET_FIELD_COVERAGE");
+  assert.throws(() => decodeMongoRuntimeFields("OperationSourceRecord", { _id: uuid, sourceTeam: "TEAM_X" }, ["id", "sourceTeam"]), MongoRuntimeCodecError);
 });
