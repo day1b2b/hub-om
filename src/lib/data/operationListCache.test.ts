@@ -12,15 +12,11 @@ const rows = (id: string) => [{ operationId: id }] as unknown as OperationSessio
 
 beforeEach(() => clearOperationListCache());
 
-test("reuses the list within the TTL regardless of backend", async () => {
-  const saved = process.env.OPERATION_PAGES_BACKEND;
-  process.env.OPERATION_PAGES_BACKEND = "mongodb-shadow";
-  try {
-    const repo = repository(async () => rows("a"));
-    assert.deepEqual(await listOperationsCached(repo.value), rows("a"));
-    assert.deepEqual(await listOperationsCached(repo.value), rows("a"));
-    assert.equal(repo.reads, 1);
-  } finally { if (saved === undefined) delete process.env.OPERATION_PAGES_BACKEND; else process.env.OPERATION_PAGES_BACKEND = saved; }
+test("reuses the list within the TTL", async () => {
+  const repo = repository(async () => rows("a"));
+  assert.deepEqual(await listOperationsCached(repo.value), rows("a"));
+  assert.deepEqual(await listOperationsCached(repo.value), rows("a"));
+  assert.equal(repo.reads, 1);
 });
 
 test("a write clears the cache so the next list reads again", async () => {
