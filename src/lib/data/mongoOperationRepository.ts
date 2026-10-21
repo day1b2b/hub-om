@@ -24,6 +24,8 @@ const textFields: Partial<Record<keyof UpdateOperationInput, string>> = {
 };
 
 /** Explicit opt-in parallel repository. The production repository factory deliberately never selects it. */
+/** 화면 매핑은 최신 원천의 sourceTeam만 쓴다. 나머지는 최신 1건 선택(정렬·식별)에 필요한 필드. */
+const LATEST_SOURCE_FIELDS = ["id", "operationSessionId", "sourceTeam", "createdAt"] as const;
 export class MongoOperationRepository implements OperationRepository {
   private readonly store: MongoOperationStore;
   private constructor(store: MongoOperationStore) { this.store = store; }
@@ -96,8 +98,8 @@ export class MongoOperationRepository implements OperationRepository {
     assertMongo(company, "MISSING_COMPANY");
     const label = await this.store.one("CourseIdLabel", { companyId: company.id, courseId: course.courseId }, session);
     const commonNote = await this.store.one("CourseCommonNote", { courseRecordId: course.id, deletedAt: null }, session);
-    const sources = await this.store.latestBy("OperationSourceRecord", "operationSessionId", [id(row)], "createdAt", session);
-    return toOperationSession({ ...row, course: { ...course, commonNote, company }, sourceRecords: sources.slice(0,1) } as unknown as OperationSessionRow, label?.label as string ?? "");
+    const sources = await this.store.latestFields("OperationSourceRecord", "operationSessionId", [id(row)], "createdAt", LATEST_SOURCE_FIELDS, session);
+    return toOperationSession({ ...row, course: { ...course, commonNote, company }, sourceRecords: sources } as unknown as OperationSessionRow, label?.label as string ?? "");
   }
   private async get(operationId: string, session?: ClientSession): Promise<OperationSession | null> {
     const row = await this.store.one("OperationSession", { operationId, deletedAt: null }, session);
@@ -136,16 +138,14 @@ export class MongoOperationRepository implements OperationRepository {
       const labelPairs = [...new Map(courses.map(course => [JSON.stringify([course.companyId, course.courseId]), { companyId: course.companyId, courseId: course.courseId }])).values()];
       const labels = await this.store.scan("CourseIdLabel", { $or: labelPairs }, session);
       const commonNotes = await this.store.scan("CourseCommonNote", { courseRecordId: { $in: courses.map(id) }, deletedAt: null }, session);
-      const sources = await this.store.latestBy("OperationSourceRecord", "operationSessionId", rows.map(id), "createdAt", session);
+      // 목록은 회차별 최신 원천의 sourceTeam만 쓴다. 원천 행은 스냅샷 JSON 때문에 크고(행당 ~3KB, 복호화 포함)
+      // 과거 이력이 쌓일수록 늘어나므로, 서버에서 최신 1건만 골라 비개인정보 필드만 받는다.
+      const sources = await this.store.latestFields("OperationSourceRecord", "operationSessionId", rows.map(id), "createdAt", LATEST_SOURCE_FIELDS, session);
       const courseMap = new Map(courses.map(course => [course.id, course]));
       const companyMap = new Map(companies.map(company => [company.id, company]));
       const labelMap = new Map(labels.map(label => [JSON.stringify([label.companyId, label.courseId]), label.label as string]));
       const commonNoteMap = new Map(commonNotes.map(note => [note.courseRecordId, note]));
-      const latestSource = new Map<unknown, MongoRow>();
-      for (const source of sources) {
-        const previous = latestSource.get(source.operationSessionId);
-        if (!previous || (source.createdAt as Date) > (previous.createdAt as Date)) latestSource.set(source.operationSessionId, source);
-      }
+      const latestSource = new Map(sources.map(source => [source.operationSessionId, source]));
       return rows.map(row => {
         const course = courseMap.get(row.courseRecordId);
         assertMongo(course, "MISSING_COURSE");

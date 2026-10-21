@@ -6,7 +6,6 @@ import { isSameCourse, normalizeCourseId } from "@/lib/data/operationCalculation
 import type { OperationCollaboration } from "@/lib/data/operationCollaboration";
 import { resolveOnsiteOmOptionsByEmail } from "@/lib/data/myOperations";
 import { listCustomTools } from "@/lib/data/omRequest/omCustomToolsLocalRepository";
-import { listOperationsCached } from "@/lib/data/operationListCache";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { getInstructorNoteRepository } from "@/lib/data/instructorNoteRepositoryFactory";
 import { getCoachRepository } from "@/lib/data/coachRepositoryFactory";
@@ -56,7 +55,8 @@ async function renderOperationDetailPage({ params, searchParams }: OperationDeta
   const repository = getOperationRepository();
   const teamMemberRepository = getStoredTeamMemberRepository();
   const [operations, ownerRoster, roleRoster, instructorNotes, queryParams] = await Promise.all([
-    listOperationsCached(repository),
+    // 저장 후 router.refresh()로 바로 다시 그리므로 목록 캐시 대신 매번 읽는다(operationListCache 참고).
+    repository.listOperations(),
     teamMemberRepository.listResourceOwners(),
     teamMemberRepository.listRoleRosters(),
     getInstructorNoteRepository().listNotes(),

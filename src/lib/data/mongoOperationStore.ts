@@ -1,5 +1,5 @@
 import { BSON, type ClientSession, type Db, type Document, type Filter, type IndexDescription, type MongoClient } from "mongodb";
-import { mongoRuntimeContracts, mongoRuntimeBlindIndex, decodeMongoRuntimeDocument, MongoDbNull, type MongoRuntimeDocument } from "./mongoRuntimeCodec";
+import { mongoRuntimeContracts, mongoRuntimeBlindIndex, decodeMongoRuntimeDocument, decodeMongoRuntimeFields, MongoDbNull, type MongoRuntimeDocument } from "./mongoRuntimeCodec";
 import policies from "../privacy/fields.json" with { type: "json" };
 import { assertMongoCourseNameRestoreGuardReady, prepareMongoCourseNameRestoreGuard } from "./mongoCourseNameRestoreGuard";
 import { assertMongo, MongoOperationError, stableMongoValue } from "./mongoOperationPrimitives";
@@ -11,6 +11,8 @@ export const OPERATION_MODELS = ["Company", "Course", "CourseIdLabel", "CourseCo
 const INTERNAL_MODELS = ["__creation", "__counter"];
 export const MONGO_SCAN_ROWS = 20_000;
 export const MONGO_SCAN_BYTES = 32 * 1024 * 1024;
+/** Rows per keyset page. Each page is one round trip, so 100 made a 1.5k-row list take ~50 trips. */
+const MONGO_SCAN_PAGE_ROWS = 1000;
 export interface MongoOperationOptions {
   client: MongoClient;
   databaseName: string;
@@ -56,8 +58,8 @@ export class MongoOperationStore {
         find: this.collection(model).collectionName,
         filter: query,
         sort: { _id: 1 },
-        limit: 100,
-        batchSize: 100,
+        limit: MONGO_SCAN_PAGE_ROWS,
+        batchSize: MONGO_SCAN_PAGE_ROWS,
         singleBatch: true,
         collation: { locale: "simple" },
         maxTimeMS: remaining,
@@ -84,6 +86,29 @@ export class MongoOperationStore {
     const rows = await this.scan(model, { [policy.index]: mongoRuntimeBlindIndex(model, field, value) }, session);
     assertMongo(rows.every(row => row[field] === value), "PRIVATE_EQUALITY_MISMATCH");
     return rows;
+  }
+  /** Latest row per foreign key, selected on the server, returning only the given non-private fields.
+   * The result is at most one row per id, so a single closed batch holds it and no getMore is issued. */
+  async latestFields(model: "OperationSourceRecord", foreignKey: string, ids: string[], dateField: string, fields: readonly string[], session?: ClientSession): Promise<MongoRow[]> {
+    if (ids.length === 0) return [];
+    const projection = Object.fromEntries(fields.map(field => [field === "id" ? "_id" : field, 1]));
+    const response = await this.db.command({
+      aggregate: this.collection(model).collectionName,
+      pipeline: [
+        { $match: { [foreignKey]: { $in: ids } } },
+        { $project: projection },
+        { $sort: { [foreignKey]: 1, [dateField]: -1, _id: 1 } },
+        { $group: { _id: `$${foreignKey}`, row: { $first: "$$ROOT" } } },
+        { $replaceRoot: { newRoot: "$row" } },
+      ],
+      cursor: { batchSize: ids.length + 1 },
+      collation: { locale: "simple" },
+      maxTimeMS: 15_000,
+    }, { session });
+    const batch = response.cursor?.firstBatch;
+    const cursorId = response.cursor?.id;
+    assertMongo(Array.isArray(batch) && (cursorId === 0 || cursorId?.isZero?.() === true), "SCAN_CURSOR_NOT_CLOSED");
+    return (batch as MongoRuntimeDocument[]).map(row => decodeMongoRuntimeFields(model, row, fields));
   }
   /** Keep complete authenticated documents, but select the latest relation on the server. */
   async latestBy(model: "OperationSourceRecord" | "OperationSession", foreignKey: string, ids: string[], dateField: string, session?: ClientSession): Promise<MongoRow[]> {
