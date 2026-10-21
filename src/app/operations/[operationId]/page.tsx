@@ -6,6 +6,7 @@ import { isSameCourse, normalizeCourseId } from "@/lib/data/operationCalculation
 import type { OperationCollaboration } from "@/lib/data/operationCollaboration";
 import { resolveOnsiteOmOptionsByEmail } from "@/lib/data/myOperations";
 import { listCustomTools } from "@/lib/data/omRequest/omCustomToolsLocalRepository";
+import { listOperationsCached } from "@/lib/data/operationListCache";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { getInstructorNoteRepository } from "@/lib/data/instructorNoteRepositoryFactory";
 import { getCoachRepository } from "@/lib/data/coachRepositoryFactory";
@@ -55,7 +56,7 @@ async function renderOperationDetailPage({ params, searchParams }: OperationDeta
   const repository = getOperationRepository();
   const teamMemberRepository = getStoredTeamMemberRepository();
   const [operations, ownerRoster, roleRoster, instructorNotes, queryParams] = await Promise.all([
-    repository.listOperations(),
+    listOperationsCached(repository),
     teamMemberRepository.listResourceOwners(),
     teamMemberRepository.listRoleRosters(),
     getInstructorNoteRepository().listNotes(),
