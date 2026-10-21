@@ -12,6 +12,8 @@ import { parseSessionSheet } from "@/lib/data/omRequest/omSessionSheet";
 import { deriveDateRangeFromEducationDates, parseEducationDatesText } from "@/lib/data/operationCalculations";
 import { sessionDatesOf, summarizeSessionDates } from "@/lib/data/omRequest/omRequestSessionDates";
 
+const MAX_SESSIONS = 100;
+
 declare global {
   interface Window {
     daum: {
@@ -219,11 +221,44 @@ function CompanyCombobox({
   onChange: (value: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [resetKey, setResetKey] = useState({ open, q: "" });
   const containerRef = useCloseOnOutsideClick(open, () => setOpen(false));
+  const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const q = value.trim().toLowerCase();
   const matches = q ? knownCompanies.filter((c) => c.toLowerCase().includes(q)) : knownCompanies;
+  const visibleMatches = matches.slice(0, 20);
   const isNewCompany = q !== "" && !knownCompanies.some((c) => c.toLowerCase() === q);
+
+  // 검색어가 바뀌거나 드롭다운을 다시 열면 이전 활성 항목 인덱스는 의미가 없어지므로 되돌린다.
+  if (resetKey.open !== open || resetKey.q !== q) {
+    setResetKey({ open, q });
+    setActiveIndex(0);
+  }
+
+  useEffect(() => {
+    optionRefs.current[activeIndex]?.scrollIntoView({ block: "nearest" });
+  }, [activeIndex]);
+
+  function selectOption(company: string) {
+    onChange(company);
+    setOpen(false);
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!open || visibleMatches.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((i) => (i + 1) % visibleMatches.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((i) => (i - 1 + visibleMatches.length) % visibleMatches.length);
+    } else if (e.key === "Enter" && visibleMatches[activeIndex]) {
+      e.preventDefault();
+      selectOption(visibleMatches[activeIndex]);
+    }
+  }
 
   return (
     <div className="om-company-combobox" ref={containerRef}>
@@ -231,17 +266,24 @@ function CompanyCombobox({
         required
         onChange={(e) => { onChange(e.target.value); setOpen(true); }}
         onFocus={() => setOpen(true)}
+        onKeyDown={handleKeyDown}
         placeholder="고객사명"
         type="text"
         value={value}
       />
-      {open && matches.length > 0 && (
+      {open && visibleMatches.length > 0 && (
         <div className="om-company-dropdown">
-          {matches.slice(0, 20).map((company) => (
+          {visibleMatches.map((company, index) => (
             <button
-              className="om-company-dropdown-option"
+              className={
+                index === activeIndex
+                  ? "om-company-dropdown-option om-company-dropdown-option--active"
+                  : "om-company-dropdown-option"
+              }
               key={company}
-              onMouseDown={(e) => { e.preventDefault(); onChange(company); setOpen(false); }}
+              onMouseDown={(e) => { e.preventDefault(); selectOption(company); }}
+              onMouseEnter={() => setActiveIndex(index)}
+              ref={(el) => { optionRefs.current[index] = el; }}
               type="button"
             >
               {company}
@@ -313,6 +355,15 @@ export function OmRequestForm({
   // 정확히 골라 운영현황·캘린더에서도 지우도록 저장할 때 함께 보낸다.
   const [sessionOrigins, setSessionOrigins] = useState<(number | null)[]>(() => form.sessions.map((_, i) => i));
   const [sessionCountHint, setSessionCountHint] = useState<string | null>(null);
+  // 총 회차 input의 표시용 텍스트. form.totalSessions를 그대로 value로 쓰면 "1"을 지우는 순간
+  // Number("") -> 0 -> 클램프돼 즉시 "1"로 되돌아가 버려서 새 숫자를 입력할 수 없다. 편집 중에는
+  // 빈 문자열도 허용하고, 유효한 값이 나올 때만 form에 반영한다.
+  const [totalSessionsText, setTotalSessionsText] = useState(() => String(form.totalSessions));
+  const [lastSyncedTotalSessions, setLastSyncedTotalSessions] = useState(form.totalSessions);
+  if (form.totalSessions !== lastSyncedTotalSessions) {
+    setLastSyncedTotalSessions(form.totalSessions);
+    setTotalSessionsText(String(form.totalSessions));
+  }
 
   const [{ custom: initialCustomTools, selected: initialSelectedTools }] = useState(() => parseToolsValue(initialData?.tools ?? "", extraTools));
   const [selectedTools, setSelectedTools] = useState(initialSelectedTools);
@@ -350,8 +401,22 @@ export function OmRequestForm({
     syncToolsField(selectedTools, value);
   }
 
+  function handleTotalSessionsTextChange(raw: string) {
+    setTotalSessionsText(raw);
+    if (raw.trim() === "") return;
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed)) return;
+    handleTotalSessionsChange(parsed);
+  }
+
+  function handleTotalSessionsBlur() {
+    if (totalSessionsText.trim() === "" || !Number.isFinite(Number(totalSessionsText))) {
+      setTotalSessionsText(String(form.totalSessions));
+    }
+  }
+
   function handleTotalSessionsChange(n: number) {
-    const count = Math.max(1, Math.min(30, n));
+    const count = Math.max(1, Math.min(MAX_SESSIONS, n));
     const current = form.sessions;
     setSessionCountHint(null);
     if (count < current.length) {
@@ -420,8 +485,8 @@ export function OmRequestForm({
       setSheetError("시트에 입력된 회차가 없습니다.");
       return;
     }
-    if (rows.length > 30) {
-      setSheetError("회차는 최대 30개까지 입력할 수 있습니다.");
+    if (rows.length > MAX_SESSIONS) {
+      setSheetError(`회차는 최대 ${MAX_SESSIONS}개까지 입력할 수 있습니다.`);
       return;
     }
     const rowErrors = rows.filter((row) => row.errors.length > 0);
@@ -469,8 +534,8 @@ export function OmRequestForm({
       setError("사용 Tool을 1개 이상 선택하거나 입력해주세요.");
       return;
     }
-    const instructorName = form.instructorName.trim();
-    if (instructorName && !knownInstructors.some((name) => name.toLowerCase() === instructorName.toLowerCase())) {
+    const instructorNames = form.instructorName.split(",").map((name) => name.trim()).filter(Boolean);
+    if (instructorNames.some((name) => !knownInstructors.some((option) => option.toLowerCase() === name.toLowerCase()))) {
       setError("등록된 강사 명단과 이름이 달라요. 강사DB 노션을 확인해주세요.");
       return;
     }
@@ -487,6 +552,7 @@ export function OmRequestForm({
       setError(`${missingDatesRow + 1}회차 교육일을 최소 1일 선택해주세요.`);
       return;
     }
+    const normalizedForm = { ...form, instructorName: instructorNames.join(", ") };
     setSubmitting(true);
     setError(null);
     try {
@@ -494,7 +560,7 @@ export function OmRequestForm({
         const res = await fetch(`/api/om-request/${requestId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...form, sessionOrigins })
+          body: JSON.stringify({ ...normalizedForm, sessionOrigins })
         });
         if (!res.ok) {
           const result = await res.json().catch(() => null);
@@ -506,7 +572,7 @@ export function OmRequestForm({
         const res = await fetch("/api/om-request", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form)
+          body: JSON.stringify(normalizedForm)
         });
         const result = await res.json().catch(() => null);
         if (!res.ok) throw new Error(typeof result?.error === "string" ? result.error : "저장에 실패했습니다.");
@@ -615,9 +681,10 @@ export function OmRequestForm({
           <label>
             <span>강사명</span>
             <NameCombobox
+              multiple
               options={knownInstructors}
               onChange={(value) => setField("instructorName", value)}
-              placeholder="강사DB 노션에 등록된 이름 기입"
+              placeholder="강사DB 노션에 등록된 이름 기입(여러 명은 쉼표로 구분)"
               unmatchedHint="등록된 강사 명단과 이름이 달라요. 강사DB 노션을 확인해주세요."
               value={form.instructorName}
             />
@@ -687,12 +754,13 @@ export function OmRequestForm({
             <input
               aria-describedby={sessionCountHint ? "om-session-count-hint" : undefined}
               min={1}
-              max={30}
+              max={MAX_SESSIONS}
               onFocus={(e) => e.target.select()}
               required
               type="number"
-              value={form.totalSessions}
-              onChange={(e) => handleTotalSessionsChange(Number(e.target.value))}
+              value={totalSessionsText}
+              onChange={(e) => handleTotalSessionsTextChange(e.target.value)}
+              onBlur={handleTotalSessionsBlur}
             />
           </label>
           <div className="om-session-toolbar-actions">

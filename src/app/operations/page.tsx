@@ -3,6 +3,7 @@ import { isAdminEmail } from "@/lib/auth/requireAdminSession";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { resolveOmNameByEmail } from "@/lib/data/myOperations";
 import { normalizePersonKey } from "@/lib/data/roleAssignees";
+import { listOperationsCached } from "@/lib/data/operationListCache";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { getStoredTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFactory";
 import { listTeamUsers } from "@/lib/data/teamUsers/teamUserRepository";
@@ -26,7 +27,7 @@ async function renderOperationsPage({ searchParams }: OperationsPageProps) {
   const repository = getOperationRepository();
   const teamMemberRepository = getStoredTeamMemberRepository();
   const [operations, ownerRoster, teamUsers, params, myOmName] = await Promise.all([
-    repository.listOperations(),
+    listOperationsCached(repository),
     teamMemberRepository.listResourceOwners(),
     listTeamUsers(),
     searchParams,
