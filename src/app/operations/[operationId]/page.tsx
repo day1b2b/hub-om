@@ -3,7 +3,7 @@ import { OperationDetail } from "@/features/operations/OperationDetail";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { LocalJsonOperationRepository } from "@/lib/data/localJsonOperationRepository";
 import { isSameCourse, normalizeCourseId } from "@/lib/data/operationCalculations";
-import { readOperationCollaboration } from "@/lib/data/operationCollaboration";
+import type { OperationCollaboration } from "@/lib/data/operationCollaboration";
 import { resolveOnsiteOmOptionsByEmail } from "@/lib/data/myOperations";
 import { listCustomTools } from "@/lib/data/omRequest/omCustomToolsLocalRepository";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
@@ -16,6 +16,26 @@ import { filterOperationsByTeamScope, resolveTeamScope } from "@/lib/teamScope";
 import { allowsLegacyOperationPageFallback, runOperationPagesRequest } from "@/lib/data/operationPagesComposition";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * OperationDetail의 SHOW_OPERATION_DISCUSSION/SHOW_LECTURE_REPORTS가 둘 다 꺼져 있어
+ * (src/features/operations/OperationDetail.tsx) 화면에서 전혀 쓰이지 않는다. 그런데도
+ * readOperationCollaboration()을 부르면 매 상세 페이지 진입마다 Slack/메일을 실제로
+ * 읽어와서 느려지기만 했다. 두 플래그를 다시 켜면 이 자리를 readOperationCollaboration(operation)
+ * 호출로 되돌려야 한다.
+ */
+const DISABLED_COLLABORATION: OperationCollaboration = {
+  changeHistory: [],
+  changeHistoryStatus: "disabled",
+  discussionDiagnostics: { emailCandidateCount: 0, emailMatchedCount: 0 },
+  discussionEmailCandidates: [],
+  discussionIssues: [],
+  discussionReferences: [],
+  discussionSourceAvailability: { emailEnabled: false, slackEnabled: false },
+  discussionStatus: "disabled",
+  lectureReports: [],
+  lectureReportStatus: "disabled"
+};
 
 interface OperationDetailPageProps {
   params: Promise<{
@@ -49,16 +69,17 @@ async function renderOperationDetailPage({ params, searchParams }: OperationDeta
   ).sort((a, b) => a.localeCompare(b, "ko"));
   // 실습코치 드롭다운 추천용. coach-db(노션 실습코치 DB 동기화) 명단에서 가져온다.
   // 로컬 dev 등 DB 미연결이면 조용히 생략(자유 입력 그대로 저장된다).
-  let coachOptions: string[] = [];
-  try {
-    const coaches = await getCoachRepository().listCoaches();
-    coachOptions = Array.from(new Set(coaches.map((coach) => coach.name.trim()).filter(Boolean))).sort((a, b) =>
-      a.localeCompare(b, "ko")
-    );
-  } catch {
-    coachOptions = [];
-  }
-  const onsiteOmOptions = await resolveOnsiteOmOptionsByEmail(session.user?.email, personOptions.om);
+  // listCoaches/onsiteOmOptions는 서로 의존하지 않으므로 병렬로 가져온다.
+  const coachOptionsPromise = getCoachRepository()
+    .listCoaches()
+    .then((coaches) =>
+      Array.from(new Set(coaches.map((coach) => coach.name.trim()).filter(Boolean))).sort((a, b) =>
+        a.localeCompare(b, "ko")
+      )
+    )
+    .catch(() => [] as string[]);
+  const onsiteOmOptionsPromise = resolveOnsiteOmOptionsByEmail(session.user?.email, personOptions.om);
+
   let operation = operations.find((candidate) => candidate.operationId === operationId);
   let allOperations = operations;
 
@@ -81,7 +102,9 @@ async function renderOperationDetailPage({ params, searchParams }: OperationDeta
         (candidate) => normalizeCourseId(candidate.courseId) === normalizeCourseId(operation.courseId)
       )
     : [];
-  const collaboration = await readOperationCollaboration(operation);
+
+  const [coachOptions, onsiteOmOptions] = await Promise.all([coachOptionsPromise, onsiteOmOptionsPromise]);
+  const collaboration = DISABLED_COLLABORATION;
 
   return (
     <OperationDetail

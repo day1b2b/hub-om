@@ -8,7 +8,7 @@ const editPageSource = readFileSync(new URL("./manage/[id]/edit/page.tsx", impor
 test("수정 화면은 기존 회차를 고른 회차만 지우고 출처를 함께 저장한다", () => {
   assert.match(editPageSource, /linkedToOperation=\{Boolean\(request\.operationId\)\}/);
   assert.match(formSource, /className="session-remove-btn"[\s\S]*?onClick=\{\(\) => removeSession\(idx\)\}/);
-  assert.match(formSource, /JSON\.stringify\(\{ \.\.\.form, sessionOrigins \}\)/);
+  assert.match(formSource, /JSON\.stringify\(\{ \.\.\.normalizedForm, sessionOrigins \}\)/);
   assert.match(formSource, /className="om-session-upload-input"[\s\S]*?disabled=\{linkedToOperation\}/);
 });
 
