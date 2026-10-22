@@ -17,7 +17,6 @@ export const EDUCATION_FORMAT_BY_TRAINING_TYPE: Record<OmRequest["trainingType"]
   "오프라인": "오프라인",
   "블렌디드": "블렌디드",
   "비대면": "비대면",
-  "온라인": "온라인",
   "해커톤": "검토필요"
 };
 

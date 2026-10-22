@@ -5,6 +5,7 @@ import { INSTRUCTOR_NOTE_MODELS, MongoInstructorNoteRepository } from "./mongoIn
 import { MongoCoachRepository } from "./mongoCoachRepository";
 import { MongoOmRequestRepository, OM_REQUEST_MODELS, prepareMongoOmRequestStore } from "./mongoOmRequestRepository";
 import { MongoOperationRepository } from "./mongoOperationRepository";
+import { mongoFailureCode } from "./mongoOperationPrimitives";
 import { MongoOperationStore, OPERATION_MODELS, prepareMongoOperationStore, type MongoOperationOptions } from "./mongoOperationStore";
 import { COACH_READ_MODELS, prepareMongoReadStore, TEAM_READ_MODELS } from "./mongoReadStore";
 import { hasKnownMongoRuntimeCollections } from "./mongoRuntimeNamespace";
@@ -58,9 +59,7 @@ export async function openMongoOperationPagesRuntime(options: Options): Promise<
       return runWithDataRepositories(repositories, () => runWithLockedRepositoryScope(work));
     } });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "UNKNOWN";
-    const code = /^[A-Z0-9_:\- ]{1,160}$/.test(message) ? message : "REDACTED";
-    console.error("MONGO_OPERATION_PAGES_RUNTIME_FAILED", code);
+    console.error("MONGO_OPERATION_PAGES_RUNTIME_FAILED", mongoFailureCode(error));
     throw new Error("MONGO_OPERATION_PAGES_RUNTIME_FAILED");
   }
 }
