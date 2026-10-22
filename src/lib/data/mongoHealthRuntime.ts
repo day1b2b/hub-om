@@ -12,7 +12,12 @@ type Repositories = Readonly<Pick<DataRepositories, "databaseHealth">>;
 export function openMongoHealthRuntime(options: MongoOperationOptions) {
   try {
     const repositories: Repositories = Object.freeze({
-      databaseHealth: new MongoDatabaseHealthRepository(options.client, options.databaseName)
+      // Same read-only readiness the operation runtimes run on open; a contract/validator mismatch fails health.
+      // Loaded on use so the health route's import graph stays ping-only.
+      databaseHealth: new MongoDatabaseHealthRepository(options.client, options.databaseName, async () => {
+        const { assertMongoOperationStoreReady, MongoOperationStore } = await import("./mongoOperationStore");
+        await assertMongoOperationStoreReady(new MongoOperationStore(options));
+      })
     });
     registerDataRepositoryScope(repositories);
     return Object.freeze({

@@ -21,7 +21,6 @@ export const ADMIN_ENUM_LABELS: Record<string, Record<string, string>> = {
     FLIPPED: "플립러닝",
     NEEDS_REVIEW: "검토필요",
     OFFLINE: "오프라인",
-    ONLINE: "온라인",
     REMOTE: "비대면"
   },
   hasResultReport: {
@@ -136,7 +135,7 @@ export const ADMIN_EDITABLE_FIELDS = {
       options: ["ASSIGNMENT_NEEDED", "ASSIGNMENT_PLANNED", "ACTIVE", "DONE", "RETROSPECTIVE_DONE", "ARCHIVE_NEEDED"]
     },
     { field: "archiveStatus", input: "enum", label: "아카이브", optionLabels: ADMIN_ENUM_LABELS.archiveStatus, options: ["NOT_READY", "NEEDED", "DONE"] },
-    { field: "educationFormat", input: "enum", label: "교육형태", optionLabels: ADMIN_ENUM_LABELS.educationFormat, options: ["OFFLINE", "REMOTE", "ONLINE", "BLENDED", "FLIPPED", "NEEDS_REVIEW"] },
+    { field: "educationFormat", input: "enum", label: "교육형태", optionLabels: ADMIN_ENUM_LABELS.educationFormat, options: ["OFFLINE", "REMOTE", "BLENDED", "FLIPPED", "NEEDS_REVIEW"] },
     {
       field: "operationChannel",
       input: "enum",
