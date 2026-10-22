@@ -3,6 +3,7 @@ import { configuredMongoUri, mongoConnectionOptions } from "../mongodb/connectio
 import { getOmCustomToolsRepository } from "./omRequest/omCustomToolsLocalRepository";
 import type { OmCustomToolsRepository } from "./omRequest/omRequestRepository";
 import { openMongoOperationPagesRuntime } from "./mongoOperationPagesRuntime";
+import { mongoFailureCode } from "./mongoOperationPrimitives";
 import { requireMongoShadowComposition, type MongoCompositionEnvironment } from "./mongoShadowComposition";
 
 interface Client { connect(): Promise<unknown>; close(): Promise<void> }
@@ -23,10 +24,6 @@ export function allowsLegacyOperationPageFallback(environment: MongoCompositionE
 function isNextControlFlow(error: unknown) {
   const digest = error instanceof Error ? (error as Error & { digest?: unknown }).digest : undefined;
   return digest === "NEXT_HTTP_ERROR_FALLBACK;404" || (typeof digest === "string" && /^NEXT_REDIRECT;(?:replace|push);.*;(?:303|307|308);$/.test(digest));
-}
-function safeFailureCode(error: unknown): string {
-  const message = error instanceof Error ? error.message : "UNKNOWN";
-  return /^[A-Z0-9_:\- ]{1,160}$/.test(message) ? message : "REDACTED";
 }
 /**
  * 운영 페이지는 요청마다 열고 닫던 클라이언트(SRV 조회·TLS·인증)와 저장소 준비 확인(컬렉션·인덱스
@@ -69,7 +66,7 @@ export async function runOperationPagesRequest<T>(work: () => Promise<T>, enviro
     return await runtime.run(work);
   } catch (error) {
     if (isNextControlFlow(error)) throw error;
-    console.error("OPERATION_PAGES_COMPOSITION_FAILED", safeFailureCode(error));
+    console.error("OPERATION_PAGES_COMPOSITION_FAILED", mongoFailureCode(error));
     throw new Error("OPERATION_PAGES_COMPOSITION_FAILED");
   }
 }

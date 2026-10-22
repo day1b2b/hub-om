@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { registerHooks } from "node:module";
 import { mock, test } from "node:test";
 import { MongoClient } from "mongodb";
+import { operationMongoValidator, prepareMongoOperationStore } from "./mongoOperationStore";
 
 const uri = process.env.MONGODB_HEALTH_COMPOSITION_TEST_URI;
 let pgCalls = 0;
@@ -17,7 +18,7 @@ const hooks = registerHooks({
 const { GET } = await import("../../app/api/health/route");
 hooks.deregister();
 
-test("health route selects Mongo ping without creating collections", { skip: !uri, timeout: 30_000 }, async () => {
+test("health route checks operation store readiness without creating collections", { skip: !uri, timeout: 60_000 }, async () => {
   const target = new URL(uri!);
   assert.equal(target.hostname, "127.0.0.1");
   assert.ok(target.port);
@@ -37,11 +38,26 @@ test("health route selects Mongo ping without creating collections", { skip: !ur
   const client = new MongoClient(uri!, { directConnection: true });
   try {
     await client.connect();
-    const response = await GET();
-    assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), { ok: true, database: "connected" });
+    // Unprepared namespace: ping succeeds but readiness fails, and health never prepares collections itself.
+    const unprepared = await GET();
+    assert.equal(unprepared.status, 503);
     assert.equal(pgCalls, 0);
     assert.deepEqual(await client.db(databaseName).listCollections().toArray(), []);
+
+    const namespace = environment.MONGODB_SHADOW_NAMESPACE;
+    await prepareMongoOperationStore({ client, databaseName, namespace, allowShadowWrites: true, processSequenceHighWater: 0 });
+    const ready = await GET();
+    assert.equal(ready.status, 200);
+    assert.deepEqual(await ready.json(), { ok: true, database: "connected" });
+
+    // 2026-10-21 incident shape: the stored validator lags the deployed contract by one enum value.
+    const contract = JSON.stringify(operationMongoValidator("OperationSession"));
+    assert.ok(contract.includes(',"FLIPPED"'));
+    const lagging = JSON.parse(contract.replace(',"FLIPPED"', ""));
+    await client.db(databaseName).command({ collMod: `${namespace}_OperationSession`, validator: lagging, validationLevel: "strict", validationAction: "error" });
+    const mismatch = await GET();
+    assert.equal(mismatch.status, 503);
+    assert.equal(pgCalls, 0);
   } finally {
     try { await client.db(databaseName).dropDatabase(); } catch {}
     await client.close();
