@@ -10,7 +10,7 @@
 
 ## 자동 보호 장치
 
-- **헬스체크:** `HEALTH_BACKEND=mongodb-shadow`이면 `/api/health`가 같은 준비 상태 검사를 합니다. validator가 맞지 않는 버전은 헬스체크에 실패하므로 Coolify가 기존 컨테이너를 유지합니다. 장애 대신 "배포 실패"로 끝납니다.
+- **헬스체크:** `HEALTH_BACKEND`가 Mongo 모드이면 `/api/health`가 같은 준비 상태 검사를 합니다. validator가 맞지 않는 버전은 헬스체크에 실패하므로 Coolify가 기존 컨테이너를 유지합니다. 장애 대신 "배포 실패"로 끝납니다.
 - **CI:** 계약 파일이 바뀐 PR은 `database-change-reviewed`와 함께 **`mongodb-validator-ready`** 라벨이 있어야 통과합니다. 이 라벨은 "아래 절차로 운영 반영 계획을 세웠다"는 확인입니다.
 - **로그:** 준비 실패 원인 코드가 로그에 그대로 남습니다. 예: `DATABASE_HEALTH_READINESS_FAILED VALIDATOR_NOT_READY`, `MONGO_OPERATION_PAGES_RUNTIME_FAILED VALIDATOR_NOT_READY`.
 
