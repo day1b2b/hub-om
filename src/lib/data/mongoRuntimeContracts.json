@@ -361,6 +361,7 @@
         "values": [
           "OFFLINE",
           "REMOTE",
+          "ONLINE",
           "BLENDED",
           "FLIPPED",
           "NEEDS_REVIEW"
