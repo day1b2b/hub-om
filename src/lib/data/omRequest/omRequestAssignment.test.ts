@@ -20,9 +20,12 @@ after(() => {
   }
 });
 type Operation = { id: string; operationId: string; roundNo: string; omName: string | null; omUserId: string | null; operationStatus: string; updatedAt: Date; deletedAt: Date | null };
-type Creation = { requestId: string; route: string; method: string; action: string; targetType: string; targetId: string; changes?: unknown };
+type Creation = { requestId: string; route: string; method: string; action: string; targetType: string; targetId: string; occurredAt: Date; changes?: unknown };
+// Audit rows get increasing times in the order a test records them.
+let clock = 0;
+const at = () => new Date(Date.UTC(2026, 0, 1) + ++clock * 1000);
 const operation = (number: number, omName: string | null = `수동 담당 ${number}`): Operation => ({ id: id(number), operationId: `round-${number}`, roundNo: String(number - 10), omName, omUserId: id(number + 100), operationStatus: "ASSIGNMENT_PLANNED", updatedAt: new Date(0), deletedAt: null });
-const creation = (targetType: string, targetId: string, request = batchId): Creation => ({ requestId: request, route: "/api/om-request", method: "POST", action: "create", targetType, targetId, changes: { om_name: { redacted: true } } });
+const creation = (targetType: string, targetId: string, request = batchId): Creation => ({ requestId: request, route: "/api/om-request", method: "POST", action: "create", targetType, targetId, occurredAt: at(), changes: { om_name: { redacted: true } } });
 let row: { id: string; team: string; status: string; assignedOm: string | null; operationId: string | null; totalSessions: number; sessions: Array<{ date: string; location?: string }>; createdAt: Date };
 let operations: Operation[];
 let history: Creation[];
@@ -297,7 +300,8 @@ test("서명 secret 없이는 preview를 발급하지 않으며 기존 NEXTAUTH_
 
 // 요청 수정(PATCH)은 같은 감사 배치에 요청 update와 회차 create/delete를 남긴다.
 function editBatch(batch: string, created: string[], deleted: string[] = [], request = requestId) {
-  const entry = (targetType: string, targetId: string, action: string): Creation => ({ requestId: batch, route: "/api/om-request/[id]", method: "PATCH", action, targetType, targetId });
+  const occurredAt = at();
+  const entry = (targetType: string, targetId: string, action: string): Creation => ({ requestId: batch, route: "/api/om-request/[id]", method: "PATCH", action, targetType, targetId, occurredAt });
   return [entry("om_requests", request, "update"), ...created.map(target => entry("operation_sessions", target, "create")),
     ...deleted.map(target => entry("operation_sessions", target, "delete")), entry("operation_sessions", id(11), "update")];
 }
@@ -334,6 +338,34 @@ test("승인 복구 이후의 요청 수정도 복구 집합에 반영한다", a
   row.totalSessions = 3; row.sessions.push({ date: "2026-10-03" });
   history.push(...editBatch(id(300), [id(14)]));
   assert.equal((await preview()).count, 3);
+});
+test("승인 복구 이전의 요청 수정은 복구 집합에 이미 반영돼 다시 더하거나 빼지 않는다", async () => {
+  // 수정으로 14를 추가한 뒤 복구가 11·12·14 전체를 기록했다. 14를 두 번 세면 배정이 막힌다.
+  operations.push(operation(14));
+  row.totalSessions = 3; row.sessions.push({ date: "2026-10-03" });
+  history.push(...editBatch(id(300), [id(14)]), ...repairedLinks([id(11), id(12), id(14)]));
+  const result = await preview();
+  assert.deepEqual(result.operations.map(op => op.operationId), ["round-11", "round-12", "round-14"]);
+  await assign(result.token);
+  assert.deepEqual(writes, [id(11), id(12), id(14), "request"]);
+});
+test("승인 복구 이전에 지운 회차를 되살려 복구했으면 그 삭제 기록으로 다시 빼지 않는다", async () => {
+  history.push(...editBatch(id(300), [], [id(12)]), ...repairedLinks([id(11), id(12)]));
+  assert.equal((await preview()).count, 2);
+});
+test("복구 이후 수정은 반영하고, 시각을 알 수 없는 수정·복구 기록은 차단한다", async () => {
+  operations.push(operation(14));
+  history.push(...editBatch(id(300), [id(14)]), ...repairedLinks([id(11), id(12), id(14)]), ...editBatch(id(301), [], [id(14)]));
+  assert.equal((await preview()).count, 2);
+  const original = structuredClone(history);
+  for (const broken of [
+    original.map(entry => entry.requestId === id(301) ? { ...entry, occurredAt: undefined as unknown as Date } : entry),
+    original.map(entry => entry.route === "/maintenance/om-request-session-repair" ? { ...entry, occurredAt: new Date(Number.NaN) } : entry)
+  ]) {
+    history = broken;
+    await assert.rejects(preview(), OmAssignmentConflict);
+  }
+  assert.deepEqual(writes, []);
 });
 test("요청 수정 기록이 있어도 다른 요청 회차 혼입·삭제 회차·대표 제외·형식 오류는 차단한다", async () => {
   row.totalSessions = 3; row.sessions.push({ date: "2026-10-03" });
