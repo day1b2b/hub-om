@@ -37,12 +37,18 @@ export function describeSheetReadFailure(error: unknown, context: SheetReadConte
   if (!(error instanceof GoogleSheetReadError)) {
     return new SheetSourceReadError(`${lead} 구글 시트에 연결하지 못했습니다.`);
   }
+  const b2b = error.via === "b2b";
   switch (error.kind) {
     case "missing_credentials":
-      return new SheetSourceReadError(`${lead} 구글 서비스 계정 설정(GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_PRIVATE_KEY)이 없습니다.`);
+      return new SheetSourceReadError(`${lead} 시트를 읽을 구글 계정 설정이 없습니다. 서비스 계정(GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_PRIVATE_KEY) 또는 B2B 공용 계정(GOOGLE_CAL_OAUTH_*) 중 하나가 필요합니다.`);
     case "auth_failed":
-      return new SheetSourceReadError(`${lead} 구글 서비스 계정 인증에 실패했습니다${error.code ? `(${error.code})` : ""}. 서비스 계정 키 값을 확인해 주세요.`);
+      return b2b
+        ? new SheetSourceReadError(`${lead} B2B 공용 계정 토큰을 갱신하지 못했습니다. GOOGLE_CAL_OAUTH_* 설정을 확인해 주세요.`)
+        : new SheetSourceReadError(`${lead} 구글 서비스 계정 인증에 실패했습니다${error.code ? `(${error.code})` : ""}. 서비스 계정 키 값을 확인해 주세요.`);
+    case "scope_missing":
+      return new SheetSourceReadError(`${lead} B2B 공용 계정 토큰에 시트 읽기 권한(spreadsheets.readonly)이 없습니다. B2B 계정으로 시트 읽기 권한을 포함해 다시 동의받아야 합니다.`);
     case "forbidden": {
+      if (b2b) return new SheetSourceReadError(`${lead} B2B 공용 계정에 이 시트 접근 권한이 없습니다. 시트를 B2B 계정에 공유해 주세요.`);
       const account = context.serviceAccountEmail ? `서비스 계정(${context.serviceAccountEmail})` : "서비스 계정";
       return new SheetSourceReadError(`${lead} ${account}에 이 시트 접근 권한이 없습니다. 시트를 이 계정에 공유해 주세요.`);
     }
