@@ -2,6 +2,7 @@ import { ResourceJudgmentPage } from "@/features/resources/ResourceJudgmentPage"
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getOmAvailabilityRoster } from "@/lib/data/omAvailability/omAvailabilityLocalRepository";
 import { listOmRequests } from "@/lib/data/omRequest/omRequestLocalRepository";
+import { listOperationsCached } from "@/lib/data/operationListCache";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { getTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFactory";
 import type { ResourceOwnerRoster } from "@/lib/data/teamMemberRepository";
@@ -25,7 +26,7 @@ async function renderResourcesPage({ searchParams }: ResourcesPageProps) {
   const teamMemberRepository = getTeamMemberRepository();
   const [operations, memberRoster, roleRoster, calendarEvents, omRequests, params, partRoster] =
     await Promise.all([
-      repository.listOperations(),
+      listOperationsCached(repository),
       teamMemberRepository.listResourceOwners(),
       teamMemberRepository.listRoleRosters(),
       listCalendarResourceEvents(),

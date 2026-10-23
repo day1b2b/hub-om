@@ -5359,8 +5359,15 @@ td span {
   display: flex;
   flex-direction: column;
   max-width: min(360px, calc(100vw - 24px));
+  overflow-y: auto;
   position: fixed;
   z-index: 1000;
+}
+
+.session-field-popover .lecture-note-footer {
+  background: var(--surface);
+  bottom: 0;
+  position: sticky;
 }
 
 .session-field-popover-body {
@@ -11664,7 +11671,8 @@ button.coach-doc-reserve-chip:disabled {
   width: 100%;
 }
 
-.om-company-dropdown-option:hover {
+.om-company-dropdown-option:hover,
+.om-company-dropdown-option--active {
   background: var(--surface-strong);
 }
 
@@ -11704,7 +11712,8 @@ button.coach-doc-reserve-chip:disabled {
   width: 100%;
 }
 
-.name-combobox-dropdown-option:hover {
+.name-combobox-dropdown-option:hover,
+.name-combobox-dropdown-option--active {
   background: var(--surface-strong);
 }
 
@@ -11801,6 +11810,44 @@ button.coach-doc-reserve-chip:disabled {
 
 .duration-input {
   text-align: center;
+}
+
+/* 수정 화면: 회차마다 삭제 버튼 칸을 더한다. */
+.om-sessions-table-editable .om-sessions-header,
+.om-sessions-table-editable .om-sessions-row {
+  grid-template-columns: 52px 220px 108px 108px 44px 1fr 52px;
+}
+
+.om-sessions-table-editable .om-sessions-row > .location-input-wrapper {
+  justify-self: stretch;
+}
+
+.om-sessions-table-editable .om-sessions-row > .location-input-wrapper input[type="text"] {
+  text-align: left;
+}
+
+.om-sessions-table-editable .om-sessions-row > .session-remove-btn {
+  justify-self: center;
+}
+
+.session-remove-btn {
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 8px;
+}
+
+.session-remove-btn:hover:not(:disabled) {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.session-remove-btn:disabled {
+  cursor: default;
+  opacity: 0.4;
 }
 
 .om-sessions-row input:focus {
@@ -14052,3 +14099,30 @@ button.coach-doc-reserve-chip:disabled {
 .course-common-note-editor .issue-editor-grid { margin: 0; }
 .course-common-note-editor .issue-editor-field textarea { min-height: 112px; resize: vertical; }
 .course-common-note-editor .issue-editor-footer { margin-top: 0; }
+
+.page-loading {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  justify-content: center;
+  min-height: 60vh;
+  padding: 48px 24px;
+  width: 100%;
+}
+
+.page-loading-spinner {
+  animation: drive-spin 0.8s linear infinite;
+  border: 3px solid var(--line);
+  border-radius: 999px;
+  border-top-color: var(--blue);
+  display: inline-block;
+  flex: 0 0 auto;
+  height: 32px;
+  width: 32px;
+}
+
+.page-loading-label {
+  font-size: 13px;
+}
