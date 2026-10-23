@@ -2,7 +2,6 @@ import { CompanyWiki } from "@/features/wiki/CompanyWiki";
 import { aggregateCompanies, type CompanyWikiEntry } from "@/features/wiki/companyWikiModel";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
-import { listCompanyBusinessInfoById, type CompanyBusinessInfo } from "@/lib/data/companyBusinessInfoRepository";
 import { runOverviewPagesRequest } from "@/lib/data/overviewPagesComposition";
 
 export const dynamic = "force-dynamic";
@@ -25,13 +24,7 @@ async function renderCompanyWikiPage() {
     loadFailed = true;
   }
 
-  // 사업자등록증 정보를 못 읽어도 나머지 화면은 그대로 보여준다(빈 값으로 둔다).
-  let businessInfoByCompanyId: Record<string, CompanyBusinessInfo> = {};
-  try {
-    businessInfoByCompanyId = Object.fromEntries(await listCompanyBusinessInfoById());
-  } catch {
-    businessInfoByCompanyId = {};
-  }
-
-  return <CompanyWiki entries={entries} loadFailed={loadFailed} businessInfoByCompanyId={businessInfoByCompanyId} />;
+  // 사업자등록증 정보(PII)는 여기서 전체를 한 번에 내려보내지 않는다 — 기업위키가 전체
+  // 워크스페이스에 열려 있어서, 상세를 열 때 CompanyWiki가 그 기업 것만 따로 불러온다.
+  return <CompanyWiki entries={entries} loadFailed={loadFailed} />;
 }

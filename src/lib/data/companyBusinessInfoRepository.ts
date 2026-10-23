@@ -12,12 +12,15 @@ function normalizeValue(value: string | null | undefined): string | null | undef
   return trimmed === "" ? null : trimmed;
 }
 
-/** 기업위키 목록 화면에서 회사별 사업자등록증 정보를 한 번에 읽어오기 위한 prefetch. */
-export async function listCompanyBusinessInfoById(): Promise<Map<string, CompanyBusinessInfo>> {
+/**
+ * 기업 하나의 사업자등록증 정보만 읽는다. 기업위키는 전체 워크스페이스에 열려 있어 — 상세를
+ * 열 때 그 기업 것만 불러온다(목록 화면에서 전체 기업의 PII를 한 번에 내려보내지 않는다).
+ */
+export async function getCompanyBusinessInfo(companyId: string): Promise<CompanyBusinessInfo | null> {
   const prisma = getPrismaClient();
-  const rows = await prisma.company.findMany({
+  const row = await prisma.company.findUnique({
+    where: { id: companyId },
     select: {
-      id: true,
       businessNumber: true,
       representativeName: true,
       address: true,
@@ -29,23 +32,19 @@ export async function listCompanyBusinessInfoById(): Promise<Map<string, Company
       businessInfoUpdatedBy: true
     }
   });
+  if (!row) return null;
 
-  return new Map(
-    rows.map((row) => [
-      row.id,
-      {
-        businessNumber: row.businessNumber,
-        representativeName: row.representativeName,
-        address: row.address,
-        businessType: row.businessType,
-        businessItem: row.businessItem,
-        invoiceEmail: row.invoiceEmail,
-        invoiceEmailSecondary: row.invoiceEmailSecondary,
-        businessInfoUpdatedAt: row.businessInfoUpdatedAt?.toISOString() ?? null,
-        businessInfoUpdatedBy: row.businessInfoUpdatedBy
-      }
-    ])
-  );
+  return {
+    businessNumber: row.businessNumber,
+    representativeName: row.representativeName,
+    address: row.address,
+    businessType: row.businessType,
+    businessItem: row.businessItem,
+    invoiceEmail: row.invoiceEmail,
+    invoiceEmailSecondary: row.invoiceEmailSecondary,
+    businessInfoUpdatedAt: row.businessInfoUpdatedAt?.toISOString() ?? null,
+    businessInfoUpdatedBy: row.businessInfoUpdatedBy
+  };
 }
 
 export async function updateCompanyBusinessInfo(

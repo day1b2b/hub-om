@@ -2,11 +2,15 @@
  * "2025_계산서 발급 신청 내역" 구글폼의 질문 스냅샷(2026-10-16, 라이브 폼에서 추출).
  *
  * 구글폼은 외부에서 질문이 추가/삭제/변경될 수 있고, 그러면 entry ID 매핑이 조용히 깨진다.
- * `scripts/check-invoice-form-schema.mjs`가 라이브 폼을 다시 읽어 이 스냅샷과 비교한다 —
+ * `scripts/check-invoice-form-schema.ts`가 라이브 폼을 다시 읽어 이 스냅샷과 비교한다 —
  * 폼이 바뀌었으면 이 파일과 `invoiceRequestForm.ts`의 entry ID도 같이 갱신해야 한다.
+ *
+ * URL 자체은 커밋하지 않는다(저장소가 public). INVOICE_REQUEST_FORM_URL 환경변수로 받고,
+ * 비어 있으면 빈 문자열을 반환한다 — buildInvoiceRequestFormUrl()이 만든 링크가 그만큼
+ * 깨진 URL이 되어 isSafeHttpUrl()에서 걸러지고 화면엔 "-"로 보인다(SKILLFLO_COACH_URL_TEMPLATE와
+ * 같은 방식). 이 모듈은 서버 전용이다 — 클라이언트 번들에 들어가면 안 된다.
  */
-export const INVOICE_REQUEST_FORM_URL =
-  "https://docs.google.com/forms/d/e/1FAIpQLSfE26Lq0dt0QoxkRW4Ge82PkTf3HGKGwVsAmA2AH-aozv8_iQ/viewform";
+export const INVOICE_REQUEST_FORM_URL = process.env.INVOICE_REQUEST_FORM_URL?.trim() || "";
 
 export interface InvoiceRequestFormQuestion {
   /** 질문 제목 앞부분(설명/안내 문구 전부는 생략, 변경 감지에 충분한 만큼만). */

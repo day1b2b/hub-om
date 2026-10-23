@@ -3,19 +3,15 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
-import type { CompanyWikiCourse, CompanyWikiEntry } from "./companyWikiModel";
+import type { CompanyWikiEntry } from "./companyWikiModel";
 import { emptyCompanyBusinessInfo, type CompanyBusinessInfo } from "@/lib/data/companyBusinessInfoTypes";
 import { CompanyBusinessInfoEditor } from "./CompanyBusinessInfoEditor";
-import { buildInvoiceRequestFormUrl } from "@/lib/data/invoiceRequestForm";
-import { isSafeHttpUrl } from "@/components/ExternalTableLink";
 
 interface CompanyWikiProps {
   /** 운영 현황에서 만든 기업 목록. */
   entries: CompanyWikiEntry[];
   /** 운영 현황을 못 읽었을 때. 빈 목록과 구분해서 알려 준다. */
   loadFailed: boolean;
-  /** companyId별 사업자등록증 정보. Map은 서버→클라이언트로 못 넘겨서 일반 객체로 받는다. */
-  businessInfoByCompanyId: Record<string, CompanyBusinessInfo>;
 }
 
 /** 여러 명이면 이름을 이어 붙이고, 없으면 대체 문구. */
@@ -25,7 +21,7 @@ function nameText(names: string[], fallback: string): string {
 
 const PAGE_SIZE = 20;
 
-export function CompanyWiki({ entries, loadFailed, businessInfoByCompanyId }: CompanyWikiProps) {
+export function CompanyWiki({ entries, loadFailed }: CompanyWikiProps) {
   const [selectedName, setSelectedName] = useState<null | string>(null);
   const [query, setQuery] = useState("");
   const [view, setView] = useState<"gallery" | "list">("gallery");
@@ -86,11 +82,7 @@ export function CompanyWiki({ entries, loadFailed, businessInfoByCompanyId }: Co
 
       <section className="content">
         {selected ? (
-          <CompanyWikiDetail
-            entry={selected}
-            onBack={closeDetail}
-            businessInfo={selected.companyId ? businessInfoByCompanyId[selected.companyId] : undefined}
-          />
+          <CompanyWikiDetail key={selected.name} entry={selected} onBack={closeDetail} />
         ) : (
           <>
             <header className="page-header">
@@ -249,13 +241,56 @@ export function CompanyWiki({ entries, loadFailed, businessInfoByCompanyId }: Co
 
 function CompanyWikiDetail({
   entry,
-  onBack,
-  businessInfo
+  onBack
 }: {
   entry: CompanyWikiEntry;
   onBack: () => void;
-  businessInfo?: CompanyBusinessInfo;
 }) {
+  // 사업자등록증 정보(PII)는 목록 화면에서 한 번에 내려받지 않고, 상세를 열 때 이 기업
+  // 것만 따로 불러온다 — 기업위키가 전체 워크스페이스에 열려 있어 노출 범위를 좁혀야 한다.
+  const [businessInfo, setBusinessInfo] = useState<CompanyBusinessInfo | null>(null);
+
+  useEffect(() => {
+    if (!entry.companyId) return;
+    let cancelled = false;
+    fetch(`/api/company-wiki/business-info?companyId=${encodeURIComponent(entry.companyId)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled) setBusinessInfo(data?.businessInfo ?? emptyCompanyBusinessInfo());
+      })
+      .catch(() => {
+        if (!cancelled) setBusinessInfo(emptyCompanyBusinessInfo());
+      });
+    return () => { cancelled = true; };
+    // entry는 CompanyWikiDetail의 key(회사명)가 바뀔 때만 이 컴포넌트와 함께 새로 만들어진다 — 마운트당 한 번만 불러오면 된다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 계산서 발행 요청 구글폼 URL은 서버에만 둔다(저장소가 public이라 클라이언트 번들에
+  // 절대 넣지 않는다) — 완성된 링크만 코스별로 서버에서 만들어 받는다.
+  const [invoiceLinks, setInvoiceLinks] = useState<Record<string, string | null>>({});
+
+  useEffect(() => {
+    if (entry.courses.length === 0) return;
+    let cancelled = false;
+    fetch("/api/company-wiki/invoice-link", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        companyId: entry.companyId,
+        companyName: entry.name,
+        courses: entry.courses.map((course) => ({ key: course.key, courseId: course.courseId, courseName: course.courseName }))
+      })
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled) setInvoiceLinks(data?.links ?? {});
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <>
       <button className="back-link" onClick={onBack} type="button">← 기업위키 목록으로</button>
@@ -315,7 +350,7 @@ function CompanyWikiDetail({
                   <td>{course.instructors}</td>
                   <td>{course.avgSatisfaction}</td>
                   <td>{course.revenue}</td>
-                  <td><InvoiceRequestLink entry={entry} course={course} businessInfo={businessInfo} /></td>
+                  <td><InvoiceRequestLink href={invoiceLinks[course.key]} /></td>
                 </tr>
               ))}
             </tbody>
@@ -323,9 +358,7 @@ function CompanyWikiDetail({
         </div>
       </div>
 
-      {entry.companyId ? (
-        <CompanyBusinessInfoEditor companyId={entry.companyId} initial={businessInfo ?? emptyCompanyBusinessInfo()} />
-      ) : (
+      {!entry.companyId ? (
         <div className="detail-section">
           <div className="section-title"><h2>사업자등록증 정보</h2></div>
           <div className="section-body">
@@ -335,34 +368,23 @@ function CompanyWikiDetail({
             </div>
           </div>
         </div>
+      ) : businessInfo ? (
+        <CompanyBusinessInfoEditor companyId={entry.companyId} initial={businessInfo} />
+      ) : (
+        <div className="detail-section">
+          <div className="section-title"><h2>사업자등록증 정보</h2></div>
+          <div className="section-body"><p className="field-hint">불러오는 중…</p></div>
+        </div>
       )}
     </>
   );
 }
 
-function InvoiceRequestLink({
-  entry,
-  course,
-  businessInfo
-}: {
-  entry: CompanyWikiEntry;
-  course: CompanyWikiCourse;
-  businessInfo?: CompanyBusinessInfo;
-}) {
-  const href = buildInvoiceRequestFormUrl({
-    courseId: course.courseId,
-    courseName: course.courseName,
-    companyName: entry.name,
-    businessNumber: businessInfo?.businessNumber,
-    representativeName: businessInfo?.representativeName,
-    address: businessInfo?.address,
-    businessType: businessInfo?.businessType,
-    businessItem: businessInfo?.businessItem,
-    invoiceEmail: businessInfo?.invoiceEmail,
-    invoiceEmailSecondary: businessInfo?.invoiceEmailSecondary
-  });
-
-  if (!isSafeHttpUrl(href)) return <span className="muted-inline">-</span>;
+// 링크는 서버(/api/company-wiki/invoice-link)에서 완성된 형태로 받는다 — 구글폼 URL을
+// 클라이언트 코드에 두지 않기 위해서다(저장소가 public). undefined는 "아직 불러오는 중",
+// null은 "서버가 안전한 URL을 못 만들었음"이고, 화면에서는 둘 다 "-"로 같다.
+function InvoiceRequestLink({ href }: { href: string | null | undefined }) {
+  if (!href) return <span className="muted-inline">-</span>;
 
   return (
     <a className="invoice-request-link" href={href} rel="noreferrer" target="_blank">
