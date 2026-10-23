@@ -26,7 +26,7 @@ async function mocked(members: MongoRow[], users: MongoRow[], failure?: string, 
       async scan(model: string, filter: unknown) {
         reads.push({ model, filter });
         if (failure) throw failure === "SCAN_LIMIT_EXCEEDED" ? new MongoOperationError(failure) : new Error(failure);
-        return structuredClone(model === "Member" ? members.filter(row => row.isActive && row.role === null) : users.filter(row => row.role !== null));
+        return structuredClone(model === "Member" ? members.filter(row => row.isActive && row.role === null) : users.filter(row => row.role !== null && row.status !== "DEPARTED"));
       }
     } },
     "./mongoReadStore": { TEAM_READ_MODELS: ["Member", "TeamUser"], async assertMongoReadStoreReady() { readiness++; if (failure === "NOT_READY") throw new MongoOperationError(failure); if (readinessFailure) throw new Error(failure); } },
@@ -35,7 +35,7 @@ async function mocked(members: MongoRow[], users: MongoRow[], failure?: string, 
   return { repository, reads, readiness };
 }
 function member(name: string, patch: MongoRow = {}): MongoRow { return { name, sourceTeam: "TEAM_1", displayOrder: null, role: null, isActive: true, ...patch }; }
-function user(name: string, patch: MongoRow = {}): MongoRow { return { name, team: "1팀", role: "OM", ...patch }; }
+function user(name: string, patch: MongoRow = {}): MongoRow { return { name, team: "1팀", role: "OM", status: "ACTIVE", ...patch }; }
 
 // Executes the existing Prisma repository with explicit ordered delegate results, not a real PG server.
 test("Mongo roster output matches existing Prisma repository reference for ordered/null/enum fixtures", async () => {
@@ -47,12 +47,12 @@ test("Mongo roster output matches existing Prisma repository reference for order
     "./defaultTeamMemberRoster": { DEFAULT_RESOURCE_OWNER_ROSTER, DEFAULT_TEAM_MEMBER_ROLE_ROSTER },
   });
   const reference = new (PrismaTeamMemberRepository as new () => TeamMemberRepository)();
-  const mongo = await mocked([...orderedMembers].reverse().concat(member("비활성", { isActive: false }), member("별도역할", { role: "LD" })), [...orderedUsers].reverse().concat(user("역할없음", { role: null })));
+  const mongo = await mocked([...orderedMembers].reverse().concat(member("비활성", { isActive: false }), member("별도역할", { role: "LD" })), [...orderedUsers].reverse().concat(user("역할없음", { role: null }), user("퇴사자", { status: "DEPARTED" })));
   assert.deepEqual(await mongo.repository.listResourceOwners(), await reference.listResourceOwners());
   assert.deepEqual(await mongo.repository.listRoleRosters(), await reference.listRoleRosters());
-  assert.deepEqual(mongo.reads, [{ model: "Member", filter: { isActive: true, role: null } }, { model: "TeamUser", filter: { role: { $ne: null } } }]);
+  assert.deepEqual(mongo.reads, [{ model: "Member", filter: { isActive: true, role: null } }, { model: "TeamUser", filter: { role: { $ne: null }, status: "ACTIVE" } }]);
   assert.equal(mongo.readiness, 1);
-  assert.deepEqual(queries, [{ where: { isActive: true, role: null }, orderBy: [{ sourceTeam: "asc" }, { displayOrder: "asc" }, { name: "asc" }] }, { where: { role: { not: null } }, orderBy: [{ role: "asc" }, { team: "asc" }, { name: "asc" }] }]);
+  assert.deepEqual(queries, [{ where: { isActive: true, role: null }, orderBy: [{ sourceTeam: "asc" }, { displayOrder: "asc" }, { name: "asc" }] }, { where: { role: { not: null }, status: "ACTIVE" }, orderBy: [{ role: "asc" }, { team: "asc" }, { name: "asc" }] }]);
 });
 
 test("empty, null-team-only, LD-only and OM-only keep separate fallback semantics", async () => {

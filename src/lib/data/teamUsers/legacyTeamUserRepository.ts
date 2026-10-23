@@ -1,15 +1,17 @@
 import { encodePrivateJson, decodePrivateJson } from "@/lib/privacy/crypto";
 import fs from "fs";
 import path from "path";
-import type { MemberRole } from "@prisma/client";
+import type { MemberRole, TeamUserStatus as PrismaTeamUserStatus } from "@prisma/client";
 import { getPrismaClient } from "../prisma";
-import type { TeamUser, TeamUserInput, TeamUserRole } from "./teamUserTypes";
+import type { TeamUser, TeamUserInput, TeamUserRole, TeamUserStatus } from "./teamUserTypes";
 import { DuplicateTeamUserEmailError } from "./teamUserErrors";
 
 const DATA_FILE = path.join(process.cwd(), "team-users.json");
 
 const ROLE_TO_PRISMA: Record<TeamUserRole, MemberRole> = { ld: "LD", om: "OM" };
 const ROLE_FROM_PRISMA: Record<MemberRole, TeamUserRole> = { LD: "ld", OM: "om" };
+const STATUS_TO_PRISMA: Record<TeamUserStatus, PrismaTeamUserStatus> = { active: "ACTIVE", departed: "DEPARTED" };
+const STATUS_FROM_PRISMA: Record<PrismaTeamUserStatus, TeamUserStatus> = { ACTIVE: "active", DEPARTED: "departed" };
 
 function hasDatabaseUrl(): boolean {
   return process.env.OPERATION_DATA_SOURCE !== "local" && Boolean(process.env.DATABASE_URL);
@@ -18,7 +20,9 @@ function hasDatabaseUrl(): boolean {
 function readAll(): TeamUser[] {
   if (!fs.existsSync(DATA_FILE)) return [];
   try {
-    return decodePrivateJson(fs.readFileSync(DATA_FILE, "utf-8"), "local:team-users") as TeamUser[];
+    const users = decodePrivateJson(fs.readFileSync(DATA_FILE, "utf-8"), "local:team-users") as TeamUser[];
+    // 필드 추가 전에 저장된 행에는 status가 없다 — 없으면 재직(active)으로 간주한다.
+    return users.map((user) => ({ ...user, status: user.status ?? "active" }));
   } catch {
     throw new Error("개인정보 파일을 읽지 못했습니다. 암호화 키와 변환 상태를 확인하세요.");
   }
@@ -35,6 +39,7 @@ function toTeamUser(row: {
   slackId: string;
   team: string | null;
   role: MemberRole | null;
+  status: PrismaTeamUserStatus;
   createdAt: Date;
 }): TeamUser {
   return {
@@ -44,6 +49,7 @@ function toTeamUser(row: {
     slackId: row.slackId,
     team: row.team ?? undefined,
     role: row.role ? ROLE_FROM_PRISMA[row.role] : undefined,
+    status: STATUS_FROM_PRISMA[row.status],
     createdAt: row.createdAt.toISOString()
   };
 }
@@ -95,6 +101,7 @@ export async function createTeamUser(input: TeamUserInput): Promise<TeamUser> {
     const newUser: TeamUser = {
       ...input,
       id: `usr-${Date.now()}`,
+      status: "active",
       createdAt: new Date().toISOString(),
     };
     writeAll([...users, newUser]);
@@ -172,6 +179,28 @@ export async function updateTeamUsersRole(ids: string[], role: TeamUserRole): Pr
   const result = await prisma.teamUser.updateMany({
     where: { id: { in: ids } },
     data: { role: ROLE_TO_PRISMA[role] }
+  });
+
+  return result.count;
+}
+
+export async function updateTeamUsersStatus(ids: string[], status: TeamUserStatus): Promise<number> {
+  if (!hasDatabaseUrl()) {
+    const users = readAll();
+    let updated = 0;
+    const next = users.map((u) => {
+      if (!ids.includes(u.id)) return u;
+      updated += 1;
+      return { ...u, status };
+    });
+    writeAll(next);
+    return updated;
+  }
+
+  const prisma = getPrismaClient();
+  const result = await prisma.teamUser.updateMany({
+    where: { id: { in: ids } },
+    data: { status: STATUS_TO_PRISMA[status] }
   });
 
   return result.count;

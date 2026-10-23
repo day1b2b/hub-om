@@ -10,7 +10,7 @@ after(() => {
   if (previousDatabase === undefined) delete process.env.DATABASE_URL; else process.env.DATABASE_URL = previousDatabase;
   if (previousSource === undefined) delete process.env.OPERATION_DATA_SOURCE; else process.env.OPERATION_DATA_SOURCE = previousSource;
 });
-let rows = [{ id: "synthetic-1", name: "Synthetic member", email: " MEMBER@example.invalid ", slackId: "synthetic", team: null as string | null, role: null as "LD" | "OM" | null, createdAt: new Date("2026-01-01") }];
+let rows = [{ id: "synthetic-1", name: "Synthetic member", email: " MEMBER@example.invalid ", slackId: "synthetic", team: null as string | null, role: null as "LD" | "OM" | null, status: "ACTIVE" as "ACTIVE" | "DEPARTED", createdAt: new Date("2026-01-01") }];
 let updateFailure = false;
 const calls: { method: string; args: unknown }[] = [];
 mock.module("../prisma", { namedExports: { getPrismaClient: () => ({ teamUser: {
@@ -24,7 +24,7 @@ const legacy = await import("./legacyTeamUserRepository");
 const { DuplicateTeamUserEmailError } = await import("./teamUserErrors");
 
 test("TeamUser legacy adapter preserves Prisma query, DTO and normalized duplicate behavior", async () => {
-  assert.deepEqual(await legacy.listTeamUsers(), [{ id: "synthetic-1", name: "Synthetic member", email: " MEMBER@example.invalid ", slackId: "synthetic", team: undefined, role: undefined, createdAt: "2026-01-01T00:00:00.000Z" }]);
+  assert.deepEqual(await legacy.listTeamUsers(), [{ id: "synthetic-1", name: "Synthetic member", email: " MEMBER@example.invalid ", slackId: "synthetic", team: undefined, role: undefined, status: "active", createdAt: "2026-01-01T00:00:00.000Z" }]);
   assert.deepEqual(calls[0], { method: "findMany", args: { orderBy: { createdAt: "desc" } } });
   assert.equal((await legacy.findTeamUsersByEmail(" member@EXAMPLE.invalid ")).length, 1);
   const previous = calls.length; assert.deepEqual(await legacy.findTeamUsersByEmail(" "), []); assert.equal(calls.length, previous);
@@ -40,6 +40,8 @@ test("TeamUser legacy adapter preserves existing writes, role mapping, delete an
   assert.deepEqual(calls.at(-1), { method: "create", args: { data: { name: "New", email: "new@example.invalid", slackId: "", team: null, role: "LD" } } });
   assert.equal(await legacy.updateTeamUsersRole(["synthetic-1"], "om"), 3);
   assert.deepEqual(calls.at(-1), { method: "updateMany", args: { where: { id: { in: ["synthetic-1"] } }, data: { role: "OM" } } });
+  assert.equal(await legacy.updateTeamUsersStatus(["synthetic-1"], "departed"), 3);
+  assert.deepEqual(calls.at(-1), { method: "updateMany", args: { where: { id: { in: ["synthetic-1"] } }, data: { status: "DEPARTED" } } });
   assert.equal(await legacy.deleteTeamUsers(["synthetic-1"]), 2);
   assert.deepEqual(calls.at(-1), { method: "deleteMany", args: { where: { id: { in: ["synthetic-1"] } } } });
   updateFailure = true; assert.equal(await legacy.updateTeamUserTeam("synthetic-1", null), null);

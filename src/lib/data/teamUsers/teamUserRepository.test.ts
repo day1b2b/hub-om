@@ -20,7 +20,8 @@ function repository(name = "Synthetic manager") {
     async createTeamUser(input) { calls.push({ method: "create", args: [input] }); return user; },
     async deleteTeamUsers(ids) { calls.push({ method: "delete", args: [ids] }); return 1; },
     async updateTeamUserTeam(id, team) { calls.push({ method: "team", args: [id, team] }); return user; },
-    async updateTeamUsersRole(ids, role) { calls.push({ method: "role", args: [ids, role] }); return 1; }
+    async updateTeamUsersRole(ids, role) { calls.push({ method: "role", args: [ids, role] }); return 1; },
+    async updateTeamUsersStatus(ids, status) { calls.push({ method: "status", args: [ids, status] }); return 1; }
   };
   return { value, calls, user };
 }
@@ -34,9 +35,10 @@ test("TeamUser facade forwards all existing public methods to request-local repo
     await facade.createTeamUser({ name: "Input", email: "input@example.invalid", slackId: "" });
     await facade.updateTeamUserTeam("synthetic-id", null);
     await facade.updateTeamUsersRole(["synthetic-id"], "ld");
+    await facade.updateTeamUsersStatus(["synthetic-id"], "departed");
     await facade.deleteTeamUsers(["synthetic-id"]);
   });
-  assert.deepEqual(target.calls.map(call => call.method), ["list", "find", "create", "team", "role", "delete"]);
+  assert.deepEqual(target.calls.map(call => call.method), ["list", "find", "create", "team", "role", "status", "delete"]);
   assert.deepEqual(target.calls[1].args, [null]); assert.deepEqual(target.calls[3].args, ["synthetic-id", null]);
   assert.equal(fallbackReads, before); assert.equal(facade.DuplicateTeamUserEmailError, DuplicateTeamUserEmailError);
 });

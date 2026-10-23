@@ -15,7 +15,7 @@ function keys() {
   process.env.PII_ACTIVE_KEY_ID = "synthetic"; process.env.PII_INDEX_KEY = randomBytes(32).toString("base64"); process.env.PII_ALLOW_PLAINTEXT_READS = "false";
   return () => { for (const [name, value] of previous) { if (value === undefined) delete process.env[name]; else process.env[name] = value; } };
 }
-function fixture(patch: MongoRow = {}) { return { id: randomUUID(), name: "Synthetic user", email: " SYNTHETIC@example.invalid ", slackId: "Synthetic slack", team: null, role: null, createdAt: new Date("2026-01-01"), ...patch }; }
+function fixture(patch: MongoRow = {}) { return { id: randomUUID(), name: "Synthetic user", email: " SYNTHETIC@example.invalid ", slackId: "Synthetic slack", team: null, role: null, status: "ACTIVE", createdAt: new Date("2026-01-01"), ...patch }; }
 function mock(initial: MongoRow[] = [], allowWrites = true) {
   const documents = new Map(initial.map(row => [row.id as string, encodeMongoRuntimeDocument("TeamUser", row)]));
   const calls: string[] = [];
@@ -97,10 +97,13 @@ test("TeamUser updates preserve other columns, count unique matched ids and retu
     const row = fixture(), state = mock([row]);
     const result = await state.repository.updateTeamUserTeam(row.id, "AX 2파트"); assert.equal(result?.email, row.email); assert.equal(result?.team, "AX 2파트");
     assert.equal(await state.repository.updateTeamUsersRole([row.id, row.id, randomUUID()], "ld"), 1);
+    assert.equal(await state.repository.updateTeamUsersStatus([row.id, row.id, randomUUID()], "departed"), 1);
     assert.equal((await state.repository.listTeamUsers())[0].team, "AX 2파트"); assert.equal((await state.repository.listTeamUsers())[0].role, "ld");
+    assert.equal((await state.repository.listTeamUsers())[0].status, "departed");
     assert.equal((await state.repository.updateTeamUserTeam(row.id, null))?.team, undefined);
     assert.equal(await state.repository.updateTeamUserTeam(randomUUID(), "AX 1파트"), null);
     assert.equal(await state.repository.updateTeamUsersRole([], "om"), 0);
+    assert.equal(await state.repository.updateTeamUsersStatus([], "active"), 0);
   } finally { restore(); }
 });
 test("TeamUser failed batch rolls back all documents and strips underlying error payload", async () => {
@@ -117,6 +120,7 @@ test("TeamUser mutation gates and deletion policy fail closed before changing da
     const row = fixture(), disabled = mock([row], false), state = mock([row]);
     await assert.rejects(disabled.repository.updateTeamUserTeam(row.id, null), /SHADOW_WRITE_GATE/);
     await assert.rejects(disabled.repository.updateTeamUsersRole([], "om"), /SHADOW_WRITE_GATE/);
+    await assert.rejects(disabled.repository.updateTeamUsersStatus([], "active"), /SHADOW_WRITE_GATE/);
     await assert.rejects(disabled.repository.createTeamUser({ name: "", email: "", slackId: "" }), /SHADOW_WRITE_GATE/);
     await assert.rejects(state.repository.deleteTeamUsers([row.id]), /TEAM_USER_DELETE_POLICY_REQUIRED/);
     assert.equal(disabled.calls.length, 0); assert.equal(state.calls.length, 0);
@@ -131,6 +135,7 @@ test("TeamUser ciphertext tampering aborts before replacement and validates role
     await assert.rejects(state.repository.updateTeamUserTeam(row.id, "AX 2파트"), /TEAM_USER_ACCESS_FAILED/); assert.ok(!state.calls.includes("replace"));
     await assert.rejects(state.repository.updateTeamUserTeam("wrong", "x"), /INVALID_TEAM_USER_INPUT/);
     await assert.rejects(state.repository.updateTeamUsersRole([row.id], "admin" as never), /INVALID_TEAM_USER_INPUT/);
+    await assert.rejects(state.repository.updateTeamUsersStatus([row.id], "retired" as never), /INVALID_TEAM_USER_INPUT/);
   } finally { restore(); }
 });
 

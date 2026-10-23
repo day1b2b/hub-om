@@ -3604,6 +3604,17 @@
           "LD"
         ]
       },
+      "status": {
+        "type": "TeamUserStatus",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false,
+        "values": [
+          "ACTIVE",
+          "DEPARTED"
+        ]
+      },
       "createdAt": {
         "type": "DateTime",
         "nullable": false,

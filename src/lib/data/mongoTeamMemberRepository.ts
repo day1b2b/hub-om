@@ -52,7 +52,9 @@ export class MongoTeamMemberRepository implements TeamMemberRepository {
   }
   async listRoleRosters(): Promise<TeamMemberRoleRoster> {
     return teamRead(async () => {
-      const users = await this.store.scan("TeamUser", { role: { $ne: null } });
+      // 퇴사자는 신규 배정 후보에서 제외한다. 이미 배정된 과거 회차의 OM/LD 표기는
+      // 운영 데이터(OperationSession)에 그대로 남으므로 이 로스터 제외와 무관하다.
+      const users = await this.store.scan("TeamUser", { role: { $ne: null }, status: "ACTIVE" });
       if (users.length === 0) return DEFAULT_TEAM_MEMBER_ROLE_ROSTER;
       users.sort((a: MongoRow, b: MongoRow) => compare(a.role, b.role, roles) || compare(a.team, b.team) || compare(a.name, b.name));
       const roster = users.reduce<TeamMemberRoleRoster>((roster, user) => {

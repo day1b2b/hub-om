@@ -41,8 +41,10 @@ export class PrismaTeamMemberRepository implements TeamMemberRepository {
 
   async listRoleRosters(): Promise<TeamMemberRoleRoster> {
     const prisma = getPrismaClient();
+    // 퇴사자는 신규 배정 후보에서 제외한다. 이미 배정된 과거 회차의 OM/LD 표기는
+    // 운영 데이터(OperationSession)에 그대로 남으므로 이 로스터 제외와 무관하다.
     const users = await prisma.teamUser.findMany({
-      where: { role: { not: null } },
+      where: { role: { not: null }, status: "ACTIVE" },
       orderBy: [{ role: "asc" }, { team: "asc" }, { name: "asc" }]
     });
 
