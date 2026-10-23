@@ -1,6 +1,7 @@
 import type { Coach, CoachEngagement, CoachEngagementSchedule } from "@prisma/client";
 import type { CoachSummary, CoachStatusValue, CoachEngagementStatusValue } from "./coachTypes";
 import { MongoOperationError } from "./mongoOperationStore";
+import { digestCoachEngagements } from "@/lib/coaches/coachActivity";
 export const coachStatus: Record<string, CoachStatusValue> = { PENDING: "pending", ACTIVE: "active", INACTIVE: "inactive" };
 export const engagementStatus: Record<string, CoachEngagementStatusValue> = { SCHEDULED: "scheduled", IN_PROGRESS: "in_progress", COMPLETED: "completed", CANCELLED: "cancelled" };
 export const coachDate = (value: Date) => value.toISOString().slice(0, 10);
@@ -23,7 +24,8 @@ export function coachSummary(coach: Coach, fields: string[], engagements: CoachE
     isActive: coach.isActive, deletedAt: coach.deletedAt?.toISOString() ?? null, fields,
     avgRating: ratings.length ? ratings.reduce((sum, value) => sum + value, 0) / ratings.length : null,
     workDayCount: new Set(schedules.filter(row => row.cancelledAt === null).map(row => coachDate(row.date))).size,
-    notionPageId: coach.notionPageId };
+    notionPageId: coach.notionPageId,
+    ...digestCoachEngagements(engagements.map(row => ({ startDate: coachDate(row.startDate), endDate: coachDate(row.endDate), cancelled: row.status === "CANCELLED", rating: row.rating }))) };
 }
 /** Keep database/driver/cipher errors out of public messages; never turn corruption into empty results. */
 export async function coachRead<T>(work: () => Promise<T>): Promise<T> {

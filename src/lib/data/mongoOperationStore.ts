@@ -110,6 +110,25 @@ export class MongoOperationStore {
     assertMongo(Array.isArray(batch) && (cursorId === 0 || cursorId?.isZero?.() === true), "SCAN_CURSOR_NOT_CLOSED");
     return (batch as MongoRuntimeDocument[]).map(row => decodeMongoRuntimeFields(model, row, fields));
   }
+  /** Row count per foreign key, computed on the server in one round trip instead of one countDocuments per id.
+   * At most one group per id, so a single closed batch holds every count and no getMore is issued. */
+  async countsByForeignKey(model: string, foreignKey: string, ids: string[], session?: ClientSession): Promise<Map<string, number>> {
+    if (ids.length === 0) return new Map();
+    const response = await this.db.command({
+      aggregate: this.collection(model).collectionName,
+      pipeline: [
+        { $match: { [foreignKey]: { $in: ids } } },
+        { $group: { _id: `$${foreignKey}`, count: { $sum: 1 } } },
+      ],
+      cursor: { batchSize: ids.length + 1 },
+      collation: { locale: "simple" },
+      maxTimeMS: 15_000,
+    }, { session });
+    const batch = response.cursor?.firstBatch;
+    const cursorId = response.cursor?.id;
+    assertMongo(Array.isArray(batch) && (cursorId === 0 || cursorId?.isZero?.() === true), "SCAN_CURSOR_NOT_CLOSED");
+    return new Map((batch as Array<{ _id: unknown; count: number }>).map(group => [String(group._id), group.count]));
+  }
   /** Keep complete authenticated documents, but select the latest relation on the server. */
   async latestBy(model: "OperationSourceRecord" | "OperationSession", foreignKey: string, ids: string[], dateField: string, session?: ClientSession): Promise<MongoRow[]> {
     if (ids.length === 0) return [];
