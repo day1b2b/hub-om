@@ -3604,17 +3604,6 @@
           "LD"
         ]
       },
-      "status": {
-        "type": "TeamUserStatus",
-        "nullable": false,
-        "list": false,
-        "uuid": false,
-        "dateOnly": false,
-        "values": [
-          "ACTIVE",
-          "DEPARTED"
-        ]
-      },
       "createdAt": {
         "type": "DateTime",
         "nullable": false,
@@ -3649,6 +3638,50 @@
       {
         "fields": [
           "id"
+        ],
+        "nullsDistinct": true
+      }
+    ]
+  },
+  "TeamUserDeparture": {
+    "collection": "team_user_departures",
+    "primaryKey": [
+      "id"
+    ],
+    "fields": {
+      "id": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": true,
+        "dateOnly": false
+      },
+      "teamUserId": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": true,
+        "dateOnly": false
+      },
+      "departedAt": {
+        "type": "DateTime",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      }
+    },
+    "references": [],
+    "uniqueKeys": [
+      {
+        "fields": [
+          "id"
+        ],
+        "nullsDistinct": true
+      },
+      {
+        "fields": [
+          "teamUserId"
         ],
         "nullsDistinct": true
       }

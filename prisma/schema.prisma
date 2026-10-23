@@ -108,13 +108,6 @@ enum MemberRole {
   @@map("member_role")
 }
 
-enum TeamUserStatus {
-  ACTIVE   @map("active")
-  DEPARTED @map("departed")
-
-  @@map("team_user_status")
-}
-
 model Company {
   id             String   @id @default(uuid()) @db.Uuid
   name           String
@@ -840,14 +833,13 @@ model SalesRevenueSyncLog {
 }
 
 model TeamUser {
-  id        String         @id @default(uuid()) @db.Uuid
+  id        String      @id @default(uuid()) @db.Uuid
   name      String
   email     String
-  slackId   String         @map("slack_id")
+  slackId   String      @map("slack_id")
   team      String?
   role      MemberRole?
-  status    TeamUserStatus @default(ACTIVE)
-  createdAt DateTime       @default(now()) @map("created_at")
+  createdAt DateTime    @default(now()) @map("created_at")
 
   @@map("team_users")
 
@@ -855,6 +847,18 @@ model TeamUser {
   namePiiIndex String? @map("name_pii_index")
   emailPiiIndex String? @map("email_pii_index")
   slackIdPiiIndex String? @map("slack_id_pii_index")
+}
+
+// 퇴사자를 TeamUser에서 물리 삭제하거나 TeamUser 스키마를 바꾸지 않고 표시하기 위한
+// 추가 전용(additive) 기록. 행이 있으면 퇴사, 없으면 재직이다(행 삭제 = 재직 복귀).
+// TeamUser에 직접 상태 필드를 두면 운영 Mongo의 기존 TeamUser 문서와 계약이
+// 어긋나 저장소 열기·읽기가 전부 실패한다(2026-10-21 education_format 장애와 같은 유형).
+model TeamUserDeparture {
+  id         String   @id @default(uuid()) @db.Uuid
+  teamUserId String   @unique @map("team_user_id") @db.Uuid
+  departedAt DateTime @default(now()) @map("departed_at")
+
+  @@map("team_user_departures")
 }
 
 // OM 업무 요청. 과거 로컬 JSON 파일(om-requests.json) 저장에서 Postgres로 이관.
