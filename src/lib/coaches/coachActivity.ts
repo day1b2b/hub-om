@@ -61,7 +61,7 @@ export function digestCoachEngagements(
   };
 }
 
-/** 활동: 기간 안에 투입 있음 / 휴면: 마지막 투입이 기간을 넘음 / 미투입: 투입 0회. */
+/** 활동: 기간 안에 투입 있음 / 휴면: 마지막 투입 종료가 기간을 넘음 / 미투입: 투입 0회. */
 export type CoachActivityStatus = "active" | "dormant" | "never";
 
 export interface CoachActivity {
@@ -86,9 +86,16 @@ export function summarizeCoachActivity(
     null
   );
 
+  // 휴면은 마지막으로 현장에 나간 날로 판정한다. 진행 중인 투입은 오늘까지 나간 것으로 본다.
+  // 시작일로 판정하면 오래 이어지는 과정에 나가고 있는 코치가 휴면으로 보인다.
+  const lastActiveDate = deployed.reduce<string | null>((latest, fact) => {
+    const activeUntil = fact.endDate < today ? fact.endDate : today;
+    return latest === null || activeUntil > latest ? activeUntil : latest;
+  }, null);
+
   let status: CoachActivityStatus = "never";
-  if (lastDeployDate !== null) {
-    status = lastDeployDate < shiftMonths(today, -policy.dormantMonths) ? "dormant" : "active";
+  if (lastActiveDate !== null) {
+    status = lastActiveDate < shiftMonths(today, -policy.dormantMonths) ? "dormant" : "active";
   }
 
   return {

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import type { CoachActivity, CoachActivityStatus } from "@/lib/coaches/coachActivity";
-import type { CoachSummary } from "@/lib/data/coachTypes";
+import type { CoachStatusValue, CoachSummary } from "@/lib/data/coachTypes";
 import { CoachAvatarIcon } from "./CoachAvatarIcon";
 
 /** 목록 한 줄. 활동 상태는 서버에서 오늘 기준으로 계산해 넘긴다. */
@@ -20,6 +20,12 @@ const ACTIVITY_CLASS: Record<CoachActivityStatus, string> = {
   active: "active",
   never: "planned-assignment",
   dormant: "muted"
+};
+
+// 코치 DB(노션) 상태. 활동중이 아니면 투입 이력과 별개로 확인이 필요해 배지로 드러낸다.
+const COACH_DB_STATUS_LABEL: Partial<Record<CoachStatusValue, string>> = {
+  pending: "코치 DB 대기",
+  inactive: "코치 DB 비활동"
 };
 
 const ACTIVITY_TABS = [
@@ -180,10 +186,7 @@ export function CoachList({ coaches, loadFailed, today }: CoachListProps) {
                           <span>
                             <strong>{coach.name}</strong>
                             <br />
-                            <span className="td-muted">
-                              {coach.workType || "근무유형 없음"}
-                              {coach.status === "inactive" ? " · 코치 DB 비활동" : ""}
-                            </span>
+                            <span className="td-muted">{coach.workType || "근무유형 없음"}</span>
                           </span>
                         </Link>
                       </td>
@@ -191,6 +194,12 @@ export function CoachList({ coaches, loadFailed, today }: CoachListProps) {
                         <span className={`status ${ACTIVITY_CLASS[coach.activity.status]}`}>
                           {ACTIVITY_LABEL[coach.activity.status]}
                         </span>
+                        {COACH_DB_STATUS_LABEL[coach.status] ? (
+                          <>
+                            {" "}
+                            <span className="status planned-assignment">{COACH_DB_STATUS_LABEL[coach.status]}</span>
+                          </>
+                        ) : null}
                         {coach.activity.upcomingCount > 0 ? (
                           <span className="td-muted"> 예정 {coach.activity.upcomingCount}건</span>
                         ) : null}
@@ -335,6 +344,10 @@ function SortSelect({ onChange, value }: { onChange: (value: SortKey) => void; v
 }
 
 function compareCoaches(a: CoachListItem, b: CoachListItem, sortKey: SortKey): number {
+  // 코치 DB 활동중인 코치를 항상 위로, 대기·비활동은 아래로 — 선택한 정렬 기준보다 우선한다.
+  const coachDbOrder = Number(a.status !== "active") - Number(b.status !== "active");
+  if (coachDbOrder !== 0) return coachDbOrder;
+
   const byName = a.name.localeCompare(b.name, "ko");
   if (sortKey === "name") return byName;
   if (sortKey === "rating") return (b.recentAvgRating ?? -1) - (a.recentAvgRating ?? -1) || byName;

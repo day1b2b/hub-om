@@ -23,6 +23,15 @@ test("activity status: never without past deploys, active within the window, dor
   assert.equal(summarizeCoachActivity([fact("2026-04-22")], "2026-10-23", policy).status, "dormant");
 });
 
+test("dormancy follows the end date, so a long engagement still running stays active", () => {
+  // 7개월 전에 시작해 아직 진행 중이면 활동이다. 최근 투입 칸은 시작일을 그대로 보여준다.
+  const running = summarizeCoachActivity([fact("2026-03-01", false, "2026-12-31")], "2026-10-23", policy);
+  assert.deepEqual(running, { status: "active", deployCount: 1, lastDeployDate: "2026-03-01", upcomingCount: 0 });
+  // 일찍 시작했어도 기간 안에 끝났으면 활동, 끝난 지 기간이 지났으면 휴면이다.
+  assert.equal(summarizeCoachActivity([fact("2026-01-05", false, "2026-05-01")], "2026-10-23", policy).status, "active");
+  assert.equal(summarizeCoachActivity([fact("2026-01-05", false, "2026-04-22")], "2026-10-23", policy).status, "dormant");
+});
+
 test("activity ignores cancelled engagements and picks the latest start date", () => {
   const activity = summarizeCoachActivity(
     [fact("2026-10-01", true), fact("2026-03-01"), fact("2026-02-01"), fact("2026-12-01")],
