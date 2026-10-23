@@ -1,12 +1,9 @@
 import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
-import {
-  emptyCompanyBusinessInfo,
-  getCompanyBusinessInfo,
-  updateCompanyBusinessInfo,
-  type CompanyBusinessInfoPatch
-} from "@/lib/data/companyBusinessInfoRepository";
+import { emptyCompanyBusinessInfo, type CompanyBusinessInfoPatch } from "@/lib/data/companyBusinessInfoRepository";
+import { getCompanyBusinessInfoRepository } from "@/lib/data/companyBusinessInfoRepositoryFactory";
+import { runCompanyBusinessInfoRequest } from "@/lib/data/companyBusinessInfoComposition";
 
 // 기업 상세를 열 때 그 기업 것만 조회한다. 목록 화면에서 전체 기업의 PII를 한 번에
 // 내려보내지 않기 위해, 기업위키 페이지 로드가 아니라 상세를 열 때 따로 불러온다.
@@ -17,7 +14,7 @@ async function activityGET(request: Request) {
     return NextResponse.json({ error: "companyId 필요" }, { status: 400 });
   }
   try {
-    const businessInfo = (await getCompanyBusinessInfo(companyId)) ?? emptyCompanyBusinessInfo();
+    const businessInfo = (await getCompanyBusinessInfoRepository().get(companyId)) ?? emptyCompanyBusinessInfo();
     return NextResponse.json({ businessInfo });
   } catch {
     return NextResponse.json({ error: "조회 실패" }, { status: 500 });
@@ -34,12 +31,12 @@ async function activityPOST(request: Request) {
       return NextResponse.json({ error: "companyId 필요" }, { status: 400 });
     }
     const updatedBy = session.user?.email ?? "unknown";
-    const saved = await updateCompanyBusinessInfo(companyId, patch, updatedBy);
+    const saved = await getCompanyBusinessInfoRepository().update(companyId, patch, updatedBy);
     return NextResponse.json({ ok: true, saved });
   } catch {
     return NextResponse.json({ error: "저장 실패" }, { status: 500 });
   }
 }
 
-export const GET = withActivity("/api/company-wiki/business-info", "GET", activityGET);
-export const POST = withActivity("/api/company-wiki/business-info", "POST", activityPOST);
+export const GET = withActivity("/api/company-wiki/business-info", "GET", activityGET, runCompanyBusinessInfoRequest);
+export const POST = withActivity("/api/company-wiki/business-info", "POST", activityPOST, runCompanyBusinessInfoRequest);

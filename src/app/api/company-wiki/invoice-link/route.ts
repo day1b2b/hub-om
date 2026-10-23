@@ -2,7 +2,8 @@ import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { isSafeHttpUrl } from "@/components/ExternalTableLink";
-import { getCompanyBusinessInfo } from "@/lib/data/companyBusinessInfoRepository";
+import { getCompanyBusinessInfoRepository } from "@/lib/data/companyBusinessInfoRepositoryFactory";
+import { runCompanyBusinessInfoRequest } from "@/lib/data/companyBusinessInfoComposition";
 import { buildInvoiceRequestFormUrl } from "@/lib/data/invoiceRequestForm";
 
 interface CourseInput {
@@ -25,7 +26,7 @@ async function activityPOST(request: Request) {
   }
 
   try {
-    const businessInfo = body.companyId ? await getCompanyBusinessInfo(body.companyId) : null;
+    const businessInfo = body.companyId ? await getCompanyBusinessInfoRepository().get(body.companyId) : null;
     const links: Record<string, string | null> = {};
     for (const course of courses) {
       const href = buildInvoiceRequestFormUrl({
@@ -48,4 +49,4 @@ async function activityPOST(request: Request) {
   }
 }
 
-export const POST = withActivity("/api/company-wiki/invoice-link", "POST", activityPOST);
+export const POST = withActivity("/api/company-wiki/invoice-link", "POST", activityPOST, runCompanyBusinessInfoRequest);
