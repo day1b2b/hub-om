@@ -12,6 +12,9 @@ interface SyncSource {
   description: string;
   externalUrl?: string;
   externalUrlLabel?: string;
+  /** 원천 파일을 직접 올려 동기화하는 경로. 파일을 고르면 미리보기·실행이 이 경로를 쓴다. */
+  uploadEndpoint?: string;
+  uploadHint?: string;
 }
 
 const SYNC_SOURCES: SyncSource[] = [
@@ -22,7 +25,10 @@ const SYNC_SOURCES: SyncSource[] = [
     description:
       "구글시트 \"조교실습코치_일반계약요청\"에서 투입 이력과 스케줄을 가져옵니다. 2026년 이후 신규 코치는 자동 생성됩니다.",
     externalUrl: CONTRACT_SHEET_URL,
-    externalUrlLabel: "시트 보기"
+    externalUrlLabel: "시트 보기",
+    uploadEndpoint: "/api/sync/engagements/upload",
+    uploadHint:
+      "구글 연결 없이 계약 요청 엑셀(.xlsx)을 직접 올려 동기화할 수도 있어요. 드라이브에서 내려받은 파일을 고른 뒤 미리보기를 누르세요. 파일은 저장하지 않아요."
   },
   {
     id: "notion",
@@ -63,6 +69,7 @@ interface CoachSyncDashboardProps {
 export function CoachSyncDashboard({ sourceIds }: CoachSyncDashboardProps = {}) {
   const sources = sourceIds ? SYNC_SOURCES.filter((source) => sourceIds.includes(source.id)) : SYNC_SOURCES;
   const [states, setStates] = useState<Record<string, SourceState>>({});
+  const [files, setFiles] = useState<Record<string, File | null>>({});
 
   function stateOf(id: string): SourceState {
     return states[id] ?? { phase: "idle" };
@@ -76,7 +83,16 @@ export function CoachSyncDashboard({ sourceIds }: CoachSyncDashboardProps = {}) 
     setSource(source.id, { phase: dryRun ? "previewing" : "applying" });
 
     try {
-      const response = await fetch(source.endpoint, { method: dryRun ? "GET" : "POST" });
+      const file = source.uploadEndpoint ? files[source.id] : null;
+      let response: Response;
+      if (file && source.uploadEndpoint) {
+        const body = new FormData();
+        body.append("file", file);
+        body.append("dryRun", dryRun ? "true" : "false");
+        response = await fetch(source.uploadEndpoint, { method: "POST", body });
+      } else {
+        response = await fetch(source.endpoint, { method: dryRun ? "GET" : "POST" });
+      }
       const payload = (await response.json().catch(() => ({ ok: false, error: "응답을 읽지 못했습니다." }))) as SyncApiResponse;
 
       if (!response.ok || !payload.ok || !payload.result) {
@@ -131,6 +147,30 @@ export function CoachSyncDashboard({ sourceIds }: CoachSyncDashboardProps = {}) 
                 ) : null}
               </div>
             </div>
+
+            {source.uploadEndpoint ? (
+              <div className="sync-upload">
+                {source.uploadHint ? <p>{source.uploadHint}</p> : null}
+                <label>
+                  <span>계약 파일(.xlsx)</span>{" "}
+                  <input
+                    accept=".xlsx"
+                    disabled={busy}
+                    onChange={(event) => {
+                      setFiles((prev) => ({ ...prev, [source.id]: event.target.files?.[0] ?? null }));
+                      // 다른 파일의 결과가 남아 헷갈리지 않게 비운다.
+                      setSource(source.id, { phase: "idle" });
+                    }}
+                    type="file"
+                  />
+                </label>
+                {files[source.id] ? (
+                  <p className="sync-upload-selected">
+                    올린 파일 기준으로 미리보기·실행해요: <strong>{files[source.id]?.name}</strong>
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
 
             {state.phase === "confirming" ? (
               <div className="sync-confirm" role="alertdialog" aria-label="동기화 실행 확인">
