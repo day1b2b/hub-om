@@ -11367,6 +11367,30 @@ button.coach-doc-reserve-chip:disabled {
   line-height: 1.6;
 }
 
+.sync-change-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.sync-change-filter {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.8rem;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+
+.sync-change-filter.active {
+  border-color: var(--purple);
+  background: var(--purple-bg);
+  color: var(--purple);
+  font-weight: 700;
+}
+
 .sync-changes {
   list-style: none;
   padding-left: 0 !important;
