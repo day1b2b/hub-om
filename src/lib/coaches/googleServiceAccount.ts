@@ -13,6 +13,40 @@ interface GoogleTokenResponse {
 
 let cachedToken: { token: string; expiresAt: number } | null = null;
 
+/**
+ * 구글 시트 읽기 실패의 종류. 응답 본문은 시트 내용이 섞일 수 있어 담지 않고,
+ * 원인을 가르는 데 필요한 상태 코드와 구글 오류 코드(예: invalid_grant)만 남긴다.
+ */
+export type GoogleSheetFailureKind = "missing_credentials" | "auth_failed" | "forbidden" | "not_found" | "bad_range" | "http";
+
+export class GoogleSheetReadError extends Error {
+  readonly kind: GoogleSheetFailureKind;
+  readonly status: number | null;
+  readonly code: string | null;
+  constructor(kind: GoogleSheetFailureKind, message: string, status: number | null = null, code: string | null = null) {
+    super(message);
+    this.name = "GoogleSheetReadError";
+    this.kind = kind;
+    this.status = status;
+    this.code = code;
+  }
+}
+
+export function sheetHttpError(source: string, status: number, body: string): GoogleSheetReadError {
+  let googleStatus: string | null = null, googleMessage = "";
+  try {
+    const parsed = JSON.parse(body) as { error?: { status?: unknown; message?: unknown } };
+    googleStatus = typeof parsed.error?.status === "string" ? parsed.error.status : null;
+    googleMessage = typeof parsed.error?.message === "string" ? parsed.error.message : "";
+  } catch { /* 본문이 JSON이 아니면 상태 코드로만 판단한다. */ }
+  const message = `${source} failed (${status})`;
+  if (status === 401) return new GoogleSheetReadError("auth_failed", message, status, googleStatus);
+  if (status === 403) return new GoogleSheetReadError("forbidden", message, status, googleStatus);
+  if (status === 404) return new GoogleSheetReadError("not_found", message, status, googleStatus);
+  if (status === 400 && /parse range/i.test(googleMessage)) return new GoogleSheetReadError("bad_range", message, status, googleStatus);
+  return new GoogleSheetReadError("http", message, status, googleStatus);
+}
+
 export interface GoogleServiceAccountConfig {
   privateKey: string;
   serviceAccountEmail: string;
@@ -35,8 +69,8 @@ export function readGoogleServiceAccountConfig(): GoogleServiceAccountConfig {
 }
 
 export function assertGoogleConfig(config: GoogleServiceAccountConfig): void {
-  if (!config.serviceAccountEmail) throw new Error("Google service account email env가 필요합니다.");
-  if (!config.privateKey) throw new Error("Google private key env가 필요합니다.");
+  if (!config.serviceAccountEmail) throw new GoogleSheetReadError("missing_credentials", "Google service account email env가 필요합니다.");
+  if (!config.privateKey) throw new GoogleSheetReadError("missing_credentials", "Google private key env가 필요합니다.");
 }
 
 export async function readGoogleSheetValues(
@@ -64,7 +98,7 @@ export async function readGoogleSpreadsheetRows(
     if (response.status === 400 && /Office file/.test(text)) {
       return readOfficeSpreadsheetRows(spreadsheetId, range, token);
     }
-    throw new Error(`Google Sheets read failed (${response.status}): ${text}`);
+    throw sheetHttpError("Google Sheets read", response.status, text);
   }
 
   const payload = (await response.json()) as { values?: string[][] };
@@ -77,7 +111,7 @@ async function readOfficeSpreadsheetRows(fileId: string, range: string, token: s
   });
 
   if (!response.ok) {
-    throw new Error(`Google Drive file download failed (${response.status}): ${await response.text()}`);
+    throw sheetHttpError("Google Drive file download", response.status, await response.text());
   }
 
   return readXlsxRows(Buffer.from(await response.arrayBuffer()), range);
@@ -87,7 +121,13 @@ async function getGoogleAccessToken(config: GoogleServiceAccountConfig): Promise
   const now = Math.floor(Date.now() / 1000);
   if (cachedToken && cachedToken.expiresAt > now + 60) return cachedToken.token;
 
-  const assertion = buildJwtAssertion(config, now);
+  let assertion: string;
+  try {
+    assertion = buildJwtAssertion(config, now);
+  } catch {
+    // 개인 키 형식이 잘못되면 서명 단계에서 실패한다. 키 내용은 메시지에 넣지 않는다.
+    throw new GoogleSheetReadError("auth_failed", "Google private key could not sign", null, "invalid_private_key");
+  }
   const response = await fetch(GOOGLE_TOKEN_URL, {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
@@ -96,9 +136,10 @@ async function getGoogleAccessToken(config: GoogleServiceAccountConfig): Promise
       assertion
     })
   });
-  const payload = (await response.json()) as GoogleTokenResponse;
+  const payload = (await response.json().catch(() => ({}))) as GoogleTokenResponse;
   if (!response.ok || !payload.access_token) {
-    throw new Error(payload.error ?? "Google token request failed");
+    const code = typeof payload.error === "string" ? payload.error : null;
+    throw new GoogleSheetReadError("auth_failed", code ?? "Google token request failed", response.status, code);
   }
 
   cachedToken = { token: payload.access_token, expiresAt: now + (payload.expires_in ?? 3600) };
