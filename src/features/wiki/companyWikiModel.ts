@@ -1,37 +1,30 @@
+import { sumRevenueByCourseId } from "@/lib/data/operationCalculations";
 import { splitPersonNames } from "@/lib/data/personNames";
 import type { OperationSession } from "@/lib/data/operationTypes";
 
-/** 기업위키의 코스 한 줄. 운영 현황의 같은 과정(코스ID+과정명) 회차를 묶은 것. */
+/** 기업위키의 코스 한 줄. 운영 현황의 같은 과정(코스ID+과정명) 회차를 묶은 것. 운영현황(/operations)과 같은 열 구성. */
 export interface CompanyWikiCourse {
   key: string;
   courseId: string;
   courseName: string;
   rounds: number;
-  /** 링크 유무만 본다. 실제 주소는 운영 상세에서 본다. */
-  syncup: boolean;
-  lms: boolean;
-  drive: boolean;
-  report: boolean;
-  instructors: string;
   startDate: string;
   endDate: string;
+  instructors: string;
+  /** 만족도가 기록된 회차의 평균. 없으면 "-". */
+  avgSatisfaction: string;
+  /** 코스ID 기준 매출(세일즈맵 연동). 없으면 "-". */
+  revenue: string;
+  om: string;
+  ld: string;
   /** 이 과정의 대표 운영. 눌렀을 때 운영 상세로 보낸다. */
-  operationId: string;
-}
-
-/** 운영 이력 한 줄. 회차 단위다(만족도가 회차별로 붙는다). */
-export interface CompanyWikiHistory {
-  key: string;
-  courseName: string;
-  roundNo: string;
-  period: string;
-  satisfaction: string;
-  status: string;
   operationId: string;
 }
 
 export interface CompanyWikiEntry {
   name: string;
+  /** Company.id. 로컬 JSON/외부 병합 데이터엔 없을 수 있다 — 그럴 땐 사업자등록증 정보 수정이 불가하다. */
+  companyId: string | null;
   omNames: string[];
   ldNames: string[];
   courseCount: number;
@@ -42,12 +35,9 @@ export interface CompanyWikiEntry {
   years: string[];
   /** 만족도가 기록된 회차의 평균. 없으면 "-". */
   avgSatisfaction: string;
+  /** 전체 코스ID 기준 매출 합. 없으면 "-". */
+  totalRevenue: string;
   courses: CompanyWikiCourse[];
-  history: CompanyWikiHistory[];
-}
-
-function hasLink(value: null | string | undefined): boolean {
-  return (value ?? "").trim() !== "";
 }
 
 /** 코스ID가 비어도 과정명으로 갈라지도록 둘을 합쳐 키로 쓴다. */
@@ -85,11 +75,22 @@ function averageSatisfaction(operations: ReadonlyArray<OperationSession>): strin
   return (Math.round(mean * 100) / 100).toString();
 }
 
+/** 이 코스를 맡은 OM/LD. 회차마다 바뀌었을 수 있어 중복 없이 모아 보여 준다. */
+function summarizeNames(operations: ReadonlyArray<OperationSession>, pick: (o: OperationSession) => string, fallback: string): string {
+  const names = uniqueNames(operations, pick);
+  return names.length > 0 ? names.join(", ") : fallback;
+}
+
 function summarizeInstructors(operations: ReadonlyArray<OperationSession>): string {
   const names = uniqueNames(operations, (operation) => operation.instructors);
   if (names.length === 0) return "-";
   // 너무 길어지면 표가 밀리므로 두 명까지만 쓰고 나머지는 수로 접는다.
   return names.length <= 2 ? names.join(", ") : `${names.slice(0, 2).join(", ")} 외 ${names.length - 2}명`;
+}
+
+/** 운영현황(/operations)의 "매출(코스ID기준)"과 같은 포맷. */
+function formatRevenue(operations: ReadonlyArray<OperationSession>): string {
+  return new Intl.NumberFormat("ko-KR").format(sumRevenueByCourseId(operations));
 }
 
 function buildCourses(operations: ReadonlyArray<OperationSession>): CompanyWikiCourse[] {
@@ -109,14 +110,13 @@ function buildCourses(operations: ReadonlyArray<OperationSession>): CompanyWikiC
       courseId: (list[0].courseId ?? "").trim(),
       courseName: (list[0].courseName ?? "").trim(),
       rounds: list.length,
-      // 회차 중 하나라도 링크가 있으면 있는 것으로 본다. 회차마다 채워지는 시점이 달라서다.
-      syncup: list.some((operation) => hasLink(operation.operationDetail)),
-      lms: list.some((operation) => hasLink(operation.lectureManagementLink)),
-      drive: list.some((operation) => hasLink(operation.driveLink)),
-      report: list.some((operation) => hasLink(operation.resultReportLink)),
-      instructors: summarizeInstructors(list),
       startDate: range.first,
       endDate: range.last,
+      instructors: summarizeInstructors(list),
+      avgSatisfaction: averageSatisfaction(list),
+      revenue: formatRevenue(list),
+      om: summarizeNames(list, (operation) => operation.om, "배정필요"),
+      ld: summarizeNames(list, (operation) => operation.ld, "미정"),
       operationId: list[0].operationId
     });
   }
@@ -126,40 +126,6 @@ function buildCourses(operations: ReadonlyArray<OperationSession>): CompanyWikiC
     if (a.startDate !== b.startDate) return b.startDate.localeCompare(a.startDate);
     return (a.courseName ?? "").localeCompare(b.courseName ?? "", "ko");
   });
-}
-
-/** 회차 번호를 숫자로 읽는다("3차" → 3). 못 읽으면 뒤로 보내기 위해 큰 값을 준다. */
-function roundOrder(operation: OperationSession): number {
-  const matched = (operation.roundNo ?? "").match(/\d+/);
-  return matched ? Number.parseInt(matched[0], 10) : Number.MAX_SAFE_INTEGER;
-}
-
-function buildHistory(operations: ReadonlyArray<OperationSession>): CompanyWikiHistory[] {
-  // 1차부터 순서대로. 만족도 추이를 보는 표라 시간 순서가 위에서 아래로 흘러야 읽힌다.
-  // 일정이 아직 없는 회차는 날짜로 줄을 세울 수 없으니 회차 번호로 세운다.
-  return [...operations]
-    .sort((a, b) => {
-      const aDate = (a.startDate ?? "").trim();
-      const bDate = (b.startDate ?? "").trim();
-      // 날짜 없는 회차는 맨 뒤로. 빈 문자열을 그냥 비교하면 1차보다 앞에 온다.
-      if ((aDate === "") !== (bDate === "")) return aDate === "" ? 1 : -1;
-      if (aDate !== bDate) return aDate.localeCompare(bDate);
-      return roundOrder(a) - roundOrder(b);
-    })
-    .map((operation) => {
-      const start = (operation.startDate ?? "").trim();
-      const end = (operation.endDate ?? "").trim();
-      const period = start === "" ? "-" : end === "" || end === start ? start : `${start} ~ ${end}`;
-      return {
-        key: operation.operationId,
-        courseName: (operation.courseName ?? "").trim(),
-        roundNo: (operation.roundNo ?? "").trim() || "-",
-        period,
-        satisfaction: (operation.avgSatisfaction ?? "").trim() || "-",
-        status: operation.operationStatus,
-        operationId: operation.operationId
-      };
-    });
 }
 
 /**
@@ -179,6 +145,21 @@ function companyGroupKey(operation: OperationSession, trimmedName: string): stri
   const companyId = (operation.companyId ?? "").trim();
   if (companyId) return `id:${companyId}`;
   return `name:${trimmedName.replace(/\s+/g, "").toLowerCase()}`;
+}
+
+/**
+ * companyId(Company.id). companyGroupKey가 이미 companyId 우선으로 묶으므로 그룹 안에서는
+ * 보통 하나만 있다 — 그래도 섞여 있으면 가장 많이 나온 값을 쓴다. 전부 없으면(로컬 JSON/외부
+ * 병합) null — 그 경우 기업위키에서 사업자등록증 정보를 수정할 수 없다.
+ */
+function companyIdOf(operations: ReadonlyArray<OperationSession>): string | null {
+  const counts = new Map<string, number>();
+  for (const operation of operations) {
+    const companyId = (operation.companyId ?? "").trim();
+    if (companyId) counts.set(companyId, (counts.get(companyId) ?? 0) + 1);
+  }
+  if (counts.size === 0) return null;
+  return [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
 }
 
 /**
@@ -202,7 +183,7 @@ function displayCompanyName(operations: ReadonlyArray<OperationSession>): string
  *
  * 전에는 기업 목록이 하드코딩 배열이었고 상세는 기업명 해시로 만든 가짜 값이었다.
  * 담당 OM·연락처·만족도까지 지어냈기 때문에, 읽는 사람이 실제 정보로 착각할 수 있었다.
- * 이제 목록·코스·이력·담당자는 모두 운영 현황에서 온다.
+ * 이제 목록·코스·담당자는 모두 운영 현황에서 온다.
  *
  * 운영 현황에 없는 항목(고객사 담당자 연락처, 교육장·보안, 정산 프로세스, 운영 제언)은
  * 지어내지 않고 비워 둔다. 화면에서 "기록 없음"으로 보여 준다.
@@ -224,6 +205,7 @@ export function aggregateCompanies(operations: ReadonlyArray<OperationSession>):
     const courses = buildCourses(list);
     entries.push({
       name,
+      companyId: companyIdOf(list),
       omNames: uniqueNames(list, (operation) => operation.om),
       ldNames: uniqueNames(list, (operation) => operation.ld),
       courseCount: courses.length,
@@ -232,8 +214,8 @@ export function aggregateCompanies(operations: ReadonlyArray<OperationSession>):
       lastDate: range.last,
       years: [...new Set(list.map((operation) => (operation.startDate ?? "").slice(0, 4)).filter(Boolean))].sort(),
       avgSatisfaction: averageSatisfaction(list),
-      courses,
-      history: buildHistory(list)
+      totalRevenue: formatRevenue(list),
+      courses
     });
   }
 

@@ -33,6 +33,7 @@ function operationInputForSession(request: OmRequest, session: OmRequest["sessio
 
   return {
     archiveStatus: "아카이빙전",
+    businessNumber: request.businessNumber,
     calendarPartKey: request.team,
     coach: "",
     companyName: request.company,
