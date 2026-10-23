@@ -6,7 +6,7 @@ import { runWithDataRepositories } from "../dataRepositoryContext";
 import { omRequestManagerName } from "../omRequest/omRequestTypes";
 
 let fallbackReads = 0;
-mock.module("../prisma", { namedExports: { getPrismaClient: () => ({ teamUser: { async findMany() { fallbackReads++; return []; } } }) } });
+mock.module("../prisma", { namedExports: { getPrismaClient: () => ({ teamUser: { async findMany() { fallbackReads++; return []; } }, teamUserDeparture: { async findMany() { return []; } } }) } });
 const facade = await import("./teamUserRepository");
 const { DuplicateTeamUserEmailError } = await import("./teamUserErrors");
 const { canManageOmRequestAssignment } = await import("../../auth/omRequestAssignmentAccess");

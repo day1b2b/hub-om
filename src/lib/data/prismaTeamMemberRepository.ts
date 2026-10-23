@@ -43,10 +43,17 @@ export class PrismaTeamMemberRepository implements TeamMemberRepository {
     const prisma = getPrismaClient();
     // 퇴사자는 신규 배정 후보에서 제외한다. 이미 배정된 과거 회차의 OM/LD 표기는
     // 운영 데이터(OperationSession)에 그대로 남으므로 이 로스터 제외와 무관하다.
-    const users = await prisma.teamUser.findMany({
-      where: { role: { not: null }, status: "ACTIVE" },
-      orderBy: [{ role: "asc" }, { team: "asc" }, { name: "asc" }]
-    });
+    // TeamUser 스키마 자체에는 상태 컬럼을 두지 않는다(운영 Mongo의 기존 문서와 계약이
+    // 어긋나면 저장소 열기·읽기가 전부 실패하기 때문) — 별도 테이블로 퇴사자만 뺀다.
+    const [allUsers, departures] = await Promise.all([
+      prisma.teamUser.findMany({
+        where: { role: { not: null } },
+        orderBy: [{ role: "asc" }, { team: "asc" }, { name: "asc" }]
+      }),
+      prisma.teamUserDeparture.findMany({ select: { teamUserId: true } })
+    ]);
+    const departedIds = new Set(departures.map((d) => d.teamUserId));
+    const users = allUsers.filter((user) => !departedIds.has(user.id));
 
     if (users.length === 0) {
       return DEFAULT_TEAM_MEMBER_ROLE_ROSTER;

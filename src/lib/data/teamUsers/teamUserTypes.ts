@@ -11,7 +11,8 @@ export interface TeamUser {
   slackId: string;
   team?: string;
   role?: TeamUserRole;
-  /** 기존 행에 값이 없을 수 있어 읽는 쪽에서 undefined를 "active"로 간주한다. */
+  /** TeamUser에 저장되는 값이 아니라 TeamUserDeparture 기록 유무로 계산되는 화면용 값이다.
+   * 퇴사 기록이 없으면 undefined(= "active"로 간주)다. */
   status?: TeamUserStatus;
   createdAt: string;
 }

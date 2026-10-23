@@ -16,17 +16,19 @@ function load(name: string, modules: Record<string, unknown>): Record<string, un
   new Function("require", "exports", javascript)((name: string) => { assert.ok(Object.hasOwn(modules, name), "unexpected reference import"); return modules[name]; }, exports);
   return exports;
 }
-async function mocked(members: MongoRow[], users: MongoRow[], failure?: string, readinessFailure = false) {
+async function mocked(members: MongoRow[], users: MongoRow[], departures: MongoRow[] = [], failure?: string, readinessFailure = false) {
   const reads: { model: string; filter: unknown }[] = [];
   let readiness = 0;
   const { MongoTeamMemberRepository } = load("./mongoTeamMemberRepository.ts", {
     "./defaultTeamMemberRoster": { DEFAULT_RESOURCE_OWNER_ROSTER, DEFAULT_TEAM_MEMBER_ROLE_ROSTER },
     "./mongoOperationStore": { MongoOperationError, MongoOperationStore: class {
-      constructor(_options: unknown, models: string[]) { assert.deepEqual(models, ["Member", "TeamUser"]); }
+      constructor(_options: unknown, models: string[]) { assert.deepEqual(models, ["Member", "TeamUser", "TeamUserDeparture"]); }
       async scan(model: string, filter: unknown) {
         reads.push({ model, filter });
         if (failure) throw failure === "SCAN_LIMIT_EXCEEDED" ? new MongoOperationError(failure) : new Error(failure);
-        return structuredClone(model === "Member" ? members.filter(row => row.isActive && row.role === null) : users.filter(row => row.role !== null && row.status !== "DEPARTED"));
+        if (model === "Member") return structuredClone(members.filter(row => row.isActive && row.role === null));
+        if (model === "TeamUserDeparture") return structuredClone(departures);
+        return structuredClone(users.filter(row => row.role !== null));
       }
     } },
     "./mongoReadStore": { TEAM_READ_MODELS: ["Member", "TeamUser"], async assertMongoReadStoreReady() { readiness++; if (failure === "NOT_READY") throw new MongoOperationError(failure); if (readinessFailure) throw new Error(failure); } },
@@ -35,24 +37,38 @@ async function mocked(members: MongoRow[], users: MongoRow[], failure?: string, 
   return { repository, reads, readiness };
 }
 function member(name: string, patch: MongoRow = {}): MongoRow { return { name, sourceTeam: "TEAM_1", displayOrder: null, role: null, isActive: true, ...patch }; }
-function user(name: string, patch: MongoRow = {}): MongoRow { return { name, team: "1팀", role: "OM", status: "ACTIVE", ...patch }; }
+function user(name: string, patch: MongoRow = {}): MongoRow { return { id: randomUUID(), name, team: "1팀", role: "OM", ...patch }; }
+function departure(teamUserId: string): MongoRow { return { id: randomUUID(), teamUserId }; }
 
 // Executes the existing Prisma repository with explicit ordered delegate results, not a real PG server.
 test("Mongo roster output matches existing Prisma repository reference for ordered/null/enum fixtures", async () => {
   const orderedMembers = [member("가상가", { displayOrder: 1 }), member("가상나", { displayOrder: 1 }), member("가상가"), member("중복", { sourceTeam: "TEAM_2", displayOrder: 0 }), member("중복", { sourceTeam: "TEAM_2", displayOrder: 1 }), member("미분류", { sourceTeam: "UNKNOWN" }), member("생략", { sourceTeam: null })];
   const orderedUsers = [user("가상가"), user("가상나"), user("다른팀", { team: "2팀" }), user("파트", { team: "AX 1파트" }), user("빈팀", { team: null }), user("LD가상", { role: "LD" })];
+  const departedUser = user("퇴사자");
   const queries: unknown[] = [];
   const { PrismaTeamMemberRepository } = load("./prismaTeamMemberRepository.ts", {
-    "./prisma": { getPrismaClient: () => ({ member: { async findMany(args: unknown) { queries.push(args); return structuredClone(orderedMembers); } }, teamUser: { async findMany(args: unknown) { queries.push(args); return structuredClone(orderedUsers); } } }) },
+    "./prisma": { getPrismaClient: () => ({
+      member: { async findMany(args: unknown) { queries.push(args); return structuredClone(orderedMembers); } },
+      teamUser: { async findMany(args: unknown) { queries.push(args); return structuredClone([...orderedUsers, departedUser]); } },
+      teamUserDeparture: { async findMany(args: unknown) { queries.push(args); return [{ teamUserId: departedUser.id }]; } }
+    }) },
     "./defaultTeamMemberRoster": { DEFAULT_RESOURCE_OWNER_ROSTER, DEFAULT_TEAM_MEMBER_ROLE_ROSTER },
   });
   const reference = new (PrismaTeamMemberRepository as new () => TeamMemberRepository)();
-  const mongo = await mocked([...orderedMembers].reverse().concat(member("비활성", { isActive: false }), member("별도역할", { role: "LD" })), [...orderedUsers].reverse().concat(user("역할없음", { role: null }), user("퇴사자", { status: "DEPARTED" })));
+  const mongo = await mocked(
+    [...orderedMembers].reverse().concat(member("비활성", { isActive: false }), member("별도역할", { role: "LD" })),
+    [...orderedUsers].reverse().concat(user("역할없음", { role: null }), departedUser),
+    [departure(departedUser.id as string)]
+  );
   assert.deepEqual(await mongo.repository.listResourceOwners(), await reference.listResourceOwners());
   assert.deepEqual(await mongo.repository.listRoleRosters(), await reference.listRoleRosters());
-  assert.deepEqual(mongo.reads, [{ model: "Member", filter: { isActive: true, role: null } }, { model: "TeamUser", filter: { role: { $ne: null }, status: "ACTIVE" } }]);
+  assert.deepEqual(mongo.reads, [{ model: "Member", filter: { isActive: true, role: null } }, { model: "TeamUser", filter: { role: { $ne: null } } }, { model: "TeamUserDeparture", filter: undefined }]);
   assert.equal(mongo.readiness, 1);
-  assert.deepEqual(queries, [{ where: { isActive: true, role: null }, orderBy: [{ sourceTeam: "asc" }, { displayOrder: "asc" }, { name: "asc" }] }, { where: { role: { not: null }, status: "ACTIVE" }, orderBy: [{ role: "asc" }, { team: "asc" }, { name: "asc" }] }]);
+  assert.deepEqual(queries, [
+    { where: { isActive: true, role: null }, orderBy: [{ sourceTeam: "asc" }, { displayOrder: "asc" }, { name: "asc" }] },
+    { where: { role: { not: null } }, orderBy: [{ role: "asc" }, { team: "asc" }, { name: "asc" }] },
+    { select: { teamUserId: true } }
+  ]);
 });
 
 test("empty, null-team-only, LD-only and OM-only keep separate fallback semantics", async () => {
@@ -64,10 +80,16 @@ test("empty, null-team-only, LD-only and OM-only keep separate fallback semantic
   assert.deepEqual(await (await mocked([], [user("가상OM")])).repository.listRoleRosters(), { ld: {}, om: { "1팀": ["가상OM"] } });
 });
 
+test("departed OM/LD are excluded from the role roster but a non-departed teamUserId is unaffected", async () => {
+  const om = user("재직자"), departedOm = user("퇴사자");
+  const { repository } = await mocked([], [om, departedOm], [departure(departedOm.id as string)]);
+  assert.deepEqual(await repository.listRoleRosters(), { ld: {}, om: { "1팀": ["재직자"] } });
+});
+
 test("readiness, decryption and scan errors propagate without default data masking", async () => {
-  await assert.rejects(mocked([], [], "NOT_READY"), /NOT_READY/);
+  await assert.rejects(mocked([], [], [], "NOT_READY"), /NOT_READY/);
   for (const failure of ["AUTHENTICATION_FAILED", "SCAN_LIMIT_EXCEEDED"]) {
-    const { repository } = await mocked([], [], failure);
+    const { repository } = await mocked([], [], [], failure);
     await assert.rejects(repository.listResourceOwners(), new RegExp(failure === "SCAN_LIMIT_EXCEEDED" ? failure : "TEAM_READ_FAILED"));
     await assert.rejects(repository.listRoleRosters(), new RegExp(failure === "SCAN_LIMIT_EXCEEDED" ? failure : "TEAM_READ_FAILED"));
   }
@@ -77,8 +99,8 @@ test("readiness, decryption and scan errors propagate without default data maski
 test("raw driver errors are sanitized during open and both reads without fallback", async () => {
   const secret = "synthetic-secret-driver-error";
   const safe = (error: unknown) => error instanceof MongoOperationError && error.code === "TEAM_READ_FAILED" && !error.message.includes(secret) && error.cause === undefined;
-  await assert.rejects(mocked([], [], secret, true), safe);
-  const { repository } = await mocked([], [], secret);
+  await assert.rejects(mocked([], [], [], secret, true), safe);
+  const { repository } = await mocked([], [], [], secret);
   await assert.rejects(repository.listResourceOwners(), safe);
   await assert.rejects(repository.listRoleRosters(), safe);
 });
@@ -101,7 +123,7 @@ test("TeamMember reads on a disposable loopback replica set", { skip: !uri, time
   const client = new MongoClient(uri!, { serverSelectionTimeoutMS: 5000 });
   async function fixture() {
     const options = { client, databaseName, namespace: `shadow_team_${randomBytes(8).toString("hex")}` };
-    await prepareMongoReadStore({ ...options, allowShadowWrites: true }, TEAM_READ_MODELS);
+    await prepareMongoReadStore({ ...options, allowShadowWrites: true }, [...TEAM_READ_MODELS, "TeamUserDeparture"]);
     return { store: new MongoOperationStore(options, TEAM_READ_MODELS), repository: await MongoTeamMemberRepository.open(options) };
   }
   async function insert(store: InstanceType<typeof MongoOperationStore>, model: string, input: MongoRow) {

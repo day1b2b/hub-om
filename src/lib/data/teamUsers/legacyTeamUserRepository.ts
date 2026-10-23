@@ -1,7 +1,8 @@
 import { encodePrivateJson, decodePrivateJson } from "@/lib/privacy/crypto";
+import { randomUUID } from "node:crypto";
 import fs from "fs";
 import path from "path";
-import type { MemberRole, TeamUserStatus as PrismaTeamUserStatus } from "@prisma/client";
+import type { MemberRole } from "@prisma/client";
 import { getPrismaClient } from "../prisma";
 import type { TeamUser, TeamUserInput, TeamUserRole, TeamUserStatus } from "./teamUserTypes";
 import { DuplicateTeamUserEmailError } from "./teamUserErrors";
@@ -10,8 +11,6 @@ const DATA_FILE = path.join(process.cwd(), "team-users.json");
 
 const ROLE_TO_PRISMA: Record<TeamUserRole, MemberRole> = { ld: "LD", om: "OM" };
 const ROLE_FROM_PRISMA: Record<MemberRole, TeamUserRole> = { LD: "ld", OM: "om" };
-const STATUS_TO_PRISMA: Record<TeamUserStatus, PrismaTeamUserStatus> = { active: "ACTIVE", departed: "DEPARTED" };
-const STATUS_FROM_PRISMA: Record<PrismaTeamUserStatus, TeamUserStatus> = { ACTIVE: "active", DEPARTED: "departed" };
 
 function hasDatabaseUrl(): boolean {
   return process.env.OPERATION_DATA_SOURCE !== "local" && Boolean(process.env.DATABASE_URL);
@@ -39,9 +38,8 @@ function toTeamUser(row: {
   slackId: string;
   team: string | null;
   role: MemberRole | null;
-  status: PrismaTeamUserStatus;
   createdAt: Date;
-}): TeamUser {
+}, departedIds: Set<string>): TeamUser {
   return {
     id: row.id,
     name: row.name,
@@ -49,7 +47,7 @@ function toTeamUser(row: {
     slackId: row.slackId,
     team: row.team ?? undefined,
     role: row.role ? ROLE_FROM_PRISMA[row.role] : undefined,
-    status: STATUS_FROM_PRISMA[row.status],
+    status: departedIds.has(row.id) ? "departed" : "active",
     createdAt: row.createdAt.toISOString()
   };
 }
@@ -58,9 +56,16 @@ export async function listTeamUsers(): Promise<TeamUser[]> {
   if (!hasDatabaseUrl()) return readAll();
 
   const prisma = getPrismaClient();
-  const rows = await prisma.teamUser.findMany({ orderBy: { createdAt: "desc" } });
+  // TeamUser 스키마에는 상태 컬럼을 두지 않는다 — 운영 Mongo의 기존 문서와
+  // 계약이 어긋나면 저장소 열기·읽기가 전부 실패하기 때문이다(2026-10-21 장애 유형).
+  // 퇴사 여부는 별도 테이블(TeamUserDeparture) 존재 여부로 화면에서만 계산한다.
+  const [rows, departures] = await Promise.all([
+    prisma.teamUser.findMany({ orderBy: { createdAt: "desc" } }),
+    prisma.teamUserDeparture.findMany({ select: { teamUserId: true } })
+  ]);
+  const departedIds = new Set(departures.map((d) => d.teamUserId));
 
-  return rows.map(toTeamUser);
+  return rows.map((row) => toTeamUser(row, departedIds));
 }
 
 /** 이메일 표기를 비교용으로 맞춘다(앞뒤 공백·대소문자 무시). */
@@ -119,7 +124,8 @@ export async function createTeamUser(input: TeamUserInput): Promise<TeamUser> {
     }
   });
 
-  return toTeamUser(row);
+  // 방금 만든 행이라 퇴사 기록이 있을 수 없다.
+  return toTeamUser(row, new Set());
 }
 
 export async function deleteTeamUsers(ids: string[]): Promise<number> {
@@ -152,11 +158,11 @@ export async function updateTeamUserTeam(id: string, team: string | null): Promi
 
   const prisma = getPrismaClient();
   try {
-    const row = await prisma.teamUser.update({
-      where: { id },
-      data: { team }
-    });
-    return toTeamUser(row);
+    const [row, departure] = await Promise.all([
+      prisma.teamUser.update({ where: { id }, data: { team } }),
+      prisma.teamUserDeparture.findUnique({ where: { teamUserId: id } })
+    ]);
+    return toTeamUser(row, departure ? new Set([id]) : new Set());
   } catch {
     return null;
   }
@@ -198,11 +204,17 @@ export async function updateTeamUsersStatus(ids: string[], status: TeamUserStatu
   }
 
   const prisma = getPrismaClient();
-  const result = await prisma.teamUser.updateMany({
-    where: { id: { in: ids } },
-    data: { status: STATUS_TO_PRISMA[status] }
-  });
+  // 퇴사 처리 = TeamUserDeparture 행 추가(이미 있으면 그대로), 재직 복귀 = 행 삭제.
+  // TeamUser 행 자체는 건드리지 않는다.
+  if (status === "departed") {
+    const result = await prisma.teamUserDeparture.createMany({
+      data: ids.map((teamUserId) => ({ id: randomUUID(), teamUserId })),
+      skipDuplicates: true
+    });
+    return result.count;
+  }
 
+  const result = await prisma.teamUserDeparture.deleteMany({ where: { teamUserId: { in: ids } } });
   return result.count;
 }
 

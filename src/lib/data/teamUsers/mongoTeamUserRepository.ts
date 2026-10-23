@@ -8,7 +8,10 @@ import { DuplicateTeamUserEmailError } from "./teamUserErrors";
 import type { TeamUserRepository } from "./teamUserRepositoryContract";
 import type { TeamUser, TeamUserInput, TeamUserRole, TeamUserStatus } from "./teamUserTypes";
 
-export const MONGO_TEAM_USER_MODELS = ["TeamUser", "ActivityChange"] as const;
+// TeamUserDeparture는 TeamUser 문서/스키마를 바꾸지 않고 퇴사 여부를 기록하는 추가 전용
+// 컬렉션이다. TeamUser에 직접 상태 필드를 두면 운영 Mongo의 기존 문서와 계약이 어긋나
+// 저장소 열기·읽기가 전부 실패한다(2026-10-21 education_format 장애와 같은 유형).
+export const MONGO_TEAM_USER_MODELS = ["TeamUser", "TeamUserDeparture", "ActivityChange"] as const;
 export type MongoTeamUserOptions = MongoOperationOptions & { allowShadowWrites?: true };
 const guardValidator = { $jsonSchema: { bsonType: "object", required: ["_id", "version"], additionalProperties: false, properties: { _id: { enum: ["TeamUser"] }, version: { bsonType: "long", minimum: 0 } } } };
 function guardCollection(store: MongoOperationStore) { return store.db.collection<{ _id: string; version: Long }>(`${store.namespace}___teamUserWriteGuard`, { promoteLongs: false }); }
@@ -33,15 +36,14 @@ export async function prepareMongoTeamUserStore(options: MongoOperationOptions &
   await assertGuardReady(store);
 }
 const roleToDatabase = { ld: "LD", om: "OM" } as const;
-const statusToDatabase = { active: "ACTIVE", departed: "DEPARTED" } as const;
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
 function emailKey(value: string | null | undefined): string { return (value ?? "").trim().toLowerCase(); }
-function toTeamUser(row: MongoRow): TeamUser {
+/** 퇴사 여부는 TeamUser 문서가 아니라 TeamUserDeparture 존재 여부로 화면에서만 계산한다. */
+function toTeamUser(row: MongoRow, departedIds: ReadonlySet<string>): TeamUser {
   return { id: row.id as string, name: row.name as string, email: row.email as string, slackId: row.slackId as string,
     team: row.team === null ? undefined : row.team as string,
     role: row.role === null ? undefined : row.role === "LD" ? "ld" : "om",
-    // 필드 추가 전 기존 문서에는 status가 없다 — 없으면 재직(active)으로 간주한다.
-    status: row.status === "DEPARTED" ? "departed" : "active",
+    status: departedIds.has(row.id as string) ? "departed" : "active",
     createdAt: (row.createdAt as Date).toISOString() };
 }
 /** Keeps the existing caller's instanceof contract without exposing names/email in errors. */
@@ -88,15 +90,16 @@ export class MongoTeamUserRepository implements TeamUserRepository {
       } finally { await session.endSession(); }
     });
   }
-  private async audit(previous: MongoRow | null, next: MongoRow, session: ClientSession): Promise<void> {
-    const row = operationAuditRow("TeamUser", previous, next);
+  private async audit(previous: MongoRow | null, next: MongoRow | null, session: ClientSession, model: "TeamUser" | "TeamUserDeparture" = "TeamUser"): Promise<void> {
+    const row = operationAuditRow(model, previous, next);
     if (row) await this.store.collection("ActivityChange").insertOne(encodeMongoRuntimeDocument("ActivityChange", row), { session });
   }
   async listTeamUsers(): Promise<TeamUser[]> {
     return safely(async () => {
-      const rows = await this.store.scan("TeamUser");
+      const [rows, departures] = await Promise.all([this.store.scan("TeamUser"), this.store.scan("TeamUserDeparture")]);
       rows.sort((a, b) => (b.createdAt as Date).getTime() - (a.createdAt as Date).getTime());
-      return rows.map(toTeamUser);
+      const departedIds = new Set(departures.map(row => row.teamUserId as string));
+      return rows.map(row => toTeamUser(row, departedIds));
     });
   }
   async findTeamUsersByEmail(email: string | null | undefined): Promise<TeamUser[]> {
@@ -114,10 +117,11 @@ export class MongoTeamUserRepository implements TeamUserRepository {
       // Preserve existing empty-email semantics, but examine all legacy casing/space variants.
       const existing = target ? (await this.store.scan("TeamUser", {}, session)).filter(row => emailKey(row.email as string) === target) : [];
       if (existing.length) throw new MongoDuplicateTeamUserEmailError();
-      const row = { id: randomUUID(), name: input.name, email: input.email, slackId: input.slackId, team: input.team ?? null, role: input.role ? roleToDatabase[input.role] : null, status: "ACTIVE", createdAt: new Date() };
+      const row = { id: randomUUID(), name: input.name, email: input.email, slackId: input.slackId, team: input.team ?? null, role: input.role ? roleToDatabase[input.role] : null, createdAt: new Date() };
       await this.store.collection("TeamUser").insertOne(encodeMongoRuntimeDocument("TeamUser", row), { session });
       await this.audit(null, row, session);
-      return toTeamUser(row);
+      // 방금 만든 행이라 퇴사 기록이 있을 수 없다.
+      return toTeamUser(row, new Set());
     });
   }
 
@@ -130,7 +134,8 @@ export class MongoTeamUserRepository implements TeamUserRepository {
       const result = await this.store.collection("TeamUser").replaceOne({ _id: id }, encodeMongoRuntimeDocument("TeamUser", next), { session });
       assertMongo(result.matchedCount === 1, "TEAM_USER_ROW_DISAPPEARED");
       await this.audit(previous, next, session);
-      return toTeamUser(next);
+      const departure = await this.store.one("TeamUserDeparture", { teamUserId: id }, session);
+      return toTeamUser(next, departure ? new Set([id]) : new Set());
     });
   }
   async updateTeamUsersRole(ids: string[], role: TeamUserRole): Promise<number> {
@@ -147,18 +152,30 @@ export class MongoTeamUserRepository implements TeamUserRepository {
       return rows.length;
     });
   }
+  /** 퇴사 처리 = TeamUserDeparture 행 추가(이미 있으면 그대로), 재직 복귀 = 행 삭제.
+   * TeamUser 문서 자체는 건드리지 않는다. */
   async updateTeamUsersStatus(ids: string[], status: TeamUserStatus): Promise<number> {
     assertMongo(Array.isArray(ids) && ids.length <= MONGO_SCAN_ROWS && ids.every(id => typeof id === "string" && uuid.test(id)) && (status === "active" || status === "departed"), "INVALID_TEAM_USER_INPUT");
     return this.transaction(async session => {
-      if (ids.length === 0) return 0;
-      const rows = await this.store.scan("TeamUser", { _id: { $in: [...new Set(ids)] } }, session);
-      for (const previous of rows) {
-        const next = { ...previous, status: statusToDatabase[status] };
-        const result = await this.store.collection("TeamUser").replaceOne({ _id: previous.id as string }, encodeMongoRuntimeDocument("TeamUser", next), { session });
-        assertMongo(result.matchedCount === 1, "TEAM_USER_ROW_DISAPPEARED");
-        await this.audit(previous, next, session);
+      const uniqueIds = [...new Set(ids)];
+      if (uniqueIds.length === 0) return 0;
+      const existing = await this.store.scan("TeamUserDeparture", { teamUserId: { $in: uniqueIds } }, session);
+      if (status === "departed") {
+        const existingIds = new Set(existing.map(row => row.teamUserId as string));
+        const toCreate = uniqueIds.filter(id => !existingIds.has(id));
+        for (const teamUserId of toCreate) {
+          const row = { id: randomUUID(), teamUserId, departedAt: new Date() };
+          await this.store.collection("TeamUserDeparture").insertOne(encodeMongoRuntimeDocument("TeamUserDeparture", row), { session });
+          await this.audit(null, row, session, "TeamUserDeparture");
+        }
+        return toCreate.length;
       }
-      return rows.length;
+      for (const previous of existing) {
+        const result = await this.store.collection("TeamUserDeparture").deleteOne({ _id: previous.id as string }, { session });
+        assertMongo(result.deletedCount === 1, "TEAM_USER_ROW_DISAPPEARED");
+        await this.audit(previous, null, session, "TeamUserDeparture");
+      }
+      return existing.length;
     });
   }
   async renameTeamUsers(from: string, to: string): Promise<number> {
