@@ -17,22 +17,27 @@ let cachedToken: { token: string; expiresAt: number } | null = null;
  * 구글 시트 읽기 실패의 종류. 응답 본문은 시트 내용이 섞일 수 있어 담지 않고,
  * 원인을 가르는 데 필요한 상태 코드와 구글 오류 코드(예: invalid_grant)만 남긴다.
  */
-export type GoogleSheetFailureKind = "missing_credentials" | "auth_failed" | "forbidden" | "not_found" | "bad_range" | "http";
+export type GoogleSheetFailureKind = "missing_credentials" | "auth_failed" | "scope_missing" | "forbidden" | "not_found" | "bad_range" | "http";
+
+/** 시트를 어떤 계정으로 읽었는지. 권한 안내 문구가 달라진다. */
+export type GoogleSheetAccess = "service_account" | "b2b";
 
 export class GoogleSheetReadError extends Error {
   readonly kind: GoogleSheetFailureKind;
   readonly status: number | null;
   readonly code: string | null;
-  constructor(kind: GoogleSheetFailureKind, message: string, status: number | null = null, code: string | null = null) {
+  readonly via: GoogleSheetAccess | null;
+  constructor(kind: GoogleSheetFailureKind, message: string, status: number | null = null, code: string | null = null, via: GoogleSheetAccess | null = null) {
     super(message);
     this.name = "GoogleSheetReadError";
     this.kind = kind;
     this.status = status;
     this.code = code;
+    this.via = via;
   }
 }
 
-export function sheetHttpError(source: string, status: number, body: string): GoogleSheetReadError {
+export function sheetHttpError(source: string, status: number, body: string, via: GoogleSheetAccess | null = null): GoogleSheetReadError {
   let googleStatus: string | null = null, googleMessage = "";
   try {
     const parsed = JSON.parse(body) as { error?: { status?: unknown; message?: unknown } };
@@ -40,11 +45,14 @@ export function sheetHttpError(source: string, status: number, body: string): Go
     googleMessage = typeof parsed.error?.message === "string" ? parsed.error.message : "";
   } catch { /* 본문이 JSON이 아니면 상태 코드로만 판단한다. */ }
   const message = `${source} failed (${status})`;
-  if (status === 401) return new GoogleSheetReadError("auth_failed", message, status, googleStatus);
-  if (status === 403) return new GoogleSheetReadError("forbidden", message, status, googleStatus);
-  if (status === 404) return new GoogleSheetReadError("not_found", message, status, googleStatus);
-  if (status === 400 && /parse range/i.test(googleMessage)) return new GoogleSheetReadError("bad_range", message, status, googleStatus);
-  return new GoogleSheetReadError("http", message, status, googleStatus);
+  const error = (kind: GoogleSheetFailureKind) => new GoogleSheetReadError(kind, message, status, googleStatus, via);
+  if (status === 401) return error("auth_failed");
+  // 토큰은 유효하지만 시트 권한(spreadsheets.readonly)에 동의받지 않은 경우. 공유 문제와 구분한다.
+  if (status === 403 && /insufficient authentication scopes|ACCESS_TOKEN_SCOPE_INSUFFICIENT/i.test(`${googleMessage} ${body}`)) return error("scope_missing");
+  if (status === 403) return error("forbidden");
+  if (status === 404) return error("not_found");
+  if (status === 400 && /parse range/i.test(googleMessage)) return error("bad_range");
+  return error("http");
 }
 
 export interface GoogleServiceAccountConfig {
@@ -86,8 +94,7 @@ export async function readGoogleSpreadsheetRows(
   range: string,
   config = readGoogleServiceAccountConfig()
 ): Promise<SpreadsheetRows> {
-  assertGoogleConfig(config);
-  const token = await getGoogleAccessToken(config);
+  const { token, via } = await resolveSheetAccessToken(config);
   const url = `${GOOGLE_SHEETS_URL}/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}?majorDimension=ROWS`;
   const response = await fetch(url, {
     headers: { authorization: `Bearer ${token}` }
@@ -96,22 +103,44 @@ export async function readGoogleSpreadsheetRows(
   if (!response.ok) {
     const text = await response.text();
     if (response.status === 400 && /Office file/.test(text)) {
-      return readOfficeSpreadsheetRows(spreadsheetId, range, token);
+      return readOfficeSpreadsheetRows(spreadsheetId, range, token, via);
     }
-    throw sheetHttpError("Google Sheets read", response.status, text);
+    throw sheetHttpError("Google Sheets read", response.status, text, via);
   }
 
   const payload = (await response.json()) as { values?: string[][] };
   return { values: payload.values ?? [], struckCells: new Set() };
 }
 
-async function readOfficeSpreadsheetRows(fileId: string, range: string, token: string): Promise<SpreadsheetRows> {
+/**
+ * 시트를 읽을 토큰. 서비스 계정이 설정돼 있으면 그것을 쓰고, 없으면 캘린더·만족도 시트와 같은
+ * B2B 공용 계정 OAuth 토큰(GOOGLE_CAL_OAUTH_*)을 쓴다. 회사 조직 정책이 서비스 계정 키 생성을
+ * 막고 있어 운영에는 서비스 계정이 없다(2026-10-23 확인). 둘 다 없으면 설정 누락으로 멈춘다.
+ */
+async function resolveSheetAccessToken(config: GoogleServiceAccountConfig): Promise<{ token: string; via: GoogleSheetAccess }> {
+  if (config.serviceAccountEmail && config.privateKey) {
+    return { token: await getGoogleAccessToken(config), via: "service_account" };
+  }
+  const { readCalendarWriteCredentials } = await import("../googleCalendar/calendarWriteConfig");
+  if (!readCalendarWriteCredentials()) {
+    throw new GoogleSheetReadError("missing_credentials", "Google service account or B2B OAuth env가 필요합니다.");
+  }
+  const { getGoogleB2BAccessToken } = await import("../googleCalendar/calendarWriteClient");
+  try {
+    return { token: await getGoogleB2BAccessToken(), via: "b2b" };
+  } catch {
+    // 토큰·응답 본문은 남기지 않는다.
+    throw new GoogleSheetReadError("auth_failed", "Google B2B token refresh failed", null, "b2b_token_refresh_failed", "b2b");
+  }
+}
+
+async function readOfficeSpreadsheetRows(fileId: string, range: string, token: string, via: GoogleSheetAccess): Promise<SpreadsheetRows> {
   const response = await fetch(`${GOOGLE_DRIVE_URL}/${encodeURIComponent(fileId)}?alt=media`, {
     headers: { authorization: `Bearer ${token}` }
   });
 
   if (!response.ok) {
-    throw sheetHttpError("Google Drive file download", response.status, await response.text());
+    throw sheetHttpError("Google Drive file download", response.status, await response.text(), via);
   }
 
   return readXlsxRows(Buffer.from(await response.arrayBuffer()), range);

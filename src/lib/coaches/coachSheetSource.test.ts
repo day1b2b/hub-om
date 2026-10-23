@@ -7,8 +7,8 @@ let googleCalls = 0, valuesCall = 0;
 let failMain = false, failAuxiliary = false;
 let mainFailure: () => Error = () => new Error("synthetic-private-source-body");
 class GoogleSheetReadError extends Error {
-  readonly kind: string; readonly status: number | null; readonly code: string | null;
-  constructor(kind: string, message: string, status: number | null = null, code: string | null = null) { super(message); this.kind = kind; this.status = status; this.code = code; }
+  readonly kind: string; readonly status: number | null; readonly code: string | null; readonly via: string | null;
+  constructor(kind: string, message: string, status: number | null = null, code: string | null = null, via: string | null = null) { super(message); this.kind = kind; this.status = status; this.code = code; this.via = via; }
 }
 mock.module("./googleServiceAccount", { namedExports: {
   GoogleSheetReadError,
@@ -44,7 +44,10 @@ test("classified sheet failures name the cause without the source body", async (
   await withContractSheet(async () => {
     failMain = true;
     const cases: Array<[() => Error, RegExp]> = [
-      [() => new GoogleSheetReadError("missing_credentials", "Google private key env가 필요합니다."), /서비스 계정 설정\(GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_PRIVATE_KEY\)이 없습니다/],
+      [() => new GoogleSheetReadError("missing_credentials", "Google service account or B2B OAuth env가 필요합니다."), /서비스 계정\(GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_PRIVATE_KEY\) 또는 B2B 공용 계정\(GOOGLE_CAL_OAUTH_\*\) 중 하나가 필요합니다/],
+      [() => new GoogleSheetReadError("auth_failed", "Google B2B token refresh failed", null, "b2b_token_refresh_failed", "b2b"), /B2B 공용 계정 토큰을 갱신하지 못했습니다/],
+      [() => new GoogleSheetReadError("scope_missing", "Google Sheets read failed (403)", 403, "PERMISSION_DENIED", "b2b"), /시트 읽기 권한\(spreadsheets\.readonly\)이 없습니다/],
+      [() => new GoogleSheetReadError("forbidden", "Google Sheets read failed (403)", 403, "PERMISSION_DENIED", "b2b"), /B2B 공용 계정에 이 시트 접근 권한이 없습니다/],
       [() => new GoogleSheetReadError("auth_failed", "invalid_grant", 400, "invalid_grant"), /인증에 실패했습니다\(invalid_grant\)/],
       [() => new GoogleSheetReadError("forbidden", "Google Sheets read failed (403)", 403, "PERMISSION_DENIED"), /서비스 계정\(synthetic-sync@synthetic\.iam\.gserviceaccount\.com\)에 이 시트 접근 권한이 없습니다/],
       [() => new GoogleSheetReadError("not_found", "Google Sheets read failed (404)", 404, "NOT_FOUND"), /시트 ID 설정\(COACH_CONTRACT_SHEET_ID\)을 확인해 주세요/],
