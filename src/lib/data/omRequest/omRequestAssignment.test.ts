@@ -294,3 +294,70 @@ test("서명 secret 없이는 preview를 발급하지 않으며 기존 NEXTAUTH_
   await assign((await preview()).token);
   assert.equal(row.assignedOm, "새 담당");
 });
+
+// 요청 수정(PATCH)은 같은 감사 배치에 요청 update와 회차 create/delete를 남긴다.
+function editBatch(batch: string, created: string[], deleted: string[] = [], request = requestId) {
+  const entry = (targetType: string, targetId: string, action: string): Creation => ({ requestId: batch, route: "/api/om-request/[id]", method: "PATCH", action, targetType, targetId });
+  return [entry("om_requests", request, "update"), ...created.map(target => entry("operation_sessions", target, "create")),
+    ...deleted.map(target => entry("operation_sessions", target, "delete")), entry("operation_sessions", id(11), "update")];
+}
+test("요청 수정으로 2→1회차로 줄인 뒤에도 남은 회차만 미리보기·확인 배정한다", async () => {
+  row.totalSessions = 1; row.sessions = row.sessions.slice(0, 1);
+  operations[1].deletedAt = new Date(now);
+  history.push(...editBatch(id(300), [], [id(12)]));
+  const result = await preview();
+  assert.deepEqual(result.operations.map(op => op.operationId), ["round-11"]);
+  await assign(result.token);
+  assert.deepEqual(writes, [id(11), "request"]);
+  assert.equal(operations[1].omName, "수동 담당 12");
+});
+test("요청 수정으로 회차를 늘리고 다시 고쳐도(2회 이상) 최종 회차 집합으로 배정한다", async () => {
+  row.totalSessions = 3; row.sessions.push({ date: "2026-10-03" });
+  operations.push(operation(14), operation(15));
+  history.push(...editBatch(id(300), [id(14)]));
+  assert.deepEqual((await preview()).operations.map(op => op.operationId), ["round-11", "round-12", "round-14"]);
+  // 두 번째 수정: 대표 1회차를 지우고 새 회차를 추가, 세 번째 수정: 방금 추가한 회차를 다시 지움.
+  operations[0].deletedAt = new Date(now); row.operationId = "round-12";
+  history.push(...editBatch(id(301), [id(15)], [id(11)]));
+  assert.deepEqual((await preview()).operations.map(op => op.operationId), ["round-12", "round-14", "round-15"]);
+  operations[4].deletedAt = new Date(now);
+  row.totalSessions = 2; row.sessions.pop();
+  history.push(...editBatch(id(302), [], [id(15)]));
+  const result = await preview();
+  assert.deepEqual(result.operations.map(op => op.operationId), ["round-12", "round-14"]);
+  await assign(result.token);
+  assert.deepEqual(writes, [id(12), id(14), "request"]);
+});
+test("승인 복구 이후의 요청 수정도 복구 집합에 반영한다", async () => {
+  operations.push(operation(14));
+  history.push(...repairedLinks([id(11), id(12)]));
+  row.totalSessions = 3; row.sessions.push({ date: "2026-10-03" });
+  history.push(...editBatch(id(300), [id(14)]));
+  assert.equal((await preview()).count, 3);
+});
+test("요청 수정 기록이 있어도 다른 요청 회차 혼입·삭제 회차·대표 제외·형식 오류는 차단한다", async () => {
+  row.totalSessions = 3; row.sessions.push({ date: "2026-10-03" });
+  operations.push(operation(14));
+  const original = structuredClone(history);
+  const cases: Array<[Creation[], () => void]> = [
+    // 다른 요청의 수정 배치에서 만든 회차는 연결 근거가 아니다.
+    [editBatch(id(300), [id(14)], [], id(99)), () => {}],
+    // 같은 수정 배치에 다른 요청이 섞이면 전체를 거절한다.
+    [[...editBatch(id(300), [id(14)]), editBatch(id(300), [], [], id(99))[0]], () => {}],
+    // 다른 경로·method의 회차 생성은 수정 근거로 쓰지 않는다.
+    [editBatch(id(300), [id(14)]).map(entry => entry.targetType === "operation_sessions" ? { ...entry, method: "POST" } : entry), () => {}],
+    [editBatch(id(300), [id(14)]).map(entry => ({ ...entry, requestId: "not-a-uuid" })), () => {}],
+    // 연결 집합에 삭제된 회차가 남아 있으면 차단한다.
+    [editBatch(id(300), [id(14)]), () => { operations[3].deletedAt = new Date(now); }],
+    // 대표 회차가 수정으로 빠졌는데 요청이 여전히 가리키면 차단한다.
+    [editBatch(id(300), [id(14), id(15)], [id(11)]), () => { operations.push(operation(15)); }]
+  ];
+  for (const [edit, mutate] of cases) {
+    const snapshot = structuredClone(operations);
+    history = [...original, ...edit];
+    mutate();
+    await assert.rejects(preview(), OmAssignmentConflict);
+    assert.deepEqual(writes, []);
+    operations = snapshot;
+  }
+});
