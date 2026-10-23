@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { planExistingLinks } from "./repair-om-request-existing-links.mjs";
+import { parseArgs, planExistingLinks } from "./repair-om-request-existing-links.mjs";
 
 const operation = (id, course, start, end = start) => ({ _id: id, operationId: `op-${id}`, courseRecordId: course,
   startDate: new Date(`${start}T00:00:00.000Z`), endDate: new Date(`${end}T00:00:00.000Z`), deletedAt: null });
@@ -29,4 +29,13 @@ test("여러 날 회차는 시작일과 종료일이 모두 정확히 일치해�
   const rows = [operation("a", "course-1", "2099-02-01", "2099-02-03")];
   assert.equal(planExistingLinks(rangeRequest, rows, [{ date: "2099-02-01", dateEnd: "2099-02-03" }])[0]._id, "a");
   assert.throws(() => planExistingLinks(rangeRequest, rows, [{ date: "2099-02-01", dateEnd: "2099-02-02" }]));
+});
+
+test("--request 옵션은 요청 1건으로 범위를 좁히고 잘못된 값은 거절한다", () => {
+  const id = "0f3c2a1b-1234-4abc-8def-0123456789ab";
+  assert.deepEqual(parseArgs([]), { mode: "--diagnose", requestId: null });
+  assert.deepEqual(parseArgs(["--apply-exact", `--request=${id}`]), { mode: "--apply-exact", requestId: id });
+  assert.throws(() => parseArgs(["--apply-exact", "--request=abc"]), /INVALID_REQUEST_OPTION/);
+  assert.throws(() => parseArgs(["--apply-exact", `--request=${id}`, `--request=${id}`]), /INVALID_REQUEST_OPTION/);
+  assert.throws(() => parseArgs(["--apply-all"]), /EXPLICIT_MODE_REQUIRED/);
 });
