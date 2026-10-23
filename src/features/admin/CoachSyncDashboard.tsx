@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { SyncResult } from "@/lib/coaches/syncTypes";
+import type { SyncChange, SyncResult } from "@/lib/coaches/syncTypes";
 
 const CONTRACT_SHEET_URL = "https://docs.google.com/spreadsheets/d/1xFgbLPL1ZLGxQws0ofK0kU8eehrFqEeAiwNbtQ56lyw/edit";
 
@@ -254,22 +254,65 @@ function SyncResultView({
           <button className="sync-toggle" onClick={() => setShowChanges((prev) => !prev)} type="button">
             {showChanges ? "변경 내역 숨기기" : `변경 내역 보기 (${result.changes.length}건)`}
           </button>
-          {showChanges ? (
-            <ul className="sync-changes">
-              {result.changes.slice(0, 200).map((change, index) => (
-                <li key={index}>
-                  <span className="sync-change-action">{change.action}</span>
-                  <span>{change.coachName}</span>
-                  {change.courseName ? <span className="sync-change-course">{change.courseName}</span> : null}
-                  {change.details ? <span className="sync-change-details">{change.details}</span> : null}
-                </li>
-              ))}
-              {result.changes.length > 200 ? <li className="sync-more">…외 {result.changes.length - 200}건</li> : null}
-            </ul>
-          ) : null}
+          {showChanges ? <SyncChangeList changes={result.changes} /> : null}
         </div>
       ) : null}
     </div>
+  );
+}
+
+// 반영 전에 새로 생기는 것부터 확인하도록 생성 → 수정 순서로 묶는다. 목록에 없는 종류는 뒤에 붙는다.
+const CHANGE_ACTION_ORDER = ["create_coach", "create_engagement", "replace_samsung_engagements", "update_engagement", "edit"];
+const CHANGE_ACTION_LABELS: Record<string, string> = {
+  create_coach: "신규 코치",
+  create_engagement: "신규 투입",
+  replace_samsung_engagements: "삼성 일정 재생성",
+  update_engagement: "기존 투입 갱신",
+  edit: "코치 정보 수정"
+};
+
+function groupSyncChanges(changes: SyncChange[]): Array<{ action: string; label: string; items: SyncChange[] }> {
+  const groups = new Map<string, SyncChange[]>();
+  for (const change of changes) groups.set(change.action, [...(groups.get(change.action) ?? []), change]);
+  const rank = (action: string) => { const index = CHANGE_ACTION_ORDER.indexOf(action); return index < 0 ? CHANGE_ACTION_ORDER.length : index; };
+  return [...groups.entries()]
+    .sort(([a], [b]) => rank(a) - rank(b))
+    .map(([action, items]) => ({ action, label: CHANGE_ACTION_LABELS[action] ?? action, items }));
+}
+
+function SyncChangeList({ changes }: { changes: SyncChange[] }) {
+  const groups = groupSyncChanges(changes);
+  const [selected, setSelected] = useState(groups[0]?.action ?? "");
+  const current = groups.find((group) => group.action === selected) ?? groups[0];
+  if (!current) return null;
+
+  return (
+    <>
+      <div className="sync-change-filters" role="tablist">
+        {groups.map((group) => (
+          <button
+            aria-selected={group.action === current.action}
+            className={`sync-change-filter ${group.action === current.action ? "active" : ""}`}
+            key={group.action}
+            onClick={() => setSelected(group.action)}
+            role="tab"
+            type="button"
+          >
+            {group.label} {group.items.length.toLocaleString("ko-KR")}
+          </button>
+        ))}
+      </div>
+      <ul className="sync-changes">
+        {current.items.map((change, index) => (
+          <li key={index}>
+            <span className="sync-change-action">{current.label}</span>
+            <span>{change.coachName}</span>
+            {change.courseName ? <span className="sync-change-course">{change.courseName}</span> : null}
+            {change.details ? <span className="sync-change-details">{change.details}</span> : null}
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }
 
