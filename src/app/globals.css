@@ -13005,6 +13005,19 @@ button.coach-doc-reserve-chip:disabled {
   background: color-mix(in srgb, var(--blue) 8%, transparent);
 }
 
+.user-table tbody tr.user-row-departed {
+  color: var(--text-sub);
+}
+
+.user-status-badge-departed {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: color-mix(in srgb, var(--red) 12%, transparent);
+  color: var(--red);
+}
+
 .user-empty {
   font-size: 13px;
   color: var(--text-sub);

@@ -15,6 +15,10 @@ function compare(left: unknown, right: unknown, enumOrder?: string[]): number {
   return String(left).localeCompare(String(right), "ko");
 }
 function sourceTeam(value: unknown): SourceTeam { return value === "1팀" || value === "2팀" ? value : "미분류"; }
+// 역할 로스터만 TeamUserDeparture를 읽는다. 공유 TEAM_READ_MODELS 자체를 넓히면
+// 운영현황/OM요청/캘린더 등 이 상수를 쓰는 다른 모든 런타임의 저장소 준비 범위까지
+// 함께 넓어져 버리므로, 이 리포지토리 전용 목록으로만 추가한다.
+const ROLE_ROSTER_MODELS = [...TEAM_READ_MODELS, "TeamUserDeparture"] as const;
 
 async function teamRead<T>(read: () => Promise<T>): Promise<T> {
   try { return await read(); }
@@ -32,7 +36,7 @@ export class MongoTeamMemberRepository implements TeamMemberRepository {
   private constructor(store: MongoOperationStore) { this.store = store; }
   static async open(options: MongoOperationOptions): Promise<MongoTeamMemberRepository> {
     return teamRead(async () => {
-      const store = new MongoOperationStore(options, TEAM_READ_MODELS);
+      const store = new MongoOperationStore(options, ROLE_ROSTER_MODELS);
       await assertMongoReadStoreReady(store);
       return new MongoTeamMemberRepository(store);
     });
@@ -52,7 +56,15 @@ export class MongoTeamMemberRepository implements TeamMemberRepository {
   }
   async listRoleRosters(): Promise<TeamMemberRoleRoster> {
     return teamRead(async () => {
-      const users = await this.store.scan("TeamUser", { role: { $ne: null } });
+      // 퇴사자는 신규 배정 후보에서 제외한다. 이미 배정된 과거 회차의 OM/LD 표기는
+      // 운영 데이터(OperationSession)에 그대로 남으므로 이 로스터 제외와 무관하다.
+      // TeamUser 문서 자체에는 상태 필드를 두지 않는다(운영 Mongo 계약 유지).
+      const [allUsers, departures] = await Promise.all([
+        this.store.scan("TeamUser", { role: { $ne: null } }),
+        this.store.scan("TeamUserDeparture")
+      ]);
+      const departedIds = new Set(departures.map(row => row.teamUserId as string));
+      const users = allUsers.filter(user => !departedIds.has(user.id as string));
       if (users.length === 0) return DEFAULT_TEAM_MEMBER_ROLE_ROSTER;
       users.sort((a: MongoRow, b: MongoRow) => compare(a.role, b.role, roles) || compare(a.team, b.team) || compare(a.name, b.name));
       const roster = users.reduce<TeamMemberRoleRoster>((roster, user) => {

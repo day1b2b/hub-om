@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { findDuplicateEmails } from "@/lib/data/teamUsers/duplicateEmails";
 import { TEAM_OPTIONS } from "@/lib/data/teamUsers/teamUserTypes";
-import type { TeamUser, TeamUserInput, TeamUserRole } from "@/lib/data/teamUsers/teamUserTypes";
+import type { TeamUser, TeamUserInput, TeamUserRole, TeamUserStatus } from "@/lib/data/teamUsers/teamUserTypes";
 
 const ROLE_OPTIONS: { value: TeamUserRole; label: string }[] = [
   { value: "om", label: "OM" },
@@ -11,6 +11,10 @@ const ROLE_OPTIONS: { value: TeamUserRole; label: string }[] = [
 ];
 const ROLE_LABEL: Record<TeamUserRole, string> = { ld: "LD", om: "OM" };
 type TeamFilter = "전체" | "AX 1파트" | "AX 2파트" | "AX 3파트";
+
+function isDeparted(u: TeamUser): boolean {
+  return u.status === "departed";
+}
 
 export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
   const [users, setUsers] = useState<TeamUser[]>(initialUsers);
@@ -29,13 +33,16 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
   const [bulkError, setBulkError] = useState<string | null>(null);
   const [assignRole, setAssignRole] = useState<TeamUserRole>("om");
   const [assigning, setAssigning] = useState(false);
+  const [settingStatus, setSettingStatus] = useState(false);
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
   const [editingTeamValue, setEditingTeamValue] = useState("");
   const [savingTeamId, setSavingTeamId] = useState<string | null>(null);
   const [teamEditError, setTeamEditError] = useState<string | null>(null);
 
-  const filteredUsers =
-    teamFilter === "전체" ? users : users.filter((u) => u.team === teamFilter);
+  // 퇴사자는 지우지 않고 목록 맨 아래로만 내린다 — 재직자 순서(등록 순)는 그대로 유지한다.
+  const filteredUsers = (teamFilter === "전체" ? users : users.filter((u) => u.team === teamFilter))
+    .slice()
+    .sort((a, b) => Number(isDeparted(a)) - Number(isDeparted(b)));
 
   // 같은 이메일 행은 조용히 사람을 가린다. 명단 조회가 나중 행의 이름을 집어서,
   // 그 이름이 운영 현황 OM 표기와 다르면 그 사람 대시보드가 통째로 0건이 된다.
@@ -143,6 +150,33 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
       alert("구분 지정에 실패했습니다.");
     } finally {
       setAssigning(false);
+    }
+  }
+
+  async function handleSetStatus(status: TeamUserStatus) {
+    if (!selected.size) return;
+    const confirmed =
+      status === "departed"
+        ? confirm(
+            `선택한 ${selected.size}명을 퇴사 처리하시겠습니까?\n` +
+              "OM/LD 신규 배정 후보에서만 제외되고, 파트 필터·운영현황·캘린더의 기존 운영 이력은 그대로 유지됩니다."
+          )
+        : confirm(`선택한 ${selected.size}명을 재직 상태로 되돌리시겠습니까?`);
+    if (!confirmed) return;
+    setSettingStatus(true);
+    try {
+      const res = await fetch("/api/admin/users/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: [...selected], status }),
+      });
+      if (!res.ok) throw new Error();
+      setUsers((prev) => prev.map((u) => (selected.has(u.id) ? { ...u, status } : u)));
+      setSelected(new Set());
+    } catch {
+      alert("상태 변경에 실패했습니다.");
+    } finally {
+      setSettingStatus(false);
     }
   }
 
@@ -334,6 +368,22 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
               </button>
               <button
                 className="user-delete-btn"
+                disabled={settingStatus || selected.size === 0}
+                onClick={() => handleSetStatus("departed")}
+                type="button"
+              >
+                {settingStatus ? "처리 중..." : "퇴사 처리"}
+              </button>
+              <button
+                className="user-add-btn"
+                disabled={settingStatus || selected.size === 0}
+                onClick={() => handleSetStatus("active")}
+                type="button"
+              >
+                재직으로 복귀
+              </button>
+              <button
+                className="user-delete-btn"
                 disabled={deleting || selected.size === 0}
                 onClick={handleDelete}
                 type="button"
@@ -361,11 +411,16 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
                 <th>이름</th>
                 <th>이메일</th>
                 <th>Slack ID</th>
+                <th>상태</th>
               </tr>
             </thead>
             <tbody>
               {filteredUsers.map((u) => (
-                <tr key={u.id} className={selected.has(u.id) ? "selected" : ""} onClick={() => toggleSelect(u.id)}>
+                <tr
+                  key={u.id}
+                  className={`${selected.has(u.id) ? "selected" : ""}${isDeparted(u) ? " user-row-departed" : ""}`}
+                  onClick={() => toggleSelect(u.id)}
+                >
                   <td onClick={(e) => e.stopPropagation()}>
                     <input
                       type="checkbox"
@@ -408,6 +463,9 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
                   <td>{u.name}</td>
                   <td>{u.email}</td>
                   <td>{u.slackId || "-"}</td>
+                  <td>
+                    {isDeparted(u) ? <span className="user-status-badge-departed">퇴사</span> : "재직"}
+                  </td>
                 </tr>
               ))}
             </tbody>
