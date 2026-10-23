@@ -1,4 +1,5 @@
-import { readGoogleSheetValues } from "./googleServiceAccount";
+import { readGoogleServiceAccountConfig, readGoogleSheetValues } from "./googleServiceAccount";
+import { describeSheetReadFailure, SheetSourceReadError } from "./sheetReadFailure";
 import { getCoachSheetSource, getCoachSheetSyncRepository } from "../data/coachSheetSyncRepositoryFactory";
 import { runSamsungSheetSync } from "./coachSheetSyncWorkflow";
 import type { SyncResult } from "./syncTypes";
@@ -13,14 +14,23 @@ export const SAMSUNG_COURSE_NAMES = Object.freeze({ courseName: COURSE_NAME, old
 export async function syncSamsungSchedule(dryRun: boolean): Promise<SyncResult> {
   const repository = getCoachSheetSyncRepository();
   const source = getCoachSheetSource();
-  const snapshot = await source.readSamsung().catch(() => { throw new Error("일정 시트를 읽을 수 없습니다."); });
+  const snapshot = await source.readSamsung().catch((error: unknown) => {
+    throw error instanceof SheetSourceReadError ? error : new Error("일정 시트를 읽을 수 없습니다.");
+  });
   return runSamsungSheetSync(snapshot, repository, dryRun, SAMSUNG_COURSE_NAMES);
 }
 export async function readSamsungSheetSource(): Promise<{ rows: string[][]; contractRows: string[][] }> {
   const config = readSamsungConfig();
   let rows: string[][];
   try { rows = await readGoogleSheetValues(config.scheduleSheetId, config.scheduleRange); }
-  catch { throw new Error("일정 시트를 읽을 수 없습니다."); }
+  catch (error) {
+    throw describeSheetReadFailure(error, {
+      label: "일정 시트",
+      sheetEnvName: "SAMSUNG_SCHEDULE_SHEET_ID",
+      range: config.scheduleRange,
+      serviceAccountEmail: readGoogleServiceAccountConfig().serviceAccountEmail
+    });
+  }
   let contractRows: string[][] = [];
   // The optional contract source has historically been best effort; preserve that fallback.
   try { contractRows = await readGoogleSheetValues(config.contractSheetId, config.contractRange); } catch { /* no raw source error text */ }
