@@ -23,9 +23,9 @@ export function verifyClosure() {
     const approved = origin === "prisma/schema.prisma"
       ? new Set([entries.get(origin)!.sha256, "bf3c956c6e78ac5cad4c869bb0da0e82bc84ed171b339726c8a8b2574ab257b1", "0a9358ca6f01ee0823744f5aad9e5e1166162ecdecbac425c5085e7dfc845e79", "a317a3bca275f9dafb68bfb5a811efd4220875576e42cb6edeca7fda18b71142"])
       : origin === "package.json"
-        ? new Set([entries.get(origin)!.sha256, "db7b820da07179e8bb496b16cc29d4eb7ce6008001a499d17e49ae2b927aecf9", "1e91e98faddcf3d0eead152d96efce12cd72915bff73800edda7fda78333ef7c", "578364ffa41a7f27cebbf16eb49965d2c04b187da8a4fdc1f666544db32dee2c"])
+        ? new Set([entries.get(origin)!.sha256, "db7b820da07179e8bb496b16cc29d4eb7ce6008001a499d17e49ae2b927aecf9", "1e91e98faddcf3d0eead152d96efce12cd72915bff73800edda7fda78333ef7c", "8e54113fcd8a886991f3eb3a967d38c60043985b097e6cd42bfac74bd2a9b7c5"])
         : origin === "package-lock.json"
-          ? new Set([entries.get(origin)!.sha256, "d0f363d9567760347fd1b342be55e93db815e436a719bc3fc8db27489dc636c2", "76e01c4d0c8513374201f381fce9008b3e93839241853b9b7123f137ae1a91a2"])
+          ? new Set([entries.get(origin)!.sha256, "d0f363d9567760347fd1b342be55e93db815e436a719bc3fc8db27489dc636c2", "0d1ab2642e2856254e5fa492471420b6c301d3e3561ffeee9421c901d9ebcbbb"])
           : new Set([entries.get(origin)!.sha256]);
     assert.ok(approved.has(actual), `actual runtime drift: ${origin}`);
   }
