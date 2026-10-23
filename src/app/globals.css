@@ -3152,6 +3152,10 @@ td span {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.info-grid--row-5 {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
 .info-item strong {
   line-height: 1.4;
   overflow-wrap: anywhere;

@@ -256,8 +256,6 @@ function CompanyWikiDetail({
   onBack: () => void;
   businessInfo?: CompanyBusinessInfo;
 }) {
-  const yearText = entry.years.length > 0 ? entry.years.join(", ") : "-";
-
   return (
     <>
       <button className="back-link" onClick={onBack} type="button">← 기업위키 목록으로</button>
@@ -270,24 +268,14 @@ function CompanyWikiDetail({
         </div>
       </div>
 
-      <div className="detail-grid">
-        <div className="detail-panel">
-          <div className="panel-title">기본 정보</div>
-          <div className="info-grid">
-            <div className="info-item"><span>담당 OM</span><strong>{nameText(entry.omNames, "배정필요")}</strong></div>
-            <div className="info-item"><span>담당 LD</span><strong>{nameText(entry.ldNames, "미정")}</strong></div>
-            <div className="info-item"><span>운영 연도</span><strong>{yearText}</strong></div>
-            <div className="info-item"><span>최근 운영</span><strong>{entry.lastDate}</strong></div>
-          </div>
-        </div>
-        <div className="detail-panel">
-          <div className="panel-title">위키 요약</div>
-          <div className="info-grid">
-            <div className="info-item"><span>운영 현황</span><strong>{entry.courseCount}건</strong></div>
-            <div className="info-item"><span>운영 회차</span><strong>{entry.roundCount}건</strong></div>
-            <div className="info-item"><span>만족도(평균)</span><strong>{entry.avgSatisfaction}</strong></div>
-            <div className="info-item"><span>첫 운영</span><strong>{entry.firstDate}</strong></div>
-          </div>
+      <div className="detail-panel">
+        <div className="panel-title">위키 요약</div>
+        <div className="info-grid info-grid--row-5">
+          <div className="info-item"><span>운영 현황</span><strong>{entry.courseCount}건</strong></div>
+          <div className="info-item"><span>운영 회차</span><strong>{entry.roundCount}건</strong></div>
+          <div className="info-item"><span>만족도(평균)</span><strong>{entry.avgSatisfaction}</strong></div>
+          <div className="info-item"><span>첫 운영</span><strong>{entry.firstDate}</strong></div>
+          <div className="info-item"><span>매출(코스ID기준)</span><strong>{entry.totalRevenue}</strong></div>
         </div>
       </div>
 
@@ -299,6 +287,8 @@ function CompanyWikiDetail({
               <tr>
                 <th>코스ID</th>
                 <th>과정명</th>
+                <th>OM</th>
+                <th>LD</th>
                 <th>회차</th>
                 <th>시작일</th>
                 <th>종료일</th>
@@ -317,6 +307,8 @@ function CompanyWikiDetail({
                       <strong>{course.courseName}</strong>
                     </Link>
                   </td>
+                  <td>{course.om}</td>
+                  <td>{course.ld}</td>
                   <td>{course.rounds}</td>
                   <td>{course.startDate}</td>
                   <td>{course.endDate}</td>
@@ -344,21 +336,6 @@ function CompanyWikiDetail({
           </div>
         </div>
       )}
-
-      {/* 아래 항목은 운영 현황에도, 사업자등록증 정보에도 없다. 예전에는 기업명 해시로 만든 값을
-          채워 넣었는데, 실제 담당자 연락처·보안 절차로 읽힐 수 있어 지어내지 않고 비워 둔다. */}
-      <div className="detail-section">
-        <div className="section-title"><h2>아직 기록되지 않은 정보</h2></div>
-        <div className="section-body">
-          <div className="empty-state">
-            <strong>운영 현황에 없는 항목입니다.</strong>
-            <span>
-              고객사 담당자 연락처·커뮤니케이션 스타일, 교육장·출입 보안·네트워크·장비, 운영 제언은
-              운영 현황에서 가져올 수 없어 비워 두었습니다. 입력해서 쌓는 기능은 별도로 붙일 예정입니다.
-            </span>
-          </div>
-        </div>
-      </div>
     </>
   );
 }

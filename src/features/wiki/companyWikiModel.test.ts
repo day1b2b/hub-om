@@ -78,6 +78,31 @@ test("운영 현황 표의 코스 한 줄에 만족도(평균)·매출(코스ID�
   assert.equal(entries[0].courses[0].revenue, "1,000,000");
 });
 
+test("코스 한 줄에도 그 코스를 맡은 OM·LD가 중복 없이 채워진다", () => {
+  const entries = aggregateCompanies([
+    operation({ operationId: "a", courseId: "261578", om: "가담당, 나담당", ld: "다엘디" }),
+    operation({ operationId: "b", courseId: "261578", om: "나담당", ld: "다엘디" })
+  ]);
+  assert.equal(entries[0].courses[0].om, "가담당, 나담당");
+  assert.equal(entries[0].courses[0].ld, "다엘디");
+});
+
+test("코스에 OM·LD가 비어 있으면 대체 문구를 쓴다", () => {
+  const entries = aggregateCompanies([operation({ om: "", ld: "" })]);
+  assert.equal(entries[0].courses[0].om, "배정필요");
+  assert.equal(entries[0].courses[0].ld, "미정");
+});
+
+test("기업 단위 매출 합계(totalRevenue)는 코스ID 기준으로 중복 없이 더한다", () => {
+  const entries = aggregateCompanies([
+    operation({ operationId: "a", courseId: "261578", revenue: 1_000_000 }),
+    operation({ operationId: "b", courseId: "261578", revenue: 1_200_000 }),
+    operation({ operationId: "c", courseId: "261579", revenue: 500_000 })
+  ]);
+  // 같은 코스ID는 최댓값 하나만 더한다(sumRevenueByCourseId 규칙) — 1,200,000 + 500,000.
+  assert.equal(entries[0].totalRevenue, "1,700,000");
+});
+
 test("만족도는 숫자로 읽히는 회차만 평균한다", () => {
   const entries = aggregateCompanies([
     operation({ operationId: "a", avgSatisfaction: "4.5" }),

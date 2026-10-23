@@ -15,6 +15,8 @@ export interface CompanyWikiCourse {
   avgSatisfaction: string;
   /** 코스ID 기준 매출(세일즈맵 연동). 없으면 "-". */
   revenue: string;
+  om: string;
+  ld: string;
   /** 이 과정의 대표 운영. 눌렀을 때 운영 상세로 보낸다. */
   operationId: string;
 }
@@ -33,6 +35,8 @@ export interface CompanyWikiEntry {
   years: string[];
   /** 만족도가 기록된 회차의 평균. 없으면 "-". */
   avgSatisfaction: string;
+  /** 전체 코스ID 기준 매출 합. 없으면 "-". */
+  totalRevenue: string;
   courses: CompanyWikiCourse[];
 }
 
@@ -71,6 +75,12 @@ function averageSatisfaction(operations: ReadonlyArray<OperationSession>): strin
   return (Math.round(mean * 100) / 100).toString();
 }
 
+/** 이 코스를 맡은 OM/LD. 회차마다 바뀌었을 수 있어 중복 없이 모아 보여 준다. */
+function summarizeNames(operations: ReadonlyArray<OperationSession>, pick: (o: OperationSession) => string, fallback: string): string {
+  const names = uniqueNames(operations, pick);
+  return names.length > 0 ? names.join(", ") : fallback;
+}
+
 function summarizeInstructors(operations: ReadonlyArray<OperationSession>): string {
   const names = uniqueNames(operations, (operation) => operation.instructors);
   if (names.length === 0) return "-";
@@ -105,6 +115,8 @@ function buildCourses(operations: ReadonlyArray<OperationSession>): CompanyWikiC
       instructors: summarizeInstructors(list),
       avgSatisfaction: averageSatisfaction(list),
       revenue: formatRevenue(list),
+      om: summarizeNames(list, (operation) => operation.om, "배정필요"),
+      ld: summarizeNames(list, (operation) => operation.ld, "미정"),
       operationId: list[0].operationId
     });
   }
@@ -202,6 +214,7 @@ export function aggregateCompanies(operations: ReadonlyArray<OperationSession>):
       lastDate: range.last,
       years: [...new Set(list.map((operation) => (operation.startDate ?? "").slice(0, 4)).filter(Boolean))].sort(),
       avgSatisfaction: averageSatisfaction(list),
+      totalRevenue: formatRevenue(list),
       courses
     });
   }
