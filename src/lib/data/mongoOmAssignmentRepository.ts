@@ -100,7 +100,8 @@ export class MongoOmAssignmentRepository implements OmAssignmentRepository {
       async getOperations(ids) { check(); return (await store.scan("OperationSession", { _id: { $in: ids } }, session)).map(selected); },
       async listCreations(filter) {
         check();
-        const query = { ...filter, ...(typeof filter.targetType === "object" ? { targetType: { $in: filter.targetType.in } } : {}) };
+        const query = { ...filter, ...(typeof filter.targetType === "object" ? { targetType: { $in: filter.targetType.in } } : {}),
+          ...(typeof filter.action === "object" ? { action: { $in: filter.action.in } } : {}) };
         // Exact creation metadata only: encrypted changes and actor fields never
         // participate in linking or require decryption for this lookup.
         const rows: Creation[] = []; let bytes = 0, lastId: string | undefined;
