@@ -54,6 +54,7 @@ export function CoachPublicScheduleInput() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [dirty, setDirty] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!token) {
@@ -88,6 +89,7 @@ export function CoachPublicScheduleInput() {
     setSlotKeys(schedulesToSlotKeys(scheduleData.schedules));
     setConfirmed(scheduleData.engagementSchedules);
     setLastSavedAt(scheduleData.lastSavedAt);
+    setDirty(false);
     setLoading(false);
   }, [token, yearMonth]);
 
@@ -96,6 +98,13 @@ export function CoachPublicScheduleInput() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
 
   const selectedSlots = useMemo(
     () => new Set([...slotKeys].filter((key) => key.startsWith(`${selectedDate}|`)).map((key) => key.split("|")[1])),
@@ -118,6 +127,7 @@ export function CoachPublicScheduleInput() {
       return next;
     });
     setSaved(false);
+    setDirty(true);
   }
 
   function applyBulk(start: string, end: string) {
@@ -129,6 +139,7 @@ export function CoachPublicScheduleInput() {
       return next;
     });
     setSaved(false);
+    setDirty(true);
   }
 
   function clearDay() {
@@ -140,9 +151,11 @@ export function CoachPublicScheduleInput() {
       return next;
     });
     setSaved(false);
+    setDirty(true);
   }
 
   function goToMonth(offset: number) {
+    if (dirty && !window.confirm("저장하지 않은 일정이 있어요. 저장하지 않고 이동할까요?")) return;
     const nextYearMonth = shiftMonth(yearMonth, offset);
     setYearMonth(nextYearMonth);
     setSelectedDate(`${nextYearMonth}-01`);
