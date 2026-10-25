@@ -29,35 +29,39 @@ export const coachActivityPolicy: CoachActivityPolicy = {
 
 export type CoachEngagementDigest = Pick<CoachSummary, "engagementFacts" | "recentAvgRating" | "recentRatingCount">;
 
-export interface CoachEngagementDigestInput {
-  startDate: string;
-  endDate: string;
-  cancelled: boolean;
-  rating: number | null;
+export type CoachEngagementDigestInput = CoachEngagementFact;
+
+/**
+ * 최근 평균: 취소가 아닌 투입을 최근 순으로 보고, 평가가 있는 것만 최근 N건 평균.
+ * 새 OM 평가(evaluationAverages, 투입 ID → 평균)가 있으면 그 값을, 없으면 예전 평점을 쓴다.
+ */
+export function recentRatingSummary(
+  facts: ReadonlyArray<CoachEngagementFact>,
+  evaluationAverages: ReadonlyMap<string, number> = new Map(),
+  policy: CoachActivityPolicy = coachActivityPolicy
+): Pick<CoachSummary, "recentAvgRating" | "recentRatingCount"> {
+  const recentRatings = [...facts]
+    .sort((a, b) => b.endDate.localeCompare(a.endDate) || b.startDate.localeCompare(a.startDate))
+    .filter((fact) => !fact.cancelled)
+    .map((fact) => evaluationAverages.get(fact.engagementId) ?? fact.rating)
+    .filter((rating): rating is number => typeof rating === "number")
+    .slice(0, policy.recentRatingWindow);
+  const recentAvgRating =
+    recentRatings.length >= policy.minRatingsForAverage
+      ? recentRatings.reduce((sum, rating) => sum + rating, 0) / recentRatings.length
+      : null;
+  return { recentAvgRating, recentRatingCount: recentRatings.length };
 }
 
 export function digestCoachEngagements(
   rows: ReadonlyArray<CoachEngagementDigestInput>,
   policy: CoachActivityPolicy = coachActivityPolicy
 ): CoachEngagementDigest {
-  const byRecent = [...rows].sort(
-    (a, b) => b.endDate.localeCompare(a.endDate) || b.startDate.localeCompare(a.startDate)
-  );
-  const recentRatings = byRecent
-    .filter((row) => !row.cancelled && typeof row.rating === "number")
-    .slice(0, policy.recentRatingWindow)
-    .map((row) => row.rating as number);
-  const recentAvgRating =
-    recentRatings.length >= policy.minRatingsForAverage
-      ? recentRatings.reduce((sum, rating) => sum + rating, 0) / recentRatings.length
-      : null;
-
   return {
     engagementFacts: [...rows]
       .sort((a, b) => b.startDate.localeCompare(a.startDate) || b.endDate.localeCompare(a.endDate))
-      .map(({ startDate, endDate, cancelled }) => ({ startDate, endDate, cancelled })),
-    recentAvgRating,
-    recentRatingCount: recentRatings.length
+      .map(({ engagementId, startDate, endDate, cancelled, rating }) => ({ engagementId, startDate, endDate, cancelled, rating })),
+    ...recentRatingSummary(rows, new Map(), policy)
   };
 }
 

@@ -64,7 +64,7 @@ export class PrismaCoachRepository implements CoachRepository {
           select: { tag: { select: { name: true } } }
         },
         engagements: {
-          select: { rating: true, status: true, startDate: true, endDate: true }
+          select: { id: true, rating: true, status: true, startDate: true, endDate: true }
         },
         engagementSchedules: {
           where: { cancelledAt: null },
@@ -122,7 +122,7 @@ export class PrismaCoachRepository implements CoachRepository {
           select: { tag: { select: { name: true } } }
         },
         engagements: {
-          select: { rating: true, status: true, startDate: true, endDate: true }
+          select: { id: true, rating: true, status: true, startDate: true, endDate: true }
         },
         engagementSchedules: {
           where: { cancelledAt: null },
@@ -458,10 +458,11 @@ async function loadArchivedCoachPublicDetail(sourceCoachId: string): Promise<Arc
 }
 
 function digestEngagements(
-  engagements: ReadonlyArray<{ rating: number | null; status: CoachEngagementStatus; startDate: Date; endDate: Date }>
+  engagements: ReadonlyArray<{ id: string; rating: number | null; status: CoachEngagementStatus; startDate: Date; endDate: Date }>
 ) {
   return digestCoachEngagements(
     engagements.map((engagement) => ({
+      engagementId: engagement.id,
       startDate: toDateString(engagement.startDate),
       endDate: toDateString(engagement.endDate),
       cancelled: engagement.status === "CANCELLED",
