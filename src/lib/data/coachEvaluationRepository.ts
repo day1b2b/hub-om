@@ -2,6 +2,8 @@ import type {
   CoachAudienceValue,
   CoachEngagementRoleValue,
   CoachEvaluationScores,
+  CoachFactKindValue,
+  CoachFactRecordInput,
   CoachOmEvaluationInput,
   CoachPracticeDifficultyValue,
   CoachRehireIntentValue
@@ -48,6 +50,20 @@ export interface CoachEvaluationRecord {
   updatedAt: Date;
 }
 
+/** 사실 기록. 투입이 지워져도 남도록 과정명을 함께 둔다. */
+export interface CoachFactRecordView {
+  id: string;
+  coachId: string;
+  engagementId: string | null;
+  kind: CoachFactKindValue;
+  occurredOn: string;
+  courseName: string | null;
+  description: string;
+  recordedByEmail: string;
+  recordedByName: string | null;
+  createdAt: Date;
+}
+
 export interface CoachEvaluationActor {
   email: string;
   name: string | null;
@@ -60,7 +76,7 @@ export interface CoachEvaluationAverageInput {
   scores: CoachEvaluationScores;
 }
 
-export type CoachEvaluationErrorCode = "ENGAGEMENT_NOT_FOUND" | "ALREADY_EVALUATED" | "EVALUATION_NOT_FOUND";
+export type CoachEvaluationErrorCode = "ENGAGEMENT_NOT_FOUND" | "ALREADY_EVALUATED" | "EVALUATION_NOT_FOUND" | "FACT_NOT_FOUND";
 
 export class CoachEvaluationError extends Error {
   readonly code: CoachEvaluationErrorCode;
@@ -81,10 +97,15 @@ export class CoachEvaluationError extends Error {
  */
 export interface CoachEvaluationRepository {
   getEngagement(coachId: string, engagementId: string): Promise<CoachEvaluationEngagementRef | null>;
-  listForCoach(coachId: string): Promise<{ evaluations: CoachEvaluationRecord[]; details: CoachEngagementDetailRecord[]; engagements: CoachEvaluationEngagementRef[] }>;
+  listForCoach(coachId: string): Promise<{ evaluations: CoachEvaluationRecord[]; details: CoachEngagementDetailRecord[]; engagements: CoachEvaluationEngagementRef[]; facts: CoachFactRecordView[] }>;
   getEvaluation(coachId: string, evaluationId: string): Promise<CoachEvaluationRecord | null>;
   createOmEvaluation(coachId: string, engagementId: string, input: CoachOmEvaluationInput, actor: CoachEvaluationActor): Promise<CoachEvaluationRecord>;
   updateOmEvaluation(coachId: string, evaluationId: string, input: CoachOmEvaluationInput, actor: CoachEvaluationActor): Promise<CoachEvaluationRecord>;
   deleteEvaluation(coachId: string, evaluationId: string, actor: CoachEvaluationActor): Promise<void>;
   listOmAverageInputs(): Promise<CoachEvaluationAverageInput[]>;
+  getFactRecord(coachId: string, factId: string): Promise<CoachFactRecordView | null>;
+  /** 투입은 그 코치의 것이어야 한다(ENGAGEMENT_NOT_FOUND). */
+  createFactRecord(coachId: string, engagementId: string, input: CoachFactRecordInput, actor: CoachEvaluationActor): Promise<CoachFactRecordView>;
+  /** 소프트 삭제. 없으면 FACT_NOT_FOUND. */
+  deleteFactRecord(coachId: string, factId: string, actor: CoachEvaluationActor): Promise<void>;
 }

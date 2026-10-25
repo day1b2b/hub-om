@@ -1,17 +1,19 @@
 import type { Prisma } from "@prisma/client";
-import type { CoachEvaluationScores, CoachOmEvaluationInput } from "@/lib/coaches/coachEvaluationRules";
+import type { CoachEvaluationScores, CoachFactRecordInput, CoachOmEvaluationInput } from "@/lib/coaches/coachEvaluationRules";
 import { getPrismaClient } from "./prisma";
 import {
   CoachEvaluationError,
   type CoachEngagementDetailRecord,
   type CoachEvaluationActor,
   type CoachEvaluationEngagementRef,
+  type CoachFactRecordView,
   type CoachEvaluationRecord,
   type CoachEvaluationRepository
 } from "./coachEvaluationRepository";
 
 type EvaluationRow = Prisma.CoachEvaluationGetPayload<Record<string, never>>;
 type DetailRow = Prisma.CoachEngagementDetailGetPayload<Record<string, never>>;
+type FactRow = Prisma.CoachFactRecordGetPayload<Record<string, never>>;
 
 const dateKey = (value: Date) => value.toISOString().slice(0, 10);
 const scoresOf = (row: EvaluationRow): CoachEvaluationScores => ({
@@ -50,6 +52,21 @@ function toDetail(row: DetailRow): CoachEngagementDetailRecord {
     audience: row.audience,
     isNewClient: row.isNewClient,
     updatedAt: row.updatedAt
+  };
+}
+
+function toFact(row: FactRow): CoachFactRecordView {
+  return {
+    id: row.id,
+    coachId: row.coachId,
+    engagementId: row.engagementId,
+    kind: row.kind,
+    occurredOn: dateKey(row.occurredOn),
+    courseName: row.courseName,
+    description: row.description,
+    recordedByEmail: row.recordedByEmail,
+    recordedByName: row.recordedByName,
+    createdAt: row.createdAt
   };
 }
 
@@ -96,12 +113,13 @@ export class PrismaCoachEvaluationRepository implements CoachEvaluationRepositor
 
   async listForCoach(coachId: string) {
     const prisma = getPrismaClient();
-    const [evaluations, details, engagements] = await Promise.all([
+    const [evaluations, details, engagements, facts] = await Promise.all([
       prisma.coachEvaluation.findMany({ where: { coachId, source: "OM", deletedAt: null }, orderBy: [{ endDate: "desc" }, { createdAt: "desc" }] }),
       prisma.coachEngagementDetail.findMany({ where: { coachId } }),
-      prisma.coachEngagement.findMany({ where: { coachId }, select: engagementSelect })
+      prisma.coachEngagement.findMany({ where: { coachId }, select: engagementSelect }),
+      prisma.coachFactRecord.findMany({ where: { coachId, deletedAt: null }, orderBy: [{ occurredOn: "desc" }, { createdAt: "desc" }] })
     ]);
-    return { evaluations: evaluations.map(toRecord), details: details.map(toDetail), engagements: engagements.map(toEngagementRef) };
+    return { evaluations: evaluations.map(toRecord), details: details.map(toDetail), engagements: engagements.map(toEngagementRef), facts: facts.map(toFact) };
   }
 
   async getEvaluation(coachId: string, evaluationId: string) {
@@ -152,6 +170,38 @@ export class PrismaCoachEvaluationRepository implements CoachEvaluationRepositor
       data: { deletedAt: new Date(), deletedBy: actor.email }
     });
     if (result.count !== 1) throw new CoachEvaluationError("EVALUATION_NOT_FOUND");
+  }
+
+  async getFactRecord(coachId: string, factId: string) {
+    const row = await getPrismaClient().coachFactRecord.findFirst({ where: { id: factId, coachId, deletedAt: null } });
+    return row ? toFact(row) : null;
+  }
+
+  async createFactRecord(coachId: string, engagementId: string, input: CoachFactRecordInput, actor: CoachEvaluationActor) {
+    const prisma = getPrismaClient();
+    const engagement = await prisma.coachEngagement.findFirst({ where: { id: engagementId, coachId }, select: { courseName: true } });
+    if (!engagement) throw new CoachEvaluationError("ENGAGEMENT_NOT_FOUND");
+    const row = await prisma.coachFactRecord.create({
+      data: {
+        coachId,
+        engagementId,
+        kind: input.kind,
+        occurredOn: new Date(`${input.occurredOn}T00:00:00.000Z`),
+        courseName: engagement.courseName,
+        description: input.description,
+        recordedByEmail: actor.email,
+        recordedByName: actor.name
+      }
+    });
+    return toFact(row);
+  }
+
+  async deleteFactRecord(coachId: string, factId: string, actor: CoachEvaluationActor) {
+    const result = await getPrismaClient().coachFactRecord.updateMany({
+      where: { id: factId, coachId, deletedAt: null },
+      data: { deletedAt: new Date(), deletedBy: actor.email }
+    });
+    if (result.count !== 1) throw new CoachEvaluationError("FACT_NOT_FOUND");
   }
 
   async listOmAverageInputs() {

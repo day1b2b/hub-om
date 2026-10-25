@@ -63,6 +63,8 @@
   "POST /api/coaches/[id]/evaluations": "tracked",
   "PATCH /api/coaches/[id]/evaluations/[evaluationId]": "tracked",
   "DELETE /api/coaches/[id]/evaluations/[evaluationId]": "tracked",
+  "POST /api/coaches/[id]/facts": "tracked",
+  "DELETE /api/coaches/[id]/facts/[factId]": "tracked",
   "POST /api/coaches/[id]/regenerate-token": "tracked",
   "POST /api/coaches/[id]/reservations": "tracked",
   "DELETE /api/coaches/[id]/reservations": "tracked",

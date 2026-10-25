@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { MongoServerError, type ClientSession } from "mongodb";
-import type { CoachEvaluationScores, CoachOmEvaluationInput } from "@/lib/coaches/coachEvaluationRules";
+import type { CoachEvaluationScores, CoachFactRecordInput, CoachOmEvaluationInput } from "@/lib/coaches/coachEvaluationRules";
 import { encodeMongoRuntimeDocument } from "./mongoRuntimeCodec";
 import { assertMongo, completeMongoRow, MongoOperationError, MongoOperationStore, type MongoOperationOptions, type MongoRow } from "./mongoOperationStore";
 import { assertMongoReadStoreReady } from "./mongoReadStore";
@@ -10,13 +10,13 @@ import {
   type CoachEngagementDetailRecord,
   type CoachEvaluationActor,
   type CoachEvaluationEngagementRef,
+  type CoachFactRecordView,
   type CoachEvaluationRecord,
   type CoachEvaluationRepository
 } from "./coachEvaluationRepository";
 
-/** 평가 저장소가 여는 컬렉션. 평가 3개 중 사실 기록은 다음 PR에서 연다. */
-/** OperationSession은 담당 OM 확인용으로 읽기만 한다. */
-export const COACH_EVALUATION_REPOSITORY_MODELS = ["Coach", "CoachEngagement", "CoachEngagementDetail", "CoachEvaluation", "OperationSession"] as const;
+/** 평가 저장소가 여는 컬렉션. OperationSession은 담당 OM 확인용으로 읽기만 한다. */
+export const COACH_EVALUATION_REPOSITORY_MODELS = ["Coach", "CoachEngagement", "CoachEngagementDetail", "CoachEvaluation", "CoachFactRecord", "OperationSession"] as const;
 type Options = MongoOperationOptions & { allowShadowWrites: true };
 
 const dateKey = (value: unknown) => (value as Date).toISOString().slice(0, 10);
@@ -39,6 +39,11 @@ const detail = (row: MongoRow): CoachEngagementDetailRecord => ({
   practiceDifficulty: row.practiceDifficulty as CoachEngagementDetailRecord["practiceDifficulty"],
   audience: row.audience as CoachEngagementDetailRecord["audience"], isNewClient: row.isNewClient as boolean | null,
   updatedAt: row.updatedAt as Date
+});
+const fact = (row: MongoRow): CoachFactRecordView => ({
+  id: row.id as string, coachId: row.coachId as string, engagementId: row.engagementId as string | null, kind: row.kind as CoachFactRecordView["kind"],
+  occurredOn: dateKey(row.occurredOn), courseName: row.courseName as string | null, description: row.description as string,
+  recordedByEmail: row.recordedByEmail as string, recordedByName: row.recordedByName as string | null, createdAt: row.createdAt as Date
 });
 const evaluationFields = (input: CoachOmEvaluationInput) => ({ ...input.scores, rehire: input.rehire, rehireReason: input.rehireReason, evidence: input.evidence });
 
@@ -118,7 +123,9 @@ export class MongoCoachEvaluationRepository implements CoachEvaluationRepository
         .sort((a, b) => b.endDate.localeCompare(a.endDate) || b.createdAt.getTime() - a.createdAt.getTime());
       const details = (await this.store.scan("CoachEngagementDetail", { coachId }, session)).map(detail);
       const engagements = await this.engagementRefs(await this.store.scan("CoachEngagement", { coachId }, session), session);
-      return { evaluations, details, engagements };
+      const facts = (await this.store.scan("CoachFactRecord", { coachId, deletedAt: null }, session)).map(fact)
+        .sort((a, b) => b.occurredOn.localeCompare(a.occurredOn) || b.createdAt.getTime() - a.createdAt.getTime());
+      return { evaluations, details, engagements, facts };
     });
   }
   async getEvaluation(input: string, evaluationId: string) {
@@ -165,6 +172,38 @@ export class MongoCoachEvaluationRepository implements CoachEvaluationRepository
       const now = new Date();
       const row = completeMongoRow("CoachEvaluation", { ...before, deletedAt: now, deletedBy: actor.email, updatedAt: now });
       const result = await this.store.collection("CoachEvaluation").replaceOne({ _id: row.id as string, coachId }, encodeMongoRuntimeDocument("CoachEvaluation", row), { session });
+      assertMongo(result.matchedCount === 1, "COACH_EVALUATION_WRITE_FAILED");
+    });
+  }
+  async getFactRecord(input: string, factId: string) {
+    const coachId = input.toLowerCase();
+    return this.read(async session => {
+      const row = await this.store.one("CoachFactRecord", { _id: factId.toLowerCase(), coachId, deletedAt: null }, session);
+      return row ? fact(row) : null;
+    });
+  }
+  async createFactRecord(input: string, engagementInput: string, values: CoachFactRecordInput, actor: CoachEvaluationActor) {
+    const coachId = input.toLowerCase(), engagementId = engagementInput.toLowerCase();
+    return this.write(coachId, async session => {
+      const engagement = await this.store.one("CoachEngagement", { _id: engagementId, coachId }, session);
+      if (!engagement) throw new CoachEvaluationError("ENGAGEMENT_NOT_FOUND");
+      const now = new Date();
+      const row = completeMongoRow("CoachFactRecord", {
+        id: randomUUID(), coachId, engagementId, kind: values.kind, occurredOn: new Date(`${values.occurredOn}T00:00:00.000Z`),
+        courseName: engagement.courseName, description: values.description, recordedByEmail: actor.email, recordedByName: actor.name, createdAt: now, updatedAt: now
+      });
+      await this.store.collection("CoachFactRecord").insertOne(encodeMongoRuntimeDocument("CoachFactRecord", row), { session });
+      return fact(row);
+    });
+  }
+  async deleteFactRecord(input: string, factId: string, actor: CoachEvaluationActor) {
+    const coachId = input.toLowerCase();
+    await this.write(coachId, async session => {
+      const before = await this.store.one("CoachFactRecord", { _id: factId.toLowerCase(), coachId, deletedAt: null }, session);
+      if (!before) throw new CoachEvaluationError("FACT_NOT_FOUND");
+      const now = new Date();
+      const row = completeMongoRow("CoachFactRecord", { ...before, deletedAt: now, deletedBy: actor.email, updatedAt: now });
+      const result = await this.store.collection("CoachFactRecord").replaceOne({ _id: row.id as string, coachId }, encodeMongoRuntimeDocument("CoachFactRecord", row), { session });
       assertMongo(result.matchedCount === 1, "COACH_EVALUATION_WRITE_FAILED");
     });
   }

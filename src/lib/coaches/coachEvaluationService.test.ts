@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { registerHooks } from "node:module";
 import test from "node:test";
-import type { CoachEvaluationEngagementRef, CoachEvaluationRecord, CoachEvaluationRepository } from "../data/coachEvaluationRepository";
+import type { CoachEvaluationEngagementRef, CoachEvaluationRecord, CoachEvaluationRepository, CoachFactRecordView } from "../data/coachEvaluationRepository";
 import type { TeamUserRepository } from "../data/teamUsers/teamUserRepositoryContract";
 
 const hooks = registerHooks({ resolve(specifier, context, next) { return next(specifier === "next/server" ? `${specifier}.js` : specifier, context); } });
@@ -35,11 +35,12 @@ const ENGAGEMENTS: CoachEvaluationEngagementRef[] = [
 
 function fakeRepository() {
   const evaluations: CoachEvaluationRecord[] = [];
+  const facts: CoachFactRecordView[] = [];
   const calls: string[] = [];
   const engagement = (id: string) => ENGAGEMENTS.find((item) => item.id === id) ?? null;
   const repository: CoachEvaluationRepository = {
     async getEngagement(_coachId, id) { return engagement(id); },
-    async listForCoach() { calls.push("list"); return { evaluations: [...evaluations], details: [], engagements: ENGAGEMENTS }; },
+    async listForCoach() { calls.push("list"); return { evaluations: [...evaluations], details: [], engagements: ENGAGEMENTS, facts: [...facts] }; },
     async getEvaluation(_coachId, id) { return evaluations.find((item) => item.id === id) ?? null; },
     async createOmEvaluation(coachId, engagementId, input, actor) {
       calls.push("create");
@@ -53,9 +54,22 @@ function fakeRepository() {
     },
     async updateOmEvaluation(_coachId, id, input) { calls.push("update"); const item = evaluations.find((row) => row.id === id)!; Object.assign(item, { scores: input.scores }); return item; },
     async deleteEvaluation(_coachId, id) { calls.push("delete"); evaluations.splice(evaluations.findIndex((row) => row.id === id), 1); },
-    async listOmAverageInputs() { return []; }
+    async listOmAverageInputs() { return []; },
+    async getFactRecord(_coachId, id) { return facts.find((item) => item.id === id) ?? null; },
+    async createFactRecord(coachId, engagementId, input, actor) {
+      calls.push("fact");
+      const record: CoachFactRecordView = { id: `fact-${facts.length + 1}`, coachId, engagementId, kind: input.kind, occurredOn: input.occurredOn,
+        courseName: engagement(engagementId)!.courseName, description: input.description, recordedByEmail: actor.email, recordedByName: actor.name, createdAt: new Date(0) };
+      facts.push(record);
+      return record;
+    },
+    async deleteFactRecord(_coachId, id) {
+      const index = facts.findIndex((row) => row.id === id);
+      if (index < 0) throw new CoachEvaluationError("FACT_NOT_FOUND");
+      facts.splice(index, 1);
+    }
   };
-  return { repository, evaluations, calls };
+  return { repository, evaluations, facts, calls };
 }
 
 const roster = new Map([[om.email, om.name], [otherOm.email, otherOm.name], [onsite.email, onsite.name]]);
@@ -151,4 +165,27 @@ test("팀원 명단 조회가 실패하면 권한을 주지 않는다", async ()
   await runWithDataRepositories({ coachEvaluation: repository, teamUsers: broken }, async () => {
     assert.equal((await read(await service.listCoachEvaluationsResponse(COACH, om))).body.canView, false);
   });
+});
+
+test("사실 기록은 담당 매니저가 투입 기간 안 날짜로 남기고, 기록한 사람·정책 담당자만 지운다", async () => {
+  const { repository, facts } = fakeRepository();
+  const fact = (engagementId: string, occurredOn: string) => ({ engagementId, kind: "LATE", occurredOn, description: "9시 30분 도착" });
+  await withOwner(() => run(repository, async () => {
+    assert.equal((await service.createCoachFactResponse(COACH, fact(ENDED, "2000-01-02"), intern)).status, 403);
+    assert.equal((await service.createCoachFactResponse(COACH, fact(ENDED, "2000-01-02"), otherOm)).status, 403);
+    assert.equal((await service.createCoachFactResponse(COACH, fact(ENDED, "2000-01-05"), om)).status, 400);
+    assert.equal((await service.createCoachFactResponse(COACH, fact(UPCOMING, "2999-01-01"), om)).status, 400);
+    const created = await read(await service.createCoachFactResponse(COACH, fact(ENDED, "2000-01-02"), om));
+    assert.equal(created.status, 200);
+    assert.equal(facts[0].recordedByEmail, om.email);
+
+    // 같은 과정을 함께 맡은 현장 OM도 볼 수 있지만, 기록한 사람이 아니면 못 지운다.
+    const list = await read(await service.listCoachEvaluationsResponse(COACH, onsite));
+    assert.equal((list.body.facts as Array<{ canDelete: boolean }>)[0].canDelete, false);
+    assert.equal((await service.deleteCoachFactResponse(COACH, "fact-1", onsite)).status, 403);
+    assert.equal((await service.deleteCoachFactResponse(COACH, "fact-1", owner)).status, 200);
+    assert.equal((await service.deleteCoachFactResponse(COACH, "fact-1", om)).status, 404);
+    // OM·LD가 아니면 목록에 사실 기록도 없다.
+    assert.deepEqual((await read(await service.listCoachEvaluationsResponse(COACH, intern))).body.facts, []);
+  }));
 });
