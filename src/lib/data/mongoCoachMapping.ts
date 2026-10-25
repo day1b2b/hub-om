@@ -25,7 +25,7 @@ export function coachSummary(coach: Coach, fields: string[], engagements: CoachE
     avgRating: ratings.length ? ratings.reduce((sum, value) => sum + value, 0) / ratings.length : null,
     workDayCount: new Set(schedules.filter(row => row.cancelledAt === null).map(row => coachDate(row.date))).size,
     notionPageId: coach.notionPageId,
-    ...digestCoachEngagements(engagements.map(row => ({ startDate: coachDate(row.startDate), endDate: coachDate(row.endDate), cancelled: row.status === "CANCELLED", rating: row.rating }))) };
+    ...digestCoachEngagements(engagements.map(row => ({ engagementId: row.id, startDate: coachDate(row.startDate), endDate: coachDate(row.endDate), cancelled: row.status === "CANCELLED", rating: row.rating }))) };
 }
 /** Keep database/driver/cipher errors out of public messages; never turn corruption into empty results. */
 export async function coachRead<T>(work: () => Promise<T>): Promise<T> {

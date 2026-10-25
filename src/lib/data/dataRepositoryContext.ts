@@ -25,6 +25,7 @@ import type { CourseAdminRepository } from "./courseAdminRepository";
 import type { CoachTokenBackfillRepository } from "./coachTokenBackfillRepository";
 import type { CoachManagerMyPageRepository } from "./coachManagerMyPageRepository";
 import type { CoachContentRepository } from "./coachContentRepository";
+import type { CoachEvaluationRepository } from "./coachEvaluationRepository";
 import type { CoachRepository } from "./coachRepository";
 import type { CoachNotionSyncRepository, CoachNotionSource } from "./coachNotionSyncRepository";
 import type { CoachSyncLogRepository } from "./coachSyncLogRepository";
@@ -111,6 +112,7 @@ export interface DataRepositories {
   coachTokenBackfill: CoachTokenBackfillRepository;
   coachManagerMyPage: CoachManagerMyPageRepository;
   coachContent: CoachContentRepository;
+  coachEvaluation: CoachEvaluationRepository;
   coach: CoachRepository;
   coachNotionSync: CoachNotionSyncRepository;
   coachNotionSource: CoachNotionSource;

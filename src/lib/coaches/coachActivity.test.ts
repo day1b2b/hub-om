@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   digestCoachEngagements,
   effectiveEngagementStatus,
+  recentRatingSummary,
   seoulTodayKey,
   shiftMonths,
   summarizeCoachActivity,
@@ -10,7 +11,7 @@ import {
 } from "./coachActivity";
 
 const policy: CoachActivityPolicy = { dormantMonths: 6, recentRatingWindow: 6, minRatingsForAverage: 3 };
-const fact = (startDate: string, cancelled = false, endDate = startDate) => ({ startDate, endDate, cancelled });
+const fact = (startDate: string, cancelled = false, endDate = startDate) => ({ engagementId: `e-${startDate}`, startDate, endDate, cancelled, rating: null });
 
 test("activity status: never without past deploys, active within the window, dormant after it", () => {
   assert.equal(summarizeCoachActivity([], "2026-10-23", policy).status, "never");
@@ -42,7 +43,7 @@ test("activity ignores cancelled engagements and picks the latest start date", (
 });
 
 test("recent average uses the latest rated engagements and hides small samples", () => {
-  const row = (endDate: string, rating: number | null, cancelled = false) => ({ startDate: endDate, endDate, cancelled, rating });
+  const row = (endDate: string, rating: number | null, cancelled = false) => ({ engagementId: `e-${endDate}`, startDate: endDate, endDate, cancelled, rating });
   const two = digestCoachEngagements([row("2026-01-01", 5), row("2026-02-01", 3)], policy);
   assert.equal(two.recentAvgRating, null);
   assert.equal(two.recentRatingCount, 2);
@@ -60,6 +61,16 @@ test("recent average uses the latest rated engagements and hides small samples",
   assert.equal(digest.engagementFacts[0].startDate, "2026-08-01");
   assert.equal(digest.engagementFacts[0].cancelled, true);
   assert.equal(digest.engagementFacts.length, rows.length);
+});
+
+test("new OM evaluations replace the old rating of the same engagement", () => {
+  const row = (endDate: string, rating: number | null, cancelled = false) => ({ engagementId: `e-${endDate}`, startDate: endDate, endDate, cancelled, rating });
+  const facts = [row("2026-01-01", 2), row("2026-02-01", null), row("2026-03-01", null), row("2026-04-01", 5, true)];
+  // 예전 평점만으로는 1건이라 평균을 숨긴다.
+  assert.deepEqual(recentRatingSummary(facts, new Map(), policy), { recentAvgRating: null, recentRatingCount: 1 });
+  // 새 평가가 예전 평점을 덮어쓰고, 평가 없던 투입도 채운다. 취소 투입의 평가는 세지 않는다.
+  const averages = new Map([["e-2026-01-01", 4], ["e-2026-02-01", 4.5], ["e-2026-03-01", 3.5], ["e-2026-04-01", 1]]);
+  assert.deepEqual(recentRatingSummary(facts, averages, policy), { recentAvgRating: 4, recentRatingCount: 3 });
 });
 
 test("engagement status follows dates except cancelled and completed", () => {
