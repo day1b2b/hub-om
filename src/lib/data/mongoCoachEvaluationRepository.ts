@@ -9,12 +9,14 @@ import {
   CoachEvaluationError,
   type CoachEngagementDetailRecord,
   type CoachEvaluationActor,
+  type CoachEvaluationEngagementRef,
   type CoachEvaluationRecord,
   type CoachEvaluationRepository
 } from "./coachEvaluationRepository";
 
 /** 평가 저장소가 여는 컬렉션. 평가 3개 중 사실 기록은 다음 PR에서 연다. */
-export const COACH_EVALUATION_REPOSITORY_MODELS = ["Coach", "CoachEngagement", "CoachEngagementDetail", "CoachEvaluation"] as const;
+/** OperationSession은 담당 OM 확인용으로 읽기만 한다. */
+export const COACH_EVALUATION_REPOSITORY_MODELS = ["Coach", "CoachEngagement", "CoachEngagementDetail", "CoachEvaluation", "OperationSession"] as const;
 type Options = MongoOperationOptions & { allowShadowWrites: true };
 
 const dateKey = (value: unknown) => (value as Date).toISOString().slice(0, 10);
@@ -89,11 +91,24 @@ export class MongoCoachEvaluationRepository implements CoachEvaluationRepository
     else await collection.insertOne(encodeMongoRuntimeDocument("CoachEngagementDetail", row), { session });
   }
 
+  /** 투입마다 연결된 운영현황 회차의 담당 OM을 붙인다(지워진 회차는 연결 없음으로 본다). */
+  private async engagementRefs(rows: MongoRow[], session: ClientSession): Promise<CoachEvaluationEngagementRef[]> {
+    const ids = [...new Set(rows.map(row => row.operationSessionId).filter((id): id is string => typeof id === "string"))];
+    const sessions = new Map(ids.length ? (await this.store.scan("OperationSession", { _id: { $in: ids }, deletedAt: null }, session)).map(row => [row.id as string, row]) : []);
+    return rows.map(row => {
+      const linked = typeof row.operationSessionId === "string" ? sessions.get(row.operationSessionId) : undefined;
+      return {
+        id: row.id as string, coachId: row.coachId as string, courseName: row.courseName as string, startDate: dateKey(row.startDate), endDate: dateKey(row.endDate),
+        operationManagers: [linked?.omName, linked?.onsiteOmName].filter((name): name is string => typeof name === "string" && !!name.trim()),
+        contractRequester: row.hiredByText as string | null
+      };
+    });
+  }
   async getEngagement(input: string, engagementId: string) {
     const coachId = input.toLowerCase();
     return this.read(async session => {
       const row = await this.store.one("CoachEngagement", { _id: engagementId.toLowerCase(), coachId }, session);
-      return row ? { id: row.id as string, coachId, courseName: row.courseName as string, startDate: dateKey(row.startDate), endDate: dateKey(row.endDate) } : null;
+      return row ? (await this.engagementRefs([row], session))[0] : null;
     });
   }
   async listForCoach(input: string) {
@@ -102,7 +117,8 @@ export class MongoCoachEvaluationRepository implements CoachEvaluationRepository
       const evaluations = (await this.store.scan("CoachEvaluation", { coachId, source: "OM", deletedAt: null }, session)).map(record)
         .sort((a, b) => b.endDate.localeCompare(a.endDate) || b.createdAt.getTime() - a.createdAt.getTime());
       const details = (await this.store.scan("CoachEngagementDetail", { coachId }, session)).map(detail);
-      return { evaluations, details };
+      const engagements = await this.engagementRefs(await this.store.scan("CoachEngagement", { coachId }, session), session);
+      return { evaluations, details, engagements };
     });
   }
   async getEvaluation(input: string, evaluationId: string) {

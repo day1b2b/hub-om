@@ -5,6 +5,7 @@ import {
   CoachEvaluationError,
   type CoachEngagementDetailRecord,
   type CoachEvaluationActor,
+  type CoachEvaluationEngagementRef,
   type CoachEvaluationRecord,
   type CoachEvaluationRepository
 } from "./coachEvaluationRepository";
@@ -67,23 +68,40 @@ async function lockCoach(tx: Prisma.TransactionClient, coachId: string) {
   if (rows.length !== 1) throw new CoachEvaluationError("ENGAGEMENT_NOT_FOUND");
 }
 
+const engagementSelect = {
+  id: true, coachId: true, courseName: true, startDate: true, endDate: true, hiredByText: true,
+  operationSession: { select: { omName: true, onsiteOmName: true, deletedAt: true } }
+} as const;
+type EngagementRow = Prisma.CoachEngagementGetPayload<{ select: typeof engagementSelect }>;
+
+function toEngagementRef(row: EngagementRow): CoachEvaluationEngagementRef {
+  const session = row.operationSession && !row.operationSession.deletedAt ? row.operationSession : null;
+  return {
+    id: row.id,
+    coachId: row.coachId,
+    courseName: row.courseName,
+    startDate: dateKey(row.startDate),
+    endDate: dateKey(row.endDate),
+    operationManagers: [session?.omName, session?.onsiteOmName].filter((name): name is string => !!name?.trim()),
+    contractRequester: row.hiredByText
+  };
+}
+
 /** Default PostgreSQL backend. */
 export class PrismaCoachEvaluationRepository implements CoachEvaluationRepository {
   async getEngagement(coachId: string, engagementId: string) {
-    const row = await getPrismaClient().coachEngagement.findFirst({
-      where: { id: engagementId, coachId },
-      select: { id: true, coachId: true, courseName: true, startDate: true, endDate: true }
-    });
-    return row ? { ...row, startDate: dateKey(row.startDate), endDate: dateKey(row.endDate) } : null;
+    const row = await getPrismaClient().coachEngagement.findFirst({ where: { id: engagementId, coachId }, select: engagementSelect });
+    return row ? toEngagementRef(row) : null;
   }
 
   async listForCoach(coachId: string) {
     const prisma = getPrismaClient();
-    const [evaluations, details] = await Promise.all([
+    const [evaluations, details, engagements] = await Promise.all([
       prisma.coachEvaluation.findMany({ where: { coachId, source: "OM", deletedAt: null }, orderBy: [{ endDate: "desc" }, { createdAt: "desc" }] }),
-      prisma.coachEngagementDetail.findMany({ where: { coachId } })
+      prisma.coachEngagementDetail.findMany({ where: { coachId } }),
+      prisma.coachEngagement.findMany({ where: { coachId }, select: engagementSelect })
     ]);
-    return { evaluations: evaluations.map(toRecord), details: details.map(toDetail) };
+    return { evaluations: evaluations.map(toRecord), details: details.map(toDetail), engagements: engagements.map(toEngagementRef) };
   }
 
   async getEvaluation(coachId: string, evaluationId: string) {

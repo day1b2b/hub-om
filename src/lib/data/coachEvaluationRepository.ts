@@ -14,6 +14,10 @@ export interface CoachEvaluationEngagementRef {
   courseName: string;
   startDate: string;
   endDate: string;
+  /** 연결된 운영현황 회차의 담당 OM·현장 OM 이름(원문 그대로). 연결이 없으면 빈 배열. */
+  operationManagers: string[];
+  /** 계약 요청 시트의 요청자 이름. 운영현황 연결이 없을 때만 담당 판단에 쓴다. */
+  contractRequester: string | null;
 }
 
 export interface CoachEngagementDetailRecord {
@@ -77,7 +81,7 @@ export class CoachEvaluationError extends Error {
  */
 export interface CoachEvaluationRepository {
   getEngagement(coachId: string, engagementId: string): Promise<CoachEvaluationEngagementRef | null>;
-  listForCoach(coachId: string): Promise<{ evaluations: CoachEvaluationRecord[]; details: CoachEngagementDetailRecord[] }>;
+  listForCoach(coachId: string): Promise<{ evaluations: CoachEvaluationRecord[]; details: CoachEngagementDetailRecord[]; engagements: CoachEvaluationEngagementRef[] }>;
   getEvaluation(coachId: string, evaluationId: string): Promise<CoachEvaluationRecord | null>;
   createOmEvaluation(coachId: string, engagementId: string, input: CoachOmEvaluationInput, actor: CoachEvaluationActor): Promise<CoachEvaluationRecord>;
   updateOmEvaluation(coachId: string, evaluationId: string, input: CoachOmEvaluationInput, actor: CoachEvaluationActor): Promise<CoachEvaluationRecord>;

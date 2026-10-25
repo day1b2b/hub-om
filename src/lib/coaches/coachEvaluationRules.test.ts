@@ -71,9 +71,9 @@ test("평균은 시간 준수를 빼고 역할 항목만 계산한다", () => {
 });
 
 test("원문 열람은 OM·LD·정책 담당자, 수정은 작성자·정책 담당자", () => {
-  const om = { email: "om@day1company.co.kr", roles: ["om"] as const, isPolicyOwner: false };
-  const intern = { email: "intern@day1company.co.kr", roles: [] as const, isPolicyOwner: false };
-  const owner = { email: "owner@day1company.co.kr", roles: [] as const, isPolicyOwner: true };
+  const om = { email: "om@day1company.co.kr", names: ["가상 OM"], roles: ["om"] as const, isPolicyOwner: false };
+  const intern = { email: "intern@day1company.co.kr", names: [], roles: [] as const, isPolicyOwner: false };
+  const owner = { email: "owner@day1company.co.kr", names: [], roles: [] as const, isPolicyOwner: true };
   assert.equal(canViewCoachEvaluations(om), true);
   assert.equal(canViewCoachEvaluations(intern), false);
   assert.equal(canViewCoachEvaluations(owner), true);

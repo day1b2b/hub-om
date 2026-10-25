@@ -48,6 +48,8 @@ interface ListResponse {
   today?: string;
   evaluations?: Evaluation[];
   details?: Detail[];
+  /** 이 사람이 평가를 쓸 수 있는 투입(담당 매니저·정책 담당자). */
+  writableEngagementIds?: string[];
   error?: string;
 }
 
@@ -58,6 +60,7 @@ interface EvaluationState {
   today: string;
   byEngagement: Map<string, Evaluation>;
   details: Map<string, Detail>;
+  writable: Set<string>;
   openId: string | null;
   setOpenId: (id: string | null) => void;
   reload: () => Promise<void>;
@@ -104,6 +107,7 @@ export function CoachEvaluationProvider({ coachId, children }: { coachId: string
     today: payload.today ?? "",
     byEngagement: new Map((payload.evaluations ?? []).filter((item) => item.engagementId).map((item) => [item.engagementId as string, item])),
     details: new Map((payload.details ?? []).map((item) => [item.engagementId, item])),
+    writable: new Set(payload.writableEngagementIds ?? []),
     openId,
     setOpenId,
     reload
@@ -129,9 +133,9 @@ export interface EvaluableEngagement {
   cancelled: boolean;
 }
 
-/** 행 오른쪽 버튼. 평가가 있으면 평균, 없고 끝난 투입이면 [평가하기]. */
+/** 행 오른쪽 버튼. 평가가 있으면 평균, 없고 끝난 투입이며 담당 매니저면 [평가하기]. */
 export function EngagementEvaluationButton({ engagement }: { engagement: EvaluableEngagement }) {
-  const { status, canView, today, byEngagement, openId, setOpenId } = useEvaluations();
+  const { status, canView, today, byEngagement, writable, openId, setOpenId } = useEvaluations();
   if (status !== "ready" || !canView) return null;
   const evaluation = byEngagement.get(engagement.id);
   const open = openId === engagement.id;
@@ -145,7 +149,7 @@ export function EngagementEvaluationButton({ engagement }: { engagement: Evaluab
       </button>
     );
   }
-  if (engagement.cancelled || !today || engagement.endDate > today) return null;
+  if (!writable.has(engagement.id) || engagement.cancelled || !today || engagement.endDate > today) return null;
   return (
     <button aria-expanded={open} className="coach-evaluation-chip" onClick={toggle} type="button">
       평가하기

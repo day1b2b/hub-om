@@ -164,12 +164,14 @@ export function coachPolicyOwnerEmails(env: Record<string, string | undefined> =
 
 export interface CoachEvaluationViewer {
   email: string;
+  /** 팀원 명단의 이름(운영현황 담당 OM과 맞춰 본다). */
+  names: ReadonlyArray<string>;
   /** 팀원 명단의 역할(om·ld). */
   roles: ReadonlyArray<"om" | "ld">;
   isPolicyOwner: boolean;
 }
 
-/** 평가 원문은 OM·LD와 정책 담당자만 본다. 평가 작성도 같은 범위다. */
+/** 평가 원문은 OM·LD와 정책 담당자만 본다. */
 export function canViewCoachEvaluations(viewer: CoachEvaluationViewer): boolean {
   return viewer.isPolicyOwner || viewer.roles.length > 0;
 }
