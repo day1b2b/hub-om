@@ -79,7 +79,8 @@ export function DeleteRoundButton({
 
     if (!response.ok) {
       setIsDeleting(false);
-      alert("삭제하지 못했습니다.");
+      const body = (await response.json().catch(() => null)) as { code?: unknown } | null;
+      alert(deleteFailureMessage(body?.code));
       return;
     }
 
@@ -89,4 +90,13 @@ export function DeleteRoundButton({
 
     router.refresh();
   }
+}
+
+// 서버 거절 사유 코드(code)별 사용자 안내. 화면에서 삭제 가능으로 보였는데 거절됐다면 화면·서버 판단이 어긋난 것이라
+// 사용자가 고칠 수 없다. 관리자 자동 알림은 day1b2b/hub-om#708에서 이 코드를 기준으로 붙인다.
+function deleteFailureMessage(code: unknown): string {
+  if (code === "LAST_ROUND" || code === "FIRST_ROUND") {
+    return "이 회차는 지금 삭제할 수 없는 상태로 확인됐습니다. 화면 표시와 다른 문제일 수 있으니 관리자에게 알려주세요.";
+  }
+  return "삭제하지 못했습니다.";
 }

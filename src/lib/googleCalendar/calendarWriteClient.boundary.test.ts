@@ -125,6 +125,7 @@ for (const stage of ["oauth-error", "oauth-json", "google-body", "google-json", 
       return true;
     });
     assert.equal(calls, stage.startsWith("oauth") ? 1 : 2);
-    assert.deepEqual(logs, []);
+    // 토큰 갱신 실패는 원인 단계를 가르는 고정 코드만 남긴다(원문 없음).
+    assert.deepEqual(logs, stage.startsWith("oauth") ? [["[gcal] CALENDAR_TOKEN_REFRESH_FAILED"]] : []);
   });
 }

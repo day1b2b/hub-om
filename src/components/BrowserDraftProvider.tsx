@@ -48,7 +48,7 @@ export function BrowserDraftProvider({ children }: { children: ReactNode }) {
         : "초안이 잠겨 있습니다. 온라인에서 본인 계정으로 다시 연결하면 복구할 수 있습니다. 현재 입력은 이 화면을 유지해주세요."}
       {subject && state.status !== "loading" ? <button type="button" onClick={() => { void browserDrafts.unlock(subject).catch(() => {}); }}>초안 다시 연결</button> : null}
     </div> : null}
-    {state.status === "ready" ? <LegacyDraftTransitionNotice key={state.generation} /> : null}
+    {state.status === "ready" ? <LegacyDraftTransitionNotice key={state.generation} email={session?.user?.email} /> : null}
     {children}
   </>;
 }

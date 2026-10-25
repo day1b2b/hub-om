@@ -4,7 +4,7 @@ import { classifyDatabaseChange, missingLabels } from "./check-database-change-r
 
 test("일반 화면 변경은 DB 검토 대상이 아니다", () => {
   const result = classifyDatabaseChange(["src/app/dashboard/page.tsx"], "+const title = '대시보드';");
-  assert.deepEqual(result, { requiresReview: false, requiresCutoverApproval: false });
+  assert.deepEqual(result, { requiresReview: false, requiresCutoverApproval: false, requiresValidatorMigration: false });
 });
 
 test("DB 연결과 MongoDB 경로 변경은 책임자 검토가 필요하다", () => {
@@ -16,7 +16,7 @@ test("DB 연결과 MongoDB 경로 변경은 책임자 검토가 필요하다", (
 
 test("MongoDB selector 활성화는 전환 승인도 필요하다", () => {
   const result = classifyDatabaseChange([".env.example"], "+OPERATION_WRITE_BACKEND=mongodb-shadow");
-  assert.deepEqual(result, { requiresReview: true, requiresCutoverApproval: true });
+  assert.deepEqual(result, { requiresReview: true, requiresCutoverApproval: true, requiresValidatorMigration: false });
   assert.deepEqual(missingLabels(result, new Set(["database-change-reviewed"])), ["database-cutover-approved"]);
 });
 
@@ -24,4 +24,12 @@ test("두 승인 라벨이 있으면 차단하지 않는다", () => {
   const result = { requiresReview: true, requiresCutoverApproval: true };
   const labels = new Set(["database-change-reviewed", "database-cutover-approved"]);
   assert.deepEqual(missingLabels(result, labels), []);
+});
+
+test("Mongo 런타임 계약 변경은 운영 validator 반영 확인 라벨도 필요하다", () => {
+  const paths = ["prisma/schema.prisma", "src/lib/data/mongoRuntimeContracts.json"];
+  const result = classifyDatabaseChange(paths, '+          "ONLINE",');
+  assert.deepEqual(result, { requiresReview: true, requiresCutoverApproval: false, requiresValidatorMigration: true });
+  assert.deepEqual(missingLabels(result, new Set(["database-change-reviewed"])), ["mongodb-validator-ready"]);
+  assert.deepEqual(missingLabels(result, new Set(["database-change-reviewed", "mongodb-validator-ready"])), []);
 });

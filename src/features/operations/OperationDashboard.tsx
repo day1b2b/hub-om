@@ -597,7 +597,9 @@ const OPERATIONS_CSV_HEADERS = [
   "총 회차",
   "총 교육일수",
   "싱크업",
+  "강의관리 링크",
   "OM",
+  "OM(현장운영)",
   "LD",
   "시작일",
   "종료일",
@@ -623,7 +625,9 @@ function downloadOperationsCsv(courseGroups: CourseGroup[], today: Date) {
     `${group.operations.length}`,
     sumEducationDays(group.operations),
     isSafeHttpUrl(group.operationDetail) ? group.operationDetail : "-",
+    isSafeHttpUrl(group.lectureManagementNote) ? group.lectureManagementNote : "-",
     summarizeText(group.operations, (operation) => operation.om, "배정필요"),
+    summarizeText(group.operations, (operation) => resolveOnsiteOm(operation)),
     summarizeText(group.operations, (operation) => operation.ld, "미정"),
     group.startDate,
     group.endDate,
@@ -680,6 +684,7 @@ interface CourseGroup {
   courseName: string;
   endDate: string;
   key: string;
+  lectureManagementNote: string;
   linkOperationId: string;
   operationDetail: string;
   operations: OperationSession[];
@@ -718,6 +723,7 @@ function buildCourseGroup(key: string, operations: OperationSession[], today: Da
     courseName: first.courseName,
     endDate: endDates[endDates.length - 1] ?? "",
     key,
+    lectureManagementNote: operations.find((operation) => operation.lectureManagementNote)?.lectureManagementNote ?? "",
     linkOperationId: representative.operationId,
     operationDetail: operations.find((operation) => operation.operationDetail)?.operationDetail ?? "",
     operations,
@@ -756,6 +762,11 @@ function summarizeText(
   if (values.length === 0) return emptyFallback;
   if (values.length === 1) return values[0];
   return "상이";
+}
+
+function resolveOnsiteOm(operation: OperationSession): string {
+  if (operation.onsiteRequired !== "Y") return "";
+  return operation.onsiteOm || operation.om;
 }
 
 function resolveEducationDays(operation: OperationSession): string {

@@ -3,10 +3,11 @@ import type { Prisma } from "@prisma/client";
 import type { OmRequest } from "./omRequestTypes";
 
 const CREATE_ROUTE = "/api/om-request";
+const EDIT_ROUTE = "/api/om-request/[id]";
 export const REPAIR_LINK_ROUTE = "/maintenance/om-request-session-repair";
 export const TOKEN_TTL_MS = 10 * 60 * 1000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-export const creationSelect = { requestId: true, route: true, method: true, targetType: true, targetId: true, action: true } as const;
+export const creationSelect = { requestId: true, route: true, method: true, targetType: true, targetId: true, action: true, occurredAt: true } as const;
 export const operationSelect = { id: true, operationId: true, roundNo: true, omName: true, omUserId: true, operationStatus: true, updatedAt: true, deletedAt: true } as const;
 export type Creation = Prisma.ActivityChangeGetPayload<{ select: typeof creationSelect }>;
 export type AssignmentOperation = Prisma.OperationSessionGetPayload<{ select: typeof operationSelect }>;
@@ -19,7 +20,7 @@ export class OmAssignmentConflict extends Error {
 }
 
 export type AssignmentRequest = Prisma.OmRequestGetPayload<Record<string, never>>;
-export type CreationFilter = { targetType?: string | { in: string[] }; targetId?: string; requestId?: string; route: string; method: string; action: string };
+export type CreationFilter = { targetType?: string | { in: string[] }; targetId?: string; requestId?: string; route: string; method: string; action: string | { in: string[] } };
 export interface OmAssignmentTransaction {
   getRequest(id: string): Promise<AssignmentRequest | null>;
   getOperation(operationId: string): Promise<AssignmentOperation | null>;
@@ -44,6 +45,40 @@ function expectedSessionCount(sessions: Prisma.JsonValue, totalSessions: number)
     throw new OmAssignmentConflict("요청의 총 회차 수와 날짜가 입력된 일정 수가 일치하지 않습니다. 요청 일정을 확인해 주세요.");
   }
   return totalSessions;
+}
+
+/**
+ * Request edits (PATCH /api/om-request/[id]) create and soft-delete rounds in the same audited
+ * batch that updates this request. Replay only those explicit operation_sessions create/delete
+ * rows. Union-then-remove is order independent because the edit never restores a round; a round
+ * restored elsewhere stays removed and the count check blocks it instead of guessing.
+ * An approved repair already records the complete set at its time, so only edits after it apply.
+ */
+async function readEditedRounds(tx: OmAssignmentTransaction, requestId: string, repairedAt: Date | null) {
+  const updates = await tx.listCreations({ targetType: "om_requests", targetId: requestId, route: EDIT_ROUTE, method: "PATCH", action: "update" });
+  const created: string[] = [];
+  const deleted = new Set<string>();
+  for (const batchId of new Set(updates.map((entry) => entry.requestId))) {
+    if (repairedAt) {
+      const editedAt = updates.find((entry) => entry.requestId === batchId)!.occurredAt;
+      if (!(editedAt instanceof Date) || Number.isNaN(editedAt.getTime())) throw new OmAssignmentConflict("요청 수정 기록의 시각을 확인할 수 없습니다. 연결을 확인해 주세요.");
+      if (editedAt <= repairedAt) continue;
+    }
+    const batch = await tx.listCreations({
+      requestId: batchId, route: EDIT_ROUTE, method: "PATCH", action: { in: ["create", "update", "delete"] }, targetType: { in: ["om_requests", "operation_sessions"] }
+    });
+    // One edit batch belongs to exactly this request; any other request in it is not a link.
+    if (!UUID.test(batchId) || batch.some((entry) => entry.requestId !== batchId || entry.route !== EDIT_ROUTE || entry.method !== "PATCH" || !UUID.test(entry.targetId) ||
+      (entry.targetType === "om_requests" ? entry.targetId !== requestId || entry.action !== "update" : entry.targetType !== "operation_sessions"))) {
+      throw new OmAssignmentConflict("요청 수정 기록에 다른 요청이 섞여 있거나 올바르지 않습니다. 연결을 확인해 주세요.");
+    }
+    for (const entry of batch) {
+      if (entry.targetType !== "operation_sessions") continue;
+      if (entry.action === "create") created.push(entry.targetId);
+      if (entry.action === "delete") deleted.add(entry.targetId);
+    }
+  }
+  return { created, deleted };
 }
 
 /** Only creation metadata joins rounds. Audit values may be redacted and are never read. */
@@ -79,11 +114,17 @@ export async function readAssignmentState(tx: OmAssignmentTransaction, existing:
     throw new OmAssignmentConflict("회차 생성 근거가 서로 겹치거나 올바르지 않습니다. 연결을 확인해 주세요.");
   }
   let operationIds = batch.filter((entry) => entry.targetType === "operation_sessions").map((entry) => entry.targetId);
+  const repairedAt = route === REPAIR_LINK_ROUTE ? requestCreations[0].occurredAt : null;
+  if (repairedAt && (!(repairedAt instanceof Date) || Number.isNaN(repairedAt.getTime()))) {
+    throw new OmAssignmentConflict("복구 연결 기록의 시각을 확인할 수 없습니다. 연결을 확인해 주세요.");
+  }
+  const edits = await readEditedRounds(tx, request.id, repairedAt);
   // Early Mongo cutover requests can have the request creation audit while the
   // linked operation creation audit is absent. For an exact one-session request,
   // the persisted representative link is the complete set and is safe to use.
   // Never infer siblings for multi-session or partially audited requests.
-  if (route === CREATE_ROUTE && operationIds.length === 0 && count === 1) operationIds = [representative.id];
+  if (route === CREATE_ROUTE && operationIds.length === 0 && count === 1 && !edits.created.length && !edits.deleted.size) operationIds = [representative.id];
+  operationIds = [...operationIds, ...edits.created].filter((id) => !edits.deleted.has(id));
   if (operationIds.length !== count || new Set(operationIds).size !== count || !operationIds.includes(representative.id)) {
     throw new OmAssignmentConflict("요청한 회차 수와 확인된 연결 회차 수가 다릅니다. 누락된 연결을 확인해 주세요.");
   }

@@ -7,6 +7,7 @@ import { getOmRequestNotifier } from "./omRequest/omRequestRepositoryFactory";
 import type { OmAssignmentCalendar, OmAssignmentNotifier } from "./omRequest/omAssignmentEffects";
 import type { OmCustomToolsRepository, OmRequestNotifier } from "./omRequest/omRequestRepository";
 import { requireMongoShadowComposition, type MongoCompositionEnvironment } from "./mongoShadowComposition";
+import { clearOperationListCache } from "./operationListCache";
 
 interface Client { connect(): Promise<unknown>; close(): Promise<void> }
 interface Runtime { run<T>(work: () => Promise<T>): Promise<T> }
@@ -28,7 +29,11 @@ function safeCode(error: unknown): string {
   const message = error instanceof Error ? error.message : "";
   return /^[A-Z][A-Z0-9_]{2,80}$/.test(message) ? message : "UNKNOWN";
 }
+/** 업무요청 쓰기는 운영 회차를 만들거나 바꿀 수 있어, 끝나면(실패 포함) 운영 목록 캐시를 비운다. */
 export async function runOmRequestWriteRequest<T>(work: () => Promise<T>, environment: MongoCompositionEnvironment = process.env, dependencies: OmRequestWriteCompositionDependencies = defaults): Promise<T> {
+  try { return await runOmRequestWrite(work, environment, dependencies); } finally { clearOperationListCache(); }
+}
+async function runOmRequestWrite<T>(work: () => Promise<T>, environment: MongoCompositionEnvironment, dependencies: OmRequestWriteCompositionDependencies): Promise<T> {
   const backend = environment.OM_REQUEST_WRITE_BACKEND?.trim() || "postgres";
   if (backend === "postgres") return work();
   if (backend !== "mongodb-shadow") throw new Error("OM_REQUEST_WRITE_COMPOSITION_FAILED");

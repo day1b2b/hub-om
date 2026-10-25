@@ -85,6 +85,9 @@ export function OperationDetail({
   const nextRoundNo = String(Math.max(0, ...existingRoundNumbers) + 1);
   const fallbackOperationId =
     courseOperations.find((candidate) => candidate.operationId !== operation.operationId)?.operationId ?? null;
+  // "1회차는 삭제 불가" 보호는 과정당 1회차가 유일할 때만 건다 — 중복 생성된 경우(예: om-request
+  // 중복 접수 후 잔존) 둘 다 보호되면 화면에서 중복을 정리할 방법이 없어진다. API도 동일하게 확인한다.
+  const firstRoundSiblingCount = courseOperations.filter((candidate) => candidate.roundNo.trim() === "1").length;
   // 과정명(과정ID 단위)은 코스ID명(코스ID 단위)보다 좁다 — 같은 코스ID라도 커리큘럼이 다르면
   // 과정명은 따로 가야 하므로 이 과정(courseOperations)의 회차에만 반영한다.
   const courseOperationIds = courseOperations.map((candidate) => candidate.operationId);
@@ -132,12 +135,14 @@ export function OperationDetail({
                   fields={[{ name: "courseId", placeholder: "예: 261326", value: operation.courseId }]}
                   label="코스ID"
                   operationId={operation.operationId}
+                  operationIds={courseOperationIds}
                 />
                 <EditableInfoItem
                   displayValue={operation.courseIdLabel || "미정"}
                   fields={[{ name: "courseIdLabel", placeholder: "예: 2026 AI 역량강화", value: operation.courseIdLabel }]}
                   label="코스ID명"
                   operationId={operation.operationId}
+                  operationIds={courseOperationIds}
                 />
               </div>
             </section>
@@ -160,6 +165,7 @@ export function OperationDetail({
                   ]}
                   label="교육형태"
                   operationId={operation.operationId}
+                  operationIds={courseOperationIds}
                 />
                 <EditableInfoItem
                   displayValue={operation.courseCategory || "미정"}
@@ -173,11 +179,13 @@ export function OperationDetail({
                   ]}
                   label="과정 카테고리 소분류"
                   operationId={operation.operationId}
+                  operationIds={courseOperationIds}
                 />
                 <EditableToolsItem
                   displayValue={operation.tools || "미정"}
                   extraTools={extraTools}
                   operationId={operation.operationId}
+                  operationIds={courseOperationIds}
                   value={operation.tools}
                 />
                 <ResultReportConditionSelect
@@ -214,6 +222,7 @@ export function OperationDetail({
                   fields={[{ name: "ld", options: personOptions.ld, type: "name-select", value: operation.ld }]}
                   label="LD"
                   operationId={operation.operationId}
+                  operationIds={courseOperationIds}
                 />
                 <OnsiteRequiredConditionSelect
                   rounds={courseOperations.map((candidate) => ({
@@ -401,7 +410,7 @@ export function OperationDetail({
                         <DeleteRoundButton
                           fallbackOperationId={fallbackOperationId}
                           isCurrent={courseOperation.operationId === operation.operationId}
-                          isFirstRound={courseOperation.roundNo.trim() === "1"}
+                          isFirstRound={courseOperation.roundNo.trim() === "1" && firstRoundSiblingCount <= 1}
                           isLastRound={courseOperations.length === 1}
                           operationId={courseOperation.operationId}
                           roundLabel={roundLabel(courseOperation, index)}

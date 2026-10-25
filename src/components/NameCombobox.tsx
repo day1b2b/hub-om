@@ -12,8 +12,11 @@ function useCloseOnOutsideClick(open: boolean, onClose: () => void) {
     function handleClick(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) onClose();
     }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+    // capture 단계에서 검사해야 한다: 다중 선택 시 옵션을 고르면 그 옵션이 바로 목록에서
+    // 빠지면서 클릭한 버튼이 DOM에서 사라지는데, bubble 단계까지 기다리면 그 시점엔 이미
+    // 버튼이 떨어져 나가 있어 containment 체크가 항상 "바깥 클릭"으로 오판한다.
+    document.addEventListener("mousedown", handleClick, true);
+    return () => document.removeEventListener("mousedown", handleClick, true);
   }, [open, onClose]);
   return ref;
 }
@@ -35,7 +38,10 @@ export function NameCombobox({
   multiple?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [resetKey, setResetKey] = useState({ open, q: "" });
   const containerRef = useCloseOnOutsideClick(open, () => setOpen(false));
+  const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   // multiple일 때는 마지막 콤마 이전 이름들은 이미 선택 완료된 것으로 보고, 마지막 조각만 검색어로 쓴다.
   const segments = nameComboboxSegments(value, multiple);
@@ -45,6 +51,18 @@ export function NameCombobox({
     if (committedNames.some((name) => name.toLowerCase() === o.toLowerCase())) return false;
     return q ? o.toLowerCase().includes(q) : true;
   });
+  const visibleMatches = matches.slice(0, 20);
+
+  // 검색어가 바뀌거나 드롭다운을 다시 열면 이전 활성 항목 인덱스는 의미가 없어지므로 되돌린다.
+  // (렌더 중 setState로 처리 - useEffect로 하면 매 렌더마다 한 번 더 렌더를 유발한다)
+  if (resetKey.open !== open || resetKey.q !== q) {
+    setResetKey({ open, q });
+    setActiveIndex(0);
+  }
+
+  useEffect(() => {
+    optionRefs.current[activeIndex]?.scrollIntoView({ block: "nearest" });
+  }, [activeIndex]);
 
   const allNames = segments
     .map((s) => s.trim())
@@ -57,10 +75,25 @@ export function NameCombobox({
   function selectOption(option: string) {
     if (multiple) {
       onChange([...committedNames, option].join(", ") + ", ");
+      setOpen(false);
       return;
     }
     onChange(option);
     setOpen(false);
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!open || visibleMatches.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((i) => (i + 1) % visibleMatches.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((i) => (i - 1 + visibleMatches.length) % visibleMatches.length);
+    } else if (e.key === "Enter" && visibleMatches[activeIndex]) {
+      e.preventDefault();
+      selectOption(visibleMatches[activeIndex]);
+    }
   }
 
   return (
@@ -68,17 +101,24 @@ export function NameCombobox({
       <input
         onChange={(e) => { onChange(e.target.value); setOpen(true); }}
         onFocus={() => setOpen(true)}
+        onKeyDown={handleKeyDown}
         placeholder={placeholder}
         type="text"
         value={value}
       />
-      {open && matches.length > 0 && (
+      {open && visibleMatches.length > 0 && (
         <div className="name-combobox-dropdown">
-          {matches.slice(0, 20).map((option) => (
+          {visibleMatches.map((option, index) => (
             <button
-              className="name-combobox-dropdown-option"
+              className={
+                index === activeIndex
+                  ? "name-combobox-dropdown-option name-combobox-dropdown-option--active"
+                  : "name-combobox-dropdown-option"
+              }
               key={option}
               onMouseDown={(e) => { e.preventDefault(); selectOption(option); }}
+              onMouseEnter={() => setActiveIndex(index)}
+              ref={(el) => { optionRefs.current[index] = el; }}
               type="button"
             >
               {option}

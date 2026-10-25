@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 
 interface Position {
   left: number;
+  maxHeight: number;
   top: number;
 }
 
@@ -18,6 +19,8 @@ interface SessionFieldPopoverProps {
  * 회차 테이블 셀 바로 아래에 붙는 작은 편집 패널. document.body에 portal로 그린다 -
  * 회차 테이블(.session-table-wrap)이 overflow-x: auto라, 셀 안에 그대로 두면 아래로
  * 펼쳐지는 내용이 잘려 보이지 않기 때문이다(SearchableSelect 드롭다운과 같은 이유).
+ * top을 뷰포트 아래쪽에 닿지 않게 고정하고 maxHeight를 함께 넘겨, 내용(달력 등)이
+ * 길어도 패널 자체가 스크롤되어 저장/취소 버튼까지 항상 닿을 수 있게 한다.
  */
 export function SessionFieldPopover({ anchorRef, children, onClose }: SessionFieldPopoverProps) {
   const [position, setPosition] = useState<Position | null>(null);
@@ -27,7 +30,11 @@ export function SessionFieldPopover({ anchorRef, children, onClose }: SessionFie
     function updatePosition() {
       const rect = anchorRef.current?.getBoundingClientRect();
       if (!rect) return;
-      setPosition({ left: rect.left, top: rect.bottom + 4 });
+      const margin = 8;
+      const minHeight = 280;
+      const maxTop = Math.max(margin, window.innerHeight - margin - minHeight);
+      const top = Math.min(rect.bottom + 4, maxTop);
+      setPosition({ left: rect.left, maxHeight: window.innerHeight - top - margin, top });
     }
 
     updatePosition();
@@ -48,10 +55,13 @@ export function SessionFieldPopover({ anchorRef, children, onClose }: SessionFie
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") onClose();
     }
-    document.addEventListener("mousedown", handleOutsideClick);
+    // capture 단계에서 검사해야 한다: NameCombobox 다중 선택에서 옵션을 고르면 그 옵션이
+    // 바로 목록에서 빠지면서 클릭한 버튼이 DOM에서 사라지는데, bubble 단계까지 기다리면
+    // 그 시점엔 이미 버튼이 떨어져 나가 있어 containment 체크가 항상 "바깥 클릭"으로 오판한다.
+    document.addEventListener("mousedown", handleOutsideClick, true);
     document.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("mousedown", handleOutsideClick, true);
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [anchorRef, onClose]);
@@ -59,7 +69,11 @@ export function SessionFieldPopover({ anchorRef, children, onClose }: SessionFie
   if (!position) return null;
 
   return createPortal(
-    <div className="session-field-popover" ref={panelRef} style={{ left: position.left, top: position.top }}>
+    <div
+      className="session-field-popover"
+      ref={panelRef}
+      style={{ left: position.left, maxHeight: position.maxHeight, top: position.top }}
+    >
       {children}
     </div>,
     document.body

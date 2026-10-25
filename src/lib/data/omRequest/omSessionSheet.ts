@@ -6,7 +6,7 @@ export const SESSION_SHEET_HEADERS = ["회차", "시작일", "종료일", "시�
 export const SESSION_SHEET_FILE_NAME = "OM업무요청_교육일정_샘플.xlsx";
 
 const TEXT_FORMAT = "@";
-const TEMPLATE_ROW_COUNT = 10;
+const TEMPLATE_ROW_COUNT = 100;
 const TIME_PATTERN = /^([01]\d|2[0-3]):(00|30)$/;
 
 const EXAMPLE_ROW = ["1", "2026-08-12", "2026-08-13", "09:00", "18:00", "서울 강남구 ○○빌딩 3층", ""];

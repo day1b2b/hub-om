@@ -5339,8 +5339,15 @@ td span {
   display: flex;
   flex-direction: column;
   max-width: min(360px, calc(100vw - 24px));
+  overflow-y: auto;
   position: fixed;
   z-index: 1000;
+}
+
+.session-field-popover .lecture-note-footer {
+  background: var(--surface);
+  bottom: 0;
+  position: sticky;
 }
 
 .session-field-popover-body {
@@ -11172,6 +11179,24 @@ button.coach-doc-reserve-chip:disabled {
   flex-shrink: 0;
 }
 
+.sync-upload {
+  border-top: 1px dashed var(--line);
+  margin-top: 12px;
+  padding-top: 12px;
+  font-size: 0.88rem;
+}
+
+.sync-upload p {
+  margin: 0 0 8px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.sync-upload .sync-upload-selected {
+  margin: 8px 0 0;
+  color: var(--text);
+}
+
 .sync-external-link {
   color: var(--blue);
   font-size: 0.85rem;
@@ -11340,6 +11365,30 @@ button.coach-doc-reserve-chip:disabled {
   padding-left: 18px;
   color: var(--muted);
   line-height: 1.6;
+}
+
+.sync-change-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.sync-change-filter {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.8rem;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+
+.sync-change-filter.active {
+  border-color: var(--purple);
+  background: var(--purple-bg);
+  color: var(--purple);
+  font-weight: 700;
 }
 
 .sync-changes {
@@ -11644,7 +11693,8 @@ button.coach-doc-reserve-chip:disabled {
   width: 100%;
 }
 
-.om-company-dropdown-option:hover {
+.om-company-dropdown-option:hover,
+.om-company-dropdown-option--active {
   background: var(--surface-strong);
 }
 
@@ -11684,7 +11734,8 @@ button.coach-doc-reserve-chip:disabled {
   width: 100%;
 }
 
-.name-combobox-dropdown-option:hover {
+.name-combobox-dropdown-option:hover,
+.name-combobox-dropdown-option--active {
   background: var(--surface-strong);
 }
 
@@ -11781,6 +11832,44 @@ button.coach-doc-reserve-chip:disabled {
 
 .duration-input {
   text-align: center;
+}
+
+/* 수정 화면: 회차마다 삭제 버튼 칸을 더한다. */
+.om-sessions-table-editable .om-sessions-header,
+.om-sessions-table-editable .om-sessions-row {
+  grid-template-columns: 52px 220px 108px 108px 44px 1fr 52px;
+}
+
+.om-sessions-table-editable .om-sessions-row > .location-input-wrapper {
+  justify-self: stretch;
+}
+
+.om-sessions-table-editable .om-sessions-row > .location-input-wrapper input[type="text"] {
+  text-align: left;
+}
+
+.om-sessions-table-editable .om-sessions-row > .session-remove-btn {
+  justify-self: center;
+}
+
+.session-remove-btn {
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 8px;
+}
+
+.session-remove-btn:hover:not(:disabled) {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.session-remove-btn:disabled {
+  cursor: default;
+  opacity: 0.4;
 }
 
 .om-sessions-row input:focus {
@@ -13795,19 +13884,20 @@ button.coach-doc-reserve-chip:disabled {
   max-width: 460px;
 }
 
-.round-reorder-changes {
-  display: grid;
-  gap: 6px;
-  list-style: none;
+.round-reorder-summary {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 13px;
+  font-weight: 700;
+  justify-content: center;
   margin: 0;
-  padding: 0;
+  min-height: 52px;
+  padding: 0 18px;
 }
 
-.round-reorder-changes li {
-  background: #fbfcfe;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  padding: 8px 10px;
+.round-reorder-footer {
+  justify-content: center;
 }
 
 
@@ -13961,12 +14051,6 @@ button.coach-doc-reserve-chip:disabled {
   padding: 0;
 }
 
-.round-reorder-note {
-  color: var(--muted);
-  font-size: 12px;
-  margin: 12px 0 0;
-}
-
 .round-reorder-error {
   color: var(--red);
   font-size: 13px;
@@ -14037,3 +14121,30 @@ button.coach-doc-reserve-chip:disabled {
 .course-common-note-editor .issue-editor-grid { margin: 0; }
 .course-common-note-editor .issue-editor-field textarea { min-height: 112px; resize: vertical; }
 .course-common-note-editor .issue-editor-footer { margin-top: 0; }
+
+.page-loading {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  justify-content: center;
+  min-height: 60vh;
+  padding: 48px 24px;
+  width: 100%;
+}
+
+.page-loading-spinner {
+  animation: drive-spin 0.8s linear infinite;
+  border: 3px solid var(--line);
+  border-radius: 999px;
+  border-top-color: var(--blue);
+  display: inline-block;
+  flex: 0 0 auto;
+  height: 32px;
+  width: 32px;
+}
+
+.page-loading-label {
+  font-size: 13px;
+}

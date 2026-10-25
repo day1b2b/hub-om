@@ -20,6 +20,7 @@ async function activityGET(request: Request) {
 
     return NextResponse.json(await planCalendarReverseSync());
   } catch (error) {
+    console.error("[gcal-reverse] CALENDAR_REVERSE_ROUTE_FAILED GET");
     return NextResponse.json(
       { ok: false, error: calendarErrorMessage(error) },
       { status: 500 }
@@ -33,6 +34,7 @@ async function activityPOST(request: Request) {
 
     return NextResponse.json(await applyCalendarReverseSync());
   } catch (error) {
+    console.error("[gcal-reverse] CALENDAR_REVERSE_ROUTE_FAILED POST");
     return NextResponse.json(
       { ok: false, error: calendarErrorMessage(error) },
       { status: 500 }

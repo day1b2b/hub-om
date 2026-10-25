@@ -100,7 +100,8 @@ export class MongoOmAssignmentRepository implements OmAssignmentRepository {
       async getOperations(ids) { check(); return (await store.scan("OperationSession", { _id: { $in: ids } }, session)).map(selected); },
       async listCreations(filter) {
         check();
-        const query = { ...filter, ...(typeof filter.targetType === "object" ? { targetType: { $in: filter.targetType.in } } : {}) };
+        const query = { ...filter, ...(typeof filter.targetType === "object" ? { targetType: { $in: filter.targetType.in } } : {}),
+          ...(typeof filter.action === "object" ? { action: { $in: filter.action.in } } : {}) };
         // Exact creation metadata only: encrypted changes and actor fields never
         // participate in linking or require decryption for this lookup.
         const rows: Creation[] = []; let bytes = 0, lastId: string | undefined;
@@ -112,7 +113,7 @@ export class MongoOmAssignmentRepository implements OmAssignmentRepository {
           // Match the shared store's single-batch keyset strategy. The driver
           // cannot issue getMore under transaction CSOT with its maxTimeMS.
           const cursor = store.collection("ActivityChange").find(lastId === undefined ? query : { $and: [query, { _id: { $gt: lastId } }] }, {
-            session, projection: { _id: 1, requestId: 1, route: 1, method: 1, targetType: 1, targetId: 1, action: 1 },
+            session, projection: { _id: 1, requestId: 1, route: 1, method: 1, targetType: 1, targetId: 1, action: 1, occurredAt: 1 },
             singleBatch: true, batchSize: 100, maxTimeMS: remaining, collation: { locale: "simple" }
           }).sort({ _id: 1 }).limit(100);
           let count = 0;
@@ -121,7 +122,7 @@ export class MongoOmAssignmentRepository implements OmAssignmentRepository {
               check(); count++; lastId = row._id; bytes += BSON.calculateObjectSize(row);
               assertMongo(rows.length < MONGO_SCAN_ROWS && bytes <= MONGO_SCAN_BYTES, "OM_ASSIGNMENT_SCAN_LIMIT");
               rows.push({ requestId: row.requestId, route: row.route, method: row.method,
-                targetType: row.targetType, targetId: row.targetId, action: row.action } as Creation);
+                targetType: row.targetType, targetId: row.targetId, action: row.action, occurredAt: row.occurredAt } as Creation);
             }
           } finally { await cursor.close(); }
           assertMongo(performance.now() <= scanDeadline, "OM_ASSIGNMENT_SCAN_TIMEOUT");
