@@ -30,7 +30,9 @@ mock.module("./prisma", { namedExports: { getPrismaClient: () => { throw new Err
 let googleReads = 0;
 mock.module("../coaches/googleServiceAccount", { namedExports: {
   readGoogleSpreadsheetRows: async () => { googleReads++; throw new Error("External Google source forbidden"); },
-  readGoogleSheetValues: async () => { googleReads++; throw new Error("External Google source forbidden"); }
+  readGoogleSheetValues: async () => { googleReads++; throw new Error("External Google source forbidden"); },
+  readGoogleServiceAccountConfig: () => ({ serviceAccountEmail: "", privateKey: "" }),
+  GoogleSheetReadError: class extends Error {}
 } });
 const hook = registerHooks({ resolve(specifier, context, nextResolve) { return nextResolve(specifier === "next/server" || specifier === "next/navigation" ? `${specifier}.js` : specifier, context); } });
 const tokenRoute = await import("../../app/api/coach/me/route");

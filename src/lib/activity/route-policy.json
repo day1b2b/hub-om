@@ -106,6 +106,7 @@
   "POST /api/sync/calendar-events": "tracked",
   "GET /api/sync/engagements": "tracked",
   "POST /api/sync/engagements": "tracked",
+  "POST /api/sync/engagements/upload": "tracked",
   "GET /api/sync/samsung-schedule": "tracked",
   "POST /api/sync/samsung-schedule": "tracked",
   "GET /api/team-users/lookup": "tracked",
