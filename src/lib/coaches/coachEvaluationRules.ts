@@ -185,3 +185,40 @@ export function canEditCoachEvaluation(viewer: CoachEvaluationViewer, evaluatorE
 export function isEngagementEvaluable(endDate: string, today: string): boolean {
   return endDate <= today;
 }
+
+// --- 사실 기록 (정책 "평가·등급" 1·2절: 지각·무단 불참·공식 불만 등은 점수와 따로 남긴다) ---
+
+export type CoachFactKindValue = "LATE" | "NO_SHOW" | "FORMAL_COMPLAINT" | "LEFT_POST" | "PREP_MISSING" | "SERIOUS_VIOLATION";
+export const COACH_FACT_KINDS: ReadonlyArray<{ value: CoachFactKindValue; label: string }> = [
+  { value: "LATE", label: "지각" },
+  { value: "NO_SHOW", label: "무단 불참" },
+  { value: "LEFT_POST", label: "말없이 자리 이탈" },
+  { value: "PREP_MISSING", label: "준비 미흡" },
+  { value: "FORMAL_COMPLAINT", label: "공식 불만(강사·고객사)" },
+  { value: "SERIOUS_VIOLATION", label: "중대 위반" }
+];
+
+export interface CoachFactRecordInput {
+  kind: CoachFactKindValue;
+  occurredOn: string;
+  description: string;
+}
+
+export type CoachFactValidation = { ok: true; value: CoachFactRecordInput } | { ok: false; error: string };
+
+/** 발생일은 그 투입 기간 안이고 오늘 이후가 아니어야 한다. 날짜는 YYYY-MM-DD. */
+export function validateFactRecordInput(body: unknown, engagement: { startDate: string; endDate: string }, today: string): CoachFactValidation {
+  const input = (body && typeof body === "object" ? body : {}) as Record<string, unknown>;
+  const kind = pick(input.kind, COACH_FACT_KINDS.map((option) => option.value));
+  if (!kind) return { ok: false, error: "무슨 일이 있었는지 종류를 골라 주세요." };
+  const occurredOn = typeof input.occurredOn === "string" ? input.occurredOn.trim() : "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(occurredOn) || Number.isNaN(Date.parse(`${occurredOn}T00:00:00Z`))) {
+    return { ok: false, error: "발생일을 골라 주세요." };
+  }
+  if (occurredOn < engagement.startDate || occurredOn > engagement.endDate) return { ok: false, error: "발생일은 이 투입 기간 안이어야 해요." };
+  if (occurredOn > today) return { ok: false, error: "아직 오지 않은 날짜는 기록할 수 없어요." };
+  const description = text(input.description);
+  if (!description) return { ok: false, error: "상황을 적어 주세요(시간·장소·무슨 일이 있었는지)." };
+  if (description.length > COACH_EVALUATION_TEXT_MAX) return { ok: false, error: "내용이 너무 길어요." };
+  return { ok: true, value: { kind, occurredOn, description } };
+}

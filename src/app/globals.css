@@ -4116,7 +4116,7 @@ td span {
   border-radius: 8px;
   display: grid;
   gap: 10px;
-  grid-template-columns: 58px 158px minmax(0, 1fr) 70px 76px;
+  grid-template-columns: 58px 158px minmax(0, 1fr) 70px 132px;
   min-height: 48px;
   padding: 10px 12px;
 }
@@ -4181,6 +4181,81 @@ td span {
   justify-self: end;
   padding: 4px 10px;
   white-space: nowrap;
+}
+
+.coach-evaluation-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-end;
+  justify-self: end;
+}
+
+.coach-evaluation-chip.warn {
+  background: var(--red-bg);
+  border-color: var(--red-bg);
+  color: var(--red);
+}
+
+.coach-evaluation-stack {
+  display: grid;
+  gap: 6px;
+}
+
+.coach-fact-panel header strong {
+  color: #333333;
+  font-size: 14px;
+}
+
+.coach-fact-list {
+  display: grid;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.coach-fact-list li {
+  align-items: baseline;
+  border-top: 1px solid #e3ede6;
+  display: grid;
+  gap: 4px 10px;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+  padding-top: 6px;
+}
+
+.coach-fact-list p {
+  color: #333333;
+  font-size: 13px;
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.coach-fact-list time,
+.coach-fact-list small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.coach-fact-kind {
+  color: var(--red);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.coach-fact-form {
+  display: grid;
+  gap: 10px;
+}
+
+.coach-evaluation-row input[type="date"] {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 14px;
+  padding: 5px 8px;
 }
 
 .coach-evaluation-chip.done {

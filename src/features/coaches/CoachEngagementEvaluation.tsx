@@ -5,6 +5,7 @@ import {
   COACH_AUDIENCES,
   COACH_ENGAGEMENT_ROLES,
   COACH_EVALUATION_DEFAULT_SCORE,
+  COACH_FACT_KINDS,
   COACH_PRACTICE_DIFFICULTIES,
   COACH_REHIRE_INTENTS,
   evidenceRequired,
@@ -13,12 +14,14 @@ import {
   type CoachAudienceValue,
   type CoachEngagementRoleValue,
   type CoachEvaluationScores,
+  type CoachFactKindValue,
   type CoachPracticeDifficultyValue,
   type CoachRehireIntentValue
 } from "@/lib/coaches/coachEvaluationRules";
 
 // =============================================================================
-// 근무 이력 탭의 OM 평가. 평가 원문은 OM·LD·정책 담당자에게만 보인다(서버가 canView로 알려 줌).
+// 근무 이력 탭의 OM 평가·사실 기록. 원문은 OM·LD·정책 담당자에게만 보인다(서버가 canView로 알려 줌).
+// 쓰기는 그 과정의 담당 매니저·정책 담당자만(서버가 writableEngagementIds로 알려 줌).
 // =============================================================================
 
 interface Evaluation {
@@ -42,12 +45,24 @@ interface Detail {
   isNewClient: boolean | null;
 }
 
+interface Fact {
+  id: string;
+  engagementId: string | null;
+  kind: CoachFactKindValue;
+  occurredOn: string;
+  description: string;
+  recordedByName: string | null;
+  recordedByEmail: string;
+  canDelete: boolean;
+}
+
 interface ListResponse {
   ok: boolean;
   canView?: boolean;
   today?: string;
   evaluations?: Evaluation[];
   details?: Detail[];
+  facts?: Fact[];
   /** 이 사람이 평가를 쓸 수 있는 투입(담당 매니저·정책 담당자). */
   writableEngagementIds?: string[];
   error?: string;
@@ -60,6 +75,7 @@ interface EvaluationState {
   today: string;
   byEngagement: Map<string, Evaluation>;
   details: Map<string, Detail>;
+  facts: Map<string, Fact[]>;
   writable: Set<string>;
   openId: string | null;
   setOpenId: (id: string | null) => void;
@@ -107,6 +123,7 @@ export function CoachEvaluationProvider({ coachId, children }: { coachId: string
     today: payload.today ?? "",
     byEngagement: new Map((payload.evaluations ?? []).filter((item) => item.engagementId).map((item) => [item.engagementId as string, item])),
     details: new Map((payload.details ?? []).map((item) => [item.engagementId, item])),
+    facts: groupFacts(payload.facts ?? []),
     writable: new Set(payload.writableEngagementIds ?? []),
     openId,
     setOpenId,
@@ -121,6 +138,15 @@ export function CoachEvaluationProvider({ coachId, children }: { coachId: string
   );
 }
 
+function groupFacts(facts: Fact[]): Map<string, Fact[]> {
+  const grouped = new Map<string, Fact[]>();
+  for (const fact of facts) {
+    if (!fact.engagementId) continue;
+    grouped.set(fact.engagementId, [...(grouped.get(fact.engagementId) ?? []), fact]);
+  }
+  return grouped;
+}
+
 function useEvaluations() {
   const value = useContext(EvaluationContext);
   if (!value) throw new Error("CoachEvaluationProvider is required");
@@ -129,52 +155,154 @@ function useEvaluations() {
 
 export interface EvaluableEngagement {
   id: string;
+  startDate: string;
   endDate: string;
   cancelled: boolean;
 }
 
-/** 행 오른쪽 버튼. 평가가 있으면 평균, 없고 끝난 투입이며 담당 매니저면 [평가하기]. */
+/** 평가는 끝난 투입, 사실 기록은 시작한 투입에 쓴다. 취소된 투입은 둘 다 안 쓴다. */
+function engagementState(engagement: EvaluableEngagement, today: string, writable: Set<string>) {
+  const canWrite = writable.has(engagement.id) && !engagement.cancelled && !!today;
+  return {
+    canEvaluate: canWrite && engagement.endDate <= today,
+    canRecordFact: canWrite && engagement.startDate <= today
+  };
+}
+
+/** 행 오른쪽 버튼. 평가가 있으면 평균, 없으면 담당 매니저에게 [평가하기]. 사실 기록이 있으면 건수. */
 export function EngagementEvaluationButton({ engagement }: { engagement: EvaluableEngagement }) {
-  const { status, canView, today, byEngagement, writable, openId, setOpenId } = useEvaluations();
+  const { status, canView, today, byEngagement, facts, writable, openId, setOpenId } = useEvaluations();
   if (status !== "ready" || !canView) return null;
   const evaluation = byEngagement.get(engagement.id);
+  const factCount = facts.get(engagement.id)?.length ?? 0;
+  const { canEvaluate, canRecordFact } = engagementState(engagement, today, writable);
   const open = openId === engagement.id;
   const toggle = () => setOpenId(open ? null : engagement.id);
+  const average = evaluation ? storedEvaluationAverage(evaluation.scores) : null;
 
-  if (evaluation) {
-    const average = storedEvaluationAverage(evaluation.scores);
-    return (
-      <button aria-expanded={open} className="coach-evaluation-chip done" onClick={toggle} type="button">
-        평가 {average !== null ? average.toFixed(1) : "-"}
-      </button>
-    );
-  }
-  if (!writable.has(engagement.id) || engagement.cancelled || !today || engagement.endDate > today) return null;
+  const chips: ReactNode[] = [];
+  if (evaluation) chips.push(<button aria-expanded={open} className="coach-evaluation-chip done" key="evaluation" onClick={toggle} type="button">평가 {average !== null ? average.toFixed(1) : "-"}</button>);
+  else if (canEvaluate) chips.push(<button aria-expanded={open} className="coach-evaluation-chip" key="evaluation" onClick={toggle} type="button">평가하기</button>);
+  if (factCount > 0) chips.push(<button aria-expanded={open} className="coach-evaluation-chip warn" key="fact" onClick={toggle} type="button">기록 {factCount}</button>);
+  else if (canRecordFact && !canEvaluate && !evaluation) chips.push(<button aria-expanded={open} className="coach-evaluation-chip" key="fact" onClick={toggle} type="button">기록</button>);
+  return chips.length > 0 ? <span className="coach-evaluation-chips">{chips}</span> : null;
+}
+
+/** 행 아래에 펼쳐지는 평가 보기·입력과 사실 기록. */
+export function EngagementEvaluationPanel({ engagement }: { engagement: EvaluableEngagement }) {
+  const { openId, byEngagement, details, facts, today, writable } = useEvaluations();
+  const [editing, setEditing] = useState(false);
+  if (openId !== engagement.id) return null;
+  const evaluation = byEngagement.get(engagement.id);
+  const detail = details.get(engagement.id) ?? null;
+  const { canEvaluate, canRecordFact } = engagementState(engagement, today, writable);
+
   return (
-    <button aria-expanded={open} className="coach-evaluation-chip" onClick={toggle} type="button">
-      평가하기
-    </button>
+    <div className="coach-evaluation-stack">
+      {evaluation && !editing ? (
+        <EvaluationView detail={detail} evaluation={evaluation} onEdit={() => setEditing(true)} />
+      ) : evaluation || canEvaluate ? (
+        <EvaluationForm detail={detail} engagementId={engagement.id} evaluation={evaluation ?? null} onDone={() => setEditing(false)} />
+      ) : null}
+      <FactSection canAdd={canRecordFact} engagement={engagement} facts={facts.get(engagement.id) ?? []} today={today} />
+    </div>
   );
 }
 
-/** 행 아래에 펼쳐지는 평가 보기·입력. */
-export function EngagementEvaluationPanel({ engagementId }: { engagementId: string }) {
-  const { openId, byEngagement, details } = useEvaluations();
-  const [editing, setEditing] = useState(false);
-  if (openId !== engagementId) return null;
-  const evaluation = byEngagement.get(engagementId);
-  const detail = details.get(engagementId) ?? null;
+function FactSection({ engagement, facts, canAdd, today }: { engagement: EvaluableEngagement; facts: Fact[]; canAdd: boolean; today: string }) {
+  const { coachId, reload } = useEvaluations();
+  const lastDay = engagement.endDate < today ? engagement.endDate : today;
+  const [adding, setAdding] = useState(false);
+  const [kind, setKind] = useState<CoachFactKindValue | "">("");
+  const [occurredOn, setOccurredOn] = useState(lastDay);
+  const [description, setDescription] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (facts.length === 0 && !canAdd) return null;
 
-  if (evaluation && !editing) {
-    return <EvaluationView detail={detail} evaluation={evaluation} onEdit={() => setEditing(true)} />;
+  async function request(url: string, init: RequestInit) {
+    setSaving(true);
+    setError(null);
+    const response = await fetch(url, init).catch(() => null);
+    const body = (await response?.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+    setSaving(false);
+    if (!response?.ok || !body?.ok) {
+      setError(body?.error ?? "저장하지 못했어요. 다시 시도해 주세요.");
+      return false;
+    }
+    await reload();
+    return true;
   }
+
+  async function add() {
+    const done = await request(`/api/coaches/${coachId}/facts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ engagementId: engagement.id, kind, occurredOn, description })
+    });
+    if (done) {
+      setAdding(false);
+      setKind("");
+      setDescription("");
+    }
+  }
+
+  async function remove(fact: Fact) {
+    if (!window.confirm("이 사실 기록을 지울까요?")) return;
+    await request(`/api/coaches/${coachId}/facts/${fact.id}`, { method: "DELETE" });
+  }
+
   return (
-    <EvaluationForm
-      detail={detail}
-      engagementId={engagementId}
-      evaluation={evaluation ?? null}
-      onDone={() => setEditing(false)}
-    />
+    <section className="coach-evaluation-panel coach-fact-panel">
+      <header className="coach-evaluation-footer">
+        <strong>사실 기록</strong>
+        {canAdd && !adding ? <button className="coach-evaluation-button" onClick={() => setAdding(true)} type="button">기록 추가</button> : null}
+      </header>
+      {facts.length > 0 ? (
+        <ul className="coach-fact-list">
+          {facts.map((fact) => (
+            <li key={fact.id}>
+              <span className="coach-fact-kind">{labelOf(COACH_FACT_KINDS, fact.kind)}</span>
+              <time>{fact.occurredOn}</time>
+              <p>{fact.description}</p>
+              <small>{fact.recordedByName ?? fact.recordedByEmail}</small>
+              {fact.canDelete ? <button className="coach-evaluation-button danger" disabled={saving} onClick={() => void remove(fact)} type="button">지우기</button> : null}
+            </li>
+          ))}
+        </ul>
+      ) : !adding ? (
+        <p className="coach-evaluation-hint">지각·무단 불참·공식 불만 같은 일이 있었을 때 바로 남겨 주세요. 점수와 따로 관리해요.</p>
+      ) : null}
+      {adding ? (
+        <div className="coach-fact-form">
+          <div className="coach-evaluation-row">
+            <label>
+              종류
+              <select onChange={(event) => setKind(event.target.value as CoachFactKindValue | "")} value={kind}>
+                <option value="">골라 주세요</option>
+                {COACH_FACT_KINDS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </label>
+            <label>
+              발생일
+              <input max={lastDay} min={engagement.startDate} onChange={(event) => setOccurredOn(event.target.value)} type="date" value={occurredOn} />
+            </label>
+          </div>
+          <label className="coach-evaluation-text">
+            상황 <b>(필수)</b>
+            <textarea maxLength={2000} onChange={(event) => setDescription(event.target.value)} placeholder="시간·장소·무슨 일이 있었는지 사실만 적어 주세요." rows={3} value={description} />
+          </label>
+          <footer className="coach-evaluation-footer">
+            <small>사실 기록은 OM·LD만 볼 수 있어요.</small>
+            <span className="coach-evaluation-actions">
+              <button className="coach-evaluation-button" disabled={saving} onClick={() => setAdding(false)} type="button">취소</button>
+              <button className="coach-evaluation-button primary" disabled={saving} onClick={() => void add()} type="button">{saving ? "저장 중…" : "저장"}</button>
+            </span>
+          </footer>
+        </div>
+      ) : null}
+      {error ? <p className="coach-evaluation-error" role="alert">{error}</p> : null}
+    </section>
   );
 }
 

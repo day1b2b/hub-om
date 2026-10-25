@@ -92,3 +92,16 @@ test("평가는 끝난 투입(종료일 당일 포함)에만 쓴다", () => {
   assert.equal(isEngagementEvaluable("2026-10-25", "2026-10-25"), true);
   assert.equal(isEngagementEvaluable("2026-10-26", "2026-10-25"), false);
 });
+
+test("사실 기록은 종류·투입 기간 안 발생일·상황이 필요하다", async () => {
+  const { validateFactRecordInput } = await import("./coachEvaluationRules");
+  const range = { startDate: "2026-10-01", endDate: "2026-10-03" };
+  const ok = validateFactRecordInput({ kind: "LATE", occurredOn: "2026-10-02", description: " 9시 30분 도착 " }, range, "2026-10-25");
+  assert.deepEqual(ok, { ok: true, value: { kind: "LATE", occurredOn: "2026-10-02", description: "9시 30분 도착" } });
+  assert.equal(validateFactRecordInput({ kind: "LATE?", occurredOn: "2026-10-02", description: "x" }, range, "2026-10-25").ok, false);
+  assert.equal(validateFactRecordInput({ kind: "LATE", occurredOn: "2026-09-30", description: "x" }, range, "2026-10-25").ok, false);
+  assert.equal(validateFactRecordInput({ kind: "LATE", occurredOn: "2026-10-04", description: "x" }, range, "2026-10-25").ok, false);
+  assert.equal(validateFactRecordInput({ kind: "LATE", occurredOn: "2026-10-02", description: "x" }, range, "2026-10-01").ok, false);
+  assert.equal(validateFactRecordInput({ kind: "NO_SHOW", occurredOn: "2026-10-02", description: "  " }, range, "2026-10-25").ok, false);
+  assert.equal(validateFactRecordInput({ kind: "NO_SHOW", occurredOn: "2026-13-02", description: "x" }, range, "2026-10-25").ok, false);
+});

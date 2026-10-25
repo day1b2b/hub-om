@@ -329,11 +329,9 @@ function EngagementPane({ coachId, engagements }: { coachId: string; engagements
                 {engagement.rating ? (
                   <small className="coach-origin-engagement-rating">평점 {engagement.rating}</small>
                 ) : <span />}
-                <EngagementEvaluationButton
-                  engagement={{ id: engagement.id, endDate: engagement.endDate, cancelled: engagement.status === "cancelled" }}
-                />
+                <EngagementEvaluationButton engagement={evaluableEngagement(engagement)} />
               </article>
-              <EngagementEvaluationPanel engagementId={engagement.id} />
+              <EngagementEvaluationPanel engagement={evaluableEngagement(engagement)} />
             </div>
           ))}
         </CoachEvaluationProvider>
@@ -342,6 +340,10 @@ function EngagementPane({ coachId, engagements }: { coachId: string; engagements
       )}
     </section>
   );
+}
+
+function evaluableEngagement(engagement: CoachEngagementView) {
+  return { id: engagement.id, startDate: engagement.startDate, endDate: engagement.endDate, cancelled: engagement.status === "cancelled" };
 }
 
 function InfoItem({ label, value }: { label: string; value: string }) {
