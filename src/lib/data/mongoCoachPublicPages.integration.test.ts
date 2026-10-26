@@ -185,7 +185,8 @@ test("coach public factory: original URL guard, override-first, missing/nested/c
     try {
       process.env.ADMIN_EMAILS = admin.user.email; delete process.env.DEV_AUTH_BYPASS;
       assert.deepEqual(props(await actors.run(admin, listPage)), listProps([], true));
-      assert.equal(pgCalls - before, 1);
+      // 코치 목록 + 새 OM 평가 평균(실패하면 예전 평점으로 보여줌).
+      assert.equal(pgCalls - before, 2);
       assert.throws(() => noForbidden(pgCalls - before, 0), /PUBLIC_PAGE_PG_ACCESS/);
     } finally { pgCalls = before; envRestore(); }
   } finally { restore(); }
@@ -252,9 +253,10 @@ function expected(f: ReturnType<typeof seedFixture>) {
     id: id as string, name, workType: null, status: active ? "active" : "inactive", isActive: active, deletedAt: null,
     fields, avgRating: rating, workDayCount: days, notionPageId: null, engagementFacts: [], recentAvgRating: null, recentRatingCount: 0
   });
+  const ids = f.data.get("CoachEngagement")!.map(row => row.id as string);
   const summaries = [{ ...summary(f.a.id, " 가상 가 ", true, ["Synthetic field"], 3, 1),
-    engagementFacts: [{ startDate: "2099-12-31", endDate: "2099-12-31", cancelled: false }, { startDate: "2099-12-02", endDate: "2099-12-02", cancelled: true },
-      { startDate: "2099-12-01", endDate: "2099-12-01", cancelled: false }], recentRatingCount: 2 }, summary(f.b.id, "가상 가", true, [], null, 0),
+    engagementFacts: [{ engagementId: ids[1], startDate: "2099-12-31", endDate: "2099-12-31", cancelled: false, rating: 2 }, { engagementId: ids[2], startDate: "2099-12-02", endDate: "2099-12-02", cancelled: true, rating: null },
+      { engagementId: ids[0], startDate: "2099-12-01", endDate: "2099-12-01", cancelled: false, rating: 4 }], recentRatingCount: 2 }, summary(f.b.id, "가상 가", true, [], null, 0),
     summary(f.inactive.id, "가상 나", false, [], null, 0), summary(f.blank.id, "  ", false, [], null, 0)];
   const detail = { ...summaries[0], curriculums: ["Synthetic curriculum"], coachInputUrl: null, statusNote: "latest",
     returnDate: "2100-01-01", availabilityDetail: "Synthetic available", dxTag: "Synthetic DX" };

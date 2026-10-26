@@ -525,6 +525,9 @@ model Coach {
   scheduleAccessLogs  CoachScheduleAccessLog[]
   dayReservations     CoachDayReservation[]
   contentEntries      CoachContentEntry[]
+  engagementDetails   CoachEngagementDetail[]
+  evaluations         CoachEvaluation[]
+  factRecords         CoachFactRecord[]
 
   @@index([normalizedName])
   @@index([status, isActive])
@@ -733,6 +736,9 @@ model CoachEngagement {
   operationSession   OperationSession?     @relation(fields: [operationSessionId], references: [id])
   schedules          CoachEngagementSchedule[]
   confirmedFromReservations CoachDayReservation[]
+  detail             CoachEngagementDetail?
+  evaluations        CoachEvaluation[]
+  factRecords        CoachFactRecord[]
 
   @@index([coachId])
   @@index([operationSessionId])
@@ -743,6 +749,159 @@ model CoachEngagement {
   feedbackPiiIndex String? @map("feedback_pii_index")
   hiredByIdPiiIndex String? @map("hired_by_id_pii_index")
   hiredByTextPiiIndex String? @map("hired_by_text_pii_index")
+}
+
+// -----------------------------------------------------------------------------
+// 코치 운영 정책의 평가·사실 기록. 기존 coach_engagements의 rating/rehire/feedback은
+// "이전 방식 평가"로 그대로 두고 읽기만 한다. 운영 Mongo validator 위험을 피하려고
+// 기존 컬렉션에 칸을 더하지 않고 새 컬렉션으로 둔다.
+// -----------------------------------------------------------------------------
+
+enum CoachEngagementRole {
+  PRACTICE_COACH      @map("practice_coach")
+  LEAD                @map("lead")
+  OPERATION_ASSISTANT @map("operation_assistant")
+
+  @@map("coach_engagement_role")
+}
+
+enum CoachPracticeDifficulty {
+  A @map("a")
+  B @map("b")
+  C @map("c")
+
+  @@map("coach_practice_difficulty")
+}
+
+enum CoachAudience {
+  EXECUTIVE @map("executive")
+  STAFF     @map("staff")
+
+  @@map("coach_audience")
+}
+
+enum CoachEvaluationSource {
+  OM         @map("om")
+  LEAD       @map("lead")
+  INSTRUCTOR @map("instructor")
+
+  @@map("coach_evaluation_source")
+}
+
+enum CoachRehireIntent {
+  YES         @map("yes")
+  CONDITIONAL @map("conditional")
+  NO          @map("no")
+
+  @@map("coach_rehire_intent")
+}
+
+enum CoachFactKind {
+  LATE              @map("late")
+  NO_SHOW           @map("no_show")
+  FORMAL_COMPLAINT  @map("formal_complaint")
+  LEFT_POST         @map("left_post")
+  PREP_MISSING      @map("prep_missing")
+  SERIOUS_VIOLATION @map("serious_violation")
+
+  @@map("coach_fact_kind")
+}
+
+// 투입 1건에서 코치가 맡은 것. 평가가 없어도 역할 기록(리드 여부 등)은 필요해서 따로 둔다.
+// 빈 값(null)은 "모름"이다.
+model CoachEngagementDetail {
+  id                 String                   @id @default(uuid()) @db.Uuid
+  engagementId       String                   @unique @map("engagement_id") @db.Uuid
+  coachId            String                   @map("coach_id") @db.Uuid
+  role               CoachEngagementRole
+  practiceDifficulty CoachPracticeDifficulty? @map("practice_difficulty")
+  audience           CoachAudience?
+  isNewClient        Boolean?                 @map("is_new_client")
+  updatedBy          String?                  @map("updated_by")
+  createdAt          DateTime                 @default(now()) @map("created_at")
+  updatedAt          DateTime                 @updatedAt @map("updated_at")
+
+  engagement CoachEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+  coach      Coach           @relation(fields: [coachId], references: [id], onDelete: Cascade)
+
+  @@index([coachId])
+  @@map("coach_engagement_details")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  updatedByPiiIndex String? @map("updated_by_pii_index")
+}
+
+// 투입 후 평가. 투입 1건 × 출처(OM·리드·강사) 1개당 유효한 평가는 하나다(저장소에서 보장).
+// 투입 이력이 다시 만들어져도 평가가 사라지지 않게 engagementId는 끊어질 수 있고,
+// 과정명·기간은 평가 시점 값으로 함께 남긴다.
+model CoachEvaluation {
+  id              String                @id @default(uuid()) @db.Uuid
+  coachId         String                @map("coach_id") @db.Uuid
+  engagementId    String?               @map("engagement_id") @db.Uuid
+  source          CoachEvaluationSource
+  courseName      String                @map("course_name")
+  startDate       DateTime              @map("start_date") @db.Date
+  endDate         DateTime              @map("end_date") @db.Date
+  practiceSupport Int?                  @map("practice_support") @db.SmallInt
+  fieldOperation  Int?                  @map("field_operation") @db.SmallInt
+  communication   Int?                  @db.SmallInt
+  leading         Int?                  @db.SmallInt
+  punctuality     Int?                  @db.SmallInt
+  rehire          CoachRehireIntent
+  rehireReason    String?               @map("rehire_reason")
+  evidence        String?
+  evaluatorEmail  String                @map("evaluator_email")
+  evaluatorName   String?               @map("evaluator_name")
+  createdAt       DateTime              @default(now()) @map("created_at")
+  updatedAt       DateTime              @updatedAt @map("updated_at")
+  deletedAt       DateTime?             @map("deleted_at")
+  deletedBy       String?               @map("deleted_by")
+
+  coach      Coach            @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  engagement CoachEngagement? @relation(fields: [engagementId], references: [id], onDelete: SetNull)
+
+  @@index([coachId])
+  @@index([engagementId])
+  @@index([deletedAt])
+  @@map("coach_evaluations")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  rehireReasonPiiIndex   String? @map("rehire_reason_pii_index")
+  evidencePiiIndex       String? @map("evidence_pii_index")
+  evaluatorEmailPiiIndex String? @map("evaluator_email_pii_index")
+  evaluatorNamePiiIndex  String? @map("evaluator_name_pii_index")
+  deletedByPiiIndex      String? @map("deleted_by_pii_index")
+}
+
+// 점수와 별도로 남기는 사실 기록(지각·무단 불참·공식 불만 등). 과정과 무관한 기록도 있어 투입 연결은 선택이다.
+model CoachFactRecord {
+  id              String        @id @default(uuid()) @db.Uuid
+  coachId         String        @map("coach_id") @db.Uuid
+  engagementId    String?       @map("engagement_id") @db.Uuid
+  kind            CoachFactKind
+  occurredOn      DateTime      @map("occurred_on") @db.Date
+  courseName      String?       @map("course_name")
+  description     String
+  recordedByEmail String        @map("recorded_by_email")
+  recordedByName  String?       @map("recorded_by_name")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  deletedAt       DateTime?     @map("deleted_at")
+  deletedBy       String?       @map("deleted_by")
+
+  coach      Coach            @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  engagement CoachEngagement? @relation(fields: [engagementId], references: [id], onDelete: SetNull)
+
+  @@index([coachId])
+  @@index([engagementId])
+  @@index([deletedAt])
+  @@map("coach_fact_records")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  descriptionPiiIndex     String? @map("description_pii_index")
+  recordedByEmailPiiIndex String? @map("recorded_by_email_pii_index")
+  recordedByNamePiiIndex  String? @map("recorded_by_name_pii_index")
+  deletedByPiiIndex       String? @map("deleted_by_pii_index")
 }
 
 model CoachEngagementSchedule {

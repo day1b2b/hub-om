@@ -31,9 +31,12 @@ export interface CoachSummary {
 }
 
 export interface CoachEngagementFact {
+  engagementId: string;
   startDate: string;
   endDate: string;
   cancelled: boolean;
+  /** 예전 방식의 투입 평점. 새 OM 평가가 있으면 그쪽을 쓴다(coachActivity). */
+  rating: number | null;
 }
 
 export interface CoachDetail extends CoachSummary {

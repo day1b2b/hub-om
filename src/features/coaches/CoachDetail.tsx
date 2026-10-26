@@ -10,6 +10,7 @@ import type {
 } from "@/lib/data/coachTypes";
 import { CoachInputLinkActions } from "./CoachInputLinkActions";
 import { CoachNotesPanel } from "./CoachNotesPanel";
+import { CoachEvaluationProvider, EngagementEvaluationButton, EngagementEvaluationPanel } from "./CoachEngagementEvaluation";
 
 export type CoachDetailTab = "profile" | "schedule" | "engagements";
 
@@ -95,7 +96,7 @@ export function CoachDetailView({
             selectedMonth={selectedMonth}
           />
         ) : null}
-        {selectedTab === "engagements" ? <EngagementPane engagements={engagements} /> : null}
+        {selectedTab === "engagements" ? <EngagementPane coachId={coach.id} engagements={engagements} /> : null}
       </section>
     </main>
   );
@@ -306,33 +307,43 @@ function SchedulePane({
   );
 }
 
-function EngagementPane({ engagements }: { engagements: CoachEngagementView[] }) {
+function EngagementPane({ coachId, engagements }: { coachId: string; engagements: CoachEngagementView[] }) {
   return (
     <section className="coach-origin-engagement-list">
       {engagements.length > 0 ? (
-        engagements.map((engagement) => (
-          <article className="coach-origin-engagement-row" key={engagement.id}>
-            <span className={`status ${ENGAGEMENT_STATUS_CLASS[engagement.status]}`}>
-              {ENGAGEMENT_STATUS_LABEL[engagement.status]}
-            </span>
-            <time>
-              {formatDateLabel(engagement.startDate)}
-              {engagement.endDate ? `~${formatDateLabel(engagement.endDate)}` : ""}
-            </time>
-            <span className="coach-origin-engagement-course">
-              <strong>{cleanCourseName(engagement.courseName)}</strong>
-              {engagement.feedback ? <small className="coach-origin-engagement-summary">{engagement.feedback}</small> : null}
-            </span>
-            {engagement.rating ? (
-              <small className="coach-origin-engagement-rating">평점 {engagement.rating}</small>
-            ) : null}
-          </article>
-        ))
+        <CoachEvaluationProvider coachId={coachId}>
+          {engagements.map((engagement) => (
+            <div className="coach-origin-engagement-item" key={engagement.id}>
+              <article className="coach-origin-engagement-row">
+                <span className={`status ${ENGAGEMENT_STATUS_CLASS[engagement.status]}`}>
+                  {ENGAGEMENT_STATUS_LABEL[engagement.status]}
+                </span>
+                <time>
+                  {formatDateLabel(engagement.startDate)}
+                  {engagement.endDate ? `~${formatDateLabel(engagement.endDate)}` : ""}
+                </time>
+                <span className="coach-origin-engagement-course">
+                  <strong>{cleanCourseName(engagement.courseName)}</strong>
+                  {engagement.feedback ? <small className="coach-origin-engagement-summary">{engagement.feedback}</small> : null}
+                </span>
+                {engagement.rating ? (
+                  <small className="coach-origin-engagement-rating">평점 {engagement.rating}</small>
+                ) : <span />}
+                <EngagementEvaluationButton engagement={evaluableEngagement(engagement)} />
+              </article>
+              <EngagementEvaluationPanel engagement={evaluableEngagement(engagement)} />
+            </div>
+          ))}
+        </CoachEvaluationProvider>
       ) : (
         <div className="coach-origin-empty-panel">등록된 근무 이력이 없습니다.</div>
       )}
     </section>
   );
+}
+
+function evaluableEngagement(engagement: CoachEngagementView) {
+  return { id: engagement.id, startDate: engagement.startDate, endDate: engagement.endDate, cancelled: engagement.status === "cancelled" };
 }
 
 function InfoItem({ label, value }: { label: string; value: string }) {
