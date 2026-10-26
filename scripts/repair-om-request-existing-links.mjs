@@ -96,9 +96,23 @@ async function creationLinks(collection, request) {
   return { kind: "create", count: linked.length, operationIds: linked.map(row => row.targetId) };
 }
 
-export async function diagnoseExistingLinks(client, env) {
+/** `--request=<uuid>` limits diagnosis and repair to that one request. */
+export function parseArgs(argv) {
+  const [mode = "--diagnose", ...rest] = argv;
+  check(["--diagnose", "--apply-exact", "--apply-split"].includes(mode), "EXPLICIT_MODE_REQUIRED");
+  let requestId = null;
+  for (const arg of rest) {
+    const match = /^--request=([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i.exec(arg);
+    check(match && requestId === null, "INVALID_REQUEST_OPTION");
+    requestId = match[1];
+  }
+  return { mode, requestId };
+}
+
+export async function diagnoseExistingLinks(client, env, requestId = null) {
   const { collection } = collectionScope(client, env);
-  const requests = await collection("OmRequest").find({ operationId: { $type: "string" } }).toArray();
+  const requests = await collection("OmRequest").find({ operationId: { $type: "string" }, ...(requestId ? { _id: requestId } : {}) }).toArray();
+  if (requestId) check(requests.length === 1, "REQUEST_NOT_FOUND");
   const operations = await collection("OperationSession").find({}).toArray();
   const result = { scanned: requests.length, healthy: 0, repaired: 0, exactRepairable: 0, splitRepairable: 0,
     blocked: 0, blockedReasons: {}, targets: [], splitTargets: [] };
@@ -210,12 +224,11 @@ export async function repairExactExistingLinks(client, env, targets) {
 }
 
 async function main() {
-  const mode = process.argv[2] ?? "--diagnose";
-  check(["--diagnose", "--apply-exact", "--apply-split"].includes(mode), "EXPLICIT_MODE_REQUIRED");
+  const { mode, requestId } = parseArgs(process.argv.slice(2));
   const client = new MongoClient(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 5000 });
   try {
     await client.connect();
-    const diagnosis = await diagnoseExistingLinks(client, process.env);
+    const diagnosis = await diagnoseExistingLinks(client, process.env, requestId);
     if (mode === "--diagnose") {
       console.log(JSON.stringify({ scanned: diagnosis.scanned, healthy: diagnosis.healthy, repaired: diagnosis.repaired,
         exactRepairable: diagnosis.exactRepairable, splitRepairable: diagnosis.splitRepairable,
@@ -224,12 +237,12 @@ async function main() {
     }
     if (mode === "--apply-split") {
       const repaired = await repairSplitExistingLinks(client, process.env, diagnosis.splitTargets);
-      const after = await diagnoseExistingLinks(client, process.env);
+      const after = await diagnoseExistingLinks(client, process.env, requestId);
       console.log(JSON.stringify({ repaired: repaired.length, remainingSplit: after.splitRepairable, blocked: after.blocked }));
       return;
     }
     const repaired = await repairExactExistingLinks(client, process.env, diagnosis.targets);
-    const after = await diagnoseExistingLinks(client, process.env);
+    const after = await diagnoseExistingLinks(client, process.env, requestId);
     console.log(JSON.stringify({ repaired: repaired.length, remainingExact: after.exactRepairable, blocked: after.blocked }));
   } finally { await client.close(); }
 }

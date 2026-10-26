@@ -18,6 +18,7 @@ const ASSIGNMENT_PLANNED_VALUES = new Set(["★배정 예정", "배정 예정", 
 const EDUCATION_FORMATS = new Set<EducationFormat>([
   "오프라인",
   "비대면",
+  "온라인",
   "블렌디드",
   "플립러닝"
 ]);
