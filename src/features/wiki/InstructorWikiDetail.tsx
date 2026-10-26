@@ -3,6 +3,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import {
   cleanCourseName,
   formatDateLabel,
+  hasActiveCourse,
   OPERATION_STATUS_CLASS,
   ROLE_CLASS,
   roleSummary,
@@ -22,6 +23,12 @@ import {
   notionHref,
   resolveNotionLinkTargets
 } from "@/lib/data/instructorWikiStore";
+
+// 강사위키 상세 = 강사 1명 360° 카드. 상단 요약 + 4버킷([섭외]기본정보·[계약/정산]·[회고]·[섭외]암묵지).
+// "강사위키 = 보는 곳(정보) / 운영현황 = 하는 곳(처리)" 원칙 → 계약 '요청' 버튼은 두지 않는다.
+// 암묵지 5분류(강점·유의사항·소통 스타일·강의 스타일·비고)는 노션 강사위키 양식과 동일하다.
+// 1차는 기존 데이터를 버킷으로 재배치하고, 아직 허브에 없는 값은 "준비중" 틀로 둔다(데이터 로직 미변경).
+const TACIT_CATEGORIES = ["강점", "유의사항", "소통 스타일", "강의 스타일", "비고"] as const;
 
 export async function InstructorWikiDetail({ entry }: { entry: InstructorWikiEntry }) {
   const coach = entry.coach;
@@ -59,6 +66,11 @@ export async function InstructorWikiDetail({ entry }: { entry: InstructorWikiEnt
       : "미연결 · 미매칭";
   const baseFeeText = typeof np?.baseFee === "number" ? `${np.baseFee.toLocaleString("ko-KR")}원` : "";
 
+  // 요약·배정현황은 운영 현황(courses)에서 바로 계산한다(별도 백엔드 불필요).
+  const activeNow = hasActiveCourse(entry);
+  const latestAssignment = entry.courses[0]?.startDate ? formatDateLabel(entry.courses[0].startDate) : "-";
+  const avgRatingText = coach?.avgRating != null ? coach.avgRating.toFixed(1) : "-";
+
   return (
     <main className="dashboard-shell">
       <AppSidebar label="Instructor Wiki" teamScope="both" />
@@ -84,8 +96,7 @@ export async function InstructorWikiDetail({ entry }: { entry: InstructorWikiEnt
               name={entry.name}
               notionNames={notionNames}
             />
-            {/* 섭외지양은 노션 강사 DB의 "섭외지양 여부"만 보고 자동 표기한다.
-                수동 토글은 없앴다. 원천이 노션 하나여야 화면과 노션이 어긋나지 않는다. */}
+            {/* 섭외지양은 노션 강사 DB의 "섭외지양 여부"만 보고 자동 표기한다. */}
             {np?.recruitAvoid ? <span className="recruit-avoid-badge">⛔ 섭외지양</span> : null}
             <span className="coach-plan-badge">운영 현황 연동</span>
             {roleSummary(entry).map((role) => (
@@ -97,84 +108,106 @@ export async function InstructorWikiDetail({ entry }: { entry: InstructorWikiEnt
           </div>
         </div>
 
-        <InstructorEditor name={entry.name} initial={note} notion={np} />
-
-        <div className="detail-section">
-          <div className="section-title">
-            <h2>강사 프로필</h2>
-            <span>{profileSource}</span>
-          </div>
-          <div className="section-body">
-            <dl className="field-preview-list">
-              <div>
-                <dt>소속</dt>
-                <dd>{np?.affiliation ? np.affiliation : <span className="td-muted">-</span>}</dd>
-              </div>
-              <div>
-                <dt>전문분야</dt>
-                <dd>{fields.length > 0 ? fields.join(" · ") : <span className="td-muted">-</span>}</dd>
-              </div>
-              <div>
-                <dt>가능 커리큘럼</dt>
-                <dd>
-                  {curriculums.length > 0 ? (
-                    <ul>
-                      {curriculums.map((curriculum) => (
-                        <li key={curriculum}>{curriculum}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <span className="td-muted">-</span>
-                  )}
-                </dd>
-              </div>
-              <div>
-                <dt>기본 강사료</dt>
-                <dd>{baseFeeText ? baseFeeText : <span className="td-muted">-</span>}</dd>
-              </div>
-              <div>
-                <dt>강사료 특이사항</dt>
-                <dd>{np?.feeNote ? <span className="wiki-view">{np.feeNote}</span> : <span className="td-muted">-</span>}</dd>
-              </div>
-              <div>
-                <dt>생년월일</dt>
-                <dd>{np?.birthDate ? np.birthDate : <span className="td-muted">-</span>}</dd>
-              </div>
-              {/* 노션 메모는 위 「강사 정보 · 강사 특이사항」에서 보여주므로 여기서는 중복 표시하지 않는다. */}
-              <div>
-                <dt>시범강의 점검표</dt>
-                <dd>
-                  {np?.demoCheckUrl ? (
-                    <a className="notion-chip" href={np.demoCheckUrl} target="_blank" rel="noreferrer">점검표 열기 ↗</a>
-                  ) : (
-                    <span className="td-muted">-</span>
-                  )}
-                </dd>
-              </div>
-              <div>
-                <dt>첨부 파일</dt>
-                <dd><ProfileAttachments /></dd>
-              </div>
-            </dl>
-            <p className="field-hint">
-              소속·전문분야·강사료·생년월일은 노션 강사 DB에서 자동으로 가져온 값이에요. 여기서 고쳐도 노션에는 반영되지 않으니 원본은 노션에서 수정해 주세요.
-            </p>
-          </div>
-        </div>
-
+        {/* 상단 요약 */}
         <div className="detail-grid">
           <div className="detail-panel detail-panel--full">
             <div className="panel-title">운영 요약</div>
             <div className="info-grid info-grid--row">
               <div className="info-item"><span>담당 코스</span><strong>{entry.courseCount}건</strong></div>
-              <div className="info-item"><span>역할</span><strong>{roleSummary(entry).join(" · ") || "-"}</strong></div>
-              <div className="info-item"><span>평균 평가(coach)</span><strong>{coach?.avgRating != null ? coach.avgRating.toFixed(1) : "-"}</strong></div>
+              <div className="info-item"><span>평균 평가(coach)</span><strong>{avgRatingText}</strong></div>
+              <div className="info-item"><span>최근 배정</span><strong>{latestAssignment}</strong></div>
             </div>
           </div>
         </div>
 
+        {/* 4버킷 — 상위 3개 요약(기본정보 · 계약/정산 · 회고) */}
+        <div className="detail-grid iw-buckets">
+          {/* [섭외] 기본정보 */}
+          <div className="detail-section">
+            <div className="section-title"><h2>[섭외] 기본정보</h2><span>{profileSource}</span></div>
+            <div className="iw-bucket-body">
+              <dl className="field-preview-list">
+                <div><dt>소속</dt><dd>{np?.affiliation ? np.affiliation : <span className="td-muted">-</span>}</dd></div>
+                <div><dt>전문분야</dt><dd>{fields.length > 0 ? fields.join(" · ") : <span className="td-muted">-</span>}</dd></div>
+                <div><dt>가능 커리큘럼</dt><dd>{curriculums.length > 0 ? curriculums.join(", ") : <span className="td-muted">-</span>}</dd></div>
+                <div>
+                  <dt>이력서·포트폴리오</dt>
+                  <dd>
+                    {np?.demoCheckUrl ? (
+                      <a className="notion-chip" href={np.demoCheckUrl} target="_blank" rel="noreferrer">시범강의 점검표 ↗</a>
+                    ) : (
+                      <span className="td-muted">-</span>
+                    )}
+                    <ProfileAttachments />
+                  </dd>
+                </div>
+                <div>
+                  <dt>배정 현황</dt>
+                  <dd>{activeNow ? "진행·예정 있음" : "현재 배정 없음"} <span className="field-hint-inline">운영현황 자동</span></dd>
+                </div>
+              </dl>
+              <p className="field-hint">소속·전문분야·강사료는 노션 강사 DB에서 자동으로 가져온 값이에요. 원본은 노션에서 수정해 주세요.</p>
+            </div>
+          </div>
+
+          {/* [계약/정산] — 정보만, 요청 버튼은 운영현황에 둔다 */}
+          <div className="detail-section">
+            <div className="section-title"><h2>[계약/정산]</h2><span>정보만 · 요청은 운영현황</span></div>
+            <div className="iw-bucket-body">
+              <dl className="field-preview-list">
+                <div><dt>기본 강사료</dt><dd>{baseFeeText ? baseFeeText : <span className="td-muted">-</span>}</dd></div>
+                <div><dt>강사료 특이사항</dt><dd>{np?.feeNote ? <span className="wiki-view">{np.feeNote}</span> : <span className="td-muted">-</span>}</dd></div>
+                <div><dt>계약 유형</dt><dd><span className="status soon">준비중</span></dd></div>
+                <div><dt>신규강사 증빙</dt><dd><span className="status soon">준비중</span></dd></div>
+              </dl>
+            </div>
+          </div>
+
+          {/* [회고] — 요약(상세 표는 아래) */}
+          <div className="detail-section">
+            <div className="section-title"><h2>[회고]</h2><span>운영현황 자동</span></div>
+            <div className="iw-bucket-body">
+              <dl className="field-preview-list">
+                <div><dt>교육 참여 이력</dt><dd>{entry.courseCount}건</dd></div>
+                <div><dt>과정별 만족도</dt><dd>{avgRatingText !== "-" ? `${avgRatingText} (단일)` : <span className="td-muted">-</span>}</dd></div>
+                <div><dt>종합·전문성·전달력 추세</dt><dd><span className="status soon">준비중</span></dd></div>
+                <div><dt>매니저 정성평가</dt><dd><span className="status soon">준비중</span></dd></div>
+              </dl>
+            </div>
+          </div>
+        </div>
+
+        {/* [섭외] 암묵지 — 강사위키의 핵심(전폭). 5분류는 노션 강사위키 양식과 동일. */}
+        <div className="detail-section iw-tacit">
+          <div className="section-title">
+            <h2>[섭외] 암묵지</h2>
+            <span>강사위키의 핵심 · OM이 쌓는 운영 지식</span>
+          </div>
+          <div className="iw-bucket-body">
+            <InstructorEditor name={entry.name} initial={note} notion={np} />
+            <div className="iw-recommend">
+              <span className="iw-recommend-label">섭외 추천도</span>
+              {np?.recruitAvoid ? <span className="status needs-assignment">⛔ 섭외지양</span> : <span className="status soon">준비중</span>}
+            </div>
+            <table className="iw-tacit-table">
+              <tbody>
+                {TACIT_CATEGORIES.map((category) => (
+                  <tr key={category}>
+                    <th scope="row">{category}</th>
+                    <td><span className="status soon">준비중</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="field-hint">
+              강점·유의사항·소통/강의 스타일·비고는 노션 강사위키 양식과 같아요. 지금은 틀만 있고, 실제 내용은 노션 강사위키에서 가져올 예정이에요(2차).
+            </p>
+          </div>
+        </div>
+
+        {/* [회고] 담당 코스 상세 */}
         <div className="detail-section">
-          <div className="section-title"><h2>담당 코스 · 운영 현황</h2><span>{entry.courseCount}건</span></div>
+          <div className="section-title"><h2>[회고] 담당 코스 · 운영 현황</h2><span>{entry.courseCount}건</span></div>
           <div className="table-wrap">
             <table>
               <thead>

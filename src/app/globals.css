@@ -14436,3 +14436,70 @@ button.coach-doc-reserve-chip:disabled {
 .page-loading-label {
   font-size: 13px;
 }
+
+/* 강사위키 상세 — 4버킷 레이아웃(기본정보·계약/정산·회고 + 암묵지 전폭) */
+.iw-buckets {
+  align-items: start;
+  margin-top: 12px;
+}
+
+.iw-bucket-body {
+  padding: 12px 14px;
+}
+
+.status.soon {
+  background: var(--surface-strong);
+  color: var(--muted);
+}
+
+.field-hint-inline {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.iw-tacit {
+  margin-top: 12px;
+}
+
+.iw-recommend {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.iw-recommend-label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.iw-tacit-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.iw-tacit-table th {
+  background: var(--surface-strong);
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  padding: 10px 12px;
+  text-align: left;
+  vertical-align: top;
+  width: 104px;
+}
+
+.iw-tacit-table td {
+  border-top: 1px solid var(--line);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 10px 12px;
+}
+
+.iw-tacit-table tr:first-child th,
+.iw-tacit-table tr:first-child td {
+  border-top: 0;
+}
