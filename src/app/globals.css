@@ -4116,7 +4116,7 @@ td span {
   border-radius: 8px;
   display: grid;
   gap: 10px;
-  grid-template-columns: 58px 158px minmax(0, 1fr) 70px;
+  grid-template-columns: 58px 158px minmax(0, 1fr) 70px 132px;
   min-height: 48px;
   padding: 10px 12px;
 }
@@ -4162,6 +4162,294 @@ td span {
   font-size: 12px;
   font-weight: 800;
   text-align: right;
+}
+
+/* 근무 이력 OM 평가 (CoachEngagementEvaluation) */
+.coach-origin-engagement-item {
+  display: grid;
+  gap: 6px;
+}
+
+.coach-evaluation-chip {
+  background: #ffffff;
+  border: 1px solid #a9cdb4;
+  border-radius: 999px;
+  color: #056135;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  justify-self: end;
+  padding: 4px 10px;
+  white-space: nowrap;
+}
+
+.coach-evaluation-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-end;
+  justify-self: end;
+}
+
+.coach-evaluation-chip.warn {
+  background: var(--red-bg);
+  border-color: var(--red-bg);
+  color: var(--red);
+}
+
+.coach-evaluation-stack {
+  display: grid;
+  gap: 6px;
+}
+
+.coach-fact-panel header strong {
+  color: #333333;
+  font-size: 14px;
+}
+
+.coach-fact-list {
+  display: grid;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.coach-fact-list li {
+  align-items: baseline;
+  border-top: 1px solid #e3ede6;
+  display: grid;
+  gap: 4px 10px;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+  padding-top: 6px;
+}
+
+.coach-fact-list p {
+  color: #333333;
+  font-size: 13px;
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.coach-fact-list time,
+.coach-fact-list small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.coach-fact-kind {
+  color: var(--red);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.coach-fact-form {
+  display: grid;
+  gap: 10px;
+}
+
+.coach-evaluation-row input[type="date"] {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 14px;
+  padding: 5px 8px;
+}
+
+.coach-evaluation-chip.done {
+  background: #eaf3ec;
+  border-color: #eaf3ec;
+}
+
+.coach-evaluation-panel {
+  background: #fbfdfb;
+  border: 1px solid #e3ede6;
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  padding: 14px 16px;
+}
+
+.coach-evaluation-summary {
+  display: grid;
+  gap: 8px 16px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  margin: 0;
+}
+
+.coach-evaluation-summary dt {
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.coach-evaluation-summary dd {
+  color: #333333;
+  font-size: 14px;
+  font-weight: 700;
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.coach-evaluation-evidence {
+  color: #333333;
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.coach-evaluation-field {
+  border: 0;
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+}
+
+.coach-evaluation-field legend,
+.coach-evaluation-row label,
+.coach-evaluation-text {
+  color: #555555;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.coach-evaluation-options,
+.coach-evaluation-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.coach-evaluation-options label,
+.coach-evaluation-check {
+  align-items: center;
+  display: inline-flex;
+  font-size: 14px;
+  font-weight: 700;
+  gap: 4px;
+}
+
+.coach-evaluation-row label {
+  display: grid;
+  gap: 4px;
+}
+
+.coach-evaluation-row .coach-evaluation-check {
+  display: inline-flex;
+}
+
+.coach-evaluation-scores {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+}
+
+.coach-evaluation-scale {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.coach-evaluation-scale button {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 800;
+  height: 32px;
+  width: 32px;
+}
+
+.coach-evaluation-scale button.active {
+  background: #056135;
+  border-color: #056135;
+  color: #ffffff;
+}
+
+.coach-evaluation-hint {
+  color: var(--muted);
+  font-size: 12px;
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.coach-evaluation-text {
+  display: grid;
+  gap: 4px;
+}
+
+.coach-evaluation-text b {
+  color: var(--red);
+}
+
+.coach-evaluation-text span {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.coach-evaluation-text textarea,
+.coach-evaluation-reason,
+.coach-evaluation-row select {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 14px;
+  padding: 6px 8px;
+}
+
+.coach-evaluation-footer {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.coach-evaluation-footer small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.coach-evaluation-actions {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.coach-evaluation-button {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 6px 12px;
+}
+
+.coach-evaluation-button.primary {
+  background: #056135;
+  border-color: #056135;
+  color: #ffffff;
+}
+
+.coach-evaluation-button.danger {
+  color: var(--red);
+}
+
+.coach-evaluation-button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.coach-evaluation-error,
+.coach-evaluation-notice {
+  color: var(--red);
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0;
 }
 
 .coach-origin-empty-panel {
@@ -11179,6 +11467,24 @@ button.coach-doc-reserve-chip:disabled {
   flex-shrink: 0;
 }
 
+.sync-upload {
+  border-top: 1px dashed var(--line);
+  margin-top: 12px;
+  padding-top: 12px;
+  font-size: 0.88rem;
+}
+
+.sync-upload p {
+  margin: 0 0 8px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.sync-upload .sync-upload-selected {
+  margin: 8px 0 0;
+  color: var(--text);
+}
+
 .sync-external-link {
   color: var(--blue);
   font-size: 0.85rem;
@@ -11347,6 +11653,30 @@ button.coach-doc-reserve-chip:disabled {
   padding-left: 18px;
   color: var(--muted);
   line-height: 1.6;
+}
+
+.sync-change-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.sync-change-filter {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.8rem;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+
+.sync-change-filter.active {
+  border-color: var(--purple);
+  background: var(--purple-bg);
+  color: var(--purple);
+  font-weight: 700;
 }
 
 .sync-changes {
@@ -14105,4 +14435,71 @@ button.coach-doc-reserve-chip:disabled {
 
 .page-loading-label {
   font-size: 13px;
+}
+
+/* 강사위키 상세 — 4버킷 레이아웃(기본정보·계약/정산·회고 + 암묵지 전폭) */
+.iw-buckets {
+  align-items: start;
+  margin-top: 12px;
+}
+
+.iw-bucket-body {
+  padding: 12px 14px;
+}
+
+.status.soon {
+  background: var(--surface-strong);
+  color: var(--muted);
+}
+
+.field-hint-inline {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.iw-tacit {
+  margin-top: 12px;
+}
+
+.iw-recommend {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.iw-recommend-label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.iw-tacit-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.iw-tacit-table th {
+  background: var(--surface-strong);
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  padding: 10px 12px;
+  text-align: left;
+  vertical-align: top;
+  width: 104px;
+}
+
+.iw-tacit-table td {
+  border-top: 1px solid var(--line);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 10px 12px;
+}
+
+.iw-tacit-table tr:first-child th,
+.iw-tacit-table tr:first-child td {
+  border-top: 0;
 }

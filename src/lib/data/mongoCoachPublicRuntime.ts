@@ -2,13 +2,15 @@ import type { DataRepositories } from "./dataRepositoryContext";
 import { registerDataRepositoryScope, runWithDataRepositories, runWithLockedRepositoryScope } from "./dataRepositoryContext";
 import { INSTRUCTOR_NOTE_MODELS, MongoInstructorNoteRepository } from "./mongoInstructorNoteRepository";
 import { MongoCoachRepository } from "./mongoCoachRepository";
+import { MongoCoachEvaluationRepository } from "./mongoCoachEvaluationRepository";
 import { MongoOperationRepository } from "./mongoOperationRepository";
 import { MongoOperationStore, OPERATION_MODELS, prepareMongoOperationStore, type MongoOperationOptions } from "./mongoOperationStore";
 import { COACH_READ_MODELS, prepareMongoReadStore } from "./mongoReadStore";
 import { hasKnownMongoRuntimeCollections } from "./mongoRuntimeNamespace";
 
 type ScopeKey = "operations" | "instructorNote" | "coach";
-export type MongoCoachPublicRepositories = Readonly<Pick<DataRepositories, ScopeKey>>;
+// 평가는 선택: 평가 컬렉션이 아직 준비되지 않은 운영에서도 코치 화면은 열려야 한다(평균은 예전 평점으로 표시).
+export type MongoCoachPublicRepositories = Readonly<Pick<DataRepositories, ScopeKey> & Partial<Pick<DataRepositories, "coachEvaluation">>>;
 type Options = MongoOperationOptions & { allowShadowWrites: true };
 export const MONGO_COACH_PUBLIC_RUNTIME_MODELS = [...new Set([
   ...OPERATION_MODELS, ...INSTRUCTOR_NOTE_MODELS, ...COACH_READ_MODELS
@@ -39,7 +41,10 @@ export async function openMongoCoachPublicRuntime(options: Options): Promise<Mon
     const [operations, instructorNote, coach] = await Promise.all([
       MongoOperationRepository.open(options), MongoInstructorNoteRepository.open(options), MongoCoachRepository.open(options)
     ]);
-    const repositories: MongoCoachPublicRepositories = Object.freeze({ operations, instructorNote, coach });
+    const coachEvaluation = await MongoCoachEvaluationRepository.open(options).catch(() => undefined);
+    const repositories: MongoCoachPublicRepositories = Object.freeze(coachEvaluation
+      ? { operations, instructorNote, coach, coachEvaluation }
+      : { operations, instructorNote, coach });
     registerDataRepositoryScope(repositories);
     return Object.freeze({ repositories, run<T>(work: () => T): T {
       return runWithDataRepositories(repositories, () => runWithLockedRepositoryScope(work));

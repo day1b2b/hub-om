@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import type { JWT } from "next-auth/jwt";
 import Google from "next-auth/providers/google";
+import { isCoachTokenPath } from "@/lib/auth/coachTokenPaths";
 import { ALLOWED_WORKSPACE_DOMAIN, isAllowedWorkspaceEmail } from "@/lib/auth/workspaceAccess";
 
 const DEV_AUTH_SECRET = "hub-om-local-development-auth-secret";
@@ -86,6 +87,11 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       if (pathname === "/api/activity-feed" || pathname === "/api/browser-drafts/keyring" || pathname === "/api/browser-drafts/quarantine/seal" || pathname === "/api/browser-drafts/quarantine/verify") return true;
 
       if (PUBLIC_PATHS.has(pathname)) {
+        return true;
+      }
+
+      // 코치 본인 일정 입력은 개인 링크 토큰으로 핸들러가 직접 인증한다.
+      if (isCoachTokenPath(pathname)) {
         return true;
       }
 

@@ -140,7 +140,11 @@ export async function restoreDeployedValidator(options: MongoOperationOptions & 
   const collection = store.collection(model);
   const read = async () => (await store.db.listCollections({ name: collection.collectionName }, { nameOnly: false }).next())?.options?.validator;
   const stored = await read();
-  if (stableMongoValue(stored) === stableMongoValue(deployed)) return "already-deployed";
+  if (stableMongoValue(stored) === stableMongoValue(deployed)) {
+    // A row the deployed validator rejects (e.g. fields left by an interrupted field-addition rollback) is not restored.
+    assertMongo(!await collection.findOne({ $nor: [deployed] }, { projection: { _id: 1 }, maxTimeMS: 60_000 }), "EXISTING_DOCUMENTS_POLICY_MISMATCH");
+    return "already-deployed";
+  }
   assertMongo(stored && compareOperationValidator(deployed, stored).kind === "widening", "STORED_VALIDATOR_NOT_WIDENING_OF_DEPLOYED");
   // applyMongoValidator refuses when any stored row would be rejected (e.g. a row already saved with the new value).
   await applyMongoValidator(store, model, deployed);
