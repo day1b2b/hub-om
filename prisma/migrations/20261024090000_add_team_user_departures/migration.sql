@@ -10,3 +10,6 @@ CREATE TABLE "team_user_departures" (
 );
 
 CREATE UNIQUE INDEX "team_user_departures_team_user_id_key" ON "team_user_departures"("team_user_id");
+
+CREATE TRIGGER activity_change AFTER INSERT OR UPDATE OR DELETE ON team_user_departures
+ FOR EACH ROW EXECUTE FUNCTION capture_activity_change('["team_user_id", "departed_at"]');
