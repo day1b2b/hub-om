@@ -2084,6 +2084,22 @@ select {
   color: var(--muted);
 }
 
+.invoice-request-link {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  white-space: nowrap;
+}
+
+.invoice-request-link:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
 .toolbar {
   align-items: center;
   display: flex;
@@ -3134,6 +3150,10 @@ td span {
 
 .info-grid--row {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.info-grid--row-5 {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .info-item strong {
