@@ -17,6 +17,7 @@
   "POST /api/admin/imports/notion/import": "tracked",
   "GET /api/admin/imports/template": "tracked",
   "POST /api/admin/imports/upload": "tracked",
+  "GET /api/admin/instructor-contract-match": "tracked",
   "GET /api/admin/om-assignment-status-backfill": "tracked",
   "POST /api/admin/om-assignment-status-backfill": "tracked",
   "GET /api/admin/onsite-required-backfill": "tracked",
