@@ -85,21 +85,25 @@ function operationInputForSession(request: OmRequest, session: OmRequest["sessio
  *
  * 실패해도 om-request 접수 자체를 막으면 안 되므로, 호출부에서 best-effort로 감싸서 쓴다.
  * 반환하는 operationId는 첫 회차(1차수)를 대표로 가리킨다.
+ *
+ * 회차를 만들다 중간에 실패하면 이미 만든 회차를 지운다(숨김 처리 + 캘린더 일정 삭제).
+ * 실패하면 요청에 operationId가 연결되지 않으므로, 앞 회차만 남기면 요청과 이어지지 않은
+ * 운영현황 회차와 캘린더 일정이 생긴다. 교육일이 없는 회차를 건너뛰면 회차 번호가 요청과
+ * 어긋나므로, 그런 입력은 만들기 전에 거절한다.
  */
 export async function createLinkedOperationForOmRequest(request: OmRequest): Promise<string | null> {
-  const sessions = request.sessions.filter((session) => session.date);
+  const sessions = request.sessions;
   if (sessions.length === 0) return null;
+  if (sessions.length !== request.totalSessions || sessions.some((session) => !session.date?.trim())) {
+    throw new Error("OM_REQUEST_SESSION_INPUT_INVALID");
+  }
 
   const repository = getOperationRepository();
-  let firstOperationId: string | null = null;
-  const createdOperationIds: string[] = [];
-
-  for (const [index, session] of sessions.entries()) {
-    const input = operationInputForSession(request, session, String(index + 1));
-    const operation = await repository.createOperation(input);
-    if (!firstOperationId) firstOperationId = operation.operationId;
-    createdOperationIds.push(operation.operationId);
-  }
+  const createdOperationIds = await createRoundsOrCleanUp(
+    sessions.map((session, index) => operationInputForSession(request, session, String(index + 1))),
+    request.ld
+  );
+  const firstOperationId = createdOperationIds[0] ?? null;
 
   // createOperation()은 결과보고서 여부를 항상 "확인필요"로 만든다 — om-request에서
   // "결과보고서: N"으로 접수됐으면(불필요) 별도 patch로 덮어써 운영현황과 값을 맞춘다.
@@ -111,6 +115,24 @@ export async function createLinkedOperationForOmRequest(request: OmRequest): Pro
   }
 
   return firstOperationId;
+}
+
+/**
+ * 회차를 순서대로 만든다. 하나라도 실패하면 이번에 만든 회차를 역순으로 지우고 원래 오류를 다시 던진다.
+ * 지우다 실패해도 원래 오류를 가리지 않는다. 결과보고서 patch처럼 만든 뒤의 단계는 여기서 다루지 않는다.
+ */
+async function createRoundsOrCleanUp(inputs: CreateOperationInput[], deletedBy?: string): Promise<string[]> {
+  const repository = getOperationRepository();
+  const createdOperationIds: string[] = [];
+  try {
+    for (const input of inputs) createdOperationIds.push((await repository.createOperation(input)).operationId);
+  } catch (error) {
+    for (const operationId of [...createdOperationIds].reverse()) {
+      try { await repository.deleteOperation(operationId, deletedBy); } catch { /* 원래 실패를 그대로 알린다 */ }
+    }
+    throw error;
+  }
+  return createdOperationIds;
 }
 
 /**
@@ -148,18 +170,16 @@ export async function syncOmRequestSessionsToOperations(
     throw new Error("OPERATION_ROUND_MISMATCH");
   }
 
-  // 1) 새 회차를 먼저 만든다 — 생성이 실패하면 아무것도 지우지 않은 상태로 멈춘다.
-  const ordered: { operationId: string; roundNo: string }[] = [];
-  const created: string[] = [];
-  for (const [index, origin] of origins.entries()) {
-    if (origin !== null) {
-      ordered.push(rounds[origin]);
-      continue;
-    }
-    const operation = await repository.createOperation(operationInputForSession(next, next.sessions[index], String(index + 1)));
-    created.push(operation.operationId);
-    ordered.push({ operationId: operation.operationId, roundNo: operation.roundNo });
-  }
+  // 1) 새 회차를 먼저 만든다 — 생성이 실패하면 이번에 만든 회차를 지우고, 기존 회차는 건드리지 않은 채 멈춘다.
+  const addedIndexes = origins.flatMap((origin, index) => (origin === null ? [index] : []));
+  const created = await createRoundsOrCleanUp(
+    addedIndexes.map((index) => operationInputForSession(next, next.sessions[index], String(index + 1))),
+    actorEmail
+  );
+  const createdByIndex = new Map(addedIndexes.map((index, position) => [index, created[position]]));
+  const ordered: { operationId: string; roundNo: string }[] = origins.map((origin, index) =>
+    origin !== null ? rounds[origin] : { operationId: createdByIndex.get(index)!, roundNo: String(index + 1) }
+  );
   if (next.resultReportNeeded === "N") {
     for (const operationId of created) await repository.updateOperation(operationId, { hasResultReport: "불필요" });
   }

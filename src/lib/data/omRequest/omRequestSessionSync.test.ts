@@ -12,6 +12,7 @@ interface FixtureOperation {
 
 let operations: FixtureOperation[];
 let createdCount = 0;
+let failCreateAt = 0;
 const calls: string[] = [];
 
 mock.module("@/lib/data/operationCalculations", {
@@ -29,6 +30,7 @@ mock.module("@/lib/data/operationRepositoryFactory", {
       getOperationById: async (operationId: string) => operations.find((op) => op.operationId === operationId && !op.deleted) ?? null,
       listOperations: async () => operations.filter((op) => !op.deleted),
       createOperation: async (input: FixtureOperation) => {
+        if (createdCount + 1 === failCreateAt) throw new Error("SYNTHETIC_CREATE_FAILED");
         const operation = { ...input, operationId: `new-${++createdCount}` };
         operations.push(operation);
         calls.push(`create:${operation.operationId}:${input.roundNo}`);
@@ -49,7 +51,7 @@ mock.module("@/lib/data/operationRepositoryFactory", {
   }
 });
 
-const { syncOmRequestSessionsToOperations } = await import("./omRequestOperationLink");
+const { createLinkedOperationForOmRequest, syncOmRequestSessionsToOperations } = await import("./omRequestOperationLink");
 const { planSessionCountChange } = await import("./omRequestSessionPlan");
 
 const session = (date: string) => ({ date, timeStart: "09:00", timeEnd: "18:00", duration: "8", location: "합성 장소" });
@@ -64,6 +66,7 @@ const round = (n: number): FixtureOperation => ({ operationId: `round-${n}`, rou
 
 beforeEach(() => {
   createdCount = 0;
+  failCreateAt = 0;
   calls.length = 0;
   operations = [round(1), round(2), round(3), { ...round(9), courseName: "다른 과정" }];
 });
@@ -93,6 +96,35 @@ test("남은 회차 중 일정이 바뀐 회차만 운영현황 일정을 고친
 test("운영현황 회차 수가 요청과 다르면 아무것도 바꾸지 않고 거절한다", async () => {
   operations.push(round(4));
   await assert.rejects(syncOmRequestSessionsToOperations(request(3), request(2), [0, 1]), /OPERATION_ROUND_MISMATCH/);
+  assert.deepEqual(calls, []);
+});
+
+test("추가할 회차를 만들다 실패하면 이번에 만든 회차만 지우고 기존 회차는 그대로 둔다", async () => {
+  failCreateAt = 2;
+  await assert.rejects(syncOmRequestSessionsToOperations(request(3), request(5), [0, 1, 2, null, null]), /SYNTHETIC_CREATE_FAILED/);
+  assert.deepEqual(calls, ["create:new-1:4", "delete:new-1"]);
+  assert.deepEqual(operations.filter((op) => !op.deleted).map((op) => op.operationId), ["round-1", "round-2", "round-3", "round-9"]);
+});
+
+test("접수 때 회차를 만들다 실패하면 앞서 만든 회차를 역순으로 지우고 실패를 알린다", async () => {
+  operations = [];
+  failCreateAt = 3;
+  await assert.rejects(createLinkedOperationForOmRequest(request(3)), /SYNTHETIC_CREATE_FAILED/);
+  assert.deepEqual(calls, ["create:new-1:1", "create:new-2:2", "delete:new-2", "delete:new-1"]);
+  assert.deepEqual(operations.filter((op) => !op.deleted), []);
+});
+
+test("접수 때 모든 회차를 만들면 1회차를 대표로 돌려준다", async () => {
+  operations = [];
+  assert.equal(await createLinkedOperationForOmRequest(request(2)), "new-1");
+  assert.deepEqual(calls, ["create:new-1:1", "create:new-2:2"]);
+});
+
+test("교육일이 빠졌거나 총 회차와 회차 수가 다르면 만들기 전에 거절한다", async () => {
+  operations = [];
+  const missingDate = { ...request(2), sessions: [session("2099-01-01"), { ...session(""), educationDatesText: "1/2" }] };
+  await assert.rejects(createLinkedOperationForOmRequest(missingDate), /OM_REQUEST_SESSION_INPUT_INVALID/);
+  await assert.rejects(createLinkedOperationForOmRequest({ ...request(2), totalSessions: 3 }), /OM_REQUEST_SESSION_INPUT_INVALID/);
   assert.deepEqual(calls, []);
 });
 
