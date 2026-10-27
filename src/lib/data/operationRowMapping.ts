@@ -92,6 +92,8 @@ export const EDUCATION_FORMAT: Record<string, EducationFormat> = {
   ONLINE: "온라인",
   BLENDED: "블렌디드",
   FLIPPED: "플립러닝",
+  PBL: "PBL",
+  HACKATHON: "해커톤",
   NEEDS_REVIEW: "검토필요"
 };
 
@@ -166,6 +168,8 @@ export const DB_EDUCATION_FORMAT: Record<EducationFormat, string> = {
   "온라인": "ONLINE",
   "블렌디드": "BLENDED",
   "플립러닝": "FLIPPED",
+  "PBL": "PBL",
+  "해커톤": "HACKATHON",
   "검토필요": "NEEDS_REVIEW"
 };
 

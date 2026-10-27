@@ -31,6 +31,8 @@ enum EducationFormat {
   ONLINE       @map("online")
   BLENDED      @map("blended")
   FLIPPED      @map("flipped")
+  PBL          @map("pbl")
+  HACKATHON    @map("hackathon")
   NEEDS_REVIEW @map("needs_review")
 
   @@map("education_format")

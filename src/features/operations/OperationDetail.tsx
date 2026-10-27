@@ -45,7 +45,7 @@ const SHOW_LECTURE_REPORTS = false;
 const SHOW_READINESS_SUMMARY = false;
 const SHOW_BULK_EDIT_ROUNDS = false;
 
-const EDUCATION_FORMAT_OPTIONS = ["오프라인", "비대면", "온라인", "블렌디드", "플립러닝", "검토필요"];
+const EDUCATION_FORMAT_OPTIONS = ["오프라인", "비대면", "온라인", "블렌디드", "플립러닝", "PBL", "해커톤", "검토필요"];
 
 interface OperationDetailProps {
   coachOptions?: string[];

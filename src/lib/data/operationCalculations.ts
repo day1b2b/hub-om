@@ -20,7 +20,9 @@ const EDUCATION_FORMATS = new Set<EducationFormat>([
   "비대면",
   "온라인",
   "블렌디드",
-  "플립러닝"
+  "플립러닝",
+  "PBL",
+  "해커톤"
 ]);
 const OPERATION_TYPES = new Set<OperationType>([
   "특강",

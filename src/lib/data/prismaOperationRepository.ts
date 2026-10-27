@@ -64,6 +64,8 @@ const EDUCATION_FORMAT: Record<string, EducationFormat> = {
   ONLINE: "온라인",
   BLENDED: "블렌디드",
   FLIPPED: "플립러닝",
+  PBL: "PBL",
+  HACKATHON: "해커톤",
   NEEDS_REVIEW: "검토필요"
 };
 
@@ -138,6 +140,8 @@ const PRISMA_EDUCATION_FORMAT: Record<EducationFormat, PrismaEducationFormat> = 
   "온라인": PrismaEducationFormat.ONLINE,
   "블렌디드": PrismaEducationFormat.BLENDED,
   "플립러닝": PrismaEducationFormat.FLIPPED,
+  "PBL": PrismaEducationFormat.PBL,
+  "해커톤": PrismaEducationFormat.HACKATHON,
   "검토필요": PrismaEducationFormat.NEEDS_REVIEW
 };
 
