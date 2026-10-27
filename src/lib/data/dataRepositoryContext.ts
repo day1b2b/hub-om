@@ -10,6 +10,7 @@ import type { CalendarPersistence, CalendarLockPort } from "../googleCalendar/ca
 import type { OmAssignmentRepository } from "./omRequest/omAssignmentContract";
 import type { OmAssignmentCalendar, OmAssignmentNotifier } from "./omRequest/omAssignmentEffects";
 import type { OperationRepository } from "./operationRepository";
+import type { CompanyBusinessInfoRepository } from "./companyBusinessInfoRepository";
 import type { OmRequestRepository, OmCustomToolsRepository, OmRequestNotifier } from "./omRequest/omRequestRepository";
 import type { SalesRevenueSyncRepository, SalesRevenueSource, SalesRevenueNotifier } from "./salesRevenueSyncRepository";
 import type { SatisfactionSource } from "./satisfactionSource";
@@ -93,6 +94,7 @@ export interface DataRepositories {
   omAssignmentNotifier: OmAssignmentNotifier;
   omRequests: OmRequestRepository;
   operations: OperationRepository;
+  companyBusinessInfo: CompanyBusinessInfoRepository;
   omCustomTools: OmCustomToolsRepository;
   omRequestNotifier: OmRequestNotifier;
   salesRevenueSync: SalesRevenueSyncRepository;

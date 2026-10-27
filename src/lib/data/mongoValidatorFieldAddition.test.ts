@@ -4,6 +4,7 @@ import { gzipSync } from "node:zlib";
 import { operationMongoIndexes, operationMongoValidator } from "./mongoOperationStore";
 import { mongoFailureCode } from "./mongoOperationPrimitives";
 import { compareFieldAddition, emitFieldAdditionTarget, parseFieldAdditionTarget } from "./mongoValidatorFieldAddition";
+import { stableMongoValue } from "./mongoOperationPrimitives";
 
 type Schema = { required: string[]; properties: Record<string, Record<string, unknown>>; [key: string]: unknown };
 type Validator = { $jsonSchema?: Schema; $and?: [{ $jsonSchema: Schema }, ...unknown[]] };
@@ -14,20 +15,32 @@ const schemaOf = (validator: unknown): Schema => {
 const ENVELOPE = "^pii:v1:[A-Za-z0-9_-]{1,40}:[A-Za-z0-9_-]{16}:[A-Za-z0-9_-]{22}:[A-Za-z0-9_-]*$";
 const pair = (a: string, b: string) => ({ $expr: { $eq: [{ $eq: [`$${a}`, null] }, { $eq: [`$${b}`, null] }] } });
 
-/** The shape #762 gives Company: a plain nullable field plus a private field with its blind index and null pairing. */
-function companyAddition(): Record<string, unknown> {
-  const schema = structuredClone(schemaOf(operationMongoValidator("Company")));
-  schema.properties.businessType = { bsonType: ["string", "null"] };
-  schema.properties.businessNumber = { bsonType: ["string", "null"], pattern: ENVELOPE };
-  schema.properties.businessNumberPiiIndex = { bsonType: ["string", "null"], pattern: "^[a-f0-9]{64}$" };
-  schema.required.push("businessType", "businessNumber", "businessNumberPiiIndex");
-  return { $and: [{ $jsonSchema: schema }, pair("businessNumber", "businessNumberPiiIndex")] };
+const ADDED_FIELDS = ["businessNumber", "businessType", "businessNumberPiiIndex"];
+
+/**
+ * The shape #762 gives Company: a plain nullable field plus a private field with its blind index and null pairing.
+ * The deployed contract already carries every business-info field (committed alongside this fixture), so the
+ * "before widening" validator is built by stripping the three fields back out of it rather than adding them.
+ */
+function companyAddition(): { deployed: Record<string, unknown>; target: Record<string, unknown> } {
+  const target = structuredClone(operationMongoValidator("Company")) as Validator;
+  const deployed = structuredClone(target);
+  const schema = schemaOf(deployed);
+  for (const name of ADDED_FIELDS) {
+    delete schema.properties[name];
+    schema.required = schema.required.filter(field => field !== name);
+  }
+  const droppedPair = stableMongoValue(pair("businessNumber", "businessNumberPiiIndex"));
+  deployed.$and = deployed.$and!.filter(clause => stableMongoValue(clause) !== droppedPair) as Validator["$and"];
+  return { deployed, target };
 }
 
 test("nullable fields, their blind indexes and null pairing compare as an addition", () => {
-  assert.deepEqual(compareFieldAddition(operationMongoValidator("Company"), companyAddition()),
-    { kind: "addition", fields: ["businessType", "businessNumber", "businessNumberPiiIndex"] });
-  assert.deepEqual(compareFieldAddition(operationMongoValidator("Company"), structuredClone(operationMongoValidator("Company"))), { kind: "same" });
+  const { deployed, target } = companyAddition();
+  const result = compareFieldAddition(deployed, target);
+  assert.equal(result.kind, "addition");
+  assert.deepEqual(new Set((result as { fields: string[] }).fields), new Set(ADDED_FIELDS));
+  assert.deepEqual(compareFieldAddition(deployed, structuredClone(deployed)), { kind: "same" });
 });
 
 test("an addition to a model that already pairs private fields keeps the deployed pairs", () => {
@@ -47,7 +60,7 @@ test("an addition to a model that already pairs private fields keeps the deploye
 });
 
 test("anything beyond nullable additions is incompatible", () => {
-  const deployed = operationMongoValidator("Company");
+  const { deployed, target: validTarget } = companyAddition();
   const cases: Array<[string, (validator: Record<string, unknown>) => void]> = [
     ["field that rejects null", v => { schemaOf(v).properties.businessType = { bsonType: "string" }; }],
     ["enum without null", v => { schemaOf(v).properties.businessType = { bsonType: ["string", "null"], enum: ["A"] }; }],
@@ -59,14 +72,14 @@ test("anything beyond nullable additions is incompatible", () => {
     ["unknown rule", v => { (v.$and as unknown[]).push({ $expr: { $gt: ["$createdAt", null] } }); }]
   ];
   for (const [label, mutate] of cases) {
-    const target = companyAddition();
+    const target = structuredClone(validTarget);
     mutate(target);
     assert.equal(compareFieldAddition(deployed, target).kind, "incompatible", label);
   }
   assert.equal(compareFieldAddition(deployed, {}).kind, "incompatible");
   assert.equal(compareFieldAddition(deployed, undefined).kind, "incompatible");
   // The reverse direction (a removal) is never an addition.
-  assert.equal(compareFieldAddition(companyAddition(), deployed).kind, "incompatible");
+  assert.equal(compareFieldAddition(validTarget, deployed).kind, "incompatible");
 });
 
 test("the emitted token round-trips the build's validator and indexes with a stable digest", () => {

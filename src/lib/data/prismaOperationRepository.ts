@@ -406,10 +406,13 @@ export class PrismaOperationRepository implements OperationRepository {
       }
       const company = await tx.company.upsert({
         where: { normalizedName: normalizeName(companyName) },
+        // 업무요청의 사업자등록번호는 신규 기업 생성 시에만 반영한다. 기존 기업은 기업위키에서
+        // 이미 검증/수정했을 수 있는 값을 업무요청의 자유 입력값으로 덮어쓰지 않는다.
         update: { name: companyName },
         create: {
           name: companyName,
-          normalizedName: normalizeName(companyName)
+          normalizedName: normalizeName(companyName),
+          businessNumber: input.businessNumber?.trim() || null
         }
       });
 
