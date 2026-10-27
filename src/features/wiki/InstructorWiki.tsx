@@ -49,6 +49,7 @@ export function InstructorWiki({
   const [companyFilter, setCompanyFilter] = useState("전체 기업");
   const [view, setView] = useState<"gallery" | "list">("gallery");
   const [grouping, setGrouping] = useState<"all" | "category">("all");
+  const [sort, setSort] = useState<"relevance" | "name">("relevance");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const avoidSet = useMemo(() => new Set(recruitAvoidNames), [recruitAvoidNames]);
 
@@ -97,6 +98,23 @@ export function InstructorWiki({
     return baseFiltered.filter((entry) => entry.categories.includes(selectedCategory));
   }, [baseFiltered, selectedCategory]);
 
+  // 표시 정렬. 기본 "관련순": 운영 이력 있는 강사를 위로(최근 배정 → 담당 코스 많은 순), 이력 없는 전사 풀은 아래로.
+  // "이름순"은 ㄱㄴㄷ. entries 기본값이 이름순이라, 가라앉던 활동 강사를 위로 띄우는 게 핵심이다.
+  const sorted = useMemo(() => {
+    const list = [...filtered];
+    if (sort === "name") return list.sort((a, b) => a.name.localeCompare(b.name, "ko"));
+    return list.sort((a, b) => {
+      const aHistory = hasOperationHistory(a) ? 1 : 0;
+      const bHistory = hasOperationHistory(b) ? 1 : 0;
+      if (aHistory !== bHistory) return bHistory - aHistory;
+      const aRecent = a.courses[0]?.startDate ?? "";
+      const bRecent = b.courses[0]?.startDate ?? "";
+      if (aRecent !== bRecent) return bRecent.localeCompare(aRecent);
+      if (a.courseCount !== b.courseCount) return b.courseCount - a.courseCount;
+      return a.name.localeCompare(b.name, "ko");
+    });
+  }, [filtered, sort]);
+
   const activeCount = entries.filter((entry) => hasActiveCourse(entry)).length;
   const noHistoryCount = entries.filter((entry) => !hasOperationHistory(entry)).length;
   const historyOnlyCount = entries.length - activeCount - noHistoryCount;
@@ -111,7 +129,7 @@ export function InstructorWiki({
           : noHistoryCount;
 
   // 카테고리별 보기는 현재 필터 결과를 그대로 묶는다(검색·탭·기업 필터가 먼저 적용됨).
-  const categoryGroups = useMemo(() => groupEntriesByCategory(filtered), [filtered]);
+  const categoryGroups = useMemo(() => groupEntriesByCategory(sorted), [sorted]);
 
   // 목록에서는 항상 상세로 간다. 노션 이동은 상세 헤더의 강사명 메뉴에서 한다.
   const renderCard = (entry: InstructorWikiEntry) => {
@@ -229,6 +247,11 @@ export function InstructorWiki({
               카테고리별
             </button>
           </div>
+          {/* 정렬: 관련순(활동 강사 위로) / 이름순(ㄱㄴㄷ) */}
+          <div className="view-toggle">
+            <button className={sort === "relevance" ? "selected" : ""} onClick={() => setSort("relevance")} type="button">관련순</button>
+            <button className={sort === "name" ? "selected" : ""} onClick={() => setSort("name")} type="button">이름순</button>
+          </div>
           <select onChange={(event) => setCompanyFilter(event.target.value)} value={companyFilter}>
             {companyOptions.map((option) => (
               <option key={option}>{option}</option>
@@ -287,7 +310,7 @@ export function InstructorWiki({
               </section>
             ))
           ) : (
-            <div className="wiki-gallery">{filtered.map(renderCard)}</div>
+            <div className="wiki-gallery">{sorted.map(renderCard)}</div>
           )
         ) : (
           <div className="table-section">
@@ -328,7 +351,7 @@ export function InstructorWiki({
                         </Fragment>
                       ))
                     ) : (
-                      filtered.map(renderRow)
+                      sorted.map(renderRow)
                     )
                   ) : (
                     <tr>
