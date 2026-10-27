@@ -85,7 +85,10 @@ test("single and composite keyset pages preserve exact alias/decimal/date/JSON n
   assert.deepEqual(query!.values, [uuid(1), uuid(2), 1]);
 });
 test("export lifecycle keeps transaction open across pages, rejects wrong cursor, exact sequence and commit/abort", async () => {
-  const f = fixture(); f.pages.push([{ id: uuid(1), name: "synthetic", normalizedName: "synthetic", createdAt: "2026-09-22 00:00:00", updatedAt: "2026-09-22 00:00:00" }]);
+  const f = fixture(); f.pages.push([{ id: uuid(1), name: "synthetic", normalizedName: "synthetic", createdAt: "2026-09-22 00:00:00", updatedAt: "2026-09-22 00:00:00",
+    businessNumber: null, representativeName: null, address: null, businessType: null, businessItem: null, invoiceEmail: null, invoiceEmailSecondary: null,
+    businessInfoUpdatedAt: null, businessInfoUpdatedBy: null, businessNumberPiiIndex: null, representativeNamePiiIndex: null, addressPiiIndex: null,
+    invoiceEmailPiiIndex: null, invoiceEmailSecondaryPiiIndex: null }]);
   const snapshot = await createPostgresShadowSnapshot(f.pool);
   assert.equal(snapshot.readOnly, true); assert.equal(f.releases(), 0);
   const rows = await snapshot.page("Company", null, 10); assert.equal(rows.length, 1);
