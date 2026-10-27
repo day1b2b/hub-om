@@ -4,6 +4,8 @@ import { test } from "node:test";
 import type { ArchiveCompletionInput } from "@/lib/data/operationCalculations.ts";
 import {
   deriveArchiveStatus,
+  isAssignedOm,
+  operationStatusAfterOmChange,
   formatEducationDatesCompact,
   formatEducationDatesList,
   isArchiveComplete,
@@ -245,4 +247,20 @@ test("형식이 틀린 교육일만 있으면 기간으로 떨어진다(조용�
     }),
     [{ start: "2026-09-14", end: "2026-09-23" }]
   );
+});
+
+test("OM을 넣으면 배정필요가 배정예정이 되고, 비우면 배정예정이 배정필요로 돌아간다", () => {
+  assert.equal(operationStatusAfterOmChange("ASSIGNMENT_NEEDED", "김민진"), "ASSIGNMENT_PLANNED");
+  assert.equal(operationStatusAfterOmChange("ASSIGNMENT_PLANNED", ""), "ASSIGNMENT_NEEDED");
+  assert.equal(operationStatusAfterOmChange("ASSIGNMENT_PLANNED", null), "ASSIGNMENT_NEEDED");
+  // "배정필요" 같은 자리표시 문구는 담당자가 아니다.
+  assert.equal(operationStatusAfterOmChange("ASSIGNMENT_NEEDED", " ★배정필요 "), "ASSIGNMENT_NEEDED");
+  assert.equal(operationStatusAfterOmChange("ASSIGNMENT_PLANNED", "배정필요"), "ASSIGNMENT_NEEDED");
+  // 진행중·완료 같은 뒤 단계는 OM이 바뀌어도 되돌리지 않는다.
+  for (const status of ["ACTIVE", "DONE", "RETROSPECTIVE_DONE", "ARCHIVE_NEEDED"]) {
+    assert.equal(operationStatusAfterOmChange(status, ""), status);
+    assert.equal(operationStatusAfterOmChange(status, "최정연"), status);
+  }
+  assert.equal(isAssignedOm("김민진, 최정연"), true);
+  assert.equal(isAssignedOm("   "), false);
 });

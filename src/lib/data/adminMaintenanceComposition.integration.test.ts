@@ -74,7 +74,7 @@ test("admin maintenance APIs use prepared Mongo composition", { skip: !uri, time
     const onsiteResponse = await onsite.POST();
     responses.push(onsiteResponse); assert.deepEqual(await onsiteResponse.clone().json(), { ok: true, updatedCount: 1 });
     const omCountResponse = await om.GET();
-    responses.push(omCountResponse); assert.deepEqual(await omCountResponse.clone().json(), { ok: true, targetCount: 1 });
+    responses.push(omCountResponse); assert.deepEqual(await omCountResponse.clone().json(), { ok: true, targetCount: 1, planned: 1, archiveNeeded: 0, retrospectiveDone: 0 });
     const omResponse = await om.POST();
     responses.push(omResponse); assert.deepEqual(await omResponse.clone().json(), { ok: true, updatedCount: 1 });
     for (const response of responses) {

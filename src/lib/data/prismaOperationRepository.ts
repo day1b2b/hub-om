@@ -38,6 +38,7 @@ import {
   deriveProfit,
   deriveSessionDurationDays,
   deriveSessionDurationType,
+  operationStatusAfterOmChange,
   formatProcessId,
   normalizeCourseId,
   summarizeOperations
@@ -680,6 +681,12 @@ export class PrismaOperationRepository implements OperationRepository {
     if (input.operationDetail !== undefined) data.operationDetail = nullableText(input.operationDetail);
     if (input.operationIssue !== undefined) data.operationIssue = nullableText(input.operationIssue);
     if (input.operationStatus !== undefined) data.operationStatus = PRISMA_OPERATION_STATUS[input.operationStatus];
+    else if (input.om !== undefined) {
+      const current = await prisma.operationSession.findUnique({ select: { omName: true, operationStatus: true }, where: { operationId } });
+      if (current && current.omName !== nullableText(input.om)) {
+        data.operationStatus = operationStatusAfterOmChange(current.operationStatus, nullableText(input.om)) as typeof current.operationStatus;
+      }
+    }
     if (input.omUpdate !== undefined) data.omUpdate = nullableText(input.omUpdate);
     if (input.padletLink !== undefined) data.padletLink = nullableText(input.padletLink);
     if (input.region !== undefined) data.region = nullableText(input.region);

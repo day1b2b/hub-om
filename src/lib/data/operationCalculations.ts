@@ -116,6 +116,24 @@ export function normalizeOperationType(rawValue: string): OperationType {
   return OPERATION_TYPES.has(simplified) ? simplified : "검토필요";
 }
 
+/** OM 칸에 실제 담당자 이름이 들어 있는지. "배정필요" 같은 자리표시 문구는 담당자로 보지 않는다. */
+export function isAssignedOm(om: string | null | undefined): boolean {
+  const normalized = (om ?? "").trim();
+  return Boolean(normalized) && !ASSIGNMENT_NEEDED_VALUES.has(normalized);
+}
+
+/**
+ * OM을 넣거나 비울 때의 진행상태(DB enum 이름). 배정필요↔배정예정만 바꾸고 진행중·완료 같은
+ * 뒤 단계는 건드리지 않는다. 업무요청 배정(omAssignmentContract의 nextStatus)과 같은 규칙이다.
+ * 진행상태는 OM이 바뀌어도 저절로 따라가지 않아서, OM이 있는데 배정필요로 남은 회차가 쌓였다.
+ */
+export function operationStatusAfterOmChange<T extends string>(status: T, om: string | null | undefined): T | "ASSIGNMENT_PLANNED" | "ASSIGNMENT_NEEDED" {
+  const assigned = isAssignedOm(om);
+  if (assigned && status === "ASSIGNMENT_NEEDED") return "ASSIGNMENT_PLANNED";
+  if (!assigned && status === "ASSIGNMENT_PLANNED") return "ASSIGNMENT_NEEDED";
+  return status;
+}
+
 export function deriveOperationStatus(om: string, endDate: string, hasArchiveData: boolean): OperationStatus {
   const normalizedOm = om.trim();
 
