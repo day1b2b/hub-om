@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { operationMongoValidator } from "./mongoOperationStore";
 import { MongoOperationError, mongoFailureCode } from "./mongoOperationPrimitives";
-import { compareOperationValidator, parseEnumWidening, widenedOperationValidator } from "./mongoValidatorWidening";
+import { catchUpTarget, compareOperationValidator, parseEnumWidening, widenedOperationValidator } from "./mongoValidatorWidening";
 
 const clone = <T>(value: T): T => structuredClone(value);
 type Properties = Record<string, { enum?: unknown[]; bsonType?: unknown }>;
@@ -54,6 +54,23 @@ test("coach evaluation collections widen the same way (role enum)", () => {
   const comparison = compareOperationValidator(deployed, target);
   assert.equal(comparison.kind, "widening");
   assert.deepEqual(comparison.kind === "widening" && comparison.added.map(item => item.values), [["WIDENING_FIXTURE"]]);
+});
+
+test("catch-up targets this build's contract, only for coach evaluation collections", () => {
+  const target = catchUpTarget("CoachEngagementDetail");
+  assert.deepEqual(target, operationMongoValidator("CoachEngagementDetail"));
+  // A stored validator one enum value behind this build is a widening the catch-up may apply.
+  const lagging = clone(target);
+  const roles = propertiesOf(lagging).role.enum as string[];
+  propertiesOf(lagging).role.enum = roles.slice(0, -1);
+  const comparison = compareOperationValidator(lagging, target);
+  assert.equal(comparison.kind, "widening");
+  assert.deepEqual(comparison.kind === "widening" && comparison.added.map(item => item.values), [[roles.at(-1)]]);
+  // Ahead of this build (a narrowing) is not something catch-up may apply.
+  assert.equal(compareOperationValidator(target, lagging).kind, "incompatible");
+  for (const model of ["OperationSession", "Coach", "CoachProfile"]) {
+    assert.throws(() => catchUpTarget(model), (error: unknown) => mongoFailureCode(error) === "UNKNOWN_COACH_EVALUATION_MODEL");
+  }
 });
 
 test("parseEnumWidening reads Model.field=V1,V2 and rejects anything else", () => {

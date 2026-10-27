@@ -136,6 +136,40 @@ export async function applyEnumWidening(options: MongoOperationOptions & { allow
 }
 
 /**
+ * Coach evaluation collections are not part of the deploy health check, so a build whose contract adds an enum value
+ * still goes live while the stored validator lags behind. Catch-up runs from that new build: it widens the stored
+ * validator to this build's contract. Coach evaluation reads and writes fail between the deploy and this step.
+ */
+export function catchUpTarget(model: string): Document {
+  assertMongo((COACH_EVALUATION_MODELS as readonly string[]).includes(model), "UNKNOWN_COACH_EVALUATION_MODEL");
+  return operationMongoValidator(model);
+}
+
+/** Read-only plan: how the stored validator compares with this build's contract. */
+export async function inspectCatchUp(options: MongoOperationOptions, model: string): Promise<OperationValidatorStatus> {
+  return inspectOne(options, model, catchUpTarget(model));
+}
+
+/**
+ * Applies this build's contract validator when the stored one is a strict widening predecessor of it.
+ * Refuses before any write for anything else (missing collection, narrowing, non-enum differences).
+ */
+export async function applyCatchUp(options: MongoOperationOptions & { allowShadowWrites: true }, model: string): Promise<"applied" | "already-applied"> {
+  assertMongo(options.allowShadowWrites === true, "SHADOW_WRITE_GATE");
+  const target = catchUpTarget(model);
+  const store = new MongoOperationStore(options, [model]);
+  const collection = store.collection(model);
+  const read = async () => (await store.db.listCollections({ name: collection.collectionName }, { nameOnly: false }).next())?.options?.validator;
+  const stored = await read();
+  if (stableMongoValue(stored) === stableMongoValue(target)) return "already-applied";
+  assertMongo(stored, "COLLECTION_MISSING");
+  assertMongo(compareOperationValidator(stored, target).kind === "widening", "VALIDATOR_CHANGE_NOT_WIDENING");
+  await applyMongoValidator(store, model, target);
+  assertMongo(stableMongoValue(await read()) === stableMongoValue(target), "VALIDATOR_NOT_APPLIED");
+  return "applied";
+}
+
+/**
  * Rollback for a widening whose deploy failed: puts the deployed contract's validator back.
  * Only when the stored validator is a widening of it and no stored row uses a value the deployed contract lacks.
  */
