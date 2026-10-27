@@ -183,6 +183,20 @@ test("Mongo operation repository on a disposable local replica set", { skip: !ur
       assert.equal((await repository.createOperation(input("rollback"))).processId, "PRC-000101");
     });
 
+    await suite.test("OM change moves only assignment-needed/planned status unless status is set explicitly", async () => {
+      const { repository } = await fixture();
+      const created = await repository.createOperation({ ...input("om-status"), om: "" });
+      assert.equal(created.operationStatus, "배정필요");
+      assert.equal((await repository.updateOperation(created.operationId, { om: "Synthetic assigned owner" })).operationStatus, "배정예정");
+      assert.equal((await repository.updateOperation(created.operationId, { om: "배정필요" })).operationStatus, "배정필요");
+      assert.equal((await repository.updateOperation(created.operationId, { om: "Synthetic assigned owner", operationStatus: "진행중" })).operationStatus, "진행중");
+      assert.equal((await repository.updateOperation(created.operationId, { om: "" })).operationStatus, "진행중");
+      assert.equal((await repository.updateOperation(created.operationId, { specialNotes: "Synthetic note" })).operationStatus, "진행중");
+      // Saving the same OM again is not an OM change and must not move status or add an audit.
+      const unchanged = await repository.createOperation(input("om-status-same"));
+      assert.equal((await repository.updateOperation(unchanged.operationId, { om: "Synthetic owner" })).operationStatus, "배정필요");
+    });
+
     await suite.test("late session audit failure during an update rolls back both course and session changes", async () => {
       const { repository, store } = await fixture();
       const created = await repository.createOperation(input("update-rollback"));
@@ -272,7 +286,8 @@ test("Mongo operation repository on a disposable local replica set", { skip: !ur
       const raw = await store.collection("ActivityChange").findOne({ targetId: created.id, action: "update" });
       assert.ok(raw);
       const change = decodeMongoRuntimeDocument("ActivityChange", raw);
-      assert.deepEqual(change.changes, { om_name: { redacted: true } });
+      // The fixture starts with an OM but 배정필요, so a real OM change also moves it to 배정예정.
+      assert.deepEqual(change.changes, { operation_status: { before: "assignment_needed", after: "assignment_planned" }, om_name: { redacted: true } });
       assert.ok(!JSON.stringify(raw).includes("Synthetic private replacement"));
     });
 

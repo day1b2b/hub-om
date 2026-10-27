@@ -5,8 +5,10 @@ import { operationAuditRow } from "./mongoOperationAudit";
 import { assertMongo, completeMongoRow, MongoOperationError, MongoOperationStore, type MongoOperationOptions, type MongoRow } from "./mongoOperationStore";
 import { assertMongoReadStoreReady, prepareMongoReadStore } from "./mongoReadStore";
 import { encodeMongoRuntimeDocument, mongoRuntimeBlindIndex, type MongoRuntimeDocument } from "./mongoRuntimeCodec";
+import { countOmStatusBackfill, omStatusBackfillValue, type OmStatusBackfillCounts, type OmStatusBackfillValue } from "./omAssignmentStatusBackfillPlan";
 
-export const OPERATION_BACKFILL_MODELS = ["OperationSession", "ActivityChange"] as const;
+// Course is read only: the archive judgement for an ended round needs its courseId.
+export const OPERATION_BACKFILL_MODELS = ["OperationSession", "ActivityChange", "Course"] as const;
 export type MongoOperationBackfillOptions = MongoOperationOptions & { allowShadowWrites: true };
 const TRANSACTION_TIMEOUT_MS = 30_000;
 const PLACEHOLDER_OM_VALUES = new Set(["", ...ASSIGNMENT_NEEDED_VALUES]);
@@ -92,22 +94,40 @@ export class MongoOperationBackfillRepository implements OperationBackfillReposi
     }
   }
 
+  /** Status each OM target gets; see omStatusBackfillValue. Onsite targets always get "Y". */
+  private async omValues(rows: MongoRow[], session: ClientSession): Promise<OmStatusBackfillValue[]> {
+    const courseRecordIds = [...new Set(rows.map(row => row.courseRecordId as string))];
+    const courses = courseRecordIds.length ? await this.store.scan("Course", { _id: { $in: courseRecordIds } }, session) : [];
+    const courseIds = new Map(courses.map(course => [course.id as string, course.courseId as string | null]));
+    return rows.map(row => omStatusBackfillValue({
+      endDate: row.endDate as Date, courseId: courseIds.get(row.courseRecordId as string),
+      lectureManagementNote: row.lectureManagementNote as string | null, avgSatisfaction: row.avgSatisfaction as string | null,
+      hasSatisfactionSurvey: row.hasSatisfactionSurvey as string, hasResultReport: row.hasResultReport as string,
+      resultReportLink: row.resultReportLink as string | null
+    }));
+  }
+
+  private async targets(kind: BackfillKind, session: ClientSession, checkDeadline: () => void): Promise<MongoRow[]> {
+    const rows = await this.store.scan("OperationSession", this.targetFilter(kind), session);
+    for (const row of rows) {
+      checkDeadline();
+      this.assertTarget(kind, row);
+    }
+    return rows;
+  }
+
   private async run(kind: BackfillKind, apply: boolean): Promise<number> {
     return this.transaction(async (session, checkDeadline) => {
       const filter = this.targetFilter(kind);
-      const rows = await this.store.scan("OperationSession", filter, session);
-      for (const row of rows) {
-        checkDeadline();
-        this.assertTarget(kind, row);
-      }
+      const rows = await this.targets(kind, session, checkDeadline);
       if (!apply || rows.length === 0) return rows.length;
       const field = kind === "onsite" ? "onsiteRequired" : "operationStatus";
-      const value = kind === "onsite" ? "Y" : "ASSIGNMENT_PLANNED";
+      const values = kind === "onsite" ? rows.map(() => "Y") : await this.omValues(rows, session);
       const now = new Date();
       let updatedCount = 0;
-      for (const previous of rows) {
+      for (const [index, previous] of rows.entries()) {
         checkDeadline();
-        const next = completeMongoRow("OperationSession", { ...previous, [field]: value, updatedAt: now });
+        const next = completeMongoRow("OperationSession", { ...previous, [field]: values[index], updatedAt: now });
         const encoded = encodeMongoRuntimeDocument("OperationSession", next);
         // Validate a complete logical row, but persist only the repaired field
         // and timestamp. Preserve unrelated ciphertext, onsiteText and updatedBy.
@@ -127,5 +147,8 @@ export class MongoOperationBackfillRepository implements OperationBackfillReposi
   countOnsiteRequiredTargets(): Promise<number> { return this.run("onsite", false); }
   applyOnsiteRequiredBackfill(): Promise<number> { return this.run("onsite", true); }
   countOmAssignmentStatusTargets(): Promise<number> { return this.run("om", false); }
+  previewOmAssignmentStatusBackfill(): Promise<OmStatusBackfillCounts> {
+    return this.transaction(async (session, checkDeadline) => countOmStatusBackfill(await this.omValues(await this.targets("om", session, checkDeadline), session)));
+  }
   applyOmAssignmentStatusBackfill(): Promise<number> { return this.run("om", true); }
 }

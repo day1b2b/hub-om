@@ -3,7 +3,7 @@ import { operationCreationIdentity, creationOperationId, OperationCreationConfli
 import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server.js";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
-import { isSameCourse, parseEducationDatesText } from "@/lib/data/operationCalculations";
+import { isAssignedOm, isSameCourse, parseEducationDatesText } from "@/lib/data/operationCalculations";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import type { CreateOperationInput } from "@/lib/data/operationTypes";
 import { runOperationWriteRequest } from "@/lib/data/operationWriteComposition";
@@ -126,7 +126,7 @@ async function activityPOST(request: Request, { params }: RouteContext) {
       operationCost: null,
       operationDetail: baseOperation.operationDetail,
       operationIssue: "",
-      operationStatus: "배정예정",
+      operationStatus: isAssignedOm(baseOperation.om) ? "배정예정" : "배정필요",
       operationType: baseOperation.operationType,
       padletLink: baseOperation.padletLink,
       region: textValue(body.region) || baseOperation.region,

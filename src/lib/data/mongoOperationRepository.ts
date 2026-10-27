@@ -3,7 +3,7 @@ import { MongoServerError, type ClientSession } from "mongodb";
 import type { OperationRepository } from "./operationRepository";
 import type { CourseCommonNote, CourseCommonNoteInput, CreateOperationInput, OperationSession, UpdateOperationInput } from "./operationTypes";
 import { assertCreationReplay, creationOperationId, creationOperationPrefix } from "./operationCreationIdentity";
-import { buildOperationMonth, deriveDateRangeFromEducationDates, deriveSessionDurationDays, deriveSessionDurationType, normalizeCourseId, summarizeOperations } from "./operationCalculations";
+import { buildOperationMonth, deriveDateRangeFromEducationDates, deriveSessionDurationDays, deriveSessionDurationType, normalizeCourseId, operationStatusAfterOmChange, summarizeOperations } from "./operationCalculations";
 import { normalizeLookupName, selectCoursesByCompany, selectCoursesByCourseId, type CourseLookupRow } from "./courseLookup";
 import { DEFAULT_TEAM_MEMBER_ROLE_ROSTER } from "./defaultTeamMemberRoster";
 import type { TeamMemberRoleRoster } from "./teamMemberRepository";
@@ -259,6 +259,7 @@ export class MongoOperationRepository implements OperationRepository {
       if (input.archiveStatus !== undefined) next.archiveStatus = DB_ARCHIVE_STATUS[input.archiveStatus];
       if (input.educationFormat !== undefined) next.educationFormat = DB_EDUCATION_FORMAT[input.educationFormat];
       if (input.operationStatus !== undefined) next.operationStatus = DB_OPERATION_STATUS[input.operationStatus];
+      else if (input.om !== undefined && next.omName !== previous.omName) next.operationStatus = operationStatusAfterOmChange(previous.operationStatus as string, next.omName as string | null);
       if (input.hasResultReport !== undefined) next.hasResultReport = DB_RESULT_REPORT_STATUS[input.hasResultReport];
       if (input.hasSatisfactionSurvey !== undefined) next.hasSatisfactionSurvey = DB_SATISFACTION_SURVEY_STATUS[input.hasSatisfactionSurvey];
       if (input.onsiteRequired !== undefined) { next.onsiteRequired = input.onsiteRequired; next.onsiteText = onsiteRequiredLabel(input.onsiteRequired); }
