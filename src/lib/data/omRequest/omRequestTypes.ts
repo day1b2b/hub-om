@@ -1,4 +1,4 @@
-export type TrainingType = "오프라인" | "블렌디드" | "비대면" | "온라인" | "해커톤";
+export type TrainingType = "오프라인" | "비대면" | "온라인" | "블렌디드" | "플립러닝" | "PBL" | "해커톤";
 export type YN = "Y" | "N";
 
 export interface OmRequestSession {

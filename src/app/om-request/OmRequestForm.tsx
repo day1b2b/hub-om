@@ -44,7 +44,7 @@ function AddressSearchButton({ onSelect }: { onSelect: (address: string) => void
 }
 
 const TEAM_OPTIONS = ["1파트", "2파트", "3파트"];
-const TRAINING_TYPE_OPTIONS: TrainingType[] = ["오프라인", "블렌디드", "비대면", "온라인", "해커톤"];
+const TRAINING_TYPE_OPTIONS: TrainingType[] = ["오프라인", "비대면", "온라인", "블렌디드", "플립러닝", "PBL", "해커톤"];
 
 function resolveTeamOption(memberTeam?: string): string | undefined {
   if (!memberTeam) return undefined;

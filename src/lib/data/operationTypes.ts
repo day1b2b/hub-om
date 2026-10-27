@@ -16,6 +16,8 @@ export type EducationFormat =
   | "온라인"
   | "블렌디드"
   | "플립러닝"
+  | "PBL"
+  | "해커톤"
   | "검토필요";
 
 export type OperationChannel =
