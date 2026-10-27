@@ -4,7 +4,7 @@
 // - 기준 숫자는 화면 문구에 쓰지 않는다(정책 비공개 원칙).
 // =============================================================================
 
-export type CoachEngagementRoleValue = "PRACTICE_COACH" | "LEAD" | "OPERATION_ASSISTANT";
+export type CoachEngagementRoleValue = "PRACTICE_COACH" | "LEAD" | "OPERATION_ASSISTANT" | "MENTOR" | "ASSISTANT_INSTRUCTOR";
 export type CoachPracticeDifficultyValue = "A" | "B" | "C";
 export type CoachAudienceValue = "EXECUTIVE" | "STAFF";
 export type CoachRehireIntentValue = "YES" | "CONDITIONAL" | "NO";
@@ -14,7 +14,9 @@ export type CoachEvaluationScores = Record<CoachEvaluationScoreKey, number | nul
 export const COACH_ENGAGEMENT_ROLES: ReadonlyArray<{ value: CoachEngagementRoleValue; label: string }> = [
   { value: "PRACTICE_COACH", label: "실습코치" },
   { value: "LEAD", label: "리드" },
-  { value: "OPERATION_ASSISTANT", label: "운영조교" }
+  { value: "OPERATION_ASSISTANT", label: "운영조교" },
+  { value: "MENTOR", label: "멘토" },
+  { value: "ASSISTANT_INSTRUCTOR", label: "보조강사" }
 ];
 export const COACH_PRACTICE_DIFFICULTIES: ReadonlyArray<CoachPracticeDifficultyValue> = ["A", "B", "C"];
 export const COACH_AUDIENCES: ReadonlyArray<{ value: CoachAudienceValue; label: string }> = [
@@ -36,9 +38,9 @@ export interface CoachEvaluationScoreItem {
   inAverage: boolean;
 }
 
-const ALL_ROLES: ReadonlyArray<CoachEngagementRoleValue> = ["PRACTICE_COACH", "LEAD", "OPERATION_ASSISTANT"];
+const ALL_ROLES: ReadonlyArray<CoachEngagementRoleValue> = ["PRACTICE_COACH", "LEAD", "OPERATION_ASSISTANT", "MENTOR", "ASSISTANT_INSTRUCTOR"];
 export const COACH_EVALUATION_SCORE_ITEMS: ReadonlyArray<CoachEvaluationScoreItem> = [
-  { key: "practiceSupport", label: "실습 대응", roles: ["PRACTICE_COACH", "LEAD"], max: 5, inAverage: true },
+  { key: "practiceSupport", label: "실습 대응", roles: ["PRACTICE_COACH", "LEAD", "MENTOR", "ASSISTANT_INSTRUCTOR"], max: 5, inAverage: true },
   { key: "fieldOperation", label: "현장 운영", roles: ALL_ROLES, max: 5, inAverage: true },
   { key: "communication", label: "소통", roles: ALL_ROLES, max: 5, inAverage: true },
   { key: "leading", label: "리딩", roles: ["LEAD"], max: 5, inAverage: true },
