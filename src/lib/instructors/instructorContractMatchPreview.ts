@@ -16,13 +16,16 @@ export interface MatchPreview {
   operationTokens: number;
   contractRecords: number;
   notionInstructors: number;
-  /** 새로 자동 연결 가능(이미 연결된 것 제외) */
-  autoLinkable: number;
-  /** 매칭됐지만 이미 수동 연결돼 있음 */
+  /** 진짜 새 연결 = 운영현황 표기 ≠ 노션 강사명(예: "디노랩스_김진태" → "김진태"). 위키가 못 붙이던 걸 고치는 실제 대상. */
+  newLinks: number;
+  /** 표기 == 노션 강사명. 이미 위키가 이름으로 붙이는 건이라 새로 할 게 없음. */
+  sameNameMatched: number;
+  /** 매칭됐지만 이미 수동 연결돼 있음. */
   alreadyLinked: number;
-  /** 동명이인 등으로 자동 연결 보류 */
+  /** 동명이인 등으로 자동 연결 보류. */
   ambiguous: number;
-  sampleAutoLinks: MatchPreviewLink[];
+  /** 진짜 새 연결 샘플(표기 ≠ 노션명만). */
+  sampleNewLinks: MatchPreviewLink[];
   sampleAmbiguous: { operationName: string; reason: string }[];
 }
 
@@ -32,7 +35,9 @@ const SAMPLE_LIMIT = 50;
  * 읽은 원천으로 매칭 프리뷰를 만든다. 순수 함수(I/O 없음).
  * - 운영현황 강사 자유텍스트를 (코스ID, 표기) 토큰으로 쪼갠다.
  * - 계약시트를 다리로 노션 강사에 매칭한다(matchInstructorLinks).
- * - 이미 연결된 표기(linkTargets: 표기→노션강사명)는 "이미 연결"로 분리한다.
+ * - 매칭된 링크를 세 갈래로 분류한다:
+ *   ① 이미 수동 연결됨(linkTargets) ② 표기==노션명(이미 이름매칭, 새로 할 것 없음)
+ *   ③ 표기≠노션명 = 진짜 새 연결(위키가 못 붙이던 걸 고침).
  */
 export function buildMatchPreview(
   operations: Pick<OperationSession, "courseId" | "instructors">[],
@@ -60,21 +65,24 @@ export function buildMatchPreview(
 
   const { links, ambiguous } = matchInstructorLinks(opInstructors, contracts, notionRefs);
 
-  let autoLinkable = 0;
+  let newLinks = 0;
+  let sameNameMatched = 0;
   let alreadyLinked = 0;
-  const sampleAutoLinks: MatchPreviewLink[] = [];
+  const sampleNewLinks: MatchPreviewLink[] = [];
   for (const link of links) {
     if (linkTargets[link.operationName] !== undefined) {
       alreadyLinked++;
       continue;
     }
-    autoLinkable++;
-    if (sampleAutoLinks.length < SAMPLE_LIMIT) {
-      sampleAutoLinks.push({
-        operationName: link.operationName,
-        notionName: nameByNo.get(link.notionNo) ?? `NO ${link.notionNo}`,
-        via: link.via
-      });
+    const notionName = nameByNo.get(link.notionNo) ?? "";
+    // 표기가 노션명과 같으면 위키가 이미 이름으로 붙이는 건 → 새로 할 게 없다.
+    if (link.operationName === notionName) {
+      sameNameMatched++;
+      continue;
+    }
+    newLinks++;
+    if (sampleNewLinks.length < SAMPLE_LIMIT) {
+      sampleNewLinks.push({ operationName: link.operationName, notionName, via: link.via });
     }
   }
 
@@ -82,10 +90,11 @@ export function buildMatchPreview(
     operationTokens: opInstructors.length,
     contractRecords: contracts.length,
     notionInstructors: notionRefs.length,
-    autoLinkable,
+    newLinks,
+    sameNameMatched,
     alreadyLinked,
     ambiguous: ambiguous.length,
-    sampleAutoLinks,
+    sampleNewLinks,
     sampleAmbiguous: ambiguous.slice(0, SAMPLE_LIMIT).map((item) => ({ operationName: item.operationName, reason: item.reason }))
   };
 }

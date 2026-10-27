@@ -14,19 +14,31 @@ function ownerNote(name: string, notionNo: number): InstructorNote {
   return { instructorName: name, notionNo, notionId: `p${notionNo}`, notion: { syncedAt: "2026-01-01" } } as InstructorNote;
 }
 
-test("계약시트 코스ID 다리로 운영현황 자유텍스트가 노션에 자동 연결된다", () => {
+test("표기≠노션명이면 '진짜 새 연결'로 센다(디노랩스_김진태 → 김진태)", () => {
   const preview = buildMatchPreview(
     [op("238061", "디노랩스_김진태")],
     [contract({ courseId: "238061", instructorName: "김진태" })],
     [ownerNote("김진태", 12)],
     {}
   );
-  assert.equal(preview.autoLinkable, 1);
-  assert.equal(preview.alreadyLinked, 0);
-  assert.deepEqual(preview.sampleAutoLinks, [{ operationName: "디노랩스_김진태", notionName: "김진태", via: "name" }]);
+  assert.equal(preview.newLinks, 1);
+  assert.equal(preview.sameNameMatched, 0);
+  assert.deepEqual(preview.sampleNewLinks, [{ operationName: "디노랩스_김진태", notionName: "김진태", via: "name" }]);
 });
 
-test("이미 연결된 표기는 autoLinkable이 아니라 alreadyLinked로 센다", () => {
+test("표기==노션명이면 '이미 이름매칭'으로 세고 새 연결엔 안 넣는다(송선영 → 송선영)", () => {
+  const preview = buildMatchPreview(
+    [op("238061", "송선영")],
+    [contract({ courseId: "238061", instructorName: "송선영" })],
+    [ownerNote("송선영", 20)],
+    {}
+  );
+  assert.equal(preview.newLinks, 0);
+  assert.equal(preview.sameNameMatched, 1);
+  assert.equal(preview.sampleNewLinks.length, 0);
+});
+
+test("이미 수동 연결된 표기는 alreadyLinked로 센다", () => {
   const preview = buildMatchPreview(
     [op("238061", "디노랩스_김진태")],
     [contract({ courseId: "238061", instructorName: "김진태" })],
@@ -34,10 +46,10 @@ test("이미 연결된 표기는 autoLinkable이 아니라 alreadyLinked로 센�
     { "디노랩스_김진태": "김진태" }
   );
   assert.equal(preview.alreadyLinked, 1);
-  assert.equal(preview.autoLinkable, 0);
+  assert.equal(preview.newLinks, 0);
 });
 
-test("계약 근거 없는 강사는 링크 0(토큰은 셈)", () => {
+test("계약 근거 없는 강사는 어디에도 안 센다(토큰만 셈)", () => {
   const preview = buildMatchPreview(
     [op("999", "홍길동")],
     [contract({ courseId: "238061", instructorName: "김진태" })],
@@ -45,13 +57,14 @@ test("계약 근거 없는 강사는 링크 0(토큰은 셈)", () => {
     {}
   );
   assert.equal(preview.operationTokens, 1);
-  assert.equal(preview.autoLinkable, 0);
+  assert.equal(preview.newLinks, 0);
+  assert.equal(preview.sameNameMatched, 0);
   assert.equal(preview.ambiguous, 0);
 });
 
 test("한 운영 건의 여러 강사를 각각 토큰으로 쪼갠다", () => {
   const preview = buildMatchPreview(
-    [op("238061", "김진태, 이영희")],
+    [op("238061", "소속_김진태, 이영희")],
     [
       contract({ courseId: "238061", instructorName: "김진태" }),
       contract({ courseId: "238061", instructorName: "이영희" })
@@ -60,5 +73,7 @@ test("한 운영 건의 여러 강사를 각각 토큰으로 쪼갠다", () => {
     {}
   );
   assert.equal(preview.operationTokens, 2);
-  assert.equal(preview.autoLinkable, 2);
+  // 소속_김진태 → 김진태(표기≠노션명, 새 연결), 이영희 → 이영희(표기==노션명)
+  assert.equal(preview.newLinks, 1);
+  assert.equal(preview.sameNameMatched, 1);
 });
