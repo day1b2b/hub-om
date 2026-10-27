@@ -2,11 +2,13 @@ import { MongoClient } from "mongodb";
 import { configuredMongoUri, mongoConnectionOptions } from "../src/lib/mongodb/connection";
 import { requireMongoShadowComposition } from "../src/lib/data/mongoShadowComposition";
 import { mongoFailureCode } from "../src/lib/data/mongoOperationPrimitives";
+import { OPERATION_MODELS } from "../src/lib/data/mongoOperationStore";
 import { applyEnumWidening, inspectOperationValidators, parseEnumWidening, restoreDeployedValidator } from "../src/lib/data/mongoValidatorWidening";
 import { applyFieldAddition, emitFieldAdditionTarget, inspectFieldAddition, parseFieldAdditionTarget, restoreFieldAddition, storedValidatorIsFieldAddition } from "../src/lib/data/mongoValidatorFieldAddition";
 
 /**
- * Operation collection validators vs the contract. Procedure: docs/operations/mongodb-operation-validator-change.md
+ * Operation and coach evaluation collection validators vs the contract. Procedure: docs/operations/mongodb-operation-validator-change.md
+ * Enum widening and its rollback cover both; nullable field addition covers operation collections only.
  *   Run as: node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/apply-mongodb-operation-validator.ts [args]
  *   Report (read-only):  (no args)
  *   Enum widening
@@ -41,7 +43,8 @@ async function main() {
     const options = { client, databaseName, namespace };
     const target = `${databaseName}/${namespace}`;
     if (apply && restoreModel) {
-      if (await storedValidatorIsFieldAddition(options, restoreModel)) {
+      // Field additions only exist for operation collections; coach evaluation collections only widen.
+      if ((OPERATION_MODELS as readonly string[]).includes(restoreModel) && await storedValidatorIsFieldAddition(options, restoreModel)) {
         const outcome = await restoreFieldAddition({ ...options, allowShadowWrites: true }, restoreModel);
         console.log(JSON.stringify({ target, mode: outcome.outcome, model: restoreModel, fields: outcome.fields, cleared: outcome.cleared }, null, 2));
         return;

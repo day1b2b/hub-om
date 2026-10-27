@@ -40,6 +40,20 @@ test("a widening must keep every deployed value, add one, and name a known enum 
   }
   assert.throws(() => widenedOperationValidator({ ...WIDEN, field: "operationId" }), (error: unknown) => mongoFailureCode(error) === "ENUM_FIELD_REQUIRED");
   assert.throws(() => widenedOperationValidator({ ...WIDEN, model: "CoachProfile" }), (error: unknown) => mongoFailureCode(error) === "UNKNOWN_OPERATION_MODEL");
+  // A contract model outside the operation and coach evaluation stores stays out of reach.
+  assert.throws(() => widenedOperationValidator({ model: "Coach", field: "status", values: ["A"] }), (error: unknown) => mongoFailureCode(error) === "UNKNOWN_OPERATION_MODEL");
+});
+
+test("coach evaluation collections widen the same way (role enum)", () => {
+  // The coach evaluation store also requires an exact validator match, so its enums need this path too.
+  const deployed = operationMongoValidator("CoachEngagementDetail");
+  const roles = propertiesOf(deployed).role.enum as string[];
+  const next = [...roles, "WIDENING_FIXTURE"];
+  const target = widenedOperationValidator({ model: "CoachEngagementDetail", field: "role", values: next });
+  assert.deepEqual(propertiesOf(target).role.enum, next);
+  const comparison = compareOperationValidator(deployed, target);
+  assert.equal(comparison.kind, "widening");
+  assert.deepEqual(comparison.kind === "widening" && comparison.added.map(item => item.values), [["WIDENING_FIXTURE"]]);
 });
 
 test("parseEnumWidening reads Model.field=V1,V2 and rejects anything else", () => {
