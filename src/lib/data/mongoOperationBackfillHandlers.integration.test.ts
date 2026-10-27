@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { AsyncLocalStorage } from "node:async_hooks";
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { registerHooks } from "node:module";
 import { mock, test } from "node:test";
 import { MongoClient } from "mongodb";
@@ -69,7 +69,8 @@ test("operation backfill actual handlers preserve authorization, response, ignor
     await suite.test("count is read only and retains the two-field response", async () => {
       for (const route of [onsite, om]) {
         const response = await run(() => route.GET()); assert.equal(response.status, 200);
-        assert.deepEqual(await response.json(), { ok: true, targetCount: 1 });
+        assert.deepEqual(await response.json(), route === om
+          ? { ok: true, targetCount: 1, planned: 1, archiveNeeded: 0, retrospectiveDone: 0 } : { ok: true, targetCount: 1 });
       }
       assert.deepEqual(await store.collection("OperationSession").find({}).sort({ _id: 1 }).toArray(), initial);
       assert.equal(await store.collection("ActivityChange").countDocuments(), 0);
@@ -105,7 +106,8 @@ test("operation backfill actual handlers preserve authorization, response, ignor
         for (const body of ["null", "{}", "[]", ""]) assert.deepEqual(await (await run(() => post(route, body))).json(), { ok: true, updatedCount: 0 });
         assert.deepEqual(await store.collection("OperationSession").find({}).sort({ _id: 1 }).toArray(), snapshot);
         assert.deepEqual(await store.collection("ActivityChange").find({}).sort({ _id: 1 }).toArray(), audits);
-        assert.deepEqual(await (await run(() => route.GET())).json(), { ok: true, targetCount: 0 });
+        assert.deepEqual(await (await run(() => route.GET())).json(), route === om
+          ? { ok: true, targetCount: 0, planned: 0, archiveNeeded: 0, retrospectiveDone: 0 } : { ok: true, targetCount: 0 });
       }
       for (const line of info) { assert.equal(line.length, 1); assert.match(String(line[0]), /^\[(onsite-required-backfill|om-assignment-status-backfill)\] updated=[01]$/); }
     });
@@ -120,8 +122,27 @@ test("operation backfill actual handlers preserve authorization, response, ignor
         assert.deepEqual(errors, [["[activity] API request log write failed"]]);
       } finally { errorLog.mock.restore(); }
     });
+    await suite.test("om: ended rounds follow archive completion instead of becoming planned", async () => {
+      // The previous test leaves one upcoming OM target behind.
+      const before = await (await run(() => om.GET())).json();
+      const course = coachFixtureRow("Course", { companyId: randomUUID(), processSeq: 1, name: "Synthetic archived course", courseId: "SYN-ARCHIVED-COURSE" });
+      await store.collection("Course").insertOne(encodeMongoRuntimeDocument("Course", course));
+      const ended = { startDate: new Date("2020-01-01"), endDate: new Date("2020-01-02") };
+      const incomplete = await seed({ ...ended });
+      const complete = await seed({ ...ended, courseRecordId: course.id, lectureManagementNote: "Synthetic private lecture sheet",
+        hasSatisfactionSurvey: "NOT_REQUIRED", hasResultReport: "NOT_REQUIRED" });
+      const upcoming = await seed({ startDate: new Date("2099-01-01"), endDate: new Date("2099-01-02") });
+      assert.deepEqual(await (await run(() => om.GET())).json(), { ok: true, targetCount: before.targetCount + 3,
+        planned: before.planned + 1, archiveNeeded: before.archiveNeeded + 1, retrospectiveDone: before.retrospectiveDone + 1 });
+      assert.deepEqual(await (await run(() => post(om))).json(), { ok: true, updatedCount: before.targetCount + 3 });
+      const status = async (row: MongoRow) => (await store.one("OperationSession", { _id: row.id as string }))?.operationStatus;
+      assert.equal(await status(incomplete), "ARCHIVE_NEEDED");
+      assert.equal(await status(complete), "RETROSPECTIVE_DONE");
+      assert.equal(await status(upcoming), "ASSIGNMENT_PLANNED");
+      assert.deepEqual(await (await run(() => om.GET())).json(), { ok: true, targetCount: 0, planned: 0, archiveNeeded: 0, retrospectiveDone: 0 });
+    });
     const raw = JSON.stringify(await Promise.all(store.models.map(model => store.collection(model).find({}).toArray())));
-    for (const marker of [admin.user.email, admin.user.name, "Synthetic private handler owner", "Synthetic private onsite text", "synthetic-deleter@example.invalid"]) assert.ok(!raw.includes(marker));
+    for (const marker of [admin.user.email, admin.user.name, "Synthetic private handler owner", "Synthetic private onsite text", "synthetic-deleter@example.invalid", "Synthetic private lecture sheet"]) assert.ok(!raw.includes(marker));
     assert.equal(pgCalls, 0); assert.equal(external.mock.callCount(), 0);
   } finally {
     if (connected) await client.db(options.databaseName).dropDatabase(); await client.close(); external.mock.restore(); logger.mock.restore();

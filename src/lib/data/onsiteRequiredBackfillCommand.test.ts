@@ -11,6 +11,7 @@ function repository(targetCount: number, updatedCount: number, fail = false) {
     async countOnsiteRequiredTargets() { if (fail) throw new Error("private canary"); return targetCount; },
     async applyOnsiteRequiredBackfill() { applies++; return updatedCount; },
     async countOmAssignmentStatusTargets() { throw new Error("unexpected"); },
+    async previewOmAssignmentStatusBackfill() { throw new Error("unexpected"); },
     async applyOmAssignmentStatusBackfill() { throw new Error("unexpected"); },
   };
   return { value, applyCount: () => applies };
