@@ -1,5 +1,8 @@
 import type { CoachScheduleEntry } from "../data/coachScheduleRepository";
 
+/** 입력 화면은 하루 28칸이라 한 달 최대 434구간(31일 × 떨어진 14구간)이다. 토큰만으로 저장되니 그 이상은 거절한다. */
+export const MAX_MONTH_SCHEDULE_ENTRIES = 500;
+
 /** Avoid Date.UTC's special handling of years 00–99 and reject calendar rollover. */
 export function parseScheduleDate(value: unknown): Date | null {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
@@ -24,6 +27,7 @@ export function parseSchedules(value: unknown, yearMonth: string):
   | { ok: false; error: string } {
   if (!Array.isArray(value)) return { ok: false, error: "스케줄 형식이 올바르지 않습니다." };
   if (!parseMonthRange(yearMonth)) return { ok: false, error: "월 형식이 올바르지 않습니다." };
+  if (value.length > MAX_MONTH_SCHEDULE_ENTRIES) return { ok: false, error: "한 달에 저장할 수 있는 일정 수를 넘었습니다." };
   const result: CoachScheduleEntry[] = [];
   const seen = new Set<string>();
   for (const item of value) {

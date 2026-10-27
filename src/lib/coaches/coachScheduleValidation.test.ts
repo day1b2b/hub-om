@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseDates, parseMonthRange, parseScheduleDate, parseSchedules } from "./coachScheduleValidation";
+import { MAX_MONTH_SCHEDULE_ENTRIES, parseDates, parseMonthRange, parseScheduleDate, parseSchedules } from "./coachScheduleValidation";
 
 test("month ranges use UTC and the actual leap-year calendar, including years below 100", () => {
   for (const [month, last] of [["2024-02", "2024-02-29"], ["2025-02", "2025-02-28"], ["2000-02", "2000-02-29"], ["1900-02", "1900-02-28"], ["0099-02", "0099-02-28"], ["9999-12", "9999-12-31"]]) {
@@ -38,4 +38,16 @@ test("monthly schedule validation rejects invalid days, outside months and inval
 test("reservation dates require a nonempty valid calendar list and retain first-seen order", () => {
   assert.deepEqual(parseDates(["2024-03-01", "2024-02-29", "2024-03-01"]), ["2024-03-01", "2024-02-29"]);
   for (const value of [null, undefined, {}, [], [null], ["2025-02-29"], ["2024-02-29", "2024-04-31"], ["2024-02-29", 2], ["2024-02-29\n"]]) assert.equal(parseDates(value), null);
+});
+
+test("monthly schedules accept the densest input screen month and reject oversized arrays before parsing items", () => {
+  // 31일 × 하루 14개(30분 칸을 하나 건너 선택) = 입력 화면이 만들 수 있는 최대치.
+  const densest = Array.from({ length: 31 }, (_, day) => Array.from({ length: 14 }, (_, slot) => {
+    const hour = String(8 + slot).padStart(2, "0");
+    return { date: `2024-01-${String(day + 1).padStart(2, "0")}`, startTime: `${hour}:00`, endTime: `${hour}:30` };
+  })).flat();
+  const accepted = parseSchedules(densest, "2024-01");
+  assert.equal(accepted.ok && accepted.value.length, 434);
+  const oversized = Array.from({ length: MAX_MONTH_SCHEDULE_ENTRIES + 1 }, () => null);
+  assert.deepEqual(parseSchedules(oversized, "2024-01"), { ok: false, error: "한 달에 저장할 수 있는 일정 수를 넘었습니다." });
 });
