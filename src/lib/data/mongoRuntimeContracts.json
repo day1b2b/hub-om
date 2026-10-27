@@ -3240,7 +3240,9 @@
         "values": [
           "PRACTICE_COACH",
           "LEAD",
-          "OPERATION_ASSISTANT"
+          "OPERATION_ASSISTANT",
+          "MENTOR",
+          "ASSISTANT_INSTRUCTOR"
         ]
       },
       "practiceDifficulty": {

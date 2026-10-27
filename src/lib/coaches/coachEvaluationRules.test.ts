@@ -105,3 +105,13 @@ test("사실 기록은 종류·투입 기간 안 발생일·상황이 필요하�
   assert.equal(validateFactRecordInput({ kind: "NO_SHOW", occurredOn: "2026-10-02", description: "  " }, range, "2026-10-25").ok, false);
   assert.equal(validateFactRecordInput({ kind: "NO_SHOW", occurredOn: "2026-13-02", description: "x" }, range, "2026-10-25").ok, false);
 });
+
+test("멘토·보조강사는 실습코치와 같은 항목으로 평가한다", () => {
+  // 강사 데뷔 프로그램이 멘토·보조강사 투입도 역할별로 셀 수 있게 역할만 더했다. 평가 항목은 실습코치와 같다.
+  for (const role of ["MENTOR", "ASSISTANT_INSTRUCTOR"] as const) {
+    const result = validateOmEvaluationInput({ role, scores: allFours, rehire: "YES" });
+    assert.equal(result.ok, true);
+    if (!result.ok) return;
+    assert.deepEqual(result.value.scores, { practiceSupport: 4, fieldOperation: 4, communication: 4, leading: null, punctuality: 4 });
+  }
+});
