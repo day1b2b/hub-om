@@ -38,6 +38,7 @@ import {
   deriveProfit,
   deriveSessionDurationDays,
   deriveSessionDurationType,
+  operationStatusAfterOmChange,
   formatProcessId,
   normalizeCourseId,
   summarizeOperations
@@ -60,8 +61,11 @@ const OPERATION_STATUS: Record<string, OperationStatus> = {
 const EDUCATION_FORMAT: Record<string, EducationFormat> = {
   OFFLINE: "오프라인",
   REMOTE: "비대면",
+  ONLINE: "온라인",
   BLENDED: "블렌디드",
   FLIPPED: "플립러닝",
+  PBL: "PBL",
+  HACKATHON: "해커톤",
   NEEDS_REVIEW: "검토필요"
 };
 
@@ -133,8 +137,11 @@ const PRISMA_SATISFACTION_SURVEY_STATUS: Record<SatisfactionSurveyStatus, Prisma
 const PRISMA_EDUCATION_FORMAT: Record<EducationFormat, PrismaEducationFormat> = {
   "오프라인": PrismaEducationFormat.OFFLINE,
   "비대면": PrismaEducationFormat.REMOTE,
+  "온라인": PrismaEducationFormat.ONLINE,
   "블렌디드": PrismaEducationFormat.BLENDED,
   "플립러닝": PrismaEducationFormat.FLIPPED,
+  "PBL": PrismaEducationFormat.PBL,
+  "해커톤": PrismaEducationFormat.HACKATHON,
   "검토필요": PrismaEducationFormat.NEEDS_REVIEW
 };
 
@@ -399,10 +406,13 @@ export class PrismaOperationRepository implements OperationRepository {
       }
       const company = await tx.company.upsert({
         where: { normalizedName: normalizeName(companyName) },
+        // 업무요청의 사업자등록번호는 신규 기업 생성 시에만 반영한다. 기존 기업은 기업위키에서
+        // 이미 검증/수정했을 수 있는 값을 업무요청의 자유 입력값으로 덮어쓰지 않는다.
         update: { name: companyName },
         create: {
           name: companyName,
-          normalizedName: normalizeName(companyName)
+          normalizedName: normalizeName(companyName),
+          businessNumber: input.businessNumber?.trim() || null
         }
       });
 
@@ -678,6 +688,12 @@ export class PrismaOperationRepository implements OperationRepository {
     if (input.operationDetail !== undefined) data.operationDetail = nullableText(input.operationDetail);
     if (input.operationIssue !== undefined) data.operationIssue = nullableText(input.operationIssue);
     if (input.operationStatus !== undefined) data.operationStatus = PRISMA_OPERATION_STATUS[input.operationStatus];
+    else if (input.om !== undefined) {
+      const current = await prisma.operationSession.findUnique({ select: { omName: true, operationStatus: true }, where: { operationId } });
+      if (current && current.omName !== nullableText(input.om)) {
+        data.operationStatus = operationStatusAfterOmChange(current.operationStatus, nullableText(input.om)) as typeof current.operationStatus;
+      }
+    }
     if (input.omUpdate !== undefined) data.omUpdate = nullableText(input.omUpdate);
     if (input.padletLink !== undefined) data.padletLink = nullableText(input.padletLink);
     if (input.region !== undefined) data.region = nullableText(input.region);

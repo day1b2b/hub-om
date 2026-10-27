@@ -3,7 +3,7 @@ import { MongoServerError, type ClientSession } from "mongodb";
 import type { OperationRepository } from "./operationRepository";
 import type { CourseCommonNote, CourseCommonNoteInput, CreateOperationInput, OperationSession, UpdateOperationInput } from "./operationTypes";
 import { assertCreationReplay, creationOperationId, creationOperationPrefix } from "./operationCreationIdentity";
-import { buildOperationMonth, deriveDateRangeFromEducationDates, deriveSessionDurationDays, deriveSessionDurationType, normalizeCourseId, summarizeOperations } from "./operationCalculations";
+import { buildOperationMonth, deriveDateRangeFromEducationDates, deriveSessionDurationDays, deriveSessionDurationType, normalizeCourseId, operationStatusAfterOmChange, summarizeOperations } from "./operationCalculations";
 import { normalizeLookupName, selectCoursesByCompany, selectCoursesByCourseId, type CourseLookupRow } from "./courseLookup";
 import { DEFAULT_TEAM_MEMBER_ROLE_ROSTER } from "./defaultTeamMemberRoster";
 import type { TeamMemberRoleRoster } from "./teamMemberRepository";
@@ -209,7 +209,9 @@ export class MongoOperationRepository implements OperationRepository {
       const roster = await this.roleRoster(session);
       const now = new Date();
       const previousCompany = await this.store.one("Company", { normalizedName: normalizeName(companyName) }, session);
-      const company = await this.write("Company", previousCompany ? { ...previousCompany, name: companyName, updatedAt: now } : { id: randomUUID(), name: companyName, normalizedName: normalizeName(companyName), createdAt: now, updatedAt: now }, previousCompany, session);
+      // 업무요청의 사업자등록번호는 신규 기업 생성 시에만 반영한다(PrismaOperationRepository와 동일 정책) —
+      // 기존 기업은 기업위키에서 검증/수정했을 수 있는 값을 업무요청의 자유 입력값으로 덮어쓰지 않는다.
+      const company = await this.write("Company", previousCompany ? { ...previousCompany, name: companyName, updatedAt: now } : { id: randomUUID(), name: companyName, normalizedName: normalizeName(companyName), businessNumber: input.businessNumber?.trim() || null, createdAt: now, updatedAt: now }, previousCompany, session);
       const operationType = DB_OPERATION_TYPE[input.operationType];
       const course = await this.course(id(company), courseId, courseName, { operationType, revenue: money(input.revenue), revenueRaw: input.revenue === null ? null : String(input.revenue),
         ...(input.courseCategory !== undefined ? { courseCategory: nullableText(input.courseCategory) } : {}), ...(input.tools !== undefined ? { tools: nullableText(input.tools) } : {}) }, session);
@@ -259,6 +261,7 @@ export class MongoOperationRepository implements OperationRepository {
       if (input.archiveStatus !== undefined) next.archiveStatus = DB_ARCHIVE_STATUS[input.archiveStatus];
       if (input.educationFormat !== undefined) next.educationFormat = DB_EDUCATION_FORMAT[input.educationFormat];
       if (input.operationStatus !== undefined) next.operationStatus = DB_OPERATION_STATUS[input.operationStatus];
+      else if (input.om !== undefined && next.omName !== previous.omName) next.operationStatus = operationStatusAfterOmChange(previous.operationStatus as string, next.omName as string | null);
       if (input.hasResultReport !== undefined) next.hasResultReport = DB_RESULT_REPORT_STATUS[input.hasResultReport];
       if (input.hasSatisfactionSurvey !== undefined) next.hasSatisfactionSurvey = DB_SATISFACTION_SURVEY_STATUS[input.hasSatisfactionSurvey];
       if (input.onsiteRequired !== undefined) { next.onsiteRequired = input.onsiteRequired; next.onsiteText = onsiteRequiredLabel(input.onsiteRequired); }

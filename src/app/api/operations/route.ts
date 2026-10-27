@@ -3,7 +3,7 @@ import { operationCreationIdentity, OperationCreationConflict } from "@/lib/data
 import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server.js";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
-import { parseEducationDatesText } from "@/lib/data/operationCalculations";
+import { isAssignedOm, parseEducationDatesText } from "@/lib/data/operationCalculations";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { EDUCATION_FORMAT_BY_TRAINING_TYPE } from "@/lib/data/omRequest/omRequestOperationLink";
 import type { TrainingType } from "@/lib/data/omRequest/omRequestTypes";
@@ -99,7 +99,8 @@ async function activityPOST(request: Request) {
       operationCost: null,
       operationDetail: textValue(body.operationDetail),
       operationIssue: "",
-      operationStatus: "배정필요",
+      // OM을 넣고 만들면 바로 배정예정으로 둔다. 비어 있으면 배정필요.
+      operationStatus: isAssignedOm(textValue(body.om)) ? "배정예정" : "배정필요",
       operationType: "검토필요",
       padletLink: "",
       region: textValue(body.region),

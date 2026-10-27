@@ -1,9 +1,24 @@
 {
   "companies": {
     "values": [
-      "name"
+      "name",
+      "business_type",
+      "business_item"
     ],
-    "changeOnly": []
+    "changeOnly": [
+      "business_number",
+      "business_number_pii_index",
+      "representative_name",
+      "representative_name_pii_index",
+      "address",
+      "address_pii_index",
+      "invoice_email",
+      "invoice_email_pii_index",
+      "invoice_email_secondary",
+      "invoice_email_secondary_pii_index",
+      "business_info_updated_at",
+      "business_info_updated_by"
+    ]
   },
   "courses": {
     "values": [

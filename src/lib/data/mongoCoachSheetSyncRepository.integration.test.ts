@@ -31,7 +31,9 @@ mock.module("./prisma", { namedExports: { getPrismaClient: () => { throw new Err
 let externalReads = 0;
 mock.module("../coaches/googleServiceAccount", { namedExports: {
   readGoogleSpreadsheetRows: async () => { externalReads++; throw new Error("External Google source forbidden in native test"); },
-  readGoogleSheetValues: async () => { externalReads++; throw new Error("External Google source forbidden in native test"); }
+  readGoogleSheetValues: async () => { externalReads++; throw new Error("External Google source forbidden in native test"); },
+  readGoogleServiceAccountConfig: () => ({ serviceAccountEmail: "", privateKey: "" }),
+  GoogleSheetReadError: class extends Error {}
 } });
 const hook = registerHooks({ resolve(specifier, context, nextResolve) { return nextResolve(specifier === "next/server" || specifier === "next/navigation" ? `${specifier}.js` : specifier, context); } });
 const notionRoute = await import("../../app/api/admin/sync-notion/route");

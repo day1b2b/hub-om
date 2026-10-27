@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { SyncResult } from "@/lib/coaches/syncTypes";
+import type { SyncChange, SyncResult } from "@/lib/coaches/syncTypes";
 
 const CONTRACT_SHEET_URL = "https://docs.google.com/spreadsheets/d/1xFgbLPL1ZLGxQws0ofK0kU8eehrFqEeAiwNbtQ56lyw/edit";
 
@@ -12,6 +12,9 @@ interface SyncSource {
   description: string;
   externalUrl?: string;
   externalUrlLabel?: string;
+  /** 원천 파일을 직접 올려 동기화하는 경로. 파일을 고르면 미리보기·실행이 이 경로를 쓴다. */
+  uploadEndpoint?: string;
+  uploadHint?: string;
 }
 
 const SYNC_SOURCES: SyncSource[] = [
@@ -22,7 +25,10 @@ const SYNC_SOURCES: SyncSource[] = [
     description:
       "구글시트 \"조교실습코치_일반계약요청\"에서 투입 이력과 스케줄을 가져옵니다. 2026년 이후 신규 코치는 자동 생성됩니다.",
     externalUrl: CONTRACT_SHEET_URL,
-    externalUrlLabel: "시트 보기"
+    externalUrlLabel: "시트 보기",
+    uploadEndpoint: "/api/sync/engagements/upload",
+    uploadHint:
+      "구글 연결 없이 계약 요청 엑셀(.xlsx)을 직접 올려 동기화할 수도 있어요. 드라이브에서 내려받은 파일을 고른 뒤 미리보기를 누르세요. 파일은 저장하지 않아요."
   },
   {
     id: "notion",
@@ -63,6 +69,7 @@ interface CoachSyncDashboardProps {
 export function CoachSyncDashboard({ sourceIds }: CoachSyncDashboardProps = {}) {
   const sources = sourceIds ? SYNC_SOURCES.filter((source) => sourceIds.includes(source.id)) : SYNC_SOURCES;
   const [states, setStates] = useState<Record<string, SourceState>>({});
+  const [files, setFiles] = useState<Record<string, File | null>>({});
 
   function stateOf(id: string): SourceState {
     return states[id] ?? { phase: "idle" };
@@ -76,7 +83,16 @@ export function CoachSyncDashboard({ sourceIds }: CoachSyncDashboardProps = {}) 
     setSource(source.id, { phase: dryRun ? "previewing" : "applying" });
 
     try {
-      const response = await fetch(source.endpoint, { method: dryRun ? "GET" : "POST" });
+      const file = source.uploadEndpoint ? files[source.id] : null;
+      let response: Response;
+      if (file && source.uploadEndpoint) {
+        const body = new FormData();
+        body.append("file", file);
+        body.append("dryRun", dryRun ? "true" : "false");
+        response = await fetch(source.uploadEndpoint, { method: "POST", body });
+      } else {
+        response = await fetch(source.endpoint, { method: dryRun ? "GET" : "POST" });
+      }
       const payload = (await response.json().catch(() => ({ ok: false, error: "응답을 읽지 못했습니다." }))) as SyncApiResponse;
 
       if (!response.ok || !payload.ok || !payload.result) {
@@ -131,6 +147,30 @@ export function CoachSyncDashboard({ sourceIds }: CoachSyncDashboardProps = {}) 
                 ) : null}
               </div>
             </div>
+
+            {source.uploadEndpoint ? (
+              <div className="sync-upload">
+                {source.uploadHint ? <p>{source.uploadHint}</p> : null}
+                <label>
+                  <span>계약 파일(.xlsx)</span>{" "}
+                  <input
+                    accept=".xlsx"
+                    disabled={busy}
+                    onChange={(event) => {
+                      setFiles((prev) => ({ ...prev, [source.id]: event.target.files?.[0] ?? null }));
+                      // 다른 파일의 결과가 남아 헷갈리지 않게 비운다.
+                      setSource(source.id, { phase: "idle" });
+                    }}
+                    type="file"
+                  />
+                </label>
+                {files[source.id] ? (
+                  <p className="sync-upload-selected">
+                    올린 파일 기준으로 미리보기·실행해요: <strong>{files[source.id]?.name}</strong>
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
 
             {state.phase === "confirming" ? (
               <div className="sync-confirm" role="alertdialog" aria-label="동기화 실행 확인">
@@ -214,22 +254,65 @@ function SyncResultView({
           <button className="sync-toggle" onClick={() => setShowChanges((prev) => !prev)} type="button">
             {showChanges ? "변경 내역 숨기기" : `변경 내역 보기 (${result.changes.length}건)`}
           </button>
-          {showChanges ? (
-            <ul className="sync-changes">
-              {result.changes.slice(0, 200).map((change, index) => (
-                <li key={index}>
-                  <span className="sync-change-action">{change.action}</span>
-                  <span>{change.coachName}</span>
-                  {change.courseName ? <span className="sync-change-course">{change.courseName}</span> : null}
-                  {change.details ? <span className="sync-change-details">{change.details}</span> : null}
-                </li>
-              ))}
-              {result.changes.length > 200 ? <li className="sync-more">…외 {result.changes.length - 200}건</li> : null}
-            </ul>
-          ) : null}
+          {showChanges ? <SyncChangeList changes={result.changes} /> : null}
         </div>
       ) : null}
     </div>
+  );
+}
+
+// 반영 전에 새로 생기는 것부터 확인하도록 생성 → 수정 순서로 묶는다. 목록에 없는 종류는 뒤에 붙는다.
+const CHANGE_ACTION_ORDER = ["create_coach", "create_engagement", "replace_samsung_engagements", "update_engagement", "edit"];
+const CHANGE_ACTION_LABELS: Record<string, string> = {
+  create_coach: "신규 코치",
+  create_engagement: "신규 투입",
+  replace_samsung_engagements: "삼성 일정 재생성",
+  update_engagement: "기존 투입 갱신",
+  edit: "코치 정보 수정"
+};
+
+function groupSyncChanges(changes: SyncChange[]): Array<{ action: string; label: string; items: SyncChange[] }> {
+  const groups = new Map<string, SyncChange[]>();
+  for (const change of changes) groups.set(change.action, [...(groups.get(change.action) ?? []), change]);
+  const rank = (action: string) => { const index = CHANGE_ACTION_ORDER.indexOf(action); return index < 0 ? CHANGE_ACTION_ORDER.length : index; };
+  return [...groups.entries()]
+    .sort(([a], [b]) => rank(a) - rank(b))
+    .map(([action, items]) => ({ action, label: CHANGE_ACTION_LABELS[action] ?? action, items }));
+}
+
+function SyncChangeList({ changes }: { changes: SyncChange[] }) {
+  const groups = groupSyncChanges(changes);
+  const [selected, setSelected] = useState(groups[0]?.action ?? "");
+  const current = groups.find((group) => group.action === selected) ?? groups[0];
+  if (!current) return null;
+
+  return (
+    <>
+      <div className="sync-change-filters" role="tablist">
+        {groups.map((group) => (
+          <button
+            aria-selected={group.action === current.action}
+            className={`sync-change-filter ${group.action === current.action ? "active" : ""}`}
+            key={group.action}
+            onClick={() => setSelected(group.action)}
+            role="tab"
+            type="button"
+          >
+            {group.label} {group.items.length.toLocaleString("ko-KR")}
+          </button>
+        ))}
+      </div>
+      <ul className="sync-changes">
+        {current.items.map((change, index) => (
+          <li key={index}>
+            <span className="sync-change-action">{current.label}</span>
+            <span>{change.coachName}</span>
+            {change.courseName ? <span className="sync-change-course">{change.courseName}</span> : null}
+            {change.details ? <span className="sync-change-details">{change.details}</span> : null}
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }
 

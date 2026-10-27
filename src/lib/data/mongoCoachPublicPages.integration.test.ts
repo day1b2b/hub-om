@@ -82,6 +82,10 @@ const { default: schedulePage } = await import("../../app/coaches/schedule/page"
 const { default: detailPage } = await import("../../app/coaches/[id]/page");
 const { default: engagementsPage } = await import("../../app/coaches/[id]/engagements/page");
 const { default: wikiPage } = await import("../../app/instructor-wiki/page");
+const { seoulTodayKey, summarizeCoachActivity } = await import("../coaches/coachActivity");
+// 목록 페이지는 저장소 요약에서 날짜 정보를 빼고 오늘 기준 활동 상태를 붙여 넘긴다.
+const listProps = (coaches: CoachSummary[], loadFailed: boolean) => { const today = seoulTodayKey();
+  return { coaches: coaches.map(({ engagementFacts, ...coach }) => ({ ...coach, activity: summarizeCoachActivity(engagementFacts, today) })), loadFailed, today }; };
 const { default: wikiDetailPage } = await import("../../app/instructor-wiki/[id]/page");
 const { default: operationPage } = await import("../../app/operations/[operationId]/page");
 hooks.deregister();
@@ -180,8 +184,9 @@ test("coach public factory: original URL guard, override-first, missing/nested/c
     const envRestore = saveEnv(["ADMIN_EMAILS", "DEV_AUTH_BYPASS"]);
     try {
       process.env.ADMIN_EMAILS = admin.user.email; delete process.env.DEV_AUTH_BYPASS;
-      assert.deepEqual(props(await actors.run(admin, listPage)), { coaches: [], loadFailed: true });
-      assert.equal(pgCalls - before, 1);
+      assert.deepEqual(props(await actors.run(admin, listPage)), listProps([], true));
+      // 코치 목록 + 새 OM 평가 평균(실패하면 예전 평점으로 보여줌).
+      assert.equal(pgCalls - before, 2);
       assert.throws(() => noForbidden(pgCalls - before, 0), /PUBLIC_PAGE_PG_ACCESS/);
     } finally { pgCalls = before; envRestore(); }
   } finally { restore(); }
@@ -246,9 +251,12 @@ function seedFixture() {
 function expected(f: ReturnType<typeof seedFixture>) {
   const summary = (id: unknown, name: string, active: boolean, fields: string[], rating: number | null, days: number): CoachSummary => ({
     id: id as string, name, workType: null, status: active ? "active" : "inactive", isActive: active, deletedAt: null,
-    fields, avgRating: rating, workDayCount: days, notionPageId: null
+    fields, avgRating: rating, workDayCount: days, notionPageId: null, engagementFacts: [], recentAvgRating: null, recentRatingCount: 0
   });
-  const summaries = [summary(f.a.id, " 가상 가 ", true, ["Synthetic field"], 3, 1), summary(f.b.id, "가상 가", true, [], null, 0),
+  const ids = f.data.get("CoachEngagement")!.map(row => row.id as string);
+  const summaries = [{ ...summary(f.a.id, " 가상 가 ", true, ["Synthetic field"], 3, 1),
+    engagementFacts: [{ engagementId: ids[1], startDate: "2099-12-31", endDate: "2099-12-31", cancelled: false, rating: 2 }, { engagementId: ids[2], startDate: "2099-12-02", endDate: "2099-12-02", cancelled: true, rating: null },
+      { engagementId: ids[0], startDate: "2099-12-01", endDate: "2099-12-01", cancelled: false, rating: 4 }], recentRatingCount: 2 }, summary(f.b.id, "가상 가", true, [], null, 0),
     summary(f.inactive.id, "가상 나", false, [], null, 0), summary(f.blank.id, "  ", false, [], null, 0)];
   const detail = { ...summaries[0], curriculums: ["Synthetic curriculum"], coachInputUrl: null, statusNote: "latest",
     returnDate: "2100-01-01", availabilityDetail: "Synthetic available", dxTag: "Synthetic DX" };
@@ -361,9 +369,9 @@ test("coach public pages: seven actual pages use native coach storage with prese
       }
     });
     await suite.test("native list normal/empty and synchronous missing factory", async () => {
-      assert.deepEqual(props(await run(a, listPage)), { coaches: exp.summaries, loadFailed: false }); expectCalls("a", [["listCoaches", []]]);
-      assert.deepEqual(props(await run(empty, listPage)), { coaches: [], loadFailed: false }); expectCalls("empty", [["listCoaches", []]]);
-      assert.deepEqual(props(await run(undefined, listPage)), { coaches: [], loadFailed: true }); expectCalls("a", []);
+      assert.deepEqual(props(await run(a, listPage)), listProps(exp.summaries, false)); expectCalls("a", [["listCoaches", []]]);
+      assert.deepEqual(props(await run(empty, listPage)), listProps([], false)); expectCalls("empty", [["listCoaches", []]]);
+      assert.deepEqual(props(await run(undefined, listPage)), listProps([], true)); expectCalls("a", []);
     });
     await suite.test("actual selector opens prepared runtime after auth and never repairs a partial namespace", async () => {
       Object.assign(process.env, { COACH_PUBLIC_BACKEND: "mongodb-shadow", MONGODB_URI: uri!, MONGODB_SHADOW_DATABASE: databaseName,
@@ -376,7 +384,7 @@ test("coach public pages: seven actual pages use native coach storage with prese
             documents: await client.db(databaseName).collection(row.name).find({}).sort({ _id: 1 }).toArray() })));
         };
         const compositionBefore = await snapshot("shadow_composition");
-        assert.deepEqual(props(await actors.run(admin, listPage)), { coaches: exp.summaries, loadFailed: false });
+        assert.deepEqual(props(await actors.run(admin, listPage)), listProps(exp.summaries, false));
         assert.deepEqual(props(await actors.run(admin, board)), { currentUserEmail: admin.user.email, dashboard: exp.dashboard, holidays,
           initialDate: "2099-12-99", loadFailed: false });
         assert.deepEqual(props(await actors.run(admin, detail)), { coach: exp.detail, engagements: exp.engagements, schedules: exp.schedules,

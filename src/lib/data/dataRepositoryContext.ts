@@ -10,6 +10,7 @@ import type { CalendarPersistence, CalendarLockPort } from "../googleCalendar/ca
 import type { OmAssignmentRepository } from "./omRequest/omAssignmentContract";
 import type { OmAssignmentCalendar, OmAssignmentNotifier } from "./omRequest/omAssignmentEffects";
 import type { OperationRepository } from "./operationRepository";
+import type { CompanyBusinessInfoRepository } from "./companyBusinessInfoRepository";
 import type { OmRequestRepository, OmCustomToolsRepository, OmRequestNotifier } from "./omRequest/omRequestRepository";
 import type { SalesRevenueSyncRepository, SalesRevenueSource, SalesRevenueNotifier } from "./salesRevenueSyncRepository";
 import type { SatisfactionSource } from "./satisfactionSource";
@@ -25,6 +26,7 @@ import type { CourseAdminRepository } from "./courseAdminRepository";
 import type { CoachTokenBackfillRepository } from "./coachTokenBackfillRepository";
 import type { CoachManagerMyPageRepository } from "./coachManagerMyPageRepository";
 import type { CoachContentRepository } from "./coachContentRepository";
+import type { CoachEvaluationRepository } from "./coachEvaluationRepository";
 import type { CoachRepository } from "./coachRepository";
 import type { CoachNotionSyncRepository, CoachNotionSource } from "./coachNotionSyncRepository";
 import type { CoachSyncLogRepository } from "./coachSyncLogRepository";
@@ -92,6 +94,7 @@ export interface DataRepositories {
   omAssignmentNotifier: OmAssignmentNotifier;
   omRequests: OmRequestRepository;
   operations: OperationRepository;
+  companyBusinessInfo: CompanyBusinessInfoRepository;
   omCustomTools: OmCustomToolsRepository;
   omRequestNotifier: OmRequestNotifier;
   salesRevenueSync: SalesRevenueSyncRepository;
@@ -111,6 +114,7 @@ export interface DataRepositories {
   coachTokenBackfill: CoachTokenBackfillRepository;
   coachManagerMyPage: CoachManagerMyPageRepository;
   coachContent: CoachContentRepository;
+  coachEvaluation: CoachEvaluationRepository;
   coach: CoachRepository;
   coachNotionSync: CoachNotionSyncRepository;
   coachNotionSource: CoachNotionSource;

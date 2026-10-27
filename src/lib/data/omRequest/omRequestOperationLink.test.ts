@@ -37,7 +37,7 @@ mock.module("@/lib/data/operationRepositoryFactory", {
   }
 });
 
-const { syncAssignedOmToLinkedOperation } = await import("./omRequestOperationLink");
+const { EDUCATION_FORMAT_BY_TRAINING_TYPE, syncAssignedOmToLinkedOperation } = await import("./omRequestOperationLink");
 
 beforeEach(() => {
   updates.length = 0;
@@ -78,4 +78,12 @@ test("대표 회차는 자기 자신 값과 무관하게 항상 갱신한다", a
   const roundOneUpdate = updates.find((entry) => entry.operationId === "round-1");
   assert.ok(roundOneUpdate);
   assert.equal(operations[0].om, "김정선");
+});
+
+test("업무요청 교육형태는 운영현황 교육형태로 같은 이름 그대로 넘어간다", () => {
+  // 두 곳의 구분 값을 통일했다. 해커톤처럼 검토필요로 바뀌어 사라지는 값이 다시 생기면 안 된다.
+  for (const [trainingType, educationFormat] of Object.entries(EDUCATION_FORMAT_BY_TRAINING_TYPE)) {
+    assert.equal(educationFormat, trainingType);
+  }
+  assert.deepEqual(Object.keys(EDUCATION_FORMAT_BY_TRAINING_TYPE).sort(), ["PBL", "블렌디드", "비대면", "오프라인", "온라인", "플립러닝", "해커톤"].sort());
 });

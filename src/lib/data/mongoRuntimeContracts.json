@@ -39,7 +39,21 @@
         "list": false,
         "uuid": false,
         "dateOnly": false
-      }
+      },
+      "businessNumber": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
+      "representativeName": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
+      "address": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
+      "businessType": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
+      "businessItem": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
+      "invoiceEmail": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
+      "invoiceEmailSecondary": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
+      "businessInfoUpdatedAt": {"type": "DateTime", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
+      "businessInfoUpdatedBy": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
+      "businessNumberPiiIndex": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
+      "representativeNamePiiIndex": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
+      "addressPiiIndex": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
+      "invoiceEmailPiiIndex": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
+      "invoiceEmailSecondaryPiiIndex": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false}
     },
     "references": [],
     "uniqueKeys": [
@@ -361,8 +375,11 @@
         "values": [
           "OFFLINE",
           "REMOTE",
+          "ONLINE",
           "BLENDED",
           "FLIPPED",
+          "PBL",
+          "HACKATHON",
           "NEEDS_REVIEW"
         ]
       },
@@ -3196,6 +3213,530 @@
       {
         "fields": [
           "sourceEngagementScheduleIdPiiIndex"
+        ],
+        "nullsDistinct": true
+      }
+    ]
+  },
+  "CoachEngagementDetail": {
+    "collection": "coach_engagement_details",
+    "primaryKey": [
+      "id"
+    ],
+    "fields": {
+      "id": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": true,
+        "dateOnly": false
+      },
+      "engagementId": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": true,
+        "dateOnly": false
+      },
+      "coachId": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": true,
+        "dateOnly": false
+      },
+      "role": {
+        "type": "CoachEngagementRole",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false,
+        "values": [
+          "PRACTICE_COACH",
+          "LEAD",
+          "OPERATION_ASSISTANT"
+        ]
+      },
+      "practiceDifficulty": {
+        "type": "CoachPracticeDifficulty",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false,
+        "values": [
+          "A",
+          "B",
+          "C"
+        ]
+      },
+      "audience": {
+        "type": "CoachAudience",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false,
+        "values": [
+          "EXECUTIVE",
+          "STAFF"
+        ]
+      },
+      "isNewClient": {
+        "type": "Boolean",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "updatedBy": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "createdAt": {
+        "type": "DateTime",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "updatedAt": {
+        "type": "DateTime",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "updatedByPiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      }
+    },
+    "references": [
+      {
+        "fields": [
+          "engagementId"
+        ],
+        "targetModel": "CoachEngagement",
+        "targetFields": [
+          "id"
+        ]
+      },
+      {
+        "fields": [
+          "coachId"
+        ],
+        "targetModel": "Coach",
+        "targetFields": [
+          "id"
+        ]
+      }
+    ],
+    "uniqueKeys": [
+      {
+        "fields": [
+          "id"
+        ],
+        "nullsDistinct": true
+      },
+      {
+        "fields": [
+          "engagementId"
+        ],
+        "nullsDistinct": true
+      }
+    ]
+  },
+  "CoachEvaluation": {
+    "collection": "coach_evaluations",
+    "primaryKey": [
+      "id"
+    ],
+    "fields": {
+      "id": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": true,
+        "dateOnly": false
+      },
+      "coachId": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": true,
+        "dateOnly": false
+      },
+      "engagementId": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": true,
+        "dateOnly": false
+      },
+      "source": {
+        "type": "CoachEvaluationSource",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false,
+        "values": [
+          "OM",
+          "LEAD",
+          "INSTRUCTOR"
+        ]
+      },
+      "courseName": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "startDate": {
+        "type": "DateTime",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": true
+      },
+      "endDate": {
+        "type": "DateTime",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": true
+      },
+      "practiceSupport": {
+        "type": "Int",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "fieldOperation": {
+        "type": "Int",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "communication": {
+        "type": "Int",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "leading": {
+        "type": "Int",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "punctuality": {
+        "type": "Int",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "rehire": {
+        "type": "CoachRehireIntent",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false,
+        "values": [
+          "YES",
+          "CONDITIONAL",
+          "NO"
+        ]
+      },
+      "rehireReason": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "evidence": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "evaluatorEmail": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "evaluatorName": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "createdAt": {
+        "type": "DateTime",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "updatedAt": {
+        "type": "DateTime",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "deletedAt": {
+        "type": "DateTime",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "deletedBy": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "rehireReasonPiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "evidencePiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "evaluatorEmailPiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "evaluatorNamePiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "deletedByPiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      }
+    },
+    "references": [
+      {
+        "fields": [
+          "coachId"
+        ],
+        "targetModel": "Coach",
+        "targetFields": [
+          "id"
+        ]
+      },
+      {
+        "fields": [
+          "engagementId"
+        ],
+        "targetModel": "CoachEngagement",
+        "targetFields": [
+          "id"
+        ]
+      }
+    ],
+    "uniqueKeys": [
+      {
+        "fields": [
+          "id"
+        ],
+        "nullsDistinct": true
+      }
+    ]
+  },
+  "CoachFactRecord": {
+    "collection": "coach_fact_records",
+    "primaryKey": [
+      "id"
+    ],
+    "fields": {
+      "id": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": true,
+        "dateOnly": false
+      },
+      "coachId": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": true,
+        "dateOnly": false
+      },
+      "engagementId": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": true,
+        "dateOnly": false
+      },
+      "kind": {
+        "type": "CoachFactKind",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false,
+        "values": [
+          "LATE",
+          "NO_SHOW",
+          "FORMAL_COMPLAINT",
+          "LEFT_POST",
+          "PREP_MISSING",
+          "SERIOUS_VIOLATION"
+        ]
+      },
+      "occurredOn": {
+        "type": "DateTime",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": true
+      },
+      "courseName": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "description": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "recordedByEmail": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "recordedByName": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "createdAt": {
+        "type": "DateTime",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "updatedAt": {
+        "type": "DateTime",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "deletedAt": {
+        "type": "DateTime",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "deletedBy": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "descriptionPiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "recordedByEmailPiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "recordedByNamePiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "deletedByPiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      }
+    },
+    "references": [
+      {
+        "fields": [
+          "coachId"
+        ],
+        "targetModel": "Coach",
+        "targetFields": [
+          "id"
+        ]
+      },
+      {
+        "fields": [
+          "engagementId"
+        ],
+        "targetModel": "CoachEngagement",
+        "targetFields": [
+          "id"
+        ]
+      }
+    ],
+    "uniqueKeys": [
+      {
+        "fields": [
+          "id"
         ],
         "nullsDistinct": true
       }
