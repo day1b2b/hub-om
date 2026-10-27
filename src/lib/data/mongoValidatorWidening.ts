@@ -2,6 +2,13 @@ import type { Document } from "mongodb";
 import { mongoRuntimeContracts } from "./mongoRuntimeCodec";
 import { applyMongoValidator, MongoOperationStore, operationMongoValidator, OPERATION_MODELS, type MongoOperationOptions } from "./mongoOperationStore";
 import { assertMongo, stableMongoValue } from "./mongoOperationPrimitives";
+import { COACH_EVALUATION_MODELS } from "./mongoCoachEvaluationCollections";
+
+/**
+ * Collections this tool reports, widens and restores. Coach evaluation collections are opened by their own store,
+ * which also requires an exact validator match, so their enums need the same widening path.
+ */
+export const VALIDATOR_MODELS: readonly string[] = [...OPERATION_MODELS, ...COACH_EVALUATION_MODELS];
 
 export interface ValidatorEnumAddition { path: string; values: unknown[] }
 export type ValidatorComparison =
@@ -68,7 +75,7 @@ export function parseEnumWidening(argument: string): EnumWidening {
  * The order must match the next mongoRuntimeContracts.json exactly, because readiness compares validators verbatim.
  */
 export function widenedOperationValidator({ model, field, values }: EnumWidening): Document {
-  assertMongo((OPERATION_MODELS as readonly string[]).includes(model), "UNKNOWN_OPERATION_MODEL");
+  assertMongo(VALIDATOR_MODELS.includes(model), "UNKNOWN_OPERATION_MODEL");
   const definition = mongoRuntimeContracts[model].fields[field];
   assertMongo(definition?.values, "ENUM_FIELD_REQUIRED");
   assertMongo(new Set(values).size === values.length && definition.values.every(value => values.includes(value)) && values.length > definition.values.length, "ENUM_VALUES_NOT_WIDENING");
@@ -88,7 +95,8 @@ export interface OperationValidatorStatus {
   nonconformingSample: boolean;
 }
 
-async function inspectOne(store: MongoOperationStore, model: string, target: Document): Promise<OperationValidatorStatus> {
+async function inspectOne(options: MongoOperationOptions, model: string, target: Document): Promise<OperationValidatorStatus> {
+  const store = new MongoOperationStore(options, [model]);
   const collection = store.collection(model);
   const info = await store.db.listCollections({ name: collection.collectionName }, { nameOnly: false }).next();
   if (!info) return { model, collection: collection.collectionName, comparison: { kind: "missing" }, nonconformingSample: false };
@@ -98,12 +106,11 @@ async function inspectOne(store: MongoOperationStore, model: string, target: Doc
   return { model, collection: collection.collectionName, comparison, nonconformingSample };
 }
 
-/** Read-only. Compares every operation collection with the deployed contract, or one collection with a planned widening. */
+/** Read-only. Compares every supported collection with the deployed contract, or one collection with a planned widening. */
 export async function inspectOperationValidators(options: MongoOperationOptions, widening?: EnumWidening): Promise<OperationValidatorStatus[]> {
-  const store = new MongoOperationStore(options);
-  if (widening) return [await inspectOne(store, widening.model, widenedOperationValidator(widening))];
+  if (widening) return [await inspectOne(options, widening.model, widenedOperationValidator(widening))];
   const result: OperationValidatorStatus[] = [];
-  for (const model of OPERATION_MODELS) result.push(await inspectOne(store, model, operationMongoValidator(model)));
+  for (const model of VALIDATOR_MODELS) result.push(await inspectOne(options, model, operationMongoValidator(model)));
   return result;
 }
 
@@ -115,8 +122,8 @@ export async function inspectOperationValidators(options: MongoOperationOptions,
  */
 export async function applyEnumWidening(options: MongoOperationOptions & { allowShadowWrites: true }, widening: EnumWidening): Promise<"applied" | "already-applied"> {
   assertMongo(options.allowShadowWrites === true, "SHADOW_WRITE_GATE");
-  const store = new MongoOperationStore(options);
   const target = widenedOperationValidator(widening);
+  const store = new MongoOperationStore(options, [widening.model]);
   const collection = store.collection(widening.model);
   const read = async () => (await store.db.listCollections({ name: collection.collectionName }, { nameOnly: false }).next())?.options?.validator;
   const stored = await read();
@@ -129,13 +136,47 @@ export async function applyEnumWidening(options: MongoOperationOptions & { allow
 }
 
 /**
+ * Coach evaluation collections are not part of the deploy health check, so a build whose contract adds an enum value
+ * still goes live while the stored validator lags behind. Catch-up runs from that new build: it widens the stored
+ * validator to this build's contract. Coach evaluation reads and writes fail between the deploy and this step.
+ */
+export function catchUpTarget(model: string): Document {
+  assertMongo((COACH_EVALUATION_MODELS as readonly string[]).includes(model), "UNKNOWN_COACH_EVALUATION_MODEL");
+  return operationMongoValidator(model);
+}
+
+/** Read-only plan: how the stored validator compares with this build's contract. */
+export async function inspectCatchUp(options: MongoOperationOptions, model: string): Promise<OperationValidatorStatus> {
+  return inspectOne(options, model, catchUpTarget(model));
+}
+
+/**
+ * Applies this build's contract validator when the stored one is a strict widening predecessor of it.
+ * Refuses before any write for anything else (missing collection, narrowing, non-enum differences).
+ */
+export async function applyCatchUp(options: MongoOperationOptions & { allowShadowWrites: true }, model: string): Promise<"applied" | "already-applied"> {
+  assertMongo(options.allowShadowWrites === true, "SHADOW_WRITE_GATE");
+  const target = catchUpTarget(model);
+  const store = new MongoOperationStore(options, [model]);
+  const collection = store.collection(model);
+  const read = async () => (await store.db.listCollections({ name: collection.collectionName }, { nameOnly: false }).next())?.options?.validator;
+  const stored = await read();
+  if (stableMongoValue(stored) === stableMongoValue(target)) return "already-applied";
+  assertMongo(stored, "COLLECTION_MISSING");
+  assertMongo(compareOperationValidator(stored, target).kind === "widening", "VALIDATOR_CHANGE_NOT_WIDENING");
+  await applyMongoValidator(store, model, target);
+  assertMongo(stableMongoValue(await read()) === stableMongoValue(target), "VALIDATOR_NOT_APPLIED");
+  return "applied";
+}
+
+/**
  * Rollback for a widening whose deploy failed: puts the deployed contract's validator back.
  * Only when the stored validator is a widening of it and no stored row uses a value the deployed contract lacks.
  */
 export async function restoreDeployedValidator(options: MongoOperationOptions & { allowShadowWrites: true }, model: string): Promise<"restored" | "already-deployed"> {
   assertMongo(options.allowShadowWrites === true, "SHADOW_WRITE_GATE");
-  assertMongo((OPERATION_MODELS as readonly string[]).includes(model), "UNKNOWN_OPERATION_MODEL");
-  const store = new MongoOperationStore(options);
+  assertMongo(VALIDATOR_MODELS.includes(model), "UNKNOWN_OPERATION_MODEL");
+  const store = new MongoOperationStore(options, [model]);
   const deployed = operationMongoValidator(model);
   const collection = store.collection(model);
   const read = async () => (await store.db.listCollections({ name: collection.collectionName }, { nameOnly: false }).next())?.options?.validator;
