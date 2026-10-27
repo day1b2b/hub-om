@@ -23,4 +23,10 @@ ALTER TABLE "companies"
 CREATE INDEX "companies_business_number_pii_index_idx"
   ON "companies"("business_number_pii_index");
 
+-- business_type/business_item(비PII 분류값)을 활동 로그 추적 대상에 포함한다. 나머지 신규 컬럼은
+-- PII라 changeOnly로만 다루고(src/lib/activity/field-policy.json), 트리거 값 목록에는 넣지 않는다.
+DROP TRIGGER IF EXISTS activity_change ON companies;
+CREATE TRIGGER activity_change AFTER INSERT OR UPDATE OR DELETE ON companies
+  FOR EACH ROW EXECUTE FUNCTION capture_activity_change('["name", "business_type", "business_item"]');
+
 COMMIT;
