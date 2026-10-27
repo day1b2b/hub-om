@@ -227,7 +227,7 @@ test("Health actual GET and repository unit boundaries (synthetic query/ports, n
       // not a claim that the Next middleware/deployment pipeline was executed.
       for (const [path, sha] of [
         ["../../proxy.ts", "73c5c6e3a1885521234ec73dfbfa8bd9473d270010b7e470b23f026dd29bade2"],
-        ["../activity/route-policy.json", "f6ecd08494df76676e7e1950b87241f876c16990117fadf78f70b865b93f1e26"]
+        ["../activity/route-policy.json", "16ae5be2be9ecad062491b8b1cffca66571395d5343e71d8a53424a6208ff0b2"]
       ]) assert.equal(createHash("sha256").update(readFileSync(new URL(path, import.meta.url))).digest("hex"), sha);
       const policy = JSON.parse(readFileSync(new URL("../activity/route-policy.json", import.meta.url), "utf8"));
       assert.equal(policy["GET /api/health"], "excluded: 상태 검사 트래픽은 사용자 활동이 아니므로 제외");

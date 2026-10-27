@@ -4,7 +4,16 @@
     "name": "operational",
     "normalizedName": "operational",
     "createdAt": "operational",
-    "updatedAt": "operational"
+    "updatedAt": "operational",
+    "businessNumber": "encrypted",
+    "representativeName": "encrypted",
+    "address": "encrypted",
+    "businessType": "operational",
+    "businessItem": "operational",
+    "invoiceEmail": "encrypted",
+    "invoiceEmailSecondary": "encrypted",
+    "businessInfoUpdatedAt": "operational",
+    "businessInfoUpdatedBy": "operational"
   },
   "Course": {
     "id": "operational",
