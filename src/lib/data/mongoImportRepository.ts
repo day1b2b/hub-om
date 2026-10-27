@@ -79,13 +79,11 @@ export class MongoImportRepository implements ImportRepository, ImportStagingRep
       const rows = await this.store.scan("DataImportRun", {}, session);
       rows.sort((a, b) => (b.startedAt as Date).getTime() - (a.startedAt as Date).getTime()
         || (String(a.id) < String(b.id) ? 1 : String(a.id) > String(b.id) ? -1 : 0));
-      const result: ImportRunSummary[] = [];
-      for (const row of rows) {
-        check();
-        const count = await this.store.collection("OperationSourceRecord").countDocuments({ importRunId: row.id }, { session });
-        result.push(presentImportRun(presentation(row) as unknown as ImportRunPresentationRow, count));
-      }
-      return result;
+      check();
+      // One batched aggregate instead of a countDocuments per run — that loop grew
+      // linearly with import history and was the actual 30s+ delay behind the upload page.
+      const counts = await this.store.countsByForeignKey("OperationSourceRecord", "importRunId", rows.map(row => row.id as string), session);
+      return rows.map(row => presentImportRun(presentation(row) as unknown as ImportRunPresentationRow, counts.get(String(row.id)) ?? 0));
     }));
   }
 

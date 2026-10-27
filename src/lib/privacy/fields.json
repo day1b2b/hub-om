@@ -711,6 +711,37 @@
     "primaryKey": "id",
     "compoundKeys": []
   },
+  "CoachEngagementDetail": {
+    "table": "coach_engagement_details",
+    "primaryKey": "id",
+    "compoundKeys": [],
+    "fields": {
+      "updatedBy": {"column":"updated_by","type":"String","nullable":true,"index":"updatedByPiiIndex","indexColumn":"updated_by_pii_index"}
+    }
+  },
+  "CoachEvaluation": {
+    "table": "coach_evaluations",
+    "primaryKey": "id",
+    "compoundKeys": [],
+    "fields": {
+      "rehireReason": {"column":"rehire_reason","type":"String","nullable":true,"index":"rehireReasonPiiIndex","indexColumn":"rehire_reason_pii_index"},
+      "evidence": {"column":"evidence","type":"String","nullable":true,"index":"evidencePiiIndex","indexColumn":"evidence_pii_index"},
+      "evaluatorEmail": {"column":"evaluator_email","type":"String","nullable":false,"index":"evaluatorEmailPiiIndex","indexColumn":"evaluator_email_pii_index"},
+      "evaluatorName": {"column":"evaluator_name","type":"String","nullable":true,"index":"evaluatorNamePiiIndex","indexColumn":"evaluator_name_pii_index"},
+      "deletedBy": {"column":"deleted_by","type":"String","nullable":true,"index":"deletedByPiiIndex","indexColumn":"deleted_by_pii_index"}
+    }
+  },
+  "CoachFactRecord": {
+    "table": "coach_fact_records",
+    "primaryKey": "id",
+    "compoundKeys": [],
+    "fields": {
+      "description": {"column":"description","type":"String","nullable":false,"index":"descriptionPiiIndex","indexColumn":"description_pii_index"},
+      "recordedByEmail": {"column":"recorded_by_email","type":"String","nullable":false,"index":"recordedByEmailPiiIndex","indexColumn":"recorded_by_email_pii_index"},
+      "recordedByName": {"column":"recorded_by_name","type":"String","nullable":true,"index":"recordedByNamePiiIndex","indexColumn":"recorded_by_name_pii_index"},
+      "deletedBy": {"column":"deleted_by","type":"String","nullable":true,"index":"deletedByPiiIndex","indexColumn":"deleted_by_pii_index"}
+    }
+  },
   "CoachEngagementSchedule": {
     "table": "coach_engagement_schedules",
     "fields": {

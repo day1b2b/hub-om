@@ -7,7 +7,7 @@ const EDIT_ROUTE = "/api/om-request/[id]";
 export const REPAIR_LINK_ROUTE = "/maintenance/om-request-session-repair";
 export const TOKEN_TTL_MS = 10 * 60 * 1000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-export const creationSelect = { requestId: true, route: true, method: true, targetType: true, targetId: true, action: true } as const;
+export const creationSelect = { requestId: true, route: true, method: true, targetType: true, targetId: true, action: true, occurredAt: true } as const;
 export const operationSelect = { id: true, operationId: true, roundNo: true, omName: true, omUserId: true, operationStatus: true, updatedAt: true, deletedAt: true } as const;
 export type Creation = Prisma.ActivityChangeGetPayload<{ select: typeof creationSelect }>;
 export type AssignmentOperation = Prisma.OperationSessionGetPayload<{ select: typeof operationSelect }>;
@@ -52,12 +52,18 @@ function expectedSessionCount(sessions: Prisma.JsonValue, totalSessions: number)
  * batch that updates this request. Replay only those explicit operation_sessions create/delete
  * rows. Union-then-remove is order independent because the edit never restores a round; a round
  * restored elsewhere stays removed and the count check blocks it instead of guessing.
+ * An approved repair already records the complete set at its time, so only edits after it apply.
  */
-async function readEditedRounds(tx: OmAssignmentTransaction, requestId: string) {
+async function readEditedRounds(tx: OmAssignmentTransaction, requestId: string, repairedAt: Date | null) {
   const updates = await tx.listCreations({ targetType: "om_requests", targetId: requestId, route: EDIT_ROUTE, method: "PATCH", action: "update" });
   const created: string[] = [];
   const deleted = new Set<string>();
   for (const batchId of new Set(updates.map((entry) => entry.requestId))) {
+    if (repairedAt) {
+      const editedAt = updates.find((entry) => entry.requestId === batchId)!.occurredAt;
+      if (!(editedAt instanceof Date) || Number.isNaN(editedAt.getTime())) throw new OmAssignmentConflict("요청 수정 기록의 시각을 확인할 수 없습니다. 연결을 확인해 주세요.");
+      if (editedAt <= repairedAt) continue;
+    }
     const batch = await tx.listCreations({
       requestId: batchId, route: EDIT_ROUTE, method: "PATCH", action: { in: ["create", "update", "delete"] }, targetType: { in: ["om_requests", "operation_sessions"] }
     });
@@ -108,7 +114,11 @@ export async function readAssignmentState(tx: OmAssignmentTransaction, existing:
     throw new OmAssignmentConflict("회차 생성 근거가 서로 겹치거나 올바르지 않습니다. 연결을 확인해 주세요.");
   }
   let operationIds = batch.filter((entry) => entry.targetType === "operation_sessions").map((entry) => entry.targetId);
-  const edits = await readEditedRounds(tx, request.id);
+  const repairedAt = route === REPAIR_LINK_ROUTE ? requestCreations[0].occurredAt : null;
+  if (repairedAt && (!(repairedAt instanceof Date) || Number.isNaN(repairedAt.getTime()))) {
+    throw new OmAssignmentConflict("복구 연결 기록의 시각을 확인할 수 없습니다. 연결을 확인해 주세요.");
+  }
+  const edits = await readEditedRounds(tx, request.id, repairedAt);
   // Early Mongo cutover requests can have the request creation audit while the
   // linked operation creation audit is absent. For an exact one-session request,
   // the persisted representative link is the complete set and is safe to use.

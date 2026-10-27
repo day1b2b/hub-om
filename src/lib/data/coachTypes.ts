@@ -22,6 +22,21 @@ export interface CoachSummary {
   avgRating: number | null;
   workDayCount: number;
   notionPageId: string | null;
+  /** 투입별 날짜(최근 시작일 순). 활동 상태 계산용이며 과정명·평가는 담지 않는다. */
+  engagementFacts: CoachEngagementFact[];
+  /** 최근 평가 평균. 평가가 기준 수보다 적으면 null. */
+  recentAvgRating: number | null;
+  /** 최근 평균 계산 범위 안의 평가 수. */
+  recentRatingCount: number;
+}
+
+export interface CoachEngagementFact {
+  engagementId: string;
+  startDate: string;
+  endDate: string;
+  cancelled: boolean;
+  /** 예전 방식의 투입 평점. 새 OM 평가가 있으면 그쪽을 쓴다(coachActivity). */
+  rating: number | null;
 }
 
 export interface CoachDetail extends CoachSummary {

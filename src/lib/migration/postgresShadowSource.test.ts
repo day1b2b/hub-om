@@ -7,6 +7,9 @@ import { privacyFields } from "../privacy/fields";
 import { createPostgresShadowSnapshot, SOURCE_COLUMNS_SQL, SOURCE_PRIMARY_KEYS_SQL, withPostgresShadowSnapshot, type ShadowPgClient } from "./postgresShadowSource";
 
 const schemaText = readFileSync(new URL("../../../prisma/schema.prisma", import.meta.url), "utf8");
+// SmallInt로 선언한 칸(예: 코치 투입 평점, 코치 평가 항목 점수)은 PostgreSQL에서 int2다.
+const smallIntFields = new Set([...schemaText.matchAll(/^model (\w+) \{\n([\s\S]*?)^\}/gm)].flatMap(([, name, body]) =>
+  [...body.matchAll(/^\s+(\w+)\s+Int\??[^\n]*@db\.SmallInt\b/gm)].map(([, field]) => `${name}.${field}`)));
 const enumLabels = Object.fromEntries([...schemaText.matchAll(/^enum (\w+) \{\n([\s\S]*?)^\}/gm)].map(([, name, body]) => [name, [...body.matchAll(/^\s+(\w+)([^\n]*)$/gm)].map(([, value, attrs]) => /@map\("([^"]+)"\)/.exec(attrs)?.[1] ?? value)]));
 function fixture() {
   const columns: Record<string, unknown>[] = [], pks: Record<string, unknown>[] = [];
@@ -14,7 +17,7 @@ function fixture() {
     const dmmf = Prisma.dmmf.datamodel.models.find(m => m.name === name)!;
     const columnName = (name: string) => { const f = dmmf.fields.find(f => f.name === name)!; return f.dbName ?? f.name; };
     for (const [field, c] of Object.entries(model.fields)) columns.push({ table_name: model.collection, column_name: columnName(field),
-      udt_name: name === "CoachEngagement" && field === "rating" ? "int2" : c.list ? c.dateOnly ? "_date" : "_text" : c.uuid ? "uuid" : ({ String: "text", Int: "int4", Boolean: "bool", Decimal: "numeric", Bytes: "bytea", Json: "jsonb", DateTime: c.dateOnly ? "date" : "timestamp" } as Record<string, string>)[c.type],
+      udt_name: smallIntFields.has(`${name}.${field}`) ? "int2" : c.list ? c.dateOnly ? "_date" : "_text" : c.uuid ? "uuid" : ({ String: "text", Int: "int4", Boolean: "bool", Decimal: "numeric", Bytes: "bytea", Json: "jsonb", DateTime: c.dateOnly ? "date" : "timestamp" } as Record<string, string>)[c.type],
       data_type: c.values ? "USER-DEFINED" : "scalar", is_nullable: c.nullable ? "YES" : "NO", enum_values: enumLabels[c.type] ?? [], numeric_precision: c.type === "Decimal" ? 14 : null, numeric_scale: c.type === "Decimal" ? 2 : null, datetime_precision: 3 });
     pks.push({ table_name: model.collection, columns: model.primaryKey.map(columnName) });
   }
@@ -37,9 +40,9 @@ function fixture() {
   return { pool: { connect: async () => client }, columns, pks, calls, pages, releases: () => releases, fail: () => { failed = true; } };
 }
 const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
-test("all 36 models validated before rows; one read-only snapshot commits then releases", async () => {
+test("all 39 models validated before rows; one read-only snapshot commits then releases", async () => {
   const f = fixture();
-  await withPostgresShadowSnapshot(f.pool, async source => { assert.equal(source.modelNames.length, 36); assert.equal(source.snapshotId, "synthetic-snapshot"); for await (const row of source.rows("Company")) assert.fail(String(row)); });
+  await withPostgresShadowSnapshot(f.pool, async source => { assert.equal(source.modelNames.length, 39); assert.equal(source.snapshotId, "synthetic-snapshot"); for await (const row of source.rows("Company")) assert.fail(String(row)); });
   assert.equal(f.calls[0].sql, "BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
   assert.equal(f.calls.at(-1)!.sql, "COMMIT"); assert.equal(f.releases(), 1);
   assert.ok(f.calls.every(c => !/^(INSERT|UPDATE|DELETE|ALTER|CREATE|DROP)/.test(c.sql)));

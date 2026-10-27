@@ -27,6 +27,7 @@ import {
   type TimeInterval
 } from "./scheduleBitmap";
 import { buildSkillfloCoachUrl } from "@/lib/coaches/skillfloCoachUrl";
+import { digestCoachEngagements } from "@/lib/coaches/coachActivity";
 
 const COACH_STATUS: Record<PrismaCoachStatus, CoachStatusValue> = {
   PENDING: "pending",
@@ -63,7 +64,7 @@ export class PrismaCoachRepository implements CoachRepository {
           select: { tag: { select: { name: true } } }
         },
         engagements: {
-          select: { rating: true }
+          select: { id: true, rating: true, status: true, startDate: true, endDate: true }
         },
         engagementSchedules: {
           where: { cancelledAt: null },
@@ -89,7 +90,8 @@ export class PrismaCoachRepository implements CoachRepository {
         fields: coach.fields.map((field) => field.tag.name),
         avgRating: ratings.length > 0 ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length : null,
         workDayCount: workDates.size,
-        notionPageId: coach.notionPageId
+        notionPageId: coach.notionPageId,
+        ...digestEngagements(coach.engagements)
       };
     });
   }
@@ -120,7 +122,7 @@ export class PrismaCoachRepository implements CoachRepository {
           select: { tag: { select: { name: true } } }
         },
         engagements: {
-          select: { rating: true }
+          select: { id: true, rating: true, status: true, startDate: true, endDate: true }
         },
         engagementSchedules: {
           where: { cancelledAt: null },
@@ -150,6 +152,7 @@ export class PrismaCoachRepository implements CoachRepository {
       avgRating: ratings.length > 0 ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length : null,
       workDayCount: workDates.size,
       notionPageId: coach.notionPageId,
+      ...digestEngagements(coach.engagements),
       curriculums: coach.curriculums.map((curriculum) => curriculum.tag.name),
       coachInputUrl: buildSkillfloCoachUrl(coach.accessToken),
       statusNote: coach.statusNote ?? archivedDetail?.statusNote ?? null,
@@ -452,6 +455,20 @@ async function loadArchivedCoachPublicDetail(sourceCoachId: string): Promise<Arc
     availabilityDetail: stringOrNull(row.availability_detail),
     dxTag: stringOrNull(row.dx_tag)
   };
+}
+
+function digestEngagements(
+  engagements: ReadonlyArray<{ id: string; rating: number | null; status: CoachEngagementStatus; startDate: Date; endDate: Date }>
+) {
+  return digestCoachEngagements(
+    engagements.map((engagement) => ({
+      engagementId: engagement.id,
+      startDate: toDateString(engagement.startDate),
+      endDate: toDateString(engagement.endDate),
+      cancelled: engagement.status === "CANCELLED",
+      rating: engagement.rating
+    }))
+  );
 }
 
 function toDateString(value: Date): string {
