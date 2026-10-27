@@ -18,7 +18,9 @@ export const EDUCATION_FORMAT_BY_TRAINING_TYPE: Record<OmRequest["trainingType"]
   "블렌디드": "블렌디드",
   "비대면": "비대면",
   "온라인": "온라인",
-  "해커톤": "검토필요"
+  "플립러닝": "플립러닝",
+  "PBL": "PBL",
+  "해커톤": "해커톤"
 };
 
 function timeTextOf(session: OmRequest["sessions"][number]): string {

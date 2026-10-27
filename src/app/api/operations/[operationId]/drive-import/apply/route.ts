@@ -227,8 +227,11 @@ function isEducationFormat(value: string): value is EducationFormat {
   return (
     value === "오프라인" ||
     value === "비대면" ||
+    value === "온라인" ||
     value === "블렌디드" ||
     value === "플립러닝" ||
+    value === "PBL" ||
+    value === "해커톤" ||
     value === "검토필요"
   );
 }

@@ -364,6 +364,8 @@
           "ONLINE",
           "BLENDED",
           "FLIPPED",
+          "PBL",
+          "HACKATHON",
           "NEEDS_REVIEW"
         ]
       },
