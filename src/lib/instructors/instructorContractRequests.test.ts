@@ -71,6 +71,24 @@ test("응답시트에 (코스ID×강사)가 있으면 requested=true", () => {
   assert.equal(items[0].requested, true);
 });
 
+test("응답시트(Q열)에 이메일이 있으면 강사명으로 찾아 붙인다", () => {
+  const items = buildInstructorContractRequests(
+    [op({ courseId: "238061", instructors: "디노랩스_김진태" })],
+    [
+      // 다른 과정의 과거 계약이라도 같은 강사면 이메일을 가져온다(정규화 매칭).
+      contract({ courseId: "100000", instructorName: "김진태", email: "" }),
+      contract({ courseId: "100001", instructorName: "김진태", email: "jin@example.com" })
+    ]
+  );
+  assert.equal(items[0].email, "jin@example.com"); // 뒤쪽 비지 않은 값
+  assert.equal(items[0].requested, false); // 이 과정(238061)으로는 아직 요청 전
+});
+
+test("응답시트에 이메일이 없으면 email은 생략된다(폼 수동)", () => {
+  const items = buildInstructorContractRequests([op({ courseId: "238061", instructors: "신규강사" })], []);
+  assert.equal(items[0].email, undefined);
+});
+
 test("운영현황 표기에 소속 접두사가 붙어도 정규화해 상태를 맞춘다", () => {
   const items = buildInstructorContractRequests(
     [op({ courseId: "238061", instructors: "디노랩스_김진태" })],
