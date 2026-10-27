@@ -54,24 +54,24 @@ async function renderInstructorMatchPage() {
         ) : preview ? (
           <>
             <div className="detail-grid">
-              <div className="detail-panel"><span>자동 연결 가능</span><strong>{preview.autoLinkable}</strong></div>
+              <div className="detail-panel"><span>진짜 새 연결 (표기≠노션명)</span><strong>{preview.newLinks}</strong></div>
+              <div className="detail-panel"><span>이미 이름매칭 (표기=노션명)</span><strong>{preview.sameNameMatched}</strong></div>
+              <div className="detail-panel"><span>이미 수동 연결됨</span><strong>{preview.alreadyLinked}</strong></div>
               <div className="detail-panel"><span>모호(보류)</span><strong>{preview.ambiguous}</strong></div>
-              <div className="detail-panel"><span>이미 연결됨</span><strong>{preview.alreadyLinked}</strong></div>
               <div className="detail-panel"><span>운영현황 강사 표기</span><strong>{preview.operationTokens}</strong></div>
-              <div className="detail-panel"><span>계약 레코드</span><strong>{preview.contractRecords}</strong></div>
-              <div className="detail-panel"><span>노션 강사</span><strong>{preview.notionInstructors}</strong></div>
+              <div className="detail-panel"><span>계약 레코드 / 노션 강사</span><strong>{preview.contractRecords} / {preview.notionInstructors}</strong></div>
             </div>
 
             <div className="detail-section">
-              <div className="section-title"><h2>자동 연결 예정 (샘플)</h2><span>최대 50건</span></div>
+              <div className="section-title"><h2>진짜 새 연결 예정 (표기 ≠ 노션명)</h2><span>최대 50건 · 위키가 못 붙이던 걸 고치는 실제 대상</span></div>
               <div className="table-wrap">
                 <table>
                   <thead>
                     <tr><th>운영현황 표기</th><th>노션 강사</th><th>근거</th></tr>
                   </thead>
                   <tbody>
-                    {preview.sampleAutoLinks.length > 0 ? (
-                      preview.sampleAutoLinks.map((link, index) => (
+                    {preview.sampleNewLinks.length > 0 ? (
+                      preview.sampleNewLinks.map((link, index) => (
                         <tr key={`${link.operationName}-${index}`}>
                           <td>{link.operationName}</td>
                           <td><strong className="title-company">{link.notionName}</strong></td>
@@ -79,7 +79,7 @@ async function renderInstructorMatchPage() {
                         </tr>
                       ))
                     ) : (
-                      <tr><td className="empty-state" colSpan={3}><strong>자동 연결 예정이 없습니다.</strong></td></tr>
+                      <tr><td className="empty-state" colSpan={3}><strong>표기가 다른 새 연결이 없습니다.</strong><span>운영현황 표기가 전부 노션 강사명과 같아, 위키가 이미 이름으로 붙이고 있어요.</span></td></tr>
                     )}
                   </tbody>
                 </table>
