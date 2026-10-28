@@ -5276,5 +5276,192 @@
         "nullsDistinct": true
       }
     ]
+  },
+  "InstructorPrivateProfile": {
+    "collection": "instructor_private_profiles",
+    "primaryKey": [
+      "instructorNoteId"
+    ],
+    "fields": {
+      "instructorNoteId": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": true,
+        "dateOnly": false
+      },
+      "contact": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "contact2": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "email": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "email2": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "birthDate": {
+        "type": "DateTime",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": true
+      },
+      "createdAt": {
+        "type": "DateTime",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "updatedAt": {
+        "type": "DateTime",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "contactPiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "contact2PiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "emailPiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "email2PiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "birthDateEncrypted": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      }
+    },
+    "references": [
+      {
+        "fields": [
+          "instructorNoteId"
+        ],
+        "targetModel": "InstructorNote",
+        "targetFields": [
+          "id"
+        ]
+      }
+    ],
+    "uniqueKeys": [
+      {
+        "fields": [
+          "instructorNoteId"
+        ],
+        "nullsDistinct": true
+      }
+    ]
+  },
+  "InstructorPrivateAccessLog": {
+    "collection": "instructor_private_access_logs",
+    "primaryKey": [
+      "id"
+    ],
+    "fields": {
+      "id": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": true,
+        "dateOnly": false
+      },
+      "instructorNoteId": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": true,
+        "dateOnly": false
+      },
+      "accessedByEmail": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "accessedAt": {
+        "type": "DateTime",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "context": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "accessedByEmailPiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      }
+    },
+    "references": [
+      {
+        "fields": [
+          "instructorNoteId"
+        ],
+        "targetModel": "InstructorNote",
+        "targetFields": [
+          "id"
+        ]
+      }
+    ],
+    "uniqueKeys": [
+      {
+        "fields": [
+          "id"
+        ],
+        "nullsDistinct": true
+      }
+    ]
   }
 }
