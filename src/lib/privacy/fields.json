@@ -655,6 +655,62 @@
     "primaryKey": "coach_id",
     "compoundKeys": []
   },
+  "InstructorPrivateProfile": {
+    "table": "instructor_private_profiles",
+    "fields": {
+      "contact": {
+        "column": "contact",
+        "type": "String",
+        "nullable": true,
+        "index": "contactPiiIndex",
+        "indexColumn": "contact_pii_index"
+      },
+      "contact2": {
+        "column": "contact2",
+        "type": "String",
+        "nullable": true,
+        "index": "contact2PiiIndex",
+        "indexColumn": "contact2_pii_index"
+      },
+      "email": {
+        "column": "email",
+        "type": "String",
+        "nullable": true,
+        "index": "emailPiiIndex",
+        "indexColumn": "email_pii_index"
+      },
+      "email2": {
+        "column": "email2",
+        "type": "String",
+        "nullable": true,
+        "index": "email2PiiIndex",
+        "indexColumn": "email2_pii_index"
+      },
+      "birthDate": {
+        "column": "birth_date",
+        "type": "DateTime",
+        "nullable": true,
+        "storage": "birthDateEncrypted",
+        "storageColumn": "birth_date_encrypted"
+      }
+    },
+    "primaryKey": "instructor_note_id",
+    "compoundKeys": []
+  },
+  "InstructorPrivateAccessLog": {
+    "table": "instructor_private_access_logs",
+    "fields": {
+      "accessedByEmail": {
+        "column": "accessed_by_email",
+        "type": "String",
+        "nullable": false,
+        "index": "accessedByEmailPiiIndex",
+        "indexColumn": "accessed_by_email_pii_index"
+      }
+    },
+    "primaryKey": "id",
+    "compoundKeys": []
+  },
   "CoachDayReservation": {
     "table": "coach_day_reservations",
     "fields": {

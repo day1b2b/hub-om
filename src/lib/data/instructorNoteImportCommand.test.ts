@@ -24,6 +24,9 @@ test("scoped import strips private source fields and never loads PostgreSQL envi
     assert.equal(entries[0].name, "Synthetic instructor"); assert.equal(note.notionNo, 185); assert.equal(entries[1].name, "Legacy instructor");
     assert.equal(note.contact, undefined); assert.equal(note.email, undefined); assert.equal(note.notion?.contact, undefined); assert.equal(note.notion?.email, undefined);
     assert.equal(note.notes, "call [연락처 비공개]"); assert.equal(note.notion?.memo, "mail [이메일 비공개]");
+    // 노트에서는 strip되지만 암호화 적재용 privateProfile로는 포착된다(노션 값 우선).
+    assert.equal(entries[0].privateProfile?.contact, "010-9999-8888"); assert.equal(entries[0].privateProfile?.email, "hidden@example.test");
+    assert.equal(entries[1].privateProfile, undefined); // PII 없는 항목은 undefined
     return { total: 2, inserted: 2, updated: 0 };
   } };
   const result = await runWithDataRepositories({ instructorNoteImport: repository }, () => runInstructorNoteImportCommand([], () => { loaded++; }, {

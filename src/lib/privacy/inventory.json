@@ -234,6 +234,23 @@
     "createdAt": "operational",
     "updatedAt": "operational"
   },
+  "InstructorPrivateProfile": {
+    "instructorNoteId": "operational",
+    "contact": "encrypted",
+    "contact2": "encrypted",
+    "email": "encrypted",
+    "email2": "encrypted",
+    "birthDate": "encrypted",
+    "createdAt": "operational",
+    "updatedAt": "operational"
+  },
+  "InstructorPrivateAccessLog": {
+    "id": "operational",
+    "instructorNoteId": "operational",
+    "accessedByEmail": "encrypted",
+    "accessedAt": "operational",
+    "context": "operational"
+  },
   "CoachFieldMaster": {
     "id": "operational",
     "name": "operational"
