@@ -27,6 +27,8 @@
 
 한 컬렉션에서 enum 추가와 필드 추가가 함께 있으면 처리하지 못합니다. PR을 나누거나 별도 계획을 세웁니다. 여러 컬렉션이 바뀌면 컬렉션마다 절차를 실행합니다(B1 참고).
 
+**코치 평가 컬렉션**(`CoachEngagementDetail`·`CoachEvaluation`·`CoachFactRecord`)은 enum 값 추가만 지원하고, 절차가 다릅니다. [C. 코치 평가 컬렉션 enum 따라잡기](#c-코치-평가-컬렉션-enum-따라잡기)를 따릅니다. 필드 추가는 운영현황 컬렉션 전용입니다.
+
 ## 공통: 다운타임과 준비
 
 validator를 바꾸는 순간부터 새 버전이 뜰 때까지 **1~3분 정도 화면이 동작하지 않습니다.** 지금 실행 중인 버전은 옛 validator를 기대하기 때문입니다. 사용자가 적은 시간에 진행하고 팀에 미리 알립니다.
@@ -121,6 +123,36 @@ MONGODB_ALLOW_SHADOW_WRITES=true $V --add-fields=<token> \
 - 결과가 `"mode": "applied"`이면 성공입니다. **이 순간부터 화면이 실패하므로 바로 [배포](#배포와-확인)로 갑니다.**
 - `"applied"`가 아니면 배포하지 않습니다. 배포 후 `$V`의 `"same"`은 validator만 비교하므로, 채우기가 덜 된 문서를 잡지 못합니다.
 - 중간에 끊겼으면 같은 명령을 다시 실행합니다. 이미 된 단계는 건너뜁니다. 계획 출력의 `state`는 validator 변경 전이면 `"ready"`, 변경 후 채우기가 남았으면 `"partially-applied"`입니다.
+
+## C. 코치 평가 컬렉션 enum 따라잡기
+
+코치 평가 컬렉션(`CoachEngagementDetail`·`CoachEvaluation`·`CoachFactRecord`)은 배포 헬스체크 대상이 아닙니다. 그래서 enum 값을 더한 계약을 배포해도 **배포는 성공**하고, 운영 validator를 맞출 때까지 **코치 평가 저장·조회만** `VALIDATOR_NOT_READY`로 실패합니다. 운영현황·대시보드 등 다른 화면은 영향이 없습니다.
+
+A절차와 달리 **새 버전을 먼저 배포하고, 새 버전 컨테이너에서** 운영 validator를 새 계약까지 넓힙니다(따라잡기). 따라잡기는 저장된 validator가 새 계약에서 enum 값만 빠진 상태일 때만 적용하고, 그 밖의 차이는 쓰기 전에 거부합니다.
+
+백업 확인 시 실행 범위: "운영 Mongo `<모델>` 컬렉션 validator 1개 변경, 문서 변경 없음".
+
+1. 계약 변경 PR을 `dev` → `main`에 반영합니다. 라벨은 `database-change-reviewed`, `mongodb-validator-ready`입니다. Auto Deploy를 끌 필요는 없습니다.
+2. 코치 평가를 잠깐 못 쓴다고 팀에 알리고 **Deploy**합니다. 헬스체크는 통과합니다.
+3. [DB 작업 안전 규칙](db-write-safety.md)에 따라 운영 Mongo 백업을 확인합니다.
+4. **새 컨테이너** Terminal에서 점검합니다(읽기 전용).
+
+```bash
+$V --catch-up=CoachEngagementDetail
+```
+
+`"kind": "widening"`, `"added"`에 이번에 더한 값만, `"nonconformingSample": false`여야 합니다. 다르면 멈추고 원인을 확인합니다.
+
+5. 적용합니다(운영 DB 쓰기).
+
+```bash
+MONGODB_ALLOW_SHADOW_WRITES=true $V --catch-up=CoachEngagementDetail --apply --confirm-target=<DB 이름>/<namespace> --backup-confirmed
+```
+
+- 결과가 `"mode": "applied"`(이미 맞으면 `"already-applied"`)이면 성공입니다. 바로 코치 평가가 다시 동작합니다.
+- `$V`를 실행해 모든 컬렉션이 `"same"`인지 확인하고, 코치 상세 → 근무이력에서 평가 화면이 열리는지 봅니다.
+
+**되돌리기:** 따라잡기 뒤에는 운영 validator가 새 계약과 같습니다. 이전 버전으로 롤백하면 이전 버전의 코치 평가가 실패하므로, 롤백 대신 새 버전을 유지하는 것을 기본으로 합니다. 이전 버전으로 꼭 돌아가야 하면 데이터/기술 책임자와 상의합니다.
 
 ## 배포와 확인
 

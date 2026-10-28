@@ -2,11 +2,13 @@ import { MongoClient } from "mongodb";
 import { configuredMongoUri, mongoConnectionOptions } from "../src/lib/mongodb/connection";
 import { requireMongoShadowComposition } from "../src/lib/data/mongoShadowComposition";
 import { mongoFailureCode } from "../src/lib/data/mongoOperationPrimitives";
-import { applyEnumWidening, inspectOperationValidators, parseEnumWidening, restoreDeployedValidator } from "../src/lib/data/mongoValidatorWidening";
+import { OPERATION_MODELS } from "../src/lib/data/mongoOperationStore";
+import { applyCatchUp, applyEnumWidening, inspectCatchUp, inspectOperationValidators, parseEnumWidening, restoreDeployedValidator } from "../src/lib/data/mongoValidatorWidening";
 import { applyFieldAddition, emitFieldAdditionTarget, inspectFieldAddition, parseFieldAdditionTarget, restoreFieldAddition, storedValidatorIsFieldAddition } from "../src/lib/data/mongoValidatorFieldAddition";
 
 /**
- * Operation collection validators vs the contract. Procedure: docs/operations/mongodb-operation-validator-change.md
+ * Operation and coach evaluation collection validators vs the contract. Procedure: docs/operations/mongodb-operation-validator-change.md
+ * Enum widening and its rollback cover both; nullable field addition covers operation collections only.
  *   Run as: node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/apply-mongodb-operation-validator.ts [args]
  *   Report (read-only):  (no args)
  *   Enum widening
@@ -16,6 +18,9 @@ import { applyFieldAddition, emitFieldAdditionTarget, inspectFieldAddition, pars
  *     Token (no DB, from the build with the next contract): --emit-field-addition=Company
  *     Plan (read-only):  --add-fields=<token>
  *     Apply:             MONGODB_ALLOW_SHADOW_WRITES=true, --add-fields=<token> --apply --confirm-target=<db>/<namespace> --backup-confirmed
+ *   Coach evaluation catch-up (from the NEW build, after deploying a contract that widens a coach evaluation enum)
+ *     Plan (read-only):  --catch-up=CoachEngagementDetail
+ *     Apply:             MONGODB_ALLOW_SHADOW_WRITES=true, --catch-up=CoachEngagementDetail --apply --confirm-target=<db>/<namespace> --backup-confirmed
  *   Roll back a widening or a field addition (from the build whose deploy you are returning to):
  *                      MONGODB_ALLOW_SHADOW_WRITES=true, --restore=OperationSession --apply --confirm-target=<db>/<namespace> --backup-confirmed
  */
@@ -30,8 +35,9 @@ async function main() {
   const widenArgument = args[0]?.startsWith("--widen=") ? args[0].slice("--widen=".length) : undefined;
   const additionArgument = args[0]?.startsWith("--add-fields=") ? args[0].slice("--add-fields=".length) : undefined;
   const restoreModel = args[0]?.startsWith("--restore=") ? args[0].slice("--restore=".length) : undefined;
-  const apply = args.length === 4 && !!(widenArgument || additionArgument || restoreModel) && args[1] === "--apply" && args[2] === `--confirm-target=${databaseName}/${namespace}` && args[3] === "--backup-confirmed";
-  if (!(args.length === 0 || (args.length === 1 && (widenArgument || additionArgument)) || apply)) throw new Error("INVALID_VALIDATOR_ARGUMENTS");
+  const catchUpModel = args[0]?.startsWith("--catch-up=") ? args[0].slice("--catch-up=".length) : undefined;
+  const apply = args.length === 4 && !!(widenArgument || additionArgument || restoreModel || catchUpModel) && args[1] === "--apply" && args[2] === `--confirm-target=${databaseName}/${namespace}` && args[3] === "--backup-confirmed";
+  if (!(args.length === 0 || (args.length === 1 && (widenArgument || additionArgument || catchUpModel)) || apply)) throw new Error("INVALID_VALIDATOR_ARGUMENTS");
   if (apply && process.env.MONGODB_ALLOW_SHADOW_WRITES !== "true") throw new Error("SHADOW_WRITE_GATE");
   const widening = widenArgument ? parseEnumWidening(widenArgument) : undefined;
   const addition = additionArgument ? parseFieldAdditionTarget(additionArgument) : undefined;
@@ -41,13 +47,24 @@ async function main() {
     const options = { client, databaseName, namespace };
     const target = `${databaseName}/${namespace}`;
     if (apply && restoreModel) {
-      if (await storedValidatorIsFieldAddition(options, restoreModel)) {
+      // Field additions only exist for operation collections; coach evaluation collections only widen.
+      if ((OPERATION_MODELS as readonly string[]).includes(restoreModel) && await storedValidatorIsFieldAddition(options, restoreModel)) {
         const outcome = await restoreFieldAddition({ ...options, allowShadowWrites: true }, restoreModel);
         console.log(JSON.stringify({ target, mode: outcome.outcome, model: restoreModel, fields: outcome.fields, cleared: outcome.cleared }, null, 2));
         return;
       }
       const outcome = await restoreDeployedValidator({ ...options, allowShadowWrites: true }, restoreModel);
       console.log(JSON.stringify({ target, mode: outcome, model: restoreModel }, null, 2));
+      return;
+    }
+    if (catchUpModel) {
+      if (apply) {
+        const outcome = await applyCatchUp({ ...options, allowShadowWrites: true }, catchUpModel);
+        console.log(JSON.stringify({ target, mode: outcome, model: catchUpModel, next: "Coach evaluation reads and writes work again; run the report to confirm every collection is same." }, null, 2));
+        return;
+      }
+      const { model, comparison, nonconformingSample } = await inspectCatchUp(options, catchUpModel);
+      console.log(JSON.stringify({ target, mode: "plan", catchUp: { model, ...comparison, nonconformingSample } }, null, 2));
       return;
     }
     if (apply && addition) {

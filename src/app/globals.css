@@ -3480,6 +3480,56 @@ td span {
   overflow-wrap: anywhere;
 }
 
+/* 개인정보 마스킹→클릭 열람 필드 */
+.masked-field-reveal {
+  background: transparent;
+  border: 1px dashed #c4ccd6;
+  border-radius: 6px;
+  color: #2d66a6;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 5px 10px;
+  text-align: left;
+  width: fit-content;
+}
+
+.masked-field-reveal:hover:not(:disabled) {
+  border-color: #2d66a6;
+}
+
+.masked-field-reveal:disabled {
+  color: #9aa5b1;
+  cursor: default;
+}
+
+.masked-field-revealed {
+  align-items: center;
+  color: #333333;
+  display: flex;
+  gap: 8px;
+}
+
+.masked-field-toggle {
+  background: transparent;
+  border: 0;
+  color: #9aa5b1;
+  cursor: pointer;
+  font-size: 12px;
+  text-decoration: underline;
+}
+
+.masked-field-error {
+  color: #c0392b;
+  font-size: 12px;
+}
+
+.masked-field-note {
+  color: #9aa5b1;
+  font-size: 11px;
+  margin: 8px 0 0;
+}
+
 .coach-input-link-actions {
   display: flex;
   flex-wrap: wrap;
@@ -3551,7 +3601,20 @@ td span {
   margin: 0 0 10px;
 }
 
-.coach-public-header > button {
+.coach-public-save {
+  align-items: flex-end;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.coach-public-save > span {
+  color: #d84315;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.coach-public-save > button {
   background: #1f1f1f;
   border: 1px solid #1f1f1f;
   border-radius: 8px;
@@ -3564,9 +3627,25 @@ td span {
   padding: 0 22px;
 }
 
-.coach-public-header > button:disabled {
+.coach-public-save > button.dirty {
+  background: #1976d2;
+  border-color: #1976d2;
+}
+
+.coach-public-save > button:disabled {
   cursor: progress;
   opacity: 0.7;
+}
+
+.coach-public-guide {
+  background: #edf5ff;
+  border-radius: 8px;
+  color: #1565c0;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.7;
+  margin: -8px 0 20px;
+  padding: 12px 16px;
 }
 
 .coach-public-tags {
@@ -5103,6 +5182,132 @@ td span {
 
 .course-group-item a:hover {
   color: var(--blue);
+}
+
+/* 강사 계약요청 구역(운영현황 교육상세) */
+.instructor-contract-section {
+  grid-column: 1 / -1;
+}
+
+.instructor-contract-hint {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 0;
+  padding: 10px 14px 2px;
+}
+
+.instructor-contract-empty {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0;
+  padding: 8px 14px 14px;
+}
+
+.instructor-contract-list {
+  display: grid;
+  gap: 0;
+  list-style: none;
+  margin: 0;
+  padding: 6px 14px 12px;
+}
+
+.instructor-contract-item {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 10px 0;
+}
+
+.instructor-contract-item:last-child {
+  border-bottom: 0;
+}
+
+.instructor-contract-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.instructor-contract-name {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.instructor-contract-schedule {
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.instructor-contract-open {
+  border: 1px solid var(--blue);
+  border-radius: 6px;
+  color: var(--blue);
+  flex: none;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 12px;
+  white-space: nowrap;
+}
+
+.instructor-contract-open:hover {
+  background: var(--blue);
+  color: #fff;
+}
+
+.instructor-contract-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 8px 14px 0;
+}
+
+.instructor-contract-status-load {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 12px;
+}
+
+.instructor-contract-status-load:hover:not(:disabled) {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.instructor-contract-status-load:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+
+.instructor-contract-error {
+  color: var(--red, #c0392b);
+  font-size: 12px;
+}
+
+.instructor-contract-badge {
+  background: var(--blue);
+  border-radius: 4px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  margin-left: 6px;
+  padding: 1px 6px;
+  vertical-align: middle;
+}
+
+.instructor-contract-note {
+  color: var(--muted);
+  font-size: 11px;
 }
 
 .archive-item-actions {
@@ -9629,6 +9834,10 @@ button.coach-doc-reserve-chip:disabled {
   .coach-public-footer {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .coach-public-save {
+    align-items: stretch;
   }
 
   .coach-public-layout {

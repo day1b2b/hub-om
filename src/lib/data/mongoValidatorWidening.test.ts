@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { operationMongoValidator } from "./mongoOperationStore";
 import { MongoOperationError, mongoFailureCode } from "./mongoOperationPrimitives";
-import { compareOperationValidator, parseEnumWidening, widenedOperationValidator } from "./mongoValidatorWidening";
+import { catchUpTarget, compareOperationValidator, parseEnumWidening, widenedOperationValidator } from "./mongoValidatorWidening";
 
 const clone = <T>(value: T): T => structuredClone(value);
 type Properties = Record<string, { enum?: unknown[]; bsonType?: unknown }>;
@@ -40,6 +40,37 @@ test("a widening must keep every deployed value, add one, and name a known enum 
   }
   assert.throws(() => widenedOperationValidator({ ...WIDEN, field: "operationId" }), (error: unknown) => mongoFailureCode(error) === "ENUM_FIELD_REQUIRED");
   assert.throws(() => widenedOperationValidator({ ...WIDEN, model: "CoachProfile" }), (error: unknown) => mongoFailureCode(error) === "UNKNOWN_OPERATION_MODEL");
+  // A contract model outside the operation and coach evaluation stores stays out of reach.
+  assert.throws(() => widenedOperationValidator({ model: "Coach", field: "status", values: ["A"] }), (error: unknown) => mongoFailureCode(error) === "UNKNOWN_OPERATION_MODEL");
+});
+
+test("coach evaluation collections widen the same way (role enum)", () => {
+  // The coach evaluation store also requires an exact validator match, so its enums need this path too.
+  const deployed = operationMongoValidator("CoachEngagementDetail");
+  const roles = propertiesOf(deployed).role.enum as string[];
+  const next = [...roles, "WIDENING_FIXTURE"];
+  const target = widenedOperationValidator({ model: "CoachEngagementDetail", field: "role", values: next });
+  assert.deepEqual(propertiesOf(target).role.enum, next);
+  const comparison = compareOperationValidator(deployed, target);
+  assert.equal(comparison.kind, "widening");
+  assert.deepEqual(comparison.kind === "widening" && comparison.added.map(item => item.values), [["WIDENING_FIXTURE"]]);
+});
+
+test("catch-up targets this build's contract, only for coach evaluation collections", () => {
+  const target = catchUpTarget("CoachEngagementDetail");
+  assert.deepEqual(target, operationMongoValidator("CoachEngagementDetail"));
+  // A stored validator one enum value behind this build is a widening the catch-up may apply.
+  const lagging = clone(target);
+  const roles = propertiesOf(lagging).role.enum as string[];
+  propertiesOf(lagging).role.enum = roles.slice(0, -1);
+  const comparison = compareOperationValidator(lagging, target);
+  assert.equal(comparison.kind, "widening");
+  assert.deepEqual(comparison.kind === "widening" && comparison.added.map(item => item.values), [[roles.at(-1)]]);
+  // Ahead of this build (a narrowing) is not something catch-up may apply.
+  assert.equal(compareOperationValidator(target, lagging).kind, "incompatible");
+  for (const model of ["OperationSession", "Coach", "CoachProfile"]) {
+    assert.throws(() => catchUpTarget(model), (error: unknown) => mongoFailureCode(error) === "UNKNOWN_COACH_EVALUATION_MODEL");
+  }
 });
 
 test("parseEnumWidening reads Model.field=V1,V2 and rejects anything else", () => {
