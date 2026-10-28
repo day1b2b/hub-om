@@ -12,6 +12,16 @@
       ,"deletedBy": {"column": "deleted_by", "type": "String", "nullable": true, "index": "deletedByPiiIndex", "indexColumn": "deleted_by_pii_index"}
     }
   },
+  "Course": {
+    "table": "courses",
+    "primaryKey": "id",
+    "compoundKeys": [],
+    "fields": {
+      "resultReportLink": {"column": "result_report_link", "type": "String", "nullable": true, "index": "resultReportLinkPiiIndex", "indexColumn": "result_report_link_pii_index"},
+      "lectureManagementLink": {"column": "lecture_management_link", "type": "String", "nullable": true, "index": "lectureManagementLinkPiiIndex", "indexColumn": "lecture_management_link_pii_index"},
+      "lectureManagementNote": {"column": "lecture_management_note", "type": "String", "nullable": true, "index": "lectureManagementNotePiiIndex", "indexColumn": "lecture_management_note_pii_index"}
+    }
+  },
   "Company": {
     "table": "companies",
     "primaryKey": "id",

@@ -5336,6 +5336,8 @@ td span {
   align-items: start;
   display: grid;
   gap: 6px;
+  /* 2단 요약 그리드(.archive-item-list) 안에서 강의관리처럼 필드가 여러 개인 행이 한 칸에 눌리지 않게 전체 폭을 쓴다. */
+  grid-column: 1 / -1;
   grid-template-columns: 1fr;
 }
 

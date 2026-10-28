@@ -32,7 +32,13 @@
     "changeOnly": [
       "process_seq",
       "tools",
-      "revenue_raw"
+      "revenue_raw",
+      "result_report_link",
+      "lecture_management_link",
+      "lecture_management_note",
+      "result_report_link_pii_index",
+      "lecture_management_link_pii_index",
+      "lecture_management_note_pii_index"
     ]
   },
   "course_id_labels": {
