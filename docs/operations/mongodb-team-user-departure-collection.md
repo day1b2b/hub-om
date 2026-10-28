@@ -9,10 +9,13 @@
 별도로 기록합니다. 그래서 [2026-10-21 장애](2026-10-21-mongodb-validator-contract-incident.md)와
 같은 "기존 문서가 새 계약과 안 맞아서 저장소 열기·읽기가 전부 실패하는" 위험이 없습니다.
 
-대신 다른 순서 문제가 있습니다: 새 코드(TeamUserDeparture를 읽는 멤버 관리/역할 로스터 경로)가
-먼저 배포되면, 그 코드는 저장소를 열 때 `TeamUserDeparture` 컬렉션이 올바른 validator로
-**존재하는지** 검사합니다(`assertMongoReadStoreReady`). 컬렉션이 아직 없으면 그 경로 전체가
-`VALIDATOR_NOT_READY`로 막힙니다.
+대신 다른 순서 문제가 있습니다: 새 코드(TeamUserDeparture를 읽는 경로)가 먼저 배포되면, 그
+코드는 저장소를 열 때 `TeamUserDeparture` 컬렉션이 올바른 validator로 **존재하는지** 검사합니다
+(`assertMongoReadStoreReady`). 컬렉션이 아직 없으면 그 경로 전체가 `VALIDATOR_NOT_READY`로
+막힙니다. 이 범위는 멤버 관리/역할 로스터 한 곳이 아니라 훨씬 넓습니다 — `MongoTeamMemberRepository.open`을
+쓰는 운영 상세·운영 현황 화면, 캘린더, 관리자 DB 화면, 가져오기(Notion·Sheets·Drive)와,
+`MONGO_TEAM_USER_MODELS`를 쓰는 멤버 관리, OM 요청 처리, 강의 후속, 매출 동기화, 코치 평가까지
+전부 포함됩니다.
 
 그래서 **배포 전에 컬렉션부터 만들어 둬야** 합니다. 이전(지금 실행 중인) 버전은 이 컬렉션의
 존재를 전혀 모르므로, 먼저 만들어 둬도 이전 버전 동작에는 영향이 없습니다 — 1)과 2) 사이에
@@ -64,7 +67,11 @@ Coolify에서 **Deploy**를 누릅니다(또는 `main` 동기화 PR 머지로 �
 1. 멤버 관리(`/admin/users`)에서 퇴사 처리/재직 복귀가 정상 동작하는지 확인합니다.
 2. OM 요청 배정(`/om-request/manage/...`), 운영 상세의 OM/LD 수정 드롭다운이 정상 동작하는지
    확인합니다(퇴사자가 신규 후보에서 빠지는지).
-3. Logs에 `TEAM_READ_FAILED`, `VALIDATOR_NOT_READY`가 없는지 확인합니다.
+3. 운영 상세(`/operations/<operationId>`), 운영 현황(`/operations`), 캘린더(`/resources`)가
+   500 없이 정상 조회되는지 확인합니다 — 이 화면들도 `MongoTeamMemberRepository.open`을 거칩니다.
+4. 관리자 DB 화면(`/admin/database`), 가져오기(Notion·Sheets·Drive) 화면도 같은 경로를 쓰므로
+   함께 확인합니다.
+5. Logs에 `TEAM_READ_FAILED`, `VALIDATOR_NOT_READY`가 없는지 확인합니다.
 
 ## 되돌리기
 

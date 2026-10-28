@@ -400,6 +400,11 @@
     "team": "operational",
     "createdAt": "operational"
   },
+  "TeamUserDeparture": {
+    "id": "operational",
+    "teamUserId": "operational",
+    "departedAt": "operational"
+  },
   "OmRequest": {
     "id": "operational",
     "status": "operational",

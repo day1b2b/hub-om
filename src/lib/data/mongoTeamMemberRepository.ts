@@ -15,9 +15,11 @@ function compare(left: unknown, right: unknown, enumOrder?: string[]): number {
   return String(left).localeCompare(String(right), "ko");
 }
 function sourceTeam(value: unknown): SourceTeam { return value === "1팀" || value === "2팀" ? value : "미분류"; }
-// 역할 로스터만 TeamUserDeparture를 읽는다. 공유 TEAM_READ_MODELS 자체를 넓히면
-// 운영현황/OM요청/캘린더 등 이 상수를 쓰는 다른 모든 런타임의 저장소 준비 범위까지
-// 함께 넓어져 버리므로, 이 리포지토리 전용 목록으로만 추가한다.
+// MongoTeamMemberRepository.open을 쓰는 모든 화면(운영 상세·운영 현황, 캘린더, 관리자 DB,
+// 가져오기(Notion·Sheets·Drive))이 이 목록으로 저장소를 연다. 공유 TEAM_READ_MODELS 자체를
+// 넓히면 그 화면들과 무관한 다른 런타임의 저장소 준비 범위까지 함께 넓어져 버리므로,
+// 이 리포지토리 전용 목록으로만 TeamUserDeparture를 추가한다 — 즉 위 화면들은 전부
+// TeamUserDeparture 컬렉션이 없으면 VALIDATOR_NOT_READY로 실패한다.
 const ROLE_ROSTER_MODELS = [...TEAM_READ_MODELS, "TeamUserDeparture"] as const;
 
 async function teamRead<T>(read: () => Promise<T>): Promise<T> {

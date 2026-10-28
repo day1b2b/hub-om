@@ -162,7 +162,11 @@ export class MongoTeamUserRepository implements TeamUserRepository {
       const existing = await this.store.scan("TeamUserDeparture", { teamUserId: { $in: uniqueIds } }, session);
       if (status === "departed") {
         const existingIds = new Set(existing.map(row => row.teamUserId as string));
-        const toCreate = uniqueIds.filter(id => !existingIds.has(id));
+        const candidates = uniqueIds.filter(id => !existingIds.has(id));
+        // 이미 지워졌거나 애초에 없는 id로 퇴사 기록만 남는 걸 막는다.
+        const users = candidates.length ? await this.store.scan("TeamUser", { _id: { $in: candidates } }, session) : [];
+        const validIds = new Set(users.map(row => row.id as string));
+        const toCreate = candidates.filter(id => validIds.has(id));
         for (const teamUserId of toCreate) {
           const row = { id: randomUUID(), teamUserId, departedAt: new Date() };
           await this.store.collection("TeamUserDeparture").insertOne(encodeMongoRuntimeDocument("TeamUserDeparture", row), { session });
