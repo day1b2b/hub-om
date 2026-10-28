@@ -11,6 +11,7 @@ import type {
 import { CoachInputLinkActions } from "./CoachInputLinkActions";
 import { CoachNotesPanel } from "./CoachNotesPanel";
 import { CoachEvaluationProvider, EngagementEvaluationButton, EngagementEvaluationPanel } from "./CoachEngagementEvaluation";
+import { MaskedField } from "./MaskedField";
 
 export type CoachDetailTab = "profile" | "schedule" | "engagements";
 
@@ -131,6 +132,18 @@ function ProfilePane({ coach }: { coach: CoachDetail }) {
           <InfoItem label="노출 상태" value={coach.isActive ? "노출" : "비노출"} />
           <InfoItem label="삭제 상태" value={coach.deletedAt ? "삭제됨" : "정상"} />
         </div>
+      </section>
+
+      <section className="coach-origin-card">
+        <div className="coach-origin-section-title">
+          <span>연락처 (민감정보)</span>
+        </div>
+        <div className="coach-origin-info-list">
+          <MaskedField entity="coach" field="phone" id={coach.id} label="전화번호" />
+          <MaskedField entity="coach" field="email" id={coach.id} label="이메일" />
+          <MaskedField entity="coach" field="affiliation" id={coach.id} label="소속" />
+        </div>
+        <p className="masked-field-note">열람하면 기록이 남아요.</p>
       </section>
 
       <section className="coach-origin-card">
