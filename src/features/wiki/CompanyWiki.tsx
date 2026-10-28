@@ -279,7 +279,7 @@ function CompanyWikiDetail({
       body: JSON.stringify({
         companyId: entry.companyId,
         companyName: entry.name,
-        courses: entry.courses.map((course) => ({ key: course.key, courseId: course.courseId, courseName: course.courseName }))
+        courses: entry.courses.map((course) => ({ key: course.key, courseId: course.courseId, courseIdLabel: course.courseIdLabel }))
       })
     })
       .then((res) => (res.ok ? res.json() : null))
