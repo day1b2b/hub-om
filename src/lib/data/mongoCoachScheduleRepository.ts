@@ -26,6 +26,25 @@ export async function prepareMongoCoachScheduleStore(options: Options): Promise<
   await prepareMongoCoachSchedulingGuard(store, options.allowShadowWrites);
 }
 
+/** Repairs only the active-reservation index (no documents change). Duplicate active reservations make creation fail; never delete them. */
+export async function createMongoActiveReservationIndex(options: Options): Promise<void> {
+  assertMongo(options.allowShadowWrites === true, "SHADOW_WRITE_GATE");
+  const store = new MongoOperationStore(options, ["CoachDayReservation"]);
+  await store.collection("CoachDayReservation").createIndexes([activeIndex], { collation: { locale: "simple" } });
+}
+
+/** Read-only count of coach/day groups that would block the active-reservation unique index. */
+export async function countDuplicateActiveReservations(options: MongoOperationOptions): Promise<number> {
+  const store = new MongoOperationStore(options, ["CoachDayReservation"]);
+  const rows = await store.collection("CoachDayReservation").aggregate([
+    { $match: activeIndex.partialFilterExpression ?? {} },
+    { $group: { _id: { coachId: "$coachId", date: "$date" }, count: { $sum: 1 } } },
+    { $match: { count: { $gt: 1 } } },
+    { $count: "groups" },
+  ], { maxTimeMS: 15_000, collation: { locale: "simple" } }).toArray();
+  return (rows[0]?.groups as number | undefined) ?? 0;
+}
+
 /** Internal shadow implementation. No environment variable selects this repository in production. */
 export class MongoCoachScheduleRepository implements CoachScheduleRepository {
   private readonly store: MongoOperationStore;
