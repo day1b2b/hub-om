@@ -1193,6 +1193,9 @@ model InstructorNote {
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
+  privateProfile    InstructorPrivateProfile?
+  privateAccessLogs InstructorPrivateAccessLog[]
+
   @@index([recruitAvoid], map: "instructor_notes_recruit_avoid_idx")
   @@index([instructorName], map: "instructor_notes_instructor_name_idx")
   @@map("instructor_notes")
@@ -1203,6 +1206,48 @@ model InstructorNote {
   notionIdPiiIndex String? @map("notion_id_pii_index")
   partnerIdPiiIndex String? @map("partner_id_pii_index")
   notesPiiIndex String? @map("notes_pii_index")
+}
+
+// 강사 개인정보(연락처·이메일·생년월일). instructor_notes와 1:1. 코치 CoachPrivateProfile를 미러한
+// 암호화 전용 테이블. 공개 타입/화면에 노출 금지. 열람은 권한+감사(piiReveal)를 거친다.
+model InstructorPrivateProfile {
+  instructorNoteId String    @id @map("instructor_note_id") @db.Uuid
+  contact          String?
+  contact2         String?
+  email            String?
+  email2           String?
+  birthDate        DateTime? @map("birth_date") @db.Date
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  instructorNote InstructorNote @relation(fields: [instructorNoteId], references: [id], onDelete: Cascade)
+
+  @@map("instructor_private_profiles")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  contactPiiIndex    String? @map("contact_pii_index")
+  contact2PiiIndex   String? @map("contact2_pii_index")
+  emailPiiIndex      String? @map("email_pii_index")
+  email2PiiIndex     String? @map("email2_pii_index")
+  birthDateEncrypted String? @map("birth_date_encrypted")
+}
+
+// 강사 개인정보 열람 감사. 코치 CoachPrivateAccessLog 미러. 변경이력(activity)에서는 제외(table-exclusions).
+model InstructorPrivateAccessLog {
+  id               String   @id @default(uuid()) @db.Uuid
+  instructorNoteId String   @map("instructor_note_id") @db.Uuid
+  accessedByEmail  String   @map("accessed_by_email")
+  accessedAt       DateTime @default(now()) @map("accessed_at")
+  context          String?
+
+  instructorNote InstructorNote @relation(fields: [instructorNoteId], references: [id], onDelete: Cascade)
+
+  @@index([instructorNoteId, accessedAt], map: "instructor_priv_access_note_at_idx")
+  @@index([accessedByEmail, accessedAt], map: "instructor_priv_access_email_at_idx")
+  @@map("instructor_private_access_logs")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  accessedByEmailPiiIndex String? @map("accessed_by_email_pii_index")
 }
 
 // 운영 1건(OperationSession.operationId)의 **실제 교육일 1일 ↔ 구글 이벤트 1건** 매핑.
