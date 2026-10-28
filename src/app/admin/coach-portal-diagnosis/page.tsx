@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { AppSidebar } from "@/components/AppSidebar";
 import { requireAdminSession } from "@/lib/auth/requireAdminSession";
-import { diagnoseCoachPortal, type CoachPortalDiagnosis } from "@/lib/data/coachPortalDiagnosis";
+import { CoachReservationIndexPanel } from "@/features/admin/CoachReservationIndexPanel";
+import { diagnoseCoachPortal, SCHEDULE_OPEN_LABEL, type CoachPortalDiagnosis } from "@/lib/data/coachPortalDiagnosis";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +67,10 @@ export default async function CoachPortalDiagnosisPage() {
                 </table>
               </div>
             </div>
+
+            {diagnosis.steps.some(step => step.label === SCHEDULE_OPEN_LABEL && step.code === "ACTIVE_RESERVATION_INDEX_NOT_READY") ? (
+              <CoachReservationIndexPanel duplicateActiveReservations={diagnosis.duplicateActiveReservations} />
+            ) : null}
 
             {diagnosis.collections.length > 0 ? (
               <div className="detail-section">

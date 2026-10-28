@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { diagnoseCoachPortal, type CoachPortalDiagnosisDependencies } from "./coachPortalDiagnosis";
+import { diagnoseCoachPortal, repairActiveReservationIndex, type CoachPortalDiagnosisDependencies } from "./coachPortalDiagnosis";
 import { MongoOperationError } from "./mongoOperationPrimitives";
 
 const key = (fill: number) => Buffer.alloc(32, fill).toString("base64");
@@ -17,7 +17,7 @@ const shadowEnv = {
 };
 
 function fakes(overrides: Partial<CoachPortalDiagnosisDependencies> = {}) {
-  const calls = { connect: 0, close: 0 };
+  const calls = { connect: 0, close: 0, created: 0, indexReady: false };
   const dependencies: CoachPortalDiagnosisDependencies = {
     createClient: () => ({ connect: async () => { calls.connect++; }, close: async () => { calls.close++; } }),
     models: async () => ["Coach", "CoachSchedule"],
@@ -25,8 +25,10 @@ function fakes(overrides: Partial<CoachPortalDiagnosisDependencies> = {}) {
     checkCollection: async (_options, model) => { if (model !== "Coach") throw new MongoOperationError("VALIDATOR_NOT_READY"); },
     checks: async () => [
       { label: "코치 토큰 저장소 열기", run: async () => {} },
-      { label: "코치 일정 저장소 열기", run: async () => { throw new MongoOperationError("VALIDATOR_NOT_READY"); } },
+      { label: "코치 일정 저장소 열기", run: async () => { if (!calls.indexReady) throw new MongoOperationError("ACTIVE_RESERVATION_INDEX_NOT_READY"); } },
     ],
+    countDuplicateActiveReservations: async () => 0,
+    createActiveReservationIndex: async () => { calls.created++; calls.indexReady = true; },
     ...overrides,
   };
   return { calls, dependencies };
@@ -62,9 +64,38 @@ test("each collection and repository check reports its own code and the client i
     ["Mongo 설정(namespace·암호화 키·URI)", true, "OK"],
     ["Mongo 연결", true, "OK"],
     ["코치 토큰 저장소 열기", true, "OK"],
-    ["코치 일정 저장소 열기", false, "VALIDATOR_NOT_READY"],
+    ["코치 일정 저장소 열기", false, "ACTIVE_RESERVATION_INDEX_NOT_READY"],
   ]);
-  assert.deepEqual(calls, { connect: 1, close: 1 });
+  assert.equal(result.duplicateActiveReservations, 0);
+  assert.deepEqual(calls, { connect: 1, close: 1, created: 0, indexReady: false });
+});
+
+test("a failed duplicate count is shown as unknown instead of failing the page", async () => {
+  const { dependencies } = fakes({ countDuplicateActiveReservations: async () => { throw new Error("boom"); } });
+  assert.equal((await diagnoseCoachPortal(shadowEnv, dependencies)).duplicateActiveReservations, null);
+});
+
+test("index repair creates only the index, then confirms the schedule repository opens", async () => {
+  const { calls, dependencies } = fakes();
+  assert.deepEqual(await repairActiveReservationIndex(shadowEnv, dependencies), { ok: true, code: "OK" });
+  assert.deepEqual(calls, { connect: 1, close: 1, created: 1, indexReady: true });
+});
+
+test("index repair refuses duplicates, non-Mongo backends and reports failed verification", async () => {
+  const duplicate = fakes({ countDuplicateActiveReservations: async () => 2 });
+  assert.deepEqual(await repairActiveReservationIndex(shadowEnv, duplicate.dependencies), { ok: false, code: "DUPLICATE_ACTIVE_RESERVATIONS" });
+  assert.equal(duplicate.calls.created, 0);
+  assert.equal(duplicate.calls.close, 1);
+
+  const postgres = fakes();
+  assert.deepEqual(await repairActiveReservationIndex({}, postgres.dependencies), { ok: false, code: "NOT_MONGODB_SHADOW" });
+  assert.equal(postgres.calls.connect, 0);
+
+  const unverified = fakes({ createActiveReservationIndex: async () => {} });
+  assert.deepEqual(await repairActiveReservationIndex(shadowEnv, unverified.dependencies), { ok: false, code: "ACTIVE_RESERVATION_INDEX_NOT_READY" });
+
+  const rejected = fakes({ createActiveReservationIndex: async () => { throw new Error("E11000 duplicate key coachId: secret"); } });
+  assert.deepEqual(await repairActiveReservationIndex(shadowEnv, rejected.dependencies), { ok: false, code: "REDACTED" });
 });
 
 test("driver messages and unexpected selector values never reach the page", async () => {
