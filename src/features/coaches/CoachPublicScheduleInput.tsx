@@ -205,8 +205,18 @@ export function CoachPublicScheduleInput() {
               {coach?.fields.slice(0, 4).map((field) => <span key={field.id}>{field.name}</span>)}
             </div>
           </div>
-          <button disabled={saving} onClick={save} type="button">{saving ? "저장 중" : saved ? "저장됨" : "저장"}</button>
+          <div className="coach-public-save">
+            <button className={dirty ? "dirty" : ""} disabled={saving} onClick={save} type="button">
+              {saving ? "저장 중" : dirty ? "저장하기" : saved ? "저장됨" : "저장"}
+            </button>
+            {dirty && !saving ? <span>저장 전 변경 있음</span> : null}
+          </div>
         </header>
+
+        <p className="coach-public-guide">
+          가능한 날짜를 누르고 시간을 고른 뒤 저장해 주세요 :)<br />
+          편하실 때 언제든 들어와 고치실 수 있어요.
+        </p>
 
         <section className="coach-public-layout">
           <section className="coach-public-calendar-card">
