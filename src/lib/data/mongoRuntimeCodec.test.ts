@@ -29,7 +29,7 @@ function prismaToNeutral(model: string, row: Record<string, unknown>) {
 }
 
 test("all 39 static contracts match migration metadata and runtime import graph excludes Prisma, fs and migration", () => {
-  assert.equal(mongoRuntimeModelNames.length, 39);
+  assert.equal(mongoRuntimeModelNames.length, 41);
   assert.deepEqual(mongoRuntimeContracts, mongoModelContracts);
   for (const path of ["./mongoRuntimeCodec.ts", "../privacy/crypto.ts"]) {
     const source = readFileSync(new URL(path, import.meta.url), "utf8");
@@ -39,7 +39,7 @@ test("all 39 static contracts match migration metadata and runtime import graph 
   assert.ok(Object.isFrozen(mongoRuntimeContracts.Course.fields));
 });
 
-test("all models and 150 private fields roundtrip both migration -> runtime and runtime -> migration over BSON wire", () => {
+test("all models and 156 private fields roundtrip both migration -> runtime and runtime -> migration over BSON wire", () => {
   let privateCount = 0;
   for (const model of mongoRuntimeModelNames) {
     const row = fixture(model);
@@ -58,7 +58,7 @@ test("all models and 150 private fields roundtrip both migration -> runtime and 
       if (policy.index) assert.equal(encoded[policy.index], migrated[policy.index]);
     }
   }
-  assert.equal(privateCount, 150);
+  assert.equal(privateCount, 156);
 });
 
 test("all nullable fields retain SQL NULL including private JSON/date companions", () => {
