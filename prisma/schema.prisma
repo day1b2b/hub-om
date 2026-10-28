@@ -782,6 +782,8 @@ enum CoachEngagementRole {
   PRACTICE_COACH      @map("practice_coach")
   LEAD                @map("lead")
   OPERATION_ASSISTANT @map("operation_assistant")
+  MENTOR               @map("mentor")
+  ASSISTANT_INSTRUCTOR @map("assistant_instructor")
 
   @@map("coach_engagement_role")
 }
