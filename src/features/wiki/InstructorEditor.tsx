@@ -2,32 +2,11 @@
 
 import { useState, type ChangeEvent } from "react";
 import type { InstructorNote, InstructorNotionProfile } from "@/lib/data/instructorWikiStore";
+import { MaskedField } from "@/features/coaches/MaskedField";
 
-// 노션 페이지 ID·파트너 ID는 화면에서 다루지 않는다.
-// 노션 ID는 연결 스크립트가 채우고 이동은 헤더의 노션 칩으로 한다. 저장은 부분 병합이라 값은 그대로 보존된다.
-// 폼에서 편집하는 자유 입력 칸만 남긴다. 식별값(notionNo·instructorName)과
-// 자동 채움값(notion)·별도 컨트롤(recruitAvoid·displayName 등)은 제외한다.
-type Field = Exclude<
-  keyof InstructorNote,
-  "recruitAvoid" | "displayName" | "notionId" | "partnerId" | "notion" | "notionNo" | "instructorName"
->;
-type FormState = Record<Field, string>;
-
-// 연락처·이메일은 PII라 읽기 모드에서 가운데를 가린다. "✏ 수정"을 누르면 원본이 보인다.
-function maskPhone(value: string): string {
-  return value.replace(/(\d{2,3})[-. ]?(\d{3,4})[-. ]?(\d{4})/g, (_, head, mid, tail) => `${head}-${"*".repeat(mid.length)}-${tail}`);
-}
-
-function maskEmail(value: string): string {
-  return value.replace(/([^\s@/]+)@([^\s@/]+)/g, (_, local: string, domain: string) => {
-    const head = local.slice(0, Math.min(3, local.length));
-    return `${head}${"*".repeat(Math.max(local.length - head.length, 1))}@${domain}`;
-  });
-}
-
-const MASK: Partial<Record<Field, (value: string) => string>> = { contact: maskPhone, email: maskEmail };
-
-// 강사위키 OM 입력 폼. 평소엔 읽기 전용, "수정" 버튼을 눌러야 편집 가능. 저장 시 /api/instructor-wiki/save로 전송.
+// 강사위키 "강사 정보". 연락처·이메일은 개인정보라 기본 마스킹 → 클릭하면 복호화 열람(코치와 동일, 열람 감사).
+// 강사 특이사항(notes)만 OM이 편집한다. 저장 시 /api/instructor-wiki/save로 보내며, 연락처·이메일은 보내지 않는다.
+// 노션에 연결된 강사(instructor_notes 행 있음 = id 있음)만 열람 버튼을 보여준다.
 export function InstructorEditor({
   name,
   initial,
@@ -37,36 +16,19 @@ export function InstructorEditor({
   initial: InstructorNote;
   notion?: InstructorNotionProfile;
 }) {
-  // OM이 입력한 값이 없을 때만 노션 값을 대신 보여준다. 노션 값을 폼에 넣지는 않는다
-  // (넣으면 저장 시 노션 값이 OM 입력값으로 굳어져서 다음 가져오기 때 갱신되지 않는다).
-  const notionFallback: Partial<Record<Field, string>> = {
-    contact: [notion?.contact, notion?.contact2].filter(Boolean).join(" / "),
-    email: [notion?.email, notion?.email2].filter(Boolean).join(" / "),
-    notes: notion?.memo ?? ""
-  };
-
-  const build = (): FormState => ({
-    notes: initial.notes ?? "",
-    contact: initial.contact ?? "",
-    email: initial.email ?? ""
-  });
-
-  const [form, setForm] = useState<FormState>(build);
-  const [snapshot, setSnapshot] = useState<FormState>(form);
+  const [notes, setNotes] = useState(initial.notes ?? "");
+  const [snapshot, setSnapshot] = useState(notes);
   const [editing, setEditing] = useState(false);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
-  const set = (key: Field) => (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-    setForm((current) => ({ ...current, [key]: event.target.value }));
-
   function startEdit() {
-    setSnapshot(form);
+    setSnapshot(notes);
     setStatus("idle");
     setEditing(true);
   }
 
   function cancel() {
-    setForm(snapshot);
+    setNotes(snapshot);
     setEditing(false);
     setStatus("idle");
   }
@@ -77,10 +39,10 @@ export function InstructorEditor({
       const res = await fetch("/api/instructor-wiki/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, ...form })
+        body: JSON.stringify({ name, notes })
       });
       if (res.ok) {
-        setSnapshot(form);
+        setSnapshot(notes);
         setEditing(false);
         setStatus("saved");
       } else {
@@ -106,42 +68,57 @@ export function InstructorEditor({
     </span>
   );
 
-  // 읽기 모드 표시값: OM 입력값이 우선, 없으면 노션 값. 연락처·이메일은 마스킹해서 보여준다.
-  const shown = (key: Field) => {
-    const raw = form[key] || notionFallback[key] || "";
-    const mask = MASK[key];
-    return raw && mask ? mask(raw) : raw;
-  };
-
-  const field = (label: string, key: Field, opts: { textarea?: boolean; placeholder?: string } = {}) => (
-    <div key={key}>
-      <dt>{label}</dt>
-      <dd>
-        {editing ? (
-          opts.textarea ? (
-            <textarea className="wiki-textarea wiki-textarea--lg" value={form[key]} onChange={set(key)} rows={5} placeholder={opts.placeholder} aria-label={label} />
-          ) : (
-            <input className="wiki-input" value={form[key]} onChange={set(key)} placeholder={opts.placeholder} aria-label={label} />
-          )
-        ) : shown(key) ? (
-          <span className="wiki-view">{shown(key)}</span>
-        ) : (
-          <span className="td-muted">—</span>
-        )}
-      </dd>
-    </div>
-  );
+  // 특이사항 읽기값: OM 입력값이 우선, 없으면 노션 메모. 편집은 OM 입력값만 다룬다.
+  const notesShown = notes || notion?.memo || "";
 
   return (
     <div className="detail-section">
       <div className="section-title"><h2>강사 정보</h2>{controls}</div>
       <div className="section-body">
         <dl className="field-preview-list">
-          {field("연락처", "contact", { placeholder: "예: 010-0000-0000" })}
-          {field("이메일", "email", { placeholder: "이메일" })}
-          {field("강사 특이사항", "notes", { textarea: true, placeholder: "강사 특이사항 (강의 스타일·주의사항·선호 등)" })}
+          <div>
+            <dt>연락처</dt>
+            <dd>
+              {initial.id ? (
+                <MaskedField entity="instructor" id={initial.id} field="contact" label="연락처" />
+              ) : (
+                <span className="td-muted">노션에 연결되면 열람할 수 있어요</span>
+              )}
+            </dd>
+          </div>
+          <div>
+            <dt>이메일</dt>
+            <dd>
+              {initial.id ? (
+                <MaskedField entity="instructor" id={initial.id} field="email" label="이메일" />
+              ) : (
+                <span className="td-muted">노션에 연결되면 열람할 수 있어요</span>
+              )}
+            </dd>
+          </div>
+          <div>
+            <dt>강사 특이사항</dt>
+            <dd>
+              {editing ? (
+                <textarea
+                  className="wiki-textarea wiki-textarea--lg"
+                  value={notes}
+                  onChange={(event: ChangeEvent<HTMLTextAreaElement>) => setNotes(event.target.value)}
+                  rows={5}
+                  placeholder="강사 특이사항 (강의 스타일·주의사항·선호 등)"
+                  aria-label="강사 특이사항"
+                />
+              ) : notesShown ? (
+                <span className="wiki-view">{notesShown}</span>
+              ) : (
+                <span className="td-muted">—</span>
+              )}
+            </dd>
+          </div>
         </dl>
-        <p className="field-hint">연락처·이메일은 개인정보(PII)예요. 로컬(dev) 파일에 저장되며, 배포 저장은 권한·보안 검토 후 DB 연동 시 반영됩니다.</p>
+        <p className="field-hint">
+          연락처·이메일은 암호화 저장되고, 클릭하면 열람할 수 있어요(열람 기록이 남습니다). 노션 강사 DB의 값이라 원본은 노션에서 수정해 주세요.
+        </p>
       </div>
     </div>
   );
