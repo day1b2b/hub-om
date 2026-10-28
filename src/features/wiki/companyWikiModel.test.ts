@@ -168,6 +168,16 @@ test("과정명이 비어 있어도 정렬에서 터지지 않는다", () => {
   assert.equal(entries[0].courseCount, 2);
 });
 
+test("코스ID명을 코스별로 담고, 없으면(미정) 빈 문자열로 둔다", () => {
+  const entries = aggregateCompanies([
+    operation({ operationId: "a", courseId: "C-1", courseIdLabel: "2026 AI 역량강화" }),
+    operation({ operationId: "b", courseId: "C-2" })
+  ]);
+  const courses = entries[0].courses.sort((a, b) => a.courseId.localeCompare(b.courseId));
+  assert.equal(courses[0].courseIdLabel, "2026 AI 역량강화");
+  assert.equal(courses[1].courseIdLabel, "");
+});
+
 test("companyId가 있으면 기업명 표기가 달라도 한 기업으로 묶는다", () => {
   // Company.id가 기업을 식별한다. 운영 현황에 표기를 다르게 적어도 갈리지 않는다.
   const entries = aggregateCompanies([
