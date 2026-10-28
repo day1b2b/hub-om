@@ -3480,6 +3480,56 @@ td span {
   overflow-wrap: anywhere;
 }
 
+/* 개인정보 마스킹→클릭 열람 필드 */
+.masked-field-reveal {
+  background: transparent;
+  border: 1px dashed #c4ccd6;
+  border-radius: 6px;
+  color: #2d66a6;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 5px 10px;
+  text-align: left;
+  width: fit-content;
+}
+
+.masked-field-reveal:hover:not(:disabled) {
+  border-color: #2d66a6;
+}
+
+.masked-field-reveal:disabled {
+  color: #9aa5b1;
+  cursor: default;
+}
+
+.masked-field-revealed {
+  align-items: center;
+  color: #333333;
+  display: flex;
+  gap: 8px;
+}
+
+.masked-field-toggle {
+  background: transparent;
+  border: 0;
+  color: #9aa5b1;
+  cursor: pointer;
+  font-size: 12px;
+  text-decoration: underline;
+}
+
+.masked-field-error {
+  color: #c0392b;
+  font-size: 12px;
+}
+
+.masked-field-note {
+  color: #9aa5b1;
+  font-size: 11px;
+  margin: 8px 0 0;
+}
+
 .coach-input-link-actions {
   display: flex;
   flex-wrap: wrap;
