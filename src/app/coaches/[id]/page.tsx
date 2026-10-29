@@ -4,7 +4,15 @@ import { requireAdminSession } from "@/lib/auth/requireAdminSession";
 import { getCoachRepository } from "@/lib/data/coachRepositoryFactory";
 import type { CoachDetailTab } from "@/features/coaches/CoachDetail";
 import { runCoachPublicRequest } from "@/lib/data/coachPublicComposition";
-import { effectiveEngagementStatus, seoulTodayKey } from "@/lib/coaches/coachActivity";
+import {
+  coachActivityPolicy,
+  effectiveEngagementStatus,
+  recentRatingSummary,
+  seoulTodayKey,
+  summarizeCoachActivity
+} from "@/lib/coaches/coachActivity";
+import { loadEvaluationAverages } from "@/lib/coaches/coachEvaluationAverages";
+import { peopleStatusFromFacts } from "@/lib/people/peopleStatus";
 
 export const dynamic = "force-dynamic";
 
@@ -33,10 +41,11 @@ async function renderCoachDetailPage({ params, searchParams }: CoachDetailPagePr
   }
 
   const today = seoulTodayKey();
-  const [storedEngagements, schedules, engagementSchedules] = await Promise.all([
+  const [storedEngagements, schedules, engagementSchedules, evaluationAverages] = await Promise.all([
     repository.listEngagements(id),
     repository.listSchedules(id, monthRange),
-    repository.listEngagementSchedules(id, monthRange)
+    repository.listEngagementSchedules(id, monthRange),
+    loadEvaluationAverages()
   ]);
   // 저장된 상태는 동기화 때만 계산돼 지난 일정이 "예정"으로 남는다. 화면에서는 날짜로 다시 정한다.
   const engagements = storedEngagements.map((engagement) => ({
@@ -44,9 +53,15 @@ async function renderCoachDetailPage({ params, searchParams }: CoachDetailPagePr
     status: effectiveEngagementStatus(engagement, today)
   }));
 
+  // 목록과 같은 계산(상태 4단계·최근 OM 평가)을 상세에서도 쓴다.
+  const coachWithRating = { ...coach, ...recentRatingSummary(coach.engagementFacts, evaluationAverages) };
+
   return (
     <CoachDetailView
-      coach={coach}
+      activity={summarizeCoachActivity(coach.engagementFacts, today)}
+      coach={coachWithRating}
+      peopleStatus={peopleStatusFromFacts(coach.engagementFacts, today, coachActivityPolicy.dormantMonths)}
+      today={today}
       engagementSchedules={engagementSchedules}
       engagements={engagements}
       selectedMonth={selectedMonth}
@@ -61,7 +76,8 @@ function firstParam(value: string | string[] | undefined): string | undefined {
 }
 
 function resolveTab(value: string | undefined): CoachDetailTab {
-  if (value === "schedule" || value === "engagements") return value;
+  // 예전 ?tab=engagements 주소는 한 페이지로 합쳐져 기본 화면으로 연다.
+  if (value === "schedule") return value;
   return "profile";
 }
 

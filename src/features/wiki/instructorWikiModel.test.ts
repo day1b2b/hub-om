@@ -100,6 +100,7 @@ function withCourse(name: string, company: string, startDate: string): Instructo
         om: "OM",
         educationFormat: "",
         region: "",
+        avgSatisfaction: "",
         instructorSatisfaction: "",
         instructorWikiLink: ""
       }

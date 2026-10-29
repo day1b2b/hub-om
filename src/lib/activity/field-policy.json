@@ -213,6 +213,22 @@
       "affiliation_pii_index"
     ]
   },
+  "instructor_private_profiles": {
+    "values": [],
+    "changeOnly": [
+      "instructor_note_id",
+      "contact",
+      "contact2",
+      "email",
+      "email2",
+      "birth_date",
+      "contact_pii_index",
+      "contact2_pii_index",
+      "email_pii_index",
+      "email2_pii_index",
+      "birth_date_encrypted"
+    ]
+  },
   "coach_field_masters": {
     "values": [
       "name"

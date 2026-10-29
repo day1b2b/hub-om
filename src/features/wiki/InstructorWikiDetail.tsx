@@ -1,17 +1,27 @@
 import Link from "next/link";
 import { AppSidebar } from "@/components/AppSidebar";
+import { MaskedField } from "@/features/coaches/MaskedField";
+import { PeopleFlagPill } from "@/features/people/PeopleDirectory";
+import {
+  PeopleCard,
+  PeopleCollapsible,
+  PeopleDetailBody,
+  PeopleDetailHeader,
+  PeopleFacts,
+  PeoplePinned,
+  PeopleStatusPill
+} from "@/features/people/PeopleProfile";
+import { coachActivityPolicy, seoulTodayKey } from "@/lib/coaches/coachActivity";
+import { averageOf, formatPeopleDate, parseSatisfaction, peopleStatusFromFacts } from "@/lib/people/peopleStatus";
 import {
   cleanCourseName,
   formatDateLabel,
+  groupInstructorCourses,
   hasActiveCourse,
-  OPERATION_STATUS_CLASS,
   ROLE_CLASS,
-  roleSummary,
-  STATUS_CLASS,
   STATUS_LABEL,
   type InstructorWikiEntry
 } from "./instructorWikiModel";
-import { WikiAvatar } from "./wikiAvatar";
 import { InstructorEditor } from "./InstructorEditor";
 import { ProfileAttachments } from "./ProfileAttachments";
 import { NameEditor } from "./NameEditor";
@@ -24,12 +34,9 @@ import {
   resolveNotionLinkTargets
 } from "@/lib/data/instructorWikiStore";
 
-// 강사위키 상세 = 강사 1명 360° 카드. 상단 요약 + 4버킷([섭외]기본정보·[계약/정산]·[회고]·[섭외]암묵지).
-// "강사위키 = 보는 곳(정보) / 운영현황 = 하는 곳(처리)" 원칙 → 계약 '요청' 버튼은 두지 않는다.
-// 암묵지 5분류(강점·유의사항·소통 스타일·강의 스타일·비고)는 노션 강사위키 양식과 동일하다.
-// 1차는 기존 데이터를 버킷으로 재배치하고, 아직 허브에 없는 값은 "준비중" 틀로 둔다(데이터 로직 미변경).
-const TACIT_CATEGORIES = ["강점", "유의사항", "소통 스타일", "강의 스타일", "비고"] as const;
-
+// 강사 위키 상세. 코치 위키와 같은 틀(헤더 → 고정 알림 → 본문 2단)을 쓴다.
+// "강사 위키 = 보는 곳 / 운영현황 = 하는 곳" 원칙이라 계약 '요청' 버튼은 두지 않는다.
+// 아직 허브에 값이 없는 칸(계약 유형·신규강사 증빙 등)은 빈 틀로 늘어놓지 않고, 데이터가 생기면 해당 칸에 붙인다.
 export async function InstructorWikiDetail({ entry }: { entry: InstructorWikiEntry }) {
   const coach = entry.coach;
   // 노션 NO가 있으면 그것으로 읽는다(동명이인 구분). 없으면 운영 현황 표기라 이름으로 읽는다.
@@ -60,208 +67,230 @@ export async function InstructorWikiDetail({ entry }: { entry: InstructorWikiEnt
   const fields = coach && coach.fields.length > 0 ? coach.fields : np?.categories ?? [];
   const curriculums = coach && coach.curriculums.length > 0 ? coach.curriculums : np?.lectureTopics ?? [];
   const profileSource = coach
-    ? "강사 DB 매칭됨"
+    ? "코치 DB 매칭됨"
     : np?.syncedAt
       ? `노션 강사 DB · ${np.syncedAt.slice(0, 10)} 기준`
-      : "미연결 · 미매칭";
+      : "노션 미연결";
   const baseFeeText = typeof np?.baseFee === "number" ? `${np.baseFee.toLocaleString("ko-KR")}원` : "";
 
-  // 요약·배정현황은 운영 현황(courses)에서 바로 계산한다(별도 백엔드 불필요).
-  const activeNow = hasActiveCourse(entry);
-  const latestAssignment = entry.courses[0]?.startDate ? formatDateLabel(entry.courses[0].startDate) : "-";
-  const avgRatingText = coach?.avgRating != null ? coach.avgRating.toFixed(1) : "-";
+  // 상태·지표는 운영 현황(courses)에서 바로 계산한다(별도 백엔드 불필요).
+  const today = seoulTodayKey();
+  const status = peopleStatusFromFacts(
+    entry.courses.map((course) => ({ startDate: course.startDate, endDate: course.endDate })),
+    today,
+    coachActivityPolicy.dormantMonths,
+    hasActiveCourse(entry)
+  );
+  const courseScores = entry.courses
+    .map((course) => parseSatisfaction(course.avgSatisfaction))
+    .filter((score): score is number => score !== null);
+  const courseSatisfaction = averageOf(courseScores);
+  const instructorScores = entry.courses
+    .map((course) => parseSatisfaction(course.instructorSatisfaction))
+    .filter((score): score is number => score !== null);
+  const instructorSatisfaction = averageOf(instructorScores);
+  const pastCourses = entry.courses.filter((course) => course.startDate && course.startDate <= today);
+  const latest = pastCourses[0]?.startDate ?? "";
+  const bookedCourses = entry.courses
+    .filter((course) => course.startDate && (course.endDate || course.startDate) >= today)
+    .sort((a, b) => a.startDate.localeCompare(b.startDate));
+  const nextCourse = bookedCourses.find((course) => course.startDate >= today);
+  const courseGroups = groupInstructorCourses(entry.courses);
 
   return (
     <main className="dashboard-shell">
       <AppSidebar label="Instructor Wiki" teamScope="both" />
 
-      <section className="content">
-        <Link className="back-link" href="/instructor-wiki">← 강사위키 목록으로</Link>
-
-        <div className="detail-header">
-          <div className="title-row">
-            <WikiAvatar name={entry.name} size="lg" />
-            <span className="title-company">강사위키</span>
-            <NameEditor name={entry.name} initialName={displayName} />
-            {/* 노션 강사 페이지 이동. 목록에서 바로 넘어가지 않고 여기서만 연다. */}
-            {notionUrl ? (
-              <a className="notion-chip" href={notionUrl} target="_blank" rel="noreferrer">🔗 노션 강사 페이지 ↗</a>
+      <section className="content people-detail">
+        <PeopleDetailHeader
+          actions={
+            notionUrl ? (
+              <a className="notion-chip" href={notionUrl} target="_blank" rel="noreferrer">🔗 노션 원본 ↗</a>
             ) : (
               <span className="notion-chip is-off">노션 미연결</span>
-            )}
-            {/* 운영 현황 표기가 노션과 달라 프로필이 안 붙는 경우, OM이 여기서 한 번 연결한다. */}
-            <NotionLinkEditor
-              isNotionEntry={isNotionEntry}
-              linkedAliases={linkedAliases}
-              name={entry.name}
-              notionNames={notionNames}
-            />
-            {/* 섭외지양은 노션 강사 DB의 "섭외지양 여부"만 보고 자동 표기한다. */}
-            {np?.recruitAvoid ? <span className="recruit-avoid-badge">⛔ 섭외지양</span> : null}
-            <span className="coach-plan-badge">운영 현황 연동</span>
-            {roleSummary(entry).map((role) => (
-              <span className={`status ${ROLE_CLASS[role]}`} key={role}>{role}</span>
-            ))}
-            {coach ? (
-              <span className={`status ${STATUS_CLASS[coach.status]}`}>coach-db · {STATUS_LABEL[coach.status]}</span>
-            ) : null}
-          </div>
-        </div>
+            )
+          }
+          avatarName={entry.name}
+          backHref="/instructor-wiki"
+          backLabel="강사 위키"
+          badges={
+            <>
+              <PeopleStatusPill status={status} />
+              {np?.recruitAvoid ? <PeopleFlagPill flag={{ label: "⛔ 섭외지양", tone: "bad" }} /> : null}
+            </>
+          }
+          fields={fields}
+          kpis={[
+            { label: "투입", value: `${entry.courseCount}건` },
+            { label: "최근 투입", value: latest ? formatPeopleDate(latest, today) : "-" },
+            {
+              label: "만족도",
+              value: (
+                <>
+                  종합 {courseSatisfaction !== null ? courseSatisfaction.toFixed(1) : "-"} · 강사 {instructorSatisfaction !== null ? instructorSatisfaction.toFixed(1) : "-"}
+                </>
+              )
+            },
+            { label: "다음 예정", value: nextCourse ? formatPeopleDate(nextCourse.startDate, today) : "-" }
+          ]}
+          title={<NameEditor name={entry.name} initialName={displayName} />}
+        />
 
-        {/* 상단 요약 */}
-        <div className="detail-grid">
-          <div className="detail-panel detail-panel--full">
-            <div className="panel-title">운영 요약</div>
-            <div className="info-grid info-grid--row">
-              <div className="info-item"><span>담당 코스</span><strong>{entry.courseCount}건</strong></div>
-              <div className="info-item"><span>평균 평가(coach)</span><strong>{avgRatingText}</strong></div>
-              <div className="info-item"><span>최근 배정</span><strong>{latestAssignment}</strong></div>
-            </div>
-          </div>
-        </div>
+        <PeoplePinned
+          items={
+            np?.recruitAvoid
+              ? [{ key: "recruit-avoid", text: "섭외지양 강사입니다. 노션 강사 DB의 \"섭외지양 여부\" 값이에요.", tone: "bad" }]
+              : []
+          }
+        />
 
-        {/* 4버킷 — 상위 3개 요약(기본정보 · 계약/정산 · 회고) */}
-        <div className="detail-grid iw-buckets">
-          {/* [섭외] 기본정보 */}
-          <div className="detail-section">
-            <div className="section-title"><h2>[섭외] 기본정보</h2><span>{profileSource}</span></div>
-            <div className="iw-bucket-body">
-              <dl className="field-preview-list">
-                <div><dt>소속</dt><dd>{np?.affiliation ? np.affiliation : <span className="td-muted">-</span>}</dd></div>
-                <div><dt>전문분야</dt><dd>{fields.length > 0 ? fields.join(" · ") : <span className="td-muted">-</span>}</dd></div>
-                <div><dt>가능 커리큘럼</dt><dd>{curriculums.length > 0 ? curriculums.join(", ") : <span className="td-muted">-</span>}</dd></div>
-                <div>
-                  <dt>이력서·포트폴리오</dt>
-                  <dd>
-                    {np?.demoCheckUrl ? (
-                      <a className="notion-chip" href={np.demoCheckUrl} target="_blank" rel="noreferrer">시범강의 점검표 ↗</a>
-                    ) : (
-                      <span className="td-muted">-</span>
-                    )}
-                    <ProfileAttachments />
-                  </dd>
+        <PeopleDetailBody
+          main={
+            <>
+              <PeopleCard note={profileSource} title="소개 · 전문분야">
+                <PeopleFacts
+                  items={[
+                    { label: "소속", value: np?.affiliation },
+                    { label: "전문분야", value: fields.join(" · ") },
+                    { label: "가능 커리큘럼", value: curriculums.join(", ") },
+                    {
+                      label: "자료",
+                      value: (
+                        <>
+                          {np?.demoCheckUrl ? (
+                            <a className="notion-chip" href={np.demoCheckUrl} target="_blank" rel="noreferrer">시범강의 점검표 ↗</a>
+                          ) : null}
+                          <ProfileAttachments />
+                        </>
+                      )
+                    }
+                  ]}
+                />
+                <p className="field-hint">노션 강사 DB에서 자동으로 가져온 값이에요. 원본은 노션에서 수정해 주세요.</p>
+              </PeopleCard>
+
+              <InstructorEditor name={entry.name} initial={note} notion={np} />
+
+              {/* 투입 이력은 길고 가끔 보는 내용이라 맨 아래에 접어 둔다. 같은 과정의 회차는 한 줄로 묶는다. */}
+              <PeopleCollapsible
+                id="history"
+                note={`과정 ${courseGroups.length}개 · 회차 ${entry.courseCount}건 · 운영 현황 자동`}
+                title="투입 이력"
+              >
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>기업</th>
+                        <th>과정명</th>
+                        <th>역할</th>
+                        <th>종합만족도</th>
+                        <th>강사만족도</th>
+                        <th>최초 투입</th>
+                        <th>담당 OM</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {courseGroups.length > 0 ? (
+                        courseGroups.map((group) => (
+                          <tr key={group.key}>
+                            <td><strong className="title-company">{group.companyName}</strong></td>
+                            <td>
+                              <a className="course-link" href={`/operations/${group.operationId}`} rel="noreferrer" target="_blank">
+                                {cleanCourseName(group.courseName)} ↗
+                              </a>
+                              {group.roundCount > 1 ? <span className="td-muted"> {group.roundCount}회차</span> : null}
+                              {group.instructorWikiLink ? (
+                                <>
+                                  {" "}
+                                  <a className="archive-pill done" href={group.instructorWikiLink} rel="noreferrer" target="_blank">위키↗</a>
+                                </>
+                              ) : null}
+                            </td>
+                            <td>
+                              {group.roles.map((role) => (
+                                <span className={`status ${ROLE_CLASS[role]}`} key={role} style={{ marginRight: 4 }}>{role}</span>
+                              ))}
+                            </td>
+                            <td>{group.courseSatisfaction !== null ? group.courseSatisfaction.toFixed(1) : <span className="td-muted">-</span>}</td>
+                            <td>{group.instructorSatisfaction !== null ? group.instructorSatisfaction.toFixed(1) : <span className="td-muted">-</span>}</td>
+                            <td>{group.firstDate ? formatDateLabel(group.firstDate) : <span className="td-muted">-</span>}</td>
+                            <td>{group.oms.length > 0 ? group.oms.join(", ") : <span className="td-muted">-</span>}</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td className="empty-state" colSpan={7}>
+                            <strong>투입 이력이 없습니다.</strong>
+                            <span>운영 현황에 이 강사가 배정되면 표시됩니다.</span>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
-                <div>
-                  <dt>배정 현황</dt>
-                  <dd>{activeNow ? "진행·예정 있음" : "현재 배정 없음"} <span className="field-hint-inline">운영현황 자동</span></dd>
-                </div>
-              </dl>
-              <p className="field-hint">소속·전문분야·강사료는 노션 강사 DB에서 자동으로 가져온 값이에요. 원본은 노션에서 수정해 주세요.</p>
-            </div>
-          </div>
-
-          {/* [계약/정산] — 정보만, 요청 버튼은 운영현황에 둔다 */}
-          <div className="detail-section">
-            <div className="section-title"><h2>[계약/정산]</h2><span>정보만 · 요청은 운영현황</span></div>
-            <div className="iw-bucket-body">
-              <dl className="field-preview-list">
-                <div><dt>기본 강사료</dt><dd>{baseFeeText ? baseFeeText : <span className="td-muted">-</span>}</dd></div>
-                <div><dt>강사료 특이사항</dt><dd>{np?.feeNote ? <span className="wiki-view">{np.feeNote}</span> : <span className="td-muted">-</span>}</dd></div>
-                <div><dt>계약 유형</dt><dd><span className="status soon">준비중</span></dd></div>
-                <div><dt>신규강사 증빙</dt><dd><span className="status soon">준비중</span></dd></div>
-              </dl>
-            </div>
-          </div>
-
-          {/* [회고] — 요약(상세 표는 아래) */}
-          <div className="detail-section">
-            <div className="section-title"><h2>[회고]</h2><span>운영현황 자동</span></div>
-            <div className="iw-bucket-body">
-              <dl className="field-preview-list">
-                <div><dt>교육 참여 이력</dt><dd>{entry.courseCount}건</dd></div>
-                <div><dt>과정별 만족도</dt><dd>{avgRatingText !== "-" ? `${avgRatingText} (단일)` : <span className="td-muted">-</span>}</dd></div>
-                <div><dt>종합·전문성·전달력 추세</dt><dd><span className="status soon">준비중</span></dd></div>
-                <div><dt>매니저 정성평가</dt><dd><span className="status soon">준비중</span></dd></div>
-              </dl>
-            </div>
-          </div>
-        </div>
-
-        {/* [섭외] 암묵지 — 강사위키의 핵심(전폭). 5분류는 노션 강사위키 양식과 동일. */}
-        <div className="detail-section iw-tacit">
-          <div className="section-title">
-            <h2>[섭외] 암묵지</h2>
-            <span>강사위키의 핵심 · OM이 쌓는 운영 지식</span>
-          </div>
-          <div className="iw-bucket-body">
-            <InstructorEditor name={entry.name} initial={note} notion={np} />
-            <div className="iw-recommend">
-              <span className="iw-recommend-label">섭외 추천도</span>
-              {np?.recruitAvoid ? <span className="status needs-assignment">⛔ 섭외지양</span> : <span className="status soon">준비중</span>}
-            </div>
-            <table className="iw-tacit-table">
-              <tbody>
-                {TACIT_CATEGORIES.map((category) => (
-                  <tr key={category}>
-                    <th scope="row">{category}</th>
-                    <td><span className="status soon">준비중</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <p className="field-hint">
-              강점·유의사항·소통/강의 스타일·비고는 노션 강사위키 양식과 같아요. 지금은 틀만 있고, 실제 내용은 노션 강사위키에서 가져올 예정이에요(2차).
-            </p>
-          </div>
-        </div>
-
-        {/* [회고] 담당 코스 상세 */}
-        <div className="detail-section">
-          <div className="section-title"><h2>[회고] 담당 코스 · 운영 현황</h2><span>{entry.courseCount}건</span></div>
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>기업</th>
-                  <th>과정명</th>
-                  <th>역할</th>
-                  <th>차수</th>
-                  <th>상태</th>
-                  <th>기간</th>
-                  <th>강사 만족도</th>
-                  <th>담당 OM</th>
-                </tr>
-              </thead>
-              <tbody>
-                {entry.courses.length > 0 ? (
-                  entry.courses.map((course, index) => (
-                    <tr key={`${course.operationId}-${course.role}-${index}`}>
-                      <td><strong className="title-company">{course.companyName}</strong></td>
-                      <td>
-                        {cleanCourseName(course.courseName)}
-                        {course.instructorWikiLink ? (
-                          <>
-                            {" "}
-                            <a className="archive-pill done" href={course.instructorWikiLink} rel="noreferrer" target="_blank">위키↗</a>
-                          </>
-                        ) : null}
-                      </td>
-                      <td><span className={`status ${ROLE_CLASS[course.role]}`}>{course.role}</span></td>
-                      <td>{course.roundNo || <span className="td-muted">-</span>}</td>
-                      <td>
-                        <span className={`status ${OPERATION_STATUS_CLASS[course.status] ?? "muted"}`}>{course.status}</span>
-                      </td>
-                      <td>
-                        {course.startDate ? formatDateLabel(course.startDate) : "-"}
-                        {course.endDate && course.endDate !== course.startDate ? ` ~ ${formatDateLabel(course.endDate)}` : ""}
-                      </td>
-                      <td>{course.instructorSatisfaction ? course.instructorSatisfaction : <span className="td-muted">-</span>}</td>
-                      <td>{course.om || <span className="td-muted">-</span>}</td>
-                    </tr>
-                  ))
+              </PeopleCollapsible>
+            </>
+          }
+          side={
+            <>
+              <PeopleCard note="운영 현황 자동" title="가용성">
+                {bookedCourses.length > 0 ? (
+                  <ul className="people-plain-list">
+                    {bookedCourses.slice(0, 5).map((course, index) => (
+                      <li key={`${course.operationId}-${index}`}>
+                        <strong>{formatPeopleDate(course.startDate, today)}</strong> {course.companyName} · {cleanCourseName(course.courseName)}
+                      </li>
+                    ))}
+                  </ul>
                 ) : (
-                  <tr>
-                    <td className="empty-state" colSpan={8}>
-                      <strong>담당 코스가 없습니다.</strong>
-                      <span>운영 현황에 이 강사가 배정되면 표시됩니다.</span>
-                    </td>
-                  </tr>
+                  <p className="td-muted">진행·예정 과정이 없어요.</p>
                 )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+              </PeopleCard>
 
+              <PeopleCard note="요청은 운영현황에서" title="조건">
+                <PeopleFacts
+                  items={[
+                    { label: "기본 강사료", value: baseFeeText },
+                    { label: "특이사항", value: np?.feeNote ? <span className="wiki-view">{np.feeNote}</span> : "" }
+                  ]}
+                />
+              </PeopleCard>
+
+              <PeopleCard note="열람 기록 남음" title="개인정보">
+                {note.id ? (
+                  <div className="people-contact">
+                    <MaskedField entity="instructor" id={note.id} field="contact" label="연락처" />
+                    <MaskedField entity="instructor" id={note.id} field="email" label="이메일" />
+                  </div>
+                ) : (
+                  <p className="td-muted">노션에 연결되면 열람할 수 있어요.</p>
+                )}
+              </PeopleCard>
+
+              <PeopleCard title="관리">
+                <PeopleFacts
+                  items={[
+                    { label: "정보 출처", value: profileSource },
+                    {
+                      label: "코치 DB",
+                      value: coach ? (
+                        <Link href={`/coaches/${coach.coachId}`}>{STATUS_LABEL[coach.status]} · 코치 위키 보기 →</Link>
+                      ) : ""
+                    }
+                  ]}
+                />
+                {/* 운영 현황 표기가 노션과 달라 프로필이 안 붙는 경우, OM이 여기서 한 번 연결한다. */}
+                <NotionLinkEditor
+                  isNotionEntry={isNotionEntry}
+                  linkedAliases={linkedAliases}
+                  name={entry.name}
+                  notionNames={notionNames}
+                />
+              </PeopleCard>
+            </>
+          }
+        />
       </section>
     </main>
   );

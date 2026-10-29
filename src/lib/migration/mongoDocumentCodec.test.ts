@@ -20,8 +20,8 @@ function fixture(model: string): Record<string, unknown> {
 }
 const encode = (name: string, row: Record<string, unknown>) => encodeMongoDocument(name, row, { sourceMode: "plaintext" });
 
-test("all 40 DMMF models and all 150 private fields roundtrip without plaintext persistence", () => {
-  assert.equal(mongoModelNames.length, 40);
+test("all 42 DMMF models and all 156 private fields roundtrip without plaintext persistence", () => {
+  assert.equal(mongoModelNames.length, 42);
   let privateFields = 0;
   for (const model of mongoModelNames) {
     const row = fixture(model);
@@ -41,7 +41,7 @@ test("all 40 DMMF models and all 150 private fields roundtrip without plaintext 
     }
     assert.match(hashMongoDocument(model, doc), /^[a-f0-9]{64}$/);
   }
-  assert.equal(privateFields, 150);
+  assert.equal(privateFields, 156);
 });
 
 test("Decimal retains exact precision, UUID remains string, bytes and Json tagged values roundtrip", () => {
@@ -141,7 +141,7 @@ test("all declared FK and unique contracts retain their full model coverage", ()
   const expectedReferences = Prisma.dmmf.datamodel.models.flatMap(model => model.fields.filter(field => field.kind === "object" && (field as unknown as { relationFromFields?: string[] }).relationFromFields?.length));
   // Prisma7 strips relationFromFields; checked-in public schema is independently counted below.
   assert.ok(expectedReferences.length === 0 || expectedReferences.length === Object.values(mongoModelContracts).flatMap(model => model.references).length);
-  assert.equal(Object.values(mongoModelContracts).flatMap(model => model.references).length, 30);
+  assert.equal(Object.values(mongoModelContracts).flatMap(model => model.references).length, 32);
   assert.deepEqual(mongoModelContracts.Course.references, [{ fields: ["companyId"], targetModel: "Company", targetFields: ["id"] }]);
   assert.ok(mongoModelContracts.Member.uniqueKeys.some(key => key.fields.join(",") === "role,sourceTeam,normalizedNamePiiIndex" && key.nullsDistinct));
   assert.equal(mongoModelContracts.Member.uniqueKeys.some(key => key.fields.includes("normalizedName")), false);

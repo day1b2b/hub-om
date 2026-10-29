@@ -206,7 +206,7 @@ export function ContentManagementPanel({ onChanged }: { onChanged?: () => void }
                   <button type="button" onClick={() => { setEditingNoteId(entry.id); setEditNote(entry.content); setEditingReviewId(null); }}>수정</button>
                   <button onClick={() => handleNoteAction(entry.coachId, entry.id, "delete")} type="button">삭제</button>
                   <button onClick={() => handleNoteAction(entry.coachId, entry.id, "warn")} type="button">
-                    {entry.flagged ? "경고 해제" : "경고"}
+                    {entry.flagged ? "고정 해제" : "📌 고정"}
                   </button>
                 </div>
               ) : null}

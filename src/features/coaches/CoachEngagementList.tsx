@@ -45,7 +45,7 @@ export function CoachEngagementList({
         <header className="page-header">
           <div>
             <p className="eyebrow">코치 DB</p>
-            <h1>{coachName} 투입이력</h1>
+            <h1>{coachName} 투입 이력</h1>
             <p className="lede">운영에 연결된 투입은 운영 상세로 이동할 수 있습니다.</p>
           </div>
           <div className="header-panel">
@@ -62,7 +62,7 @@ export function CoachEngagementList({
 
         <section className="dashboard-panel operations-list-panel">
           <div className="section-title">
-            <h2>투입이력</h2>
+            <h2>투입 이력</h2>
             <div className="dashboard-table-meta">
               <span>{engagements.length}건</span>
             </div>
@@ -119,7 +119,7 @@ export function CoachEngagementList({
                 ) : (
                   <tr>
                     <td className="empty-state" colSpan={colSpan}>
-                      <strong>투입이력이 없습니다.</strong>
+                      <strong>투입 이력이 없습니다.</strong>
                       <span>이 코치에 연결된 투입 데이터가 아직 없습니다.</span>
                     </td>
                   </tr>

@@ -9,7 +9,7 @@ import { buildInvoiceRequestFormUrl } from "@/lib/data/invoiceRequestForm";
 interface CourseInput {
   key: string;
   courseId: string;
-  courseName: string;
+  courseIdLabel: string;
 }
 
 /**
@@ -31,7 +31,8 @@ async function activityPOST(request: Request) {
     for (const course of courses) {
       const href = buildInvoiceRequestFormUrl({
         courseId: course.courseId,
-        courseName: course.courseName,
+        // 구글폼 "과정명"은 코스ID명(courseIdLabel)을 쓴다 — 미정(빈 값)이면 폼 칸도 비워 둔다.
+        courseName: course.courseIdLabel,
         companyName: body.companyName,
         businessNumber: businessInfo?.businessNumber,
         representativeName: businessInfo?.representativeName,
