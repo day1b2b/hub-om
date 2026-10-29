@@ -4199,6 +4199,50 @@
       }
     ]
   },
+  "TeamUserDeparture": {
+    "collection": "team_user_departures",
+    "primaryKey": [
+      "id"
+    ],
+    "fields": {
+      "id": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": true,
+        "dateOnly": false
+      },
+      "teamUserId": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": true,
+        "dateOnly": false
+      },
+      "departedAt": {
+        "type": "DateTime",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      }
+    },
+    "references": [],
+    "uniqueKeys": [
+      {
+        "fields": [
+          "id"
+        ],
+        "nullsDistinct": true
+      },
+      {
+        "fields": [
+          "teamUserId"
+        ],
+        "nullsDistinct": true
+      }
+    ]
+  },
   "OmRequest": {
     "collection": "om_requests",
     "primaryKey": [

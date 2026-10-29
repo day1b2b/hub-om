@@ -15,6 +15,7 @@ function fixture(fail = false) {
     async renameTeamUsers(from, to) { calls.push(`${from}->${to}`); let count = 0; for (const row of users) if (row.team === from) { row.team = to; count++; } return count; },
     async findTeamUsersByEmail() { return []; }, async createTeamUser() { throw new Error("unexpected"); }, async deleteTeamUsers() { throw new Error("unexpected"); },
     async updateTeamUserTeam() { throw new Error("unexpected"); }, async updateTeamUsersRole() { throw new Error("unexpected"); },
+    async updateTeamUsersStatus() { throw new Error("unexpected"); },
   };
   return { value, calls, users };
 }

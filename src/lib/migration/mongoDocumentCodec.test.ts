@@ -20,8 +20,8 @@ function fixture(model: string): Record<string, unknown> {
 }
 const encode = (name: string, row: Record<string, unknown>) => encodeMongoDocument(name, row, { sourceMode: "plaintext" });
 
-test("all 41 DMMF models and all 156 private fields roundtrip without plaintext persistence", () => {
-  assert.equal(mongoModelNames.length, 41);
+test("all 42 DMMF models and all 156 private fields roundtrip without plaintext persistence", () => {
+  assert.equal(mongoModelNames.length, 42);
   let privateFields = 0;
   for (const model of mongoModelNames) {
     const row = fixture(model);

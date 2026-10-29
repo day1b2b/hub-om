@@ -1036,6 +1036,18 @@ model TeamUser {
   slackIdPiiIndex String? @map("slack_id_pii_index")
 }
 
+// 퇴사자를 TeamUser에서 물리 삭제하거나 TeamUser 스키마를 바꾸지 않고 표시하기 위한
+// 추가 전용(additive) 기록. 행이 있으면 퇴사, 없으면 재직이다(행 삭제 = 재직 복귀).
+// TeamUser에 직접 상태 필드를 두면 운영 Mongo의 기존 TeamUser 문서와 계약이
+// 어긋나 저장소 열기·읽기가 전부 실패한다(2026-10-21 education_format 장애와 같은 유형).
+model TeamUserDeparture {
+  id         String   @id @default(uuid()) @db.Uuid
+  teamUserId String   @unique @map("team_user_id") @db.Uuid
+  departedAt DateTime @default(now()) @map("departed_at")
+
+  @@map("team_user_departures")
+}
+
 // OM 업무 요청. 과거 로컬 JSON 파일(om-requests.json) 저장에서 Postgres로 이관.
 // 문자열 상태/구분값(배정필요 등)과 세션 배열은 앱 표준 타입 그대로 저장한다.
 model OmRequest {
