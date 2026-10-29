@@ -244,7 +244,7 @@ export async function InstructorWikiDetail({ entry }: { entry: InstructorWikiEnt
                 />
               </PeopleCard>
 
-              <PeopleCard note="열람 기록 남음" title="연락처">
+              <PeopleCard note="열람 기록 남음" title="개인정보">
                 {note.id ? (
                   <div className="people-contact">
                     <MaskedField entity="instructor" id={note.id} field="contact" label="연락처" />
