@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { planRoundApply } from "@/lib/data/satisfactionRoundApply";
+import { planInstructorSatisfaction, planRoundApply } from "@/lib/data/satisfactionRoundApply";
 import type { RoundApplyTarget } from "@/lib/data/satisfactionRoundApply";
 import type { SatisfactionMatchResult, SatisfactionSheetRow } from "@/lib/data/satisfactionSheet";
 
@@ -127,4 +127,31 @@ test("어떤 경우에도 사용자에게 보여줄 문장이 있다", () => {
     }
   }
   assert.ok(planRoundApply("", matched(), find(target(""))).message.trim().length > 0);
+});
+
+test("강사 만족도: 종합을 쓸 때는 같이 쓴다", () => {
+  const decision = planRoundApply("4.55", matched(), find(target(null)));
+  assert.equal(planInstructorSatisfaction(decision, "4.7", target(null)), "4.7");
+});
+
+test("강사 만족도: 종합이 같아도 강사 칸이 비어 있으면 강사 값만 채운다", () => {
+  const current = { ...target("4.55"), instructorSatisfaction: "" };
+  const decision = planRoundApply("4.55", matched(), find(current));
+  assert.equal(decision.write, false);
+  assert.equal(decision.status, "same");
+  assert.equal(planInstructorSatisfaction(decision, "4.7", current), "4.7");
+});
+
+test("강사 만족도: 종합이 같고 강사 값이 이미 있으면 바꾸지 않는다", () => {
+  const current = { ...target("4.55"), instructorSatisfaction: "4.2" };
+  const decision = planRoundApply("4.55", matched(), find(current));
+  assert.equal(planInstructorSatisfaction(decision, "4.7", current), null);
+});
+
+test("강사 만족도: 비었거나 5점 밖이거나 매칭이 안 되면 쓰지 않는다", () => {
+  const decision = planRoundApply("4.55", matched(), find(target(null)));
+  assert.equal(planInstructorSatisfaction(decision, "", target(null)), null);
+  assert.equal(planInstructorSatisfaction(decision, "8.45", target(null)), null);
+  const unmatched = planRoundApply("4.55", { row: row(), status: "unmatched", operationId: null, ranked: [] }, find(target(null)));
+  assert.equal(planInstructorSatisfaction(unmatched, "4.7", target(null)), null);
 });
