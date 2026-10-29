@@ -58,7 +58,8 @@ export function InstructorWiki({
           lede={lede}
           loadFailed={loadFailed}
           loadFailedText="운영 현황 데이터를 불러오지 못했습니다."
-          ratingHeader="만족도"
+          ratingHeader="강의만족도"
+          secondaryRatingHeader="강사만족도"
           rows={rows}
           searchPlaceholder="이름 · 전문분야 · 기업 · 과정 검색"
           secondaryLabel="기업"
@@ -75,10 +76,15 @@ function toRow(entry: InstructorWikiEntry, recruitAvoid: boolean, today: string,
   const upcoming = past ? undefined : entry.courses.find((course) => course.startDate > today);
   const recent = past ?? upcoming;
   const fields = entry.categories.length > 0 ? entry.categories : entry.coach?.fields ?? [];
-  const scores = entry.courses
+  // 강의만족도(전체) = avgSatisfaction, 강사만족도 = instructorSatisfaction. 둘을 따로 집계한다.
+  const courseScores = entry.courses
+    .map((course) => parseSatisfaction(course.avgSatisfaction))
+    .filter((score): score is number => score !== null);
+  const courseRating = averageOf(courseScores);
+  const instructorScores = entry.courses
     .map((course) => parseSatisfaction(course.instructorSatisfaction))
     .filter((score): score is number => score !== null);
-  const rating = averageOf(scores);
+  const instructorRating = averageOf(instructorScores);
 
   return {
     id: entry.id,
@@ -101,8 +107,10 @@ function toRow(entry: InstructorWikiEntry, recruitAvoid: boolean, today: string,
     recentDate: past?.startDate || null,
     deployCount: entry.courseCount,
     deployLabel: `${entry.courseCount}건`,
-    rating,
-    ratingLabel: rating !== null ? `${rating.toFixed(1)} (${scores.length}건)` : "-",
+    rating: courseRating,
+    ratingLabel: courseRating !== null ? `${courseRating.toFixed(1)} (${courseScores.length}건)` : "-",
+    secondaryRating: instructorRating,
+    secondaryRatingLabel: instructorRating !== null ? `${instructorRating.toFixed(1)} (${instructorScores.length}건)` : "-",
     secondary: entry.companies,
     searchText: [
       entry.name,

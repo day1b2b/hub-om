@@ -81,10 +81,14 @@ export async function InstructorWikiDetail({ entry }: { entry: InstructorWikiEnt
     coachActivityPolicy.dormantMonths,
     hasActiveCourse(entry)
   );
-  const scores = entry.courses
+  const courseScores = entry.courses
+    .map((course) => parseSatisfaction(course.avgSatisfaction))
+    .filter((score): score is number => score !== null);
+  const courseSatisfaction = averageOf(courseScores);
+  const instructorScores = entry.courses
     .map((course) => parseSatisfaction(course.instructorSatisfaction))
     .filter((score): score is number => score !== null);
-  const satisfaction = averageOf(scores);
+  const instructorSatisfaction = averageOf(instructorScores);
   const pastCourses = entry.courses.filter((course) => course.startDate && course.startDate <= today);
   const latest = pastCourses[0]?.startDate ?? "";
   const bookedCourses = entry.courses
@@ -119,7 +123,14 @@ export async function InstructorWikiDetail({ entry }: { entry: InstructorWikiEnt
           kpis={[
             { label: "투입", value: `${entry.courseCount}건` },
             { label: "최근 투입", value: latest ? formatPeopleDate(latest, today) : "-" },
-            { label: "만족도", value: satisfaction !== null ? <>{satisfaction.toFixed(1)} <small>{scores.length}건</small></> : "-" },
+            {
+              label: "만족도",
+              value: (
+                <>
+                  강의 {courseSatisfaction !== null ? courseSatisfaction.toFixed(1) : "-"} · 강사 {instructorSatisfaction !== null ? instructorSatisfaction.toFixed(1) : "-"}
+                </>
+              )
+            },
             { label: "다음 예정", value: nextCourse ? formatPeopleDate(nextCourse.startDate, today) : "-" }
           ]}
           title={<NameEditor name={entry.name} initialName={displayName} />}
@@ -173,7 +184,8 @@ export async function InstructorWikiDetail({ entry }: { entry: InstructorWikiEnt
                         <th>기업</th>
                         <th>과정명</th>
                         <th>역할</th>
-                        <th>만족도</th>
+                        <th>강의만족도</th>
+                        <th>강사만족도</th>
                         <th>최초 투입</th>
                         <th>담당 OM</th>
                       </tr>
@@ -200,14 +212,15 @@ export async function InstructorWikiDetail({ entry }: { entry: InstructorWikiEnt
                                 <span className={`status ${ROLE_CLASS[role]}`} key={role} style={{ marginRight: 4 }}>{role}</span>
                               ))}
                             </td>
-                            <td>{group.satisfaction !== null ? group.satisfaction.toFixed(1) : <span className="td-muted">-</span>}</td>
+                            <td>{group.courseSatisfaction !== null ? group.courseSatisfaction.toFixed(1) : <span className="td-muted">-</span>}</td>
+                            <td>{group.instructorSatisfaction !== null ? group.instructorSatisfaction.toFixed(1) : <span className="td-muted">-</span>}</td>
                             <td>{group.firstDate ? formatDateLabel(group.firstDate) : <span className="td-muted">-</span>}</td>
                             <td>{group.oms.length > 0 ? group.oms.join(", ") : <span className="td-muted">-</span>}</td>
                           </tr>
                         ))
                       ) : (
                         <tr>
-                          <td className="empty-state" colSpan={6}>
+                          <td className="empty-state" colSpan={7}>
                             <strong>투입 이력이 없습니다.</strong>
                             <span>운영 현황에 이 강사가 배정되면 표시됩니다.</span>
                           </td>
@@ -244,7 +257,7 @@ export async function InstructorWikiDetail({ entry }: { entry: InstructorWikiEnt
                 />
               </PeopleCard>
 
-              <PeopleCard note="열람 기록 남음" title="연락처">
+              <PeopleCard note="열람 기록 남음" title="개인정보">
                 {note.id ? (
                   <div className="people-contact">
                     <MaskedField entity="instructor" id={note.id} field="contact" label="연락처" />
