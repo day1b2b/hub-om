@@ -36,6 +36,7 @@
   "GET /api/admin/users": "tracked",
   "POST /api/admin/users": "tracked",
   "POST /api/admin/users/team": "tracked",
+  "POST /api/admin/users/status": "tracked",
   "GET /api/announcements/[id]/attachments/[attachmentId]": "tracked",
   "GET /api/announcements/[id]": "tracked",
   "PUT /api/announcements/[id]": "tracked",
