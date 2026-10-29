@@ -3,6 +3,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { PeopleFlagPill } from "@/features/people/PeopleDirectory";
 import {
   PeopleCard,
+  PeopleCollapsible,
   PeopleDetailBody,
   PeopleDetailHeader,
   PeopleFacts,
@@ -165,20 +166,17 @@ export function CoachDetailView({
                 </PeopleCard>
 
                 <PeopleCard
-                  actions={<Link className="people-card-link" href={`/coaches/${coach.id}/engagements`}>표로 보기 →</Link>}
-                  id="engagements"
-                  note={`${engagements.length}건 · 건마다 OM 평가`}
-                  title="투입 이력"
-                >
-                  <EngagementPane coachId={coach.id} engagements={engagements} />
-                </PeopleCard>
-
-                <PeopleCard
                   note={<>OM 전용 · 고정은 <Link href="/changes#content">전체 변경 이력 › 메모·리뷰 관리</Link>에서</>}
                   title="운영 메모"
                 >
                   <CoachNotesPanel coachId={coach.id} />
                 </PeopleCard>
+
+                {/* 강사 위키와 같이 투입 이력은 맨 아래에 접어 둔다. */}
+                <PeopleCollapsible id="engagements" note={`${engagements.length}건 · 건마다 OM 평가`} title="투입 이력">
+                  <Link className="people-card-link" href={`/coaches/${coach.id}/engagements`}>표로 보기 →</Link>
+                  <EngagementPane coachId={coach.id} engagements={engagements} />
+                </PeopleCollapsible>
               </>
             }
             side={

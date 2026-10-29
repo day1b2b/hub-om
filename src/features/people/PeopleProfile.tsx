@@ -118,6 +118,32 @@ export function PeopleCard({
   );
 }
 
+/** 접었다 펼 수 있는 칸. 투입 이력처럼 길고 가끔 보는 내용을 맨 아래에 접어 둔다. */
+export function PeopleCollapsible({
+  title,
+  note,
+  children,
+  id,
+  defaultOpen = false
+}: {
+  title: string;
+  note?: ReactNode;
+  children: ReactNode;
+  id?: string;
+  defaultOpen?: boolean;
+}) {
+  return (
+    <details className="people-card people-collapsible" id={id} open={defaultOpen}>
+      <summary className="people-card-title">
+        <h2>{title}</h2>
+        {note ? <span className="people-card-note">{note}</span> : null}
+        <span className="people-collapsible-toggle" aria-hidden="true" />
+      </summary>
+      {children}
+    </details>
+  );
+}
+
 /** 라벨/값 목록. 값이 비면 "-"로 보여 준다. */
 export function PeopleFacts({ items }: { items: Array<{ label: string; value: ReactNode }> }) {
   return (

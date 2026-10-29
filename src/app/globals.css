@@ -15259,3 +15259,99 @@ button.coach-doc-reserve-chip:disabled {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* 강사·코치 위키 상세: 접는 칸(투입 이력)과 운영 메모 5칸 */
+.people-collapsible {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.people-collapsible > * + * {
+  margin-top: 10px;
+}
+
+.people-collapsible .table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.people-collapsible > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.people-collapsible > summary::-webkit-details-marker {
+  display: none;
+}
+
+.people-collapsible-toggle {
+  color: var(--blue);
+  font-size: 12px;
+  margin-left: auto;
+}
+
+.people-collapsible-toggle::after {
+  content: "펼치기 ▾";
+}
+
+.people-collapsible[open] .people-collapsible-toggle::after {
+  content: "접기 ▴";
+}
+
+.people-collapsible > summary:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 4px;
+}
+
+.people-memo-view {
+  display: grid;
+  font-size: 13px;
+  gap: 0;
+  margin: 0;
+}
+
+.people-memo-view > div {
+  border-top: 1px dashed var(--line);
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 92px minmax(0, 1fr);
+  padding: 7px 0;
+}
+
+.people-memo-view > div:first-child {
+  border-top: 0;
+}
+
+.people-memo-view dt {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.people-memo-view dd {
+  margin: 0;
+  min-width: 0;
+  white-space: pre-wrap;
+}
+
+.people-memo-form {
+  display: grid;
+  gap: 10px;
+}
+
+.people-memo-field {
+  display: grid;
+  font-size: 13px;
+  gap: 4px;
+}
+
+.people-memo-field > span {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.people-memo-field textarea {
+  resize: vertical;
+  width: 100%;
+  max-width: none;
+}
