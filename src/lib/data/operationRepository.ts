@@ -5,6 +5,7 @@ import type {
   CreateOperationInput,
   OperationSession,
   OperationSummary,
+  ResultReportStatus,
   UpdateOperationInput
 } from "./operationTypes";
 
@@ -22,6 +23,8 @@ export interface OperationRepository {
   getOperationCreatedAt(operationId: string): Promise<Date | null>;
   upsertCourseCommonNote(courseRecordId: string, input: CourseCommonNoteInput, actorEmail?: string): Promise<CourseCommonNote>;
   deleteCourseCommonNote(courseRecordId: string, actorEmail?: string): Promise<void>;
+  /** 과정(Course) 레벨 결과보고서 여부. 같은 과정의 모든 회차가 이 값을 공유한다. */
+  upsertCourseResultReportStatus(courseRecordId: string, hasResultReport: ResultReportStatus, actorEmail?: string): Promise<ResultReportStatus>;
   createOperation(input: CreateOperationInput): Promise<OperationSession>;
   /** updatedBy는 수정한 사람의 이메일. deleteOperation의 deletedBy와 같은 감사 기록용이다. */
   updateOperation(operationId: string, input: UpdateOperationInput, updatedBy?: string): Promise<OperationSession>;

@@ -1,13 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { MongoServerError, type ClientSession } from "mongodb";
 import type { OperationRepository } from "./operationRepository";
-import type { CourseCommonNote, CourseCommonNoteInput, CreateOperationInput, OperationSession, UpdateOperationInput } from "./operationTypes";
+import type { CourseCommonNote, CourseCommonNoteInput, CreateOperationInput, OperationSession, ResultReportStatus, UpdateOperationInput } from "./operationTypes";
 import { assertCreationReplay, creationOperationId, creationOperationPrefix } from "./operationCreationIdentity";
 import { buildOperationMonth, deriveDateRangeFromEducationDates, deriveSessionDurationDays, deriveSessionDurationType, normalizeCourseId, operationStatusAfterOmChange, summarizeOperations } from "./operationCalculations";
 import { normalizeLookupName, selectCoursesByCompany, selectCoursesByCourseId, type CourseLookupRow } from "./courseLookup";
 import { DEFAULT_TEAM_MEMBER_ROLE_ROSTER } from "./defaultTeamMemberRoster";
 import type { TeamMemberRoleRoster } from "./teamMemberRepository";
-import { DB_ARCHIVE_STATUS, DB_EDUCATION_FORMAT, DB_OPERATION_STATUS, DB_OPERATION_TYPE, DB_RESULT_REPORT_STATUS, DB_SATISFACTION_SURVEY_STATUS, normalizeVisibleText, normalizeName, nullableText, onsiteRequiredLabel, parseDateInput, resolveAssigneeText, toDateString, toOperationSession, type OperationSessionRow } from "./operationRowMapping";
+import { DB_ARCHIVE_STATUS, DB_EDUCATION_FORMAT, DB_OPERATION_STATUS, DB_OPERATION_TYPE, DB_RESULT_REPORT_STATUS, DB_SATISFACTION_SURVEY_STATUS, normalizeVisibleText, normalizeName, nullableText, onsiteRequiredLabel, parseDateInput, resolveAssigneeText, RESULT_REPORT_STATUS, toDateString, toOperationSession, type OperationSessionRow } from "./operationRowMapping";
 import { encodeMongoRuntimeDocument } from "./mongoRuntimeCodec";
 import { assertMongo, assertMongoOperationStoreReady, completeMongoRow, MongoOperationError, MongoOperationStore, type MongoOperationOptions, type MongoRow } from "./mongoOperationStore";
 import { operationAuditRow } from "./mongoOperationAudit";
@@ -126,6 +126,14 @@ export class MongoOperationRepository implements OperationRepository {
   }
   async deleteCourseCommonNote(courseRecordId: string, actorEmail?: string): Promise<void> {
     await this.transaction(async session => { const previous = await this.store.one("CourseCommonNote", { courseRecordId, deletedAt: null }, session); if (previous) await this.write("CourseCommonNote", { ...previous, deletedAt: new Date(), deletedBy: actorEmail ?? null, updatedAt: new Date(), updatedBy: actorEmail ?? previous.updatedBy }, previous, session); }, true);
+  }
+  async upsertCourseResultReportStatus(courseRecordId: string, hasResultReport: ResultReportStatus): Promise<ResultReportStatus> {
+    return this.transaction(async session => {
+      const previous = await this.store.one("Course", { _id: courseRecordId }, session);
+      assertMongo(previous, "MISSING_COURSE");
+      const row = await this.write("Course", { ...previous, hasResultReport: DB_RESULT_REPORT_STATUS[hasResultReport], updatedAt: new Date() }, previous, session);
+      return row.hasResultReport ? RESULT_REPORT_STATUS[row.hasResultReport as string] : hasResultReport;
+    }, true);
   }
   async listOperations(): Promise<OperationSession[]> {
     return this.transaction(async session => {

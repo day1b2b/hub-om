@@ -27,7 +27,8 @@
       "course_name",
       "operation_type",
       "course_category",
-      "revenue"
+      "revenue",
+      "has_result_report"
     ],
     "changeOnly": [
       "process_seq",

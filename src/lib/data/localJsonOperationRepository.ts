@@ -19,6 +19,7 @@ import type {
   CourseCommonNoteInput,
   CreateOperationInput,
   OperationSession,
+  ResultReportStatus,
   UpdateOperationInput
 } from "./operationTypes";
 
@@ -218,6 +219,15 @@ export class LocalJsonOperationRepository implements OperationRepository {
   }
   async deleteCourseCommonNote(courseRecordId: string): Promise<void> {
     await this.serializeWrite(async () => { const operations = await this.listOperations(); await this.writeOperations(operations.map(operation => operation.courseRecordId === courseRecordId ? { ...operation, courseCommonNote: undefined } : operation)); });
+  }
+
+  /** 로컬 JSON 저장소에는 별도 Course 행이 없어, 같은 과정을 공유하는 모든 회차 행에 값을 복제해 둔다. */
+  async upsertCourseResultReportStatus(courseRecordId: string, hasResultReport: ResultReportStatus): Promise<ResultReportStatus> {
+    return this.serializeWrite(async () => {
+      const operations = await this.listOperations();
+      await this.writeOperations(operations.map(operation => operation.courseRecordId === courseRecordId ? { ...operation, courseHasResultReport: hasResultReport } : operation));
+      return hasResultReport;
+    });
   }
 
   /** 로컬 JSON 저장소는 생성 시각을 기록하지 않는다(로컬 개발 전용 백엔드). */

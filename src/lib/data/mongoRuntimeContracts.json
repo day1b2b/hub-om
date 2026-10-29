@@ -158,6 +158,19 @@
         "uuid": false,
         "dateOnly": false
       },
+      "hasResultReport": {
+        "type": "ResultReportStatus",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false,
+        "values": [
+          "YES",
+          "NO",
+          "NOT_REQUIRED",
+          "NEEDS_REVIEW"
+        ]
+      },
       "createdAt": {
         "type": "DateTime",
         "nullable": false,
