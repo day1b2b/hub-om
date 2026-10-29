@@ -1,6 +1,6 @@
 import { getDataRepositoryOverride } from "../dataRepositoryContext";
 import type { TeamUserRepository } from "./teamUserRepositoryContract";
-import type { TeamUser, TeamUserInput, TeamUserRole } from "./teamUserTypes";
+import type { TeamUser, TeamUserInput, TeamUserRole, TeamUserStatus } from "./teamUserTypes";
 export { DuplicateTeamUserEmailError } from "./teamUserErrors";
 
 async function repository(): Promise<TeamUserRepository> {
@@ -26,4 +26,7 @@ export async function updateTeamUserTeam(id: string, team: string | null): Promi
 }
 export async function updateTeamUsersRole(ids: string[], role: TeamUserRole): Promise<number> {
   return (await repository()).updateTeamUsersRole(ids, role);
+}
+export async function updateTeamUsersStatus(ids: string[], status: TeamUserStatus): Promise<number> {
+  return (await repository()).updateTeamUsersStatus(ids, status);
 }

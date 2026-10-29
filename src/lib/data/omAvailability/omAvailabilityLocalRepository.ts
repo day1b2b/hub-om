@@ -14,7 +14,8 @@ export async function getOmAvailabilityRoster(): Promise<OmAvailabilityRoster> {
   const users = await listTeamUsers();
 
   return users.reduce<OmAvailabilityRoster>((roster, user) => {
-    if (user.role !== "om") return roster;
+    // 퇴사자는 신규 배정 추천에서 제외한다. 이미 배정된 과거 회차는 영향받지 않는다.
+    if (user.role !== "om" || user.status === "departed") return roster;
     const partKey = extractPartKey(user.team);
     if (!partKey) return roster;
 

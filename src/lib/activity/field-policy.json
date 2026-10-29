@@ -334,6 +334,13 @@
       "slack_id_pii_index"
     ]
   },
+  "team_user_departures": {
+    "values": [
+      "team_user_id",
+      "departed_at"
+    ],
+    "changeOnly": []
+  },
   "om_requests": {
     "values": [
       "status",
