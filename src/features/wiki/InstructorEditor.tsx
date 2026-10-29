@@ -1,11 +1,20 @@
 "use client";
 
-import { useState, type ChangeEvent } from "react";
+import { useState } from "react";
 import type { InstructorNote, InstructorNotionProfile } from "@/lib/data/instructorWikiStore";
 import { PeopleCard } from "@/features/people/PeopleProfile";
+import { MEMO_SECTIONS, parseInstructorMemo, serializeInstructorMemo, type InstructorMemo, type MemoSection } from "./instructorMemo";
 
-// 강사 위키 "운영 메모". OM이 쌓는 강사 특이사항(notes)만 편집한다.
-// 저장 시 /api/instructor-wiki/save로 보낸다. 연락처·이메일은 오른쪽 연락처 칸에서 따로 열람한다.
+const PLACEHOLDER: Record<MemoSection, string> = {
+  강점: "예) 비전공자 눈높이 설명이 좋음",
+  유의사항: "예) 장비 사전 점검 요청 많음. 리허설 30분 확보",
+  "소통 스타일": "예) 메일보다 전화 선호, 답이 빠름",
+  "강의 스타일": "예) 실습 위주, 질문을 많이 받음",
+  비고: "그 밖에 다음 섭외 때 알아 둘 것"
+};
+
+// 강사 위키 "운영 메모". OM이 쌓는 강사 특이사항을 5칸(강점·유의사항·소통 스타일·강의 스타일·비고)으로 나눠 쓴다.
+// 저장은 /api/instructor-wiki/save의 notes 한 칸에 머리말을 붙여 보낸다(instructorMemo.ts).
 export function InstructorEditor({
   name,
   initial,
@@ -15,19 +24,19 @@ export function InstructorEditor({
   initial: InstructorNote;
   notion?: InstructorNotionProfile;
 }) {
-  const [notes, setNotes] = useState(initial.notes ?? "");
-  const [snapshot, setSnapshot] = useState(notes);
+  const [memo, setMemo] = useState<InstructorMemo>(() => parseInstructorMemo(initial.notes ?? ""));
+  const [snapshot, setSnapshot] = useState(memo);
   const [editing, setEditing] = useState(false);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
   function startEdit() {
-    setSnapshot(notes);
+    setSnapshot(memo);
     setStatus("idle");
     setEditing(true);
   }
 
   function cancel() {
-    setNotes(snapshot);
+    setMemo(snapshot);
     setEditing(false);
     setStatus("idle");
   }
@@ -38,10 +47,10 @@ export function InstructorEditor({
       const res = await fetch("/api/instructor-wiki/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, notes })
+        body: JSON.stringify({ name, notes: serializeInstructorMemo(memo) })
       });
       if (res.ok) {
-        setSnapshot(notes);
+        setSnapshot(memo);
         setEditing(false);
         setStatus("saved");
       } else {
@@ -67,26 +76,41 @@ export function InstructorEditor({
     </span>
   );
 
-  // 읽기값: OM 입력값이 우선, 없으면 노션 메모. 편집은 OM 입력값만 다룬다.
-  const notesShown = notes || notion?.memo || "";
+  // OM이 쓴 메모가 하나도 없으면 노션 메모를 비고 자리에 보여 준다. 편집은 OM 입력값만 다룬다.
+  const hasOmMemo = MEMO_SECTIONS.some((section) => memo[section]);
+  const shown: InstructorMemo = !hasOmMemo && notion?.memo ? { ...memo, 비고: notion.memo } : memo;
 
   return (
     <PeopleCard actions={controls} note="OM 전용" title="운영 메모">
       {editing ? (
-        <textarea
-          className="wiki-textarea wiki-textarea--lg"
-          value={notes}
-          onChange={(event: ChangeEvent<HTMLTextAreaElement>) => setNotes(event.target.value)}
-          rows={6}
-          placeholder="강점 · 유의사항 · 소통 스타일 · 강의 스타일 · 비고"
-          aria-label="운영 메모"
-        />
-      ) : notesShown ? (
-        <p className="wiki-view people-memo">{notesShown}</p>
+        <div className="people-memo-form">
+          {MEMO_SECTIONS.map((section) => (
+            <label className="people-memo-field" key={section}>
+              <span>{section}</span>
+              <textarea
+                aria-label={section}
+                className="wiki-textarea"
+                onChange={(event) => setMemo((prev) => ({ ...prev, [section]: event.target.value }))}
+                placeholder={PLACEHOLDER[section]}
+                rows={section === "유의사항" || section === "비고" ? 3 : 2}
+                value={memo[section]}
+              />
+            </label>
+          ))}
+        </div>
       ) : (
-        <p className="td-muted">아직 남긴 메모가 없어요. 강점·유의사항·소통/강의 스타일을 적어 두면 다음 섭외 때 바로 볼 수 있어요.</p>
+        <dl className="people-memo-view">
+          {MEMO_SECTIONS.map((section) => (
+            <div key={section}>
+              <dt>{section}</dt>
+              <dd>{shown[section] ? <span className="wiki-view">{shown[section]}</span> : <span className="td-muted">비어 있음</span>}</dd>
+            </div>
+          ))}
+        </dl>
       )}
-      {!notes && notion?.memo ? <p className="field-hint">노션 강사 DB의 메모를 보여 주고 있어요. 수정하면 허브에 저장됩니다.</p> : null}
+      {!editing && !hasOmMemo && notion?.memo ? (
+        <p className="field-hint">노션 강사 DB의 메모를 비고에 보여 주고 있어요. 수정하면 허브에 저장됩니다.</p>
+      ) : null}
     </PeopleCard>
   );
 }

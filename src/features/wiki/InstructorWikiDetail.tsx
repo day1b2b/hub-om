@@ -4,6 +4,7 @@ import { MaskedField } from "@/features/coaches/MaskedField";
 import { PeopleFlagPill } from "@/features/people/PeopleDirectory";
 import {
   PeopleCard,
+  PeopleCollapsible,
   PeopleDetailBody,
   PeopleDetailHeader,
   PeopleFacts,
@@ -15,8 +16,8 @@ import { averageOf, formatPeopleDate, parseSatisfaction, peopleStatusFromFacts }
 import {
   cleanCourseName,
   formatDateLabel,
+  groupInstructorCourses,
   hasActiveCourse,
-  OPERATION_STATUS_CLASS,
   ROLE_CLASS,
   STATUS_LABEL,
   type InstructorWikiEntry
@@ -90,6 +91,7 @@ export async function InstructorWikiDetail({ entry }: { entry: InstructorWikiEnt
     .filter((course) => course.startDate && (course.endDate || course.startDate) >= today)
     .sort((a, b) => a.startDate.localeCompare(b.startDate));
   const nextCourse = bookedCourses.find((course) => course.startDate >= today);
+  const courseGroups = groupInstructorCourses(entry.courses);
 
   return (
     <main className="dashboard-shell">
@@ -156,7 +158,14 @@ export async function InstructorWikiDetail({ entry }: { entry: InstructorWikiEnt
                 <p className="field-hint">노션 강사 DB에서 자동으로 가져온 값이에요. 원본은 노션에서 수정해 주세요.</p>
               </PeopleCard>
 
-              <PeopleCard note={`운영 현황 자동 · ${entry.courseCount}건`} title="투입 이력">
+              <InstructorEditor name={entry.name} initial={note} notion={np} />
+
+              {/* 투입 이력은 길고 가끔 보는 내용이라 맨 아래에 접어 둔다. 같은 과정의 회차는 한 줄로 묶는다. */}
+              <PeopleCollapsible
+                id="history"
+                note={`과정 ${courseGroups.length}개 · 회차 ${entry.courseCount}건 · 운영 현황 자동`}
+                title="투입 이력"
+              >
                 <div className="table-wrap">
                   <table>
                     <thead>
@@ -164,43 +173,41 @@ export async function InstructorWikiDetail({ entry }: { entry: InstructorWikiEnt
                         <th>기업</th>
                         <th>과정명</th>
                         <th>역할</th>
-                        <th>차수</th>
-                        <th>상태</th>
-                        <th>기간</th>
                         <th>만족도</th>
+                        <th>최초 투입</th>
                         <th>담당 OM</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {entry.courses.length > 0 ? (
-                        entry.courses.map((course, index) => (
-                          <tr key={`${course.operationId}-${course.role}-${index}`}>
-                            <td><strong className="title-company">{course.companyName}</strong></td>
+                      {courseGroups.length > 0 ? (
+                        courseGroups.map((group) => (
+                          <tr key={group.key}>
+                            <td><strong className="title-company">{group.companyName}</strong></td>
                             <td>
-                              {cleanCourseName(course.courseName)}
-                              {course.instructorWikiLink ? (
+                              <a className="course-link" href={`/operations/${group.operationId}`} rel="noreferrer" target="_blank">
+                                {cleanCourseName(group.courseName)} ↗
+                              </a>
+                              {group.roundCount > 1 ? <span className="td-muted"> {group.roundCount}회차</span> : null}
+                              {group.instructorWikiLink ? (
                                 <>
                                   {" "}
-                                  <a className="archive-pill done" href={course.instructorWikiLink} rel="noreferrer" target="_blank">위키↗</a>
+                                  <a className="archive-pill done" href={group.instructorWikiLink} rel="noreferrer" target="_blank">위키↗</a>
                                 </>
                               ) : null}
                             </td>
-                            <td><span className={`status ${ROLE_CLASS[course.role]}`}>{course.role}</span></td>
-                            <td>{course.roundNo || <span className="td-muted">-</span>}</td>
                             <td>
-                              <span className={`status ${OPERATION_STATUS_CLASS[course.status] ?? "muted"}`}>{course.status}</span>
+                              {group.roles.map((role) => (
+                                <span className={`status ${ROLE_CLASS[role]}`} key={role} style={{ marginRight: 4 }}>{role}</span>
+                              ))}
                             </td>
-                            <td>
-                              {course.startDate ? formatDateLabel(course.startDate) : "-"}
-                              {course.endDate && course.endDate !== course.startDate ? ` ~ ${formatDateLabel(course.endDate)}` : ""}
-                            </td>
-                            <td>{course.instructorSatisfaction ? course.instructorSatisfaction : <span className="td-muted">-</span>}</td>
-                            <td>{course.om || <span className="td-muted">-</span>}</td>
+                            <td>{group.satisfaction !== null ? group.satisfaction.toFixed(1) : <span className="td-muted">-</span>}</td>
+                            <td>{group.firstDate ? formatDateLabel(group.firstDate) : <span className="td-muted">-</span>}</td>
+                            <td>{group.oms.length > 0 ? group.oms.join(", ") : <span className="td-muted">-</span>}</td>
                           </tr>
                         ))
                       ) : (
                         <tr>
-                          <td className="empty-state" colSpan={8}>
+                          <td className="empty-state" colSpan={6}>
                             <strong>투입 이력이 없습니다.</strong>
                             <span>운영 현황에 이 강사가 배정되면 표시됩니다.</span>
                           </td>
@@ -209,9 +216,7 @@ export async function InstructorWikiDetail({ entry }: { entry: InstructorWikiEnt
                     </tbody>
                   </table>
                 </div>
-              </PeopleCard>
-
-              <InstructorEditor name={entry.name} initial={note} notion={np} />
+              </PeopleCollapsible>
             </>
           }
           side={
