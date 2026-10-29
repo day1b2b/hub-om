@@ -12,6 +12,7 @@ import { getCoachRepository } from "@/lib/data/coachRepositoryFactory";
 import { listInstructorNotes, resolveNotionLinkTargets } from "@/lib/data/instructorWikiStore";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { runCoachPublicRequest } from "@/lib/data/coachPublicComposition";
+import { coachActivityPolicy, seoulTodayKey } from "@/lib/coaches/coachActivity";
 
 export const dynamic = "force-dynamic";
 
@@ -74,6 +75,8 @@ async function renderInstructorWikiPage() {
       operationEntryCount={operationEntryCount}
       provenance={provenance}
       recruitAvoidNames={recruitAvoidNames}
+      today={seoulTodayKey()}
+      dormantMonths={coachActivityPolicy.dormantMonths}
     />
   );
 }

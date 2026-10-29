@@ -28,7 +28,7 @@ async function renderInstructorMatchPage() {
       <AppSidebar label="데이터 관리" teamScope="both" />
 
       <section className="content">
-        <Link className="back-link" href="/instructor-wiki">← 강사위키 목록으로</Link>
+        <Link className="back-link" href="/instructor-wiki">← 강사 위키</Link>
 
         <div className="detail-section">
           <div className="section-title">
