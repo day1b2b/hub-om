@@ -222,7 +222,7 @@ function adjacent(noteRows = notes): Partial<DataRepositories> {
       getNoteByNotionNo: async no => read(noteRows.find(n => n.notionNo === no) ?? {}), saveNote: unexpected, saveNoteByNotionNo: unexpected },
     teamMembers: { listResourceOwners: async () => read({}), listRoleRosters: async () => read({ ld: {}, om: {} }) },
     teamUsers: { listTeamUsers: async () => read([]), findTeamUsersByEmail: unexpected, createTeamUser: unexpected,
-      deleteTeamUsers: unexpected, updateTeamUserTeam: unexpected, updateTeamUsersRole: unexpected },
+      deleteTeamUsers: unexpected, updateTeamUserTeam: unexpected, updateTeamUsersRole: unexpected, updateTeamUsersStatus: unexpected },
     omCustomTools: { list: () => read([]), add: unexpected }
   };
 }

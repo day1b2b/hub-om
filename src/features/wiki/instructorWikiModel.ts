@@ -1,6 +1,7 @@
 import type { InstructorNote } from "@/lib/data/instructorNoteRepository";
 import type { CoachStatusValue, CoachSummary } from "@/lib/data/coachTypes";
 import type { OperationSession, OperationStatus } from "@/lib/data/operationTypes";
+import { averageOf, parseSatisfaction } from "@/lib/people/peopleStatus";
 
 // =============================================================================
 // 강사위키 뷰 모델
@@ -16,6 +17,8 @@ export type InstructorRole = "강사" | "실습코치";
 
 export interface InstructorCourse {
   operationId: string;
+  /** 같은 과정의 여러 회차가 공유하는 Course.id. 투입 이력을 과정 단위로 묶는 키. 없으면 기업+과정명으로 묶는다. */
+  courseRecordId?: string;
   companyName: string;
   courseName: string;
   roundNo: string;
@@ -26,6 +29,9 @@ export interface InstructorCourse {
   om: string;
   educationFormat: string;
   region: string;
+  /** 종합(전체 총평) 만족도 — 대표 문항. 운영현황 avgSatisfaction. 강사 평가도 포함된 총평이라 "강의"가 아니다. */
+  avgSatisfaction: string;
+  /** 강사 만족도 — 강사 대상 문항. 운영현황 instructorSatisfaction. */
   instructorSatisfaction: string;
   instructorWikiLink: string;
 }
@@ -130,6 +136,7 @@ export function aggregateInstructors(operations: OperationSession[]): Instructor
     }
     entry.courses.push({
       operationId: operation.operationId,
+      ...(operation.courseRecordId ? { courseRecordId: operation.courseRecordId } : {}),
       companyName: operation.companyName,
       courseName: operation.courseName,
       roundNo: operation.roundNo,
@@ -140,6 +147,7 @@ export function aggregateInstructors(operations: OperationSession[]): Instructor
       om: operation.om,
       educationFormat: operation.educationFormat,
       region: operation.region,
+      avgSatisfaction: operation.avgSatisfaction ?? "",
       instructorSatisfaction: operation.instructorSatisfaction ?? "",
       instructorWikiLink: operation.instructorWikiLink ?? ""
     });
@@ -368,4 +376,64 @@ export function summarizeCompanies(companies: string[], max = 2): string {
   if (companies.length === 0) return "-";
   if (companies.length <= max) return companies.join(", ");
   return `${companies.slice(0, max).join(", ")} 외 ${companies.length - max}곳`;
+}
+
+// ---- 투입 이력(과정 단위) -------------------------------------------------
+
+/** 강사 상세 투입 이력 한 줄. 같은 과정의 여러 회차를 묶는다. */
+export interface InstructorCourseGroup {
+  key: string;
+  /** 과정 상세(/operations/[id])로 갈 회차. 가장 이른 회차를 쓴다. */
+  operationId: string;
+  companyName: string;
+  courseName: string;
+  roles: InstructorRole[];
+  roundCount: number;
+  /** 종합(전체 총평) 만족도 평균 — 숫자가 있는 회차만 센다. (변수명 course*는 내부용, 의미는 종합) */
+  courseSatisfaction: number | null;
+  /** 강사 만족도 평균 — 숫자가 있는 회차만 센다. */
+  instructorSatisfaction: number | null;
+  /** 이 강사가 이 과정에 처음 들어간 날(YYYY-MM-DD). 날짜가 없으면 빈 문자열. */
+  firstDate: string;
+  oms: string[];
+  instructorWikiLink: string;
+}
+
+/** 회차 목록을 과정 단위로 묶는다. 최초 투입일 최신순, 날짜 없는 과정은 맨 뒤. */
+export function groupInstructorCourses(courses: InstructorCourse[]): InstructorCourseGroup[] {
+  const groups = new Map<string, InstructorCourse[]>();
+  for (const course of courses) {
+    const key = course.courseRecordId || `${course.companyName}::${cleanCourseName(course.courseName)}`;
+    groups.set(key, [...(groups.get(key) ?? []), course]);
+  }
+
+  return [...groups.entries()]
+    .map(([key, rounds]) => {
+      const dated = rounds.filter((round) => round.startDate).sort((a, b) => a.startDate.localeCompare(b.startDate));
+      const first = dated[0] ?? rounds[0];
+      const courseScores = rounds
+        .map((round) => parseSatisfaction(round.avgSatisfaction))
+        .filter((score): score is number => score !== null);
+      const instructorScores = rounds
+        .map((round) => parseSatisfaction(round.instructorSatisfaction))
+        .filter((score): score is number => score !== null);
+      return {
+        key,
+        operationId: first.operationId,
+        companyName: first.companyName,
+        courseName: first.courseName,
+        roles: uniqueInOrder(rounds.map((round) => round.role)),
+        roundCount: rounds.length,
+        courseSatisfaction: averageOf(courseScores),
+        instructorSatisfaction: averageOf(instructorScores),
+        firstDate: dated[0]?.startDate ?? "",
+        oms: uniqueInOrder(rounds.map((round) => round.om.trim()).filter(Boolean)),
+        instructorWikiLink: rounds.find((round) => round.instructorWikiLink)?.instructorWikiLink ?? ""
+      };
+    })
+    .sort((a, b) => b.firstDate.localeCompare(a.firstDate) || a.courseName.localeCompare(b.courseName, "ko"));
+}
+
+function uniqueInOrder<T>(values: T[]): T[] {
+  return [...new Set(values)];
 }

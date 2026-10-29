@@ -5,12 +5,25 @@ import { disconnectPrismaClient } from "./prisma";
 import { stripPiiFromNote } from "./instructorNotePii";
 import { decodePrivateJson } from "../privacy/crypto";
 import type { InstructorNote } from "./instructorNoteRepository";
-import type { InstructorNoteImportRepository } from "./instructorNoteImportRepository";
+import type { InstructorNoteImportRepository, InstructorPrivateImportFields } from "./instructorNoteImportRepository";
 import { getInstructorNoteImportRepository } from "./instructorNoteImportRepositoryFactory";
 const MAX_SOURCE_BYTES = 32 * 1024 * 1024, MAX_ENTRIES = 20_000;
 export function parseInstructorNoteImportArgs(args: string[]) { const allowed = new Set(["--dry-run", "--apply", "--backup-confirmed", "--maintenance-confirmed"]);
   if (args.some(arg => !allowed.has(arg)) || args.includes("--dry-run") && args.includes("--apply")) throw new Error("INSTRUCTOR_NOTE_IMPORT_FAILED"); const apply = args.includes("--apply");
   if (apply && (!args.includes("--backup-confirmed") || !args.includes("--maintenance-confirmed"))) throw new Error("INSTRUCTOR_NOTE_IMPORT_FAILED"); return { apply }; }
+function trimmedField(value: string | undefined): string | undefined { const normalized = value?.trim(); return normalized ? normalized : undefined; }
+// strip 전 원천에서 개인정보(연락처·이메일·생년월일)를 뽑아 둔다. 노션 스냅샷 값을 우선, 없으면 상위 필드.
+function extractPrivateFields(raw: InstructorNote): InstructorPrivateImportFields | undefined {
+  const notion = raw.notion;
+  const fields: InstructorPrivateImportFields = {
+    contact: trimmedField(notion?.contact ?? raw.contact),
+    contact2: trimmedField(notion?.contact2),
+    email: trimmedField(notion?.email ?? raw.email),
+    email2: trimmedField(notion?.email2),
+    birthDate: trimmedField(notion?.birthDate)
+  };
+  return Object.values(fields).some(Boolean) ? fields : undefined;
+}
 function parseSource(source: string) { if (Buffer.byteLength(source) > MAX_SOURCE_BYTES) throw new Error("INSTRUCTOR_NOTE_IMPORT_FAILED"); const raw: unknown = decodePrivateJson(source.trimEnd(), "local:instructor-wiki");
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("INSTRUCTOR_NOTE_IMPORT_FAILED"); const items = Object.entries(raw);
   if (items.length > MAX_ENTRIES || items.some(([key, note]) => !key.trim() || !note || typeof note !== "object" || Array.isArray(note))) throw new Error("INSTRUCTOR_NOTE_IMPORT_FAILED");
@@ -23,7 +36,7 @@ function parseSource(source: string) { if (Buffer.byteLength(source) > MAX_SOURC
     if (numericKey !== undefined && (notionNo === undefined || numericKey !== notionNo)) throw new Error("INSTRUCTOR_NOTE_IMPORT_FAILED");
     const name = note.instructorName?.trim() || (numericKey === undefined ? key : "");
     if (!name) throw new Error("INSTRUCTOR_NOTE_IMPORT_FAILED");
-    return { name, note: { ...note, instructorName: name } };
+    return { name, note: { ...note, instructorName: name }, privateProfile: extractPrivateFields(value as InstructorNote) };
   }); }
 interface Dependencies { readSource(): Promise<string>; getDefaultRepository(): InstructorNoteImportRepository; closeDefaultRepository(): Promise<void>; }
 const defaults: Dependencies = { readSource: () => readFile(path.join(process.cwd(), ".local", "instructor-wiki.json"), "utf8"), getDefaultRepository: getInstructorNoteImportRepository, closeDefaultRepository: disconnectPrismaClient };

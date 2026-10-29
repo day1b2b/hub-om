@@ -22,6 +22,8 @@ export interface InstructorNotionProfile {
 }
 
 export interface InstructorNote {
+  /** instructor_notes 행의 고유 id(UUID). 개인정보 열람(instructor_private_profiles) 연결 키다. 노션에 없는 강사(행 없음)는 undefined. */
+  id?: string;
   /**
    * 노션 강사 DB의 ID(화면상 "NO"). 노션↔사이트를 잇는 키다.
    * 강사명은 노션에서 바뀌고 동명이인도 있어 키로 쓸 수 없다(예: 김준범 NO=185 / NO=746).

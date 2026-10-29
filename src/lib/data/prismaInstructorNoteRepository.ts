@@ -10,6 +10,7 @@ import { getPrismaClient } from "./prisma";
 // instructor_notes 한 행 → 화면이 쓰는 InstructorNote.
 // 연락처·이메일·생년월일 컬럼은 없다(개인정보 미보관). 화면에서는 해당 칸이 "—"로 보인다.
 type Row = {
+  id: string;
   notionNo: number | null;
   instructorName: string;
   displayName: string | null;
@@ -21,7 +22,7 @@ type Row = {
 };
 
 function toNote(row: Row): InstructorNote {
-  const note: InstructorNote = { recruitAvoid: row.recruitAvoid, instructorName: row.instructorName };
+  const note: InstructorNote = { id: row.id, recruitAvoid: row.recruitAvoid, instructorName: row.instructorName };
   if (row.notionNo !== null) note.notionNo = row.notionNo;
   if (row.displayName) note.displayName = row.displayName;
   if (row.notionId) note.notionId = row.notionId;
@@ -52,6 +53,7 @@ function toUpdateData(patch: InstructorNote): Prisma.InstructorNoteUpdateInput {
 }
 
 const SELECT = {
+  id: true,
   notionNo: true,
   instructorName: true,
   displayName: true,

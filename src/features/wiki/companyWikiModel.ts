@@ -7,6 +7,8 @@ export interface CompanyWikiCourse {
   key: string;
   courseId: string;
   courseName: string;
+  /** 코스ID명(운영현황의 courseIdLabel). 계산서 발행 요청 구글폼의 "과정명"은 이 값을 쓴다 — 미정이면 빈 문자열. */
+  courseIdLabel: string;
   rounds: number;
   startDate: string;
   endDate: string;
@@ -109,6 +111,7 @@ function buildCourses(operations: ReadonlyArray<OperationSession>): CompanyWikiC
       key,
       courseId: (list[0].courseId ?? "").trim(),
       courseName: (list[0].courseName ?? "").trim(),
+      courseIdLabel: (list[0].courseIdLabel ?? "").trim(),
       rounds: list.length,
       startDate: range.first,
       endDate: range.last,

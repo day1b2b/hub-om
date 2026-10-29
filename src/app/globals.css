@@ -13566,6 +13566,19 @@ button.coach-doc-reserve-chip:disabled {
   background: color-mix(in srgb, var(--blue) 8%, transparent);
 }
 
+.user-table tbody tr.user-row-departed {
+  color: var(--text-sub);
+}
+
+.user-status-badge-departed {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: color-mix(in srgb, var(--red) 12%, transparent);
+  color: var(--red);
+}
+
 .user-empty {
   font-size: 13px;
   color: var(--text-sub);
@@ -14733,4 +14746,627 @@ button.coach-doc-reserve-chip:disabled {
 .iw-tacit-table tr:first-child th,
 .iw-tacit-table tr:first-child td {
   border-top: 0;
+}
+
+/* =============================================================================
+   강사 위키 · 코치 위키 공통 틀 (people-*)
+   목록: 왼쪽 필터 + 한 줄 프로필 카드 / 상세: 헤더 → 고정 알림 → 본문 2단
+   ============================================================================= */
+.people-page-header {
+  margin-bottom: 16px;
+}
+
+.people-page-header .lede {
+  display: block;
+  margin-top: 6px;
+}
+
+.people-directory {
+  align-items: start;
+  display: grid;
+  gap: 20px;
+  grid-template-columns: 210px minmax(0, 1fr);
+}
+
+.people-facets {
+  display: grid;
+  font-size: 13px;
+  gap: 18px;
+  position: sticky;
+  top: 16px;
+}
+
+.people-facet {
+  display: grid;
+  gap: 4px;
+}
+
+.people-facet > b {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin-bottom: 2px;
+}
+
+.people-facet-option {
+  align-items: center;
+  border-radius: 6px;
+  cursor: pointer;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: 2px 4px;
+}
+
+.people-facet-option:hover {
+  background: var(--surface-strong);
+}
+
+.people-facet-option input {
+  margin: 0;
+}
+
+.people-facet-option span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.people-facet-option em {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+.people-facet-more {
+  background: none;
+  border: 0;
+  color: var(--blue);
+  font-size: 12px;
+  justify-self: start;
+  padding: 2px 4px;
+}
+
+.people-results {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.people-toolbar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.people-search {
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: flex;
+  flex: 1 1 240px;
+  gap: 6px;
+  padding: 0 10px;
+}
+
+.people-search span {
+  color: var(--muted);
+}
+
+.people-search input {
+  background: transparent;
+  border: 0;
+  flex: 1;
+  min-width: 0;
+  outline: none;
+  padding: 7px 0;
+}
+
+.people-sort {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  font-size: 12px;
+  gap: 6px;
+}
+
+.people-sort select {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 6px 8px;
+}
+
+.people-count {
+  color: var(--muted);
+  font-size: 12px;
+  margin-left: auto;
+}
+
+.people-rows {
+  display: grid;
+  gap: 8px;
+}
+
+.people-row {
+  align-items: start;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  padding: 12px 14px;
+}
+
+.people-row:hover {
+  border-color: var(--muted);
+}
+
+.people-row-main {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.people-row-name {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.people-row-name strong {
+  font-size: 15px;
+}
+
+.people-row-recent {
+  color: var(--muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.people-row-stats {
+  display: flex;
+  gap: 16px;
+  text-align: right;
+}
+
+.people-row-stats > span {
+  display: grid;
+  gap: 1px;
+  min-width: 56px;
+}
+
+.people-row-stats small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.people-row-stats strong {
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.people-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.people-chip {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 0 6px;
+}
+
+.people-status,
+.people-flag {
+  align-items: center;
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 700;
+  height: 20px;
+  line-height: 1;
+  padding: 1px 8px 0;
+  white-space: nowrap;
+}
+
+.people-status--booked {
+  background: var(--blue-bg);
+  color: var(--blue);
+}
+
+.people-status--active {
+  background: var(--green-bg);
+  color: var(--green);
+}
+
+.people-status--dormant {
+  background: var(--surface-strong);
+  color: var(--muted);
+}
+
+.people-status--never {
+  background: var(--purple-bg);
+  color: var(--purple);
+}
+
+.people-flag--bad {
+  background: var(--red-bg);
+  color: var(--red);
+}
+
+.people-flag--warn {
+  background: var(--amber-bg);
+  color: var(--amber);
+}
+
+.people-empty {
+  background: var(--surface);
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  color: var(--muted);
+  display: grid;
+  gap: 4px;
+  padding: 32px;
+  text-align: center;
+}
+
+.people-empty strong {
+  color: var(--text);
+}
+
+/* 상세 */
+.people-detail {
+  align-content: start;
+  display: grid;
+  gap: 14px;
+}
+
+.people-detail .back-link {
+  justify-self: start;
+}
+
+.people-detail-head {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 44px minmax(0, 1fr);
+  padding: 18px;
+}
+
+.people-detail-head-main {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.people-detail-title {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.people-detail-title h1 {
+  font-size: 22px;
+}
+
+.people-detail-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.people-kpis {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 4px 0 0;
+}
+
+.people-kpis > div {
+  background: var(--surface-strong);
+  border-radius: 8px;
+  display: grid;
+  padding: 8px 10px;
+}
+
+.people-kpis dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.people-kpis dd {
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  margin: 0;
+}
+
+.people-kpis dd small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.people-pinned {
+  display: grid;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.people-pinned-item {
+  border-radius: 8px;
+  font-size: 13px;
+  padding: 8px 12px;
+}
+
+.people-pinned-item--bad {
+  background: var(--red-bg);
+  color: var(--red);
+}
+
+.people-pinned-item--warn {
+  background: var(--amber-bg);
+  color: var(--amber);
+}
+
+.people-detail-body {
+  align-items: start;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) 300px;
+}
+
+.people-detail-main,
+.people-detail-side {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.people-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 16px;
+}
+
+.people-card-title {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.people-card-title h2 {
+  font-size: 15px;
+}
+
+.people-card-note {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.people-card-actions {
+  margin-left: auto;
+}
+
+.people-card-link {
+  color: var(--blue);
+  font-size: 12px;
+  justify-self: start;
+}
+
+.people-card-sub {
+  border-top: 1px solid var(--line);
+  display: grid;
+  font-size: 13px;
+  gap: 6px;
+  padding-top: 10px;
+}
+
+.people-card-sub > span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.people-facts {
+  display: grid;
+  font-size: 13px;
+  gap: 8px;
+  margin: 0;
+}
+
+.people-facts > div {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 92px minmax(0, 1fr);
+}
+
+.people-facts dt {
+  color: var(--muted);
+}
+
+.people-facts dd {
+  margin: 0;
+  min-width: 0;
+}
+
+.people-plain-list {
+  display: grid;
+  font-size: 13px;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.people-contact {
+  display: grid;
+  gap: 8px;
+}
+
+.people-memo {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.people-subnav {
+  align-items: center;
+  display: flex;
+  font-size: 13px;
+  gap: 12px;
+}
+
+.people-subnav a {
+  color: var(--blue);
+}
+
+@media (max-width: 1080px) {
+  .people-detail-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 860px) {
+  .people-directory {
+    grid-template-columns: 1fr;
+  }
+
+  .people-facets {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    position: static;
+  }
+
+  .people-row {
+    grid-template-columns: 36px minmax(0, 1fr);
+  }
+
+  .people-row-stats {
+    grid-column: 2;
+    text-align: left;
+  }
+
+  .people-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* 강사·코치 위키 상세: 접는 칸(투입 이력)과 운영 메모 5칸 */
+.people-collapsible {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.people-collapsible > * + * {
+  margin-top: 10px;
+}
+
+.people-collapsible .table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.people-collapsible > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.people-collapsible > summary::-webkit-details-marker {
+  display: none;
+}
+
+.people-collapsible-toggle {
+  color: var(--blue);
+  font-size: 12px;
+  margin-left: auto;
+}
+
+.people-collapsible-toggle::after {
+  content: "펼치기 ▾";
+}
+
+.people-collapsible[open] .people-collapsible-toggle::after {
+  content: "접기 ▴";
+}
+
+.people-collapsible > summary:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 4px;
+}
+
+.people-memo-view {
+  display: grid;
+  font-size: 13px;
+  gap: 0;
+  margin: 0;
+}
+
+.people-memo-view > div {
+  border-top: 1px dashed var(--line);
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 92px minmax(0, 1fr);
+  padding: 7px 0;
+}
+
+.people-memo-view > div:first-child {
+  border-top: 0;
+}
+
+.people-memo-view dt {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.people-memo-view dd {
+  margin: 0;
+  min-width: 0;
+  white-space: pre-wrap;
+}
+
+.people-memo-form {
+  display: grid;
+  gap: 10px;
+}
+
+.people-memo-field {
+  display: grid;
+  font-size: 13px;
+  gap: 4px;
+}
+
+.people-memo-field > span {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.people-memo-field textarea {
+  resize: vertical;
+  width: 100%;
+  max-width: none;
 }
