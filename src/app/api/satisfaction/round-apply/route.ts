@@ -2,7 +2,7 @@ import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { matchSatisfactionRow, toSatisfactionSheetRow } from "@/lib/data/satisfactionSheet";
-import { planRoundApply } from "@/lib/data/satisfactionRoundApply";
+import { planInstructorSatisfaction, planRoundApply } from "@/lib/data/satisfactionRoundApply";
 import { runSatisfactionRequest } from "@/lib/data/satisfactionComposition";
 import type { OperationCandidate } from "@/lib/data/operationMatch/matchOperation";
 
@@ -114,6 +114,24 @@ async function activityPOST(request: Request) {
     // 쓸지 말지는 순수 함수가 정한다 — 안전 규칙이 한 곳에서만 판단되고 테스트로 고정된다.
     const match = matchSatisfactionRow(row, candidates);
     const decision = planRoundApply(row.overall, match, (id) => operations.find((item) => item.id === id));
+    const matchedOperation = match.operationId ? operations.find((item) => item.id === match.operationId) : undefined;
+    const instrSat = planInstructorSatisfaction(decision, body.instructorSatisfaction, matchedOperation);
+
+    // 종합은 이미 같은 값이지만 강사 만족도 칸이 비어 있으면 강사 값만 채운다(planInstructorSatisfaction 참고).
+    if (!decision.write && instrSat && decision.operationId) {
+      await repository.updateOperation(decision.operationId, { instructorSatisfaction: instrSat });
+      console.info("[satisfaction:round-apply] instructor satisfaction filled");
+      return NextResponse.json({
+        ok: true,
+        applied: true,
+        status: "filled",
+        message: `종합 만족도는 이미 같은 값이라 그대로 두고, 강사 만족도 ${instrSat} 를 채웠어요.`,
+        operation: decision.operationLabel ?? null,
+        value: decision.value ?? null,
+        previous: decision.previous ?? null,
+        instructorSatisfaction: instrSat
+      });
+    }
 
     if (!decision.write) {
       return NextResponse.json({
@@ -128,7 +146,6 @@ async function activityPOST(request: Request) {
 
     // avgSatisfaction 은 회차 반영 규칙(planRoundApply)이 정한 값이다. instructorSatisfaction(강사평균)은
     // 시트가 함께 실어 보낼 때만 같이 쓴다 — 비어 오면(강사 문항이 없는 설문 등) 기존 값을 지우지 않는다.
-    const instrSat = (body.instructorSatisfaction ?? "").trim();
     const update: { avgSatisfaction: string; instructorSatisfaction?: string } = { avgSatisfaction: decision.value! };
     if (instrSat) update.instructorSatisfaction = instrSat;
     await repository.updateOperation(decision.operationId!, update);
