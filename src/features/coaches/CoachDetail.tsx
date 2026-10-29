@@ -1,5 +1,14 @@
 import Link from "next/link";
 import { AppSidebar } from "@/components/AppSidebar";
+import { PeopleFlagPill } from "@/features/people/PeopleDirectory";
+import {
+  PeopleCard,
+  PeopleDetailBody,
+  PeopleDetailHeader,
+  PeopleFacts,
+  PeopleStatusPill
+} from "@/features/people/PeopleProfile";
+import type { CoachActivity } from "@/lib/coaches/coachActivity";
 import type {
   CoachDetail,
   CoachEngagementScheduleView,
@@ -8,23 +17,26 @@ import type {
   CoachScheduleView,
   CoachStatusValue
 } from "@/lib/data/coachTypes";
+import { formatPeopleDate, type PeopleStatus } from "@/lib/people/peopleStatus";
 import { CoachInputLinkActions } from "./CoachInputLinkActions";
-import { CoachNotesPanel } from "./CoachNotesPanel";
+import { CoachNotesPanel, CoachPinnedNotes } from "./CoachNotesPanel";
 import { CoachEvaluationProvider, EngagementEvaluationButton, EngagementEvaluationPanel } from "./CoachEngagementEvaluation";
 import { MaskedField } from "./MaskedField";
 
-export type CoachDetailTab = "profile" | "schedule" | "engagements";
+// 코치 위키 상세. 강사 위키와 같은 틀(헤더 → 고정 알림 → 본문 2단)을 쓴다.
+// 기본 화면은 한 페이지(소개·투입 이력·운영 메모 + 가용성·조건·연락처·관리). 월 달력만 ?tab=schedule로 따로 연다.
+export type CoachDetailTab = "profile" | "schedule";
 
-const STATUS_LABEL: Record<CoachStatusValue, string> = {
+const COACH_DB_STATUS_LABEL: Record<CoachStatusValue, string> = {
   active: "활동중",
   pending: "대기",
   inactive: "비활동"
 };
 
-const STATUS_CLASS: Record<CoachStatusValue, string> = {
-  active: "active",
-  pending: "planned-assignment",
-  inactive: "needs-assignment"
+// 코치 DB(노션) 상태. 활동중이 아니면 섭외 전에 확인할 주의로 보여 준다.
+const COACH_DB_FLAG: Partial<Record<CoachStatusValue, string>> = {
+  pending: "코치 DB 대기",
+  inactive: "코치 DB 비활동"
 };
 
 const ENGAGEMENT_STATUS_LABEL: Record<CoachEngagementStatusValue, string> = {
@@ -43,6 +55,10 @@ const ENGAGEMENT_STATUS_CLASS: Record<CoachEngagementStatusValue, string> = {
 
 interface CoachDetailViewProps {
   coach: CoachDetail;
+  activity: CoachActivity;
+  peopleStatus: PeopleStatus;
+  /** 한국 기준 오늘(YYYY-MM-DD). */
+  today: string;
   engagementSchedules: CoachEngagementScheduleView[];
   engagements: CoachEngagementView[];
   schedules: CoachScheduleView[];
@@ -52,146 +68,178 @@ interface CoachDetailViewProps {
 
 export function CoachDetailView({
   coach,
+  activity,
+  peopleStatus,
+  today,
   engagementSchedules,
   engagements,
   schedules,
   selectedMonth,
   selectedTab
 }: CoachDetailViewProps) {
+  const poolFlag = COACH_DB_FLAG[coach.status];
+  const nextEngagement = engagements
+    .filter((engagement) => engagement.status === "scheduled")
+    .sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
+  const notionUrl = coach.notionPageId ? `https://www.notion.so/${coach.notionPageId.replaceAll("-", "")}` : null;
+
+  const pinned = [
+    ...(poolFlag ? [{ key: "pool", text: `${poolFlag} 상태예요. 섭외 전에 코치 DB 상태를 확인해 주세요.`, tone: "warn" as const }] : []),
+    ...(coach.statusNote ? [{ key: "note", text: coach.statusNote, tone: "warn" as const }] : []),
+    ...(coach.returnDate ? [{ key: "return", text: `복귀 예정 ${formatDateLabel(coach.returnDate)}`, tone: "warn" as const }] : [])
+  ];
+
   return (
     <main className="dashboard-shell">
       <AppSidebar label="Coach detail" teamScope="both" />
 
-      <section className="content coach-origin-detail-content">
-        <header className="coach-origin-detail-header">
-          <div className="coach-origin-title-row">
-            <Link aria-label="코치 목록으로 이동" className="coach-origin-back-link" href="/coaches">←</Link>
-            <h1>{coach.name}</h1>
-            <span className={`status ${STATUS_CLASS[coach.status]}`}>{STATUS_LABEL[coach.status]}</span>
-            {!coach.isActive ? <span className="coach-origin-muted-pill">비노출</span> : null}
-            {coach.deletedAt ? <span className="coach-origin-muted-pill deleted">삭제됨</span> : null}
-            {coach.statusNote ? <span className="coach-origin-note">+ {coach.statusNote}</span> : null}
-          </div>
-          <div className="coach-origin-tags">
-            {splitWorkTypes(coach.workType).map((workType) => (
-              <span className="coach-origin-worktype" key={workType}>{workType}</span>
-            ))}
-            {coach.dxTag ? <span className="coach-origin-worktype amber">{coach.dxTag}</span> : null}
-            {coach.returnDate ? <span className="coach-origin-note">복귀 예정 {formatDateLabel(coach.returnDate)}</span> : null}
-          </div>
-        </header>
+      <section className="content people-detail">
+        <PeopleDetailHeader
+          actions={
+            notionUrl ? (
+              <a className="notion-chip" href={notionUrl} rel="noreferrer" target="_blank">🔗 노션 원본 ↗</a>
+            ) : (
+              <span className="notion-chip is-off">노션 미연결</span>
+            )
+          }
+          avatarName={coach.name}
+          backHref="/coaches"
+          backLabel="코치 위키"
+          badges={
+            <>
+              <PeopleStatusPill status={peopleStatus} />
+              {poolFlag ? <PeopleFlagPill flag={{ label: poolFlag, tone: "warn" }} /> : null}
+              {!coach.isActive ? <span className="coach-origin-muted-pill">비노출</span> : null}
+              {coach.deletedAt ? <span className="coach-origin-muted-pill deleted">삭제됨</span> : null}
+            </>
+          }
+          fields={coach.fields}
+          kpis={[
+            { label: "투입", value: `${activity.deployCount}회` },
+            { label: "최근 투입", value: activity.lastDeployDate ? formatPeopleDate(activity.lastDeployDate, today) : "-" },
+            {
+              label: "OM 평가 (최근)",
+              value:
+                coach.recentAvgRating !== null ? (
+                  <>{coach.recentAvgRating.toFixed(1)} <small>{coach.recentRatingCount}건</small></>
+                ) : coach.recentRatingCount > 0 ? (
+                  <small>평가 {coach.recentRatingCount}건</small>
+                ) : (
+                  "-"
+                )
+            },
+            { label: "다음 예정", value: nextEngagement ? formatPeopleDate(nextEngagement.startDate, today) : "-" }
+          ]}
+          title={<h1>{coach.name}</h1>}
+        />
 
-        <nav className="coach-detail-tabs coach-origin-tabs" aria-label="코치 상세 탭">
-          <DetailTab coachId={coach.id} label="프로필" selected={selectedTab === "profile"} tab="profile" />
-          <DetailTab coachId={coach.id} label="스케줄" selected={selectedTab === "schedule"} tab="schedule" />
-          <DetailTab coachId={coach.id} label="근무 이력" selected={selectedTab === "engagements"} tab="engagements" />
-        </nav>
+        {/* 고정 메모는 메모·리뷰 관리에서 고정한 코치 메모(flagged_at). 브라우저에서 메모 API로 읽는다. */}
+        <CoachPinnedNotes coachId={coach.id} items={pinned} />
 
-        {selectedTab === "profile" ? <ProfilePane coach={coach} /> : null}
         {selectedTab === "schedule" ? (
-          <SchedulePane
-            coach={coach}
-            engagementSchedules={engagementSchedules}
-            engagements={engagements}
-            schedules={schedules}
-            selectedMonth={selectedMonth}
+          <>
+            <nav className="people-subnav" aria-label="코치 상세">
+              <Link href={`/coaches/${coach.id}`}>← 프로필로 돌아가기</Link>
+              <strong>월 달력</strong>
+            </nav>
+            <SchedulePane
+              coach={coach}
+              engagementSchedules={engagementSchedules}
+              engagements={engagements}
+              schedules={schedules}
+              selectedMonth={selectedMonth}
+            />
+          </>
+        ) : (
+          <PeopleDetailBody
+            main={
+              <>
+                <PeopleCard note="코치 DB" title="소개 · 전문분야">
+                  <PeopleFacts
+                    items={[
+                      { label: "전문분야", value: coach.fields.length > 0 ? <ChipList items={coach.fields} tone="green" /> : "" },
+                      { label: "가능 커리큘럼", value: coach.curriculums.length > 0 ? <ChipList items={coach.curriculums} tone="mixed" /> : "" },
+                      { label: "DX 태그", value: coach.dxTag ?? "" }
+                    ]}
+                  />
+                </PeopleCard>
+
+                <PeopleCard
+                  actions={<Link className="people-card-link" href={`/coaches/${coach.id}/engagements`}>표로 보기 →</Link>}
+                  id="engagements"
+                  note={`${engagements.length}건 · 건마다 OM 평가`}
+                  title="투입 이력"
+                >
+                  <EngagementPane coachId={coach.id} engagements={engagements} />
+                </PeopleCard>
+
+                <PeopleCard
+                  note={<>OM 전용 · 고정은 <Link href="/changes#content">전체 변경 이력 › 메모·리뷰 관리</Link>에서</>}
+                  title="운영 메모"
+                >
+                  <CoachNotesPanel coachId={coach.id} />
+                </PeopleCard>
+              </>
+            }
+            side={
+              <>
+                <PeopleCard note={`${selectedMonth} 기준`} title="가용성">
+                  <MonthAvailability engagementSchedules={engagementSchedules} schedules={schedules} />
+                  <p className="coach-origin-preline">{coach.availabilityDetail || "등록된 근무 가능 세부 내용이 없습니다."}</p>
+                  <Link className="people-card-link" href={`/coaches/${coach.id}?tab=schedule&month=${selectedMonth}`}>월 달력 보기 →</Link>
+                </PeopleCard>
+
+                <PeopleCard title="조건">
+                  <PeopleFacts items={[{ label: "근무유형", value: splitWorkTypes(coach.workType).join(" · ") }]} />
+                </PeopleCard>
+
+                <PeopleCard note="열람 기록 남음" title="연락처">
+                  <div className="people-contact">
+                    <MaskedField entity="coach" field="phone" id={coach.id} label="전화번호" />
+                    <MaskedField entity="coach" field="email" id={coach.id} label="이메일" />
+                    <MaskedField entity="coach" field="affiliation" id={coach.id} label="소속" />
+                  </div>
+                </PeopleCard>
+
+                <PeopleCard title="관리">
+                  <PeopleFacts
+                    items={[
+                      { label: "코치 DB 상태", value: COACH_DB_STATUS_LABEL[coach.status] },
+                      { label: "노출", value: coach.isActive ? "노출" : "비노출" },
+                      { label: "삭제", value: coach.deletedAt ? "삭제됨" : "정상" }
+                    ]}
+                  />
+                  <div className="people-card-sub">
+                    <span>코치 입력 링크</span>
+                    <CoachInputLinkActions url={coach.coachInputUrl} />
+                  </div>
+                </PeopleCard>
+              </>
+            }
           />
-        ) : null}
-        {selectedTab === "engagements" ? <EngagementPane coachId={coach.id} engagements={engagements} /> : null}
+        )}
       </section>
     </main>
   );
 }
 
-function DetailTab({
-  coachId,
-  label,
-  selected,
-  tab
+function MonthAvailability({
+  engagementSchedules,
+  schedules
 }: {
-  coachId: string;
-  label: string;
-  selected: boolean;
-  tab: CoachDetailTab;
+  engagementSchedules: CoachEngagementScheduleView[];
+  schedules: CoachScheduleView[];
 }) {
-  const href = tab === "profile" ? `/coaches/${coachId}` : `/coaches/${coachId}?tab=${tab}`;
-  return <Link className={selected ? "selected" : ""} href={href}>{label}</Link>;
-}
-
-function ProfilePane({ coach }: { coach: CoachDetail }) {
+  const availableDays = new Set(schedules.map((schedule) => schedule.date)).size;
+  const confirmedDays = new Set(engagementSchedules.map((schedule) => schedule.date)).size;
   return (
-    <section className="coach-origin-profile-grid">
-      <section className="coach-origin-card">
-        <div className="coach-origin-section-title">
-          <span>공개 프로필</span>
-        </div>
-        <div className="coach-origin-info-list">
-          <InfoItem label="이름" value={coach.name} />
-          <InfoItem label="상태" value={STATUS_LABEL[coach.status]} />
-          <InfoItem label="근무유형" value={coach.workType || "-"} />
-          <InfoItem label="노출 상태" value={coach.isActive ? "노출" : "비노출"} />
-          <InfoItem label="삭제 상태" value={coach.deletedAt ? "삭제됨" : "정상"} />
-        </div>
-      </section>
-
-      <section className="coach-origin-card">
-        <div className="coach-origin-section-title">
-          <span>연락처 (민감정보)</span>
-        </div>
-        <div className="coach-origin-info-list">
-          <MaskedField entity="coach" field="phone" id={coach.id} label="전화번호" />
-          <MaskedField entity="coach" field="email" id={coach.id} label="이메일" />
-          <MaskedField entity="coach" field="affiliation" id={coach.id} label="소속" />
-        </div>
-        <p className="masked-field-note">열람하면 기록이 남아요.</p>
-      </section>
-
-      <section className="coach-origin-card">
-        <div className="coach-origin-section-title">
-          <span>코치 입력 링크</span>
-        </div>
-        <CoachInputLinkActions url={coach.coachInputUrl} />
-      </section>
-
-      <section className="coach-origin-card">
-        <div className="coach-origin-section-title">
-          <span>노션 페이지</span>
-        </div>
-        {coach.notionPageId ? (
-          <a
-            className="notion-chip"
-            href={`https://www.notion.so/${coach.notionPageId.replaceAll("-", "")}`}
-            rel="noreferrer"
-            target="_blank"
-          >
-            🔗 노션 코치 페이지 ↗
-          </a>
-        ) : (
-          <span className="notion-chip is-off">노션 미연결</span>
-        )}
-      </section>
-
-      <section className="coach-origin-card coach-origin-wide-card">
-        <div className="coach-origin-section-title">
-          <span>가능 분야</span>
-        </div>
-        <ChipList items={coach.fields} tone="green" />
-      </section>
-
-      <section className="coach-origin-card coach-origin-wide-card">
-        <div className="coach-origin-section-title">
-          <span>가능 커리큘럼</span>
-        </div>
-        <ChipList items={coach.curriculums} tone="mixed" />
-      </section>
-
-      <section className="coach-origin-card coach-origin-wide-card">
-        <div className="coach-origin-section-title">
-          <span>메모</span>
-        </div>
-        <CoachNotesPanel coachId={coach.id} />
-      </section>
-    </section>
+    <PeopleFacts
+      items={[
+        { label: "가능일", value: `${availableDays}일` },
+        { label: "확정일", value: `${confirmedDays}일` },
+        { label: "가능 시간", value: formatDistinctTimes(schedules) }
+      ]}
+    />
   );
 }
 
