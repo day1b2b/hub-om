@@ -432,7 +432,6 @@ export function OperationDetail({
             className="wide-detail-section"
             commonNote={operation.courseCommonNote}
             operationId={operation.operationId}
-            rounds={courseOperations}
           />
 
           {courseGroups.length > 0 ? (
