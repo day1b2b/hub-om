@@ -127,7 +127,7 @@ export async function InstructorWikiDetail({ entry }: { entry: InstructorWikiEnt
               label: "만족도",
               value: (
                 <>
-                  강의 {courseSatisfaction !== null ? courseSatisfaction.toFixed(1) : "-"} · 강사 {instructorSatisfaction !== null ? instructorSatisfaction.toFixed(1) : "-"}
+                  종합 {courseSatisfaction !== null ? courseSatisfaction.toFixed(1) : "-"} · 강사 {instructorSatisfaction !== null ? instructorSatisfaction.toFixed(1) : "-"}
                 </>
               )
             },
@@ -184,7 +184,7 @@ export async function InstructorWikiDetail({ entry }: { entry: InstructorWikiEnt
                         <th>기업</th>
                         <th>과정명</th>
                         <th>역할</th>
-                        <th>강의만족도</th>
+                        <th>종합만족도</th>
                         <th>강사만족도</th>
                         <th>최초 투입</th>
                         <th>담당 OM</th>

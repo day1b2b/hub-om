@@ -23,7 +23,7 @@ function round(overrides: Partial<InstructorCourse>): InstructorCourse {
   };
 }
 
-test("groupInstructorCourses: 같은 과정의 회차를 한 줄로 묶고 최초 투입일·강의/강사 만족도 평균을 낸다", () => {
+test("groupInstructorCourses: 같은 과정의 회차를 한 줄로 묶고 최초 투입일·종합/강사 만족도 평균을 낸다", () => {
   const groups = groupInstructorCourses([
     round({ operationId: "op-3", courseRecordId: "c1", startDate: "2026-09-10", avgSatisfaction: "5.0", instructorSatisfaction: "4.8", om: "김OM" }),
     round({ operationId: "op-1", courseRecordId: "c1", startDate: "2026-06-10", avgSatisfaction: "4.0", instructorSatisfaction: "4.6", om: "김OM" }),
@@ -40,7 +40,7 @@ test("groupInstructorCourses: 같은 과정의 회차를 한 줄로 묶고 최�
   assert.equal(older.firstDate, "2026-06-10");
   // 과정 상세 링크는 가장 이른 회차로 간다.
   assert.equal(older.operationId, "op-1");
-  assert.equal(older.courseSatisfaction?.toFixed(1), "4.5"); // 강의(전체): (5.0+4.0)/2
+  assert.equal(older.courseSatisfaction?.toFixed(1), "4.5"); // 종합(전체): (5.0+4.0)/2
   assert.equal(older.instructorSatisfaction?.toFixed(1), "4.7"); // 강사: (4.8+4.6)/2
   assert.deepEqual(older.oms, ["김OM", "이OM"]);
 });
