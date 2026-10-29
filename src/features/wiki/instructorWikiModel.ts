@@ -29,6 +29,9 @@ export interface InstructorCourse {
   om: string;
   educationFormat: string;
   region: string;
+  /** 강의(전체) 만족도 — 과정 전체 대상. 운영현황 avgSatisfaction. */
+  avgSatisfaction: string;
+  /** 강사 만족도 — 강사 대상 문항. 운영현황 instructorSatisfaction. */
   instructorSatisfaction: string;
   instructorWikiLink: string;
 }
@@ -144,6 +147,7 @@ export function aggregateInstructors(operations: OperationSession[]): Instructor
       om: operation.om,
       educationFormat: operation.educationFormat,
       region: operation.region,
+      avgSatisfaction: operation.avgSatisfaction ?? "",
       instructorSatisfaction: operation.instructorSatisfaction ?? "",
       instructorWikiLink: operation.instructorWikiLink ?? ""
     });
@@ -385,8 +389,10 @@ export interface InstructorCourseGroup {
   courseName: string;
   roles: InstructorRole[];
   roundCount: number;
-  /** 회차 만족도 평균. 숫자가 있는 회차만 센다. */
-  satisfaction: number | null;
+  /** 강의(전체) 만족도 평균 — 숫자가 있는 회차만 센다. */
+  courseSatisfaction: number | null;
+  /** 강사 만족도 평균 — 숫자가 있는 회차만 센다. */
+  instructorSatisfaction: number | null;
   /** 이 강사가 이 과정에 처음 들어간 날(YYYY-MM-DD). 날짜가 없으면 빈 문자열. */
   firstDate: string;
   oms: string[];
@@ -405,7 +411,10 @@ export function groupInstructorCourses(courses: InstructorCourse[]): InstructorC
     .map(([key, rounds]) => {
       const dated = rounds.filter((round) => round.startDate).sort((a, b) => a.startDate.localeCompare(b.startDate));
       const first = dated[0] ?? rounds[0];
-      const scores = rounds
+      const courseScores = rounds
+        .map((round) => parseSatisfaction(round.avgSatisfaction))
+        .filter((score): score is number => score !== null);
+      const instructorScores = rounds
         .map((round) => parseSatisfaction(round.instructorSatisfaction))
         .filter((score): score is number => score !== null);
       return {
@@ -415,7 +424,8 @@ export function groupInstructorCourses(courses: InstructorCourse[]): InstructorC
         courseName: first.courseName,
         roles: uniqueInOrder(rounds.map((round) => round.role)),
         roundCount: rounds.length,
-        satisfaction: averageOf(scores),
+        courseSatisfaction: averageOf(courseScores),
+        instructorSatisfaction: averageOf(instructorScores),
         firstDate: dated[0]?.startDate ?? "",
         oms: uniqueInOrder(rounds.map((round) => round.om.trim()).filter(Boolean)),
         instructorWikiLink: rounds.find((round) => round.instructorWikiLink)?.instructorWikiLink ?? ""

@@ -33,6 +33,9 @@ export interface PeopleRow {
   deployLabel: string;
   rating: number | null;
   ratingLabel: string;
+  /** 평가 칸을 둘로 나눌 때의 두 번째 값(강사위키 = 강사만족도). 없으면 평가 칸 하나만 쓴다. */
+  secondaryRating?: number | null;
+  secondaryRatingLabel?: string;
   /** 코치 근무일처럼 화면 하나에만 있는 숫자. */
   extra?: { label: string; value: number; text: string };
   /** 보조 필터 값(강사 = 기업, 코치 = 근무유형). */
@@ -40,7 +43,7 @@ export interface PeopleRow {
   searchText: string;
 }
 
-type SortKey = "recent" | "deploys" | "rating" | "name" | "extra";
+type SortKey = "recent" | "deploys" | "rating" | "rating2" | "name" | "extra";
 
 interface PeopleDirectoryProps {
   title: string;
@@ -53,6 +56,8 @@ interface PeopleDirectoryProps {
   secondaryLabel: string;
   /** 평가 칸 머리글(만족도 / OM 평가). 출처가 달라 화면마다 이름을 붙인다. */
   ratingHeader: string;
+  /** 평가 칸을 둘로 나눌 때의 두 번째 머리글(강사위키 = 강사만족도). 주면 평가 칸·정렬이 두 개가 된다. */
+  secondaryRatingHeader?: string;
   /** 투입 칸 머리글. */
   deployHeader: string;
   extraHeader?: string;
@@ -70,6 +75,7 @@ export function PeopleDirectory({
   searchPlaceholder,
   secondaryLabel,
   ratingHeader,
+  secondaryRatingHeader,
   deployHeader,
   extraHeader
 }: PeopleDirectoryProps) {
@@ -106,7 +112,13 @@ export function PeopleDirectory({
   const sortOptions: Array<{ value: SortKey; label: string }> = [
     { value: "recent", label: "최근 투입순" },
     { value: "deploys", label: "투입 많은 순" },
-    { value: "rating", label: "평가 높은 순" },
+    // 평가 칸이 둘이면(강사위키) 정렬도 둘로 나눈다. 하나면 기존 "평가 높은 순".
+    ...(secondaryRatingHeader
+      ? [
+          { value: "rating" as const, label: `${ratingHeader} 높은순` },
+          { value: "rating2" as const, label: `${secondaryRatingHeader} 높은순` }
+        ]
+      : [{ value: "rating" as const, label: "평가 높은 순" }]),
     { value: "name", label: "이름순" },
     ...(extraHeader ? [{ value: "extra" as const, label: `${extraHeader} 많은 순` }] : [])
   ];
@@ -192,6 +204,9 @@ export function PeopleDirectory({
                     <span><small>{deployHeader}</small><strong>{row.deployLabel}</strong></span>
                     {row.extra ? <span><small>{row.extra.label}</small><strong>{row.extra.text}</strong></span> : null}
                     <span><small>{ratingHeader}</small><strong>{row.ratingLabel}</strong></span>
+                    {secondaryRatingHeader ? (
+                      <span><small>{secondaryRatingHeader}</small><strong>{row.secondaryRatingLabel ?? "-"}</strong></span>
+                    ) : null}
                   </span>
                 </Link>
               ))}
@@ -209,6 +224,7 @@ export function PeopleDirectory({
                       {extraHeader ? <th>{extraHeader}</th> : null}
                       <th>최근 투입</th>
                       <th>{ratingHeader}</th>
+                      {secondaryRatingHeader ? <th>{secondaryRatingHeader}</th> : null}
                     </tr>
                   </thead>
                   <tbody>
@@ -227,6 +243,7 @@ export function PeopleDirectory({
                         {extraHeader ? <td>{row.extra?.text ?? "-"}</td> : null}
                         <td>{row.recent ?? <span className="td-muted">-</span>}</td>
                         <td>{row.ratingLabel}</td>
+                        {secondaryRatingHeader ? <td>{row.secondaryRatingLabel ?? "-"}</td> : null}
                       </tr>
                     ))}
                   </tbody>
@@ -308,6 +325,7 @@ function compareRows(a: PeopleRow, b: PeopleRow, sort: SortKey): number {
   if (sort === "name") return byName;
   if (sort === "deploys") return b.deployCount - a.deployCount || byName;
   if (sort === "rating") return (b.rating ?? -1) - (a.rating ?? -1) || byName;
+  if (sort === "rating2") return (b.secondaryRating ?? -1) - (a.secondaryRating ?? -1) || byName;
   if (sort === "extra") return (b.extra?.value ?? 0) - (a.extra?.value ?? 0) || byName;
   // 최근 투입순: 이력 없는 사람은 뒤로, 같은 날이면 투입 많은 순.
   return (b.recentDate ?? "").localeCompare(a.recentDate ?? "") || b.deployCount - a.deployCount || byName;
