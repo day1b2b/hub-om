@@ -17,7 +17,6 @@ import {
   cleanCourseName,
   formatDateLabel,
   groupInstructorCourses,
-  hasActiveCourse,
   ROLE_CLASS,
   STATUS_LABEL,
   type InstructorWikiEntry
@@ -75,11 +74,11 @@ export async function InstructorWikiDetail({ entry }: { entry: InstructorWikiEnt
 
   // 상태·지표는 운영 현황(courses)에서 바로 계산한다(별도 백엔드 불필요).
   const today = seoulTodayKey();
+  // 진행·예정은 날짜로만 판단한다. 운영현황 진행상태는 지난 회차가 "배정필요"로 남아 있는 경우가 많아 믿을 수 없다.
   const status = peopleStatusFromFacts(
     entry.courses.map((course) => ({ startDate: course.startDate, endDate: course.endDate })),
     today,
-    coachActivityPolicy.dormantMonths,
-    hasActiveCourse(entry)
+    coachActivityPolicy.dormantMonths
   );
   const courseScores = entry.courses
     .map((course) => parseSatisfaction(course.avgSatisfaction))

@@ -7,7 +7,6 @@ import { averageOf, formatPeopleDate, parseSatisfaction, peopleStatusFromFacts }
 import {
   cleanCourseName,
   instructorWikiHref,
-  hasActiveCourse,
   hasOperationHistory,
   type InstructorWikiEntry,
   type InstructorWikiProvenance
@@ -90,11 +89,11 @@ function toRow(entry: InstructorWikiEntry, recruitAvoid: boolean, today: string,
     id: entry.id,
     href: instructorWikiHref(entry),
     name: entry.name,
+    // 진행·예정은 날짜로만 판단한다. 운영현황 진행상태는 지난 회차가 "배정필요"로 남아 있는 경우가 많아 믿을 수 없다.
     status: peopleStatusFromFacts(
       entry.courses.map((course) => ({ startDate: course.startDate, endDate: course.endDate })),
       today,
-      dormantMonths,
-      hasActiveCourse(entry)
+      dormantMonths
     ),
     fields,
     flags: recruitAvoid ? [{ label: "⛔ 섭외지양", tone: "bad" }] : [],
