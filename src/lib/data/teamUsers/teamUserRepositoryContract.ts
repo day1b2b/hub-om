@@ -1,4 +1,4 @@
-import type { TeamUser, TeamUserInput, TeamUserRole } from "./teamUserTypes";
+import type { TeamUser, TeamUserInput, TeamUserRole, TeamUserStatus } from "./teamUserTypes";
 
 /** Existing application boundary; storage selection must not change caller authorization. */
 export interface TeamUserRepository {
@@ -8,6 +8,7 @@ export interface TeamUserRepository {
   deleteTeamUsers(ids: string[]): Promise<number>;
   updateTeamUserTeam(id: string, team: string | null): Promise<TeamUser | null>;
   updateTeamUsersRole(ids: string[], role: TeamUserRole): Promise<number>;
+  updateTeamUsersStatus(ids: string[], status: TeamUserStatus): Promise<number>;
   /** Legacy maintenance only: exact current label match, never an id-only overwrite. */
   countTeamUsersByTeam?(team: string): Promise<number>;
   renameTeamUsers?(from: string, to: string): Promise<number>;

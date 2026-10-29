@@ -29,7 +29,7 @@ export interface InstructorCourse {
   om: string;
   educationFormat: string;
   region: string;
-  /** 강의(전체) 만족도 — 과정 전체 대상. 운영현황 avgSatisfaction. */
+  /** 종합(전체 총평) 만족도 — 대표 문항. 운영현황 avgSatisfaction. 강사 평가도 포함된 총평이라 "강의"가 아니다. */
   avgSatisfaction: string;
   /** 강사 만족도 — 강사 대상 문항. 운영현황 instructorSatisfaction. */
   instructorSatisfaction: string;
@@ -389,7 +389,7 @@ export interface InstructorCourseGroup {
   courseName: string;
   roles: InstructorRole[];
   roundCount: number;
-  /** 강의(전체) 만족도 평균 — 숫자가 있는 회차만 센다. */
+  /** 종합(전체 총평) 만족도 평균 — 숫자가 있는 회차만 센다. (변수명 course*는 내부용, 의미는 종합) */
   courseSatisfaction: number | null;
   /** 강사 만족도 평균 — 숫자가 있는 회차만 센다. */
   instructorSatisfaction: number | null;
