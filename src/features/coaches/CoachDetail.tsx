@@ -6,7 +6,6 @@ import {
   PeopleDetailBody,
   PeopleDetailHeader,
   PeopleFacts,
-  PeoplePinned,
   PeopleStatusPill
 } from "@/features/people/PeopleProfile";
 import type { CoachActivity } from "@/lib/coaches/coachActivity";
@@ -20,7 +19,7 @@ import type {
 } from "@/lib/data/coachTypes";
 import { formatPeopleDate, type PeopleStatus } from "@/lib/people/peopleStatus";
 import { CoachInputLinkActions } from "./CoachInputLinkActions";
-import { CoachNotesPanel } from "./CoachNotesPanel";
+import { CoachNotesPanel, CoachPinnedNotes } from "./CoachNotesPanel";
 import { CoachEvaluationProvider, EngagementEvaluationButton, EngagementEvaluationPanel } from "./CoachEngagementEvaluation";
 import { MaskedField } from "./MaskedField";
 
@@ -134,7 +133,8 @@ export function CoachDetailView({
           title={<h1>{coach.name}</h1>}
         />
 
-        <PeoplePinned items={pinned} />
+        {/* 고정 메모는 메모·리뷰 관리에서 고정한 코치 메모(flagged_at). 브라우저에서 메모 API로 읽는다. */}
+        <CoachPinnedNotes coachId={coach.id} items={pinned} />
 
         {selectedTab === "schedule" ? (
           <>
@@ -173,7 +173,10 @@ export function CoachDetailView({
                   <EngagementPane coachId={coach.id} engagements={engagements} />
                 </PeopleCard>
 
-                <PeopleCard note="OM 전용" title="운영 메모">
+                <PeopleCard
+                  note={<>OM 전용 · 고정은 <Link href="/changes#content">전체 변경 이력 › 메모·리뷰 관리</Link>에서</>}
+                  title="운영 메모"
+                >
                   <CoachNotesPanel coachId={coach.id} />
                 </PeopleCard>
               </>
