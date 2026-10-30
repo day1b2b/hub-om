@@ -28,6 +28,7 @@ const allowed: Record<string, Set<string>> = {
   CoachCurriculum: new Set(["coachId", "tagId"]),
   TeamUser: new Set(["name", "email", "team", "role"]),
   TeamUserDeparture: new Set(["teamUserId"]),
+  SessionSurveyResult: new Set(["operationId", "recordId", "overall", "instructorSatisfaction", "respondents", "positiveRate", "commentStatus", "appliedAt"]),
   InstructorNote: new Set(["instructorName", "displayName", "recruitAvoid"]),
   OperationSession: new Set(["operationId", "courseRecordId", "operationStatus", "archiveStatus", "educationFormat", "operationChannel", "roundNo", "educationDays", "startDate", "endDate", "educationDates", "operationMonth", "sessionDurationDays", "sessionDurationType", "timeText", "onsiteRequired", "totalCost", "instructorCost", "operationCost", "hasSatisfactionSurvey", "hasResultReport"])
 };

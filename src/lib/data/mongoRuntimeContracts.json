@@ -4287,6 +4287,132 @@
       }
     ]
   },
+  "SessionSurveyResult": {
+    "collection": "session_survey_results",
+    "primaryKey": [
+      "id"
+    ],
+    "fields": {
+      "id": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": true,
+        "dateOnly": false
+      },
+      "operationId": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "recordId": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "overall": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "instructorSatisfaction": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "respondents": {
+        "type": "Int",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "positiveRate": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "commentStatus": {
+        "type": "SurveyCommentStatus",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false,
+        "values": [
+          "OK",
+          "NO_SUBJECTIVE",
+          "NO_SUMMARY"
+        ]
+      },
+      "commentPositive": {
+        "type": "Json",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "commentImprove": {
+        "type": "Json",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "appliedBy": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "appliedAt": {
+        "type": "DateTime",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "createdAt": {
+        "type": "DateTime",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "appliedByPiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      }
+    },
+    "references": [],
+    "uniqueKeys": [
+      {
+        "fields": [
+          "id"
+        ],
+        "nullsDistinct": true
+      },
+      {
+        "fields": [
+          "operationId"
+        ],
+        "nullsDistinct": true
+      }
+    ]
+  },
   "OmRequest": {
     "collection": "om_requests",
     "primaryKey": [

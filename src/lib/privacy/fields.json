@@ -1199,5 +1199,29 @@
     },
     "primaryKey": "id",
     "compoundKeys": []
+    },
+  "SessionSurveyResult": {
+    "table": "session_survey_results",
+    "fields": {
+      "commentPositive": {
+        "column": "comment_positive",
+        "type": "Json",
+        "nullable": true
+      },
+      "commentImprove": {
+        "column": "comment_improve",
+        "type": "Json",
+        "nullable": true
+      },
+      "appliedBy": {
+        "column": "applied_by",
+        "type": "String",
+        "nullable": true,
+        "index": "appliedByPiiIndex",
+        "indexColumn": "applied_by_pii_index"
+      }
+    },
+    "primaryKey": "id",
+    "compoundKeys": []
   }
 }
