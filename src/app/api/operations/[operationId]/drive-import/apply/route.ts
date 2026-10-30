@@ -25,6 +25,7 @@ const APPLYABLE_FIELDS = [
   "archiveStatus",
   "avgSatisfaction",
   "coach",
+  "companyName",
   "companyWikiLink",
   "costRaw",
   "courseCategory",

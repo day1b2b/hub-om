@@ -161,6 +161,14 @@ export function OperationDetail({
               </div>
               <div className="info-grid">
                 <EditableCourseNameItem
+                  displayValue={operation.companyName || "미정"}
+                  field="companyName"
+                  label="기업명"
+                  operationIds={courseOperationIds}
+                  placeholder="예: 데이원컴퍼니"
+                  value={operation.companyName}
+                />
+                <EditableCourseNameItem
                   displayValue={operation.courseName || "미정"}
                   label="과정명"
                   operationIds={courseOperationIds}

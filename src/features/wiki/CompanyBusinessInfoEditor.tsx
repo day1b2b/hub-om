@@ -3,7 +3,8 @@
 import { useState, type ChangeEvent } from "react";
 import type { CompanyBusinessInfo, CompanyBusinessInfoPatch } from "@/lib/data/companyBusinessInfoTypes";
 
-type Field = keyof CompanyBusinessInfoPatch;
+// 메모는 별도 카드(CompanyMemoEditor)에서 따로 저장한다 — 이 폼은 보내지 않아 건드리지 않는다.
+type Field = Exclude<keyof CompanyBusinessInfoPatch, "memo">;
 type FormState = Record<Field, string>;
 
 // 기업위키 사업자등록증 정보 입력 폼. 평소엔 읽기 전용, "수정" 버튼을 눌러야 편집 가능.

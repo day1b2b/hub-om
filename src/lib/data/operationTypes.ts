@@ -210,6 +210,11 @@ export interface UpdateOperationInput {
   archiveStatus?: ArchiveStatus;
   avgSatisfaction?: string;
   coach?: string;
+  /**
+   * 기업명. 바꾸면 이 회차를 같은 이름(정규화 기준)의 기업으로 옮긴다 — 없으면 새로 만든다.
+   * 기존 기업의 이름 자체는 바꾸지 않는다(같은 기업의 다른 과정까지 바뀌지 않게).
+   */
+  companyName?: string;
   companyWikiLink?: string;
   costRaw?: string;
   courseCategory?: string;

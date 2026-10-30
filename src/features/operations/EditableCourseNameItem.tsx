@@ -7,12 +7,22 @@ type SaveState = "idle" | "saving" | "failed";
 
 interface EditableCourseNameItemProps {
   displayValue: string;
+  /** 과정명(기본) 또는 기업명. 둘 다 과정의 모든 회차에 같은 값으로 저장한다. */
+  field?: "companyName" | "courseName";
   label: string;
   operationIds: string[];
+  placeholder?: string;
   value: string;
 }
 
-export function EditableCourseNameItem({ displayValue, label, operationIds, value }: EditableCourseNameItemProps) {
+export function EditableCourseNameItem({
+  displayValue,
+  field = "courseName",
+  label,
+  operationIds,
+  placeholder = "예: AX 교육 실무2",
+  value
+}: EditableCourseNameItemProps) {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -39,7 +49,7 @@ export function EditableCourseNameItem({ displayValue, label, operationIds, valu
         <input
           aria-label={label}
           onChange={(event) => setDraft(event.target.value)}
-          placeholder="예: AX 교육 실무2"
+          placeholder={placeholder}
           type="text"
           value={draft}
         />
@@ -78,19 +88,25 @@ export function EditableCourseNameItem({ displayValue, label, operationIds, valu
 
     setSaveState("saving");
 
-    const results = await Promise.all(
-      operationIds.map((operationId) =>
-        fetch(`/api/operations/${encodeURIComponent(operationId)}/drive-import/apply`, {
-          method: "POST",
-          headers: {
-            "content-type": "application/json"
-          },
-          body: JSON.stringify({ patches: [{ field: "courseName", action: "replace", value: nextValue }] })
-        })
-          .then((response) => response.ok)
-          .catch(() => false)
-      )
-    );
+    const saveRound = (operationId: string) =>
+      fetch(`/api/operations/${encodeURIComponent(operationId)}/drive-import/apply`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({ patches: [{ field, action: "replace", value: nextValue }] })
+      })
+        .then((response) => response.ok)
+        .catch(() => false);
+
+    // 기업명은 과정(Course) 하나를 옮기는 작업이라 회차를 동시에 보내면 서로 경합한다 — 차례로 보낸다.
+    // 첫 회차에서 과정이 옮겨지고, 나머지 회차는 캘린더 제목만 따라 바뀐다.
+    const results: boolean[] = [];
+    if (field === "companyName") {
+      for (const operationId of operationIds) results.push(await saveRound(operationId));
+    } else {
+      results.push(...(await Promise.all(operationIds.map(saveRound))));
+    }
 
     if (!results.every(Boolean)) {
       setSaveState("failed");

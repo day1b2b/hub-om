@@ -13,7 +13,8 @@
     "invoiceEmail": "encrypted",
     "invoiceEmailSecondary": "encrypted",
     "businessInfoUpdatedAt": "operational",
-    "businessInfoUpdatedBy": "operational"
+    "businessInfoUpdatedBy": "operational",
+    "memo": "encrypted"
   },
   "Course": {
     "id": "operational",

@@ -107,6 +107,27 @@ test("Mongo operation repository on a disposable local replica set", { skip: !ur
       assert.equal((await repository.findCoursesByCompany(payload.companyName, payload.courseName, 10)).length, 1);
     });
 
+    await suite.test("company change moves only that course and keeps its process ID", async () => {
+      const { repository, store } = await fixture();
+      const moving = await repository.createOperation(input("company-move"));
+      const staying = await repository.createOperation({ ...input("company-stay"), companyName: moving.companyName, creationIdentity: undefined });
+      assert.ok(await store.one("Course", { _id: moving.courseRecordId! }));
+
+      const moved = await repository.updateOperation(moving.operationId, { companyName: "Synthetic moved company" }, "synthetic@example.invalid");
+      assert.equal(moved.companyName, "Synthetic moved company");
+      assert.equal(moved.courseRecordId, moving.courseRecordId, "The course row moves; no new course is created");
+      assert.equal(moved.processId, moving.processId);
+      assert.equal((await repository.getOperationById(staying.operationId))?.companyName, moving.companyName);
+
+      // 같은 이름으로 다시 저장하면(다른 회차의 순차 저장) 아무것도 바뀌지 않는다.
+      const repeated = await repository.updateOperation(moving.operationId, { companyName: "Synthetic moved company" });
+      assert.equal(repeated.courseRecordId, moving.courseRecordId);
+
+      // 기존 기업으로 되돌리면 그 기업 이름은 덮어쓰지 않는다.
+      const back = await repository.updateOperation(moving.operationId, { companyName: moving.companyName.toUpperCase() });
+      assert.equal(back.companyName, moving.companyName);
+    });
+
     await suite.test("createdAt metadata matches exact PG lookup for active, missing and deleted rows without side effects", async () => {
       const { repository, store } = await fixture();
       const created = await repository.createOperation(input("calendar-created-at"));
