@@ -12,6 +12,16 @@
       ,"deletedBy": {"column": "deleted_by", "type": "String", "nullable": true, "index": "deletedByPiiIndex", "indexColumn": "deleted_by_pii_index"}
     }
   },
+  "Course": {
+    "table": "courses",
+    "primaryKey": "id",
+    "compoundKeys": [],
+    "fields": {
+      "resultReportLink": {"column": "result_report_link", "type": "String", "nullable": true, "index": "resultReportLinkPiiIndex", "indexColumn": "result_report_link_pii_index"},
+      "lectureManagementLink": {"column": "lecture_management_link", "type": "String", "nullable": true, "index": "lectureManagementLinkPiiIndex", "indexColumn": "lecture_management_link_pii_index"},
+      "lectureManagementNote": {"column": "lecture_management_note", "type": "String", "nullable": true, "index": "lectureManagementNotePiiIndex", "indexColumn": "lecture_management_note_pii_index"}
+    }
+  },
   "Company": {
     "table": "companies",
     "primaryKey": "id",
@@ -21,7 +31,8 @@
       "representativeName": {"column": "representative_name", "type": "String", "nullable": true, "index": "representativeNamePiiIndex", "indexColumn": "representative_name_pii_index"},
       "address": {"column": "address", "type": "String", "nullable": true, "index": "addressPiiIndex", "indexColumn": "address_pii_index"},
       "invoiceEmail": {"column": "invoice_email", "type": "String", "nullable": true, "index": "invoiceEmailPiiIndex", "indexColumn": "invoice_email_pii_index"},
-      "invoiceEmailSecondary": {"column": "invoice_email_secondary", "type": "String", "nullable": true, "index": "invoiceEmailSecondaryPiiIndex", "indexColumn": "invoice_email_secondary_pii_index"}
+      "invoiceEmailSecondary": {"column": "invoice_email_secondary", "type": "String", "nullable": true, "index": "invoiceEmailSecondaryPiiIndex", "indexColumn": "invoice_email_secondary_pii_index"},
+      "memo": {"column": "memo", "type": "String", "nullable": true, "index": "memoPiiIndex", "indexColumn": "memo_pii_index"}
     }
   },
   "OperationSession": {

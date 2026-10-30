@@ -129,6 +129,9 @@ model Company {
   businessInfoUpdatedAt DateTime? @map("business_info_updated_at")
   businessInfoUpdatedBy String?   @map("business_info_updated_by")
 
+  // 기업위키 상세의 자유 메모(OM/LD 공용). 자유 입력이라 개인정보가 섞일 수 있어 암호화한다.
+  memo String? @map("memo")
+
   courses Course[]
 
   // Application encryption lookup/storage columns; never expose these in API responses.
@@ -137,6 +140,7 @@ model Company {
   addressPiiIndex               String? @map("address_pii_index")
   invoiceEmailPiiIndex          String? @map("invoice_email_pii_index")
   invoiceEmailSecondaryPiiIndex String? @map("invoice_email_secondary_pii_index")
+  memoPiiIndex                  String? @map("memo_pii_index")
 
   @@map("companies")
 }
@@ -157,12 +161,28 @@ model Course {
   tools          String?
   revenue       Decimal?      @db.Decimal(14, 2)
   revenueRaw    String?       @map("revenue_raw")
+  // 과정 레벨 결과보고서/강의관리. 기존 회차별(OperationSession) 동일 컬럼은 expand-migrate로
+  // 유지하며 이번 PR에서 지우지 않는다. 승격 규칙·회차 컬럼 정리 시점은
+  // docs/operations/course-level-report-links-backfill.md 참고.
+  resultReportLink      String? @map("result_report_link")
+  lectureManagementLink String? @map("lecture_management_link")
+  lectureManagementNote String? @map("lecture_management_note")
+  // 과정 레벨 결과보고서 여부. 기존 회차별(OperationSession.hasResultReport)과 달리 기본값을
+  // 두지 않는다 — null은 "아직 과정 레벨로 승격되지 않음"을 뜻하고, 승격 규칙은
+  // docs/operations/course-level-result-report-status-backfill.md 참고. 회차별 컬럼은 이번
+  // 변경에서 지우지 않는다(add-only, 별도 cleanup PR 대상).
+  hasResultReport ResultReportStatus? @map("has_result_report")
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
 
   company  Company           @relation(fields: [companyId], references: [id])
   sessions OperationSession[]
   commonNote CourseCommonNote?
+
+  // Application encryption lookup columns; never expose these in API responses.
+  resultReportLinkPiiIndex String? @map("result_report_link_pii_index")
+  lectureManagementLinkPiiIndex String? @map("lecture_management_link_pii_index")
+  lectureManagementNotePiiIndex String? @map("lecture_management_note_pii_index")
 
   @@unique([companyId, courseId, name])
   @@index([courseId])

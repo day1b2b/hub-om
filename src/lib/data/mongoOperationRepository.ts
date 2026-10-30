@@ -1,13 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { MongoServerError, type ClientSession } from "mongodb";
 import type { OperationRepository } from "./operationRepository";
-import type { CourseCommonNote, CourseCommonNoteInput, CreateOperationInput, OperationSession, UpdateOperationInput } from "./operationTypes";
+import type { CourseCommonNote, CourseCommonNoteInput, CourseLectureManagementInput, CreateOperationInput, OperationSession, ResultReportStatus, UpdateOperationInput } from "./operationTypes";
 import { assertCreationReplay, creationOperationId, creationOperationPrefix } from "./operationCreationIdentity";
 import { buildOperationMonth, deriveDateRangeFromEducationDates, deriveSessionDurationDays, deriveSessionDurationType, normalizeCourseId, operationStatusAfterOmChange, summarizeOperations } from "./operationCalculations";
 import { normalizeLookupName, selectCoursesByCompany, selectCoursesByCourseId, type CourseLookupRow } from "./courseLookup";
 import { DEFAULT_TEAM_MEMBER_ROLE_ROSTER } from "./defaultTeamMemberRoster";
 import type { TeamMemberRoleRoster } from "./teamMemberRepository";
-import { DB_ARCHIVE_STATUS, DB_EDUCATION_FORMAT, DB_OPERATION_STATUS, DB_OPERATION_TYPE, DB_RESULT_REPORT_STATUS, DB_SATISFACTION_SURVEY_STATUS, normalizeVisibleText, normalizeName, nullableText, onsiteRequiredLabel, parseDateInput, resolveAssigneeText, toDateString, toOperationSession, type OperationSessionRow } from "./operationRowMapping";
+import { DB_ARCHIVE_STATUS, DB_EDUCATION_FORMAT, DB_OPERATION_STATUS, DB_OPERATION_TYPE, DB_RESULT_REPORT_STATUS, DB_SATISFACTION_SURVEY_STATUS, normalizeVisibleText, normalizeName, nullableText, onsiteRequiredLabel, parseDateInput, resolveAssigneeText, RESULT_REPORT_STATUS, toDateString, toOperationSession, type OperationSessionRow } from "./operationRowMapping";
 import { encodeMongoRuntimeDocument } from "./mongoRuntimeCodec";
 import { assertMongo, assertMongoOperationStoreReady, completeMongoRow, MongoOperationError, MongoOperationStore, type MongoOperationOptions, type MongoRow } from "./mongoOperationStore";
 import { operationAuditRow } from "./mongoOperationAudit";
@@ -127,6 +127,30 @@ export class MongoOperationRepository implements OperationRepository {
   async deleteCourseCommonNote(courseRecordId: string, actorEmail?: string): Promise<void> {
     await this.transaction(async session => { const previous = await this.store.one("CourseCommonNote", { courseRecordId, deletedAt: null }, session); if (previous) await this.write("CourseCommonNote", { ...previous, deletedAt: new Date(), deletedBy: actorEmail ?? null, updatedAt: new Date(), updatedBy: actorEmail ?? previous.updatedBy }, previous, session); }, true);
   }
+  async upsertCourseReportLink(courseRecordId: string, resultReportLink: string): Promise<string> {
+    return this.transaction(async session => {
+      const previous = await this.store.one("Course", { _id: courseRecordId }, session);
+      assertMongo(previous, "MISSING_COURSE");
+      const row = await this.write("Course", { ...previous, resultReportLink: nullableText(resultReportLink), updatedAt: new Date() }, previous, session);
+      return (row.resultReportLink as string | null) ?? "";
+    }, true);
+  }
+  async upsertCourseLectureManagement(courseRecordId: string, input: CourseLectureManagementInput): Promise<CourseLectureManagementInput> {
+    return this.transaction(async session => {
+      const previous = await this.store.one("Course", { _id: courseRecordId }, session);
+      assertMongo(previous, "MISSING_COURSE");
+      const row = await this.write("Course", { ...previous, lectureManagementLink: nullableText(input.lectureManagementLink), lectureManagementNote: nullableText(input.lectureManagementNote), updatedAt: new Date() }, previous, session);
+      return { lectureManagementLink: (row.lectureManagementLink as string | null) ?? "", lectureManagementNote: (row.lectureManagementNote as string | null) ?? "" };
+    }, true);
+  }
+  async upsertCourseResultReportStatus(courseRecordId: string, hasResultReport: ResultReportStatus): Promise<ResultReportStatus> {
+    return this.transaction(async session => {
+      const previous = await this.store.one("Course", { _id: courseRecordId }, session);
+      assertMongo(previous, "MISSING_COURSE");
+      const row = await this.write("Course", { ...previous, hasResultReport: DB_RESULT_REPORT_STATUS[hasResultReport], updatedAt: new Date() }, previous, session);
+      return row.hasResultReport ? RESULT_REPORT_STATUS[row.hasResultReport as string] : hasResultReport;
+    }, true);
+  }
   async listOperations(): Promise<OperationSession[]> {
     return this.transaction(async session => {
       const rows = await this.store.scan("OperationSession", { deletedAt: null }, session);
@@ -244,6 +268,28 @@ export class MongoOperationRepository implements OperationRepository {
         assertMongo((input.courseId === undefined || courseId) && name, "COURSE_ID_AND_NAME_REQUIRED");
         course = await this.course(currentCourse.companyId as string, courseId, name, {}, session, currentCourse);
         next.courseRecordId = id(course);
+      }
+      if (input.companyName !== undefined) {
+        const companyName = normalizeVisibleText(input.companyName);
+        assertMongo(companyName, "COMPANY_REQUIRED");
+        const currentCompany = await this.store.one("Company", { _id: course.companyId as string }, session);
+        if (currentCompany?.normalizedName !== normalizeName(companyName)) {
+          // 기존 기업이면 이름을 덮어쓰지 않는다 — 그 기업의 다른 과정 표시까지 바뀌면 안 된다.
+          const now = new Date();
+          const company = await this.store.one("Company", { normalizedName: normalizeName(companyName) }, session)
+            ?? await this.write("Company", { id: randomUUID(), name: companyName, normalizedName: normalizeName(companyName), businessNumber: null, createdAt: now, updatedAt: now }, null, session);
+          const conflict = await this.store.one("Course", { companyId: id(company), courseId: course.courseId, name: course.name }, session);
+          assertMongo(!conflict || id(conflict) === id(course), "COMPANY_ALREADY_HAS_COURSE");
+          // 새 과정을 만들지 않고 과정(Course)의 기업만 바꾼다 — 과정ID·공통 메모·과정 링크가 그대로 따라간다.
+          const previousCompanyId = course.companyId as string;
+          course = await this.write("Course", { ...course, companyId: id(company), updatedAt: now }, course, session);
+          // 코스ID명은 (기업, 코스ID) 단위라 옮겨 간 기업에 없으면 같이 가져간다.
+          const previousLabel = await this.store.one("CourseIdLabel", { companyId: previousCompanyId, courseId: course.courseId }, session);
+          const targetFilter = { companyId: id(company), courseId: course.courseId };
+          if (previousLabel?.label && !(await this.store.one("CourseIdLabel", targetFilter, session))) {
+            await this.write("CourseIdLabel", { id: randomUUID(), createdAt: now, ...targetFilter, label: previousLabel.label, updatedAt: now }, null, session);
+          }
+        }
       }
       if (input.courseCategory !== undefined || input.tools !== undefined) {
         course = await this.write("Course", { ...course, ...(input.courseCategory !== undefined ? { courseCategory: nullableText(input.courseCategory) } : {}), ...(input.tools !== undefined ? { tools: nullableText(input.tools) } : {}), updatedAt: new Date() }, course, session);

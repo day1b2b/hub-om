@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { companyNameError } from "@/lib/data/companyName";
 import { buildOperationCreateTemplateCsv } from "@/features/operations/operationCreateTemplate";
 import { clearOperationSubmission, hasLegacyOperationSubmission, OperationSubmissionValidationError, persistOperationSubmission, readOperationSubmission, submitOperationSnapshot, type OperationSubmission, type OperationSubmissionStore } from "@/features/operations/operationSubmission";
 import { operationSubmissionStore } from "@/features/operations/operationSubmissionStore";
@@ -158,7 +159,8 @@ export function OperationCreateForm({ expectedSubject, initialValues = {}, perso
         <div className="operation-form-grid">
           <label>
             <span>기업명</span>
-            <input onChange={(event) => setCompanyName(event.target.value)} value={companyName} />
+            <input onChange={(event) => setCompanyName(event.target.value)} placeholder="띄어쓰기 없이 정확히" value={companyName} />
+            {/\s/.test(companyName.trim()) ? <small className="field-error-text">기업명에는 띄어쓰기를 넣을 수 없어요.</small> : null}
           </label>
           <label>
             <span>코스ID</span>
@@ -363,6 +365,11 @@ export function OperationCreateForm({ expectedSubject, initialValues = {}, perso
     if (!pendingSubmission) {
       if (!companyName.trim() || !courseName.trim()) {
         setError("기업명과 과정명은 필수입니다.");
+        return;
+      }
+      const companyError = companyNameError(companyName);
+      if (companyError) {
+        setError(companyError);
         return;
       }
       if (rows.length === 0 || rows.some((row) => row.errors.length > 0)) {

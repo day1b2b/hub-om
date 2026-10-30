@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { isAdminEmail } from "@/lib/auth/requireAdminSession";
 import { addCustomTools, listCustomTools, getOmCustomToolsRepository } from "@/lib/data/omRequest/omCustomToolsLocalRepository";
 import { deleteOmRequest, getOmRequest, setOmRequestOperationId, updateOmRequest } from "@/lib/data/omRequest/omRequestLocalRepository";
+import { companyNameError } from "@/lib/data/companyName";
 import { syncOmRequestSessionsToOperations } from "@/lib/data/omRequest/omRequestOperationLink";
 import { planSessionCountChange, sessionScheduleChanged } from "@/lib/data/omRequest/omRequestSessionPlan";
 import { isOmRequestAuthor, type OmRequestInput } from "@/lib/data/omRequest/omRequestTypes";
@@ -43,6 +44,13 @@ async function activityPATCH(request: Request, { params }: Props) {
     const sessions = Array.isArray(body.sessions) ? body.sessions : [];
     const input = { ...body, sessions, totalSessions: sessions.length };
 
+    // 업무 요청은 접수 원본이라 운영 현황 기업명과 따로 간다. 다만 기업명을 바꾸면 새 이름도 입력 규칙
+    // (띄어쓰기 없음)을 지켜야 한다. 기존에 띄어쓰기로 접수된 요청은 기업명을 안 바꾸면 다른 항목 수정을 막지 않는다.
+    const companyChanged = typeof input.company === "string" && input.company.trim() !== (existing.company ?? "").trim();
+    if (companyChanged) {
+      const companyError = companyNameError(input.company);
+      if (companyError) return NextResponse.json({ error: companyError }, { status: 400 });
+    }
     // 운영현황에 연결된 요청만 회차 증감·일정 변경을 운영현황·캘린더에 맞춘다. 연결 전 요청은 요청만 고친다.
     if (existing.operationId) {
       const plan = planSessionCountChange(existing.sessions.length, sessions.length, sessionOrigins);

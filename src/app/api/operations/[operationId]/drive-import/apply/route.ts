@@ -7,6 +7,7 @@ import { parseEducationDatesText } from "@/lib/data/operationCalculations";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { runOperationWriteRequest } from "@/lib/data/operationWriteComposition";
 import { syncLinkedOmRequestAssignment } from "@/lib/data/omRequest/omRequestOperationLink";
+import { changeCourseCompany, CourseCompanyChangeError } from "@/lib/data/courseCompanyChange";
 import type {
   ArchiveStatus,
   EducationFormat,
@@ -25,6 +26,7 @@ const APPLYABLE_FIELDS = [
   "archiveStatus",
   "avgSatisfaction",
   "coach",
+  "companyName",
   "companyWikiLink",
   "costRaw",
   "courseCategory",
@@ -134,8 +136,23 @@ async function activityPOST(request: Request, { params }: RouteContext) {
     return NextResponse.json({ ok: false, error: "저장할 수 있는 항목이 없습니다." }, { status: 400 });
   }
 
+  // 기업명은 과정 전체(모든 회차)와 연결된 업무 요청까지 같이 옮겨야 해서 따로 처리한다.
+  const { companyName, ...rest } = update;
+  let updatedOperation = operation;
+  if (companyName !== undefined) {
+    try {
+      updatedOperation = await changeCourseCompany(operationId, companyName, session.user?.email ?? undefined);
+    } catch (error) {
+      if (error instanceof CourseCompanyChangeError) {
+        const status = error.code === "NOT_FOUND" ? 404 : error.code === "COURSE_EXISTS" ? 409 : 400;
+        return NextResponse.json({ ok: false, error: error.message }, { status });
+      }
+      throw error;
+    }
+  }
+
   // 누가 고쳤는지 남긴다. 삭제(deletedBy)는 이미 기록하는데 수정만 빠져 있었다.
-  const updatedOperation = await repository.updateOperation(operationId, update, session.user?.email ?? undefined);
+  if (Object.keys(rest).length > 0) updatedOperation = await repository.updateOperation(operationId, rest, session.user?.email ?? undefined);
   const omNotification = update.om !== undefined ? await syncLinkedOmRequestAssignment(operationId, update.om || null, operation.om) : "not-needed";
 
   return NextResponse.json({ ok: true, operation: updatedOperation, omNotification });

@@ -8,7 +8,11 @@ import { DeleteRoundButton } from "./DeleteRoundButton";
 import { RoundOrderCell } from "./RoundOrderCell";
 import { RoundReorderProvider } from "./RoundReorderProvider";
 import { EditAllRoundsProvider } from "./EditAllRoundsProvider";
+import { CourseResultReportStatusRow } from "./CourseResultReportStatusRow";
+import { EditableTitleCompany } from "./EditableTitleCompany";
 import { EditableCourseNameItem } from "./EditableCourseNameItem";
+import { EditableCourseLectureManagementRow } from "./EditableCourseLectureManagementRow";
+import { EditableCourseReportLinkRow } from "./EditableCourseReportLinkRow";
 import { EditableInfoItem } from "./EditableInfoItem";
 import { EditableOnsiteOmCell } from "./EditableOnsiteOmCell";
 import { EditableResourceRow } from "./EditableResourceRow";
@@ -21,11 +25,9 @@ import { InstructorContractRequestSection } from "./InstructorContractRequestSec
 import { InstructorCandidatesSection } from "./InstructorCandidatesSection";
 import type { InstructorRecommendation } from "@/features/wiki/instructorRecommendation";
 import { CourseNotesWorkspace } from "./CourseNotesWorkspace";
-import { LectureManagementNoteRow } from "./LectureManagementNoteRow";
 import { OnsiteRequiredConditionSelect } from "./OnsiteRequiredConditionSelect";
 import { OperationDiscussionPanel } from "./OperationDiscussionPanel";
 import { ResultReportConditionSelect } from "./ResultReportConditionSelect";
-import { ResultReportRequirementCell } from "./ResultReportRequirementCell";
 import { SatisfactionAnalysisButton } from "./SatisfactionAnalysisButton";
 import { SatisfactionSurveyConditionSelect } from "./SatisfactionSurveyConditionSelect";
 import type {
@@ -82,6 +84,7 @@ export function OperationDetail({
   const courseGroups = getCourseGroups(operation, sameCourseIdOperations);
   const educationFormatText = aggregateUniqueValues(courseOperations, (candidate) => candidate.educationFormat);
   const requiredArchiveItems = getRequiredArchiveItems(operation);
+  const courseRecordId = operation.courseRecordId ?? "";
   const completedArchiveItems = requiredArchiveItems.filter((archiveItem) => archiveItem.done);
   const satisfactionSummary = getSatisfactionSummary(courseOperations);
   const teamQuery = teamScopeSearchParam(teamScope);
@@ -105,7 +108,7 @@ export function OperationDetail({
       <section className="content operation-detail-content">
         <header className="page-header detail-header">
           <div className="title-row">
-            <span className="title-company">{operation.companyName}</span>
+            <EditableTitleCompany companyName={operation.companyName} operationId={operation.operationId} />
             <h1>{operation.courseName}</h1>
             {operation.courseId ? null : <span className="title-course-id">코스ID 검토 필요</span>}
             {operation.processId ? <span className="title-tag">{operation.processId}</span> : null}
@@ -267,6 +270,17 @@ export function OperationDetail({
                         value={archiveItem.value}
                       />
                     ))}
+                    {courseRecordId ? (
+                      <>
+                        <EditableCourseReportLinkRow courseRecordId={courseRecordId} value={operation.courseResultReportLink ?? ""} />
+                        <EditableCourseLectureManagementRow
+                          courseRecordId={courseRecordId}
+                          lectureManagementLink={operation.courseLectureManagementLink ?? ""}
+                          lectureManagementNote={operation.courseLectureManagementNote ?? ""}
+                        />
+                        <CourseResultReportStatusRow courseRecordId={courseRecordId} hasResultReport={operation.courseHasResultReport} />
+                      </>
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -318,10 +332,7 @@ export function OperationDetail({
                     <th>강사</th>
                     <th>실습코치</th>
                     <th>만족도</th>
-                    <th>결과보고서 여부</th>
-                    <th>결과보고서</th>
                     <th>패들렛</th>
-                    <th>강의관리</th>
                     <th>삭제</th>
                   </tr>
                 </thead>
@@ -378,24 +389,6 @@ export function OperationDetail({
                           muted={courseOperation.hasSatisfactionSurvey === "불필요"}
                         />
                       </td>
-                      <ResultReportRequirementCell
-                        hasResultReport={courseOperation.hasResultReport}
-                        operationId={courseOperation.operationId}
-                      />
-                      {courseOperation.hasResultReport === "불필요" ? (
-                        <td className="round-resource-cell" />
-                      ) : (
-                        <EditableRoundResourceCell
-                          companionDoneValue="유"
-                          companionField="hasResultReport"
-                          companionMissingValue="무"
-                          done={courseOperation.hasResultReport === "유"}
-                          field="resultReportLink"
-                          label="결과보고서"
-                          operationId={courseOperation.operationId}
-                          value={courseOperation.resultReportLink}
-                        />
-                      )}
                       <EditableRoundResourceCell
                         done={isNavigableHref(courseOperation.padletLink)}
                         field="padletLink"
@@ -403,15 +396,6 @@ export function OperationDetail({
                         operationId={courseOperation.operationId}
                         value={courseOperation.padletLink}
                       />
-                      <td>
-                        <LectureManagementNoteRow
-                          done={Boolean(courseOperation.lectureManagementNote.trim())}
-                          educationDates={courseOperation.educationDates}
-                          operationId={courseOperation.operationId}
-                          startDate={courseOperation.startDate}
-                          value={courseOperation.lectureManagementNote}
-                        />
-                      </td>
                       <td>
                         <DeleteRoundButton
                           fallbackOperationId={fallbackOperationId}

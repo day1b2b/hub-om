@@ -13,7 +13,8 @@
     "invoiceEmail": "encrypted",
     "invoiceEmailSecondary": "encrypted",
     "businessInfoUpdatedAt": "operational",
-    "businessInfoUpdatedBy": "operational"
+    "businessInfoUpdatedBy": "operational",
+    "memo": "encrypted"
   },
   "Course": {
     "id": "operational",
@@ -25,6 +26,9 @@
     "tools": "operational",
     "revenue": "operational",
     "revenueRaw": "operational",
+    "resultReportLink": "encrypted",
+    "lectureManagementLink": "encrypted",
+    "lectureManagementNote": "encrypted",
     "createdAt": "operational",
     "updatedAt": "operational"
   },
