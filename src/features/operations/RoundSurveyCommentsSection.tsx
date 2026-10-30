@@ -4,7 +4,7 @@ import type { RoundSurveyCommentRow } from "./roundSurveyComments";
 // 주관식 없는 설문은 정상이라 미완성처럼 보이지 않게 안내만 한다.
 export function RoundSurveyCommentsSection({ rows }: { rows: RoundSurveyCommentRow[] }) {
   return (
-    <section className="detail-section round-survey-section">
+    <section className="detail-section wide-detail-section round-survey-section">
       <div className="section-title">
         <h2>수강생 코멘트</h2>
         <span>만족도 [hub-om 반영] 때 자동</span>
