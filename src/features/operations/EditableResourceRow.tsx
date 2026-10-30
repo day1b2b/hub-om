@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { isNavigableHref, toHref } from "@/lib/links";
+import { findLinkHref } from "@/lib/links";
 
 type SaveState = "idle" | "saving" | "failed";
 
@@ -22,7 +22,8 @@ interface EditableResourceRowProps {
   isLink: boolean;
   label: string;
   missingText: string;
-  operationId: string;
+  /** 같은 값을 저장할 회차들. 드라이브·싱크업은 과정 단위로 쓰므로 과정의 모든 회차를 넘긴다. */
+  operationIds: string[];
   placeholder?: string;
   value: string;
 }
@@ -37,7 +38,7 @@ export function EditableResourceRow({
   isLink,
   label,
   missingText,
-  operationId,
+  operationIds,
   placeholder,
   value
 }: EditableResourceRowProps) {
@@ -45,15 +46,15 @@ export function EditableResourceRow({
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(value);
   const [saveState, setSaveState] = useState<SaveState>("idle");
-  const hasHref = isLink && isNavigableHref(value);
+  const href = isLink ? findLinkHref(value) : null;
 
   if (!isEditing) {
     return (
       <div className={`archive-item-row ${done ? "done" : "missing"}`}>
         <strong>{label}</strong>
         <div className="archive-item-actions">
-          {hasHref ? (
-            <a className="archive-item-state" href={toHref(value) ?? value} rel="noreferrer" target="_blank">
+          {href ? (
+            <a className="archive-item-state" href={href} rel="noreferrer" target="_blank">
               열기
             </a>
           ) : (
@@ -114,24 +115,21 @@ export function EditableResourceRow({
       });
     }
 
-    let response: Response;
+    const results = await Promise.all(
+      operationIds.map((operationId) =>
+        fetch(`/api/operations/${encodeURIComponent(operationId)}/drive-import/apply`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json"
+          },
+          body: JSON.stringify({ patches })
+        })
+          .then(async (response) => response.ok && ((await response.json().catch(() => ({}))) as { ok?: boolean }).ok === true)
+          .catch(() => false)
+      )
+    );
 
-    try {
-      response = await fetch(`/api/operations/${encodeURIComponent(operationId)}/drive-import/apply`, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json"
-        },
-        body: JSON.stringify({ patches })
-      });
-    } catch {
-      setSaveState("failed");
-      return;
-    }
-
-    const payload = (await response.json().catch(() => ({}))) as { ok?: boolean };
-
-    if (!response.ok || !payload.ok) {
+    if (!results.every(Boolean)) {
       setSaveState("failed");
       return;
     }

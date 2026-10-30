@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { isNavigableHref, toHref } from "@/lib/links";
+import { findLinkHref } from "@/lib/links";
 
 type SaveState = "idle" | "saving" | "failed";
 
@@ -21,15 +21,15 @@ export function EditableCourseReportLinkRow({ courseRecordId, value }: EditableC
   const [draft, setDraft] = useState(value);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const done = Boolean(value.trim());
-  const hasHref = isNavigableHref(value);
+  const href = findLinkHref(value);
 
   if (!isEditing) {
     return (
       <div className={`archive-item-row ${done ? "done" : "missing"}`}>
         <strong>결과보고서</strong>
         <div className="archive-item-actions">
-          {hasHref ? (
-            <a className="archive-item-state" href={toHref(value) ?? value} rel="noreferrer" target="_blank">
+          {href ? (
+            <a className="archive-item-state" href={href} rel="noreferrer" target="_blank">
               열기
             </a>
           ) : (
