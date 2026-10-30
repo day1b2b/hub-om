@@ -3,6 +3,7 @@
   "GET /api/admin/calendar/refresh-events": "tracked",
   "POST /api/admin/calendar/refresh-events": "tracked",
   "GET /api/admin/content-entries": "tracked",
+  "GET /api/admin/course-merge-review": "tracked",
   "DELETE /api/admin/courses/[courseId]": "tracked",
   "GET /api/admin/courses/lookup": "tracked",
   "PATCH /api/admin/database/cell": "tracked",
