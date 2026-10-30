@@ -8,6 +8,7 @@ import { DeleteRoundButton } from "./DeleteRoundButton";
 import { RoundOrderCell } from "./RoundOrderCell";
 import { RoundReorderProvider } from "./RoundReorderProvider";
 import { EditAllRoundsProvider } from "./EditAllRoundsProvider";
+import { EditableTitleCompany } from "./EditableTitleCompany";
 import { EditableCourseNameItem } from "./EditableCourseNameItem";
 import { EditableCourseLectureManagementRow } from "./EditableCourseLectureManagementRow";
 import { EditableCourseReportLinkRow } from "./EditableCourseReportLinkRow";
@@ -107,7 +108,7 @@ export function OperationDetail({
       <section className="content operation-detail-content">
         <header className="page-header detail-header">
           <div className="title-row">
-            <span className="title-company">{operation.companyName}</span>
+            <EditableTitleCompany companyName={operation.companyName} operationId={operation.operationId} />
             <h1>{operation.courseName}</h1>
             {operation.courseId ? null : <span className="title-course-id">코스ID 검토 필요</span>}
             {operation.processId ? <span className="title-tag">{operation.processId}</span> : null}
@@ -160,14 +161,6 @@ export function OperationDetail({
                 <h2>과정 정보</h2>
               </div>
               <div className="info-grid">
-                <EditableCourseNameItem
-                  displayValue={operation.companyName || "미정"}
-                  field="companyName"
-                  label="기업명"
-                  operationIds={courseOperationIds}
-                  placeholder="예: 데이원컴퍼니"
-                  value={operation.companyName}
-                />
                 <EditableCourseNameItem
                   displayValue={operation.courseName || "미정"}
                   label="과정명"

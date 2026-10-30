@@ -13,6 +13,10 @@ export function syncAssignedOmByOperationId(operationId: string, assignedOm: str
   const repository = getOmRequestRepository();
   return repository.syncAssignedOmByOperationId?.(operationId, assignedOm) ?? Promise.resolve(null);
 }
+export function syncCompanyByOperationId(operationId: string, company: string) {
+  const repository = getOmRequestRepository();
+  return repository.syncCompanyByOperationId?.(operationId, company) ?? Promise.resolve(null);
+}
 export function setOmRequestSlackMeta(id: string, meta: { ldEmail?: string; slackChannel?: string; slackThreadTs?: string }) { return getOmRequestRepository().setOmRequestSlackMeta(id, meta); }
 
 // The confirmed multi-round assignment boundary is a separate migration unit.

@@ -2961,6 +2961,62 @@ td span {
   white-space: nowrap;
 }
 
+/* 운영 상세 제목의 기업명: 눌러서 수정 */
+.title-company--editable {
+  background: none;
+  border: 1px dashed transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 2px 6px;
+}
+
+.title-company--editable:hover,
+.title-company--editable:focus-visible {
+  background: var(--blue-bg);
+  border-color: var(--blue);
+}
+
+.title-company-editor {
+  align-items: center;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.title-company-editor input {
+  border: 1px solid var(--blue);
+  border-radius: 6px;
+  font-size: 13px;
+  min-width: 200px;
+  padding: 4px 8px;
+}
+
+.title-company-editor button {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+}
+
+.title-company-editor button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.title-company-hint {
+  color: var(--muted);
+  font-size: 12px;
+  width: 100%;
+}
+
+.title-company-hint.is-error {
+  color: var(--red);
+}
+
 .title-course-id {
   align-items: center;
   background: var(--amber-bg);
@@ -12256,6 +12312,17 @@ button.coach-doc-reserve-chip:disabled {
 
 .om-company-new-hint {
   color: var(--blue);
+  margin-top: 4px;
+}
+
+.om-company-new-hint.om-company-space-error,
+.field-error-text {
+  color: var(--red);
+}
+
+.field-error-text {
+  display: block;
+  font-size: 12px;
   margin-top: 4px;
 }
 

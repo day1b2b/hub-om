@@ -124,6 +124,12 @@ export class MongoOmRequestRepository implements OmRequestRepository {
       return dto(after);
     });
   }
+  async syncCompanyByOperationId(operationId: string, company: string) {
+    const linked = await this.store.one("OmRequest", { operationId });
+    if (!linked) return null;
+    if (dto(linked).company === company) return dto(linked);
+    return this.patch(String(linked.id), () => ({ company }));
+  }
   setOmRequestSlackMeta(id: string, meta: { ldEmail?: string; slackChannel?: string; slackThreadTs?: string }) {
     return this.patch(id, () => ({ ...(meta.ldEmail ? { ldEmail: meta.ldEmail } : {}), ...(meta.slackChannel ? { slackChannel: meta.slackChannel } : {}), ...(meta.slackThreadTs ? { slackThreadTs: meta.slackThreadTs } : {}) }));
   }
