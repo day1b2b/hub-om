@@ -64,10 +64,11 @@ interface RoundApplyBody {
   manager?: string;
   /** 수강생 코멘트 상태: "ok" | "no_subjective" | "no_summary". 키가 없으면 저장된 코멘트 유지. */
   comment_status?: string;
-  /** 👍 좋았던 점 (survey_analysis AI 요약 positive) */
+  /** survey_analysis AI 요약(summary)과 1:1 — positive / instructor_improve / hrd_improve / followup */
   comment_positive?: string[];
-  /** 🔧 강사용 개선 (survey_analysis AI 요약 instructor_improve) */
-  comment_improve?: string[];
+  comment_instructor_improve?: string[];
+  comment_hrd_improve?: string[];
+  comment_followup?: string[];
 }
 
 /** 결과 기록은 회차 반영이 끝난 뒤 따로 남긴다. 실패해도 회차 반영은 되돌리지 않고 응답에 알린다. */

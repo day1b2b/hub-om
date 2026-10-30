@@ -1,15 +1,24 @@
 // 회차별 만족도 결과(SessionSurveyResult) 표준 타입과 입력 정리 규칙.
-// 저장소(Mongo·Postgres)와 round-apply 라우트, 강사 위키 화면이 모두 이 모양만 본다.
+// 저장소(Mongo·Postgres)와 round-apply 라우트, 운영 회차 상세 화면이 모두 이 모양만 본다.
 
 /** survey_analysis가 보내는 코멘트 상태. 화면은 이 값으로 "비어 있는 게 정상"인지 가린다. */
 export type SurveyCommentStatus = "ok" | "no_subjective" | "no_summary";
 
-export interface SurveyComments {
+/** survey_analysis AI 요약(summary)의 네 갈래. 키는 summary와 1:1로 맞춘다. */
+export const SURVEY_COMMENT_AXES = ["positive", "instructorImprove", "hrdImprove", "followup"] as const;
+export type SurveyCommentAxis = (typeof SURVEY_COMMENT_AXES)[number];
+export type SurveyCommentLists = Record<SurveyCommentAxis, string[]>;
+
+/** round-apply 요청 본문의 키 — survey_analysis #61과 합의한 이름. */
+const REQUEST_KEYS: Record<SurveyCommentAxis, string> = {
+  positive: "comment_positive",
+  instructorImprove: "comment_instructor_improve",
+  hrdImprove: "comment_hrd_improve",
+  followup: "comment_followup"
+};
+
+export interface SurveyComments extends SurveyCommentLists {
   status: SurveyCommentStatus;
-  /** 👍 좋았던 점 (AI 요약 positive) */
-  positive: string[];
-  /** 🔧 강사용 개선 (AI 요약 instructor_improve) */
-  improve: string[];
 }
 
 export interface SessionSurveyResult {
@@ -62,27 +71,53 @@ function cleanLine(value: unknown): string | null {
   return line.length > SURVEY_COMMENT_MAX_CHARS ? `${line.slice(0, SURVEY_COMMENT_MAX_CHARS - 1)}…` : line;
 }
 
-/** 저장된 JSON 목록을 문자열 목록으로 되돌린다. 모양이 다르면 빈 목록. */
+/** 목록 값을 문자열 목록으로 정리한다. 모양이 다르면 빈 목록. */
 export function commentLines(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.map(cleanLine).filter((line): line is string => line !== null).slice(0, SURVEY_COMMENT_MAX_LINES);
 }
 
+export function emptyCommentLists(): SurveyCommentLists {
+  return { positive: [], instructorImprove: [], hrdImprove: [], followup: [] };
+}
+
+/** 저장된 JSON 한 칸(네 갈래 객체)을 목록으로 되돌린다. 모르는 키는 버리고 없는 갈래는 빈 목록. */
+export function commentListsFromRecord(value: unknown): SurveyCommentLists {
+  const record = value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+  const lists = emptyCommentLists();
+  for (const axis of SURVEY_COMMENT_AXES) lists[axis] = commentLines(record[axis]);
+  return lists;
+}
+
+/** 저장용: 상태를 뺀 네 갈래만. 축이 늘어도 칸(마이그레이션)은 그대로다. */
+export function commentListsToRecord(comments: SurveyComments): SurveyCommentLists {
+  const lists = emptyCommentLists();
+  for (const axis of SURVEY_COMMENT_AXES) lists[axis] = comments[axis];
+  return lists;
+}
+
+export function hasCommentLines(comments: SurveyCommentLists): boolean {
+  return SURVEY_COMMENT_AXES.some((axis) => comments[axis].length > 0);
+}
+
 /**
- * round-apply 요청 본문의 comment_* 세 키를 코멘트로 바꾼다.
+ * round-apply 요청 본문의 comment_* 키를 코멘트로 바꾼다.
  * - comment_status 키가 없으면 undefined(= 저장된 코멘트 유지). 구버전 앱은 키를 아예 보내지 않는다.
- * - 상태 값이 약속과 다르면 "invalid" — 라우트가 400으로 돌려보낸다(조용히 버리지 않는다).
+ * - 상태 값이 약속과 다르거나 목록이 배열이 아니면 "invalid" — 라우트가 400으로 돌려보낸다(조용히 버리지 않는다).
  * - ok가 아니면 목록은 비운다(요약이 없다는 상태와 목록이 어긋나지 않게).
  */
 export function parseSurveyComments(body: Record<string, unknown>): SurveyComments | undefined | "invalid" {
   if (!("comment_status" in body) || body.comment_status === undefined || body.comment_status === null) return undefined;
   const status = body.comment_status;
   if (typeof status !== "string" || !STATUSES.includes(status as SurveyCommentStatus)) return "invalid";
-  for (const key of ["comment_positive", "comment_improve"] as const) {
+  for (const key of Object.values(REQUEST_KEYS)) {
     if (body[key] !== undefined && body[key] !== null && !Array.isArray(body[key])) return "invalid";
   }
-  if (status !== "ok") return { status: status as SurveyCommentStatus, positive: [], improve: [] };
-  return { status: "ok", positive: commentLines(body.comment_positive), improve: commentLines(body.comment_improve) };
+  const lists = emptyCommentLists();
+  if (status === "ok") {
+    for (const axis of SURVEY_COMMENT_AXES) lists[axis] = commentLines(body[REQUEST_KEYS[axis]]);
+  }
+  return { status: status as SurveyCommentStatus, ...lists };
 }
 
 /** 응답자 수 문자열("26", "26.0")을 정수로. 읽을 수 없으면 null. */

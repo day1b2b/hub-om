@@ -434,8 +434,7 @@
     "instructorSatisfaction": "operational",
     "respondents": "operational",
     "positiveRate": "operational",
-    "commentPositive": "encrypted",
-    "commentImprove": "encrypted",
+    "commentLists": "encrypted",
     "appliedBy": "encrypted",
     "appliedAt": "operational",
     "createdAt": "operational"

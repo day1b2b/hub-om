@@ -15,6 +15,8 @@ import { getStoredTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFa
 import { filterOperationsByTeamScope, resolveTeamScope } from "@/lib/teamScope";
 import { allowsLegacyOperationPageFallback, runOperationPagesRequest } from "@/lib/data/operationPagesComposition";
 import { recommendInstructors } from "@/features/wiki/instructorRecommendation";
+import { getSessionSurveyResultRepository } from "@/lib/data/sessionSurveyResultRepositoryFactory";
+import type { SessionSurveyResult } from "@/lib/data/sessionSurveyResultTypes";
 import { coachActivityPolicy, seoulTodayKey } from "@/lib/coaches/coachActivity";
 
 export const dynamic = "force-dynamic";
@@ -106,7 +108,14 @@ async function renderOperationDetailPage({ params, searchParams }: OperationDeta
       )
     : [];
 
-  const [coachOptions, onsiteOmOptions] = await Promise.all([coachOptionsPromise, onsiteOmOptionsPromise]);
+  // 회차별 수강생 코멘트는 부가 정보라 읽기에 실패해도 상세는 연다(코멘트 칸만 빈 안내).
+  const surveyResultsPromise: Promise<SessionSurveyResult[]> = getSessionSurveyResultRepository()
+    .listByOperationIds((relatedOperations.length > 0 ? relatedOperations : [operation]).map((candidate) => candidate.operationId))
+    .catch(() => {
+      console.error("[operations] survey results unavailable");
+      return [];
+    });
+  const [coachOptions, onsiteOmOptions, surveyResults] = await Promise.all([coachOptionsPromise, onsiteOmOptionsPromise, surveyResultsPromise]);
   const collaboration = DISABLED_COLLABORATION;
   // 후보 강사는 팀 범위와 상관없이 전체 운영 이력에서 고른다(다른 팀 과정 이력도 근거가 된다).
   const instructorRecommendation = recommendInstructors({
@@ -124,6 +133,7 @@ async function renderOperationDetailPage({ params, searchParams }: OperationDeta
       extraTools={listCustomTools()}
       instructorOptions={instructorOptions}
       instructorRecommendation={instructorRecommendation}
+      surveyResults={surveyResults}
       onsiteOmOptions={onsiteOmOptions}
       operation={operation}
       personOptions={personOptions}

@@ -4354,14 +4354,7 @@
           "NO_SUMMARY"
         ]
       },
-      "commentPositive": {
-        "type": "Json",
-        "nullable": true,
-        "list": false,
-        "uuid": false,
-        "dateOnly": false
-      },
-      "commentImprove": {
+      "commentLists": {
         "type": "Json",
         "nullable": true,
         "list": false,

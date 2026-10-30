@@ -14,8 +14,6 @@ import {
   resolveNotionLinkTargets
 } from "@/lib/data/instructorWikiStore";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
-import { getSessionSurveyResultRepository } from "@/lib/data/sessionSurveyResultRepositoryFactory";
-import type { SessionSurveyResult } from "@/lib/data/sessionSurveyResultTypes";
 import { runCoachPublicRequest } from "@/lib/data/coachPublicComposition";
 
 export const dynamic = "force-dynamic";
@@ -111,16 +109,7 @@ async function renderInstructorWikiDetailPage(params: InstructorWikiDetailPagePr
     // coach-db 미연결 → 보강 생략
   }
 
-  // 수강생 코멘트는 부가 정보라 읽기에 실패해도 상세는 연다(코멘트 칸만 빈 안내).
-  let surveyResults: SessionSurveyResult[] = [];
-  try {
-    const operationIds = entry.courses.filter((course) => course.role === "강사").map((course) => course.operationId);
-    surveyResults = await getSessionSurveyResultRepository().listByOperationIds(operationIds);
-  } catch {
-    console.error("[instructor-wiki] survey results unavailable");
-  }
-
-  return <InstructorWikiDetail entry={entry} surveyResults={surveyResults} />;
+  return <InstructorWikiDetail entry={entry} />;
 }
 
 function safeDecode(value: string): string {
