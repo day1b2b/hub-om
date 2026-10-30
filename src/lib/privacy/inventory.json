@@ -25,6 +25,9 @@
     "tools": "operational",
     "revenue": "operational",
     "revenueRaw": "operational",
+    "resultReportLink": "encrypted",
+    "lectureManagementLink": "encrypted",
+    "lectureManagementNote": "encrypted",
     "createdAt": "operational",
     "updatedAt": "operational"
   },

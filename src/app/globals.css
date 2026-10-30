@@ -5336,6 +5336,8 @@ td span {
   align-items: start;
   display: grid;
   gap: 6px;
+  /* 2단 요약 그리드(.archive-item-list) 안에서 강의관리처럼 필드가 여러 개인 행이 한 칸에 눌리지 않게 전체 폭을 쓴다. */
+  grid-column: 1 / -1;
   grid-template-columns: 1fr;
 }
 
@@ -13959,6 +13961,23 @@ button.coach-doc-reserve-chip:disabled {
   color: #b3382c;
 }
 
+.coach-link-mail-cell {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.coach-link-mail-cell button {
+  white-space: nowrap;
+}
+
+.coach-link-mail-warning {
+  color: #8c7436;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 /* 코치 상세 - 메모 */
 .coach-notes-panel {
   display: grid;
@@ -15367,4 +15386,48 @@ button.coach-doc-reserve-chip:disabled {
   resize: vertical;
   width: 100%;
   max-width: none;
+}
+
+/* 과정 상세 "후보 강사" */
+.instructor-candidates {
+  display: grid;
+  gap: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.instructor-candidates > li {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 4px 16px;
+  grid-template-columns: minmax(160px, 220px) minmax(0, 1fr);
+  padding: 10px 0;
+}
+
+.instructor-candidates > li:first-child {
+  border-top: 0;
+}
+
+.instructor-candidates-name {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  font-weight: 700;
+  gap: 6px;
+}
+
+.instructor-candidates-name a {
+  color: var(--blue);
+}
+
+.instructor-candidates-reason {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+@media (max-width: 760px) {
+  .instructor-candidates > li {
+    grid-template-columns: 1fr;
+  }
 }

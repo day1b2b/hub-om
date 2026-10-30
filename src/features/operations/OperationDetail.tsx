@@ -9,6 +9,8 @@ import { RoundOrderCell } from "./RoundOrderCell";
 import { RoundReorderProvider } from "./RoundReorderProvider";
 import { EditAllRoundsProvider } from "./EditAllRoundsProvider";
 import { EditableCourseNameItem } from "./EditableCourseNameItem";
+import { EditableCourseLectureManagementRow } from "./EditableCourseLectureManagementRow";
+import { EditableCourseReportLinkRow } from "./EditableCourseReportLinkRow";
 import { EditableInfoItem } from "./EditableInfoItem";
 import { EditableOnsiteOmCell } from "./EditableOnsiteOmCell";
 import { EditableResourceRow } from "./EditableResourceRow";
@@ -18,8 +20,9 @@ import { EditableSessionRegionCell } from "./EditableSessionRegionCell";
 import { EditableSessionScheduleCell } from "./EditableSessionScheduleCell";
 import { EditableToolsItem } from "./EditableToolsItem";
 import { InstructorContractRequestSection } from "./InstructorContractRequestSection";
+import { InstructorCandidatesSection } from "./InstructorCandidatesSection";
+import type { InstructorRecommendation } from "@/features/wiki/instructorRecommendation";
 import { CourseNotesWorkspace } from "./CourseNotesWorkspace";
-import { LectureManagementNoteRow } from "./LectureManagementNoteRow";
 import { OnsiteRequiredConditionSelect } from "./OnsiteRequiredConditionSelect";
 import { OperationDiscussionPanel } from "./OperationDiscussionPanel";
 import { ResultReportConditionSelect } from "./ResultReportConditionSelect";
@@ -53,6 +56,8 @@ interface OperationDetailProps {
   collaboration: OperationCollaboration;
   extraTools?: string[];
   instructorOptions?: string[];
+  /** 과정 카테고리 기준 후보 강사. 서버에서 계산해 넘긴다. */
+  instructorRecommendation?: InstructorRecommendation;
   onsiteOmOptions?: string[];
   operation: OperationSession;
   personOptions?: PersonOptions;
@@ -66,6 +71,7 @@ export function OperationDetail({
   collaboration,
   extraTools = [],
   instructorOptions = [],
+  instructorRecommendation,
   onsiteOmOptions,
   operation,
   personOptions = { ld: [], om: [] },
@@ -77,6 +83,7 @@ export function OperationDetail({
   const courseGroups = getCourseGroups(operation, sameCourseIdOperations);
   const educationFormatText = aggregateUniqueValues(courseOperations, (candidate) => candidate.educationFormat);
   const requiredArchiveItems = getRequiredArchiveItems(operation);
+  const courseRecordId = operation.courseRecordId ?? "";
   const completedArchiveItems = requiredArchiveItems.filter((archiveItem) => archiveItem.done);
   const satisfactionSummary = getSatisfactionSummary(courseOperations);
   const teamQuery = teamScopeSearchParam(teamScope);
@@ -262,6 +269,16 @@ export function OperationDetail({
                         value={archiveItem.value}
                       />
                     ))}
+                    {courseRecordId ? (
+                      <>
+                        <EditableCourseReportLinkRow courseRecordId={courseRecordId} value={operation.courseResultReportLink ?? ""} />
+                        <EditableCourseLectureManagementRow
+                          courseRecordId={courseRecordId}
+                          lectureManagementLink={operation.courseLectureManagementLink ?? ""}
+                          lectureManagementNote={operation.courseLectureManagementNote ?? ""}
+                        />
+                      </>
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -314,9 +331,7 @@ export function OperationDetail({
                     <th>실습코치</th>
                     <th>만족도</th>
                     <th>결과보고서 여부</th>
-                    <th>결과보고서</th>
                     <th>패들렛</th>
-                    <th>강의관리</th>
                     <th>삭제</th>
                   </tr>
                 </thead>
@@ -377,20 +392,6 @@ export function OperationDetail({
                         hasResultReport={courseOperation.hasResultReport}
                         operationId={courseOperation.operationId}
                       />
-                      {courseOperation.hasResultReport === "불필요" ? (
-                        <td className="round-resource-cell" />
-                      ) : (
-                        <EditableRoundResourceCell
-                          companionDoneValue="유"
-                          companionField="hasResultReport"
-                          companionMissingValue="무"
-                          done={courseOperation.hasResultReport === "유"}
-                          field="resultReportLink"
-                          label="결과보고서"
-                          operationId={courseOperation.operationId}
-                          value={courseOperation.resultReportLink}
-                        />
-                      )}
                       <EditableRoundResourceCell
                         done={isNavigableHref(courseOperation.padletLink)}
                         field="padletLink"
@@ -398,15 +399,6 @@ export function OperationDetail({
                         operationId={courseOperation.operationId}
                         value={courseOperation.padletLink}
                       />
-                      <td>
-                        <LectureManagementNoteRow
-                          done={Boolean(courseOperation.lectureManagementNote.trim())}
-                          educationDates={courseOperation.educationDates}
-                          operationId={courseOperation.operationId}
-                          startDate={courseOperation.startDate}
-                          value={courseOperation.lectureManagementNote}
-                        />
-                      </td>
                       <td>
                         <DeleteRoundButton
                           fallbackOperationId={fallbackOperationId}
@@ -428,6 +420,7 @@ export function OperationDetail({
             </EditAllRoundsProvider>
           </section>
           <InstructorContractRequestSection courseOperations={courseOperations} />
+          {instructorRecommendation ? <InstructorCandidatesSection recommendation={instructorRecommendation} /> : null}
           <CourseNotesWorkspace
             className="wide-detail-section"
             commonNote={operation.courseCommonNote}

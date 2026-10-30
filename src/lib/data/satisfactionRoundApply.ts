@@ -30,6 +30,7 @@ export interface RoundApplyTarget {
   companyName?: string | null;
   courseName?: string | null;
   avgSatisfaction?: string | null;
+  instructorSatisfaction?: string | null;
 }
 
 export interface RoundApplyDecision {
@@ -116,4 +117,26 @@ export function planRoundApply(
     value,
     previous: previous || null
   };
+}
+
+/**
+ * 강사 만족도(강사 3성분 평균)를 같이 쓸지 정한다. 쓸 값이면 문자열, 아니면 null.
+ *   - 종합 만족도를 쓰는 경우(write)에는 지금처럼 같이 쓴다.
+ *   - 종합이 이미 같은 값이라 쓰지 않는 경우(same)에는 ★강사 만족도 칸이 비어 있을 때만 채운다.
+ *     강사 만족도 칸이 생기기 전(2026-09-23)에 반영된 회차를 다시 보냈을 때 강사 값만 빠지는 것을 막는다.
+ *     이미 있는 강사 값은 바꾸지 않는다.
+ *   - 그 밖(모호·미매칭·종합 비어 있음 등)에는 쓰지 않는다.
+ *   - 5점 척도 밖이거나 숫자가 아니면 쓰지 않는다.
+ */
+export function planInstructorSatisfaction(
+  decision: RoundApplyDecision,
+  instructorSatisfaction: string | null | undefined,
+  current: RoundApplyTarget | undefined
+): string | null {
+  const value = (instructorSatisfaction ?? "").trim();
+  const score = Number.parseFloat(value);
+  if (!value || !Number.isFinite(score) || score <= 0 || score > 5) return null;
+  if (decision.write) return value;
+  if (decision.status === "same" && current && !(current.instructorSatisfaction ?? "").trim()) return value;
+  return null;
 }
