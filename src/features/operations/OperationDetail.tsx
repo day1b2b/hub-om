@@ -8,6 +8,7 @@ import { DeleteRoundButton } from "./DeleteRoundButton";
 import { RoundOrderCell } from "./RoundOrderCell";
 import { RoundReorderProvider } from "./RoundReorderProvider";
 import { EditAllRoundsProvider } from "./EditAllRoundsProvider";
+import { courseLinkValue } from "./courseLinkSource";
 import { CourseResultReportStatusRow } from "./CourseResultReportStatusRow";
 import { EditableTitleCompany } from "./EditableTitleCompany";
 import { EditableCourseNameItem } from "./EditableCourseNameItem";
@@ -83,7 +84,7 @@ export function OperationDetail({
   const courseOperations = getCourseOperations(operation, relatedOperations);
   const courseGroups = getCourseGroups(operation, sameCourseIdOperations);
   const educationFormatText = aggregateUniqueValues(courseOperations, (candidate) => candidate.educationFormat);
-  const requiredArchiveItems = getRequiredArchiveItems(operation);
+  const requiredArchiveItems = getRequiredArchiveItems(courseOperations);
   const courseRecordId = operation.courseRecordId ?? "";
   const completedArchiveItems = requiredArchiveItems.filter((archiveItem) => archiveItem.done);
   const satisfactionSummary = getSatisfactionSummary(courseOperations);
@@ -265,7 +266,7 @@ export function OperationDetail({
                         key={archiveItem.label}
                         label={archiveItem.label}
                         missingText={archiveItem.missingText}
-                        operationId={operation.operationId}
+                        operationIds={courseOperationIds}
                         placeholder="https://"
                         value={archiveItem.value}
                       />
@@ -537,25 +538,29 @@ function LectureReportsByRound({
   );
 }
 
-function getRequiredArchiveItems(operation: OperationSession): ArchiveReadinessItem[] {
+// 드라이브·싱크업은 과정 단위 값으로 보여 준다(courseLinkSource.ts) — 지금 회차에만 값이 없다고 "링크 없음"이 되지 않게.
+function getRequiredArchiveItems(courseOperations: OperationSession[]): ArchiveReadinessItem[] {
+  const drive = courseLinkValue(courseOperations, "driveLink");
+  const syncup = courseLinkValue(courseOperations, "operationDetail");
+
   return [
     {
-      done: Boolean(operation.driveLink),
+      done: Boolean(drive),
       doneText: "등록됨",
       field: "driveLink",
-      href: operation.driveLink,
+      href: drive,
       label: "드라이브",
       missingText: "링크 없음",
-      value: operation.driveLink
+      value: drive
     },
     {
-      done: Boolean(operation.operationDetail),
+      done: Boolean(syncup),
       doneText: "등록됨",
       field: "operationDetail",
-      href: operation.operationDetail,
+      href: syncup,
       label: "싱크업",
       missingText: "링크 없음",
-      value: operation.operationDetail
+      value: syncup
     }
   ];
 }
