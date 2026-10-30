@@ -373,6 +373,7 @@ export class LocalJsonOperationRepository implements OperationRepository {
       archiveStatus: input.archiveStatus ?? operation.archiveStatus,
       avgSatisfaction: normalizeOptionalText(input.avgSatisfaction, operation.avgSatisfaction),
       coach: normalizeOptionalText(input.coach, operation.coach),
+      companyName: normalizeOptionalText(input.companyName, operation.companyName) || operation.companyName,
       companyWikiLink: normalizeOptionalText(input.companyWikiLink, operation.companyWikiLink),
       costRaw: normalizeOptionalText(input.costRaw, operation.costRaw),
       courseCategory: normalizeOptionalText(input.courseCategory, operation.courseCategory),

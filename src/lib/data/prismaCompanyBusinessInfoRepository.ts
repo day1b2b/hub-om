@@ -1,6 +1,6 @@
 import { getPrismaClient } from "./prisma";
 import type { CompanyBusinessInfoRepository } from "./companyBusinessInfoRepository";
-import type { CompanyBusinessInfo, CompanyBusinessInfoPatch } from "./companyBusinessInfoTypes";
+import { touchesBusinessInfo, type CompanyBusinessInfo, type CompanyBusinessInfoPatch } from "./companyBusinessInfoTypes";
 
 /** 빈 문자열/null은 "지웠다"는 뜻으로 null로, undefined는 "건드리지 않음"으로 둔다. */
 function normalizeValue(value: string | null | undefined): string | null | undefined {
@@ -18,6 +18,7 @@ const SELECT = {
   businessItem: true,
   invoiceEmail: true,
   invoiceEmailSecondary: true,
+  memo: true,
   businessInfoUpdatedAt: true,
   businessInfoUpdatedBy: true
 } as const;
@@ -30,6 +31,7 @@ function toBusinessInfo(row: {
   businessItem: string | null;
   invoiceEmail: string | null;
   invoiceEmailSecondary: string | null;
+  memo: string | null;
   businessInfoUpdatedAt: Date | null;
   businessInfoUpdatedBy: string | null;
 }): CompanyBusinessInfo {
@@ -41,6 +43,7 @@ function toBusinessInfo(row: {
     businessItem: row.businessItem,
     invoiceEmail: row.invoiceEmail,
     invoiceEmailSecondary: row.invoiceEmailSecondary,
+    memo: row.memo,
     businessInfoUpdatedAt: row.businessInfoUpdatedAt?.toISOString() ?? null,
     businessInfoUpdatedBy: row.businessInfoUpdatedBy
   };
@@ -63,8 +66,8 @@ export class PrismaCompanyBusinessInfoRepository implements CompanyBusinessInfoR
         businessItem: normalizeValue(patch.businessItem),
         invoiceEmail: normalizeValue(patch.invoiceEmail),
         invoiceEmailSecondary: normalizeValue(patch.invoiceEmailSecondary),
-        businessInfoUpdatedAt: new Date(),
-        businessInfoUpdatedBy: updatedBy
+        memo: normalizeValue(patch.memo),
+        ...(touchesBusinessInfo(patch) ? { businessInfoUpdatedAt: new Date(), businessInfoUpdatedBy: updatedBy } : {})
       },
       select: SELECT
     });

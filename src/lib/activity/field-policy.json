@@ -17,7 +17,9 @@
       "invoice_email_secondary",
       "invoice_email_secondary_pii_index",
       "business_info_updated_at",
-      "business_info_updated_by"
+      "business_info_updated_by",
+      "memo",
+      "memo_pii_index"
     ]
   },
   "courses": {

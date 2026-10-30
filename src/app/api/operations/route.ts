@@ -2,6 +2,7 @@ import { operationSubmissionSubjectConflict } from "@/lib/auth/operationSubmissi
 import { operationCreationIdentity, OperationCreationConflict } from "@/lib/data/operationCreationIdentity";
 import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server.js";
+import { companyNameError } from "@/lib/data/companyName";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { isAssignedOm, parseEducationDatesText } from "@/lib/data/operationCalculations";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
@@ -56,6 +57,11 @@ async function activityPOST(request: Request) {
 
   if (!companyName || !courseName) {
     return NextResponse.json({ ok: false, creationNotStarted: true, error: "기업명과 과정명은 필수입니다." }, { status: 400 });
+  }
+
+  const companyError = companyNameError(companyName);
+  if (companyError) {
+    return NextResponse.json({ ok: false, creationNotStarted: true, error: companyError }, { status: 400 });
   }
 
   if (!roundNo || !startDate || !endDate) {

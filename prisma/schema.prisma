@@ -129,6 +129,9 @@ model Company {
   businessInfoUpdatedAt DateTime? @map("business_info_updated_at")
   businessInfoUpdatedBy String?   @map("business_info_updated_by")
 
+  // 기업위키 상세의 자유 메모(OM/LD 공용). 자유 입력이라 개인정보가 섞일 수 있어 암호화한다.
+  memo String? @map("memo")
+
   courses Course[]
 
   // Application encryption lookup/storage columns; never expose these in API responses.
@@ -137,6 +140,7 @@ model Company {
   addressPiiIndex               String? @map("address_pii_index")
   invoiceEmailPiiIndex          String? @map("invoice_email_pii_index")
   invoiceEmailSecondaryPiiIndex String? @map("invoice_email_secondary_pii_index")
+  memoPiiIndex                  String? @map("memo_pii_index")
 
   @@map("companies")
 }
