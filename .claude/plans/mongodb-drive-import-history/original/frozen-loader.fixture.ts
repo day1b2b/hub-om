@@ -22,7 +22,7 @@ export function verifyClosure() {
     const actual = createHash("sha256").update(readFileSync(new URL(`../../../../${origin}`, import.meta.url))).digest("hex");
     const approved = origin === "prisma/schema.prisma"
       ? new Set([entries.get(origin)!.sha256, "cb2dc13281d74c7e52c04fb65f7a2940f0c249a9fe9d301f049c22548b37c26c", "a357b1bb4ed0ed31147faff0417efe777adbb39c593be9266622f430266019e5"])
-      :  : origin === "package.json"
+      : origin === "package.json"
         ? new Set([entries.get(origin)!.sha256, "2a80a931b7e515470a19dbfda223adb8134fba7d56aec3033312bb1a8c41522a"])
         : new Set([entries.get(origin)!.sha256]);
     assert.ok(approved.has(actual), `actual runtime drift: ${origin}`);
