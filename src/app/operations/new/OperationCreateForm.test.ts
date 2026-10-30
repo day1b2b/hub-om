@@ -78,6 +78,7 @@ function harness(options: { pending?: submission.OperationSubmission; readFailur
     "@/components/BrowserDraftProvider": { useBrowserDraftSession: () => session },
     "@/components/MultiDateCalendar": { MultiDateCalendar: "calendar" },
     "@/features/operations/parsePastedRounds": rounds,
+    "@/lib/data/omRequest/omCourseCategoryOptions": { COURSE_CATEGORY_GROUPS: [] },
     "@/lib/data/operationCalculations": { enumerateDateRange: () => [] },
     "@/lib/teamScope": { teamScopeSearchParam: () => "?team=team_1" }
   };

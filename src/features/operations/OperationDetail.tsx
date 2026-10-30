@@ -19,6 +19,8 @@ import { EditableSessionRegionCell } from "./EditableSessionRegionCell";
 import { EditableSessionScheduleCell } from "./EditableSessionScheduleCell";
 import { EditableToolsItem } from "./EditableToolsItem";
 import { InstructorContractRequestSection } from "./InstructorContractRequestSection";
+import { InstructorCandidatesSection } from "./InstructorCandidatesSection";
+import type { InstructorRecommendation } from "@/features/wiki/instructorRecommendation";
 import { CourseNotesWorkspace } from "./CourseNotesWorkspace";
 import { LectureManagementNoteRow } from "./LectureManagementNoteRow";
 import { OnsiteRequiredConditionSelect } from "./OnsiteRequiredConditionSelect";
@@ -53,6 +55,8 @@ interface OperationDetailProps {
   collaboration: OperationCollaboration;
   extraTools?: string[];
   instructorOptions?: string[];
+  /** 과정 카테고리 기준 후보 강사. 서버에서 계산해 넘긴다. */
+  instructorRecommendation?: InstructorRecommendation;
   onsiteOmOptions?: string[];
   operation: OperationSession;
   personOptions?: PersonOptions;
@@ -66,6 +70,7 @@ export function OperationDetail({
   collaboration,
   extraTools = [],
   instructorOptions = [],
+  instructorRecommendation,
   onsiteOmOptions,
   operation,
   personOptions = { ld: [], om: [] },
@@ -427,6 +432,7 @@ export function OperationDetail({
             </EditAllRoundsProvider>
           </section>
           <InstructorContractRequestSection courseOperations={courseOperations} />
+          {instructorRecommendation ? <InstructorCandidatesSection recommendation={instructorRecommendation} /> : null}
           <CourseNotesWorkspace
             className="wide-detail-section"
             commonNote={operation.courseCommonNote}

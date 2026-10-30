@@ -7,6 +7,7 @@ import { isAssignedOm, parseEducationDatesText } from "@/lib/data/operationCalcu
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { EDUCATION_FORMAT_BY_TRAINING_TYPE } from "@/lib/data/omRequest/omRequestOperationLink";
 import type { TrainingType } from "@/lib/data/omRequest/omRequestTypes";
+import { getCourseCategoryMajor } from "@/lib/data/omRequest/omCourseCategoryOptions";
 import type { CreateOperationInput, EducationFormat, OnsiteRequired } from "@/lib/data/operationTypes";
 import { runOperationWriteRequest } from "@/lib/data/operationWriteComposition";
 
@@ -17,6 +18,7 @@ const ONSITE_REQUIRED: OnsiteRequired[] = ["Y", "N"];
 interface CreateCourseBody {
   coach?: unknown;
   companyName?: unknown;
+  courseCategory?: unknown;
   courseId?: unknown;
   courseName?: unknown;
   driveLink?: unknown;
@@ -81,6 +83,8 @@ async function activityPOST(request: Request) {
       companyName,
       companyWikiLink: "",
       costRaw: "",
+      // 목록(소분류)에 있는 값만 받는다. 비었거나 모르는 값이면 넣지 않아 기존 과정 값을 건드리지 않는다.
+      ...(getCourseCategoryMajor(textValue(body.courseCategory)) ? { courseCategory: textValue(body.courseCategory) } : {}),
       courseId: textValue(body.courseId),
       courseName,
       createdBy: session.user?.email ?? undefined,
