@@ -13959,6 +13959,23 @@ button.coach-doc-reserve-chip:disabled {
   color: #b3382c;
 }
 
+.coach-link-mail-cell {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.coach-link-mail-cell button {
+  white-space: nowrap;
+}
+
+.coach-link-mail-warning {
+  color: #8c7436;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 /* 코치 상세 - 메모 */
 .coach-notes-panel {
   display: grid;

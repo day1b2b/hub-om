@@ -8,6 +8,7 @@ import { getCoachPrivateRepository } from "./coachPrivateRepositoryFactory";
 import { getInstructorPrivateRepository } from "./instructorPrivateRepositoryFactory";
 import { getDataRepositoryOverride } from "./dataRepositoryContext";
 import { getPrismaClient } from "./prisma";
+import { LINK_MAIL_CONTEXT } from "../coaches/coachLinkMail";
 
 export type PiiEntity = "coach" | "instructor";
 
@@ -62,5 +63,16 @@ export async function revealPiiField(
   const profile = await getInstructorPrivateRepository().getPrivateProfile(id);
   if (!profile) return null;
   const value = profile[field as keyof InstructorPrivateProfileView];
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+/**
+ * 코치 일정 입력 링크 안내 메일용 이메일 열람. 일반 열람과 같은 감사 테이블에 남기되 context를
+ * "link_mail"로 적어, 같은 기록이 "안내 메일 작성창을 열었다"는 이력도 된다(스키마 변경 없음).
+ */
+export async function revealCoachEmailForLinkMail(id: string, accessedByEmail: string): Promise<string | null> {
+  await recordReveal("coach", id, LINK_MAIL_CONTEXT, accessedByEmail);
+  const profile = await getCoachPrivateRepository().getPrivateProfile(id);
+  const value = profile?.email;
   return typeof value === "string" && value.length > 0 ? value : null;
 }
