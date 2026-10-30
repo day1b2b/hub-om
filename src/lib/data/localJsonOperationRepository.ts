@@ -17,6 +17,7 @@ import type {
   CourseLookupCandidate,
   CourseCommonNote,
   CourseCommonNoteInput,
+  CourseLectureManagementInput,
   CreateOperationInput,
   OperationSession,
   ResultReportStatus,
@@ -222,6 +223,26 @@ export class LocalJsonOperationRepository implements OperationRepository {
   }
 
   /** 로컬 JSON 저장소에는 별도 Course 행이 없어, 같은 과정을 공유하는 모든 회차 행에 값을 복제해 둔다. */
+  async upsertCourseReportLink(courseRecordId: string, resultReportLink: string): Promise<string> {
+    return this.serializeWrite(async () => {
+      const operations = await this.listOperations();
+      const value = normalizeVisibleText(resultReportLink);
+      await this.writeOperations(operations.map(operation => operation.courseRecordId === courseRecordId ? { ...operation, courseResultReportLink: value } : operation));
+      return value;
+    });
+  }
+
+  async upsertCourseLectureManagement(courseRecordId: string, input: CourseLectureManagementInput): Promise<CourseLectureManagementInput> {
+    return this.serializeWrite(async () => {
+      const operations = await this.listOperations();
+      const value = { lectureManagementLink: normalizeVisibleText(input.lectureManagementLink), lectureManagementNote: normalizeVisibleText(input.lectureManagementNote) };
+      await this.writeOperations(operations.map(operation => operation.courseRecordId === courseRecordId
+        ? { ...operation, courseLectureManagementLink: value.lectureManagementLink, courseLectureManagementNote: value.lectureManagementNote }
+        : operation));
+      return value;
+    });
+  }
+
   async upsertCourseResultReportStatus(courseRecordId: string, hasResultReport: ResultReportStatus): Promise<ResultReportStatus> {
     return this.serializeWrite(async () => {
       const operations = await this.listOperations();

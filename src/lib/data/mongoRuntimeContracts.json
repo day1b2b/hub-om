@@ -158,6 +158,27 @@
         "uuid": false,
         "dateOnly": false
       },
+      "resultReportLink": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "lectureManagementLink": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "lectureManagementNote": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
       "hasResultReport": {
         "type": "ResultReportStatus",
         "nullable": true,
@@ -181,6 +202,27 @@
       "updatedAt": {
         "type": "DateTime",
         "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "resultReportLinkPiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "lectureManagementLinkPiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "lectureManagementNotePiiIndex": {
+        "type": "String",
+        "nullable": true,
         "list": false,
         "uuid": false,
         "dateOnly": false

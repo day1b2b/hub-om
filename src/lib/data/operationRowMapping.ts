@@ -24,6 +24,10 @@ export interface OperationCourseRow {
     operationIssue: string | null;
     omUpdate: string | null;
   } | null;
+  /** 과정 레벨 결과보고서/강의관리. 회차(OperationSession)의 동일 필드와 별개다. */
+  resultReportLink?: string | null;
+  lectureManagementLink?: string | null;
+  lectureManagementNote?: string | null;
   /** 과정 레벨 결과보고서 여부. 아직 승격되지 않았으면 null이다. */
   hasResultReport?: string | null;
   company: OperationCompanyRow;
@@ -206,6 +210,9 @@ export function toOperationSession(session: OperationSessionRow, courseIdLabel: 
     courseCategory: session.course.courseCategory ?? "",
     tools: session.course.tools ?? "",
     ...(session.course.commonNote ? { courseCommonNote: toCourseCommonNote(session.course.commonNote) } : {}),
+    courseResultReportLink: session.course.resultReportLink ?? "",
+    courseLectureManagementLink: session.course.lectureManagementLink ?? "",
+    courseLectureManagementNote: session.course.lectureManagementNote ?? "",
     ...(session.course.hasResultReport ? { courseHasResultReport: RESULT_REPORT_STATUS[session.course.hasResultReport] } : {}),
     om: session.omName ?? "",
     ld: session.ldName ?? "",

@@ -1,6 +1,7 @@
 import type {
   CourseCommonNote,
   CourseCommonNoteInput,
+  CourseLectureManagementInput,
   CourseLookupCandidate,
   CreateOperationInput,
   OperationSession,
@@ -23,6 +24,14 @@ export interface OperationRepository {
   getOperationCreatedAt(operationId: string): Promise<Date | null>;
   upsertCourseCommonNote(courseRecordId: string, input: CourseCommonNoteInput, actorEmail?: string): Promise<CourseCommonNote>;
   deleteCourseCommonNote(courseRecordId: string, actorEmail?: string): Promise<void>;
+  /** 과정(Course) 레벨 결과보고서 링크. 같은 과정의 모든 회차가 이 값을 공유한다. */
+  upsertCourseReportLink(courseRecordId: string, resultReportLink: string, actorEmail?: string): Promise<string>;
+  /** 과정(Course) 레벨 강의관리 링크/메모. 두 필드를 항상 함께 쓴다(courseCommonNote와 같은 전체 교체 방식). */
+  upsertCourseLectureManagement(
+    courseRecordId: string,
+    input: CourseLectureManagementInput,
+    actorEmail?: string
+  ): Promise<CourseLectureManagementInput>;
   /** 과정(Course) 레벨 결과보고서 여부. 같은 과정의 모든 회차가 이 값을 공유한다. */
   upsertCourseResultReportStatus(courseRecordId: string, hasResultReport: ResultReportStatus, actorEmail?: string): Promise<ResultReportStatus>;
   createOperation(input: CreateOperationInput): Promise<OperationSession>;

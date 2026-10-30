@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { MongoServerError, type ClientSession } from "mongodb";
 import type { OperationRepository } from "./operationRepository";
-import type { CourseCommonNote, CourseCommonNoteInput, CreateOperationInput, OperationSession, ResultReportStatus, UpdateOperationInput } from "./operationTypes";
+import type { CourseCommonNote, CourseCommonNoteInput, CourseLectureManagementInput, CreateOperationInput, OperationSession, ResultReportStatus, UpdateOperationInput } from "./operationTypes";
 import { assertCreationReplay, creationOperationId, creationOperationPrefix } from "./operationCreationIdentity";
 import { buildOperationMonth, deriveDateRangeFromEducationDates, deriveSessionDurationDays, deriveSessionDurationType, normalizeCourseId, operationStatusAfterOmChange, summarizeOperations } from "./operationCalculations";
 import { normalizeLookupName, selectCoursesByCompany, selectCoursesByCourseId, type CourseLookupRow } from "./courseLookup";
@@ -126,6 +126,22 @@ export class MongoOperationRepository implements OperationRepository {
   }
   async deleteCourseCommonNote(courseRecordId: string, actorEmail?: string): Promise<void> {
     await this.transaction(async session => { const previous = await this.store.one("CourseCommonNote", { courseRecordId, deletedAt: null }, session); if (previous) await this.write("CourseCommonNote", { ...previous, deletedAt: new Date(), deletedBy: actorEmail ?? null, updatedAt: new Date(), updatedBy: actorEmail ?? previous.updatedBy }, previous, session); }, true);
+  }
+  async upsertCourseReportLink(courseRecordId: string, resultReportLink: string): Promise<string> {
+    return this.transaction(async session => {
+      const previous = await this.store.one("Course", { _id: courseRecordId }, session);
+      assertMongo(previous, "MISSING_COURSE");
+      const row = await this.write("Course", { ...previous, resultReportLink: nullableText(resultReportLink), updatedAt: new Date() }, previous, session);
+      return (row.resultReportLink as string | null) ?? "";
+    }, true);
+  }
+  async upsertCourseLectureManagement(courseRecordId: string, input: CourseLectureManagementInput): Promise<CourseLectureManagementInput> {
+    return this.transaction(async session => {
+      const previous = await this.store.one("Course", { _id: courseRecordId }, session);
+      assertMongo(previous, "MISSING_COURSE");
+      const row = await this.write("Course", { ...previous, lectureManagementLink: nullableText(input.lectureManagementLink), lectureManagementNote: nullableText(input.lectureManagementNote), updatedAt: new Date() }, previous, session);
+      return { lectureManagementLink: (row.lectureManagementLink as string | null) ?? "", lectureManagementNote: (row.lectureManagementNote as string | null) ?? "" };
+    }, true);
   }
   async upsertCourseResultReportStatus(courseRecordId: string, hasResultReport: ResultReportStatus): Promise<ResultReportStatus> {
     return this.transaction(async session => {

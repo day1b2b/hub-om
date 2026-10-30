@@ -9,6 +9,7 @@ import type { OperationRepository } from "./operationRepository";
 import type {
   CourseCommonNote,
   CourseCommonNoteInput,
+  CourseLectureManagementInput,
   CourseLookupCandidate,
   CreateOperationInput,
   OperationSession,
@@ -78,6 +79,15 @@ export class CalendarReflectingOperationRepository implements OperationRepositor
 
   deleteCourseCommonNote(courseRecordId: string, actorEmail?: string): Promise<void> {
     return this.inner.deleteCourseCommonNote(courseRecordId, actorEmail);
+  }
+
+  upsertCourseReportLink(courseRecordId: string, resultReportLink: string, actorEmail?: string): Promise<string> {
+    // 결과보고서/강의관리 링크는 일정과 무관해 캘린더에 반영할 것이 없다.
+    return this.inner.upsertCourseReportLink(courseRecordId, resultReportLink, actorEmail);
+  }
+
+  upsertCourseLectureManagement(courseRecordId: string, input: CourseLectureManagementInput, actorEmail?: string): Promise<CourseLectureManagementInput> {
+    return this.inner.upsertCourseLectureManagement(courseRecordId, input, actorEmail);
   }
 
   upsertCourseResultReportStatus(courseRecordId: string, hasResultReport: ResultReportStatus, actorEmail?: string): Promise<ResultReportStatus> {

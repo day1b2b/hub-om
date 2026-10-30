@@ -134,5 +134,7 @@
   "POST /api/admin/coach-portal-diagnosis/reservation-index": "tracked",
   "GET /api/admin/activity/usage": "excluded: 이용 현황을 확인하는 조회 자체는 이용 통계에 포함하지 않음",
   "PUT /api/operations/[operationId]/common-note": "공통 메모 저장",
+  "PUT /api/courses/[courseRecordId]/report-link": "과정 레벨 결과보고서 링크 저장",
+  "PUT /api/courses/[courseRecordId]/lecture-management": "과정 레벨 강의관리 링크/메모 저장",
   "PUT /api/courses/[courseRecordId]/result-report-status": "과정 레벨 결과보고서 여부 저장"
 }
