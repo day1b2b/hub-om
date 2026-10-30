@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { MultiDateCalendar } from "@/components/MultiDateCalendar";
 import { parsePastedRounds, type ParsedRound } from "@/features/operations/parsePastedRounds";
 import type { TrainingType } from "@/lib/data/omRequest/omRequestTypes";
+import { COURSE_CATEGORY_GROUPS } from "@/lib/data/omRequest/omCourseCategoryOptions";
 import { enumerateDateRange } from "@/lib/data/operationCalculations";
 import { teamScopeSearchParam, type TeamScope } from "@/lib/teamScope";
 
@@ -58,6 +59,8 @@ export function OperationCreateForm({ expectedSubject, initialValues = {}, perso
   const [companyName, setCompanyName] = useState(initialValues.companyName ?? "");
   const [courseName, setCourseName] = useState(initialValues.courseName ?? "");
   const [courseId, setCourseId] = useState(initialValues.courseId ?? "");
+  // 과정 카테고리(소분류). 업무요청 폼·과정 상세와 같은 목록이며, 후보 강사 추천의 기준이 된다.
+  const [courseCategory, setCourseCategory] = useState("");
   const [omNames, setOmNames] = useState<string[]>([""]);
   const [ldNames, setLdNames] = useState<string[]>([""]);
   const [trainingType, setTrainingType] = useState<TrainingType>(initialValues.trainingType ?? "오프라인");
@@ -164,6 +167,19 @@ export function OperationCreateForm({ expectedSubject, initialValues = {}, perso
           <label>
             <span>과정명</span>
             <input onChange={(event) => setCourseName(event.target.value)} value={courseName} />
+          </label>
+          <label>
+            <span>과정 카테고리</span>
+            <select onChange={(event) => setCourseCategory(event.target.value)} value={courseCategory}>
+              <option value="">미정</option>
+              {COURSE_CATEGORY_GROUPS.map((group) => (
+                <optgroup key={group.major} label={group.major}>
+                  {group.minors.map((minor) => (
+                    <option key={minor} value={minor}>{minor}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
           </label>
           <label>
             <span>교육형태</span>
@@ -378,7 +394,7 @@ export function OperationCreateForm({ expectedSubject, initialValues = {}, perso
           };
           return index === 0 ? {
             ...common,
-            companyName: companyName.trim(), courseId: courseId.trim(), courseName: courseName.trim(),
+            companyName: companyName.trim(), courseId: courseId.trim(), courseName: courseName.trim(), courseCategory,
             driveLink: initialValues.driveLink ?? "", educationDays: initialValues.educationDays ?? "",
             ld: ldNames.filter(Boolean).join(", "), om: omNames.filter(Boolean).join(", "),
             onsiteRequired, operationDetail: initialValues.operationDetail ?? "", trainingType
