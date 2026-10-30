@@ -53,7 +53,9 @@
       "representativeNamePiiIndex": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
       "addressPiiIndex": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
       "invoiceEmailPiiIndex": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
-      "invoiceEmailSecondaryPiiIndex": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false}
+      "invoiceEmailSecondaryPiiIndex": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
+      "memo": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
+      "memoPiiIndex": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false}
     },
     "references": [],
     "uniqueKeys": [
@@ -178,6 +180,19 @@
         "list": false,
         "uuid": false,
         "dateOnly": false
+      },
+      "hasResultReport": {
+        "type": "ResultReportStatus",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false,
+        "values": [
+          "YES",
+          "NO",
+          "NOT_REQUIRED",
+          "NEEDS_REVIEW"
+        ]
       },
       "createdAt": {
         "type": "DateTime",

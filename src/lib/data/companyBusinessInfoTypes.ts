@@ -11,6 +11,8 @@ export interface CompanyBusinessInfo {
   businessItem: string | null;
   invoiceEmail: string | null;
   invoiceEmailSecondary: string | null;
+  /** 기업위키 상세의 자유 메모. 사업자등록증 정보와 같이 저장되지만 계산서 폼에는 쓰지 않는다. */
+  memo: string | null;
   businessInfoUpdatedAt: string | null;
   businessInfoUpdatedBy: string | null;
 }
@@ -18,7 +20,7 @@ export interface CompanyBusinessInfo {
 export type CompanyBusinessInfoPatch = Partial<
   Pick<
     CompanyBusinessInfo,
-    "businessNumber" | "representativeName" | "address" | "businessType" | "businessItem" | "invoiceEmail" | "invoiceEmailSecondary"
+    "businessNumber" | "representativeName" | "address" | "businessType" | "businessItem" | "invoiceEmail" | "invoiceEmailSecondary" | "memo"
   >
 >;
 
@@ -31,7 +33,26 @@ export function emptyCompanyBusinessInfo(): CompanyBusinessInfo {
     businessItem: null,
     invoiceEmail: null,
     invoiceEmailSecondary: null,
+    memo: null,
     businessInfoUpdatedAt: null,
     businessInfoUpdatedBy: null
   };
+}
+
+/** 기업 메모 글자 수 상한. 화면(textarea)과 저장 API가 같이 쓴다. */
+export const COMPANY_MEMO_MAX_LENGTH = 10_000;
+
+const BUSINESS_INFO_FIELDS = [
+  "businessNumber",
+  "representativeName",
+  "address",
+  "businessType",
+  "businessItem",
+  "invoiceEmail",
+  "invoiceEmailSecondary"
+] as const;
+
+/** 메모 외의 사업자등록증 항목이 하나라도 patch에 들어 있는지. 메모만 고친 경우엔 수정 시각/수정자를 그대로 둔다. */
+export function touchesBusinessInfo(patch: CompanyBusinessInfoPatch): boolean {
+  return BUSINESS_INFO_FIELDS.some((key) => patch[key] !== undefined);
 }

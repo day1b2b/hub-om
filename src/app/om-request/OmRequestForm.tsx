@@ -1,6 +1,7 @@
 "use client";
 
 import Script from "next/script";
+import { companyNameError } from "@/lib/data/companyName";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MultiDateCalendar } from "@/components/MultiDateCalendar";
@@ -230,6 +231,7 @@ function CompanyCombobox({
   const matches = q ? knownCompanies.filter((c) => c.toLowerCase().includes(q)) : knownCompanies;
   const visibleMatches = matches.slice(0, 20);
   const isNewCompany = q !== "" && !knownCompanies.some((c) => c.toLowerCase() === q);
+  const hasSpace = /\s/.test(value.trim());
 
   // 검색어가 바뀌거나 드롭다운을 다시 열면 이전 활성 항목 인덱스는 의미가 없어지므로 되돌린다.
   if (resetKey.open !== open || resetKey.q !== q) {
@@ -291,7 +293,11 @@ function CompanyCombobox({
           ))}
         </div>
       )}
-      {isNewCompany && <p className="om-field-hint om-company-new-hint">이 표기로 접수된 적이 없어요. 오타가 아니라면 이대로 접수해주세요.</p>}
+      {hasSpace ? (
+        <p className="om-field-hint om-company-new-hint om-company-space-error">기업명에는 띄어쓰기를 넣을 수 없어요. 예: 도레이첨단소재주식회사</p>
+      ) : isNewCompany ? (
+        <p className="om-field-hint om-company-new-hint">이 표기로 접수된 적이 없어요. 오타가 아니라면 이대로 접수해주세요.</p>
+      ) : null}
     </div>
   );
 }
@@ -530,6 +536,12 @@ export function OmRequestForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    // 서버와 같은 규칙. 기존에 띄어쓰기로 접수된 요청은 기업명을 바꿀 때만 확인한다.
+    const companyError = form.company.trim() !== (initialData?.company ?? "").trim() ? companyNameError(form.company) : null;
+    if (companyError) {
+      setError(companyError);
+      return;
+    }
     if (selectedTools.size === 0 && !customTools.trim()) {
       setError("사용 Tool을 1개 이상 선택하거나 입력해주세요.");
       return;
