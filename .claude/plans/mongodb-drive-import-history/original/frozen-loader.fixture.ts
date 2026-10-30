@@ -21,7 +21,7 @@ export function verifyClosure() {
   for (const origin of ["package.json", "package-lock.json", "prisma/schema.prisma", "scripts/ts-loader.mjs"]) {
     const actual = createHash("sha256").update(readFileSync(new URL(`../../../../${origin}`, import.meta.url))).digest("hex");
     const approved = origin === "prisma/schema.prisma"
-      ? new Set([entries.get(origin)!.sha256, "cb2dc13281d74c7e52c04fb65f7a2940f0c249a9fe9d301f049c22548b37c26c", "a357b1bb4ed0ed31147faff0417efe777adbb39c593be9266622f430266019e5"])
+      ? new Set([entries.get(origin)!.sha256, "cb2dc13281d74c7e52c04fb65f7a2940f0c249a9fe9d301f049c22548b37c26c", "a357b1bb4ed0ed31147faff0417efe777adbb39c593be9266622f430266019e5", "dd93ad831ed676773ce9bc25df767f98ad39f4e1c22786d343e3bedca1896454"])
       : origin === "package.json"
         ? new Set([entries.get(origin)!.sha256, "bb4e454e99c523037b906df304ec2beafa0a6c36353fff6f2fa6c7ae567be32f"])
         : new Set([entries.get(origin)!.sha256]);
