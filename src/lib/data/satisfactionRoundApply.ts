@@ -179,3 +179,22 @@ export function planSurveyResult(
     appliedBy: optionalText(sent.manager)
   };
 }
+
+const compactName = (value: string) => value.replace(/\s+/g, "").toLowerCase();
+
+/**
+ * [hub-om 반영]을 담당 OM이 아닌 사람이 눌렀는지. 막지는 않고 응답에 알리기만 한다(휴가·대리 반영이 있다).
+ *   - 누른 사람 이메일이 멤버 관리(TeamUser)에 있으면 그 이름이 담당 OM·현장 OM 표기에 있는지로 본다.
+ *     운영 회차의 OM 칸은 이름("이유진C")이고 요청은 이메일(yj.lee@…)이라, 이름끼리 맞대야 한다.
+ *   - 멤버에 없는 이메일이면 예전 방식(이메일 @ 앞부분이 표기에 들어 있는지)으로 대신 본다.
+ *   (2026-10-30: 예전 방식만 쓰면 영문 아이디와 한글 표기가 늘 달라 거의 모든 반영이 "다른 사람"으로 찍혔다.)
+ */
+export function isAppliedByOther(input: { submitterEmail: string; ownerText: string; submitterNames: readonly string[] }): boolean {
+  const submitter = input.submitterEmail.trim().toLowerCase();
+  const owners = input.ownerText.split(/[,/·]+/).map(compactName).filter(Boolean);
+  if (!submitter || owners.length === 0) return false;
+  const names = input.submitterNames.map(compactName).filter(Boolean);
+  if (names.length > 0) return !names.some((name) => owners.some((owner) => owner === name || owner.includes(name)));
+  const localPart = submitter.split("@")[0];
+  return !owners.some((owner) => owner.includes(localPart));
+}
