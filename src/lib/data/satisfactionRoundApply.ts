@@ -1,4 +1,5 @@
 import type { SatisfactionMatchResult } from "@/lib/data/satisfactionSheet";
+import { optionalText, parseRespondents, type SessionSurveyResultInput, type SurveyComments } from "@/lib/data/sessionSurveyResultTypes";
 
 /**
  * 만족도 회차 단위 반영 계획 — "쓸지 말지"를 DB 접근 없이 순수하게 결정한다.
@@ -139,4 +140,42 @@ export function planInstructorSatisfaction(
   if (decision.write) return value;
   if (decision.status === "same" && current && !(current.instructorSatisfaction ?? "").trim()) return value;
   return null;
+}
+
+/** 5점 척도 안의 숫자 문자열만 남긴다(강사 만족도 반영 규칙과 같은 기준). */
+function scoreText(value: string | null | undefined): string | null {
+  const text = (value ?? "").trim();
+  const score = Number.parseFloat(text);
+  return text && Number.isFinite(score) && score > 0 && score <= 5 ? text : null;
+}
+
+/**
+ * 회차별 만족도 결과(SessionSurveyResult)로 남길 내용을 정한다. 남기지 않으면 null.
+ *   - 회차가 확정된 경우(종합을 썼거나 이미 같은 값)에만 남긴다. 모호·미매칭·종합 비어 있음은 남기지 않는다.
+ *   - 측정값은 이번 요청에 실려 온 그대로 덮어쓴다(누른 시점 = 최종본).
+ *   - comments가 undefined면(구버전 앱) 저장소가 기존 코멘트를 그대로 둔다.
+ */
+export function planSurveyResult(
+  decision: RoundApplyDecision,
+  sent: {
+    recordId?: string;
+    instructorSatisfaction?: string;
+    n?: string;
+    posPct?: string;
+    manager?: string;
+    comments?: SurveyComments;
+  }
+): SessionSurveyResultInput | null {
+  if (!decision.operationId || !decision.value) return null;
+  if (!decision.write && decision.status !== "same") return null;
+  return {
+    operationId: decision.operationId,
+    recordId: optionalText(sent.recordId),
+    overall: decision.value,
+    instructorSatisfaction: scoreText(sent.instructorSatisfaction),
+    respondents: parseRespondents(sent.n),
+    positiveRate: optionalText(sent.posPct),
+    ...(sent.comments ? { comments: sent.comments } : {}),
+    appliedBy: optionalText(sent.manager)
+  };
 }

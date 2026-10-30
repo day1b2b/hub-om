@@ -426,6 +426,20 @@
     "teamUserId": "operational",
     "departedAt": "operational"
   },
+  "SessionSurveyResult": {
+    "id": "operational",
+    "operationId": "operational",
+    "recordId": "operational",
+    "overall": "operational",
+    "instructorSatisfaction": "operational",
+    "respondents": "operational",
+    "positiveRate": "operational",
+    "commentPositive": "encrypted",
+    "commentImprove": "encrypted",
+    "appliedBy": "encrypted",
+    "appliedAt": "operational",
+    "createdAt": "operational"
+  },
   "OmRequest": {
     "id": "operational",
     "status": "operational",

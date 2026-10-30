@@ -1063,6 +1063,44 @@ model TeamUserDeparture {
   @@map("team_user_departures")
 }
 
+// 수강생 만족도 결과의 회차별 기록. OM이 survey_analysis에서 [hub-om 반영]을 누를 때
+// /api/satisfaction/round-apply가 회차 하나에 한 행을 덮어쓴다(누른 시점 = 최종본).
+// 회차(OperationSession)의 avgSatisfaction·instructorSatisfaction은 목록·대시보드가 읽는
+// 대표값으로 그대로 두고, 응답자 수·긍정률·수강생 코멘트·반영 출처는 여기에만 쌓는다.
+// OperationSession에 칸을 더하지 않고 별도 기록으로 둔 이유: 설문 결과는 회차의 속성이
+// 아니라 회차에 붙는 사실(출처가 있는 측정값)이고, 앞으로 성분 점수 등이 계속 붙는다.
+model SessionSurveyResult {
+  id                     String               @id @default(uuid()) @db.Uuid
+  // OperationSession.operationId(업무 키). 회차가 지워져도 기록은 남는다(물리 삭제 금지 원칙).
+  operationId            String               @unique @map("operation_id")
+  recordId               String?              @map("record_id")
+  overall                String?
+  instructorSatisfaction String?              @map("instructor_satisfaction")
+  respondents            Int?
+  positiveRate           String?              @map("positive_rate")
+  // null = 코멘트를 보내지 않는 구버전 앱으로만 반영됨.
+  commentStatus          SurveyCommentStatus? @map("comment_status")
+  commentPositive        Json?                @map("comment_positive")
+  commentImprove         Json?                @map("comment_improve")
+  appliedBy              String?              @map("applied_by")
+  appliedAt              DateTime             @default(now()) @map("applied_at")
+  createdAt              DateTime             @default(now()) @map("created_at")
+
+  appliedByPiiIndex String? @map("applied_by_pii_index")
+
+  @@map("session_survey_results")
+}
+
+// OK: AI 요약을 만들어 보냄(목록이 비어 있어도 OK) · NO_SUBJECTIVE: 설문에 주관식 문항이 없음(정상)
+// · NO_SUMMARY: 주관식은 있는데 요약 없이 반영함(다시 반영하면 채워짐)
+enum SurveyCommentStatus {
+  OK
+  NO_SUBJECTIVE
+  NO_SUMMARY
+
+  @@map("survey_comment_status")
+}
+
 // OM 업무 요청. 과거 로컬 JSON 파일(om-requests.json) 저장에서 Postgres로 이관.
 // 문자열 상태/구분값(배정필요 등)과 세션 배열은 앱 표준 타입 그대로 저장한다.
 model OmRequest {

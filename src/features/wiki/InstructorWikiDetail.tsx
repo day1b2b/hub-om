@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Fragment } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { MaskedField } from "@/features/coaches/MaskedField";
 import { PeopleFlagPill } from "@/features/people/PeopleDirectory";
@@ -22,6 +23,8 @@ import {
   type InstructorWikiEntry
 } from "./instructorWikiModel";
 import { InstructorEditor } from "./InstructorEditor";
+import { buildSurveyCommentDigest, commentsByCourseGroup, type RoundSurveyComment } from "./instructorSurveyComments";
+import type { SessionSurveyResult } from "@/lib/data/sessionSurveyResultTypes";
 import { ProfileAttachments } from "./ProfileAttachments";
 import { NameEditor } from "./NameEditor";
 import { NotionLinkEditor } from "./NotionLinkEditor";
@@ -36,7 +39,14 @@ import {
 // 강사 위키 상세. 코치 위키와 같은 틀(헤더 → 고정 알림 → 본문 2단)을 쓴다.
 // "강사 위키 = 보는 곳 / 운영현황 = 하는 곳" 원칙이라 계약 '요청' 버튼은 두지 않는다.
 // 아직 허브에 값이 없는 칸(계약 유형·신규강사 증빙 등)은 빈 틀로 늘어놓지 않고, 데이터가 생기면 해당 칸에 붙인다.
-export async function InstructorWikiDetail({ entry }: { entry: InstructorWikiEntry }) {
+export async function InstructorWikiDetail({
+  entry,
+  surveyResults = []
+}: {
+  entry: InstructorWikiEntry;
+  /** 회차별 만족도 결과(수강생 코멘트). 읽지 못하면 빈 목록 — 코멘트 칸만 비고 화면은 열린다. */
+  surveyResults?: readonly SessionSurveyResult[];
+}) {
   const coach = entry.coach;
   // 노션 NO가 있으면 그것으로 읽는다(동명이인 구분). 없으면 운영 현황 표기라 이름으로 읽는다.
   const note =
@@ -95,6 +105,8 @@ export async function InstructorWikiDetail({ entry }: { entry: InstructorWikiEnt
     .sort((a, b) => a.startDate.localeCompare(b.startDate));
   const nextCourse = bookedCourses.find((course) => course.startDate >= today);
   const courseGroups = groupInstructorCourses(entry.courses);
+  const commentDigest = buildSurveyCommentDigest(entry.courses, surveyResults);
+  const groupComments = commentsByCourseGroup(entry.courses, surveyResults);
 
   return (
     <main className="dashboard-shell">
@@ -146,6 +158,8 @@ export async function InstructorWikiDetail({ entry }: { entry: InstructorWikiEnt
         <PeopleDetailBody
           main={
             <>
+              <SurveyCommentCard digest={commentDigest} />
+
               <PeopleCard note={profileSource} title="소개 · 전문분야">
                 <PeopleFacts
                   items={[
@@ -192,7 +206,8 @@ export async function InstructorWikiDetail({ entry }: { entry: InstructorWikiEnt
                     <tbody>
                       {courseGroups.length > 0 ? (
                         courseGroups.map((group) => (
-                          <tr key={group.key}>
+                          <Fragment key={group.key}>
+                          <tr>
                             <td><strong className="title-company">{group.companyName}</strong></td>
                             <td>
                               <a className="course-link" href={`/operations/${group.operationId}`} rel="noreferrer" target="_blank">
@@ -216,6 +231,14 @@ export async function InstructorWikiDetail({ entry }: { entry: InstructorWikiEnt
                             <td>{group.firstDate ? formatDateLabel(group.firstDate) : <span className="td-muted">-</span>}</td>
                             <td>{group.oms.length > 0 ? group.oms.join(", ") : <span className="td-muted">-</span>}</td>
                           </tr>
+                          {groupComments.has(group.key) ? (
+                            <tr className="survey-comment-row">
+                              <td colSpan={7}>
+                                <RoundCommentList rounds={groupComments.get(group.key)!} />
+                              </td>
+                            </tr>
+                          ) : null}
+                          </Fragment>
                         ))
                       ) : (
                         <tr>
@@ -292,5 +315,92 @@ export async function InstructorWikiDetail({ entry }: { entry: InstructorWikiEnt
         />
       </section>
     </main>
+  );
+}
+
+// 상단 "수강생 코멘트" 카드: 요약이 있는 최근 과정에서 강점·개선을 모아 보여 준다.
+// 주관식 없는 설문은 정상이라 미완성으로 보이지 않게 안내만 한다.
+function SurveyCommentCard({ digest }: { digest: ReturnType<typeof buildSurveyCommentDigest> }) {
+  const { counts, lines, courseCount } = digest;
+  const total = counts.ok + counts.no_subjective + counts.no_summary;
+  const note = total === 0
+    ? "만족도 반영 때 자동"
+    : [
+        courseCount > 0 ? `최근 과정 ${courseCount}개` : null,
+        counts.ok > 0 ? `요약 있음 ${counts.ok}` : null,
+        counts.no_subjective > 0 ? `주관식 없음 ${counts.no_subjective}` : null,
+        counts.no_summary > 0 ? `요약 없이 반영 ${counts.no_summary}` : null
+      ].filter(Boolean).join(" · ");
+  const positive = lines.filter((line) => line.kind === "positive");
+  const improve = lines.filter((line) => line.kind === "improve");
+  return (
+    <PeopleCard note={note} title="수강생 코멘트">
+      {lines.length > 0 ? (
+        <dl className="survey-comment-digest">
+          {positive.length > 0 ? (
+            <div>
+              <dt>👍 강점</dt>
+              <dd>
+                <ul>{positive.map((line, index) => <li key={index}>{line.text} <span className="people-chip">{line.source}</span></li>)}</ul>
+              </dd>
+            </div>
+          ) : null}
+          {improve.length > 0 ? (
+            <div>
+              <dt>🔧 개선</dt>
+              <dd>
+                <ul>{improve.map((line, index) => <li key={index}>{line.text} <span className="people-chip">{line.source}</span></li>)}</ul>
+              </dd>
+            </div>
+          ) : null}
+        </dl>
+      ) : (
+        <p className="field-hint">
+          {total === 0
+            ? "아직 반영된 코멘트가 없어요. OM이 survey_analysis에서 [hub-om 반영]을 누르면 채워져요."
+            : counts.no_subjective > 0 && counts.ok === 0 && counts.no_summary === 0
+              ? "반영된 설문이 모두 주관식 문항이 없는 설문이에요."
+              : "요약이 있는 과정이 아직 없어요. 담당 OM이 AI 요약을 만든 뒤 다시 반영하면 채워져요."}
+        </p>
+      )}
+      {lines.length > 0 ? <p className="field-hint">과정마다 최대 2줄씩, 최근 순이에요. 전체는 아래 투입 이력에서 볼 수 있어요.</p> : null}
+    </PeopleCard>
+  );
+}
+
+// 투입 이력의 과정 한 줄 아래 붙는 회차별 코멘트.
+function RoundCommentList({ rounds }: { rounds: RoundSurveyComment[] }) {
+  return (
+    <ul className="survey-comment-rounds">
+      {rounds.map((round) => {
+        const label = rounds.length > 1 ? `${round.roundNo || formatDateLabel(round.startDate)}` : null;
+        const measured = [
+          round.respondents !== null ? `응답 ${round.respondents}명` : null,
+          round.positiveRate ? `긍정 ${round.positiveRate}%` : null
+        ].filter(Boolean).join(" · ");
+        return (
+          <li key={round.operationId}>
+            {label || measured ? (
+              <span className="survey-comment-meta">{[label, measured].filter(Boolean).join(" · ")}</span>
+            ) : null}
+            {round.status === "no_subjective" ? (
+              <span className="people-status people-status--dormant">주관식 없는 설문</span>
+            ) : round.status === "no_summary" ? (
+              <>
+                <span className="people-flag people-flag--warn">요약 없이 반영</span>{" "}
+                <span className="td-muted">담당 OM이 다시 반영하면 채워져요</span>
+              </>
+            ) : round.positive.length + round.improve.length === 0 ? (
+              <span className="td-muted">요약에 남길 의견이 없었어요</span>
+            ) : (
+              <>
+                {round.positive.length > 0 ? <p>👍 {round.positive.join(" · ")}</p> : null}
+                {round.improve.length > 0 ? <p>🔧 {round.improve.join(" · ")}</p> : null}
+              </>
+            )}
+          </li>
+        );
+      })}
+    </ul>
   );
 }

@@ -2,7 +2,9 @@ import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { matchSatisfactionRow, toSatisfactionSheetRow } from "@/lib/data/satisfactionSheet";
-import { planInstructorSatisfaction, planRoundApply } from "@/lib/data/satisfactionRoundApply";
+import { planInstructorSatisfaction, planRoundApply, planSurveyResult } from "@/lib/data/satisfactionRoundApply";
+import { getSessionSurveyResultRepository } from "@/lib/data/sessionSurveyResultRepositoryFactory";
+import { parseSurveyComments, type SessionSurveyResultInput } from "@/lib/data/sessionSurveyResultTypes";
 import { runSatisfactionRequest } from "@/lib/data/satisfactionComposition";
 import type { OperationCandidate } from "@/lib/data/operationMatch/matchOperation";
 
@@ -22,8 +24,10 @@ import type { OperationCandidate } from "@/lib/data/operationMatch/matchOperatio
  * 안전 규칙 (docs/operations/db-write-safety.md, 2026-08-10 도입 → 2026-08-31 개정):
  *   - matched 만 쓴다. 모호(ambiguous)·미매칭(unmatched)은 절대 쓰지 않는다. [유지]
  *   - 만족도 값이 비어 있으면 쓰지 않는다. [유지]
- *   - 물리 삭제·스키마 변경 없음. 수정 필드는 avgSatisfaction, 그리고 시트가 강사평균을
+ *   - 물리 삭제 없음. 회차 수정 필드는 avgSatisfaction, 그리고 시트가 강사평균을
  *     실어 보낼 때만 instructorSatisfaction(비어 오면 안 씀) — 둘 다 시트가 원본이다.
+ *   - 회차가 확정되면 회차별 만족도 결과(SessionSurveyResult)를 덮어쓴다: 응답자 수·긍정률·
+ *     수강생 코멘트·반영 출처. comment_* 키가 없는 요청(구버전 앱)은 저장된 코멘트를 지우지 않는다.
  *   - ★기존 값이 있어도 덮어쓴다. [변경]
  *     원래는 "사람이 손으로 넣은 값 보호"가 목적이었으나, hub-om 에 만족도 수기 입력 경로가
  *     없어 실제로 보호하던 것은 드라이브 임포트 값뿐이었다. 데이터 책임자(시트 관리자)가
@@ -58,7 +62,27 @@ interface RoundApplyBody {
   instructorSatisfaction?: string;
   /** 누가 눌렀는지 — 담당 OM 과 다르면 응답에 알린다(막지는 않는다). */
   manager?: string;
+  /** 수강생 코멘트 상태: "ok" | "no_subjective" | "no_summary". 키가 없으면 저장된 코멘트 유지. */
+  comment_status?: string;
+  /** 👍 좋았던 점 (survey_analysis AI 요약 positive) */
+  comment_positive?: string[];
+  /** 🔧 강사용 개선 (survey_analysis AI 요약 instructor_improve) */
+  comment_improve?: string[];
 }
+
+/** 결과 기록은 회차 반영이 끝난 뒤 따로 남긴다. 실패해도 회차 반영은 되돌리지 않고 응답에 알린다. */
+async function recordSurveyResult(input: SessionSurveyResultInput | null): Promise<"saved" | "skipped" | "failed"> {
+  if (!input) return "skipped";
+  try {
+    await getSessionSurveyResultRepository().upsert(input);
+    return "saved";
+  } catch {
+    console.error("[satisfaction:round-apply] survey result not saved");
+    return "failed";
+  }
+}
+
+const SURVEY_RESULT_FAILED_NOTE = " (응답자 수·코멘트는 저장하지 못했어요. 다시 반영해 주세요.)";
 
 async function activityPOST(request: Request) {
   const url = new URL(request.url);
@@ -79,6 +103,11 @@ async function activityPOST(request: Request) {
     body = (await request.json()) as RoundApplyBody;
   } catch {
     return NextResponse.json({ ok: false, error: "요청 본문을 읽지 못했습니다." }, { status: 400 });
+  }
+
+  const comments = parseSurveyComments(body as Record<string, unknown>);
+  if (comments === "invalid") {
+    return NextResponse.json({ ok: false, error: "수강생 코멘트 형식이 올바르지 않습니다." }, { status: 400 });
   }
 
   // 시트 한 줄과 같은 모양으로 맞춘다 — 매칭·정규화 로직을 그대로 재사용하기 위해서다.
@@ -116,16 +145,26 @@ async function activityPOST(request: Request) {
     const decision = planRoundApply(row.overall, match, (id) => operations.find((item) => item.id === id));
     const matchedOperation = match.operationId ? operations.find((item) => item.id === match.operationId) : undefined;
     const instrSat = planInstructorSatisfaction(decision, body.instructorSatisfaction, matchedOperation);
+    const surveyResult = planSurveyResult(decision, {
+      recordId: body.record_id,
+      instructorSatisfaction: body.instructorSatisfaction,
+      n: body.n,
+      posPct: body.pos_pct,
+      manager: body.manager,
+      ...(comments ? { comments } : {})
+    });
 
     // 종합은 이미 같은 값이지만 강사 만족도 칸이 비어 있으면 강사 값만 채운다(planInstructorSatisfaction 참고).
     if (!decision.write && instrSat && decision.operationId) {
       await repository.updateOperation(decision.operationId, { instructorSatisfaction: instrSat });
       console.info("[satisfaction:round-apply] instructor satisfaction filled");
+      const saved = await recordSurveyResult(surveyResult);
       return NextResponse.json({
         ok: true,
         applied: true,
         status: "filled",
-        message: `종합 만족도는 이미 같은 값이라 그대로 두고, 강사 만족도 ${instrSat} 를 채웠어요.`,
+        message: `종합 만족도는 이미 같은 값이라 그대로 두고, 강사 만족도 ${instrSat} 를 채웠어요.${saved === "failed" ? SURVEY_RESULT_FAILED_NOTE : ""}`,
+        surveyResult: saved,
         operation: decision.operationLabel ?? null,
         value: decision.value ?? null,
         previous: decision.previous ?? null,
@@ -134,11 +173,16 @@ async function activityPOST(request: Request) {
     }
 
     if (!decision.write) {
+      // 종합이 이미 같은 값이어도 회차가 확정됐으면 응답자 수·코멘트는 최신으로 남긴다.
+      const saved = await recordSurveyResult(surveyResult);
       return NextResponse.json({
         ok: true,
         applied: false,
         status: decision.status,
-        message: decision.message,
+        message: saved === "saved"
+          ? "종합 만족도는 이미 같은 값이라 그대로 두고, 응답자 수·코멘트를 최신으로 남겼어요."
+          : `${decision.message}${saved === "failed" ? SURVEY_RESULT_FAILED_NOTE : ""}`,
+        surveyResult: saved,
         operation: decision.operationLabel ?? null,
         value: decision.value ?? null
       });
@@ -149,6 +193,7 @@ async function activityPOST(request: Request) {
     const update: { avgSatisfaction: string; instructorSatisfaction?: string } = { avgSatisfaction: decision.value! };
     if (instrSat) update.instructorSatisfaction = instrSat;
     await repository.updateOperation(decision.operationId!, update);
+    const saved = await recordSurveyResult(surveyResult);
 
     // 담당 OM 과 다른 사람이 눌렀는지 알린다 — 막지는 않는다(휴가·대리 반영이 실제로 있다).
     // decision.operationId 는 업무 키다 (행 id 가 아니다) — 찾을 때도 같은 키로 본다
@@ -164,7 +209,8 @@ async function activityPOST(request: Request) {
       ok: true,
       applied: true,
       status: decision.status,
-      message: decision.message,
+      message: `${decision.message}${saved === "failed" ? SURVEY_RESULT_FAILED_NOTE : ""}`,
+      surveyResult: saved,
       operation: decision.operationLabel ?? null,
       value: decision.value,
       previous: decision.previous ?? null,
