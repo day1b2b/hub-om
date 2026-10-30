@@ -2,7 +2,8 @@ import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { matchSatisfactionRow, toSatisfactionSheetRow } from "@/lib/data/satisfactionSheet";
-import { planInstructorSatisfaction, planRoundApply, planSurveyResult } from "@/lib/data/satisfactionRoundApply";
+import { isAppliedByOther, planInstructorSatisfaction, planRoundApply, planSurveyResult } from "@/lib/data/satisfactionRoundApply";
+import { findTeamUsersByEmail } from "@/lib/data/teamUsers/teamUserRepository";
 import { getSessionSurveyResultRepository } from "@/lib/data/sessionSurveyResultRepositoryFactory";
 import { parseSurveyComments, type SessionSurveyResultInput } from "@/lib/data/sessionSurveyResultTypes";
 import { runSatisfactionRequest } from "@/lib/data/satisfactionComposition";
@@ -80,6 +81,17 @@ async function recordSurveyResult(input: SessionSurveyResultInput | null): Promi
   } catch {
     console.error("[satisfaction:round-apply] survey result not saved");
     return "failed";
+  }
+}
+
+/** 누른 사람 이메일의 멤버 이름(멤버 관리). 조회에 실패해도 반영은 막지 않는다 — 빈 목록이면 예전 방식으로 본다. */
+async function submitterNames(email: string): Promise<string[]> {
+  if (!email) return [];
+  try {
+    return (await findTeamUsersByEmail(email)).map((user) => user.name);
+  } catch {
+    console.error("[satisfaction:round-apply] team user lookup unavailable");
+    return [];
   }
 }
 
@@ -201,8 +213,7 @@ async function activityPOST(request: Request) {
     const operation = operations.find((item) => item.operationId === decision.operationId);
     const submitter = (body.manager ?? "").trim().toLowerCase();
     const ownerText = `${operation?.om ?? ""} ${operation?.onsiteOm ?? ""}`.trim();
-    const byOther =
-      submitter !== "" && ownerText !== "" && !ownerText.toLowerCase().includes(submitter.split("@")[0]);
+    const byOther = isAppliedByOther({ submitterEmail: submitter, ownerText, submitterNames: await submitterNames(submitter) });
 
     console.info("[satisfaction:round-apply] applied");
 
