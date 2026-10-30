@@ -167,6 +167,11 @@ model Course {
   resultReportLink      String? @map("result_report_link")
   lectureManagementLink String? @map("lecture_management_link")
   lectureManagementNote String? @map("lecture_management_note")
+  // 과정 레벨 결과보고서 여부. 기존 회차별(OperationSession.hasResultReport)과 달리 기본값을
+  // 두지 않는다 — null은 "아직 과정 레벨로 승격되지 않음"을 뜻하고, 승격 규칙은
+  // docs/operations/course-level-result-report-status-backfill.md 참고. 회차별 컬럼은 이번
+  // 변경에서 지우지 않는다(add-only, 별도 cleanup PR 대상).
+  hasResultReport ResultReportStatus? @map("has_result_report")
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
 

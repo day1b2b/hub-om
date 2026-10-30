@@ -28,6 +28,8 @@ export interface OperationCourseRow {
   resultReportLink?: string | null;
   lectureManagementLink?: string | null;
   lectureManagementNote?: string | null;
+  /** 과정 레벨 결과보고서 여부. 아직 승격되지 않았으면 null이다. */
+  hasResultReport?: string | null;
   company: OperationCompanyRow;
 }
 export interface OperationSourceRow { sourceTeam: string }
@@ -211,6 +213,7 @@ export function toOperationSession(session: OperationSessionRow, courseIdLabel: 
     courseResultReportLink: session.course.resultReportLink ?? "",
     courseLectureManagementLink: session.course.lectureManagementLink ?? "",
     courseLectureManagementNote: session.course.lectureManagementNote ?? "",
+    ...(session.course.hasResultReport ? { courseHasResultReport: RESULT_REPORT_STATUS[session.course.hasResultReport] } : {}),
     om: session.omName ?? "",
     ld: session.ldName ?? "",
     onsiteOm: session.onsiteOmName ?? "",

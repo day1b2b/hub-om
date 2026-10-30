@@ -109,6 +109,12 @@ export interface OperationSession {
   courseResultReportLink?: string;
   courseLectureManagementLink?: string;
   courseLectureManagementNote?: string;
+  /**
+   * 과정(Course) 레벨 결과보고서 여부. 같은 과정의 모든 회차가 이 값을 공유한다.
+   * 회차별 hasResultReport는 expand-migrate 기간 동안 별도로 남아 있으며(아직 cleanup 전),
+   * 값이 아직 과정 레벨로 승격되지 않았으면(백엔드가 이 필드를 채우지 않았으면) undefined다.
+   */
+  courseHasResultReport?: ResultReportStatus;
   om: string;
   ld: string;
   onsiteOm: string;

@@ -20,6 +20,7 @@ import type {
   CourseLectureManagementInput,
   CreateOperationInput,
   OperationSession,
+  ResultReportStatus,
   UpdateOperationInput
 } from "./operationTypes";
 
@@ -239,6 +240,14 @@ export class LocalJsonOperationRepository implements OperationRepository {
         ? { ...operation, courseLectureManagementLink: value.lectureManagementLink, courseLectureManagementNote: value.lectureManagementNote }
         : operation));
       return value;
+    });
+  }
+
+  async upsertCourseResultReportStatus(courseRecordId: string, hasResultReport: ResultReportStatus): Promise<ResultReportStatus> {
+    return this.serializeWrite(async () => {
+      const operations = await this.listOperations();
+      await this.writeOperations(operations.map(operation => operation.courseRecordId === courseRecordId ? { ...operation, courseHasResultReport: hasResultReport } : operation));
+      return hasResultReport;
     });
   }
 

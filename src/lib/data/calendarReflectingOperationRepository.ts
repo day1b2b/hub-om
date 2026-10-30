@@ -14,6 +14,7 @@ import type {
   CreateOperationInput,
   OperationSession,
   OperationSummary,
+  ResultReportStatus,
   UpdateOperationInput
 } from "./operationTypes";
 import {
@@ -89,6 +90,11 @@ export class CalendarReflectingOperationRepository implements OperationRepositor
 
   upsertCourseLectureManagement(courseRecordId: string, input: CourseLectureManagementInput, actorEmail?: string): Promise<CourseLectureManagementInput> {
     return this.inner.upsertCourseLectureManagement(courseRecordId, input, actorEmail);
+  }
+
+  upsertCourseResultReportStatus(courseRecordId: string, hasResultReport: ResultReportStatus, actorEmail?: string): Promise<ResultReportStatus> {
+    // 결과보고서 여부는 일정과 무관해 캘린더에 반영할 것이 없다.
+    return this.inner.upsertCourseResultReportStatus(courseRecordId, hasResultReport, actorEmail);
   }
 
   getSummary(): Promise<OperationSummary> {

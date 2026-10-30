@@ -195,6 +195,7 @@ function toOperationSession(session: OperationSessionRow, courseIdLabel: string)
     courseResultReportLink: session.course.resultReportLink ?? "",
     courseLectureManagementLink: session.course.lectureManagementLink ?? "",
     courseLectureManagementNote: session.course.lectureManagementNote ?? "",
+    ...(session.course.hasResultReport ? { courseHasResultReport: RESULT_REPORT_STATUS[session.course.hasResultReport] } : {}),
     om: session.omName ?? "",
     ld: session.ldName ?? "",
     onsiteOm: session.onsiteOmName ?? "",
@@ -380,6 +381,14 @@ export class PrismaOperationRepository implements OperationRepository {
       }
     });
     return { lectureManagementLink: course.lectureManagementLink ?? "", lectureManagementNote: course.lectureManagementNote ?? "" };
+  }
+
+  async upsertCourseResultReportStatus(courseRecordId: string, hasResultReport: ResultReportStatus): Promise<ResultReportStatus> {
+    const course = await getPrismaClient().course.update({
+      where: { id: courseRecordId },
+      data: { hasResultReport: PRISMA_RESULT_REPORT_STATUS[hasResultReport] }
+    });
+    return course.hasResultReport ? RESULT_REPORT_STATUS[course.hasResultReport] : hasResultReport;
   }
 
   async createOperation(input: CreateOperationInput): Promise<OperationSession> {
