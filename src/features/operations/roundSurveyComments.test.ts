@@ -31,9 +31,9 @@ test("회차 순서대로, 결과가 있는 회차만 측정값 한 줄과 네 �
     result("op-1", { status: "no_subjective", positive: [], instructorImprove: [], hrdImprove: [], followup: [] }, { respondents: null, instructorSatisfaction: null })
   ]);
   assert.deepEqual(rows.map((row) => [row.label, row.status]), [["1회차", "no_subjective"], ["3회차", "ok"]]);
-  assert.equal(rows[0].measured, "긍정 96.2% · 종합 4.6");
+  assert.equal(rows[0].measured, "종합 4.6 · 종합 긍정률 96.2%");
   assert.deepEqual(rows[0].axes, []);
-  assert.equal(rows[1].measured, "응답 26명 · 긍정 96.2% · 종합 4.6 · 강사 4.7");
+  assert.equal(rows[1].measured, "응답 26명 · 종합 4.6 · 종합 긍정률 96.2% · 강사 4.7");
   assert.deepEqual(rows[1].axes.map((axis) => [axis.label, axis.lines]), [
     ["👍 좋았던 점", ["실습 유용"]],
     ["🔧 강사 개선", []],

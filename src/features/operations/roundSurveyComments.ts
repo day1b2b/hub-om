@@ -14,7 +14,7 @@ export const SURVEY_COMMENT_AXIS_LABEL: Record<SurveyCommentAxis, string> = {
 export interface RoundSurveyCommentRow {
   operationId: string;
   label: string;
-  /** 측정값 한 줄: "응답 26명 · 긍정 96% · 종합 4.6 · 강사 4.7" */
+  /** 측정값 한 줄: "응답 26명 · 종합 4.6 · 종합 긍정률 96% · 강사 4.7" (긍정률은 종합 문항 기준이라 출처를 붙인다) */
   measured: string;
   /** null = 코멘트를 보내지 않는 구버전 앱으로만 반영된 회차 */
   status: SurveyCommentStatus | null;
@@ -33,8 +33,8 @@ export function buildRoundSurveyComments(
     if (!result) return [];
     const measured = [
       result.respondents !== null ? `응답 ${result.respondents}명` : null,
-      result.positiveRate ? `긍정 ${result.positiveRate}%` : null,
       result.overall ? `종합 ${result.overall}` : null,
+      result.positiveRate ? `종합 긍정률 ${result.positiveRate}%` : null,
       result.instructorSatisfaction ? `강사 ${result.instructorSatisfaction}` : null
     ].filter(Boolean).join(" · ");
     const comments = result.comments;
