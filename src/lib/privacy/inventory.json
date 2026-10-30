@@ -13,7 +13,8 @@
     "invoiceEmail": "encrypted",
     "invoiceEmailSecondary": "encrypted",
     "businessInfoUpdatedAt": "operational",
-    "businessInfoUpdatedBy": "operational"
+    "businessInfoUpdatedBy": "operational",
+    "memo": "encrypted"
   },
   "Course": {
     "id": "operational",
@@ -424,6 +425,20 @@
     "id": "operational",
     "teamUserId": "operational",
     "departedAt": "operational"
+  },
+  "SessionSurveyResult": {
+    "id": "operational",
+    "operationId": "operational",
+    "recordId": "operational",
+    "overall": "operational",
+    "instructorSatisfaction": "operational",
+    "respondents": "operational",
+    "positiveRate": "operational",
+    "commentPositive": "encrypted",
+    "commentImprove": "encrypted",
+    "appliedBy": "encrypted",
+    "appliedAt": "operational",
+    "createdAt": "operational"
   },
   "OmRequest": {
     "id": "operational",

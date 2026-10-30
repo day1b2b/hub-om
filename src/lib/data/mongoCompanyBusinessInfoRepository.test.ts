@@ -106,10 +106,24 @@ test("CompanyBusinessInfo: 조회·부분 저장·빈 값 삭제·없는 company
     await repository.update(companyId, { businessNumber: "" }, "om@day1company.co.kr");
     assert.equal((await repository.get(companyId))?.businessNumber, null);
 
-    // PII는 평문으로 저장되지 않는다
+    // 메모만 저장하면 사업자등록증 항목과 수정 시각/수정자는 그대로다
+    const beforeMemo = await repository.get(companyId);
+    await repository.update(companyId, { memo: "  계산서는 역발행\n담당자 연락처 변경  " }, "ld@day1company.co.kr");
+    const afterMemo = await repository.get(companyId);
+    assert.equal(afterMemo?.memo, "계산서는 역발행\n담당자 연락처 변경");
+    assert.equal(afterMemo?.address, "서울시 강남구");
+    assert.equal(afterMemo?.businessInfoUpdatedBy, "om@day1company.co.kr");
+    assert.equal(afterMemo?.businessInfoUpdatedAt, beforeMemo?.businessInfoUpdatedAt);
+
+    // 사업자등록증 항목만 저장하면 메모는 유지된다
+    await repository.update(companyId, { businessType: "서비스" }, "om@day1company.co.kr");
+    assert.equal((await repository.get(companyId))?.memo, "계산서는 역발행\n담당자 연락처 변경");
+
+    // PII는 평문으로 저장되지 않는다(자유 메모 포함)
     const stored = [...companies.values()];
     assert.ok(!JSON.stringify(stored).includes("홍길동"));
     assert.ok(!JSON.stringify(stored).includes("서울시 강남구"));
+    assert.ok(!JSON.stringify(stored).includes("역발행"));
 
     // 감사 로그가 남지만 PII는 redacted 처리된다(Company는 name만 평문 허용)
     assert.ok(activityChanges.length > 0);

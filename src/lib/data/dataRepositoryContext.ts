@@ -11,6 +11,7 @@ import type { OmAssignmentRepository } from "./omRequest/omAssignmentContract";
 import type { OmAssignmentCalendar, OmAssignmentNotifier } from "./omRequest/omAssignmentEffects";
 import type { OperationRepository } from "./operationRepository";
 import type { CompanyBusinessInfoRepository } from "./companyBusinessInfoRepository";
+import type { SessionSurveyResultRepository } from "./sessionSurveyResultRepository";
 import type { OmRequestRepository, OmCustomToolsRepository, OmRequestNotifier } from "./omRequest/omRequestRepository";
 import type { SalesRevenueSyncRepository, SalesRevenueSource, SalesRevenueNotifier } from "./salesRevenueSyncRepository";
 import type { SatisfactionSource } from "./satisfactionSource";
@@ -95,6 +96,7 @@ export interface DataRepositories {
   omRequests: OmRequestRepository;
   operations: OperationRepository;
   companyBusinessInfo: CompanyBusinessInfoRepository;
+  sessionSurveyResults: SessionSurveyResultRepository;
   omCustomTools: OmCustomToolsRepository;
   omRequestNotifier: OmRequestNotifier;
   salesRevenueSync: SalesRevenueSyncRepository;

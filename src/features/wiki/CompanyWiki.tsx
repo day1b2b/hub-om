@@ -6,6 +6,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import type { CompanyWikiEntry } from "./companyWikiModel";
 import { emptyCompanyBusinessInfo, type CompanyBusinessInfo } from "@/lib/data/companyBusinessInfoTypes";
 import { CompanyBusinessInfoEditor } from "./CompanyBusinessInfoEditor";
+import { CompanyMemoEditor } from "./CompanyMemoEditor";
 
 interface CompanyWikiProps {
   /** 운영 현황에서 만든 기업 목록. */
@@ -269,6 +270,11 @@ function CompanyWikiDetail({
   // 계산서 발행 요청 구글폼 URL은 서버에만 둔다(저장소가 public이라 클라이언트 번들에
   // 절대 넣지 않는다) — 완성된 링크만 코스별로 서버에서 만들어 받는다.
   const [invoiceLinks, setInvoiceLinks] = useState<Record<string, string | null>>({});
+  // 계산서 발행 요청 현황(폼 응답 시트 기준). null이면 아직 불러오는 중, available=false면 시트를 못 읽음.
+  const [invoiceStatuses, setInvoiceStatuses] = useState<{
+    available: boolean;
+    byKey: Record<string, InvoiceRequestStatusView | null>;
+  } | null>(null);
 
   useEffect(() => {
     if (entry.courses.length === 0) return;
@@ -284,9 +290,13 @@ function CompanyWikiDetail({
     })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (!cancelled) setInvoiceLinks(data?.links ?? {});
+        if (cancelled) return;
+        setInvoiceLinks(data?.links ?? {});
+        setInvoiceStatuses({ available: data?.statusAvailable === true, byKey: data?.statuses ?? {} });
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!cancelled) setInvoiceStatuses({ available: false, byKey: {} });
+      });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -331,6 +341,7 @@ function CompanyWikiDetail({
                 <th>만족도(평균)</th>
                 <th>매출(코스ID기준)</th>
                 <th>계산서 발행 요청</th>
+                <th>발행 요청 현황</th>
               </tr>
             </thead>
             <tbody>
@@ -351,6 +362,13 @@ function CompanyWikiDetail({
                   <td>{course.avgSatisfaction}</td>
                   <td>{course.revenue}</td>
                   <td><InvoiceRequestLink href={invoiceLinks[course.key]} /></td>
+                  <td>
+                    <InvoiceRequestStatusBadge
+                      hasCourseId={Boolean(course.courseId)}
+                      state={invoiceStatuses}
+                      status={invoiceStatuses?.byKey[course.key] ?? null}
+                    />
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -369,7 +387,10 @@ function CompanyWikiDetail({
           </div>
         </div>
       ) : businessInfo ? (
-        <CompanyBusinessInfoEditor companyId={entry.companyId} initial={businessInfo} />
+        <>
+          <CompanyBusinessInfoEditor companyId={entry.companyId} initial={businessInfo} />
+          <CompanyMemoEditor companyId={entry.companyId} initial={businessInfo.memo} />
+        </>
       ) : (
         <div className="detail-section">
           <div className="section-title"><h2>사업자등록증 정보</h2></div>
@@ -390,6 +411,35 @@ function InvoiceRequestLink({ href }: { href: string | null | undefined }) {
     <a className="invoice-request-link" href={href} rel="noreferrer" target="_blank">
       계산서 발행 요청
     </a>
+  );
+}
+
+interface InvoiceRequestStatusView {
+  lastRequestedAt: string;
+  requestCount: number;
+}
+
+// 폼 응답 시트에 이 코스ID로 들어온 요청이 있으면 "요청 완료". 코스ID가 없으면 시트와 맞춰 볼
+// 방법이 없어 "-", 시트를 못 읽었으면 "미요청"으로 오해하지 않게 "확인 불가"로 둔다.
+function InvoiceRequestStatusBadge({
+  hasCourseId,
+  state,
+  status
+}: {
+  hasCourseId: boolean;
+  state: { available: boolean } | null;
+  status: InvoiceRequestStatusView | null;
+}) {
+  if (!state) return <span className="muted-inline">불러오는 중…</span>;
+  if (!hasCourseId) return <span className="muted-inline">-</span>;
+  if (!state.available) return <span className="muted-inline" title="계산서 발급 신청 시트를 읽지 못했습니다.">확인 불가</span>;
+  if (!status) return <span className="invoice-status invoice-status--pending">미요청</span>;
+
+  const title = `마지막 요청: ${status.lastRequestedAt || "시각 미기재"}${status.requestCount > 1 ? ` · 총 ${status.requestCount}건` : ""}`;
+  return (
+    <span className="invoice-status invoice-status--done" title={title}>
+      요청 완료{status.requestCount > 1 ? ` (${status.requestCount}건)` : ""}
+    </span>
   );
 }
 

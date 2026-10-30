@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { planInstructorSatisfaction, planRoundApply } from "@/lib/data/satisfactionRoundApply";
+import { planInstructorSatisfaction, planRoundApply, planSurveyResult } from "@/lib/data/satisfactionRoundApply";
 import type { RoundApplyTarget } from "@/lib/data/satisfactionRoundApply";
 import type { SatisfactionMatchResult, SatisfactionSheetRow } from "@/lib/data/satisfactionSheet";
 
@@ -154,4 +154,42 @@ test("강사 만족도: 비었거나 5점 밖이거나 매칭이 안 되면 쓰�
   assert.equal(planInstructorSatisfaction(decision, "8.45", target(null)), null);
   const unmatched = planRoundApply("4.55", { row: row(), status: "unmatched", operationId: null, ranked: [] }, find(target(null)));
   assert.equal(planInstructorSatisfaction(unmatched, "4.7", target(null)), null);
+});
+
+test("만족도 결과: 회차가 확정되면 측정값·출처를 업무 키로 남긴다", () => {
+  const d = planRoundApply("4.55", matched(), find(target("")));
+  const result = planSurveyResult(d, { recordId: " r_1 ", instructorSatisfaction: "4.7", n: "26.0", posPct: "96.2", manager: "om@day1company.co.kr" });
+  assert.deepEqual(result, {
+    operationId: "OP-260455",
+    recordId: "r_1",
+    overall: "4.55",
+    instructorSatisfaction: "4.7",
+    respondents: 26,
+    positiveRate: "96.2",
+    appliedBy: "om@day1company.co.kr"
+  });
+});
+
+test("만족도 결과: 종합이 이미 같은 값이어도 남긴다(응답자 수·코멘트는 최신으로)", () => {
+  const d = planRoundApply("4.55", matched(), find(target("4.55")));
+  const comments = { status: "ok" as const, positive: ["실습이 유용함"], improve: [] };
+  const result = planSurveyResult(d, { comments });
+  assert.equal(result?.operationId, "OP-260455");
+  assert.deepEqual(result?.comments, comments);
+});
+
+test("만족도 결과: 코멘트 키가 없던 요청은 comments를 빼서 기존 코멘트를 지우지 않는다", () => {
+  const d = planRoundApply("4.55", matched(), find(target("")));
+  const result = planSurveyResult(d, { n: "10" });
+  assert.ok(result);
+  assert.equal("comments" in result, false);
+});
+
+test("만족도 결과: 모호·미매칭·종합 비어 있음이면 남기지 않고, 5점 밖 강사 값은 비운다", () => {
+  assert.equal(planSurveyResult(planRoundApply("4.55", { row: row(), status: "ambiguous", operationId: null, ranked: [] }, find(undefined)), {}), null);
+  assert.equal(planSurveyResult(planRoundApply("4.55", { row: row(), status: "unmatched", operationId: null, ranked: [] }, find(undefined)), {}), null);
+  assert.equal(planSurveyResult(planRoundApply("", matched(), find(target(""))), {}), null);
+  const d = planRoundApply("4.55", matched(), find(target("")));
+  assert.equal(planSurveyResult(d, { instructorSatisfaction: "6.2", n: "abc" })?.instructorSatisfaction, null);
+  assert.equal(planSurveyResult(d, { n: "abc" })?.respondents, null);
 });

@@ -17,7 +17,9 @@
       "invoice_email_secondary",
       "invoice_email_secondary_pii_index",
       "business_info_updated_at",
-      "business_info_updated_by"
+      "business_info_updated_by",
+      "memo",
+      "memo_pii_index"
     ]
   },
   "courses": {
@@ -27,7 +29,8 @@
       "course_name",
       "operation_type",
       "course_category",
-      "revenue"
+      "revenue",
+      "has_result_report"
     ],
     "changeOnly": [
       "process_seq",
@@ -346,6 +349,24 @@
       "departed_at"
     ],
     "changeOnly": []
+  },
+  "session_survey_results": {
+    "values": [
+      "operation_id",
+      "record_id",
+      "overall",
+      "instructor_satisfaction",
+      "respondents",
+      "positive_rate",
+      "comment_status",
+      "applied_at"
+    ],
+    "changeOnly": [
+      "comment_positive",
+      "comment_improve",
+      "applied_by",
+      "applied_by_pii_index"
+    ]
   },
   "om_requests": {
     "values": [

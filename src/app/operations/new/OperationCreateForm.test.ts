@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { companyNameError } from "@/lib/data/companyName";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import ts from "typescript";
@@ -78,6 +79,7 @@ function harness(options: { pending?: submission.OperationSubmission; readFailur
     "@/components/BrowserDraftProvider": { useBrowserDraftSession: () => session },
     "@/components/MultiDateCalendar": { MultiDateCalendar: "calendar" },
     "@/features/operations/parsePastedRounds": rounds,
+    "@/lib/data/companyName": { companyNameError },
     "@/lib/data/omRequest/omCourseCategoryOptions": { COURSE_CATEGORY_GROUPS: [] },
     "@/lib/data/operationCalculations": { enumerateDateRange: () => [] },
     "@/lib/teamScope": { teamScopeSearchParam: () => "?team=team_1" }

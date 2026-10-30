@@ -8,6 +8,8 @@ import { DeleteRoundButton } from "./DeleteRoundButton";
 import { RoundOrderCell } from "./RoundOrderCell";
 import { RoundReorderProvider } from "./RoundReorderProvider";
 import { EditAllRoundsProvider } from "./EditAllRoundsProvider";
+import { CourseResultReportStatusRow } from "./CourseResultReportStatusRow";
+import { EditableTitleCompany } from "./EditableTitleCompany";
 import { EditableCourseNameItem } from "./EditableCourseNameItem";
 import { EditableCourseLectureManagementRow } from "./EditableCourseLectureManagementRow";
 import { EditableCourseReportLinkRow } from "./EditableCourseReportLinkRow";
@@ -26,7 +28,6 @@ import { CourseNotesWorkspace } from "./CourseNotesWorkspace";
 import { OnsiteRequiredConditionSelect } from "./OnsiteRequiredConditionSelect";
 import { OperationDiscussionPanel } from "./OperationDiscussionPanel";
 import { ResultReportConditionSelect } from "./ResultReportConditionSelect";
-import { ResultReportRequirementCell } from "./ResultReportRequirementCell";
 import { SatisfactionAnalysisButton } from "./SatisfactionAnalysisButton";
 import { SatisfactionSurveyConditionSelect } from "./SatisfactionSurveyConditionSelect";
 import type {
@@ -107,7 +108,7 @@ export function OperationDetail({
       <section className="content operation-detail-content">
         <header className="page-header detail-header">
           <div className="title-row">
-            <span className="title-company">{operation.companyName}</span>
+            <EditableTitleCompany companyName={operation.companyName} operationId={operation.operationId} />
             <h1>{operation.courseName}</h1>
             {operation.courseId ? null : <span className="title-course-id">코스ID 검토 필요</span>}
             {operation.processId ? <span className="title-tag">{operation.processId}</span> : null}
@@ -277,6 +278,7 @@ export function OperationDetail({
                           lectureManagementLink={operation.courseLectureManagementLink ?? ""}
                           lectureManagementNote={operation.courseLectureManagementNote ?? ""}
                         />
+                        <CourseResultReportStatusRow courseRecordId={courseRecordId} hasResultReport={operation.courseHasResultReport} />
                       </>
                     ) : null}
                   </div>
@@ -330,7 +332,6 @@ export function OperationDetail({
                     <th>강사</th>
                     <th>실습코치</th>
                     <th>만족도</th>
-                    <th>결과보고서 여부</th>
                     <th>패들렛</th>
                     <th>삭제</th>
                   </tr>
@@ -388,10 +389,6 @@ export function OperationDetail({
                           muted={courseOperation.hasSatisfactionSurvey === "불필요"}
                         />
                       </td>
-                      <ResultReportRequirementCell
-                        hasResultReport={courseOperation.hasResultReport}
-                        operationId={courseOperation.operationId}
-                      />
                       <EditableRoundResourceCell
                         done={isNavigableHref(courseOperation.padletLink)}
                         field="padletLink"

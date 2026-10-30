@@ -14,6 +14,7 @@ import type {
   CreateOperationInput,
   OperationSession,
   OperationSummary,
+  ResultReportStatus,
   UpdateOperationInput
 } from "./operationTypes";
 import {
@@ -34,6 +35,8 @@ const CALENDAR_RELEVANT_FIELDS: Array<keyof UpdateOperationInput> = [
   "om",
   "onsiteOm",
   "courseName",
+  // 기업명도 이벤트 제목("[기업] 과정_N회차")에 들어간다.
+  "companyName",
   // 회차 번호는 이벤트 제목에 들어간다("[기업] 과정_N회차"). 순서를 바꾸면 제목이 따라가야 한다.
   // 참석자는 그대로라 초대 메일은 나가지 않는다(D11).
   "roundNo"
@@ -87,6 +90,11 @@ export class CalendarReflectingOperationRepository implements OperationRepositor
 
   upsertCourseLectureManagement(courseRecordId: string, input: CourseLectureManagementInput, actorEmail?: string): Promise<CourseLectureManagementInput> {
     return this.inner.upsertCourseLectureManagement(courseRecordId, input, actorEmail);
+  }
+
+  upsertCourseResultReportStatus(courseRecordId: string, hasResultReport: ResultReportStatus, actorEmail?: string): Promise<ResultReportStatus> {
+    // 결과보고서 여부는 일정과 무관해 캘린더에 반영할 것이 없다.
+    return this.inner.upsertCourseResultReportStatus(courseRecordId, hasResultReport, actorEmail);
   }
 
   getSummary(): Promise<OperationSummary> {

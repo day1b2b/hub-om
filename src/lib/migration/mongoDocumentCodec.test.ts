@@ -20,8 +20,8 @@ function fixture(model: string): Record<string, unknown> {
 }
 const encode = (name: string, row: Record<string, unknown>) => encodeMongoDocument(name, row, { sourceMode: "plaintext" });
 
-test("all 42 DMMF models and all 159 private fields roundtrip without plaintext persistence", () => {
-  assert.equal(mongoModelNames.length, 42);
+test("all 43 DMMF models and all 163 private fields roundtrip without plaintext persistence", () => {
+  assert.equal(mongoModelNames.length, 43);
   let privateFields = 0;
   for (const model of mongoModelNames) {
     const row = fixture(model);
@@ -41,7 +41,7 @@ test("all 42 DMMF models and all 159 private fields roundtrip without plaintext 
     }
     assert.match(hashMongoDocument(model, doc), /^[a-f0-9]{64}$/);
   }
-  assert.equal(privateFields, 159);
+  assert.equal(privateFields, 163);
 });
 
 test("Decimal retains exact precision, UUID remains string, bytes and Json tagged values roundtrip", () => {

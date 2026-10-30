@@ -5,6 +5,7 @@ import { operationAuditRow } from "./mongoOperationAudit";
 import { assertMongo, completeMongoRow, MongoOperationError, MongoOperationStore, type MongoOperationOptions, type MongoRow } from "./mongoOperationStore";
 import { assertMongoReadStoreReady } from "./mongoReadStore";
 import { encodeMongoRuntimeDocument } from "./mongoRuntimeCodec";
+import { touchesBusinessInfo } from "./companyBusinessInfoTypes";
 
 // Company 컬렉션 자체는 overview-pages/operation Mongo 런타임이 이미 준비해 둔다(같은
 // 물리 네임스페이스를 공유) — 이 저장소는 그 컬렉션을 열어 사업자등록증 정보만 읽고 쓴다.
@@ -29,6 +30,7 @@ function toBusinessInfo(row: MongoRow): CompanyBusinessInfo {
     businessItem: (row.businessItem as string | null) ?? null,
     invoiceEmail: (row.invoiceEmail as string | null) ?? null,
     invoiceEmailSecondary: (row.invoiceEmailSecondary as string | null) ?? null,
+    memo: (row.memo as string | null) ?? null,
     businessInfoUpdatedAt: updatedAt instanceof Date ? updatedAt.toISOString() : null,
     businessInfoUpdatedBy: (row.businessInfoUpdatedBy as string | null) ?? null
   };
@@ -87,8 +89,8 @@ export class MongoCompanyBusinessInfoRepository implements CompanyBusinessInfoRe
       ...(patch.businessItem !== undefined ? { businessItem: normalizeValue(patch.businessItem) } : {}),
       ...(patch.invoiceEmail !== undefined ? { invoiceEmail: normalizeValue(patch.invoiceEmail) } : {}),
       ...(patch.invoiceEmailSecondary !== undefined ? { invoiceEmailSecondary: normalizeValue(patch.invoiceEmailSecondary) } : {}),
-      businessInfoUpdatedAt: new Date(),
-      businessInfoUpdatedBy: updatedBy
+      ...(patch.memo !== undefined ? { memo: normalizeValue(patch.memo) } : {}),
+      ...(touchesBusinessInfo(patch) ? { businessInfoUpdatedAt: new Date(), businessInfoUpdatedBy: updatedBy } : {})
     });
     const document = encodeMongoRuntimeDocument("Company", next);
     const result = await this.store.collection("Company").replaceOne({ _id: companyId }, document, { session });

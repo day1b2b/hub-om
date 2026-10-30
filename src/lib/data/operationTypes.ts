@@ -109,6 +109,12 @@ export interface OperationSession {
   courseResultReportLink?: string;
   courseLectureManagementLink?: string;
   courseLectureManagementNote?: string;
+  /**
+   * 과정(Course) 레벨 결과보고서 여부. 같은 과정의 모든 회차가 이 값을 공유한다.
+   * 회차별 hasResultReport는 expand-migrate 기간 동안 별도로 남아 있으며(아직 cleanup 전),
+   * 값이 아직 과정 레벨로 승격되지 않았으면(백엔드가 이 필드를 채우지 않았으면) undefined다.
+   */
+  courseHasResultReport?: ResultReportStatus;
   om: string;
   ld: string;
   onsiteOm: string;
@@ -210,6 +216,11 @@ export interface UpdateOperationInput {
   archiveStatus?: ArchiveStatus;
   avgSatisfaction?: string;
   coach?: string;
+  /**
+   * 기업명. 바꾸면 이 회차를 같은 이름(정규화 기준)의 기업으로 옮긴다 — 없으면 새로 만든다.
+   * 기존 기업의 이름 자체는 바꾸지 않는다(같은 기업의 다른 과정까지 바뀌지 않게).
+   */
+  companyName?: string;
   companyWikiLink?: string;
   costRaw?: string;
   courseCategory?: string;
