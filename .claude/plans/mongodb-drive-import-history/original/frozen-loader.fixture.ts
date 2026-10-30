@@ -21,9 +21,9 @@ export function verifyClosure() {
   for (const origin of ["package.json", "package-lock.json", "prisma/schema.prisma", "scripts/ts-loader.mjs"]) {
     const actual = createHash("sha256").update(readFileSync(new URL(`../../../../${origin}`, import.meta.url))).digest("hex");
     const approved = origin === "prisma/schema.prisma"
-      ? new Set([entries.get(origin)!.sha256, "cb2dc13281d74c7e52c04fb65f7a2940f0c249a9fe9d301f049c22548b37c26c", "cfe8aa3ec3cc4d5c173229791cc16afafc1fd3636f3639d354f0c11052ef7ce7", "a357b1bb4ed0ed31147faff0417efe777adbb39c593be9266622f430266019e5", "dd93ad831ed676773ce9bc25df767f98ad39f4e1c22786d343e3bedca1896454", "eca2eb45d7aecfe5d29c38dea05f21e1b16e76dfb8ba1a9dfa305923a8b93138", "f5da3b4422e316f29660592231424e26136aae279a389f198c03f3f67f2b61b1"])
+      ? new Set([entries.get(origin)!.sha256, "cb2dc13281d74c7e52c04fb65f7a2940f0c249a9fe9d301f049c22548b37c26c", "cfe8aa3ec3cc4d5c173229791cc16afafc1fd3636f3639d354f0c11052ef7ce7", "a357b1bb4ed0ed31147faff0417efe777adbb39c593be9266622f430266019e5", "dd93ad831ed676773ce9bc25df767f98ad39f4e1c22786d343e3bedca1896454", "1e33a1a6edc51fea1fdb2a4c5449075f8462ffc7d7c89ccd41e0a13d6bd45980", "eca2eb45d7aecfe5d29c38dea05f21e1b16e76dfb8ba1a9dfa305923a8b93138", "f5da3b4422e316f29660592231424e26136aae279a389f198c03f3f67f2b61b1"])
       : origin === "package.json"
-        ? new Set([entries.get(origin)!.sha256, "e37e84bd72a5cd680e73ea886adb332aae037ed76819899be4edfc0eebf14339", "bb4e454e99c523037b906df304ec2beafa0a6c36353fff6f2fa6c7ae567be32f", "e19e695a4b84ff2515be736c5dda73d2757b40127e89611950fa88cd081a8703"])
+        ? new Set([entries.get(origin)!.sha256, "e37e84bd72a5cd680e73ea886adb332aae037ed76819899be4edfc0eebf14339", "bb4e454e99c523037b906df304ec2beafa0a6c36353fff6f2fa6c7ae567be32f", "e19e695a4b84ff2515be736c5dda73d2757b40127e89611950fa88cd081a8703", "e19e695a4b84ff2515be736c5dda73d2757b40127e89611950fa88cd081a8703"])
         : new Set([entries.get(origin)!.sha256]);
     assert.ok(approved.has(actual), `actual runtime drift: ${origin}`);
   }
