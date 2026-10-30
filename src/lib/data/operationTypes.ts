@@ -57,6 +57,12 @@ export interface CourseCommonNote {
 
 export type CourseCommonNoteInput = Pick<CourseCommonNote, "specialNotes" | "operationIssue" | "omUpdate">;
 
+/** 과정(Course) 레벨 강의관리 입력. 항상 두 필드를 함께 바꾼다(부분 수정 없음). */
+export interface CourseLectureManagementInput {
+  lectureManagementLink: string;
+  lectureManagementNote: string;
+}
+
 /**
  * 코스ID로 찾은 과정(Course) 한 건 — 자동 채움 조회용 최소 정보.
  * 한 코스ID에 과정이 여러 개인 경우가 있어(전체 16~18%) 항상 목록으로 다룬다.
@@ -94,6 +100,15 @@ export interface OperationSession {
   tools: string;
   /** 과정 공통 메모. 아직 없거나 레거시 저장소이면 undefined다. */
   courseCommonNote?: CourseCommonNote;
+  /**
+   * 과정(Course) 레벨 결과보고서/강의관리. 같은 과정의 모든 회차가 이 값을 공유한다.
+   * 회차별 resultReportLink/lectureManagementLink/lectureManagementNote는 expand-migrate 기간 동안
+   * 별도로 남아 있으며(아직 cleanup 전), 화면은 과정 레벨 값을 우선 사용한다.
+   * 값이 없으면 빈 문자열이며, 백엔드가 이 필드를 아직 채우지 않았으면 undefined다(courseCommonNote와 같은 규칙).
+   */
+  courseResultReportLink?: string;
+  courseLectureManagementLink?: string;
+  courseLectureManagementNote?: string;
   om: string;
   ld: string;
   onsiteOm: string;

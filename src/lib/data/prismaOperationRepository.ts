@@ -18,6 +18,7 @@ import type {
   ArchiveStatus,
   CourseCommonNote,
   CourseCommonNoteInput,
+  CourseLectureManagementInput,
   CourseLookupCandidate,
   CreateOperationInput,
   EducationFormat,
@@ -191,6 +192,9 @@ function toOperationSession(session: OperationSessionRow, courseIdLabel: string)
     courseCategory: session.course.courseCategory ?? "",
     tools: session.course.tools ?? "",
     ...(session.course.commonNote ? { courseCommonNote: toCourseCommonNote(session.course.commonNote) } : {}),
+    courseResultReportLink: session.course.resultReportLink ?? "",
+    courseLectureManagementLink: session.course.lectureManagementLink ?? "",
+    courseLectureManagementNote: session.course.lectureManagementNote ?? "",
     om: session.omName ?? "",
     ld: session.ldName ?? "",
     onsiteOm: session.onsiteOmName ?? "",
@@ -357,6 +361,25 @@ export class PrismaOperationRepository implements OperationRepository {
 
   async deleteCourseCommonNote(courseRecordId: string, actorEmail?: string): Promise<void> {
     await getPrismaClient().courseCommonNote.updateMany({ where: { courseRecordId, deletedAt: null }, data: { deletedAt: new Date(), deletedBy: nullableText(actorEmail ?? "") } });
+  }
+
+  async upsertCourseReportLink(courseRecordId: string, resultReportLink: string): Promise<string> {
+    const course = await getPrismaClient().course.update({
+      where: { id: courseRecordId },
+      data: { resultReportLink: nullableText(resultReportLink) }
+    });
+    return course.resultReportLink ?? "";
+  }
+
+  async upsertCourseLectureManagement(courseRecordId: string, input: CourseLectureManagementInput): Promise<CourseLectureManagementInput> {
+    const course = await getPrismaClient().course.update({
+      where: { id: courseRecordId },
+      data: {
+        lectureManagementLink: nullableText(input.lectureManagementLink),
+        lectureManagementNote: nullableText(input.lectureManagementNote)
+      }
+    });
+    return { lectureManagementLink: course.lectureManagementLink ?? "", lectureManagementNote: course.lectureManagementNote ?? "" };
   }
 
   async createOperation(input: CreateOperationInput): Promise<OperationSession> {
