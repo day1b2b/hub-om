@@ -67,6 +67,8 @@
   "POST /api/coaches/[id]/facts": "tracked",
   "DELETE /api/coaches/[id]/facts/[factId]": "tracked",
   "POST /api/coaches/[id]/regenerate-token": "tracked",
+  "POST /api/coaches/[id]/link-mail": "tracked",
+  "GET /api/coaches/link-mail-log": "tracked",
   "POST /api/coaches/[id]/reservations": "tracked",
   "DELETE /api/coaches/[id]/reservations": "tracked",
   "PATCH /api/coaches/[id]": "tracked",
