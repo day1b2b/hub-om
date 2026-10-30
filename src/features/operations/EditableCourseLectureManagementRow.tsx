@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { isNavigableHref, toHref } from "@/lib/links";
+import { findLinkHref } from "@/lib/links";
 
 type SaveState = "idle" | "saving" | "failed";
 
@@ -28,15 +28,15 @@ export function EditableCourseLectureManagementRow({
   const [noteDraft, setNoteDraft] = useState(lectureManagementNote);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const done = Boolean(lectureManagementLink.trim() || lectureManagementNote.trim());
-  const hasHref = isNavigableHref(lectureManagementLink);
+  const href = findLinkHref(lectureManagementLink, lectureManagementNote);
 
   if (!isEditing) {
     return (
       <div className={`archive-item-row ${done ? "done" : "missing"}`}>
         <strong>강의관리</strong>
         <div className="archive-item-actions">
-          {hasHref ? (
-            <a className="archive-item-state" href={toHref(lectureManagementLink) ?? lectureManagementLink} rel="noreferrer" target="_blank">
+          {href ? (
+            <a className="archive-item-state" href={href} rel="noreferrer" target="_blank">
               열기
             </a>
           ) : (
