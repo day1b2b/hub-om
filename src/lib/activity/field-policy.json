@@ -362,8 +362,7 @@
       "applied_at"
     ],
     "changeOnly": [
-      "comment_positive",
-      "comment_improve",
+      "comment_lists",
       "applied_by",
       "applied_by_pii_index"
     ]

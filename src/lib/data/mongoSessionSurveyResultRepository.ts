@@ -6,7 +6,8 @@ import { assertMongoReadStoreReady } from "./mongoReadStore";
 import { encodeMongoRuntimeDocument } from "./mongoRuntimeCodec";
 import type { SessionSurveyResultRepository } from "./sessionSurveyResultRepository";
 import {
-  commentLines,
+  commentListsFromRecord,
+  commentListsToRecord,
   commentStatusFromRecord,
   commentStatusToRecord,
   type SessionSurveyResult,
@@ -28,7 +29,7 @@ function toResult(row: MongoRow): SessionSurveyResult {
     instructorSatisfaction: (row.instructorSatisfaction as string | null) ?? null,
     respondents: (row.respondents as number | null) ?? null,
     positiveRate: (row.positiveRate as string | null) ?? null,
-    comments: status ? { status, positive: commentLines(row.commentPositive), improve: commentLines(row.commentImprove) } : null,
+    comments: status ? { status, ...commentListsFromRecord(row.commentLists) } : null,
     appliedBy: (row.appliedBy as string | null) ?? null,
     appliedAt: (row.appliedAt as Date).toISOString()
   };
@@ -80,9 +81,9 @@ export class MongoSessionSurveyResultRepository implements SessionSurveyResultRe
     const now = new Date();
     // 코멘트가 안 온 요청(구버전 앱)은 저장된 코멘트를 그대로 둔다.
     const comments = input.comments
-      ? { commentStatus: commentStatusToRecord(input.comments.status), commentPositive: input.comments.positive, commentImprove: input.comments.improve }
+      ? { commentStatus: commentStatusToRecord(input.comments.status), commentLists: commentListsToRecord(input.comments) }
       : previous
-        ? { commentStatus: previous.commentStatus, commentPositive: previous.commentPositive, commentImprove: previous.commentImprove }
+        ? { commentStatus: previous.commentStatus, commentLists: previous.commentLists }
         : {};
     const next = completeMongoRow("SessionSurveyResult", {
       id: (previous?.id as string | undefined) ?? randomUUID(),
@@ -107,5 +108,23 @@ export class MongoSessionSurveyResultRepository implements SessionSurveyResultRe
     const audit = operationAuditRow("SessionSurveyResult", previous, next);
     if (audit) await this.store.collection("ActivityChange").insertOne(encodeMongoRuntimeDocument("ActivityChange", audit), { session });
     return toResult(next);
+  }
+}
+
+/**
+ * 만족도 결과 기록은 부가 정보다. 컬렉션이 아직 없거나 준비가 안 됐으면 빈 결과를 돌려주고
+ * 쓰기는 실패로 알리는 대체 저장소를 쓴다 — 운영 화면·[hub-om 반영]이 이 기록 때문에 막히지 않게.
+ * 그래서 /api/health는 이 컬렉션을 검사하지 않고, 평소처럼 배포한 뒤 컬렉션을 만들면 된다
+ * (docs/operations/mongodb-session-survey-result-collection.md). 없는 동안은 로그 SESSION_SURVEY_RESULT_UNAVAILABLE.
+ */
+export async function openSessionSurveyResultsOrUnavailable(options: MongoSessionSurveyResultOptions): Promise<SessionSurveyResultRepository> {
+  try {
+    return await MongoSessionSurveyResultRepository.open(options);
+  } catch {
+    console.error("SESSION_SURVEY_RESULT_UNAVAILABLE");
+    return Object.freeze({
+      listByOperationIds: async () => [],
+      upsert: async () => { throw new MongoOperationError("SESSION_SURVEY_RESULT_UNAVAILABLE"); }
+    });
   }
 }

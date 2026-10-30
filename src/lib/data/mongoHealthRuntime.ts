@@ -23,9 +23,6 @@ export function openMongoHealthRuntime(options: MongoOperationOptions) {
         // 참고)만 나중에 VALIDATOR_NOT_READY로 500이 난다. 헬스체크 단계에서 먼저 검사해 배포 자체를 막는다.
         const { assertMongoReadStoreReady } = await import("./mongoReadStore");
         await assertMongoReadStoreReady(new MongoOperationStore(options, ["TeamUserDeparture"]));
-        // SessionSurveyResult도 같은 이유로 여기서 검사한다(만족도 반영·강사 위키가 읽는다,
-        // mongodb-session-survey-result-collection.md 참고).
-        await assertMongoReadStoreReady(new MongoOperationStore(options, ["SessionSurveyResult"]));
       })
     });
     registerDataRepositoryScope(repositories);

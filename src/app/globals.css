@@ -15345,63 +15345,6 @@ button.coach-doc-reserve-chip:disabled {
   padding: 0;
 }
 
-/* 강사 위키: 수강생 코멘트 (회차별 만족도 결과의 AI 요약) */
-.survey-comment-digest {
-  display: grid;
-  gap: 10px;
-  margin: 0;
-}
-
-.survey-comment-digest > div {
-  display: grid;
-  gap: 4px;
-  grid-template-columns: 64px minmax(0, 1fr);
-}
-
-.survey-comment-digest dt {
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 700;
-  padding-top: 2px;
-}
-
-.survey-comment-digest dd {
-  margin: 0;
-  min-width: 0;
-}
-
-.survey-comment-digest ul,
-.survey-comment-rounds {
-  display: grid;
-  font-size: 13px;
-  gap: 6px;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.survey-comment-digest .people-chip {
-  margin-left: 4px;
-  vertical-align: 1px;
-}
-
-.survey-comment-row td {
-  background: var(--surface-strong);
-  border-top: 0;
-  padding-top: 6px;
-}
-
-.survey-comment-rounds p {
-  line-height: 1.5;
-  margin: 2px 0 0;
-}
-
-.survey-comment-meta {
-  color: var(--muted);
-  display: block;
-  font-size: 12px;
-}
-
 .people-contact {
   display: grid;
   gap: 8px;
@@ -15591,4 +15534,59 @@ button.coach-doc-reserve-chip:disabled {
   .instructor-candidates > li {
     grid-template-columns: 1fr;
   }
+}
+
+/* 운영 회차 상세: 수강생 코멘트 (회차별 만족도 결과의 AI 요약 네 갈래) */
+.round-survey-list {
+  display: grid;
+  gap: 12px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.round-survey-list > li {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+}
+
+.round-survey-head {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 13px;
+  gap: 4px 12px;
+}
+
+.round-survey-head > span {
+  color: var(--muted);
+}
+
+.round-survey-applied {
+  font-size: 12px;
+  margin-left: auto;
+}
+
+.round-survey-axes {
+  display: grid;
+  gap: 10px 16px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.round-survey-axes b {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.round-survey-axes ul {
+  display: grid;
+  font-size: 13px;
+  gap: 4px;
+  line-height: 1.45;
+  margin: 0;
+  padding-left: 16px;
 }

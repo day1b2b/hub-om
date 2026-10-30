@@ -172,7 +172,7 @@ test("만족도 결과: 회차가 확정되면 측정값·출처를 업무 키�
 
 test("만족도 결과: 종합이 이미 같은 값이어도 남긴다(응답자 수·코멘트는 최신으로)", () => {
   const d = planRoundApply("4.55", matched(), find(target("4.55")));
-  const comments = { status: "ok" as const, positive: ["실습이 유용함"], improve: [] };
+  const comments = { status: "ok" as const, positive: ["실습이 유용함"], instructorImprove: [], hrdImprove: ["냉방 개선"], followup: [] };
   const result = planSurveyResult(d, { comments });
   assert.equal(result?.operationId, "OP-260455");
   assert.deepEqual(result?.comments, comments);

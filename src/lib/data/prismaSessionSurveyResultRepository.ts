@@ -1,7 +1,8 @@
 import { getPrismaClient } from "./prisma";
 import type { SessionSurveyResultRepository } from "./sessionSurveyResultRepository";
 import {
-  commentLines,
+  commentListsFromRecord,
+  commentListsToRecord,
   commentStatusFromRecord,
   commentStatusToRecord,
   type SessionSurveyResult,
@@ -16,8 +17,7 @@ interface Row {
   respondents: number | null;
   positiveRate: string | null;
   commentStatus: string | null;
-  commentPositive: unknown;
-  commentImprove: unknown;
+  commentLists: unknown;
   appliedBy: string | null;
   appliedAt: Date;
 }
@@ -31,7 +31,7 @@ function toResult(row: Row): SessionSurveyResult {
     instructorSatisfaction: row.instructorSatisfaction,
     respondents: row.respondents,
     positiveRate: row.positiveRate,
-    comments: status ? { status, positive: commentLines(row.commentPositive), improve: commentLines(row.commentImprove) } : null,
+    comments: status ? { status, ...commentListsFromRecord(row.commentLists) } : null,
     appliedBy: row.appliedBy,
     appliedAt: row.appliedAt.toISOString()
   };
@@ -58,8 +58,7 @@ export class PrismaSessionSurveyResultRepository implements SessionSurveyResultR
     const comments = input.comments
       ? {
           commentStatus: commentStatusToRecord(input.comments.status),
-          commentPositive: input.comments.positive,
-          commentImprove: input.comments.improve
+          commentLists: commentListsToRecord(input.comments)
         }
       : {};
     const row = await getPrismaClient().sessionSurveyResult.upsert({
