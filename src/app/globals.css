@@ -2961,6 +2961,62 @@ td span {
   white-space: nowrap;
 }
 
+/* 운영 상세 제목의 기업명: 눌러서 수정 */
+.title-company--editable {
+  background: none;
+  border: 1px dashed transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 2px 6px;
+}
+
+.title-company--editable:hover,
+.title-company--editable:focus-visible {
+  background: var(--blue-bg);
+  border-color: var(--blue);
+}
+
+.title-company-editor {
+  align-items: center;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.title-company-editor input {
+  border: 1px solid var(--blue);
+  border-radius: 6px;
+  font-size: 13px;
+  min-width: 200px;
+  padding: 4px 8px;
+}
+
+.title-company-editor button {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+}
+
+.title-company-editor button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.title-company-hint {
+  color: var(--muted);
+  font-size: 12px;
+  width: 100%;
+}
+
+.title-company-hint.is-error {
+  color: var(--red);
+}
+
 .title-course-id {
   align-items: center;
   background: var(--amber-bg);
@@ -10360,6 +10416,41 @@ button.coach-doc-reserve-chip:disabled {
   white-space: pre-wrap;
 }
 
+/* 기업위키 상세 계산서 발행 요청 현황 */
+.invoice-status {
+  border-radius: 999px;
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 10px;
+  white-space: nowrap;
+}
+
+.invoice-status--done {
+  background: var(--green-bg);
+  color: var(--green);
+}
+
+.invoice-status--pending {
+  background: var(--surface-strong);
+  color: var(--muted);
+}
+
+/* 기업위키 상세 메모 카드 */
+.wiki-input.wiki-memo-input {
+  font-family: inherit;
+  line-height: 1.6;
+  max-width: none;
+  resize: vertical;
+}
+
+.wiki-memo-view {
+  line-height: 1.6;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 /* 강사 프로필 파일 첨부 */
 .profile-attach {
   display: flex;
@@ -12221,6 +12312,17 @@ button.coach-doc-reserve-chip:disabled {
 
 .om-company-new-hint {
   color: var(--blue);
+  margin-top: 4px;
+}
+
+.om-company-new-hint.om-company-space-error,
+.field-error-text {
+  color: var(--red);
+}
+
+.field-error-text {
+  display: block;
+  font-size: 12px;
   margin-top: 4px;
 }
 

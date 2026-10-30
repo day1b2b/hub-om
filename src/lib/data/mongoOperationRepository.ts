@@ -261,6 +261,28 @@ export class MongoOperationRepository implements OperationRepository {
         course = await this.course(currentCourse.companyId as string, courseId, name, {}, session, currentCourse);
         next.courseRecordId = id(course);
       }
+      if (input.companyName !== undefined) {
+        const companyName = normalizeVisibleText(input.companyName);
+        assertMongo(companyName, "COMPANY_REQUIRED");
+        const currentCompany = await this.store.one("Company", { _id: course.companyId as string }, session);
+        if (currentCompany?.normalizedName !== normalizeName(companyName)) {
+          // 기존 기업이면 이름을 덮어쓰지 않는다 — 그 기업의 다른 과정 표시까지 바뀌면 안 된다.
+          const now = new Date();
+          const company = await this.store.one("Company", { normalizedName: normalizeName(companyName) }, session)
+            ?? await this.write("Company", { id: randomUUID(), name: companyName, normalizedName: normalizeName(companyName), businessNumber: null, createdAt: now, updatedAt: now }, null, session);
+          const conflict = await this.store.one("Course", { companyId: id(company), courseId: course.courseId, name: course.name }, session);
+          assertMongo(!conflict || id(conflict) === id(course), "COMPANY_ALREADY_HAS_COURSE");
+          // 새 과정을 만들지 않고 과정(Course)의 기업만 바꾼다 — 과정ID·공통 메모·과정 링크가 그대로 따라간다.
+          const previousCompanyId = course.companyId as string;
+          course = await this.write("Course", { ...course, companyId: id(company), updatedAt: now }, course, session);
+          // 코스ID명은 (기업, 코스ID) 단위라 옮겨 간 기업에 없으면 같이 가져간다.
+          const previousLabel = await this.store.one("CourseIdLabel", { companyId: previousCompanyId, courseId: course.courseId }, session);
+          const targetFilter = { companyId: id(company), courseId: course.courseId };
+          if (previousLabel?.label && !(await this.store.one("CourseIdLabel", targetFilter, session))) {
+            await this.write("CourseIdLabel", { id: randomUUID(), createdAt: now, ...targetFilter, label: previousLabel.label, updatedAt: now }, null, session);
+          }
+        }
+      }
       if (input.courseCategory !== undefined || input.tools !== undefined) {
         course = await this.write("Course", { ...course, ...(input.courseCategory !== undefined ? { courseCategory: nullableText(input.courseCategory) } : {}), ...(input.tools !== undefined ? { tools: nullableText(input.tools) } : {}), updatedAt: new Date() }, course, session);
       }

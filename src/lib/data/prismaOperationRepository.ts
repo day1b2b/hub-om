@@ -638,6 +638,65 @@ export class PrismaOperationRepository implements OperationRepository {
       });
     }
 
+    if (input.companyName !== undefined) {
+      const nextCompanyName = normalizeVisibleText(input.companyName);
+
+      if (!nextCompanyName) {
+        throw new Error("Company name is required.");
+      }
+
+      const session = await prisma.operationSession.findUnique({
+        include: { course: { include: { company: true } } },
+        where: { operationId }
+      });
+
+      if (!session) {
+        throw new Error("Operation not found.");
+      }
+
+      if (session.course.company.normalizedName !== normalizeName(nextCompanyName)) {
+        // 기존 기업이면 이름을 덮어쓰지 않는다 — 그 기업의 다른 과정 표시까지 바뀌면 안 된다.
+        const company = await prisma.company.upsert({
+          create: { name: nextCompanyName, normalizedName: normalizeName(nextCompanyName) },
+          update: {},
+          where: { normalizedName: normalizeName(nextCompanyName) }
+        });
+        const conflict = await prisma.course.findUnique({
+          select: { id: true },
+          where: {
+            companyId_courseId_name: {
+              companyId: company.id,
+              courseId: session.course.courseId,
+              name: session.course.name
+            }
+          }
+        });
+
+        if (conflict && conflict.id !== session.courseRecordId) {
+          throw new Error("Company already has the same course.");
+        }
+
+        // 새 과정을 만들지 않고 과정(Course) 행의 기업만 바꾼다 — 과정ID(processSeq)·과정 공통 메모·
+        // 강의관리/결과보고서 링크가 그대로 따라가고, 같은 과정의 다른 회차도 함께 옮겨진다.
+        await prisma.course.update({
+          data: { companyId: company.id },
+          where: { id: session.courseRecordId }
+        });
+
+        // 코스ID명은 (기업, 코스ID) 단위라 옮겨 간 기업에 없으면 같이 가져간다.
+        const previousLabel = await prisma.courseIdLabel.findUnique({
+          where: { companyId_courseId: { companyId: session.course.companyId, courseId: session.course.courseId } }
+        });
+        if (previousLabel?.label) {
+          await prisma.courseIdLabel.upsert({
+            create: { companyId: company.id, courseId: session.course.courseId, label: previousLabel.label },
+            update: {},
+            where: { companyId_courseId: { companyId: company.id, courseId: session.course.courseId } }
+          });
+        }
+      }
+    }
+
     if (input.courseCategory !== undefined || input.tools !== undefined) {
       const session = await prisma.operationSession.findUnique({
         select: { courseRecordId: true },
@@ -726,8 +785,9 @@ export class PrismaOperationRepository implements OperationRepository {
     if (input.timeText !== undefined) data.timeText = nullableText(input.timeText);
     if (input.totalCost !== undefined) data.totalCost = input.totalCost;
 
-    // 코스ID명·분류·도구는 위에서 관련 테이블을 이미 수정했다. 회차 필드가 비어 있어도 수정자를 남긴다.
-    const updatedRelatedRecord = input.courseIdLabel !== undefined || input.courseCategory !== undefined || input.tools !== undefined;
+    // 기업·코스ID명·분류·도구는 위에서 관련 테이블을 이미 수정했다. 회차 필드가 비어 있어도 수정자를 남긴다.
+    const updatedRelatedRecord =
+      input.companyName !== undefined || input.courseIdLabel !== undefined || input.courseCategory !== undefined || input.tools !== undefined;
     if ((Object.keys(data).length > 0 || updatedRelatedRecord) && updatedBy !== undefined) {
       data.updatedBy = nullableText(updatedBy);
     }

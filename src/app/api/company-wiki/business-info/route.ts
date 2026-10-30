@@ -2,6 +2,7 @@ import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { emptyCompanyBusinessInfo, type CompanyBusinessInfoPatch } from "@/lib/data/companyBusinessInfoRepository";
+import { COMPANY_MEMO_MAX_LENGTH } from "@/lib/data/companyBusinessInfoTypes";
 import { getCompanyBusinessInfoRepository } from "@/lib/data/companyBusinessInfoRepositoryFactory";
 import { runCompanyBusinessInfoRequest } from "@/lib/data/companyBusinessInfoComposition";
 
@@ -21,7 +22,7 @@ async function activityGET(request: Request) {
   }
 }
 
-// 기업위키 사업자등록증 정보 저장. companyId 기준으로 부분 병합.
+// 기업위키 사업자등록증 정보·메모 저장. companyId 기준으로 부분 병합(보낸 항목만 바뀐다).
 async function activityPOST(request: Request) {
   const session = await requireWorkspaceSession();
   try {
@@ -29,6 +30,9 @@ async function activityPOST(request: Request) {
     const { companyId, ...patch } = body;
     if (!companyId || typeof companyId !== "string") {
       return NextResponse.json({ error: "companyId 필요" }, { status: 400 });
+    }
+    if (typeof patch.memo === "string" && patch.memo.length > COMPANY_MEMO_MAX_LENGTH) {
+      return NextResponse.json({ error: `메모는 ${COMPANY_MEMO_MAX_LENGTH.toLocaleString("ko-KR")}자까지 저장할 수 있습니다.` }, { status: 413 });
     }
     const updatedBy = session.user?.email ?? "unknown";
     const saved = await getCompanyBusinessInfoRepository().update(companyId, patch, updatedBy);

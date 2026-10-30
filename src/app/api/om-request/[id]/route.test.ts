@@ -16,7 +16,7 @@ mock.module("@/lib/activity/request", { namedExports: { withActivity: (_route: s
 mock.module("@/auth", { namedExports: { auth: async () => ({ user: { email: "synthetic@example.invalid" } }) } });
 mock.module("@/lib/auth/requireAdminSession", { namedExports: { isAdminEmail: () => authorized } });
 mock.module("@/lib/data/omRequest/omRequestLocalRepository", { namedExports: {
-  getOmRequest: async () => ({ id: "synthetic-request", status: assigned ? "배정완료" : "배정필요", operationId: linked ? "synthetic-operation" : undefined, totalSessions: 2, sessions }),
+  getOmRequest: async () => ({ id: "synthetic-request", company: "합성기업", status: assigned ? "배정완료" : "배정필요", operationId: linked ? "synthetic-operation" : undefined, totalSessions: 2, sessions }),
   setOmRequestOperationId: async (_id: string, operationId: string) => { linkedIds.push(operationId); return null; },
   updateOmRequest: async (_id: string, input: unknown) => { writes++; return input; },
   deleteOmRequest: async () => false
@@ -83,4 +83,16 @@ test("수정 권한을 회차 검사보다 먼저 확인한다", async () => {
   authorized = false;
   assert.equal((await save({ totalSessions: 4, sessions: [...sessions, ...sessions] })).status, 403);
   assert.equal(writes, 0);
+});
+test("연결된 요청의 기업명을 바꿔도 요청만 저장하고 운영현황은 건드리지 않는다", async () => {
+  const response = await save({ company: "새합성기업", totalSessions: 2, sessions, sessionOrigins: [0, 1] });
+  assert.equal(response.status, 200);
+  assert.equal(syncs.length, 0);
+  assert.equal(writes, 1);
+});
+test("기업명에 띄어쓰기가 있으면 저장하지 않는다", async () => {
+  const response = await save({ company: "새 합성기업", totalSessions: 2, sessions, sessionOrigins: [0, 1] });
+  assert.equal(response.status, 400);
+  assert.match((await response.json()).error, /띄어쓰기/);
+  assert.equal(syncs.length + writes, 0);
 });
