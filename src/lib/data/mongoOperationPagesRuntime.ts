@@ -10,9 +10,10 @@ import { MongoOperationStore, OPERATION_MODELS, prepareMongoOperationStore, type
 import { COACH_READ_MODELS, prepareMongoReadStore, TEAM_READ_MODELS } from "./mongoReadStore";
 import { hasKnownMongoRuntimeCollections } from "./mongoRuntimeNamespace";
 import { MongoTeamMemberRepository } from "./mongoTeamMemberRepository";
+import { openSessionSurveyResultsOrUnavailable, SESSION_SURVEY_RESULT_MODELS } from "./mongoSessionSurveyResultRepository";
 import { MongoTeamUserRepository, prepareMongoTeamUserStore } from "./teamUsers/mongoTeamUserRepository";
 
-type ScopeKey = "operations" | "teamUsers" | "teamMembers" | "instructorNote" | "coach" | "omRequests" | "omCustomTools";
+type ScopeKey = "operations" | "teamUsers" | "teamMembers" | "instructorNote" | "coach" | "omRequests" | "omCustomTools" | "sessionSurveyResults";
 export type MongoOperationPagesRepositories = Readonly<Pick<DataRepositories, ScopeKey>>;
 type Options = MongoOperationOptions & { allowShadowWrites: true; omCustomTools: OmCustomToolsRepository };
 export const MONGO_OPERATION_PAGES_RUNTIME_MODELS = [...new Set([
@@ -36,6 +37,7 @@ export async function prepareMongoOperationPagesRuntime(options: Options & { pro
       await prepareMongoReadStore(options, INSTRUCTOR_NOTE_MODELS);
       await prepareMongoReadStore(options, COACH_READ_MODELS);
       await prepareMongoOmRequestStore(options);
+      await prepareMongoReadStore(options, SESSION_SURVEY_RESULT_MODELS);
     }
     return await openMongoOperationPagesRuntime(options);
   } catch { throw new Error("MONGO_OPERATION_PAGES_RUNTIME_FAILED"); }
@@ -46,14 +48,16 @@ export async function openMongoOperationPagesRuntime(options: Options): Promise<
   try {
     if (options.allowShadowWrites !== true) throw new Error("gate");
     new MongoOperationStore(options, MONGO_OPERATION_PAGES_RUNTIME_MODELS);
-    const [operations, teamUsers, teamMembers, instructorNote, coach, omRequests] = await Promise.all([
+    const [operations, teamUsers, teamMembers, instructorNote, coach, omRequests, sessionSurveyResults] = await Promise.all([
       MongoOperationRepository.open(options), MongoTeamUserRepository.open(options), MongoTeamMemberRepository.open(options),
-      MongoInstructorNoteRepository.open(options), MongoCoachRepository.open(options), MongoOmRequestRepository.open(options)
+      MongoInstructorNoteRepository.open(options), MongoCoachRepository.open(options), MongoOmRequestRepository.open(options),
+      // 운영 회차 상세의 수강생 코멘트(읽기 전용, 부가 정보). 컬렉션이 없어도 운영 화면은 열려야 한다.
+      openSessionSurveyResultsOrUnavailable({ client: options.client, databaseName: options.databaseName, namespace: options.namespace })
     ]);
     const omCustomTools: OmCustomToolsRepository = Object.freeze({
       list: () => options.omCustomTools.list(), add: (names: string[]) => options.omCustomTools.add(names),
     });
-    const repositories: MongoOperationPagesRepositories = Object.freeze({ operations, teamUsers, teamMembers, instructorNote, coach, omRequests, omCustomTools });
+    const repositories: MongoOperationPagesRepositories = Object.freeze({ operations, teamUsers, teamMembers, instructorNote, coach, omRequests, omCustomTools, sessionSurveyResults });
     registerDataRepositoryScope(repositories);
     return Object.freeze({ repositories, run<T>(work: () => T): T {
       return runWithDataRepositories(repositories, () => runWithLockedRepositoryScope(work));

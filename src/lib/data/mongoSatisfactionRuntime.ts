@@ -5,13 +5,13 @@ import { MongoOperationRepository } from "./mongoOperationRepository";
 import { MongoOperationStore, OPERATION_MODELS, prepareMongoOperationStore, type MongoOperationOptions } from "./mongoOperationStore";
 import { MongoRequestAuditRepository, prepareMongoRequestAuditStore, REQUEST_AUDIT_MODELS } from "./mongoRequestAuditRepository";
 import type { SatisfactionSource } from "./satisfactionSource";
-import { MongoSessionSurveyResultRepository, SESSION_SURVEY_RESULT_MODELS } from "./mongoSessionSurveyResultRepository";
+import { openSessionSurveyResultsOrUnavailable, SESSION_SURVEY_RESULT_MODELS } from "./mongoSessionSurveyResultRepository";
 import { prepareMongoReadStore } from "./mongoReadStore";
 
 type ScopeKey = "operations" | "satisfactionSource" | "requestActivity" | "sessionSurveyResults";
 type Options = MongoOperationOptions & { allowShadowWrites: true; satisfactionSource: SatisfactionSource };
 export type MongoSatisfactionRepositories = Readonly<Pick<DataRepositories, ScopeKey>>;
-export const MONGO_SATISFACTION_RUNTIME_MODELS = [...new Set([...OPERATION_MODELS, ...REQUEST_AUDIT_MODELS, ...SESSION_SURVEY_RESULT_MODELS])] as readonly string[];
+export const MONGO_SATISFACTION_RUNTIME_MODELS = [...new Set([...OPERATION_MODELS, ...REQUEST_AUDIT_MODELS])] as readonly string[];
 
 export interface MongoSatisfactionRuntime {
   readonly repositories: MongoSatisfactionRepositories;
@@ -36,7 +36,7 @@ export async function openMongoSatisfactionRuntime(options: Options): Promise<Mo
     if (options.allowShadowWrites !== true) throw new Error("gate");
     new MongoOperationStore(options, MONGO_SATISFACTION_RUNTIME_MODELS);
     const [operations, requestActivity, sessionSurveyResults] = await Promise.all([
-      MongoOperationRepository.open(options), MongoRequestAuditRepository.open(options), MongoSessionSurveyResultRepository.open(options)
+      MongoOperationRepository.open(options), MongoRequestAuditRepository.open(options), openSessionSurveyResultsOrUnavailable(options)
     ]);
     const satisfactionSource: SatisfactionSource = Object.freeze({
       readRows: (spreadsheetId: string, tabTitle: string) => options.satisfactionSource.readRows(spreadsheetId, tabTitle)

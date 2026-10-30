@@ -44,6 +44,9 @@ import { displayRoleAssigneeText } from "@/lib/data/roleAssignees";
 import { isNavigableHref } from "@/lib/links";
 import { satisfactionNumber } from "@/lib/data/satisfaction";
 import { teamScopeSearchParam, type TeamScope } from "@/lib/teamScope";
+import { RoundSurveyCommentsSection } from "./RoundSurveyCommentsSection";
+import { buildRoundSurveyComments } from "./roundSurveyComments";
+import type { SessionSurveyResult } from "@/lib/data/sessionSurveyResultTypes";
 
 const SHOW_OPERATION_DISCUSSION = false;
 const SHOW_LECTURE_REPORTS = false;
@@ -64,6 +67,8 @@ interface OperationDetailProps {
   personOptions?: PersonOptions;
   relatedOperations?: OperationSession[];
   sameCourseIdOperations?: OperationSession[];
+  /** 회차별 만족도 결과(수강생 코멘트). 읽지 못하면 빈 목록 — 코멘트 칸만 빈 안내. */
+  surveyResults?: readonly SessionSurveyResult[];
   teamScope: TeamScope;
 }
 
@@ -78,6 +83,7 @@ export function OperationDetail({
   personOptions = { ld: [], om: [] },
   relatedOperations = [operation],
   sameCourseIdOperations = [],
+  surveyResults = [],
   teamScope
 }: OperationDetailProps) {
   const courseOperations = getCourseOperations(operation, relatedOperations);
@@ -416,6 +422,12 @@ export function OperationDetail({
             {SHOW_BULK_EDIT_ROUNDS ? <BulkSaveRoundsButton /> : null}
             </EditAllRoundsProvider>
           </section>
+          <RoundSurveyCommentsSection
+            rows={buildRoundSurveyComments(
+              courseOperations.map((candidate, candidateIndex) => ({ operationId: candidate.operationId, label: roundLabel(candidate, candidateIndex) })),
+              surveyResults
+            )}
+          />
           <InstructorContractRequestSection courseOperations={courseOperations} />
           {instructorRecommendation ? <InstructorCandidatesSection recommendation={instructorRecommendation} /> : null}
           <CourseNotesWorkspace

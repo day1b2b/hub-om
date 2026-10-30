@@ -399,16 +399,11 @@ export interface InstructorCourseGroup {
   instructorWikiLink: string;
 }
 
-/** 투입 이력을 과정 단위로 묶는 키. 같은 Course의 회차는 courseRecordId를 공유한다. */
-export function courseGroupKey(course: Pick<InstructorCourse, "courseRecordId" | "companyName" | "courseName">): string {
-  return course.courseRecordId || `${course.companyName}::${cleanCourseName(course.courseName)}`;
-}
-
 /** 회차 목록을 과정 단위로 묶는다. 최초 투입일 최신순, 날짜 없는 과정은 맨 뒤. */
 export function groupInstructorCourses(courses: InstructorCourse[]): InstructorCourseGroup[] {
   const groups = new Map<string, InstructorCourse[]>();
   for (const course of courses) {
-    const key = courseGroupKey(course);
+    const key = course.courseRecordId || `${course.companyName}::${cleanCourseName(course.courseName)}`;
     groups.set(key, [...(groups.get(key) ?? []), course]);
   }
 

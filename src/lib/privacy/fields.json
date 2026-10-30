@@ -1203,13 +1203,8 @@
   "SessionSurveyResult": {
     "table": "session_survey_results",
     "fields": {
-      "commentPositive": {
-        "column": "comment_positive",
-        "type": "Json",
-        "nullable": true
-      },
-      "commentImprove": {
-        "column": "comment_improve",
+      "commentLists": {
+        "column": "comment_lists",
         "type": "Json",
         "nullable": true
       },

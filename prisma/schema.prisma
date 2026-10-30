@@ -1063,7 +1063,7 @@ model TeamUserDeparture {
   @@map("team_user_departures")
 }
 
-// 수강생 만족도 결과의 회차별 기록. OM이 survey_analysis에서 [hub-om 반영]을 누를 때
+// 수강생 만족도 결과의 회차별 기록(운영 회차 상세에서 본다). OM이 survey_analysis에서 [hub-om 반영]을 누를 때
 // /api/satisfaction/round-apply가 회차 하나에 한 행을 덮어쓴다(누른 시점 = 최종본).
 // 회차(OperationSession)의 avgSatisfaction·instructorSatisfaction은 목록·대시보드가 읽는
 // 대표값으로 그대로 두고, 응답자 수·긍정률·수강생 코멘트·반영 출처는 여기에만 쌓는다.
@@ -1080,8 +1080,9 @@ model SessionSurveyResult {
   positiveRate           String?              @map("positive_rate")
   // null = 코멘트를 보내지 않는 구버전 앱으로만 반영됨.
   commentStatus          SurveyCommentStatus? @map("comment_status")
-  commentPositive        Json?                @map("comment_positive")
-  commentImprove         Json?                @map("comment_improve")
+  // 네 갈래 목록 {positive, instructorImprove, hrdImprove, followup}을 한 칸(암호화 JSON)에 둔다.
+  // 갈래가 늘거나 줄어도 마이그레이션 없이 받는다.
+  commentLists           Json?                @map("comment_lists")
   appliedBy              String?              @map("applied_by")
   appliedAt              DateTime             @default(now()) @map("applied_at")
   createdAt              DateTime             @default(now()) @map("created_at")
