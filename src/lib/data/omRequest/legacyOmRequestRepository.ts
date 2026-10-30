@@ -130,24 +130,6 @@ export async function syncAssignedOmByOperationId(operationId: string, assignedO
   return toOmRequest(row as OmRequestRow);
 }
 
-export async function syncCompanyByOperationId(operationId: string, company: string): Promise<OmRequest | null> {
-  if (!hasDatabaseUrl()) {
-    const requests = readAll();
-    const idx = requests.findIndex((r) => r.operationId === operationId);
-    if (idx === -1) return null;
-    if (requests[idx].company === company) return requests[idx];
-    requests[idx] = { ...requests[idx], company };
-    writeAll(requests);
-    return requests[idx];
-  }
-  const prisma = getPrismaClient();
-  const existing = await prisma.omRequest.findFirst({ where: { operationId } });
-  if (!existing) return null;
-  if (existing.company === company) return toOmRequest(existing as OmRequestRow);
-  const row = await prisma.omRequest.update({ where: { id: existing.id }, data: { company } });
-  return toOmRequest(row as OmRequestRow);
-}
-
 // 요청 생성 직후, 발송한 Slack 알림의 채널/스레드ts와 LD 이메일을 기록한다.
 // 배정 시점에 같은 스레드로 댓글을 달고 LD를 태깅하기 위한 값이다.
 export async function setOmRequestSlackMeta(

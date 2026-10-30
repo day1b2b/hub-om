@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { companyNameError } from "@/lib/data/companyName";
 
 // 운영 상세 제목 앞의 기업명. 처음부터 정확히 입력하는 게 원칙이라 카드에 수정 칸을 두지 않고,
-// 제목의 기업명을 눌러야만 고칠 수 있게 했다. 저장하면 이 과정의 모든 회차·기업위키·연결된
-// 업무 요청 기업명이 같이 바뀐다(서버의 changeCourseCompany).
+// 제목의 기업명을 눌러야만 고칠 수 있게 했다. 저장하면 이 과정의 모든 회차와 기업위키 기업명이
+// 같이 바뀐다(서버의 changeCourseCompany). 업무 요청 원본은 그대로 둔다.
 export function EditableTitleCompany({ companyName, operationId }: { companyName: string; operationId: string }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -81,7 +81,7 @@ export function EditableTitleCompany({ companyName, operationId }: { companyName
       <button disabled={saving || Boolean(inputError)} onClick={() => void save()} type="button">{saving ? "저장 중" : "저장"}</button>
       <button disabled={saving} onClick={() => setEditing(false)} type="button">취소</button>
       <span className={error || inputError ? "title-company-hint is-error" : "title-company-hint"}>
-        {error ?? inputError ?? "이 과정의 모든 회차·기업위키·업무 요청 기업명이 같이 바뀝니다."}
+        {error ?? inputError ?? "이 과정의 모든 회차와 기업위키 기업명이 같이 바뀝니다. 업무 요청 원본은 그대로예요."}
       </span>
     </span>
   );

@@ -9,7 +9,6 @@ let linkedIds: string[] = [];
 let authorized = true;
 let writes = 0;
 let tools = 0;
-let companyMoves: unknown[][] = [];
 const sessions = [{ date: "2099-01-01" }, { date: "2099-02-01" }];
 const added = { date: "2099-03-01", timeStart: "09:00", timeEnd: "18:00", location: "합성 장소" };
 mock.module("next/server.js", { namedExports: { NextResponse: { json: (value: unknown, init?: ResponseInit) => Response.json(value, init) } } });
@@ -25,10 +24,6 @@ mock.module("@/lib/data/omRequest/omRequestLocalRepository", { namedExports: {
 mock.module("@/lib/data/omRequest/omRequestOperationLink", { namedExports: {
   syncOmRequestSessionsToOperations: async (...args: unknown[]) => { syncs.push(args); return "synthetic-new-first"; }
 } });
-mock.module("@/lib/data/courseCompanyChange", { namedExports: {
-  changeCourseCompany: async (...args: unknown[]) => { companyMoves.push(args); },
-  CourseCompanyChangeError: class extends Error {}
-} });
 mock.module("@/lib/data/omRequest/omCustomToolsLocalRepository", { namedExports: {
   getOmCustomToolsRepository: () => ({}), listCustomTools: () => [], addCustomTools: () => { tools++; }
 } });
@@ -37,7 +32,7 @@ const { PATCH } = await import("./route"); hooks.deregister();
 const save = (body: unknown) => PATCH(new Request("https://synthetic.invalid/api/om-request/synthetic-request", {
   method: "PATCH", body: JSON.stringify(body)
 }), { params: Promise.resolve({ id: "synthetic-request" }) });
-beforeEach(() => { linked = true; assigned = false; authorized = true; writes = 0; tools = 0; syncs = []; linkedIds = []; companyMoves = []; });
+beforeEach(() => { linked = true; assigned = false; authorized = true; writes = 0; tools = 0; syncs = []; linkedIds = []; });
 
 test("연결된 요청에서 회차를 추가하면 운영현황 회차를 만들고 요청을 저장한다", async () => {
   const response = await save({ totalSessions: 3, sessions: [...sessions, added], sessionOrigins: [0, 1, null] });
@@ -89,19 +84,15 @@ test("수정 권한을 회차 검사보다 먼저 확인한다", async () => {
   assert.equal((await save({ totalSessions: 4, sessions: [...sessions, ...sessions] })).status, 403);
   assert.equal(writes, 0);
 });
-test("연결된 요청의 기업명을 바꾸면 운영현황 과정도 같은 기업명으로 옮긴다", async () => {
+test("연결된 요청의 기업명을 바꿔도 요청만 저장하고 운영현황은 건드리지 않는다", async () => {
   const response = await save({ company: "새합성기업", totalSessions: 2, sessions, sessionOrigins: [0, 1] });
   assert.equal(response.status, 200);
-  assert.deepEqual(companyMoves.map((args) => args.slice(0, 2)), [["synthetic-operation", "새합성기업"]]);
+  assert.equal(syncs.length, 0);
   assert.equal(writes, 1);
 });
 test("기업명에 띄어쓰기가 있으면 저장하지 않는다", async () => {
   const response = await save({ company: "새 합성기업", totalSessions: 2, sessions, sessionOrigins: [0, 1] });
   assert.equal(response.status, 400);
   assert.match((await response.json()).error, /띄어쓰기/);
-  assert.equal(companyMoves.length + syncs.length + writes, 0);
-});
-test("기업명을 그대로 두면 운영현황 과정을 옮기지 않는다", async () => {
-  assert.equal((await save({ company: "합성기업", totalSessions: 2, sessions, sessionOrigins: [0, 1] })).status, 200);
-  assert.equal(companyMoves.length, 0);
+  assert.equal(syncs.length + writes, 0);
 });

@@ -5,7 +5,6 @@ import { isAdminEmail } from "@/lib/auth/requireAdminSession";
 import { addCustomTools, listCustomTools, getOmCustomToolsRepository } from "@/lib/data/omRequest/omCustomToolsLocalRepository";
 import { deleteOmRequest, getOmRequest, setOmRequestOperationId, updateOmRequest } from "@/lib/data/omRequest/omRequestLocalRepository";
 import { companyNameError } from "@/lib/data/companyName";
-import { changeCourseCompany, CourseCompanyChangeError } from "@/lib/data/courseCompanyChange";
 import { syncOmRequestSessionsToOperations } from "@/lib/data/omRequest/omRequestOperationLink";
 import { planSessionCountChange, sessionScheduleChanged } from "@/lib/data/omRequest/omRequestSessionPlan";
 import { isOmRequestAuthor, type OmRequestInput } from "@/lib/data/omRequest/omRequestTypes";
@@ -45,8 +44,8 @@ async function activityPATCH(request: Request, { params }: Props) {
     const sessions = Array.isArray(body.sessions) ? body.sessions : [];
     const input = { ...body, sessions, totalSessions: sessions.length };
 
-    // 기업명을 바꿨으면 새 이름도 입력 규칙(띄어쓰기 없음)을 지켜야 하고, 연결된 운영 현황 과정도 같이 옮긴다.
-    // 기존에 띄어쓰기로 접수된 요청이라도 기업명을 안 바꾸면 다른 항목 수정은 막지 않는다.
+    // 업무 요청은 접수 원본이라 운영 현황 기업명과 따로 간다. 다만 기업명을 바꾸면 새 이름도 입력 규칙
+    // (띄어쓰기 없음)을 지켜야 한다. 기존에 띄어쓰기로 접수된 요청은 기업명을 안 바꾸면 다른 항목 수정을 막지 않는다.
     const companyChanged = typeof input.company === "string" && input.company.trim() !== (existing.company ?? "").trim();
     if (companyChanged) {
       const companyError = companyNameError(input.company);
@@ -60,18 +59,6 @@ async function activityPATCH(request: Request, { params }: Props) {
       const incomplete = plan.origins.findIndex((origin, i) => origin === null && !(sessions[i]?.date && sessions[i]?.timeStart && sessions[i]?.timeEnd && sessions[i]?.location?.trim()));
       if (incomplete !== -1) {
         return NextResponse.json({ error: `${incomplete + 1}회차의 교육일·시작 시간·종료 시간·장소를 모두 입력해 주세요.` }, { status: 400 });
-      }
-      // 회차 증감 반영보다 먼저 옮긴다 — 그래야 새로 추가되는 회차도 옮겨 간 과정에 붙는다.
-      if (companyChanged) {
-        try {
-          await changeCourseCompany(existing.operationId, input.company, email);
-        } catch (error) {
-          if (error instanceof CourseCompanyChangeError) {
-            return NextResponse.json({ error: error.message }, { status: error.code === "COURSE_EXISTS" ? 409 : 400 });
-          }
-          console.error("[om-request] OPERATION_COMPANY_SYNC_FAILED");
-          return NextResponse.json({ error: "운영현황 기업명 반영에 실패했습니다. 운영현황을 확인한 뒤 다시 시도해 주세요." }, { status: 500 });
-        }
       }
       const scheduleChanged = plan.origins.some((origin, i) => origin !== null && sessionScheduleChanged(existing.sessions[origin], sessions[i]));
       if (plan.changed || scheduleChanged) {
