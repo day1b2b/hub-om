@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { buildCoachLinkMailUrl, shortActorName, type CoachLinkMailLogEntry } from "@/lib/coaches/coachLinkMail";
 
 interface ScheduleRegistrationRow {
   id: string;
@@ -36,6 +37,50 @@ export function ScheduleLinkPanel() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mailLogs, setMailLogs] = useState<Map<string, CoachLinkMailLogEntry>>(new Map());
+  const [mailBusyId, setMailBusyId] = useState<string | null>(null);
+  const [noEmailIds, setNoEmailIds] = useState<Set<string>>(new Set());
+  const [mailError, setMailError] = useState<string | null>(null);
+
+  const loadMailLogs = useCallback(async () => {
+    const response = await fetch("/api/coaches/link-mail-log");
+    const payload = (await response.json().catch(() => ({ ok: false }))) as { ok: boolean; logs?: CoachLinkMailLogEntry[] };
+    if (response.ok && payload.ok && payload.logs) {
+      setMailLogs(new Map(payload.logs.map((log) => [log.coachId, log])));
+    }
+  }, []);
+
+  useEffect(() => {
+    // 기록 칸은 표와 따로 한 번 읽는다(월이 바뀌어도 기록은 같다).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadMailLogs();
+  }, [loadMailLogs]);
+
+  async function writeLinkMail(row: ScheduleRegistrationRow) {
+    if (!row.coachInputUrl || mailBusyId) return;
+    // 응답을 기다린 뒤 여는 창은 팝업 차단에 걸리므로, 클릭 순간 빈 탭을 먼저 연다.
+    const popup = window.open("", "_blank");
+    setMailBusyId(row.id);
+    setMailError(null);
+    const response = await fetch(`/api/coaches/${row.id}/link-mail`, { method: "POST" });
+    const payload = (await response.json().catch(() => ({ ok: false }))) as { ok: boolean; email?: string | null; error?: string };
+    setMailBusyId(null);
+
+    if (!response.ok || !payload.ok) {
+      popup?.close();
+      setMailError(payload.error ?? "이메일을 불러오지 못했습니다.");
+      return;
+    }
+    void loadMailLogs();
+    if (!payload.email) {
+      popup?.close();
+      setNoEmailIds((prev) => new Set(prev).add(row.id));
+      return;
+    }
+    const url = buildCoachLinkMailUrl({ to: payload.email, coachName: row.name, link: row.coachInputUrl });
+    if (popup) popup.location.href = url;
+    else window.open(url, "_blank");
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -125,6 +170,8 @@ export function ScheduleLinkPanel() {
             </label>
           </div>
 
+          {mailError ? <div className="coach-origin-empty-panel">{mailError}</div> : null}
+
           {isLoading ? (
             <div className="coach-doc-empty"><span>불러오는 중…</span></div>
           ) : filteredRows.length === 0 ? (
@@ -144,6 +191,7 @@ export function ScheduleLinkPanel() {
                   <th>근무유형</th>
                   <th>등록 상태</th>
                   <th>개인 링크</th>
+                  <th>안내 메일</th>
                 </tr>
               </thead>
               <tbody>
@@ -164,6 +212,24 @@ export function ScheduleLinkPanel() {
                         <span className="coach-origin-empty-text">링크 없음</span>
                       )}
                     </td>
+                    <td>
+                      {row.coachInputUrl ? (
+                        <div className="coach-link-mail-cell">
+                          <button disabled={mailBusyId !== null} onClick={() => writeLinkMail(row)} type="button">
+                            {mailBusyId === row.id ? "여는 중" : mailLogs.has(row.id) ? "다시 쓰기" : "메일 쓰기"}
+                          </button>
+                          {noEmailIds.has(row.id) ? (
+                            <span className="coach-link-mail-warning">등록된 이메일 없음</span>
+                          ) : mailLogs.has(row.id) ? (
+                            <span className="coach-origin-empty-text">
+                              {formatMailLogTime(mailLogs.get(row.id)!.at)} · {shortActorName(mailLogs.get(row.id)!.byEmail)}
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <span className="coach-origin-empty-text">-</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -173,6 +239,12 @@ export function ScheduleLinkPanel() {
       )}
     </div>
   );
+}
+
+function formatMailLogTime(iso: string): string {
+  const date = new Date(iso);
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${pad(date.getMonth() + 1)}/${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 function currentYearMonth(): string {
