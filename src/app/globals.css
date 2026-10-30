@@ -15553,6 +15553,11 @@ button.coach-doc-reserve-chip:disabled {
   padding: 12px 14px;
 }
 
+/* 상태 배지·안내 줄이 격자 칸 폭으로 늘어나지 않게(배지는 글자 폭만) */
+.round-survey-list > li > span {
+  justify-self: start;
+}
+
 .round-survey-head {
   align-items: baseline;
   display: flex;

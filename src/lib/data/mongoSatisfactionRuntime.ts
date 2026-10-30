@@ -7,10 +7,12 @@ import { MongoRequestAuditRepository, prepareMongoRequestAuditStore, REQUEST_AUD
 import type { SatisfactionSource } from "./satisfactionSource";
 import { openSessionSurveyResultsOrUnavailable, SESSION_SURVEY_RESULT_MODELS } from "./mongoSessionSurveyResultRepository";
 import { prepareMongoReadStore } from "./mongoReadStore";
+import { MongoTeamUserRepository } from "./teamUsers/mongoTeamUserRepository";
 
 type ScopeKey = "operations" | "satisfactionSource" | "requestActivity" | "sessionSurveyResults";
+// 멤버(teamUsers)는 선택: "다른 사람이 반영" 판정에만 쓰는 읽기라, 열지 못해도 만족도 반영은 막지 않는다.
 type Options = MongoOperationOptions & { allowShadowWrites: true; satisfactionSource: SatisfactionSource };
-export type MongoSatisfactionRepositories = Readonly<Pick<DataRepositories, ScopeKey>>;
+export type MongoSatisfactionRepositories = Readonly<Pick<DataRepositories, ScopeKey> & Partial<Pick<DataRepositories, "teamUsers">>>;
 export const MONGO_SATISFACTION_RUNTIME_MODELS = [...new Set([...OPERATION_MODELS, ...REQUEST_AUDIT_MODELS])] as readonly string[];
 
 export interface MongoSatisfactionRuntime {
@@ -41,7 +43,11 @@ export async function openMongoSatisfactionRuntime(options: Options): Promise<Mo
     const satisfactionSource: SatisfactionSource = Object.freeze({
       readRows: (spreadsheetId: string, tabTitle: string) => options.satisfactionSource.readRows(spreadsheetId, tabTitle)
     });
-    const repositories: MongoSatisfactionRepositories = Object.freeze({ operations, satisfactionSource, requestActivity, sessionSurveyResults });
+    const teamUsers = await MongoTeamUserRepository.open({ client: options.client, databaseName: options.databaseName, namespace: options.namespace })
+      .catch(() => undefined);
+    const repositories: MongoSatisfactionRepositories = Object.freeze(teamUsers
+      ? { operations, satisfactionSource, requestActivity, sessionSurveyResults, teamUsers }
+      : { operations, satisfactionSource, requestActivity, sessionSurveyResults });
     registerDataRepositoryScope(repositories);
     return Object.freeze({ repositories, run<T>(work: () => T): T {
       return runWithDataRepositories(repositories, () => runWithLockedRepositoryScope(work));

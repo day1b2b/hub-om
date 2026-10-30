@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { planInstructorSatisfaction, planRoundApply, planSurveyResult } from "@/lib/data/satisfactionRoundApply";
+import { isAppliedByOther, planInstructorSatisfaction, planRoundApply, planSurveyResult } from "@/lib/data/satisfactionRoundApply";
 import type { RoundApplyTarget } from "@/lib/data/satisfactionRoundApply";
 import type { SatisfactionMatchResult, SatisfactionSheetRow } from "@/lib/data/satisfactionSheet";
 
@@ -192,4 +192,19 @@ test("만족도 결과: 모호·미매칭·종합 비어 있음이면 남기지 
   const d = planRoundApply("4.55", matched(), find(target("")));
   assert.equal(planSurveyResult(d, { instructorSatisfaction: "6.2", n: "abc" })?.instructorSatisfaction, null);
   assert.equal(planSurveyResult(d, { n: "abc" })?.respondents, null);
+});
+
+test("다른 사람 반영: 멤버 이름으로 담당 OM·현장 OM 표기와 맞댄다(영문 아이디 ≠ 한글 표기)", () => {
+  const me = { submitterEmail: "yj.lee@day1company.co.kr", submitterNames: ["이유진C"] };
+  assert.equal(isAppliedByOther({ ...me, ownerText: "이유진C" }), false);
+  assert.equal(isAppliedByOther({ ...me, ownerText: "조경수, 이유진C" }), false);
+  assert.equal(isAppliedByOther({ ...me, ownerText: "이 유진C" }), false);
+  assert.equal(isAppliedByOther({ ...me, ownerText: "윤성민" }), true);
+});
+
+test("다른 사람 반영: 멤버에 없는 이메일은 예전 방식(@ 앞부분), 누른 사람·담당이 비면 false", () => {
+  assert.equal(isAppliedByOther({ submitterEmail: "kim@x.com", ownerText: "kim 담당", submitterNames: [] }), false);
+  assert.equal(isAppliedByOther({ submitterEmail: "kim@x.com", ownerText: "이유진C", submitterNames: [] }), true);
+  assert.equal(isAppliedByOther({ submitterEmail: "", ownerText: "이유진C", submitterNames: [] }), false);
+  assert.equal(isAppliedByOther({ submitterEmail: "yj.lee@day1company.co.kr", ownerText: "", submitterNames: ["이유진C"] }), false);
 });
