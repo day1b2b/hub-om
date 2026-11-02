@@ -9,7 +9,6 @@ import { RoundOrderCell } from "./RoundOrderCell";
 import { RoundReorderProvider } from "./RoundReorderProvider";
 import { EditAllRoundsProvider } from "./EditAllRoundsProvider";
 import { courseLinkValue } from "./courseLinkSource";
-import { CourseResultReportStatusRow } from "./CourseResultReportStatusRow";
 import { EditableTitleCompany } from "./EditableTitleCompany";
 import { EditableCourseNameItem } from "./EditableCourseNameItem";
 import { EditableCourseLectureManagementRow } from "./EditableCourseLectureManagementRow";
@@ -285,7 +284,6 @@ export function OperationDetail({
                           lectureManagementLink={operation.courseLectureManagementLink ?? ""}
                           lectureManagementNote={operation.courseLectureManagementNote ?? ""}
                         />
-                        <CourseResultReportStatusRow courseRecordId={courseRecordId} hasResultReport={operation.courseHasResultReport} />
                       </>
                     ) : null}
                   </div>
