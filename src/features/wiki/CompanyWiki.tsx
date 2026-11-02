@@ -404,13 +404,61 @@ function CompanyWikiDetail({
 // 링크는 서버(/api/company-wiki/invoice-link)에서 완성된 형태로 받는다 — 구글폼 URL을
 // 클라이언트 코드에 두지 않기 위해서다(저장소가 public). undefined는 "아직 불러오는 중",
 // null은 "서버가 안전한 URL을 못 만들었음"이고, 화면에서는 둘 다 "-"로 같다.
+// 폼이 자동 기입된 채로 열리니, 넘어가기 전에 무엇이 채워지는지 알려 주고 최종 확인을 받는다.
 function InvoiceRequestLink({ href }: { href: string | null | undefined }) {
+  const [isOpen, setIsOpen] = useState(false);
+
   if (!href) return <span className="muted-inline">-</span>;
 
   return (
-    <a className="invoice-request-link" href={href} rel="noreferrer" target="_blank">
-      계산서 발행 요청
-    </a>
+    <>
+      <button className="invoice-request-link" onClick={() => setIsOpen(true)} type="button">
+        계산서 발행 요청
+      </button>
+
+      {isOpen ? (
+        <div aria-modal="true" className="drive-review-modal" role="dialog">
+          <div className="drive-review-backdrop" onClick={() => setIsOpen(false)} />
+          <section aria-labelledby="invoice-request-confirm-title" className="drive-review-dialog invoice-request-confirm-dialog">
+            <div className="drive-review-header">
+              <div>
+                <h2 id="invoice-request-confirm-title">계산서 발행 요청</h2>
+              </div>
+              <button aria-label="계산서 발행 요청 닫기" onClick={() => setIsOpen(false)} type="button">
+                닫기
+              </button>
+            </div>
+
+            <div className="lecture-note-body invoice-request-confirm-body">
+              <p>기업 위키와 운영 현황에 등록된 정보로 계산서 발행 요청 내용이 자동 기입됩니다.</p>
+              <p className="invoice-request-confirm-warning">※ 내용이 맞는지 꼭 최종 확인해주세요!</p>
+              <strong>[자동 등록 내용]</strong>
+              <ul>
+                <li>운영 현황 : 코스 ID, 코스 ID명, 기업명</li>
+                <li>기업 위키 : 사업자등록증 정보</li>
+              </ul>
+            </div>
+
+            <div className="lecture-note-footer">
+              <div className="lecture-note-actions">
+                <button onClick={() => setIsOpen(false)} type="button">
+                  취소
+                </button>
+                <a
+                  className="invoice-request-confirm-open"
+                  href={href}
+                  onClick={() => setIsOpen(false)}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  확인
+                </a>
+              </div>
+            </div>
+          </section>
+        </div>
+      ) : null}
+    </>
   );
 }
 
