@@ -5,6 +5,8 @@
 /** 기업위키에서 OM/LD가 직접 입력·수정하는 사업자등록증 정보. 운영 현황에서 파생되지 않는다. */
 export interface CompanyBusinessInfo {
   businessNumber: string | null;
+  /** 사업자등록증상 상호(법인명). 비어 있으면 계산서 폼 회사명에 기업명을 쓴다. */
+  legalName: string | null;
   representativeName: string | null;
   address: string | null;
   businessType: string | null;
@@ -20,13 +22,14 @@ export interface CompanyBusinessInfo {
 export type CompanyBusinessInfoPatch = Partial<
   Pick<
     CompanyBusinessInfo,
-    "businessNumber" | "representativeName" | "address" | "businessType" | "businessItem" | "invoiceEmail" | "invoiceEmailSecondary" | "memo"
+    "businessNumber" | "legalName" | "representativeName" | "address" | "businessType" | "businessItem" | "invoiceEmail" | "invoiceEmailSecondary" | "memo"
   >
 >;
 
 export function emptyCompanyBusinessInfo(): CompanyBusinessInfo {
   return {
     businessNumber: null,
+    legalName: null,
     representativeName: null,
     address: null,
     businessType: null,
@@ -44,6 +47,7 @@ export const COMPANY_MEMO_MAX_LENGTH = 10_000;
 
 const BUSINESS_INFO_FIELDS = [
   "businessNumber",
+  "legalName",
   "representativeName",
   "address",
   "businessType",

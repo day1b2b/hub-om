@@ -18,6 +18,7 @@ export function CompanyBusinessInfoEditor({
 }) {
   const build = (): FormState => ({
     businessNumber: initial.businessNumber ?? "",
+    legalName: initial.legalName ?? "",
     representativeName: initial.representativeName ?? "",
     address: initial.address ?? "",
     businessType: initial.businessType ?? "",
@@ -102,6 +103,7 @@ export function CompanyBusinessInfoEditor({
       <div className="section-body">
         <dl className="field-preview-list">
           {field("사업자등록번호", "businessNumber", "- 없이 10자리")}
+          {field("상호(법인명)", "legalName", "사업자등록증의 상호 그대로")}
           {field("대표자", "representativeName")}
           {field("주소", "address")}
           {field("업태", "businessType")}

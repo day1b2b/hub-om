@@ -440,6 +440,7 @@ function InvoiceRequestLink({ href }: { href: string | null | undefined }) {
               <ul>
                 <li>운영 현황 : 코스 ID, 코스 ID명, 기업명</li>
                 <li>기업 위키 : 사업자등록증 정보</li>
+                <li>회사명 : 상호(법인명), 비어 있으면 기업명</li>
               </ul>
             </div>
 

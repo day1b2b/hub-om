@@ -44,6 +44,7 @@ async function activityPOST(request: Request) {
         courseName: course.courseIdLabel,
         companyName: body.companyName,
         businessNumber: businessInfo?.businessNumber,
+        legalName: businessInfo?.legalName,
         representativeName: businessInfo?.representativeName,
         address: businessInfo?.address,
         businessType: businessInfo?.businessType,
