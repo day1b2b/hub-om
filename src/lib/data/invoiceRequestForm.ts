@@ -25,6 +25,8 @@ export interface InvoiceRequestFormInput {
   courseId?: string | null;
   courseName?: string | null;
   companyName?: string | null;
+  /** 사업자등록증상 상호(법인명). 있으면 폼 "회사명"에 기업명 대신 쓴다. */
+  legalName?: string | null;
   businessNumber?: string | null;
   representativeName?: string | null;
   address?: string | null;
@@ -40,6 +42,7 @@ export interface InvoiceRequestFormInput {
  *
  * 금액(총금액/공급가액/부가세), 청구/영수, 입금예정일, 담당자, 수강생이름의 "실제 값"은
  * 운영 데이터로 자동 판단할 수 없어 비워 둔다. 수강생이름만 예외로 기업명을 그대로 채운다.
+ * 회사명은 사업자등록증상 상호(법인명)를 우선하고, 입력 전이면 기업명으로 채운다.
  */
 export function buildInvoiceRequestFormUrl(input: InvoiceRequestFormInput): string {
   const params = new URLSearchParams();
@@ -52,7 +55,7 @@ export function buildInvoiceRequestFormUrl(input: InvoiceRequestFormInput): stri
   set(ENTRY.courseName, input.courseName);
   set(ENTRY.studentName, input.companyName); // 수강생이름 = 기업명
   set(ENTRY.businessNumber, input.businessNumber ? digitsOnly(input.businessNumber) : input.businessNumber);
-  set(ENTRY.companyName, input.companyName);
+  set(ENTRY.companyName, input.legalName?.trim() || input.companyName); // 회사명 = 법인명(없으면 기업명)
   set(ENTRY.representativeName, input.representativeName);
   set(ENTRY.address, input.address);
   set(ENTRY.businessType, input.businessType);
