@@ -2101,6 +2101,52 @@ select {
   color: var(--blue);
 }
 
+button.invoice-request-link {
+  background: transparent;
+  cursor: pointer;
+}
+
+/* .drive-review-dialog 가 스타일시트에서 더 뒤에 있어 같은 명시도로는 덮이지 않는다. */
+.drive-review-dialog.invoice-request-confirm-dialog {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  max-width: 460px;
+}
+
+.invoice-request-confirm-body {
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.invoice-request-confirm-body p {
+  margin: 0 0 8px;
+}
+
+.invoice-request-confirm-body p.invoice-request-confirm-warning {
+  color: var(--red);
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.invoice-request-confirm-body ul {
+  margin: 4px 0 0;
+  padding-left: 20px;
+}
+
+.lecture-note-actions a.invoice-request-confirm-open {
+  align-items: center;
+  background: var(--blue);
+  border: 1px solid var(--blue);
+  border-radius: 7px;
+  color: #ffffff;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 800;
+  min-height: 32px;
+  padding: 0 14px;
+  text-decoration: none;
+}
+
 .toolbar {
   align-items: center;
   display: flex;
