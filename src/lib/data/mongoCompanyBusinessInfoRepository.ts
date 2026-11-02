@@ -24,6 +24,7 @@ function toBusinessInfo(row: MongoRow): CompanyBusinessInfo {
   const updatedAt = row.businessInfoUpdatedAt;
   return {
     businessNumber: (row.businessNumber as string | null) ?? null,
+    legalName: (row.legalName as string | null) ?? null,
     representativeName: (row.representativeName as string | null) ?? null,
     address: (row.address as string | null) ?? null,
     businessType: (row.businessType as string | null) ?? null,
@@ -83,6 +84,7 @@ export class MongoCompanyBusinessInfoRepository implements CompanyBusinessInfoRe
     const next = completeMongoRow("Company", {
       ...previous,
       ...(patch.businessNumber !== undefined ? { businessNumber: normalizeValue(patch.businessNumber) } : {}),
+      ...(patch.legalName !== undefined ? { legalName: normalizeValue(patch.legalName) } : {}),
       ...(patch.representativeName !== undefined ? { representativeName: normalizeValue(patch.representativeName) } : {}),
       ...(patch.address !== undefined ? { address: normalizeValue(patch.address) } : {}),
       ...(patch.businessType !== undefined ? { businessType: normalizeValue(patch.businessType) } : {}),

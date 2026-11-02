@@ -41,6 +41,7 @@
         "dateOnly": false
       },
       "businessNumber": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
+      "legalName": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
       "representativeName": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
       "address": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
       "businessType": {"type": "String", "nullable": true, "list": false, "uuid": false, "dateOnly": false},
