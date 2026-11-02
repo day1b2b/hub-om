@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { lockBrowserDrafts } from "@/lib/privacy/browserDraftRuntime";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { useCanAccessSatisfactionMatching, useIsAdmin } from "@/lib/auth/RoleContext";
+import { SUPPLY_ADMIN_ONLY } from "@/lib/auth/supplyAccessPolicy";
 import type { TeamScope } from "@/lib/teamScope";
 
 interface AppSidebarProps {
@@ -40,6 +42,10 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
     pathname === "/coaches" ||
     ((pathname?.startsWith("/coaches/") ?? false) && !isCoachSchedulePage && !isCoachMyPage && !isCoachAdminPage);
   const isResourcesPage = pathname === "/resources";
+  const isEggRentalPage = pathname?.startsWith("/eggs") ?? false;
+  const isMicRentalPage = pathname?.startsWith("/mics") ?? false;
+  // 운영물품 관리는 접을 수 있게 두되, 지금은 펼친 상태가 기본이다
+  const [supplyOpen, setSupplyOpen] = useState(true);
   const isOmManagePage = pathname?.startsWith("/om-request/manage") ?? false;
   const isOmRequestPage = !isOmManagePage && (pathname?.startsWith("/om-request") ?? false);
 
@@ -77,6 +83,28 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
           <div className="nav-section-title">운영 현황</div>
           <Link className={isOperationsPage ? "active" : ""} data-icon="⭐" href="/operations">운영 현황</Link>
         </div>
+
+        {!SUPPLY_ADMIN_ONLY || isAdmin ? (
+          <div className="nav-section">
+            <button
+              type="button"
+              className="nav-section-title nav-section-toggle"
+              aria-expanded={supplyOpen}
+              onClick={() => setSupplyOpen(!supplyOpen)}
+            >
+              <span className="nav-section-caret" aria-hidden="true">
+                {supplyOpen ? "▾" : "▸"}
+              </span>
+              운영물품 관리
+            </button>
+            {supplyOpen ? (
+              <>
+                <Link className={isEggRentalPage ? "active" : ""} data-icon="📶" href="/eggs">에그 대여</Link>
+                <Link className={isMicRentalPage ? "active" : ""} data-icon="🎤" href="/mics">마이크 대여</Link>
+              </>
+            ) : null}
+          </div>
+        ) : null}
 
         {isAdmin ? <div className="nav-section nav-section-locked">
           <div className="nav-section-title">전체 활동</div>

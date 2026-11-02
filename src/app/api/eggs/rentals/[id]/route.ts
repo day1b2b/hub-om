@@ -1,0 +1,45 @@
+import { NextResponse } from "next/server";
+import { requireSupplyApiSession } from "@/lib/auth/requireSupplySession";
+import { getEggRepository } from "@/lib/data/eggs/prismaEggRepository";
+
+export const dynamic = "force-dynamic";
+
+interface RouteContext {
+  params: Promise<{
+    id: string;
+  }>;
+}
+
+/** 반납 처리 */
+export async function PATCH(_request: Request, { params }: RouteContext) {
+  const session = await requireSupplyApiSession();
+  if (!session) {
+    return NextResponse.json({ ok: false, error: "지금은 관리자만 사용할 수 있습니다." }, { status: 403 });
+  }
+  const actorEmail = session.user?.email ?? "";
+  const { id } = await params;
+
+  try {
+    await getEggRepository().markReturned(id, actorEmail);
+    return NextResponse.json({ ok: true });
+  } catch {
+    return NextResponse.json({ ok: false, error: "반납 처리에 실패했습니다." }, { status: 500 });
+  }
+}
+
+/** 예약 취소. 실제 행을 지우지 않고 삭제 표시만 남긴다. */
+export async function DELETE(_request: Request, { params }: RouteContext) {
+  const session = await requireSupplyApiSession();
+  if (!session) {
+    return NextResponse.json({ ok: false, error: "지금은 관리자만 사용할 수 있습니다." }, { status: 403 });
+  }
+  const actorEmail = session.user?.email ?? "";
+  const { id } = await params;
+
+  try {
+    await getEggRepository().cancelRental(id, actorEmail);
+    return NextResponse.json({ ok: true });
+  } catch {
+    return NextResponse.json({ ok: false, error: "예약 취소에 실패했습니다." }, { status: 500 });
+  }
+}

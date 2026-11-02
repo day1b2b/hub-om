@@ -1395,3 +1395,148 @@ model ActivityChange {
   actorEmailPiiIndex String? @map("actor_email_pii_index")
   actorNamePiiIndex String? @map("actor_name_pii_index")
 }
+
+/** 에그(포켓 와이파이)를 관리하는 파트. 1·2파트 공용 / 3파트가 따로 관리한다. */
+enum EggPart {
+  P12 @map("p12")
+  P3  @map("p3")
+
+  @@map("egg_part")
+}
+
+enum EggChargerType {
+  USB_C    @map("usb_c")
+  FIVE_PIN @map("five_pin")
+  UNKNOWN  @map("unknown")
+
+  @@map("egg_charger_type")
+}
+
+model EggDevice {
+  id              String         @id @default(uuid()) @db.Uuid
+  part            EggPart
+  /** 파트 안 정렬 순서. 화면 표기는 label("1번", "USB 1번")을 쓴다. */
+  number          Int
+  label           String
+  wifiName        String         @default("") @map("wifi_name")
+  serialNumber    String         @default("") @map("serial_number")
+  wifiPassword    String         @default("") @map("wifi_password")
+  modelCode       String?        @map("model_code")
+  chargerType     EggChargerType @default(UNKNOWN) @map("charger_type")
+  speedMbps       Int?           @map("speed_mbps")
+  storageLocation String         @map("storage_location")
+  monthlyDataGb   Int?           @map("monthly_data_gb")
+  contractEndsOn  DateTime?      @map("contract_ends_on") @db.Date
+  cautionNote     String?        @map("caution_note")
+  dataExhausted   Boolean        @default(false) @map("data_exhausted")
+  dataExhaustedAt DateTime?      @map("data_exhausted_at")
+  dataExhaustedBy String?        @map("data_exhausted_by")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+  deletedAt       DateTime?      @map("deleted_at")
+  deletedBy       String?        @map("deleted_by")
+
+  rentals EggRental[]
+
+  @@unique([part, number])
+  @@index([deletedAt, part, number])
+  @@map("egg_devices")
+}
+
+model EggRental {
+  id            String    @id @default(uuid()) @db.Uuid
+  eggDeviceId   String    @map("egg_device_id") @db.Uuid
+  borrowerName  String    @map("borrower_name")
+  borrowerEmail String?   @map("borrower_email")
+  courseName    String    @map("course_name")
+  startDate     DateTime  @map("start_date") @db.Date
+  returnDueDate DateTime  @map("return_due_date") @db.Date
+  actualUseNote String?   @map("actual_use_note")
+  note          String?
+  returnedAt    DateTime? @map("returned_at")
+  returnedBy    String?   @map("returned_by")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  createdBy     String?   @map("created_by")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
+  deletedBy     String?   @map("deleted_by")
+
+  device EggDevice @relation(fields: [eggDeviceId], references: [id])
+
+  @@index([eggDeviceId, deletedAt])
+  @@index([deletedAt, startDate])
+  @@map("egg_rentals")
+}
+
+/**
+ * 파트별 에그 주의사항(요금제, 데이터 잔량 확인 방법, 보관·충전 규칙, 고장 시 연락처).
+ * 발급 담당자 이름과 연락처가 들어가므로 코드에 두지 않고 DB에 보관한다.
+ * 파트마다 한 행만 사용한다.
+ */
+model EggGuide {
+  id        String   @id @default(uuid()) @db.Uuid
+  part      EggPart  @unique
+  content   String
+  updatedAt DateTime @updatedAt @map("updated_at")
+  updatedBy String?  @map("updated_by")
+
+  @@map("egg_guides")
+}
+
+/**
+ * 운영물품(마이크 등) 대여. 에그와 달리 기기별 정보가 거의 없어 공용 구조로 둔다.
+ * category로 물품 종류를 나누고(현재 "mic"), 한 번의 대여가 여러 물품을 함께 잡을 수 있다.
+ */
+model SupplyItem {
+  id              String    @id @default(uuid()) @db.Uuid
+  category        String
+  label           String
+  components      String?
+  storageLocation String    @map("storage_location")
+  sortOrder       Int       @default(0) @map("sort_order")
+  note            String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+  deletedBy       String?   @map("deleted_by")
+
+  rentalItems SupplyRentalItem[]
+
+  @@index([category, deletedAt, sortOrder])
+  @@map("supply_items")
+}
+
+model SupplyRental {
+  id            String    @id @default(uuid()) @db.Uuid
+  category      String
+  borrowerName  String    @map("borrower_name")
+  borrowerEmail String?   @map("borrower_email")
+  courseName    String    @map("course_name")
+  startDate     DateTime  @map("start_date") @db.Date
+  returnDueDate DateTime  @map("return_due_date") @db.Date
+  note          String?
+  returnedAt    DateTime? @map("returned_at")
+  returnedBy    String?   @map("returned_by")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  createdBy     String?   @map("created_by")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
+  deletedBy     String?   @map("deleted_by")
+
+  items SupplyRentalItem[]
+
+  @@index([category, deletedAt, returnDueDate])
+  @@map("supply_rentals")
+}
+
+model SupplyRentalItem {
+  rentalId String @map("rental_id") @db.Uuid
+  itemId   String @map("item_id") @db.Uuid
+
+  rental SupplyRental @relation(fields: [rentalId], references: [id])
+  item   SupplyItem   @relation(fields: [itemId], references: [id])
+
+  @@id([rentalId, itemId])
+  @@index([itemId])
+  @@map("supply_rental_items")
+}
