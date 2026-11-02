@@ -430,7 +430,11 @@ function InvoiceRequestLink({ href }: { href: string | null | undefined }) {
             </div>
 
             <div className="lecture-note-body invoice-request-confirm-body">
-              <p>기업 위키와 운영 현황에 등록된 정보로 계산서 발행 요청 내용이 자동 기입됩니다.</p>
+              <p>
+                기업 위키와 운영 현황에 등록된 정보로
+                <br />
+                계산서 발행 요청 내용(구글폼)이 자동 기입됩니다.
+              </p>
               <p className="invoice-request-confirm-warning">※ 내용이 맞는지 꼭 최종 확인해주세요!</p>
               <strong>[자동 등록 내용]</strong>
               <ul>
