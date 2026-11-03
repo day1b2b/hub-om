@@ -15641,3 +15641,91 @@ button.coach-doc-reserve-chip:disabled {
   margin: 0;
   padding-left: 16px;
 }
+
+/* 교육 상세: 업무 단계(배정 → 계약요청 → 회고) 표시 */
+.stage-badge {
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 10px;
+}
+
+.stage-badge--now {
+  background: #e7effa;
+  color: var(--blue);
+}
+
+.stage-badge--wait {
+  background: #f1f0ec;
+  color: var(--muted);
+}
+
+.detail-section.stage-focus {
+  border-color: var(--blue);
+  box-shadow: inset 0 0 0 1px var(--blue);
+}
+
+details.detail-section > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+details.detail-section > summary::-webkit-details-marker {
+  display: none;
+}
+
+.contract-steps {
+  display: inline-flex;
+  flex-wrap: wrap;
+  font-size: 11px;
+  gap: 4px;
+}
+
+.contract-steps > span {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+  padding: 1px 6px;
+}
+
+.contract-steps > span.done {
+  background: #e9f1dd;
+  border-color: transparent;
+  color: #4f7a3f;
+}
+
+.contract-steps > span.now {
+  background: #e7effa;
+  border-color: transparent;
+  color: var(--blue);
+  font-weight: 700;
+}
+
+/* 강사 위키: 강사 추천 */
+.instructor-recommend-panel {
+  margin-bottom: 16px;
+}
+
+.instructor-recommend-form {
+  align-items: flex-end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 8px 0 4px;
+}
+
+.instructor-recommend-form label {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  gap: 4px;
+}
+
+.instructor-recommend-form label span {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.instructor-recommend-result {
+  margin-top: 8px;
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { PeopleDirectory, type PeopleRow } from "@/features/people/PeopleDirectory";
 import { averageOf, formatPeopleDate, parseSatisfaction, peopleStatusFromFacts } from "@/lib/people/peopleStatus";
@@ -23,6 +23,8 @@ interface InstructorWikiProps {
   today: string;
   /** 활동/휴면 경계(개월). 코치 위키와 같은 값을 쓴다. */
   dormantMonths: number;
+  /** 목록 위 "강사 추천" 패널(서버에서 계산해 그린다). */
+  recommendPanel?: ReactNode;
 }
 
 export function InstructorWiki({
@@ -32,7 +34,8 @@ export function InstructorWiki({
   provenance,
   recruitAvoidNames = [],
   today,
-  dormantMonths
+  dormantMonths,
+  recommendPanel
 }: InstructorWikiProps) {
   const rows = useMemo(() => {
     const avoidSet = new Set(recruitAvoidNames);
@@ -52,6 +55,7 @@ export function InstructorWiki({
 
       <section className="content">
         <PeopleDirectory
+          belowHeader={recommendPanel}
           deployHeader="투입"
           emptyText="표시할 강사가 없습니다."
           lede={lede}

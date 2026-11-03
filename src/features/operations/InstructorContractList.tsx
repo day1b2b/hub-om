@@ -10,7 +10,15 @@ import type { ContractRequestItem } from "@/lib/instructors/instructorContractRe
 
 interface StatusEntry {
   requested: boolean;
+  /** 시트 C열(계약 발송·모두싸인) 체크. 서명 완료는 아니다(서명은 모두싸인 연동 후 붙인다). */
+  sent: boolean;
   email?: string;
+}
+
+const CONTRACT_STEPS = ["미요청", "요청됨", "발송됨"] as const;
+
+function contractStep(status: StatusEntry): number {
+  return status.sent ? 2 : status.requested ? 1 : 0;
 }
 
 type LoadPhase = "idle" | "loading" | "done" | "error";
@@ -43,12 +51,12 @@ export function InstructorContractList({ items }: { items: ContractRequestItem[]
       }
       const payload = (await response.json().catch(() => ({}))) as {
         error?: string;
-        items?: { courseId: string; instructorName: string; requested?: boolean; email?: string }[];
+        items?: { courseId: string; instructorName: string; requested?: boolean; sent?: boolean; email?: string }[];
       };
       if (!response.ok) throw new Error(payload.error ?? "계약 상태를 불러오지 못했습니다.");
       const next: Record<string, StatusEntry> = {};
       for (const result of payload.items ?? []) {
-        next[rowKey(result)] = { email: result.email || undefined, requested: Boolean(result.requested) };
+        next[rowKey(result)] = { email: result.email || undefined, requested: Boolean(result.requested), sent: Boolean(result.sent) };
       }
       setStatusByKey(next);
       setPhase("done");
@@ -84,9 +92,18 @@ export function InstructorContractList({ items }: { items: ContractRequestItem[]
               <div className="instructor-contract-meta">
                 <span className="instructor-contract-name">
                   {item.instructorName}
-                  {status?.requested ? <span className="instructor-contract-badge">요청됨</span> : null}
+                  {status && status.requested ? <span className="instructor-contract-badge">{CONTRACT_STEPS[contractStep(status)]}</span> : null}
                 </span>
                 {item.schedule ? <span className="instructor-contract-schedule">{item.schedule}</span> : null}
+                {status ? (
+                  <span className="contract-steps" aria-label={`계약 진행: ${CONTRACT_STEPS[contractStep(status)]}`}>
+                    {CONTRACT_STEPS.map((step, stepIndex) => (
+                      <span className={stepIndex < contractStep(status) ? "done" : stepIndex === contractStep(status) ? "now" : ""} key={step}>
+                        {step}
+                      </span>
+                    ))}
+                  </span>
+                ) : null}
                 {status && !email ? (
                   <span className="instructor-contract-note">이메일 없음 · 폼에서 입력</span>
                 ) : null}
