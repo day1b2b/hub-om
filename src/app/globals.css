@@ -2128,11 +2128,13 @@ button.invoice-request-link {
   margin-bottom: 12px;
 }
 
+/* 전역 table의 min-width(넓은 목록용)를 풀어 확인 창 폭에 맞춘다. */
 .invoice-request-confirm-table {
   border-collapse: collapse;
   font-size: 12px;
   line-height: 1.5;
   margin-top: 6px;
+  min-width: 0;
   width: 100%;
 }
 
