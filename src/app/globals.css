@@ -2128,6 +2128,10 @@ button.invoice-request-link {
   margin: 0;
 }
 
+.invoice-request-confirm-body p.invoice-request-confirm-intro {
+  font-weight: 700;
+}
+
 .invoice-request-confirm-body p.invoice-request-confirm-warning {
   color: var(--red);
   font-weight: 700;
