@@ -15873,3 +15873,61 @@ details.detail-section > summary::-webkit-details-marker {
 .instructor-recommend-result {
   margin-top: 8px;
 }
+
+/* 사람 목록: 검색줄 옆 도구 버튼(강사 추천)과 펼침 칸 */
+.people-tool-button {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 12px;
+  white-space: nowrap;
+}
+
+.people-tool-button.selected {
+  background: #e7effa;
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.people-tool-panel {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  margin: 8px 0 12px;
+  padding: 12px 16px;
+}
+
+.instructor-recommend-list {
+  display: grid;
+  font-size: 13px;
+  gap: 6px;
+  margin: 10px 0 4px;
+  padding-left: 22px;
+}
+
+.instructor-recommend-name {
+  font-weight: 800;
+}
+
+.instructor-recommend-sep {
+  color: var(--muted);
+}
+
+.instructor-recommend-conflicts {
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.instructor-recommend-conflicts summary {
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.instructor-recommend-conflicts ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
