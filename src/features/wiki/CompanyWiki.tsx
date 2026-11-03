@@ -270,6 +270,8 @@ function CompanyWikiDetail({
   // 계산서 발행 요청 구글폼 URL은 서버에만 둔다(저장소가 public이라 클라이언트 번들에
   // 절대 넣지 않는다) — 완성된 링크만 코스별로 서버에서 만들어 받는다.
   const [invoiceLinks, setInvoiceLinks] = useState<Record<string, string | null>>({});
+  // 사업자등록증 정보를 저장하면 올린다 — 링크는 저장된 값으로 서버에서 만들므로 다시 받아야 한다.
+  const [invoiceLinksVersion, setInvoiceLinksVersion] = useState(0);
   // 계산서 발행 요청 현황(폼 응답 시트 기준). null이면 아직 불러오는 중, available=false면 시트를 못 읽음.
   const [invoiceStatuses, setInvoiceStatuses] = useState<{
     available: boolean;
@@ -299,7 +301,7 @@ function CompanyWikiDetail({
       });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [invoiceLinksVersion]);
 
   return (
     <>
@@ -388,7 +390,15 @@ function CompanyWikiDetail({
         </div>
       ) : businessInfo ? (
         <>
-          <CompanyBusinessInfoEditor companyId={entry.companyId} initial={businessInfo} />
+          <CompanyBusinessInfoEditor
+            companyId={entry.companyId}
+            initial={businessInfo}
+            onSaved={() => {
+              // 다시 받는 동안 옛 값으로 만든 링크를 누르지 않도록 비워 둔다.
+              setInvoiceLinks({});
+              setInvoiceLinksVersion((version) => version + 1);
+            }}
+          />
           <CompanyMemoEditor companyId={entry.companyId} initial={businessInfo.memo} />
         </>
       ) : (
@@ -405,6 +415,31 @@ function CompanyWikiDetail({
 // 클라이언트 코드에 두지 않기 위해서다(저장소가 public). undefined는 "아직 불러오는 중",
 // null은 "서버가 안전한 URL을 못 만들었음"이고, 화면에서는 둘 다 "-"로 같다.
 // 폼이 자동 기입된 채로 열리니, 넘어가기 전에 무엇이 채워지는지 알려 주고 최종 확인을 받는다.
+// 확인 창 [자동 등록 내용] 표 — buildInvoiceRequestFormUrl()이 채우는 항목과 맞춰 둔다.
+// [hub-om 항목, 구글 설문폼 항목, 덧붙임 설명]
+const INVOICE_REQUEST_FIELD_GROUPS: { label: string; detail?: string; rows: [string, string, string?][] }[] = [
+  {
+    label: "운영 현황",
+    rows: [
+      ["코스 ID", "코스 ID"],
+      ["코스 ID명", "과정명", "계산서 \"품목명\"에 기재되는 항목"],
+      ["기업명", "수강생이름"]
+    ]
+  },
+  {
+    label: "기업위키",
+    detail: "사업자등록증 정보",
+    rows: [
+      ["사업자등록번호", "사업자번호"],
+      ["상호(법인명)", "회사명"],
+      ["대표자", "대표자"],
+      ["주소", "주소"],
+      ["업태", "업태"],
+      ["종목", "종목"]
+    ]
+  }
+];
+
 function InvoiceRequestLink({ href }: { href: string | null | undefined }) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -437,11 +472,34 @@ function InvoiceRequestLink({ href }: { href: string | null | undefined }) {
               </p>
               <p className="invoice-request-confirm-warning">※ 내용이 맞는지 꼭 최종 확인해주세요!</p>
               <strong>[자동 등록 내용]</strong>
-              <ul>
-                <li>운영 현황 : 코스 ID, 코스 ID명, 기업명</li>
-                <li>기업 위키 : 사업자등록증 정보</li>
-                <li>회사명 : 상호(법인명), 비어 있으면 기업명</li>
-              </ul>
+              <table className="invoice-request-confirm-table">
+                <thead>
+                  <tr>
+                    <th scope="col">구분</th>
+                    <th scope="col">항목</th>
+                    <th scope="col">구글 설문폼 항목</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {INVOICE_REQUEST_FIELD_GROUPS.map((group) =>
+                    group.rows.map(([source, target, note], index) => (
+                      <tr key={`${group.label}-${source}`}>
+                        {index === 0 ? (
+                          <th rowSpan={group.rows.length} scope="rowgroup">
+                            {group.label}
+                            {group.detail ? <span>({group.detail})</span> : null}
+                          </th>
+                        ) : null}
+                        <td>{source}</td>
+                        <td>
+                          {target}
+                          {note ? <span>{note}</span> : null}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
 
             <div className="lecture-note-footer">
