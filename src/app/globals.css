@@ -2107,9 +2107,10 @@ button.invoice-request-link {
 }
 
 /* .drive-review-dialog 가 스타일시트에서 더 뒤에 있어 같은 명시도로는 덮이지 않는다. */
+/* 안내 문구가 한 줄에 들어가는 폭(본문 13px 기준) */
 .drive-review-dialog.invoice-request-confirm-dialog {
   grid-template-rows: auto minmax(0, 1fr) auto;
-  max-width: 520px;
+  max-width: 600px;
 }
 
 .invoice-request-confirm-body {
@@ -2118,21 +2119,37 @@ button.invoice-request-link {
   line-height: 1.7;
 }
 
+/* 안내 문구와 경고 문구는 붙여 쓴다 — .lecture-note-body의 gap(스타일시트 뒤쪽)은 끄고 여백을 직접 준다. */
+.lecture-note-body.invoice-request-confirm-body {
+  gap: 0;
+}
+
 .invoice-request-confirm-body p {
-  margin: 0 0 8px;
+  margin: 0;
+}
+
+/* 자동 기입 안내를 형광펜처럼 강조한다(옅은 노랑). */
+.invoice-request-confirm-body p.invoice-request-confirm-intro {
+  background: #fff4b8;
+  border-radius: 6px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  padding: 6px 10px;
 }
 
 .invoice-request-confirm-body p.invoice-request-confirm-warning {
   color: var(--red);
   font-weight: 700;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
+/* 전역 table의 min-width(넓은 목록용)를 풀어 확인 창 폭에 맞춘다. */
 .invoice-request-confirm-table {
   border-collapse: collapse;
   font-size: 12px;
   line-height: 1.5;
   margin-top: 6px;
+  min-width: 0;
   width: 100%;
 }
 
