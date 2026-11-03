@@ -270,6 +270,8 @@ function CompanyWikiDetail({
   // 계산서 발행 요청 구글폼 URL은 서버에만 둔다(저장소가 public이라 클라이언트 번들에
   // 절대 넣지 않는다) — 완성된 링크만 코스별로 서버에서 만들어 받는다.
   const [invoiceLinks, setInvoiceLinks] = useState<Record<string, string | null>>({});
+  // 사업자등록증 정보를 저장하면 올린다 — 링크는 저장된 값으로 서버에서 만들므로 다시 받아야 한다.
+  const [invoiceLinksVersion, setInvoiceLinksVersion] = useState(0);
   // 계산서 발행 요청 현황(폼 응답 시트 기준). null이면 아직 불러오는 중, available=false면 시트를 못 읽음.
   const [invoiceStatuses, setInvoiceStatuses] = useState<{
     available: boolean;
@@ -299,7 +301,7 @@ function CompanyWikiDetail({
       });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [invoiceLinksVersion]);
 
   return (
     <>
@@ -388,7 +390,15 @@ function CompanyWikiDetail({
         </div>
       ) : businessInfo ? (
         <>
-          <CompanyBusinessInfoEditor companyId={entry.companyId} initial={businessInfo} />
+          <CompanyBusinessInfoEditor
+            companyId={entry.companyId}
+            initial={businessInfo}
+            onSaved={() => {
+              // 다시 받는 동안 옛 값으로 만든 링크를 누르지 않도록 비워 둔다.
+              setInvoiceLinks({});
+              setInvoiceLinksVersion((version) => version + 1);
+            }}
+          />
           <CompanyMemoEditor companyId={entry.companyId} initial={businessInfo.memo} />
         </>
       ) : (
