@@ -475,8 +475,7 @@ function InvoiceRequestLink({ href }: { href: string | null | undefined }) {
               <table className="invoice-request-confirm-table">
                 <thead>
                   <tr>
-                    <th scope="col">구분</th>
-                    <th scope="col">항목</th>
+                    <th colSpan={2} scope="colgroup">구분</th>
                     <th scope="col">구글 설문폼 항목</th>
                   </tr>
                 </thead>
