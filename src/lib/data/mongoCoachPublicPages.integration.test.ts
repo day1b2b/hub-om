@@ -58,6 +58,7 @@ const leaves = new Map([
   ["@/features/coaches/CoachDetail", "CoachDetailView"],
   ["@/features/coaches/CoachEngagementList", "CoachEngagementList"],
   ["@/features/wiki/InstructorWiki", "InstructorWiki"],
+  ["@/features/wiki/InstructorRecommendPanel", "InstructorRecommendPanel"],
   ["@/features/wiki/InstructorWikiDetail", "InstructorWikiDetail"],
   ["@/features/operations/OperationDetail", "OperationDetail"]
 ]);
