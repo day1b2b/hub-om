@@ -2107,9 +2107,10 @@ button.invoice-request-link {
 }
 
 /* .drive-review-dialog 가 스타일시트에서 더 뒤에 있어 같은 명시도로는 덮이지 않는다. */
+/* 안내 문구가 한 줄에 들어가는 폭(본문 13px 기준) */
 .drive-review-dialog.invoice-request-confirm-dialog {
   grid-template-rows: auto minmax(0, 1fr) auto;
-  max-width: 520px;
+  max-width: 600px;
 }
 
 .invoice-request-confirm-body {
