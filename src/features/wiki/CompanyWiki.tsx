@@ -415,7 +415,7 @@ function CompanyWikiDetail({
 // 클라이언트 코드에 두지 않기 위해서다(저장소가 public). undefined는 "아직 불러오는 중",
 // null은 "서버가 안전한 URL을 못 만들었음"이고, 화면에서는 둘 다 "-"로 같다.
 // 폼이 자동 기입된 채로 열리니, 넘어가기 전에 무엇이 채워지는지 알려 주고 최종 확인을 받는다.
-// 확인 창 [자동 등록 내용] 표 — buildInvoiceRequestFormUrl()이 채우는 항목과 맞춰 둔다.
+// 확인 창 [구글 설문폼에 반영되는 내용] 표 — buildInvoiceRequestFormUrl()이 채우는 항목과 맞춰 둔다.
 // [hub-om 항목, 구글 설문폼 항목, 덧붙임 설명]
 const INVOICE_REQUEST_FIELD_GROUPS: { label: string; detail?: string; rows: [string, string, string?][] }[] = [
   {
@@ -471,7 +471,7 @@ function InvoiceRequestLink({ href }: { href: string | null | undefined }) {
                 계산서 발행 요청 내용(구글폼)이 자동 기입됩니다.
               </p>
               <p className="invoice-request-confirm-warning">※ 내용이 맞는지 꼭 최종 확인해주세요!</p>
-              <strong>[자동 등록 내용]</strong>
+              <strong>[구글 설문폼에 반영되는 내용]</strong>
               <table className="invoice-request-confirm-table">
                 <thead>
                   <tr>
