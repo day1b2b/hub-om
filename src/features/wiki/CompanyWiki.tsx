@@ -20,7 +20,8 @@ function nameText(names: string[], fallback: string): string {
   return names.length > 0 ? names.join(", ") : fallback;
 }
 
-const PAGE_SIZE = 20;
+// 갤러리는 카드가 작아 한 화면에 더 많이 보여 준다.
+const PAGE_SIZE = { gallery: 30, list: 20 } as const;
 
 export function CompanyWiki({ entries, loadFailed }: CompanyWikiProps) {
   const [selectedName, setSelectedName] = useState<null | string>(null);
@@ -52,13 +53,20 @@ export function CompanyWiki({ entries, loadFailed }: CompanyWikiProps) {
   }, [entries, query]);
 
   // 검색/목록이 바뀌면 현재 페이지를 유효 범위로 맞춰 빈 페이지가 뜨지 않게 한다.
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageSize = PAGE_SIZE[view];
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
-  const paged = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const paged = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const pageNumbers = getPageNumbers(currentPage, totalPages);
 
   function handleQueryChange(value: string) {
     setQuery(value);
+    setPage(1);
+  }
+
+  // 보기마다 페이지당 개수가 달라 같은 페이지 번호가 다른 기업을 가리키므로 첫 페이지로 돌아간다.
+  function changeView(next: "gallery" | "list") {
+    setView(next);
     setPage(1);
   }
 
@@ -107,8 +115,8 @@ export function CompanyWiki({ entries, loadFailed }: CompanyWikiProps) {
               <>
                 <div className="filter-row">
                   <div className="view-toggle">
-                    <button className={view === "gallery" ? "selected" : ""} onClick={() => setView("gallery")} type="button">▦ 갤러리</button>
-                    <button className={view === "list" ? "selected" : ""} onClick={() => setView("list")} type="button">☰ 리스트</button>
+                    <button className={view === "gallery" ? "selected" : ""} onClick={() => changeView("gallery")} type="button">▦ 갤러리</button>
+                    <button className={view === "list" ? "selected" : ""} onClick={() => changeView("list")} type="button">☰ 리스트</button>
                   </div>
                   <div className="search">
                     <span>🔍</span>
@@ -167,7 +175,7 @@ export function CompanyWiki({ entries, loadFailed }: CompanyWikiProps) {
                           {filtered.length > 0 ? (
                             paged.map((entry, index) => (
                               <tr key={entry.name}>
-                                <td>{(currentPage - 1) * PAGE_SIZE + index + 1}</td>
+                                <td>{(currentPage - 1) * pageSize + index + 1}</td>
                                 <td>
                                   <button className="row-link row-link--logo" onClick={() => openDetail(entry.name)} type="button">
                                     <CompanyLogo name={entry.name} size="sm" />
