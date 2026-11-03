@@ -15701,6 +15701,59 @@ details.detail-section > summary::-webkit-details-marker {
   font-weight: 700;
 }
 
+.instructor-contract-synced {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.contract-signing {
+  align-items: center;
+  display: inline-flex;
+  flex-wrap: wrap;
+  font-size: 12px;
+  gap: 6px;
+}
+
+.contract-signing-text {
+  color: var(--blue);
+  font-weight: 700;
+}
+
+.contract-signing.is-done .contract-signing-text {
+  color: #4f7a3f;
+}
+
+.contract-signing.is-warn .contract-signing-text {
+  color: var(--red);
+}
+
+.contract-signing-roles {
+  display: inline-flex;
+  flex-wrap: wrap;
+  font-size: 11px;
+  gap: 4px;
+}
+
+.contract-signing-roles > span {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+  padding: 1px 6px;
+}
+
+.contract-signing-roles > span.done {
+  background: #e9f1dd;
+  border-color: transparent;
+  color: #4f7a3f;
+}
+
+.contract-signing-roles > span.now {
+  background: #e7effa;
+  border-color: transparent;
+  color: var(--blue);
+  font-weight: 700;
+}
+
 /* 강사 위키: 강사 추천 */
 .instructor-recommend-panel {
   margin-bottom: 16px;
