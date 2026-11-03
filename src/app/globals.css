@@ -2128,8 +2128,13 @@ button.invoice-request-link {
   margin: 0;
 }
 
+/* 자동 기입 안내를 형광펜처럼 강조한다(옅은 노랑). */
 .invoice-request-confirm-body p.invoice-request-confirm-intro {
+  background: #fff4b8;
+  border-radius: 6px;
   font-weight: 700;
+  margin-bottom: 6px;
+  padding: 6px 10px;
 }
 
 .invoice-request-confirm-body p.invoice-request-confirm-warning {
