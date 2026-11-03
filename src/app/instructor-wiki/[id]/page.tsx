@@ -5,7 +5,8 @@ import {
   applyNotionLinks,
   type InstructorWikiEntry
 } from "@/features/wiki/instructorWikiModel";
-import { requireAdminSession } from "@/lib/auth/requireAdminSession";
+import { resolveSessionIsAdmin } from "@/lib/auth/requireAdminSession";
+import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getCoachRepository } from "@/lib/data/coachRepositoryFactory";
 import {
   getInstructorNote,
@@ -23,11 +24,13 @@ interface InstructorWikiDetailPageProps {
 }
 
 export default async function InstructorWikiDetailPage({ params }: InstructorWikiDetailPageProps) {
-  await requireAdminSession();
-  return runCoachPublicRequest(() => renderInstructorWikiDetailPage(params));
+  await requireWorkspaceSession();
+  // 강사 위키는 OM 전원이 보되, 노션 강사 연결(관리자 전용 API)은 관리자에게만 보인다.
+  const isAdmin = await resolveSessionIsAdmin();
+  return runCoachPublicRequest(() => renderInstructorWikiDetailPage(params, isAdmin));
 }
 
-async function renderInstructorWikiDetailPage(params: InstructorWikiDetailPageProps["params"]) {
+async function renderInstructorWikiDetailPage(params: InstructorWikiDetailPageProps["params"], isAdmin: boolean) {
   const { id } = await params;
 
   // 주소는 노션 NO가 정본이다(동명이인까지 구분됨). 숫자가 아니면 노션에 없는 강사이거나
@@ -109,7 +112,7 @@ async function renderInstructorWikiDetailPage(params: InstructorWikiDetailPagePr
     // coach-db 미연결 → 보강 생략
   }
 
-  return <InstructorWikiDetail entry={entry} />;
+  return <InstructorWikiDetail canManageNotionLinks={isAdmin} entry={entry} />;
 }
 
 function safeDecode(value: string): string {
