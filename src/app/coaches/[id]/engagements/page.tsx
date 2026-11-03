@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { CoachEngagementList } from "@/features/coaches/CoachEngagementList";
-import { requireAdminSession } from "@/lib/auth/requireAdminSession";
+import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getCoachRepository } from "@/lib/data/coachRepositoryFactory";
 import { runCoachPublicRequest } from "@/lib/data/coachPublicComposition";
 import { effectiveEngagementStatus, seoulTodayKey } from "@/lib/coaches/coachActivity";
@@ -12,7 +12,7 @@ interface CoachEngagementsPageProps {
 }
 
 export default async function CoachEngagementsPage({ params }: CoachEngagementsPageProps) {
-  await requireAdminSession();
+  await requireWorkspaceSession();
   return runCoachPublicRequest(() => renderCoachEngagementsPage(params));
 }
 

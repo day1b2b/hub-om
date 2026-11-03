@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { PEOPLE_STATUS_LABEL, PEOPLE_STATUS_ORDER, type PeopleStatus } from "@/lib/people/peopleStatus";
 import { PeopleAvatar, PeopleStatusPill } from "./PeopleProfile";
 
@@ -61,6 +61,8 @@ interface PeopleDirectoryProps {
   /** 투입 칸 머리글. */
   deployHeader: string;
   extraHeader?: string;
+  /** 머리말 아래·목록 위에 끼우는 칸(강사 위키 "강사 추천"). */
+  belowHeader?: ReactNode;
 }
 
 const FACET_PREVIEW = 8;
@@ -77,7 +79,8 @@ export function PeopleDirectory({
   ratingHeader,
   secondaryRatingHeader,
   deployHeader,
-  extraHeader
+  extraHeader,
+  belowHeader
 }: PeopleDirectoryProps) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<PeopleStatus | "all">("all");
@@ -131,6 +134,8 @@ export function PeopleDirectory({
           <p className="lede">{lede}</p>
         </div>
       </header>
+
+      {belowHeader}
 
       <div className="people-directory">
         <aside className="people-facets" aria-label="필터">

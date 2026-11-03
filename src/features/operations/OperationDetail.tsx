@@ -22,8 +22,8 @@ import { EditableSessionRegionCell } from "./EditableSessionRegionCell";
 import { EditableSessionScheduleCell } from "./EditableSessionScheduleCell";
 import { EditableToolsItem } from "./EditableToolsItem";
 import { InstructorContractRequestSection } from "./InstructorContractRequestSection";
-import { InstructorCandidatesSection } from "./InstructorCandidatesSection";
-import type { InstructorRecommendation } from "@/features/wiki/instructorRecommendation";
+import { resolveCourseStage } from "./courseStage";
+import { seoulTodayKey } from "@/lib/coaches/coachActivity";
 import { CourseNotesWorkspace } from "./CourseNotesWorkspace";
 import { OnsiteRequiredConditionSelect } from "./OnsiteRequiredConditionSelect";
 import { OperationDiscussionPanel } from "./OperationDiscussionPanel";
@@ -61,7 +61,6 @@ interface OperationDetailProps {
   extraTools?: string[];
   instructorOptions?: string[];
   /** 과정 카테고리 기준 후보 강사. 서버에서 계산해 넘긴다. */
-  instructorRecommendation?: InstructorRecommendation;
   onsiteOmOptions?: string[];
   operation: OperationSession;
   personOptions?: PersonOptions;
@@ -77,7 +76,6 @@ export function OperationDetail({
   collaboration,
   extraTools = [],
   instructorOptions = [],
-  instructorRecommendation,
   onsiteOmOptions,
   operation,
   personOptions = { ld: [], om: [] },
@@ -87,6 +85,18 @@ export function OperationDetail({
   teamScope
 }: OperationDetailProps) {
   const courseOperations = getCourseOperations(operation, relatedOperations);
+  // 업무 순서(배정 → 계약요청 → 회고)에서 지금 어느 단계인지. 해당 칸만 강조·접기에 쓴다.
+  const courseStage = resolveCourseStage(
+    courseOperations.map((candidate, candidateIndex) => ({
+      operationId: candidate.operationId,
+      label: roundLabel(candidate, candidateIndex),
+      instructors: candidate.instructors,
+      startDate: candidate.startDate,
+      endDate: candidate.endDate
+    })),
+    new Set(surveyResults.map((result) => result.operationId)),
+    seoulTodayKey()
+  );
   const courseGroups = getCourseGroups(operation, sameCourseIdOperations);
   const educationFormatText = aggregateUniqueValues(courseOperations, (candidate) => candidate.educationFormat);
   const requiredArchiveItems = getRequiredArchiveItems(courseOperations);
@@ -421,14 +431,16 @@ export function OperationDetail({
             {SHOW_BULK_EDIT_ROUNDS ? <BulkSaveRoundsButton /> : null}
             </EditAllRoundsProvider>
           </section>
+          {/* 업무 순서대로: 회차 목록 → 강사 계약요청(배정 직후) → 수강생 코멘트(교육 후). 후보 강사는 강사 위키 "강사 추천"에서 본다. */}
+          <InstructorContractRequestSection courseOperations={courseOperations} stage={courseStage.stage} />
           <RoundSurveyCommentsSection
+            pendingLabels={courseStage.pendingSurveyLabels}
             rows={buildRoundSurveyComments(
               courseOperations.map((candidate, candidateIndex) => ({ operationId: candidate.operationId, label: roundLabel(candidate, candidateIndex) })),
               surveyResults
             )}
+            stage={courseStage.stage}
           />
-          <InstructorContractRequestSection courseOperations={courseOperations} />
-          {instructorRecommendation ? <InstructorCandidatesSection recommendation={instructorRecommendation} /> : null}
           <CourseNotesWorkspace
             className="wide-detail-section"
             commonNote={operation.courseCommonNote}

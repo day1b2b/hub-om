@@ -37,6 +37,11 @@ function statusKey(courseId: string, normName: string): string {
 interface ContractRecordIndex {
   /** (코스ID × 정규화 강사명) 집합 = 응답시트에 레코드가 있음(= 요청됨). */
   requestedKeys: Set<string>;
+  /**
+   * (코스ID × 정규화 강사명) 중 시트 C열(계약 발송·모두싸인)이 체크된 것 = 발송됨.
+   * F열(최종완료)은 발송과 같은 때 체크돼 서명 완료를 뜻하지 않는다(2026-11-03 모두싸인 대조). 서명은 모두싸인 연동으로 본다.
+   */
+  sentKeys: Set<string>;
   /** (코스ID × 정규화 강사명) → 이메일. 그 코스 레코드가 직접 가진 이메일(가장 확실). */
   emailByStatusKey: Map<string, string>;
   /** 정규화 강사명 → 그 강사의 서로 다른 비지 않은 이메일 집합(동명이인 모호 판별용). */
@@ -46,6 +51,7 @@ interface ContractRecordIndex {
 /** 응답시트 레코드를 요청집합 + 이메일 색인으로 만든다(요청 생성·상태 조회가 공유). */
 function indexContractRecords(records: InstructorContractRecord[]): ContractRecordIndex {
   const requestedKeys = new Set<string>();
+  const sentKeys = new Set<string>();
   const emailByStatusKey = new Map<string, string>();
   const emailsByInstructor = new Map<string, Set<string>>();
   for (const record of records) {
@@ -53,6 +59,7 @@ function indexContractRecords(records: InstructorContractRecord[]): ContractReco
     const norm = normalizeInstructorName(record.instructorName);
     if (!norm) continue;
     if (courseId) requestedKeys.add(statusKey(courseId, norm));
+    if (courseId && record.contractSent) sentKeys.add(statusKey(courseId, norm));
     const email = (record.email ?? "").trim();
     if (email) {
       if (courseId) emailByStatusKey.set(statusKey(courseId, norm), email);
@@ -61,7 +68,7 @@ function indexContractRecords(records: InstructorContractRecord[]): ContractReco
       emailsByInstructor.set(norm, set);
     }
   }
-  return { requestedKeys, emailByStatusKey, emailsByInstructor };
+  return { requestedKeys, sentKeys, emailByStatusKey, emailsByInstructor };
 }
 
 /**
@@ -155,6 +162,8 @@ export interface ContractStatusResult {
   instructorName: string;
   /** 이 코스ID로 이미 요청됨(응답시트에 레코드 있음). */
   requested: boolean;
+  /** 시트 C열(계약 발송·모두싸인)이 체크됨. 서명 완료 여부는 아니다. */
+  sent: boolean;
   /** 응답시트에서 찾은 강사 이메일. 없으면 생략. */
   email?: string;
 }
@@ -176,6 +185,7 @@ export function resolveInstructorContractStatus(
       courseId: pair.courseId,
       instructorName: pair.instructorName,
       requested: normName ? index.requestedKeys.has(statusKey(courseId, normName)) : false,
+      sent: normName ? index.sentKeys.has(statusKey(courseId, normName)) : false,
       email: resolveEmail(index, courseId, normName)
     };
   });

@@ -1,4 +1,6 @@
 import { InstructorWiki } from "@/features/wiki/InstructorWiki";
+import { InstructorRecommendPanel } from "@/features/wiki/InstructorRecommendPanel";
+import { recommendInstructorsByCriteria } from "@/features/wiki/instructorRecommendation";
 import {
   aggregateInstructors,
   applyNotionLinks,
@@ -7,27 +9,38 @@ import {
   type InstructorWikiEntry,
   type InstructorWikiProvenance
 } from "@/features/wiki/instructorWikiModel";
-import { requireAdminSession } from "@/lib/auth/requireAdminSession";
+import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getCoachRepository } from "@/lib/data/coachRepositoryFactory";
 import { listInstructorNotes, resolveNotionLinkTargets } from "@/lib/data/instructorWikiStore";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
+import type { OperationSession } from "@/lib/data/operationTypes";
 import { runCoachPublicRequest } from "@/lib/data/coachPublicComposition";
 import { coachActivityPolicy, seoulTodayKey } from "@/lib/coaches/coachActivity";
 
 export const dynamic = "force-dynamic";
 
-export default async function InstructorWikiPage() {
-  await requireAdminSession();
-  return runCoachPublicRequest(renderInstructorWikiPage);
+interface InstructorWikiPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-async function renderInstructorWikiPage() {
+export default async function InstructorWikiPage({ searchParams }: InstructorWikiPageProps) {
+  await requireWorkspaceSession();
+  const params = await searchParams;
+  return runCoachPublicRequest(() => renderInstructorWikiPage(firstParam(params.minor), firstParam(params.date)));
+}
+
+function firstParam(value: string | string[] | undefined): string {
+  return (Array.isArray(value) ? value[0] : value)?.trim() ?? "";
+}
+
+async function renderInstructorWikiPage(recommendMinor: string, recommendDate: string) {
   let entries: InstructorWikiEntry[] = [];
+  let operations: OperationSession[] = [];
   let loadFailed = false;
 
   // 담당 코스·과정은 운영 현황에서 온다.
   try {
-    const operations = await getOperationRepository().listOperations();
+    operations = await getOperationRepository().listOperations();
     entries = aggregateInstructors(operations);
   } catch {
     loadFailed = true;
@@ -68,14 +81,28 @@ async function renderInstructorWikiPage() {
     .map((note) => (note.instructorName ?? "").trim())
     .filter(Boolean);
 
+  // 강사 추천: 분야를 고른 뒤에만 계산한다(조건은 주소로 받는다).
+  const today = seoulTodayKey();
+  const recommendation = recommendMinor
+    ? recommendInstructorsByCriteria({
+        minor: recommendMinor,
+        date: recommendDate,
+        operations,
+        notes,
+        today,
+        dormantMonths: coachActivityPolicy.dormantMonths
+      })
+    : null;
+
   return (
     <InstructorWiki
+      recommendPanel={<InstructorRecommendPanel date={recommendDate} minor={recommendMinor} recommendation={recommendation} />}
       entries={entries}
       loadFailed={loadFailed}
       operationEntryCount={operationEntryCount}
       provenance={provenance}
       recruitAvoidNames={recruitAvoidNames}
-      today={seoulTodayKey()}
+      today={today}
       dormantMonths={coachActivityPolicy.dormantMonths}
     />
   );
