@@ -57,18 +57,65 @@ export function recommendInstructors({
   limit = 5
 }: RecommendInput): InstructorRecommendation {
   const minor = courseOperations.map((operation) => operation.courseCategory).find((value) => value?.trim())?.trim() ?? "";
-  const major = courseCategoryMajor(minor) ?? "";
-  const empty = { minor, major, candidates: [], conflicts: [], excludedAvoidCount: 0 };
-  if (!major) return { needsCategory: true, ...empty };
-
   const courseIds = new Set(courseOperations.map((operation) => operation.operationId));
-  const categoryByOperation = new Map(operations.map((operation) => [operation.operationId, operation.courseCategory ?? ""]));
-  const operationById = new Map(operations.map((operation) => [operation.operationId, operation]));
   // 겹침은 아직 끝나지 않은 회차 기준. 다 끝난 과정이면 전체 회차로 본다.
   const upcoming = courseOperations.filter((operation) => (operation.endDate || operation.startDate) >= today);
   const targetRanges = (upcoming.length > 0 ? upcoming : courseOperations)
     .filter((operation) => operation.startDate)
     .map((operation) => [operation.startDate, operation.endDate || operation.startDate] as const);
+  return rankInstructorCandidates({ minor, courseIds, targetRanges, operations, notes, today, dormantMonths, limit });
+}
+
+/**
+ * 강사 위키 "강사 추천": 과정 없이 분야(소분류)와 교육일만으로 고른다.
+ * 교육일이 비면 일정 겹침은 보지 않는다. 이미 배정된 강사를 뺄 과정이 없으므로 그 조건은 쓰지 않는다.
+ */
+export function recommendInstructorsByCriteria({
+  minor,
+  date,
+  operations,
+  notes,
+  today,
+  dormantMonths,
+  limit = 10
+}: {
+  minor: string;
+  date: string;
+  operations: OperationSession[];
+  notes: InstructorNote[];
+  today: string;
+  dormantMonths: number;
+  limit?: number;
+}): InstructorRecommendation {
+  const targetRanges = /^\d{4}-\d{2}-\d{2}$/.test(date) ? [[date, date] as const] : [];
+  return rankInstructorCandidates({ minor: minor.trim(), courseIds: new Set(), targetRanges, operations, notes, today, dormantMonths, limit });
+}
+
+function rankInstructorCandidates({
+  minor,
+  courseIds,
+  targetRanges,
+  operations,
+  notes,
+  today,
+  dormantMonths,
+  limit
+}: {
+  minor: string;
+  courseIds: Set<string>;
+  targetRanges: readonly (readonly [string, string])[];
+  operations: OperationSession[];
+  notes: InstructorNote[];
+  today: string;
+  dormantMonths: number;
+  limit: number;
+}): InstructorRecommendation {
+  const major = courseCategoryMajor(minor) ?? "";
+  const empty = { minor, major, candidates: [], conflicts: [], excludedAvoidCount: 0 };
+  if (!major) return { needsCategory: true, ...empty };
+
+  const categoryByOperation = new Map(operations.map((operation) => [operation.operationId, operation.courseCategory ?? ""]));
+  const operationById = new Map(operations.map((operation) => [operation.operationId, operation]));
 
   const noteByName = new Map<string, InstructorNote>();
   for (const note of notes) {

@@ -178,3 +178,23 @@ test("시트 코스ID에 '.0'이 붙어도 정규화해 요청됨을 맞춘다",
   assert.equal(results[0].requested, true); // 238061.0 ↔ 238061
   assert.equal(results[0].email, "jin@example.com");
 });
+
+test("resolveInstructorContractStatus: 시트 C열(계약 발송)이 체크된 요청만 sent, 다른 코스의 발송은 섞지 않는다", () => {
+  const results = resolveInstructorContractStatus(
+    [
+      contract({ courseId: "268718", instructorName: "최진영", contractSent: true, contractCompleted: true }),
+      contract({ courseId: "268560", instructorName: "최재석" }),
+      contract({ courseId: "111111", instructorName: "김기호", contractSent: true })
+    ],
+    [
+      { courseId: "268718", instructorName: "최진영" },
+      { courseId: "268560", instructorName: "최재석" },
+      { courseId: "222222", instructorName: "김기호" }
+    ]
+  );
+  assert.deepEqual(results.map((r) => [r.instructorName, r.requested, r.sent]), [
+    ["최진영", true, true],
+    ["최재석", true, false],
+    ["김기호", false, false]
+  ]);
+});

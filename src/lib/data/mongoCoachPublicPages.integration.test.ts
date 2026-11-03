@@ -58,6 +58,7 @@ const leaves = new Map([
   ["@/features/coaches/CoachDetail", "CoachDetailView"],
   ["@/features/coaches/CoachEngagementList", "CoachEngagementList"],
   ["@/features/wiki/InstructorWiki", "InstructorWiki"],
+  ["@/features/wiki/InstructorRecommendPanel", "InstructorRecommendPanel"],
   ["@/features/wiki/InstructorWikiDetail", "InstructorWikiDetail"],
   ["@/features/operations/OperationDetail", "OperationDetail"]
 ]);
@@ -81,7 +82,7 @@ const { default: listPage } = await import("../../app/coaches/page");
 const { default: schedulePage } = await import("../../app/coaches/schedule/page");
 const { default: detailPage } = await import("../../app/coaches/[id]/page");
 const { default: engagementsPage } = await import("../../app/coaches/[id]/engagements/page");
-const { default: wikiPage } = await import("../../app/instructor-wiki/page");
+const { default: wikiListPage } = await import("../../app/instructor-wiki/page");
 const { seoulTodayKey, summarizeCoachActivity } = await import("../coaches/coachActivity");
 // 목록 페이지는 저장소 요약에서 날짜 정보를 빼고 오늘 기준 활동 상태를 붙여 넘긴다.
 const listProps = (coaches: CoachSummary[], loadFailed: boolean) => { const today = seoulTodayKey();
@@ -93,6 +94,7 @@ hooks.deregister();
 function props(element: ReactElement) { return element.props as Record<string, unknown>; }
 const query = (value: Record<string, string | string[] | undefined> = {}) => ({ searchParams: Promise.resolve(value) });
 const param = (id: string) => ({ params: Promise.resolve({ id }) });
+const wikiPage = () => wikiListPage(query());
 const missingScope = /DATA_REPOSITORY_NOT_CONFIGURED: coach$/;
 const range = { from: "2099-12-01", to: "2099-12-31" };
 function noForbidden(pg = pgCalls, outside = externalCalls) {
