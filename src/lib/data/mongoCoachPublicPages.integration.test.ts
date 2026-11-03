@@ -359,12 +359,14 @@ test("coach public pages: seven actual pages use native coach storage with prese
     const expectCalls = (scope: string, entries: [string, unknown[]][]) => {
       assert.deepEqual(calls.splice(0), entries.map(([method, args]) => ({ scope, method, args }))); noForbidden();
     };
-    await suite.test("real guards reject before all reads; workspace user may access only the operation page", async () => {
+    await suite.test("real guards reject before all reads; workspace user may access every page except the schedule board", async () => {
+      // 코치 위키(목록·상세·투입 이력)와 강사 위키는 OM 전원에게 열었다. 코치 일정판(board, index 1)만 관리자 전용이다.
+      const adminOnly = (index: number) => index === 1;
       for (const actor of [null, { ...ordinary, user: { ...ordinary.user, email: "outsider@example.invalid" } }, ordinary]) {
         for (const [index, page] of seven.entries()) {
-          if (actor === ordinary && index === 6) continue;
+          if (actor === ordinary && !adminOnly(index)) continue;
           const previous = adjacentCalls, holidayCount = holidayCalls.length, commandCount = commands.length;
-          await assert.rejects(run(a, page, actor), redirect(index === 6 ? "/sign-in" : "/dashboard"));
+          await assert.rejects(run(a, page, actor), redirect(adminOnly(index) ? "/dashboard" : "/sign-in"));
           assert.equal(adjacentCalls, previous); assert.equal(holidayCalls.length, holidayCount); assert.equal(commands.length, commandCount);
           expectCalls("a", []);
         }
@@ -389,7 +391,7 @@ test("coach public pages: seven actual pages use native coach storage with prese
         assert.deepEqual(props(await actors.run(admin, listPage)), listProps(exp.summaries, false));
         assert.deepEqual(props(await actors.run(admin, board)), { currentUserEmail: admin.user.email, dashboard: exp.dashboard, holidays,
           initialDate: "2099-12-99", loadFailed: false });
-        assert.deepEqual(props(await actors.run(admin, detail)), { coach: exp.detail, engagements: exp.engagements, schedules: exp.schedules,
+        assert.deepEqual(props(await actors.run(admin, detail)), { canManageInputLink: true, coach: exp.detail, engagements: exp.engagements, schedules: exp.schedules,
           engagementSchedules: exp.engagementSchedules, selectedMonth: "2099-12", selectedTab: "schedule" });
         assert.deepEqual(props(await actors.run(admin, () => engagementsPage(param(f.a.id as string)))), {
           coachId: f.a.id, coachName: " 가상 가 ", engagements: exp.engagements, feedbackByEngagement: {} });
@@ -400,7 +402,7 @@ test("coach public pages: seven actual pages use native coach storage with prese
         noForbidden();
 
         process.env.MONGODB_URI = "mongodb://127.0.0.1:1/";
-        await assert.rejects(actors.run(null, listPage), redirect("/dashboard"));
+        await assert.rejects(actors.run(null, listPage), redirect("/sign-in"));
         process.env.MONGODB_URI = uri!;
 
         const before = await snapshot("shadow_broken");

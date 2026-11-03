@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { CoachDetailView } from "@/features/coaches/CoachDetail";
-import { requireAdminSession } from "@/lib/auth/requireAdminSession";
+import { resolveSessionIsAdmin } from "@/lib/auth/requireAdminSession";
+import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getCoachRepository } from "@/lib/data/coachRepositoryFactory";
 import type { CoachDetailTab } from "@/features/coaches/CoachDetail";
 import { runCoachPublicRequest } from "@/lib/data/coachPublicComposition";
@@ -22,11 +23,13 @@ interface CoachDetailPageProps {
 }
 
 export default async function CoachDetailPage({ params, searchParams }: CoachDetailPageProps) {
-  await requireAdminSession();
-  return runCoachPublicRequest(() => renderCoachDetailPage({ params, searchParams }));
+  await requireWorkspaceSession();
+  // 코치 위키는 OM 전원이 보되, 코치 개인 입력 링크(토큰)는 관리자에게만 내려보낸다.
+  const isAdmin = await resolveSessionIsAdmin();
+  return runCoachPublicRequest(() => renderCoachDetailPage({ params, searchParams }, isAdmin));
 }
 
-async function renderCoachDetailPage({ params, searchParams }: CoachDetailPageProps) {
+async function renderCoachDetailPage({ params, searchParams }: CoachDetailPageProps, isAdmin: boolean) {
   const { id } = await params;
   const query = await searchParams;
   const selectedTab = resolveTab(firstParam(query.tab));
@@ -54,11 +57,16 @@ async function renderCoachDetailPage({ params, searchParams }: CoachDetailPagePr
   }));
 
   // 목록과 같은 계산(상태 4단계·최근 OM 평가)을 상세에서도 쓴다.
-  const coachWithRating = { ...coach, ...recentRatingSummary(coach.engagementFacts, evaluationAverages) };
+  const coachWithRating = {
+    ...coach,
+    coachInputUrl: isAdmin ? coach.coachInputUrl : null,
+    ...recentRatingSummary(coach.engagementFacts, evaluationAverages)
+  };
 
   return (
     <CoachDetailView
       activity={summarizeCoachActivity(coach.engagementFacts, today)}
+      canManageInputLink={isAdmin}
       coach={coachWithRating}
       peopleStatus={peopleStatusFromFacts(coach.engagementFacts, today, coachActivityPolicy.dormantMonths)}
       today={today}

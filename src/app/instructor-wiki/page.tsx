@@ -7,7 +7,7 @@ import {
   type InstructorWikiEntry,
   type InstructorWikiProvenance
 } from "@/features/wiki/instructorWikiModel";
-import { requireAdminSession } from "@/lib/auth/requireAdminSession";
+import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getCoachRepository } from "@/lib/data/coachRepositoryFactory";
 import { listInstructorNotes, resolveNotionLinkTargets } from "@/lib/data/instructorWikiStore";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
@@ -17,7 +17,7 @@ import { coachActivityPolicy, seoulTodayKey } from "@/lib/coaches/coachActivity"
 export const dynamic = "force-dynamic";
 
 export default async function InstructorWikiPage() {
-  await requireAdminSession();
+  await requireWorkspaceSession();
   return runCoachPublicRequest(renderInstructorWikiPage);
 }
 
