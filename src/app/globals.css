@@ -2118,14 +2118,19 @@ button.invoice-request-link {
   line-height: 1.7;
 }
 
+/* 안내 문구와 경고 문구는 붙여 쓴다 — .lecture-note-body의 gap(스타일시트 뒤쪽)은 끄고 여백을 직접 준다. */
+.lecture-note-body.invoice-request-confirm-body {
+  gap: 0;
+}
+
 .invoice-request-confirm-body p {
-  margin: 0 0 8px;
+  margin: 0;
 }
 
 .invoice-request-confirm-body p.invoice-request-confirm-warning {
   color: var(--red);
   font-weight: 700;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 /* 전역 table의 min-width(넓은 목록용)를 풀어 확인 창 폭에 맞춘다. */
