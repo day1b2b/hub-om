@@ -68,6 +68,8 @@ interface OperationDetailProps {
   sameCourseIdOperations?: OperationSession[];
   /** 회차별 만족도 결과(수강생 코멘트). 읽지 못하면 빈 목록 — 코멘트 칸만 빈 안내. */
   surveyResults?: readonly SessionSurveyResult[];
+  /** normalizePersonKey(멤버 이름) → 팀. 강사 계약폼 "소속 및 부서장" 자동 선택용(못 읽으면 빈 객체). */
+  teamByPersonKey?: Readonly<Record<string, string>>;
   teamScope: TeamScope;
 }
 
@@ -82,6 +84,7 @@ export function OperationDetail({
   relatedOperations = [operation],
   sameCourseIdOperations = [],
   surveyResults = [],
+  teamByPersonKey = {},
   teamScope
 }: OperationDetailProps) {
   const courseOperations = getCourseOperations(operation, relatedOperations);
@@ -432,7 +435,7 @@ export function OperationDetail({
             </EditAllRoundsProvider>
           </section>
           {/* 업무 순서대로: 회차 목록 → 강사 계약요청(배정 직후) → 수강생 코멘트(교육 후). 후보 강사는 강사 위키 "강사 추천"에서 본다. */}
-          <InstructorContractRequestSection courseOperations={courseOperations} stage={courseStage.stage} />
+          <InstructorContractRequestSection courseOperations={courseOperations} stage={courseStage.stage} teamByPersonKey={teamByPersonKey} />
           <RoundSurveyCommentsSection
             pendingLabels={courseStage.pendingSurveyLabels}
             rows={buildRoundSurveyComments(

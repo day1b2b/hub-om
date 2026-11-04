@@ -219,7 +219,8 @@ export function InstructorContractList({
                   email,
                   instructorName: item.instructorName,
                   manager: item.manager,
-                  schedule: item.schedule
+                  schedule: item.schedule,
+                  department: item.department
                 })}
                 values={{
                   courseId: item.courseId,
@@ -227,6 +228,7 @@ export function InstructorContractList({
                   instructorName: item.instructorName,
                   schedule: item.schedule,
                   manager: item.manager,
+                  department: item.department ?? "",
                   email: email ?? ""
                 }}
               />
@@ -253,7 +255,7 @@ export function InstructorContractList({
 // 확인 창 [구글 설문폼에 자동으로 기입되는 내용] 표 — buildContractPrefillUrl()이 채우는 항목과 맞춰 둔다.
 // [hub-om 항목, 구글 설문폼 항목, 덧붙임 설명]
 // [hub-om 항목, 구글 설문폼 항목, 기입될 값(values 키)]
-type ContractFormValues = Record<"courseId" | "courseName" | "instructorName" | "schedule" | "manager" | "email", string>;
+type ContractFormValues = Record<"courseId" | "courseName" | "instructorName" | "schedule" | "manager" | "department" | "email", string>;
 const CONTRACT_REQUEST_FIELD_GROUPS: { label: string; detail?: string; rows: [string, string, keyof ContractFormValues][] }[] = [
   {
     label: "운영 현황",
@@ -262,7 +264,8 @@ const CONTRACT_REQUEST_FIELD_GROUPS: { label: string; detail?: string; rows: [st
       ["과정명", "과정명", "courseName"],
       ["강사명", "강사명", "instructorName"],
       ["강의 일정", "일정", "schedule"],
-      ["담당 OM", "담당자", "manager"]
+      ["담당 OM", "담당자", "manager"],
+      ["담당 OM 파트", "소속 및 부서장", "department"]
     ]
   },
   {
@@ -330,6 +333,7 @@ function ContractFormOpenButton({ href, values }: { href: string; values: Contra
                 </tbody>
               </table>
               <p className="contract-request-confirm-note">강사료·계약유형 등 나머지 항목은 폼에서 직접 확인·입력하세요.</p>
+              <p className="contract-request-confirm-note">폼에서 &apos;현재 초안을 계속 사용하시겠습니까?&apos; 창이 뜨면 [계속]을 눌러 주세요.</p>
             </div>
 
             <div className="lecture-note-footer">
