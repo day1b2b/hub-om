@@ -96,6 +96,7 @@ async function renderInstructorWikiPage(recommendMinor: string, recommendDate: s
 
   return (
     <InstructorWiki
+      recommendOpen={recommendation !== null}
       recommendPanel={<InstructorRecommendPanel date={recommendDate} minor={recommendMinor} recommendation={recommendation} />}
       entries={entries}
       loadFailed={loadFailed}

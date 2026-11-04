@@ -26,7 +26,9 @@ export interface InstructorConflict {
   name: string;
   href: string;
   conflictWith: string;
+  /** 겹치는 다른 과정의 시작일. 여러 날 과정이면 endDate까지 이어진다. */
   date: string;
+  endDate: string;
 }
 
 export interface InstructorRecommendation {
@@ -158,7 +160,13 @@ function rankInstructorCandidates({
     });
     if (clash) {
       const other = operationById.get(clash.operationId);
-      conflicts.push({ name, href, conflictWith: `${clash.companyName} ${cleanCourseName(other?.courseName ?? clash.courseName)}`, date: clash.startDate });
+      conflicts.push({
+        name,
+        href,
+        conflictWith: `${clash.companyName} ${cleanCourseName(other?.courseName ?? clash.courseName)}`,
+        date: clash.startDate,
+        endDate: clash.endDate || clash.startDate
+      });
       return;
     }
 

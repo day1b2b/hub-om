@@ -61,8 +61,8 @@ interface PeopleDirectoryProps {
   /** 투입 칸 머리글. */
   deployHeader: string;
   extraHeader?: string;
-  /** 머리말 아래·목록 위에 끼우는 칸(강사 위키 "강사 추천"). */
-  belowHeader?: ReactNode;
+  /** 검색줄 옆 버튼으로 여닫는 칸(강사 위키 "강사 추천"). 열리면 검색줄 바로 아래에 보인다. */
+  toolPanel?: { label: string; content: ReactNode; defaultOpen?: boolean };
 }
 
 const FACET_PREVIEW = 8;
@@ -80,7 +80,7 @@ export function PeopleDirectory({
   secondaryRatingHeader,
   deployHeader,
   extraHeader,
-  belowHeader
+  toolPanel
 }: PeopleDirectoryProps) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<PeopleStatus | "all">("all");
@@ -88,7 +88,7 @@ export function PeopleDirectory({
   const [secondary, setSecondary] = useState<Set<string>>(new Set());
   const [hideFlagged, setHideFlagged] = useState(false);
   const [sort, setSort] = useState<SortKey>("recent");
-  const [view, setView] = useState<"card" | "table">("card");
+  const [toolOpen, setToolOpen] = useState(Boolean(toolPanel?.defaultOpen));
 
   // 상태·전문분야·보조 필터의 숫자는 검색어만 적용한 결과로 센다. 필터를 골라도 다른 선택지 숫자가 0으로 꺼지지 않게.
   const searched = useMemo(() => {
@@ -135,8 +135,6 @@ export function PeopleDirectory({
         </div>
       </header>
 
-      {belowHeader}
-
       <div className="people-directory">
         <aside className="people-facets" aria-label="필터">
           <div className="people-facet">
@@ -175,18 +173,26 @@ export function PeopleDirectory({
                 ))}
               </select>
             </label>
-            <div className="view-toggle">
-              <button className={view === "card" ? "selected" : ""} onClick={() => setView("card")} type="button">카드</button>
-              <button className={view === "table" ? "selected" : ""} onClick={() => setView("table")} type="button">표</button>
-            </div>
+            {toolPanel ? (
+              <button
+                aria-expanded={toolOpen}
+                className={`people-tool-button${toolOpen ? " selected" : ""}`}
+                onClick={() => setToolOpen((prev) => !prev)}
+                type="button"
+              >
+                {toolPanel.label}
+              </button>
+            ) : null}
             <span className="people-count">총 {filtered.length}명</span>
           </div>
+
+          {toolPanel && toolOpen ? <div className="people-tool-panel">{toolPanel.content}</div> : null}
 
           {loadFailed ? (
             <div className="people-empty"><strong>{loadFailedText}</strong><span>데이터 연결 상태를 확인해 주세요.</span></div>
           ) : filtered.length === 0 ? (
             <div className="people-empty"><strong>{rows.length === 0 ? emptyText : "조건에 맞는 사람이 없습니다."}</strong><span>검색어나 필터를 조정해 보세요.</span></div>
-          ) : view === "card" ? (
+          ) : (
             <div className="people-rows">
               {filtered.map((row) => (
                 <Link className="people-row" href={row.href} key={row.id}>
@@ -215,45 +221,6 @@ export function PeopleDirectory({
                   </span>
                 </Link>
               ))}
-            </div>
-          ) : (
-            <div className="table-section">
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>이름</th>
-                      <th>상태</th>
-                      <th>전문분야</th>
-                      <th>{deployHeader}</th>
-                      {extraHeader ? <th>{extraHeader}</th> : null}
-                      <th>최근 투입</th>
-                      <th>{ratingHeader}</th>
-                      {secondaryRatingHeader ? <th>{secondaryRatingHeader}</th> : null}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.map((row) => (
-                      <tr key={row.id}>
-                        <td>
-                          <Link className="row-link row-link--logo" href={row.href}>
-                            <PeopleAvatar name={row.name} size="sm" />
-                            <strong>{row.name}</strong>
-                          </Link>
-                          {row.flags.map((flag) => <PeopleFlagPill flag={flag} key={flag.label} />)}
-                        </td>
-                        <td><PeopleStatusPill status={row.status} /></td>
-                        <td>{row.fields.length > 0 ? row.fields.join(", ") : <span className="td-muted">-</span>}</td>
-                        <td>{row.deployLabel}</td>
-                        {extraHeader ? <td>{row.extra?.text ?? "-"}</td> : null}
-                        <td>{row.recent ?? <span className="td-muted">-</span>}</td>
-                        <td>{row.ratingLabel}</td>
-                        {secondaryRatingHeader ? <td>{row.secondaryRatingLabel ?? "-"}</td> : null}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
             </div>
           )}
         </div>

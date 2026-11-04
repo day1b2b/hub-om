@@ -98,6 +98,7 @@ test("recommendInstructorsByCriteria: 과정 없이 분야·교육일로 고르�
   const withDate = recommendInstructorsByCriteria({ minor: "AI 에이전트·업무자동화", date: "2026-12-15", operations, notes: [], today: "2026-11-03", dormantMonths: 6 });
   assert.deepEqual(withDate.candidates.map((c) => c.name), ["경험강사"]);
   assert.deepEqual(withDate.conflicts.map((c) => c.name), ["바쁜강사"]);
+  assert.deepEqual(withDate.conflicts.map((c) => [c.date, c.endDate]), [["2026-12-15", "2026-12-15"]]);
 
   const noDate = recommendInstructorsByCriteria({ minor: "AI 에이전트·업무자동화", date: "", operations, notes: [], today: "2026-11-03", dormantMonths: 6 });
   assert.deepEqual(noDate.candidates.map((c) => c.name).sort(), ["경험강사", "바쁜강사"]);
