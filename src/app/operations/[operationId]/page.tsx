@@ -12,6 +12,8 @@ import { getCoachRepository } from "@/lib/data/coachRepositoryFactory";
 import type { OperationSession } from "@/lib/data/operationTypes";
 import { buildPersonOptions, buildRoleRosterFromOperations, mergeRoleRosters } from "@/lib/data/personOptions";
 import { getStoredTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFactory";
+import { normalizePersonKey } from "@/lib/data/roleAssignees";
+import { listTeamUsers } from "@/lib/data/teamUsers/teamUserRepository";
 import { filterOperationsByTeamScope, resolveTeamScope } from "@/lib/teamScope";
 import { allowsLegacyOperationPageFallback, runOperationPagesRequest } from "@/lib/data/operationPagesComposition";
 import { getSessionSurveyResultRepository } from "@/lib/data/sessionSurveyResultRepositoryFactory";
@@ -113,7 +115,23 @@ async function renderOperationDetailPage({ params, searchParams }: OperationDeta
       console.error("[operations] survey results unavailable");
       return [];
     });
-  const [coachOptions, onsiteOmOptions, surveyResults] = await Promise.all([coachOptionsPromise, onsiteOmOptionsPromise, surveyResultsPromise]);
+  // 강사 계약폼 "소속 및 부서장" 자동 선택용 팀 매핑. 부가 정보라 실패하면 비워 둔다(폼에서 직접 선택).
+  const teamByPersonKeyPromise = listTeamUsers()
+    .then((users) => {
+      const map: Record<string, string> = {};
+      for (const user of users) if (user.team) map[normalizePersonKey(user.name)] = user.team;
+      return map;
+    })
+    .catch(() => {
+      console.error("[operations] team users unavailable");
+      return {} as Record<string, string>;
+    });
+  const [coachOptions, onsiteOmOptions, surveyResults, teamByPersonKey] = await Promise.all([
+    coachOptionsPromise,
+    onsiteOmOptionsPromise,
+    surveyResultsPromise,
+    teamByPersonKeyPromise
+  ]);
   const collaboration = DISABLED_COLLABORATION;
 
   return (
@@ -128,6 +146,7 @@ async function renderOperationDetailPage({ params, searchParams }: OperationDeta
       personOptions={personOptions}
       relatedOperations={relatedOperations}
       sameCourseIdOperations={sameCourseIdOperations}
+      teamByPersonKey={teamByPersonKey}
       teamScope={teamScope}
     />
   );

@@ -23,6 +23,8 @@ export interface ContractRequestItem {
   requested: boolean;
   /** 계약 응답시트(Q열)에서 강사명으로 찾은 이메일. 없으면 생략(폼에서 수동 입력). */
   email?: string;
+  /** 계약폼 "소속 및 부서장" 보기(담당 OM 파트로 서버에서 계산). 비면 폼에서 선택. */
+  department?: string;
 }
 
 /**
