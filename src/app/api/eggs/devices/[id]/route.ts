@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireSupplyApiSession } from "@/lib/auth/requireSupplySession";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
@@ -17,7 +18,7 @@ interface RouteContext {
  * - { action: "exhaust", exhausted: boolean } : 데이터 소진 표시 켜고 끄기
  * - 그 밖의 본문 : 기기 정보 수정
  */
-export async function PATCH(request: Request, { params }: RouteContext) {
+async function activityPATCH(request: Request, { params }: RouteContext) {
   const session = await requireSupplyApiSession();
   if (!session) {
     return NextResponse.json({ ok: false, error: "지금은 관리자만 사용할 수 있습니다." }, { status: 403 });
@@ -74,3 +75,5 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     );
   }
 }
+
+export const PATCH = withActivity("/api/eggs/devices/[id]", "PATCH", activityPATCH);

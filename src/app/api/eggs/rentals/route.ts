@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireSupplyApiSession } from "@/lib/auth/requireSupplySession";
 import { getConflicts, isValidDate } from "@/lib/data/eggs/eggAvailability";
@@ -6,7 +7,7 @@ import type { EggRentalInput } from "@/lib/data/eggs/eggTypes";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(request: Request) {
+async function activityPOST(request: Request) {
   const session = await requireSupplyApiSession();
   if (!session) {
     return NextResponse.json({ ok: false, error: "지금은 관리자만 사용할 수 있습니다." }, { status: 403 });
@@ -84,3 +85,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
+
+export const POST = withActivity("/api/eggs/rentals", "POST", activityPOST);

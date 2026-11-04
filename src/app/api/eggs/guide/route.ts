@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
 import { getEggRepository } from "@/lib/data/eggs/prismaEggRepository";
@@ -8,7 +9,7 @@ export const dynamic = "force-dynamic";
 const MAX_GUIDE_LENGTH = 5000;
 
 /** 파트별 주의사항 저장 (admin 전용) */
-export async function PUT(request: Request) {
+async function activityPUT(request: Request) {
   let actorEmail = "";
   try {
     const session = await assertAdminSession();
@@ -45,3 +46,5 @@ export async function PUT(request: Request) {
     return NextResponse.json({ ok: false, error: "주의사항 저장에 실패했습니다." }, { status: 500 });
   }
 }
+
+export const PUT = withActivity("/api/eggs/guide", "PUT", activityPUT);

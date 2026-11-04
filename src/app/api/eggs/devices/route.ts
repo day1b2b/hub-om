@@ -1,3 +1,4 @@
+import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
 import { parseEggDeviceInput } from "@/lib/data/eggs/eggDeviceInput";
@@ -6,7 +7,7 @@ import { getEggRepository } from "@/lib/data/eggs/prismaEggRepository";
 export const dynamic = "force-dynamic";
 
 /** 기기 등록은 관리자(ADMIN_EMAILS)만 가능. WiFi 비밀번호 등 내부 정보를 이 화면으로 입력한다. */
-export async function POST(request: Request) {
+async function activityPOST(request: Request) {
   try {
     await assertAdminSession();
   } catch {
@@ -39,3 +40,5 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export const POST = withActivity("/api/eggs/devices", "POST", activityPOST);

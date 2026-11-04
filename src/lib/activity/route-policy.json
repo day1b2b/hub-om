@@ -139,5 +139,14 @@
   "PUT /api/operations/[operationId]/common-note": "공통 메모 저장",
   "PUT /api/courses/[courseRecordId]/report-link": "과정 레벨 결과보고서 링크 저장",
   "PUT /api/courses/[courseRecordId]/lecture-management": "과정 레벨 강의관리 링크/메모 저장",
-  "PUT /api/courses/[courseRecordId]/result-report-status": "과정 레벨 결과보고서 여부 저장"
+  "PUT /api/courses/[courseRecordId]/result-report-status": "과정 레벨 결과보고서 여부 저장",
+  "POST /api/eggs/devices": "tracked",
+  "PATCH /api/eggs/devices/[id]": "tracked",
+  "PUT /api/eggs/guide": "tracked",
+  "POST /api/eggs/rentals": "tracked",
+  "PATCH /api/eggs/rentals/[id]": "tracked",
+  "DELETE /api/eggs/rentals/[id]": "tracked",
+  "POST /api/supplies/rentals": "tracked",
+  "PATCH /api/supplies/rentals/[id]": "tracked",
+  "DELETE /api/supplies/rentals/[id]": "tracked"
 }

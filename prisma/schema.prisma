@@ -1443,6 +1443,12 @@ model EggDevice {
   @@unique([part, number])
   @@index([deletedAt, part, number])
   @@map("egg_devices")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  wifiPasswordPiiIndex String? @map("wifi_password_pii_index")
+  cautionNotePiiIndex String? @map("caution_note_pii_index")
+  dataExhaustedByPiiIndex String? @map("data_exhausted_by_pii_index")
+  deletedByPiiIndex String? @map("deleted_by_pii_index")
 }
 
 model EggRental {
@@ -1468,6 +1474,15 @@ model EggRental {
   @@index([eggDeviceId, deletedAt])
   @@index([deletedAt, startDate])
   @@map("egg_rentals")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  borrowerNamePiiIndex String? @map("borrower_name_pii_index")
+  borrowerEmailPiiIndex String? @map("borrower_email_pii_index")
+  actualUseNotePiiIndex String? @map("actual_use_note_pii_index")
+  notePiiIndex String? @map("note_pii_index")
+  returnedByPiiIndex String? @map("returned_by_pii_index")
+  createdByPiiIndex String? @map("created_by_pii_index")
+  deletedByPiiIndex String? @map("deleted_by_pii_index")
 }
 
 /**
@@ -1483,6 +1498,10 @@ model EggGuide {
   updatedBy String?  @map("updated_by")
 
   @@map("egg_guides")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  contentPiiIndex String? @map("content_pii_index")
+  updatedByPiiIndex String? @map("updated_by_pii_index")
 }
 
 /**
@@ -1506,6 +1525,10 @@ model SupplyItem {
 
   @@index([category, deletedAt, sortOrder])
   @@map("supply_items")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  notePiiIndex String? @map("note_pii_index")
+  deletedByPiiIndex String? @map("deleted_by_pii_index")
 }
 
 model SupplyRental {
@@ -1529,6 +1552,14 @@ model SupplyRental {
 
   @@index([category, deletedAt, returnDueDate])
   @@map("supply_rentals")
+
+  // Application encryption lookup/storage columns; never expose these in API responses.
+  borrowerNamePiiIndex String? @map("borrower_name_pii_index")
+  borrowerEmailPiiIndex String? @map("borrower_email_pii_index")
+  notePiiIndex String? @map("note_pii_index")
+  returnedByPiiIndex String? @map("returned_by_pii_index")
+  createdByPiiIndex String? @map("created_by_pii_index")
+  deletedByPiiIndex String? @map("deleted_by_pii_index")
 }
 
 model SupplyRentalItem {

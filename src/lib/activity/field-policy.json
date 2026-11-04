@@ -467,5 +467,103 @@
       "calendar_id_pii_index",
       "event_id_pii_index"
     ]
+  },
+  "egg_devices": {
+    "values": [
+      "part",
+      "number",
+      "label",
+      "model_code",
+      "charger_type",
+      "speed_mbps",
+      "storage_location",
+      "monthly_data_gb",
+      "contract_ends_on",
+      "data_exhausted",
+      "data_exhausted_at",
+      "deleted_at"
+    ],
+    "changeOnly": [
+      "wifi_name",
+      "serial_number",
+      "wifi_password",
+      "caution_note",
+      "data_exhausted_by",
+      "wifi_password_pii_index",
+      "caution_note_pii_index",
+      "data_exhausted_by_pii_index",
+      "deleted_by_pii_index"
+    ]
+  },
+  "egg_rentals": {
+    "values": [
+      "egg_device_id",
+      "course_name",
+      "start_date",
+      "return_due_date",
+      "returned_at",
+      "deleted_at"
+    ],
+    "changeOnly": [
+      "borrower_name",
+      "borrower_email",
+      "actual_use_note",
+      "note",
+      "returned_by",
+      "borrower_name_pii_index",
+      "borrower_email_pii_index",
+      "actual_use_note_pii_index",
+      "note_pii_index",
+      "returned_by_pii_index",
+      "created_by_pii_index",
+      "deleted_by_pii_index"
+    ]
+  },
+  "egg_guides": {
+    "values": [
+      "part"
+    ],
+    "changeOnly": [
+      "content",
+      "content_pii_index",
+      "updated_by_pii_index"
+    ]
+  },
+  "supply_items": {
+    "values": [
+      "category",
+      "label",
+      "components",
+      "storage_location",
+      "sort_order",
+      "deleted_at"
+    ],
+    "changeOnly": [
+      "note",
+      "note_pii_index",
+      "deleted_by_pii_index"
+    ]
+  },
+  "supply_rentals": {
+    "values": [
+      "category",
+      "course_name",
+      "start_date",
+      "return_due_date",
+      "returned_at",
+      "deleted_at"
+    ],
+    "changeOnly": [
+      "borrower_name",
+      "borrower_email",
+      "note",
+      "returned_by",
+      "borrower_name_pii_index",
+      "borrower_email_pii_index",
+      "note_pii_index",
+      "returned_by_pii_index",
+      "created_by_pii_index",
+      "deleted_by_pii_index"
+    ]
   }
 }
