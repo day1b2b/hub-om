@@ -5342,10 +5342,10 @@ td span {
 
 .instructor-contract-hint {
   color: var(--muted);
+  flex: 1 1 260px;
   font-size: 12px;
   line-height: 1.5;
   margin: 0;
-  padding: 10px 14px 2px;
 }
 
 .instructor-contract-empty {
@@ -5507,12 +5507,26 @@ button.instructor-contract-open {
   text-decoration: none;
 }
 
-.instructor-contract-actions {
+.instructor-contract-head {
   align-items: center;
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  padding: 8px 14px 0;
+  gap: 8px 12px;
+  justify-content: space-between;
+  padding: 10px 14px 0;
+}
+
+.instructor-contract-head .instructor-contract-status-load {
+  margin-left: auto;
+}
+
+.instructor-contract-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  justify-content: flex-end;
+  min-height: 16px;
+  padding: 0 14px 10px;
 }
 
 .instructor-contract-status-load {

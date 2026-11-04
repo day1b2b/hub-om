@@ -6,7 +6,8 @@
 // 않고, 이 버튼을 눌렀을 때만 읽는다.
 // 화면을 열 때는 08:00·12:00 예약 동기화 스냅샷(initialProgress)으로 단계·모두싸인 서명 진행을 먼저 보여주고
 // (시트에 없는 강사는 "미요청"), 버튼은 "지금 새로고침"(시트 + 이 강사들의 모두싸인 문서)이다.
-// 교육 시작일이 2026-09-01 전인 과정(signingTracked=false)은 서명 진행 없이 시트 단계만 보인다.
+// 교육 시작일이 2026-09-01 전인 과정(signingTracked=false)은 모두싸인을 보지 않고 전부 "서명 완료"로 둔다
+// (2026-11-04 결정 "그 전에꺼는 일단 완료로") — 바닥줄에 그렇게 표시한다고 밝힌다.
 import { useState } from "react";
 import { buildContractPrefillUrl } from "@/lib/instructors/instructorContractPrefill";
 import type { ContractRequestItem } from "@/lib/instructors/instructorContractRequests";
@@ -165,7 +166,11 @@ export function InstructorContractList({
 
   return (
     <div className="instructor-contract-body">
-      <div className="instructor-contract-actions">
+      {/* 머리줄: 안내 문구(왼쪽) + 새로고침(오른쪽, 좁으면 아래로). 조회 시점·진행·오류는 목록 아래 바닥줄. */}
+      <div className="instructor-contract-head">
+        <p className="instructor-contract-hint">
+          강사·코스·일정·담당자가 채워진 계약폼이 열립니다. 이메일·강사료·계약유형은 폼에서 확인·입력하세요.
+        </p>
         <button
           className="instructor-contract-status-load"
           disabled={phase === "loading"}
@@ -174,17 +179,13 @@ export function InstructorContractList({
         >
           {phase === "loading" ? "불러오는 중…" : "지금 새로고침 (상태·이메일)"}
         </button>
-        {syncedLabel ? <span className="instructor-contract-synced">{syncedLabel}</span> : null}
-        {phase === "error" ? (
-          <span className="instructor-contract-error" role="alert">
-            {error}
-          </span>
-        ) : null}
       </div>
       <ul className="instructor-contract-list">
         {items.map((item) => {
           const stored = statusByKey[rowKey(item)];
-          const status = stored && !signingTracked ? { ...stored, signing: undefined } : stored;
+          const status: StatusEntry | undefined = signingTracked
+            ? stored
+            : { email: stored?.email, requested: true, sent: true, signing: { phase: "completed", steps: [] } };
           const email = status?.email ?? item.email;
           return (
             <li className="instructor-contract-item" key={rowKey(item)}>
@@ -203,7 +204,7 @@ export function InstructorContractList({
                     ))}
                   </span>
                 ) : null}
-                {status?.signing ? <SigningLine signing={status.signing} /> : null}
+                {status?.signing && signingTracked ? <SigningLine signing={status.signing} /> : null}
                 {status && status.sent && !status.signing && modusignOn && signingTracked ? (
                   <span className="instructor-contract-note">모두싸인 문서를 못 찾았어요</span>
                 ) : null}
@@ -233,6 +234,18 @@ export function InstructorContractList({
           );
         })}
       </ul>
+      <div className="instructor-contract-foot">
+        {phase === "loading" ? (
+          <span className="instructor-contract-synced">불러오는 중…</span>
+        ) : phase === "error" ? (
+          <span className="instructor-contract-error" role="alert">
+            {error}
+          </span>
+        ) : syncedLabel ? (
+          <span className="instructor-contract-synced">{syncedLabel}</span>
+        ) : null}
+        {!signingTracked ? <span className="instructor-contract-synced">9/1 이전 과정은 완료로 표시</span> : null}
+      </div>
     </div>
   );
 }

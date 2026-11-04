@@ -57,12 +57,7 @@ export function InstructorContractRequestSection({ courseOperations, stage }: In
     requests.length === 0 ? (
       <p className="instructor-contract-empty">회차에 강사를 넣으면 여기서 바로 계약요청을 할 수 있어요.</p>
     ) : (
-      <>
-        <p className="instructor-contract-hint">
-          강사·코스·일정·담당자가 채워진 계약폼이 열립니다. 이메일·강사료·계약유형은 폼에서 확인·입력하세요.
-        </p>
-        <InstructorContractList initialProgress={initialProgress} items={requests} signingTracked={isSigningTracked(courseStartDate)} />
-      </>
+      <InstructorContractList initialProgress={initialProgress} items={requests} signingTracked={isSigningTracked(courseStartDate)} />
     );
 
   // 교육이 끝난 과정은 계약 단계가 지났으니 접어 둔다(필요하면 펼쳐 본다).
