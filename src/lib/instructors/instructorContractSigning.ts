@@ -4,8 +4,9 @@
 // 매칭 키: 모두싸인 제목 앞 번호는 코스ID가 아니라서, 시트 행(코스ID × 강사)의
 //   ① 강사 이메일(Q) = 서명자 중 EMAIL 서명 방식의 값 (없으면 제목에 강사명 포함으로 대신)
 //   ② 요청 시각(AE) 하루 전 ~ 90일 뒤에 생성된 문서
-//   ③ 후보가 여럿이면 제목에 코스명(K)이 들어간 것으로 좁힘
-// 으로 찾는다. 같은 강사의 다른 계약 행과 후보가 겹쳐 가를 수 없으면 추측하지 않고 "확인 필요"로 둔다.
+//   ③ 후보가 여럿이면 제목이 코스명(K)과 가장 비슷한 것으로 좁힘
+//   ④ 그래도 같은 강사의 다른 계약 행과 문서가 겹치면, 문서는 생성 직전에 요청된 행의 것(시간순)
+// 으로 찾는다. 시간순으로도 가를 수 없으면 추측하지 않고 "확인 필요"(ambiguousReason에 이유)로 둔다.
 // 이메일은 비교에만 쓰고 결과(요약)에는 남기지 않는다.
 import type { ModusignDocument, ModusignParticipant } from "@/lib/modusign/modusignClient";
 import type { InstructorContractRecord } from "./instructorContractSheet";
@@ -20,6 +21,13 @@ const WINDOW_AFTER_MS = 90 * DAY_MS;
 
 export type SigningPhase = "signing" | "completed" | "aborted" | "preparing" | "ambiguous";
 
+/**
+ * "확인 필요" 이유. no-requested-at = 겹친 행에 요청 시각(AE)이 없음,
+ * same-time-requests = 겹친 행들이 하루 안에 연달아 요청돼 순서로 못 가름,
+ * uneven-split = 시간순으로 나눴더니 한 행이 문서 여럿·다른 행은 0개(배정이 틀렸을 수 있음).
+ */
+export type AmbiguousReason = "no-requested-at" | "same-time-requests" | "uneven-split";
+
 export interface SigningStep {
   role: string;
   signed: boolean;
@@ -33,6 +41,8 @@ export interface SigningSummary {
   currentRole?: string;
   /** 모두싸인 문서 마지막 변경 시각(원문). */
   updatedAt?: string;
+  /** ambiguous일 때 이유(진단용). */
+  ambiguousReason?: AmbiguousReason;
 }
 
 /** 시트 타임스탬프("2026. 11. 3 오후 2:04:16", KST) → epoch ms. 형식이 다르면 null. */
@@ -132,12 +142,37 @@ function identityCandidates(record: InstructorContractRecord, documents: Modusig
   });
 }
 
-/** 제목에 코스명이 들어간 후보만 남긴다. 하나도 없으면(제목 표기가 다르면) 원래 후보를 그대로 쓴다. */
+// 제목이 코스명과 이만큼 비슷해야 좁히기에 쓴다. 같은 고객사 과정끼리는 "(B2B) 고객사_" 앞부분이 겹쳐 0.5 안팎이 나온다.
+const COURSE_NAME_MIN_SCORE = 0.7;
+const COURSE_NAME_TIE = 0.05;
+
+/** 코스명이 제목에 얼마나 들어 있는지(0~1). 그대로 들어 있으면 1, 아니면 코스명의 두 글자 묶음이 제목에 있는 비율. */
+export function courseNameScore(courseName: string, title: string): number {
+  const name = compact(courseName);
+  const haystack = compact(title);
+  if (!name) return 0;
+  if (haystack.includes(name)) return 1;
+  const grams = (value: string) => {
+    const set = new Set<string>();
+    for (let index = 0; index < value.length - 1; index++) set.add(value.slice(index, index + 2));
+    return set;
+  };
+  const nameGrams = grams(name);
+  if (nameGrams.size === 0) return 0;
+  const titleGrams = grams(haystack);
+  let hit = 0;
+  for (const gram of nameGrams) if (titleGrams.has(gram)) hit++;
+  return hit / nameGrams.size;
+}
+
+/** 제목이 코스명과 가장 비슷한 후보만 남긴다. 충분히 비슷한 게 없으면(제목 표기가 다르면) 원래 후보를 그대로 쓴다. */
 function narrowByCourseName(record: InstructorContractRecord, candidates: ModusignDocument[]): ModusignDocument[] {
-  const courseName = compact(record.courseName ?? "");
-  if (!courseName || candidates.length <= 1) return candidates;
-  const narrowed = candidates.filter((document) => compact(document.title).includes(courseName));
-  return narrowed.length > 0 ? narrowed : candidates;
+  const courseName = record.courseName ?? "";
+  if (!compact(courseName) || candidates.length <= 1) return candidates;
+  const scored = candidates.map((document) => ({ document, score: courseNameScore(courseName, document.title) }));
+  const top = Math.max(...scored.map((item) => item.score));
+  if (top < COURSE_NAME_MIN_SCORE) return candidates;
+  return scored.filter((item) => item.score >= top - COURSE_NAME_TIE).map((item) => item.document);
 }
 
 /** 한 계약 행에 문서가 여럿이면(취소 후 재발송 등) 취소되지 않은 것 중 가장 최근 것을 고른다. */
@@ -148,34 +183,87 @@ function pickLatest(candidates: ModusignDocument[]): ModusignDocument {
 }
 
 /**
+ * 여러 행이 후보로 가진 문서의 주인 = 문서 생성 직전(하루 여유)에 요청된 행. 계약서는 요청을 받고 만들기 때문이다.
+ * 요청 시각이 없는 행이 끼었거나, 바로 앞 요청이 하루 안에 둘 이상이면 가를 수 없다.
+ */
+function ownerByTime(
+  document: ModusignDocument,
+  claimants: { key: string; requestedAt: number | null }[]
+): { owner: string } | { reason: AmbiguousReason } {
+  const created = createdTime(document);
+  if (created === null || claimants.some((claimant) => claimant.requestedAt === null)) return { reason: "no-requested-at" };
+  const before = claimants
+    .filter((claimant) => (claimant.requestedAt as number) - WINDOW_BEFORE_MS <= created)
+    .sort((a, b) => (b.requestedAt as number) - (a.requestedAt as number));
+  if (before.length === 0) return { reason: "same-time-requests" };
+  if (before.length > 1 && (before[0].requestedAt as number) - (before[1].requestedAt as number) < DAY_MS) {
+    return { reason: "same-time-requests" };
+  }
+  return { owner: before[0].key };
+}
+
+/**
  * 계약 행마다 모두싸인 문서를 찾아 서명 요약을 돌려준다. 못 찾은 행은 결과에 없다.
- * 같은 강사의 다른 계약 행과 (코스명으로 좁힌 뒤에도) 후보 문서가 겹치면 ambiguous.
+ * 문서를 한 행만 후보로 가지면 그 행 것, 여러 행이 겹치면 시간순(ownerByTime)으로 나누고, 그래도 못 가르면 ambiguous.
  */
 export function matchSigningDocuments(inputs: SigningMatchInput[], documents: ModusignDocument[]): Map<string, SigningSummary> {
   const candidatesByKey = new Map<string, ModusignDocument[]>();
+  const requestedAtByKey = new Map<string, number | null>();
   for (const { key, record } of inputs) {
     const candidates = narrowByCourseName(record, identityCandidates(record, documents));
-    if (candidates.length > 0) candidatesByKey.set(key, candidates);
+    if (candidates.length === 0) continue;
+    candidatesByKey.set(key, candidates);
+    requestedAtByKey.set(key, parseSheetTimestamp(record.requestedAt));
   }
 
-  // 문서 → 그 문서를 후보로 가진 계약 행 키들. 2개 이상이면 그 문서는 어느 행 것인지 가를 수 없다.
+  // 문서 → 그 문서를 후보로 가진 계약 행 키들.
   const claimants = new Map<string, Set<string>>();
+  const documentById = new Map<string, ModusignDocument>();
   for (const [key, candidates] of candidatesByKey) {
     for (const document of candidates) {
+      documentById.set(document.id, document);
       const set = claimants.get(document.id) ?? new Set<string>();
       set.add(key);
       claimants.set(document.id, set);
     }
   }
 
-  const results = new Map<string, SigningSummary>();
-  for (const [key, candidates] of candidatesByKey) {
-    const own = candidates.filter((document) => (claimants.get(document.id)?.size ?? 0) === 1);
-    if (own.length > 0) {
-      results.set(key, summarizeSigning(pickLatest(own)));
+  const assigned = new Map<string, ModusignDocument[]>();
+  const blocked = new Map<string, AmbiguousReason>();
+  for (const [documentId, keys] of claimants) {
+    const document = documentById.get(documentId) as ModusignDocument;
+    const resolved =
+      keys.size === 1
+        ? { owner: [...keys][0] }
+        : ownerByTime(document, [...keys].map((key) => ({ key, requestedAt: requestedAtByKey.get(key) ?? null })));
+    if ("owner" in resolved) {
+      assigned.set(resolved.owner, [...(assigned.get(resolved.owner) ?? []), document]);
     } else {
-      results.set(key, { phase: "ambiguous", steps: [] });
+      for (const key of keys) if (!blocked.has(key)) blocked.set(key, resolved.reason);
     }
+  }
+
+  // 안전망: 한 행이 살아 있는 문서를 둘 이상 받았는데 그 문서를 다투던 다른 행은 하나도 못 받았으면
+  // (요청 두 건 뒤에 계약서 두 장을 연달아 만든 경우 등) 시간순 배정이 틀렸을 수 있다.
+  const uneven = new Set<string>();
+  for (const [key, owned] of assigned) {
+    if (owned.filter((document) => document.status !== "ABORTED").length < 2) continue;
+    const rivals = new Set(owned.flatMap((document) => [...(claimants.get(document.id) ?? [])]).filter((other) => other !== key));
+    const starved = [...rivals].filter((other) => !assigned.has(other));
+    if (starved.length === 0) continue;
+    for (const other of [key, ...starved]) uneven.add(other);
+  }
+
+  const results = new Map<string, SigningSummary>();
+  for (const key of candidatesByKey.keys()) {
+    const owned = assigned.get(key) ?? [];
+    const reason = uneven.has(key) ? "uneven-split" : owned.length === 0 ? blocked.get(key) : undefined;
+    if (reason) {
+      results.set(key, { phase: "ambiguous", steps: [], ambiguousReason: reason });
+    } else if (owned.length > 0) {
+      results.set(key, summarizeSigning(pickLatest(owned)));
+    }
+    // 후보가 모두 다른 행 몫으로 갔으면 이 행은 문서를 못 찾은 것이다(결과 없음).
   }
   return results;
 }
