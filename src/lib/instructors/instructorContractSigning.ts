@@ -15,6 +15,19 @@ import { normalizeInstructorName } from "./instructorContractMatch";
 /** 서명 순서(1~4)에 붙는 역할. 회사 계약 양식 순서 = 담당 OM → 부서장 → 데이원컴퍼니 → 강사. */
 const ROLE_BY_ORDER = ["OM", "부서장", "데이원", "강사"] as const;
 
+/**
+ * 서명 진행을 보여 주는 과정 = 교육 시작일이 이날 이후(2026-11-04 결정). 이전 과정은 시트 단계(요청·발송)만 보인다.
+ * 모두싸인은 그보다 한 달 앞(8/1)에 만든 문서부터 읽는다 — 9월 초 시작 과정의 계약서가 8월에 만들어질 수 있다.
+ * 기준일이 고정이라 문서가 달마다(~130건) 쌓인다. 읽기 상한(30페이지 = 3,000건)에 가까워지면 두 날짜를 함께 옮긴다.
+ */
+export const SIGNING_TRACKED_FROM_COURSE_START = "2026-09-01";
+export const MODUSIGN_DOCUMENTS_SINCE = "2026-08-01T00:00:00+09:00";
+
+/** 교육 시작일(yyyy-mm-dd)로 이 과정이 서명 진행 표시 대상인지. */
+export function isSigningTracked(courseStartDate: string | undefined): boolean {
+  return Boolean(courseStartDate) && (courseStartDate as string) >= SIGNING_TRACKED_FROM_COURSE_START;
+}
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WINDOW_BEFORE_MS = DAY_MS;
 const WINDOW_AFTER_MS = 90 * DAY_MS;
