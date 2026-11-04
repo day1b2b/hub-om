@@ -165,7 +165,11 @@ export function InstructorContractList({
 
   return (
     <div className="instructor-contract-body">
-      <div className="instructor-contract-actions">
+      {/* 머리줄: 안내 문구(왼쪽) + 새로고침(오른쪽, 좁으면 아래로). 조회 시점·진행·오류는 목록 아래 바닥줄. */}
+      <div className="instructor-contract-head">
+        <p className="instructor-contract-hint">
+          강사·코스·일정·담당자가 채워진 계약폼이 열립니다. 이메일·강사료·계약유형은 폼에서 확인·입력하세요.
+        </p>
         <button
           className="instructor-contract-status-load"
           disabled={phase === "loading"}
@@ -174,12 +178,6 @@ export function InstructorContractList({
         >
           {phase === "loading" ? "불러오는 중…" : "지금 새로고침 (상태·이메일)"}
         </button>
-        {syncedLabel ? <span className="instructor-contract-synced">{syncedLabel}</span> : null}
-        {phase === "error" ? (
-          <span className="instructor-contract-error" role="alert">
-            {error}
-          </span>
-        ) : null}
       </div>
       <ul className="instructor-contract-list">
         {items.map((item) => {
@@ -233,6 +231,17 @@ export function InstructorContractList({
           );
         })}
       </ul>
+      <div className="instructor-contract-foot">
+        {phase === "loading" ? (
+          <span className="instructor-contract-synced">불러오는 중…</span>
+        ) : phase === "error" ? (
+          <span className="instructor-contract-error" role="alert">
+            {error}
+          </span>
+        ) : syncedLabel ? (
+          <span className="instructor-contract-synced">{syncedLabel}</span>
+        ) : null}
+      </div>
     </div>
   );
 }
