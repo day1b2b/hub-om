@@ -1218,5 +1218,187 @@
     },
     "primaryKey": "id",
     "compoundKeys": []
+  },
+  "EggDevice": {
+    "table": "egg_devices",
+    "fields": {
+      "wifiPassword": {
+        "column": "wifi_password",
+        "type": "String",
+        "nullable": false,
+        "index": "wifiPasswordPiiIndex",
+        "indexColumn": "wifi_password_pii_index"
+      },
+      "cautionNote": {
+        "column": "caution_note",
+        "type": "String",
+        "nullable": true,
+        "index": "cautionNotePiiIndex",
+        "indexColumn": "caution_note_pii_index"
+      },
+      "dataExhaustedBy": {
+        "column": "data_exhausted_by",
+        "type": "String",
+        "nullable": true,
+        "index": "dataExhaustedByPiiIndex",
+        "indexColumn": "data_exhausted_by_pii_index"
+      },
+      "deletedBy": {
+        "column": "deleted_by",
+        "type": "String",
+        "nullable": true,
+        "index": "deletedByPiiIndex",
+        "indexColumn": "deleted_by_pii_index"
+      }
+    },
+    "primaryKey": "id",
+    "compoundKeys": []
+  },
+  "EggRental": {
+    "table": "egg_rentals",
+    "fields": {
+      "borrowerName": {
+        "column": "borrower_name",
+        "type": "String",
+        "nullable": false,
+        "index": "borrowerNamePiiIndex",
+        "indexColumn": "borrower_name_pii_index"
+      },
+      "borrowerEmail": {
+        "column": "borrower_email",
+        "type": "String",
+        "nullable": true,
+        "index": "borrowerEmailPiiIndex",
+        "indexColumn": "borrower_email_pii_index"
+      },
+      "actualUseNote": {
+        "column": "actual_use_note",
+        "type": "String",
+        "nullable": true,
+        "index": "actualUseNotePiiIndex",
+        "indexColumn": "actual_use_note_pii_index"
+      },
+      "note": {
+        "column": "note",
+        "type": "String",
+        "nullable": true,
+        "index": "notePiiIndex",
+        "indexColumn": "note_pii_index"
+      },
+      "returnedBy": {
+        "column": "returned_by",
+        "type": "String",
+        "nullable": true,
+        "index": "returnedByPiiIndex",
+        "indexColumn": "returned_by_pii_index"
+      },
+      "createdBy": {
+        "column": "created_by",
+        "type": "String",
+        "nullable": true,
+        "index": "createdByPiiIndex",
+        "indexColumn": "created_by_pii_index"
+      },
+      "deletedBy": {
+        "column": "deleted_by",
+        "type": "String",
+        "nullable": true,
+        "index": "deletedByPiiIndex",
+        "indexColumn": "deleted_by_pii_index"
+      }
+    },
+    "primaryKey": "id",
+    "compoundKeys": []
+  },
+  "EggGuide": {
+    "table": "egg_guides",
+    "fields": {
+      "content": {
+        "column": "content",
+        "type": "String",
+        "nullable": false,
+        "index": "contentPiiIndex",
+        "indexColumn": "content_pii_index"
+      },
+      "updatedBy": {
+        "column": "updated_by",
+        "type": "String",
+        "nullable": true,
+        "index": "updatedByPiiIndex",
+        "indexColumn": "updated_by_pii_index"
+      }
+    },
+    "primaryKey": "id",
+    "compoundKeys": []
+  },
+  "SupplyItem": {
+    "table": "supply_items",
+    "fields": {
+      "note": {
+        "column": "note",
+        "type": "String",
+        "nullable": true,
+        "index": "notePiiIndex",
+        "indexColumn": "note_pii_index"
+      },
+      "deletedBy": {
+        "column": "deleted_by",
+        "type": "String",
+        "nullable": true,
+        "index": "deletedByPiiIndex",
+        "indexColumn": "deleted_by_pii_index"
+      }
+    },
+    "primaryKey": "id",
+    "compoundKeys": []
+  },
+  "SupplyRental": {
+    "table": "supply_rentals",
+    "fields": {
+      "borrowerName": {
+        "column": "borrower_name",
+        "type": "String",
+        "nullable": false,
+        "index": "borrowerNamePiiIndex",
+        "indexColumn": "borrower_name_pii_index"
+      },
+      "borrowerEmail": {
+        "column": "borrower_email",
+        "type": "String",
+        "nullable": true,
+        "index": "borrowerEmailPiiIndex",
+        "indexColumn": "borrower_email_pii_index"
+      },
+      "note": {
+        "column": "note",
+        "type": "String",
+        "nullable": true,
+        "index": "notePiiIndex",
+        "indexColumn": "note_pii_index"
+      },
+      "returnedBy": {
+        "column": "returned_by",
+        "type": "String",
+        "nullable": true,
+        "index": "returnedByPiiIndex",
+        "indexColumn": "returned_by_pii_index"
+      },
+      "createdBy": {
+        "column": "created_by",
+        "type": "String",
+        "nullable": true,
+        "index": "createdByPiiIndex",
+        "indexColumn": "created_by_pii_index"
+      },
+      "deletedBy": {
+        "column": "deleted_by",
+        "type": "String",
+        "nullable": true,
+        "index": "deletedByPiiIndex",
+        "indexColumn": "deleted_by_pii_index"
+      }
+    },
+    "primaryKey": "id",
+    "compoundKeys": []
   }
 }
