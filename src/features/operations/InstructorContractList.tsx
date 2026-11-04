@@ -211,6 +211,14 @@ export function InstructorContractList({
                   manager: item.manager,
                   schedule: item.schedule
                 })}
+                values={{
+                  courseId: item.courseId,
+                  courseName: item.courseName,
+                  instructorName: item.instructorName,
+                  schedule: item.schedule,
+                  manager: item.manager,
+                  email: email ?? ""
+                }}
               />
             </li>
           );
@@ -222,26 +230,28 @@ export function InstructorContractList({
 
 // 확인 창 [구글 설문폼에 자동으로 기입되는 내용] 표 — buildContractPrefillUrl()이 채우는 항목과 맞춰 둔다.
 // [hub-om 항목, 구글 설문폼 항목, 덧붙임 설명]
-const CONTRACT_REQUEST_FIELD_GROUPS: { label: string; detail?: string; rows: [string, string, string?][] }[] = [
+// [hub-om 항목, 구글 설문폼 항목, 기입될 값(values 키)]
+type ContractFormValues = Record<"courseId" | "courseName" | "instructorName" | "schedule" | "manager" | "email", string>;
+const CONTRACT_REQUEST_FIELD_GROUPS: { label: string; detail?: string; rows: [string, string, keyof ContractFormValues][] }[] = [
   {
     label: "운영 현황",
     rows: [
-      ["코스 ID", "코스 ID"],
-      ["과정명", "과정명"],
-      ["강사명", "강사명"],
-      ["강의 일정", "일정"],
-      ["담당 OM", "담당자"]
+      ["코스 ID", "코스 ID", "courseId"],
+      ["과정명", "과정명", "courseName"],
+      ["강사명", "강사명", "instructorName"],
+      ["강의 일정", "일정", "schedule"],
+      ["담당 OM", "담당자", "manager"]
     ]
   },
   {
     label: "강사 정보",
-    rows: [["이메일", "이메일", "자동으로 못 채우면 폼에서 입력"]]
+    rows: [["이메일", "이메일", "email"]]
   }
 ];
 
 // 계약폼은 자동 기입된 채로 열린다. 계약서인 만큼, 넘어가기 전에 무엇이 채워지는지 알려 주고 최종 확인을 받는다.
-// 기업위키 "계산서 발행 요청" 확인 창(InvoiceRequestLink)과 같은 결.
-function ContractFormOpenButton({ href }: { href: string }) {
+// 기업위키 "계산서 발행 요청" 확인 창(InvoiceRequestLink)과 같은 결. 항목마다 실제로 들어갈 값을 같이 보여 준다.
+function ContractFormOpenButton({ href, values }: { href: string; values: ContractFormValues }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -274,11 +284,12 @@ function ContractFormOpenButton({ href }: { href: string }) {
                   <tr>
                     <th colSpan={2} scope="colgroup">운영 허브(Hub-OM) 내용</th>
                     <th scope="col">구글 설문폼 항목</th>
+                    <th scope="col">기입될 값</th>
                   </tr>
                 </thead>
                 <tbody>
                   {CONTRACT_REQUEST_FIELD_GROUPS.map((group) =>
-                    group.rows.map(([source, target, note], index) => (
+                    group.rows.map(([source, target, valueKey], index) => (
                       <tr key={`${group.label}-${source}`}>
                         {index === 0 ? (
                           <th rowSpan={group.rows.length} scope="rowgroup">
@@ -287,9 +298,9 @@ function ContractFormOpenButton({ href }: { href: string }) {
                           </th>
                         ) : null}
                         <td>{source}</td>
-                        <td>
-                          {target}
-                          {note ? <span>{note}</span> : null}
+                        <td>{target}</td>
+                        <td className={values[valueKey].trim() ? "contract-request-confirm-value" : "contract-request-confirm-value is-empty"}>
+                          {values[valueKey].trim() || "비어 있음 · 폼에서 입력"}
                         </td>
                       </tr>
                     ))

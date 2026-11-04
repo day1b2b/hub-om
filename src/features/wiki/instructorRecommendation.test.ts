@@ -104,3 +104,12 @@ test("recommendInstructorsByCriteria: 과정 없이 분야·교육일로 고르�
   assert.deepEqual(noDate.candidates.map((c) => c.name).sort(), ["경험강사", "바쁜강사"]);
   assert.equal(recommendInstructorsByCriteria({ minor: "", date: "", operations, notes: [], today: "2026-11-03", dormantMonths: 6 }).needsCategory, true);
 });
+
+test("recommendInstructorsByCriteria: 강사 칸에 기업명이 들어간 표기는 강사로 추천하지 않는다", () => {
+  const operations = [
+    op({ operationId: "k1", companyName: "KT", courseCategory: "AI 에이전트·업무자동화", instructors: "KT" }),
+    op({ operationId: "k2", companyName: "KT", courseCategory: "AI 에이전트·업무자동화", instructors: "실제강사" })
+  ];
+  const result = recommendInstructorsByCriteria({ minor: "AI 에이전트·업무자동화", date: "", operations, notes: [], today: "2026-11-04", dormantMonths: 6 });
+  assert.deepEqual(result.candidates.map((c) => c.name), ["실제강사"]);
+});
