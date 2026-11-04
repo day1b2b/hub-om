@@ -25,6 +25,7 @@ const SYNC_API_PATHS = new Set([
   "/api/sync/calendar-events",
   "/api/sync/all",
   "/api/sync/engagements",
+  "/api/sync/instructor-contract-signing",
   "/api/sync/samsung-schedule"
 ]);
 

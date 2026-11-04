@@ -7,11 +7,19 @@
 // 수 있다 — 이는 OM이 계약 응답시트에서 이미 볼 수 있는 값과 동일 범위다. 과정 로스터로 엄격히
 // 제한하려면 서버에서 operations를 읽어야 하며(설계 변경), 현재는 하지 않는다.
 // 운영현황 상세는 핫 페이지라, 상세 진입 때가 아니라 OM이 이 구역에서 버튼을 눌렀을 때만 읽는다.
+// 모두싸인 키가 있으면 이 강사들 이름이 제목에 든 문서만 읽어 서명 진행(signing)도 붙이고, 08·12시 스냅샷에도 덮어쓴다.
 import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { readInstructorContractRecords } from "@/lib/instructors/instructorContractSheet";
 import { resolveInstructorContractStatus, type ContractStatusPair } from "@/lib/instructors/instructorContractRequests";
+import { normalizeInstructorName } from "@/lib/instructors/instructorContractMatch";
+import {
+  buildProgressEntries,
+  mergeIntoSnapshot,
+  progressKey,
+  readDocumentsForInstructors
+} from "@/lib/instructors/instructorContractSigningSnapshot";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +51,23 @@ async function activityPOST(request: Request) {
 
   try {
     const records = await readInstructorContractRecords();
-    return NextResponse.json({ ok: true, items: resolveInstructorContractStatus(records, pairs) });
+    const items = resolveInstructorContractStatus(records, pairs);
+    const documents = await readDocumentsForInstructors(pairs.map((pair) => pair.instructorName));
+    if (!documents) return NextResponse.json({ ok: true, items });
+
+    // 같은 강사의 다른 과정 계약 행도 넣어야 문서가 어느 과정 것인지 가를 수 있다(ambiguous 판정).
+    const names = new Set(pairs.map((pair) => normalizeInstructorName(pair.instructorName)));
+    const entries = buildProgressEntries(
+      records.filter((record) => names.has(normalizeInstructorName(record.instructorName))),
+      documents
+    );
+    const pairKeys = new Set(pairs.map((pair) => progressKey(pair.courseId, pair.instructorName)));
+    mergeIntoSnapshot(Object.fromEntries(Object.entries(entries).filter(([key]) => pairKeys.has(key))));
+    return NextResponse.json({
+      ok: true,
+      modusignSynced: true,
+      items: items.map((item) => ({ ...item, signing: entries[progressKey(item.courseId, item.instructorName)]?.signing }))
+    });
   } catch {
     // instructorContractSheet가 원인(시트 ID 미설정/권한/범위)을 분류해 던지지만, 외부로는 간단히 안내한다.
     return NextResponse.json({ ok: false, error: "강사 계약 시트를 읽지 못했습니다." }, { status: 502 });
