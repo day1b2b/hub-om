@@ -4,8 +4,9 @@
 // "계약 상태·이메일 불러오기"를 누르면 응답시트를 읽는 라우트로 (코스ID×강사) 상태를 가져와
 // "요청됨" 뱃지와 이메일 자동채움을 덧입힌다. 운영현황 상세는 핫 페이지라 진입 때는 시트를 읽지
 // 않고, 이 버튼을 눌렀을 때만 읽는다.
-// 화면을 열 때는 08:00·12:00 예약 동기화 스냅샷(initialProgress)으로 단계·모두싸인 서명 진행을 먼저 보여주고,
-// 버튼은 "지금 새로고침"(시트 + 이 강사들의 모두싸인 문서)이다.
+// 화면을 열 때는 08:00·12:00 예약 동기화 스냅샷(initialProgress)으로 단계·모두싸인 서명 진행을 먼저 보여주고
+// (시트에 없는 강사는 "미요청"), 버튼은 "지금 새로고침"(시트 + 이 강사들의 모두싸인 문서)이다.
+// 교육 시작일이 2026-09-01 전인 과정(signingTracked=false)은 서명 진행 없이 시트 단계만 보인다.
 import { useState } from "react";
 import { buildContractPrefillUrl } from "@/lib/instructors/instructorContractPrefill";
 import type { ContractRequestItem } from "@/lib/instructors/instructorContractRequests";
@@ -35,7 +36,7 @@ function contractStep(status: StatusEntry): number {
   return status.sent ? 2 : status.requested ? 1 : 0;
 }
 
-/** "11/03 12:00" (KST) */
+/** "2026.11.03 12:00" (KST) */
 function formatSyncedAt(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
@@ -45,10 +46,11 @@ function formatSyncedAt(iso: string): string {
     hour12: false,
     minute: "2-digit",
     month: "2-digit",
-    timeZone: "Asia/Seoul"
+    timeZone: "Asia/Seoul",
+    year: "numeric"
   }).formatToParts(date);
   const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
-  return `${get("month")}/${get("day")} ${get("hour")}:${get("minute")}`;
+  return `${get("year")}.${get("month")}.${get("day")} ${get("hour")}:${get("minute")}`;
 }
 
 function SigningLine({ signing }: { signing: SigningSummary }) {
@@ -81,25 +83,31 @@ function rowKey(item: { courseId: string; instructorName: string }): string {
 
 export function InstructorContractList({
   initialProgress,
-  items
+  items,
+  signingTracked
 }: {
   initialProgress: InitialContractProgress | null;
   items: ContractRequestItem[];
+  /** 교육 시작일 기준 모두싸인 서명 진행 표시 대상인지(isSigningTracked). */
+  signingTracked: boolean;
 }) {
   const [phase, setPhase] = useState<LoadPhase>("idle");
   const [error, setError] = useState("");
   const [statusByKey, setStatusByKey] = useState<Record<string, StatusEntry>>(() => {
     const initial: Record<string, StatusEntry> = {};
     for (const [key, entry] of Object.entries(initialProgress?.byKey ?? {})) initial[key] = { ...entry };
+    // 스냅샷은 시트에 있는 (코스ID×강사)만 담는다. 없는 강사 = 아직 계약요청 전이라 "미요청"을 기본으로 보여준다.
+    // 대상 과정만 — 이전 과정은 폼 밖에서 계약했을 수 있어 미요청으로 단정하지 않는다.
+    if (initialProgress && signingTracked) {
+      for (const item of items) initial[rowKey(item)] ??= { requested: false, sent: false };
+    }
     return initial;
   });
   // 모두싸인 서명 진행을 읽은 적이 있는지 — 없으면 "문서 못 찾음"을 띄우지 않는다.
   const [modusignOn, setModusignOn] = useState(Boolean(initialProgress?.modusignSynced));
   const [syncedLabel, setSyncedLabel] = useState(() =>
     initialProgress
-      ? initialProgress.modusignSynced
-        ? `모두싸인 ${formatSyncedAt(initialProgress.syncedAt)} 기준`
-        : `시트 ${formatSyncedAt(initialProgress.syncedAt)} 기준 · 모두싸인 미연결`
+      ? `${formatSyncedAt(initialProgress.syncedAt)} 기준${signingTracked && !initialProgress.modusignSynced ? " · 모두싸인 미연결" : ""}`
       : ""
   );
 
@@ -144,10 +152,10 @@ export function InstructorContractList({
         };
       }
       setStatusByKey(next);
-      if (payload.modusignSynced) {
-        setModusignOn(true);
-        setSyncedLabel(`모두싸인 ${formatSyncedAt(new Date().toISOString())} 기준`);
-      }
+      if (payload.modusignSynced) setModusignOn(true);
+      setSyncedLabel(
+        `${formatSyncedAt(new Date().toISOString())} 기준${signingTracked && !payload.modusignSynced && !modusignOn ? " · 모두싸인 미연결" : ""}`
+      );
       setPhase("done");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "계약 상태를 불러오지 못했습니다.");
@@ -175,7 +183,8 @@ export function InstructorContractList({
       </div>
       <ul className="instructor-contract-list">
         {items.map((item) => {
-          const status = statusByKey[rowKey(item)];
+          const stored = statusByKey[rowKey(item)];
+          const status = stored && !signingTracked ? { ...stored, signing: undefined } : stored;
           const email = status?.email ?? item.email;
           return (
             <li className="instructor-contract-item" key={rowKey(item)}>
@@ -195,7 +204,7 @@ export function InstructorContractList({
                   </span>
                 ) : null}
                 {status?.signing ? <SigningLine signing={status.signing} /> : null}
-                {status && status.sent && !status.signing && modusignOn ? (
+                {status && status.sent && !status.signing && modusignOn && signingTracked ? (
                   <span className="instructor-contract-note">모두싸인 문서를 못 찾았어요</span>
                 ) : null}
                 {phase === "done" && status && !email ? (

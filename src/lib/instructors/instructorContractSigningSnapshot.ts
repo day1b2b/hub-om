@@ -12,11 +12,15 @@ import { normalizeCourseId } from "@/lib/data/operationCalculations";
 import { listModusignDocuments, odataString, readModusignConfig, type ModusignConfig, type ModusignDocument } from "@/lib/modusign/modusignClient";
 import { readInstructorContractRecords, type InstructorContractRecord } from "./instructorContractSheet";
 import { normalizeInstructorName } from "./instructorContractMatch";
-import { matchSigningDocuments, parseSheetTimestamp, type AmbiguousReason, type SigningSummary } from "./instructorContractSigning";
+import {
+  MODUSIGN_DOCUMENTS_SINCE,
+  matchSigningDocuments,
+  parseSheetTimestamp,
+  type AmbiguousReason,
+  type SigningSummary
+} from "./instructorContractSigning";
 
 const FILE_CONTEXT = "local:instructor-contract-signing";
-// 모두싸인 조회 기간. 계약은 교육 전에 끝나니 반년이면 진행 중인 건은 다 들어온다.
-const LOOKBACK_DAYS = 180;
 
 export interface ContractProgressEntry {
   requested: boolean;
@@ -43,7 +47,7 @@ export interface SigningDiagnostics {
   sentMissingCourseName: number;
   /** 그중 요청 시각(AE)을 못 읽은 행. */
   sentMissingRequestedAt: number;
-  /** 발송됐는데 모두싸인 문서를 못 찾은 행. */
+  /** 발송됐는데 모두싸인 문서를 못 찾은 행(조회 시작일 이후 요청된 행만 센다 — 그 전 계약은 원래 안 읽는다). */
   notFound: number;
   ambiguousByReason: Record<AmbiguousReason, number>;
 }
@@ -124,21 +128,24 @@ export function diagnoseSigning(
     sentRows: sent.length,
     sentMissingCourseName: sent.filter(([, record]) => !(record.courseName ?? "").trim()).length,
     sentMissingRequestedAt: sent.filter(([, record]) => parseSheetTimestamp(record.requestedAt) === null).length,
-    notFound: sent.filter(([key]) => !entries[key]?.signing).length,
+    notFound: sent.filter(([key, record]) => {
+      const requestedAt = parseSheetTimestamp(record.requestedAt);
+      return !entries[key]?.signing && (requestedAt === null || requestedAt >= Date.parse(MODUSIGN_DOCUMENTS_SINCE));
+    }).length,
     ambiguousByReason
   };
 }
 
-function lookbackFilter(now: Date): string {
-  const since = new Date(now.getTime() - LOOKBACK_DAYS * 24 * 60 * 60 * 1000).toISOString();
+function lookbackFilter(): string {
+  const since = new Date(MODUSIGN_DOCUMENTS_SINCE).toISOString();
   // 강사 계약서 제목엔 "(B2B)"가 들어간다 — 회사 전체 문서 중 B2B 계약만 읽는다.
   return `contains(title, ${odataString("(B2B)")}) and createdAt ge ${odataString(since)}`;
 }
 
-async function readDocuments(config: ModusignConfig | null, now: Date): Promise<ModusignDocument[] | null> {
+async function readDocuments(config: ModusignConfig | null): Promise<ModusignDocument[] | null> {
   if (!config) return null;
   try {
-    return await listModusignDocuments(config, { filter: lookbackFilter(now) });
+    return await listModusignDocuments(config, { filter: lookbackFilter() });
   } catch {
     // 키 만료·권한·한도 초과. 원인 값(키 등)은 로그에 남기지 않는다.
     console.error("[instructor-contract-signing] 모두싸인 목록 읽기 실패");
@@ -161,7 +168,7 @@ export interface SigningSyncResult {
 /** 시트 + 모두싸인을 읽어 스냅샷을 새로 쓴다(예약 작업·관리자 실행). 시트를 못 읽으면 던진다. */
 export async function runSigningSync(now: Date = new Date()): Promise<SigningSyncResult> {
   const records = await readInstructorContractRecords();
-  const documents = await readDocuments(readModusignConfig(), now);
+  const documents = await readDocuments(readModusignConfig());
   const entries = buildProgressEntries(records, documents);
   const diagnostics = documents ? diagnoseSigning(records, documents, entries) : undefined;
   const snapshot: ContractProgressSnapshot = {
@@ -228,14 +235,14 @@ export function mergeIntoSnapshot(entries: Record<string, ContractProgressEntry>
 }
 
 /** 버튼 새로고침용: 이 강사들 이름이 제목에 들어간 문서만 모두싸인에서 읽는다(전체 목록보다 가볍다). */
-export async function readDocumentsForInstructors(names: string[], now: Date = new Date()): Promise<ModusignDocument[] | null> {
+export async function readDocumentsForInstructors(names: string[]): Promise<ModusignDocument[] | null> {
   const config = readModusignConfig();
   const unique = Array.from(new Set(names.map((name) => normalizeInstructorName(name)).filter(Boolean)));
   if (!config || unique.length === 0) return null;
   try {
     const documents: ModusignDocument[] = [];
     for (const name of unique) {
-      const filter = `${lookbackFilter(now)} and contains(title, ${odataString(name)})`;
+      const filter = `${lookbackFilter()} and contains(title, ${odataString(name)})`;
       documents.push(...(await listModusignDocuments(config, { filter, maxPages: 2 })));
     }
     return documents;
