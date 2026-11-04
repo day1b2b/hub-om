@@ -5420,7 +5420,7 @@ button.instructor-contract-open {
 /* "강사 계약요청" 확인 창 — 기업위키 계산서 확인 창(invoice-request-confirm-*)과 같은 결. */
 .drive-review-dialog.contract-request-confirm-dialog {
   grid-template-rows: auto minmax(0, 1fr) auto;
-  max-width: 600px;
+  max-width: 720px;
 }
 
 .contract-request-confirm-body {
@@ -15983,4 +15983,15 @@ details.detail-section > summary::-webkit-details-marker {
 .instructor-recommend-conflicts ul {
   margin: 6px 0 0;
   padding-left: 18px;
+}
+
+/* 강사 계약요청 확인 창: 실제로 기입될 값 */
+.contract-request-confirm-table td.contract-request-confirm-value {
+  font-weight: 700;
+  word-break: break-all;
+}
+
+.contract-request-confirm-table td.contract-request-confirm-value.is-empty {
+  color: #b3382c;
+  font-weight: 600;
 }

@@ -117,6 +117,8 @@ function rankInstructorCandidates({
   if (!major) return { needsCategory: true, ...empty };
 
   const categoryByOperation = new Map(operations.map((operation) => [operation.operationId, operation.courseCategory ?? ""]));
+  // 강사 칸에 기업명("KT" 등)이 들어간 회차가 있어, 기업명과 똑같은 이름은 강사로 추천하지 않는다.
+  const companyNames = new Set(operations.map((operation) => normalizePersonKey(operation.companyName)).filter(Boolean));
   const operationById = new Map(operations.map((operation) => [operation.operationId, operation]));
 
   const noteByName = new Map<string, InstructorNote>();
@@ -137,6 +139,7 @@ function rankInstructorCandidates({
 
   const consider = (name: string, courses: (typeof entries)[number]["courses"], note: InstructorNote | undefined) => {
     if (assigned.has(name)) return;
+    if (companyNames.has(normalizePersonKey(name))) return;
     const notionMajors = new Set((note?.notion?.categories ?? []).map(notionCategoryToMajor).filter(Boolean));
     let sameMinorCount = 0;
     let sameMajorCount = 0;
@@ -217,4 +220,8 @@ function rankInstructorCandidates({
     conflicts: conflicts.slice(0, 3),
     excludedAvoidCount
   };
+}
+
+function normalizePersonKey(value: string | null | undefined): string {
+  return (value ?? "").replace(/\s+/g, "").toLowerCase();
 }
