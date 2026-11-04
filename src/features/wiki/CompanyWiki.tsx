@@ -20,7 +20,8 @@ function nameText(names: string[], fallback: string): string {
   return names.length > 0 ? names.join(", ") : fallback;
 }
 
-const PAGE_SIZE = 20;
+// 갤러리는 카드가 작아 한 화면에 더 많이 보여 준다.
+const PAGE_SIZE = { gallery: 30, list: 20 } as const;
 
 export function CompanyWiki({ entries, loadFailed }: CompanyWikiProps) {
   const [selectedName, setSelectedName] = useState<null | string>(null);
@@ -52,13 +53,20 @@ export function CompanyWiki({ entries, loadFailed }: CompanyWikiProps) {
   }, [entries, query]);
 
   // 검색/목록이 바뀌면 현재 페이지를 유효 범위로 맞춰 빈 페이지가 뜨지 않게 한다.
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageSize = PAGE_SIZE[view];
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
-  const paged = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const paged = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const pageNumbers = getPageNumbers(currentPage, totalPages);
 
   function handleQueryChange(value: string) {
     setQuery(value);
+    setPage(1);
+  }
+
+  // 보기마다 페이지당 개수가 달라 같은 페이지 번호가 다른 기업을 가리키므로 첫 페이지로 돌아간다.
+  function changeView(next: "gallery" | "list") {
+    setView(next);
     setPage(1);
   }
 
@@ -107,8 +115,8 @@ export function CompanyWiki({ entries, loadFailed }: CompanyWikiProps) {
               <>
                 <div className="filter-row">
                   <div className="view-toggle">
-                    <button className={view === "gallery" ? "selected" : ""} onClick={() => setView("gallery")} type="button">▦ 갤러리</button>
-                    <button className={view === "list" ? "selected" : ""} onClick={() => setView("list")} type="button">☰ 리스트</button>
+                    <button className={view === "gallery" ? "selected" : ""} onClick={() => changeView("gallery")} type="button">▦ 갤러리</button>
+                    <button className={view === "list" ? "selected" : ""} onClick={() => changeView("list")} type="button">☰ 리스트</button>
                   </div>
                   <div className="search">
                     <span>🔍</span>
@@ -167,7 +175,7 @@ export function CompanyWiki({ entries, loadFailed }: CompanyWikiProps) {
                           {filtered.length > 0 ? (
                             paged.map((entry, index) => (
                               <tr key={entry.name}>
-                                <td>{(currentPage - 1) * PAGE_SIZE + index + 1}</td>
+                                <td>{(currentPage - 1) * pageSize + index + 1}</td>
                                 <td>
                                   <button className="row-link row-link--logo" onClick={() => openDetail(entry.name)} type="button">
                                     <CompanyLogo name={entry.name} size="sm" />
@@ -270,6 +278,8 @@ function CompanyWikiDetail({
   // 계산서 발행 요청 구글폼 URL은 서버에만 둔다(저장소가 public이라 클라이언트 번들에
   // 절대 넣지 않는다) — 완성된 링크만 코스별로 서버에서 만들어 받는다.
   const [invoiceLinks, setInvoiceLinks] = useState<Record<string, string | null>>({});
+  // 사업자등록증 정보를 저장하면 올린다 — 링크는 저장된 값으로 서버에서 만들므로 다시 받아야 한다.
+  const [invoiceLinksVersion, setInvoiceLinksVersion] = useState(0);
   // 계산서 발행 요청 현황(폼 응답 시트 기준). null이면 아직 불러오는 중, available=false면 시트를 못 읽음.
   const [invoiceStatuses, setInvoiceStatuses] = useState<{
     available: boolean;
@@ -299,7 +309,7 @@ function CompanyWikiDetail({
       });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [invoiceLinksVersion]);
 
   return (
     <>
@@ -388,7 +398,15 @@ function CompanyWikiDetail({
         </div>
       ) : businessInfo ? (
         <>
-          <CompanyBusinessInfoEditor companyId={entry.companyId} initial={businessInfo} />
+          <CompanyBusinessInfoEditor
+            companyId={entry.companyId}
+            initial={businessInfo}
+            onSaved={() => {
+              // 다시 받는 동안 옛 값으로 만든 링크를 누르지 않도록 비워 둔다.
+              setInvoiceLinks({});
+              setInvoiceLinksVersion((version) => version + 1);
+            }}
+          />
           <CompanyMemoEditor companyId={entry.companyId} initial={businessInfo.memo} />
         </>
       ) : (
@@ -404,13 +422,111 @@ function CompanyWikiDetail({
 // 링크는 서버(/api/company-wiki/invoice-link)에서 완성된 형태로 받는다 — 구글폼 URL을
 // 클라이언트 코드에 두지 않기 위해서다(저장소가 public). undefined는 "아직 불러오는 중",
 // null은 "서버가 안전한 URL을 못 만들었음"이고, 화면에서는 둘 다 "-"로 같다.
+// 폼이 자동 기입된 채로 열리니, 넘어가기 전에 무엇이 채워지는지 알려 주고 최종 확인을 받는다.
+// 확인 창 [구글 설문폼에 자동으로 기입되는 내용] 표 — buildInvoiceRequestFormUrl()이 채우는 항목과 맞춰 둔다.
+// [hub-om 항목, 구글 설문폼 항목, 덧붙임 설명]
+const INVOICE_REQUEST_FIELD_GROUPS: { label: string; detail?: string; rows: [string, string, string?][] }[] = [
+  {
+    label: "운영 현황",
+    rows: [
+      ["코스 ID", "코스 ID"],
+      ["코스 ID명", "과정명", "계산서 \"품목명\"에 기재되는 항목"],
+      ["기업명", "수강생이름"]
+    ]
+  },
+  {
+    label: "기업위키",
+    detail: "사업자등록증 정보",
+    rows: [
+      ["사업자등록번호", "사업자번호"],
+      ["상호(법인명)", "회사명"],
+      ["대표자", "대표자"],
+      ["주소", "주소"],
+      ["업태", "업태"],
+      ["종목", "종목"]
+    ]
+  }
+];
+
 function InvoiceRequestLink({ href }: { href: string | null | undefined }) {
+  const [isOpen, setIsOpen] = useState(false);
+
   if (!href) return <span className="muted-inline">-</span>;
 
   return (
-    <a className="invoice-request-link" href={href} rel="noreferrer" target="_blank">
-      계산서 발행 요청
-    </a>
+    <>
+      <button className="invoice-request-link" onClick={() => setIsOpen(true)} type="button">
+        계산서 발행 요청
+      </button>
+
+      {isOpen ? (
+        <div aria-modal="true" className="drive-review-modal" role="dialog">
+          <div className="drive-review-backdrop" onClick={() => setIsOpen(false)} />
+          <section aria-labelledby="invoice-request-confirm-title" className="drive-review-dialog invoice-request-confirm-dialog">
+            <div className="drive-review-header">
+              <div>
+                <h2 id="invoice-request-confirm-title">계산서 발행 요청</h2>
+              </div>
+              <button aria-label="계산서 발행 요청 닫기" onClick={() => setIsOpen(false)} type="button">
+                닫기
+              </button>
+            </div>
+
+            <div className="lecture-note-body invoice-request-confirm-body">
+              <p className="invoice-request-confirm-intro">
+                기업 위키와 운영 현황에 등록된 정보로 계산서 발행 요청 내용(구글폼)이 자동 기입됩니다.
+              </p>
+              <p className="invoice-request-confirm-warning">※ 내용이 맞는지 꼭 최종 확인해주세요!</p>
+              <strong>[구글 설문폼에 자동으로 기입되는 내용]</strong>
+              <table className="invoice-request-confirm-table">
+                <thead>
+                  <tr>
+                    <th colSpan={2} scope="colgroup">운영 허브(Hub-OM) 내용</th>
+                    <th scope="col">구글 설문폼 항목</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {INVOICE_REQUEST_FIELD_GROUPS.map((group) =>
+                    group.rows.map(([source, target, note], index) => (
+                      <tr key={`${group.label}-${source}`}>
+                        {index === 0 ? (
+                          <th rowSpan={group.rows.length} scope="rowgroup">
+                            {group.label}
+                            {group.detail ? <span>({group.detail})</span> : null}
+                          </th>
+                        ) : null}
+                        <td>{source}</td>
+                        <td>
+                          {target}
+                          {note ? <span>{note}</span> : null}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="lecture-note-footer">
+              <div className="lecture-note-actions">
+                <button onClick={() => setIsOpen(false)} type="button">
+                  취소
+                </button>
+                <a
+                  className="invoice-request-confirm-open"
+                  href={href}
+                  onClick={() => setIsOpen(false)}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  확인
+                </a>
+              </div>
+            </div>
+          </section>
+        </div>
+      ) : null}
+    </>
   );
 }
 

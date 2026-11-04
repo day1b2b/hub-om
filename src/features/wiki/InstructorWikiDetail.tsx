@@ -36,7 +36,14 @@ import {
 // 강사 위키 상세. 코치 위키와 같은 틀(헤더 → 고정 알림 → 본문 2단)을 쓴다.
 // "강사 위키 = 보는 곳 / 운영현황 = 하는 곳" 원칙이라 계약 '요청' 버튼은 두지 않는다.
 // 아직 허브에 값이 없는 칸(계약 유형·신규강사 증빙 등)은 빈 틀로 늘어놓지 않고, 데이터가 생기면 해당 칸에 붙인다.
-export async function InstructorWikiDetail({ entry }: { entry: InstructorWikiEntry }) {
+export async function InstructorWikiDetail({
+  entry,
+  canManageNotionLinks
+}: {
+  entry: InstructorWikiEntry;
+  /** 노션 강사 연결·해제(관리자 전용 API). OM에게는 버튼을 숨긴다. */
+  canManageNotionLinks: boolean;
+}) {
   const coach = entry.coach;
   // 노션 NO가 있으면 그것으로 읽는다(동명이인 구분). 없으면 운영 현황 표기라 이름으로 읽는다.
   const note =
@@ -168,7 +175,8 @@ export async function InstructorWikiDetail({ entry }: { entry: InstructorWikiEnt
                 <p className="field-hint">노션 강사 DB에서 자동으로 가져온 값이에요. 원본은 노션에서 수정해 주세요.</p>
               </PeopleCard>
 
-              <InstructorEditor name={entry.name} initial={note} notion={np} />
+              {/* 클라이언트에는 메모 글만 넘긴다. 노트·노션 스냅샷 통째로 넘기면 예전 연락처 등이 페이지 소스에 실릴 수 있다. */}
+              <InstructorEditor initialNotes={note.notes ?? ""} name={entry.name} notionMemo={np?.memo} />
 
               {/* 투입 이력은 길고 가끔 보는 내용이라 맨 아래에 접어 둔다. 같은 과정의 회차는 한 줄로 묶는다. */}
               <PeopleCollapsible
@@ -279,13 +287,15 @@ export async function InstructorWikiDetail({ entry }: { entry: InstructorWikiEnt
                     }
                   ]}
                 />
-                {/* 운영 현황 표기가 노션과 달라 프로필이 안 붙는 경우, OM이 여기서 한 번 연결한다. */}
-                <NotionLinkEditor
-                  isNotionEntry={isNotionEntry}
-                  linkedAliases={linkedAliases}
-                  name={entry.name}
-                  notionNames={notionNames}
-                />
+                {/* 운영 현황 표기가 노션과 달라 프로필이 안 붙는 경우 관리자가 여기서 한 번 연결한다(연결 API가 관리자 전용). */}
+                {canManageNotionLinks ? (
+                  <NotionLinkEditor
+                    isNotionEntry={isNotionEntry}
+                    linkedAliases={linkedAliases}
+                    name={entry.name}
+                    notionNames={notionNames}
+                  />
+                ) : null}
               </PeopleCard>
             </>
           }

@@ -12,6 +12,7 @@ function normalizeValue(value: string | null | undefined): string | null | undef
 
 const SELECT = {
   businessNumber: true,
+  legalName: true,
   representativeName: true,
   address: true,
   businessType: true,
@@ -25,6 +26,7 @@ const SELECT = {
 
 function toBusinessInfo(row: {
   businessNumber: string | null;
+  legalName: string | null;
   representativeName: string | null;
   address: string | null;
   businessType: string | null;
@@ -37,6 +39,7 @@ function toBusinessInfo(row: {
 }): CompanyBusinessInfo {
   return {
     businessNumber: row.businessNumber,
+    legalName: row.legalName,
     representativeName: row.representativeName,
     address: row.address,
     businessType: row.businessType,
@@ -60,6 +63,7 @@ export class PrismaCompanyBusinessInfoRepository implements CompanyBusinessInfoR
       where: { id: companyId },
       data: {
         businessNumber: normalizeValue(patch.businessNumber),
+        legalName: normalizeValue(patch.legalName),
         representativeName: normalizeValue(patch.representativeName),
         address: normalizeValue(patch.address),
         businessType: normalizeValue(patch.businessType),

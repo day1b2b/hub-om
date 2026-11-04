@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { recommendInstructors } from "@/features/wiki/instructorRecommendation.ts";
+import { recommendInstructors, recommendInstructorsByCriteria } from "@/features/wiki/instructorRecommendation.ts";
 import type { InstructorNote } from "@/lib/data/instructorNoteRepository.ts";
 import type { OperationSession } from "@/lib/data/operationTypes.ts";
 
@@ -87,4 +87,20 @@ test("recommendInstructors: 과정 카테고리가 없으면 추천하지 않는
   const result = recommendInstructors({ courseOperations: [blank], operations: [blank], notes: [], today: "2026-10-29", dormantMonths: 6 });
   assert.equal(result.needsCategory, true);
   assert.equal(result.candidates.length, 0);
+});
+
+test("recommendInstructorsByCriteria: 과정 없이 분야·교육일로 고르고, 그날 일정이 겹치는 강사는 따로 모은다", () => {
+  const operations = [
+    op({ operationId: "a1", courseCategory: "AI 에이전트·업무자동화", instructors: "경험강사" }),
+    op({ operationId: "a2", courseCategory: "AI 에이전트·업무자동화", instructors: "바쁜강사" }),
+    op({ operationId: "a3", companyName: "다라금융", courseName: "다른 과정", courseCategory: "OA·문서 생산성", instructors: "바쁜강사", startDate: "2026-12-15", endDate: "2026-12-15" })
+  ];
+  const withDate = recommendInstructorsByCriteria({ minor: "AI 에이전트·업무자동화", date: "2026-12-15", operations, notes: [], today: "2026-11-03", dormantMonths: 6 });
+  assert.deepEqual(withDate.candidates.map((c) => c.name), ["경험강사"]);
+  assert.deepEqual(withDate.conflicts.map((c) => c.name), ["바쁜강사"]);
+  assert.deepEqual(withDate.conflicts.map((c) => [c.date, c.endDate]), [["2026-12-15", "2026-12-15"]]);
+
+  const noDate = recommendInstructorsByCriteria({ minor: "AI 에이전트·업무자동화", date: "", operations, notes: [], today: "2026-11-03", dormantMonths: 6 });
+  assert.deepEqual(noDate.candidates.map((c) => c.name).sort(), ["경험강사", "바쁜강사"]);
+  assert.equal(recommendInstructorsByCriteria({ minor: "", date: "", operations, notes: [], today: "2026-11-03", dormantMonths: 6 }).needsCategory, true);
 });

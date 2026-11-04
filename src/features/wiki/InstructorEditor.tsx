@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import type { InstructorNote, InstructorNotionProfile } from "@/lib/data/instructorWikiStore";
 import { PeopleCard } from "@/features/people/PeopleProfile";
 import { MEMO_SECTIONS, parseInstructorMemo, serializeInstructorMemo, type InstructorMemo, type MemoSection } from "./instructorMemo";
 
@@ -17,14 +16,16 @@ const PLACEHOLDER: Record<MemoSection, string> = {
 // 저장은 /api/instructor-wiki/save의 notes 한 칸에 머리말을 붙여 보낸다(instructorMemo.ts).
 export function InstructorEditor({
   name,
-  initial,
-  notion
+  initialNotes,
+  notionMemo
 }: {
   name: string;
-  initial: InstructorNote;
-  notion?: InstructorNotionProfile;
+  /** OM 운영 메모 원문(5칸 머리말 포함). */
+  initialNotes: string;
+  /** OM 메모가 없을 때 대신 보여 줄 노션 강사 DB 메모. */
+  notionMemo?: string;
 }) {
-  const [memo, setMemo] = useState<InstructorMemo>(() => parseInstructorMemo(initial.notes ?? ""));
+  const [memo, setMemo] = useState<InstructorMemo>(() => parseInstructorMemo(initialNotes));
   const [snapshot, setSnapshot] = useState(memo);
   const [editing, setEditing] = useState(false);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -78,7 +79,7 @@ export function InstructorEditor({
 
   // OM이 쓴 메모가 하나도 없으면 노션 메모를 비고 자리에 보여 준다. 편집은 OM 입력값만 다룬다.
   const hasOmMemo = MEMO_SECTIONS.some((section) => memo[section]);
-  const shown: InstructorMemo = !hasOmMemo && notion?.memo ? { ...memo, 비고: notion.memo } : memo;
+  const shown: InstructorMemo = !hasOmMemo && notionMemo ? { ...memo, 비고: notionMemo } : memo;
 
   return (
     <PeopleCard actions={controls} note="OM 전용" title="운영 메모">
@@ -108,7 +109,7 @@ export function InstructorEditor({
           ))}
         </dl>
       )}
-      {!editing && !hasOmMemo && notion?.memo ? (
+      {!editing && !hasOmMemo && notionMemo ? (
         <p className="field-hint">노션 강사 DB의 메모를 비고에 보여 주고 있어요. 수정하면 허브에 저장됩니다.</p>
       ) : null}
     </PeopleCard>

@@ -65,9 +65,12 @@ interface CoachDetailViewProps {
   schedules: CoachScheduleView[];
   selectedMonth: string;
   selectedTab: CoachDetailTab;
+  /** 코치 개인 입력 링크(토큰) 열기·복사. 관리자에게만 보인다(OM에게는 링크 자체를 내려보내지 않는다). */
+  canManageInputLink: boolean;
 }
 
 export function CoachDetailView({
+  canManageInputLink,
   coach,
   activity,
   peopleStatus,
@@ -207,10 +210,12 @@ export function CoachDetailView({
                       { label: "삭제", value: coach.deletedAt ? "삭제됨" : "정상" }
                     ]}
                   />
-                  <div className="people-card-sub">
-                    <span>코치 입력 링크</span>
-                    <CoachInputLinkActions url={coach.coachInputUrl} />
-                  </div>
+                  {canManageInputLink ? (
+                    <div className="people-card-sub">
+                      <span>코치 입력 링크</span>
+                      <CoachInputLinkActions url={coach.coachInputUrl} />
+                    </div>
+                  ) : null}
                 </PeopleCard>
               </>
             }

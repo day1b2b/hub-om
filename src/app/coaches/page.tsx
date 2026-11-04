@@ -1,5 +1,5 @@
 import { CoachList, type CoachListItem } from "@/features/coaches/CoachList";
-import { requireAdminSession } from "@/lib/auth/requireAdminSession";
+import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { coachActivityPolicy, recentRatingSummary, seoulTodayKey, summarizeCoachActivity } from "@/lib/coaches/coachActivity";
 import { loadEvaluationAverages } from "@/lib/coaches/coachEvaluationAverages";
 import { peopleStatusFromFacts } from "@/lib/people/peopleStatus";
@@ -9,7 +9,7 @@ import { runCoachPublicRequest } from "@/lib/data/coachPublicComposition";
 export const dynamic = "force-dynamic";
 
 export default async function CoachesPage() {
-  await requireAdminSession();
+  await requireWorkspaceSession();
   return runCoachPublicRequest(renderCoachesPage);
 }
 

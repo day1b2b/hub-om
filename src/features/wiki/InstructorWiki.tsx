@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { PeopleDirectory, type PeopleRow } from "@/features/people/PeopleDirectory";
 import { averageOf, formatPeopleDate, parseSatisfaction, peopleStatusFromFacts } from "@/lib/people/peopleStatus";
@@ -23,6 +23,10 @@ interface InstructorWikiProps {
   today: string;
   /** 활동/휴면 경계(개월). 코치 위키와 같은 값을 쓴다. */
   dormantMonths: number;
+  /** 검색줄 옆 "강사 추천" 버튼으로 여는 패널(서버에서 계산해 그린다). */
+  recommendPanel?: ReactNode;
+  /** 추천 조건이 주소에 있으면(추천받기 직후) 처음부터 펼친다. */
+  recommendOpen?: boolean;
 }
 
 export function InstructorWiki({
@@ -32,7 +36,9 @@ export function InstructorWiki({
   provenance,
   recruitAvoidNames = [],
   today,
-  dormantMonths
+  dormantMonths,
+  recommendPanel,
+  recommendOpen = false
 }: InstructorWikiProps) {
   const rows = useMemo(() => {
     const avoidSet = new Set(recruitAvoidNames);
@@ -52,6 +58,7 @@ export function InstructorWiki({
 
       <section className="content">
         <PeopleDirectory
+          toolPanel={recommendPanel ? { label: "강사 추천", content: recommendPanel, defaultOpen: recommendOpen } : undefined}
           deployHeader="투입"
           emptyText="표시할 강사가 없습니다."
           lede={lede}

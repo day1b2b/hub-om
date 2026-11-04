@@ -11,13 +11,17 @@ type FormState = Record<Field, string>;
 // 저장 시 /api/company-wiki/business-info로 전송한다(companyId 기준 부분 병합).
 export function CompanyBusinessInfoEditor({
   companyId,
-  initial
+  initial,
+  onSaved
 }: {
   companyId: string;
   initial: CompanyBusinessInfo;
+  /** 저장 성공 후 호출 — 계산서 발행 요청 링크를 새 값으로 다시 만들 때 쓴다. */
+  onSaved?: () => void;
 }) {
   const build = (): FormState => ({
     businessNumber: initial.businessNumber ?? "",
+    legalName: initial.legalName ?? "",
     representativeName: initial.representativeName ?? "",
     address: initial.address ?? "",
     businessType: initial.businessType ?? "",
@@ -58,6 +62,7 @@ export function CompanyBusinessInfoEditor({
         setSnapshot(form);
         setEditing(false);
         setStatus("saved");
+        onSaved?.();
       } else {
         setStatus("error");
       }
@@ -102,6 +107,7 @@ export function CompanyBusinessInfoEditor({
       <div className="section-body">
         <dl className="field-preview-list">
           {field("사업자등록번호", "businessNumber", "- 없이 10자리")}
+          {field("상호(법인명)", "legalName", "사업자등록증의 상호 그대로")}
           {field("대표자", "representativeName")}
           {field("주소", "address")}
           {field("업태", "businessType")}

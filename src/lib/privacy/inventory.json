@@ -6,6 +6,7 @@
     "createdAt": "operational",
     "updatedAt": "operational",
     "businessNumber": "encrypted",
+    "legalName": "operational",
     "representativeName": "encrypted",
     "address": "encrypted",
     "businessType": "operational",

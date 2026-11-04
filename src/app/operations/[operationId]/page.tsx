@@ -14,10 +14,8 @@ import { buildPersonOptions, buildRoleRosterFromOperations, mergeRoleRosters } f
 import { getStoredTeamMemberRepository } from "@/lib/data/teamMemberRepositoryFactory";
 import { filterOperationsByTeamScope, resolveTeamScope } from "@/lib/teamScope";
 import { allowsLegacyOperationPageFallback, runOperationPagesRequest } from "@/lib/data/operationPagesComposition";
-import { recommendInstructors } from "@/features/wiki/instructorRecommendation";
 import { getSessionSurveyResultRepository } from "@/lib/data/sessionSurveyResultRepositoryFactory";
 import type { SessionSurveyResult } from "@/lib/data/sessionSurveyResultTypes";
-import { coachActivityPolicy, seoulTodayKey } from "@/lib/coaches/coachActivity";
 
 export const dynamic = "force-dynamic";
 
@@ -117,14 +115,6 @@ async function renderOperationDetailPage({ params, searchParams }: OperationDeta
     });
   const [coachOptions, onsiteOmOptions, surveyResults] = await Promise.all([coachOptionsPromise, onsiteOmOptionsPromise, surveyResultsPromise]);
   const collaboration = DISABLED_COLLABORATION;
-  // 후보 강사는 팀 범위와 상관없이 전체 운영 이력에서 고른다(다른 팀 과정 이력도 근거가 된다).
-  const instructorRecommendation = recommendInstructors({
-    courseOperations: relatedOperations.length > 0 ? relatedOperations : [operation],
-    operations: allOperations,
-    notes: instructorNotes,
-    today: seoulTodayKey(),
-    dormantMonths: coachActivityPolicy.dormantMonths
-  });
 
   return (
     <OperationDetail
@@ -132,7 +122,6 @@ async function renderOperationDetailPage({ params, searchParams }: OperationDeta
       collaboration={collaboration}
       extraTools={listCustomTools()}
       instructorOptions={instructorOptions}
-      instructorRecommendation={instructorRecommendation}
       surveyResults={surveyResults}
       onsiteOmOptions={onsiteOmOptions}
       operation={operation}

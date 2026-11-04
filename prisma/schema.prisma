@@ -120,6 +120,8 @@ model Company {
 
   // 사업자등록증 정보. 업무요청(최초 접수) 또는 기업위키 수정 화면에서 채워진다.
   businessNumber        String?   @map("business_number")
+  // 사업자등록증상 상호(법인명). 기업명(name)과 다를 수 있어 따로 둔다 — 계산서 구글폼 "회사명"에 쓴다.
+  legalName             String?   @map("legal_name")
   representativeName    String?   @map("representative_name")
   address               String?   @map("address")
   businessType          String?   @map("business_type")

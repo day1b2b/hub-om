@@ -15,6 +15,7 @@ import { normalizePersonKey } from "@/lib/data/roleAssignees";
 import { satisfactionNumber } from "@/lib/data/satisfaction";
 import { getSeoulToday } from "@/lib/seoulDate";
 import { teamScopeSearchParam, type TeamScope } from "@/lib/teamScope";
+import { courseLinkValue } from "./courseLinkSource";
 
 const 전체_파트 = "전체 파트";
 const 전체_OM = "전체 OM";
@@ -598,6 +599,8 @@ const OPERATIONS_CSV_HEADERS = [
   "총 교육일수",
   "싱크업",
   "강의관리 링크",
+  "결과보고서 링크",
+  "드라이브 링크",
   "OM",
   "OM(현장운영)",
   "LD",
@@ -626,6 +629,8 @@ function downloadOperationsCsv(courseGroups: CourseGroup[], today: Date) {
     sumEducationDays(group.operations),
     isSafeHttpUrl(group.operationDetail) ? group.operationDetail : "-",
     isSafeHttpUrl(group.lectureManagementNote) ? group.lectureManagementNote : "-",
+    isSafeHttpUrl(group.resultReportLink) ? group.resultReportLink : "-",
+    isSafeHttpUrl(group.driveLink) ? group.driveLink : "-",
     summarizeText(group.operations, (operation) => operation.om, "배정필요"),
     summarizeText(group.operations, (operation) => resolveOnsiteOm(operation)),
     summarizeText(group.operations, (operation) => operation.ld, "미정"),
@@ -682,12 +687,14 @@ interface CourseGroup {
   companyName: string;
   courseId: string;
   courseName: string;
+  driveLink: string;
   endDate: string;
   key: string;
   lectureManagementNote: string;
   linkOperationId: string;
   operationDetail: string;
   operations: OperationSession[];
+  resultReportLink: string;
   startDate: string;
 }
 
@@ -721,12 +728,15 @@ function buildCourseGroup(key: string, operations: OperationSession[], today: Da
     companyName: first.companyName,
     courseId: first.courseId,
     courseName: first.courseName,
+    driveLink: courseLinkValue(operations, "driveLink"),
     endDate: endDates[endDates.length - 1] ?? "",
     key,
     lectureManagementNote: operations.find((operation) => operation.lectureManagementNote)?.lectureManagementNote ?? "",
     linkOperationId: representative.operationId,
     operationDetail: operations.find((operation) => operation.operationDetail)?.operationDetail ?? "",
     operations,
+    // 결과보고서는 과정(Course) 단위 값 — 운영 상세 화면과 같은 값을 쓴다.
+    resultReportLink: operations.find((operation) => operation.courseResultReportLink?.trim())?.courseResultReportLink ?? "",
     startDate: startDates[0] ?? ""
   };
 }

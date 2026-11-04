@@ -2101,6 +2101,100 @@ select {
   color: var(--blue);
 }
 
+button.invoice-request-link {
+  background: transparent;
+  cursor: pointer;
+}
+
+/* .drive-review-dialog 가 스타일시트에서 더 뒤에 있어 같은 명시도로는 덮이지 않는다. */
+/* 안내 문구가 한 줄에 들어가는 폭(본문 13px 기준) */
+.drive-review-dialog.invoice-request-confirm-dialog {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  max-width: 600px;
+}
+
+.invoice-request-confirm-body {
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+/* 안내 문구와 경고 문구는 붙여 쓴다 — .lecture-note-body의 gap(스타일시트 뒤쪽)은 끄고 여백을 직접 준다. */
+.lecture-note-body.invoice-request-confirm-body {
+  gap: 0;
+}
+
+.invoice-request-confirm-body p {
+  margin: 0;
+}
+
+/* 자동 기입 안내를 형광펜처럼 강조한다(옅은 노랑). */
+.invoice-request-confirm-body p.invoice-request-confirm-intro {
+  background: #fff4b8;
+  border-radius: 6px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  padding: 6px 10px;
+}
+
+.invoice-request-confirm-body p.invoice-request-confirm-warning {
+  color: var(--red);
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+/* 전역 table의 min-width(넓은 목록용)를 풀어 확인 창 폭에 맞춘다. */
+.invoice-request-confirm-table {
+  border-collapse: collapse;
+  font-size: 12px;
+  line-height: 1.5;
+  margin-top: 6px;
+  min-width: 0;
+  width: 100%;
+}
+
+.invoice-request-confirm-table th,
+.invoice-request-confirm-table td {
+  border: 1px solid var(--line);
+  padding: 5px 8px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.invoice-request-confirm-table thead th {
+  background: var(--surface-strong);
+  font-weight: 700;
+}
+
+.invoice-request-confirm-table tbody th {
+  background: var(--surface-strong);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* 구분 아래 부연 설명, 구글폼 항목 옆 덧붙임 설명 */
+.invoice-request-confirm-table th span,
+.invoice-request-confirm-table td span {
+  color: var(--muted);
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.lecture-note-actions a.invoice-request-confirm-open {
+  align-items: center;
+  background: var(--blue);
+  border: 1px solid var(--blue);
+  border-radius: 7px;
+  color: #ffffff;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 800;
+  min-height: 32px;
+  padding: 0 14px;
+  text-decoration: none;
+}
+
 .toolbar {
   align-items: center;
   display: flex;
@@ -5315,6 +5409,102 @@ td span {
 .instructor-contract-open:hover {
   background: var(--blue);
   color: #fff;
+}
+
+/* 계약폼 열기 트리거가 <button>이라 기본 배경·커서를 링크처럼 맞춘다. */
+button.instructor-contract-open {
+  background: transparent;
+  cursor: pointer;
+}
+
+/* "강사 계약요청" 확인 창 — 기업위키 계산서 확인 창(invoice-request-confirm-*)과 같은 결. */
+.drive-review-dialog.contract-request-confirm-dialog {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  max-width: 600px;
+}
+
+.contract-request-confirm-body {
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.lecture-note-body.contract-request-confirm-body {
+  gap: 0;
+}
+
+.contract-request-confirm-body p {
+  margin: 0;
+}
+
+.contract-request-confirm-body p.contract-request-confirm-intro {
+  background: #fff4b8;
+  border-radius: 6px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  padding: 6px 10px;
+}
+
+.contract-request-confirm-body p.contract-request-confirm-warning {
+  color: var(--red);
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.contract-request-confirm-body p.contract-request-confirm-note {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 10px;
+}
+
+.contract-request-confirm-table {
+  border-collapse: collapse;
+  font-size: 12px;
+  line-height: 1.5;
+  margin-top: 6px;
+  min-width: 0;
+  width: 100%;
+}
+
+.contract-request-confirm-table th,
+.contract-request-confirm-table td {
+  border: 1px solid var(--line);
+  padding: 5px 8px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.contract-request-confirm-table thead th {
+  background: var(--surface-strong);
+  font-weight: 700;
+}
+
+.contract-request-confirm-table tbody th {
+  background: var(--surface-strong);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.contract-request-confirm-table th span,
+.contract-request-confirm-table td span {
+  color: var(--muted);
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.lecture-note-actions a.contract-request-confirm-open {
+  align-items: center;
+  background: var(--blue);
+  border: 1px solid var(--blue);
+  border-radius: 7px;
+  color: #ffffff;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 800;
+  min-height: 32px;
+  padding: 0 14px;
+  text-decoration: none;
 }
 
 .instructor-contract-actions {
@@ -16446,4 +16636,203 @@ button.coach-doc-reserve-chip:disabled {
   color: #b42318;
   font-weight: 700;
   margin-top: 8px;
+}
+
+/* 교육 상세: 업무 단계(배정 → 계약요청 → 회고) 표시 */
+.stage-badge {
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 10px;
+}
+
+.stage-badge--now {
+  background: #e7effa;
+  color: var(--blue);
+}
+
+.stage-badge--wait {
+  background: #f1f0ec;
+  color: var(--muted);
+}
+
+.detail-section.stage-focus {
+  border-color: var(--blue);
+  box-shadow: inset 0 0 0 1px var(--blue);
+}
+
+details.detail-section > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+details.detail-section > summary::-webkit-details-marker {
+  display: none;
+}
+
+.contract-steps {
+  display: inline-flex;
+  flex-wrap: wrap;
+  font-size: 11px;
+  gap: 4px;
+}
+
+.contract-steps > span {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+  padding: 1px 6px;
+}
+
+.contract-steps > span.done {
+  background: #e9f1dd;
+  border-color: transparent;
+  color: #4f7a3f;
+}
+
+.contract-steps > span.now {
+  background: #e7effa;
+  border-color: transparent;
+  color: var(--blue);
+  font-weight: 700;
+}
+
+.instructor-contract-synced {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.contract-signing {
+  align-items: center;
+  display: inline-flex;
+  flex-wrap: wrap;
+  font-size: 12px;
+  gap: 6px;
+}
+
+.contract-signing-text {
+  color: var(--blue);
+  font-weight: 700;
+}
+
+.contract-signing.is-done .contract-signing-text {
+  color: #4f7a3f;
+}
+
+.contract-signing.is-warn .contract-signing-text {
+  color: var(--red);
+}
+
+.contract-signing-roles {
+  display: inline-flex;
+  flex-wrap: wrap;
+  font-size: 11px;
+  gap: 4px;
+}
+
+.contract-signing-roles > span {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+  padding: 1px 6px;
+}
+
+.contract-signing-roles > span.done {
+  background: #e9f1dd;
+  border-color: transparent;
+  color: #4f7a3f;
+}
+
+.contract-signing-roles > span.now {
+  background: #e7effa;
+  border-color: transparent;
+  color: var(--blue);
+  font-weight: 700;
+}
+
+/* 강사 위키: 강사 추천 */
+.instructor-recommend-panel {
+  margin-bottom: 16px;
+}
+
+.instructor-recommend-form {
+  align-items: flex-end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 8px 0 4px;
+}
+
+.instructor-recommend-form label {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  gap: 4px;
+}
+
+.instructor-recommend-form label span {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.instructor-recommend-result {
+  margin-top: 8px;
+}
+
+/* 사람 목록: 검색줄 옆 도구 버튼(강사 추천)과 펼침 칸 */
+.people-tool-button {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 12px;
+  white-space: nowrap;
+}
+
+.people-tool-button.selected {
+  background: #e7effa;
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.people-tool-panel {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  margin: 8px 0 12px;
+  padding: 12px 16px;
+}
+
+.instructor-recommend-list {
+  display: grid;
+  font-size: 13px;
+  gap: 6px;
+  margin: 10px 0 4px;
+  padding-left: 22px;
+}
+
+.instructor-recommend-name {
+  font-weight: 800;
+}
+
+.instructor-recommend-sep {
+  color: var(--muted);
+}
+
+.instructor-recommend-conflicts {
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.instructor-recommend-conflicts summary {
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.instructor-recommend-conflicts ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
 }
