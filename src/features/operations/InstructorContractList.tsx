@@ -6,7 +6,8 @@
 // 않고, 이 버튼을 눌렀을 때만 읽는다.
 // 화면을 열 때는 08:00·12:00 예약 동기화 스냅샷(initialProgress)으로 단계·모두싸인 서명 진행을 먼저 보여주고
 // (시트에 없는 강사는 "미요청"), 버튼은 "지금 새로고침"(시트 + 이 강사들의 모두싸인 문서)이다.
-// 교육 시작일이 2026-09-01 전인 과정(signingTracked=false)은 서명 진행 없이 시트 단계만 보인다.
+// 교육 시작일이 2026-09-01 전인 과정(signingTracked=false)은 모두싸인을 보지 않고 전부 "서명 완료"로 둔다
+// (2026-11-04 결정 "그 전에꺼는 일단 완료로") — 바닥줄에 그렇게 표시한다고 밝힌다.
 import { useState } from "react";
 import { buildContractPrefillUrl } from "@/lib/instructors/instructorContractPrefill";
 import type { ContractRequestItem } from "@/lib/instructors/instructorContractRequests";
@@ -182,7 +183,9 @@ export function InstructorContractList({
       <ul className="instructor-contract-list">
         {items.map((item) => {
           const stored = statusByKey[rowKey(item)];
-          const status = stored && !signingTracked ? { ...stored, signing: undefined } : stored;
+          const status: StatusEntry | undefined = signingTracked
+            ? stored
+            : { email: stored?.email, requested: true, sent: true, signing: { phase: "completed", steps: [] } };
           const email = status?.email ?? item.email;
           return (
             <li className="instructor-contract-item" key={rowKey(item)}>
@@ -201,7 +204,7 @@ export function InstructorContractList({
                     ))}
                   </span>
                 ) : null}
-                {status?.signing ? <SigningLine signing={status.signing} /> : null}
+                {status?.signing && signingTracked ? <SigningLine signing={status.signing} /> : null}
                 {status && status.sent && !status.signing && modusignOn && signingTracked ? (
                   <span className="instructor-contract-note">모두싸인 문서를 못 찾았어요</span>
                 ) : null}
@@ -241,6 +244,7 @@ export function InstructorContractList({
         ) : syncedLabel ? (
           <span className="instructor-contract-synced">{syncedLabel}</span>
         ) : null}
+        {!signingTracked ? <span className="instructor-contract-synced">9/1 이전 과정은 완료로 표시</span> : null}
       </div>
     </div>
   );
