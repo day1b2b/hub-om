@@ -12,7 +12,7 @@ import { normalizeCourseId } from "@/lib/data/operationCalculations";
 import { listModusignDocuments, odataString, readModusignConfig, type ModusignConfig, type ModusignDocument } from "@/lib/modusign/modusignClient";
 import { readInstructorContractRecords, type InstructorContractRecord } from "./instructorContractSheet";
 import { normalizeInstructorName } from "./instructorContractMatch";
-import { matchSigningDocuments, parseSheetTimestamp, type SigningSummary } from "./instructorContractSigning";
+import { matchSigningDocuments, parseSheetTimestamp, type AmbiguousReason, type SigningSummary } from "./instructorContractSigning";
 
 const FILE_CONTEXT = "local:instructor-contract-signing";
 // 모두싸인 조회 기간. 계약은 교육 전에 끝나니 반년이면 진행 중인 건은 다 들어온다.
@@ -30,6 +30,22 @@ export interface ContractProgressSnapshot {
   /** 모두싸인을 읽었는지(키 미설정·오류면 false — 그땐 시트 단계만 있다). */
   modusignSynced: boolean;
   entries: Record<string, ContractProgressEntry>;
+  /** 전체 동기화 때의 매칭 진단(건수만 — 이름·이메일 없음). */
+  diagnostics?: SigningDiagnostics;
+}
+
+export interface SigningDiagnostics {
+  /** 읽은 모두싸인 문서 수. */
+  documentCount: number;
+  /** 발송된(C열) 계약 행 수 = 모두싸인과 맞춰 보는 행. */
+  sentRows: number;
+  /** 그중 코스명(K)이 빈 행 — 많으면 시트 읽기 범위(A:AE)를 의심. */
+  sentMissingCourseName: number;
+  /** 그중 요청 시각(AE)을 못 읽은 행. */
+  sentMissingRequestedAt: number;
+  /** 발송됐는데 모두싸인 문서를 못 찾은 행. */
+  notFound: number;
+  ambiguousByReason: Record<AmbiguousReason, number>;
 }
 
 /** (정규화 코스ID × 정규화 강사명). instructorContractRequests의 statusKey와 같은 규칙. */
@@ -91,6 +107,28 @@ export function buildProgressEntries(
   return entries;
 }
 
+/** 매칭 결과를 이유별 건수로 센다(순수). */
+export function diagnoseSigning(
+  records: InstructorContractRecord[],
+  documents: ModusignDocument[],
+  entries: Record<string, ContractProgressEntry>
+): SigningDiagnostics {
+  const sent = [...latestRecordByKey(records)].filter(([, record]) => record.contractSent);
+  const ambiguousByReason: Record<AmbiguousReason, number> = { "no-requested-at": 0, "same-time-requests": 0, "uneven-split": 0 };
+  for (const entry of Object.values(entries)) {
+    const reason = entry.signing?.phase === "ambiguous" ? entry.signing.ambiguousReason : undefined;
+    if (reason) ambiguousByReason[reason]++;
+  }
+  return {
+    documentCount: documents.length,
+    sentRows: sent.length,
+    sentMissingCourseName: sent.filter(([, record]) => !(record.courseName ?? "").trim()).length,
+    sentMissingRequestedAt: sent.filter(([, record]) => parseSheetTimestamp(record.requestedAt) === null).length,
+    notFound: sent.filter(([key]) => !entries[key]?.signing).length,
+    ambiguousByReason
+  };
+}
+
 function lookbackFilter(now: Date): string {
   const since = new Date(now.getTime() - LOOKBACK_DAYS * 24 * 60 * 60 * 1000).toISOString();
   // 강사 계약서 제목엔 "(B2B)"가 들어간다 — 회사 전체 문서 중 B2B 계약만 읽는다.
@@ -117,6 +155,7 @@ export interface SigningSyncResult {
   completed: number;
   signing: number;
   ambiguous: number;
+  diagnostics?: SigningDiagnostics;
 }
 
 /** 시트 + 모두싸인을 읽어 스냅샷을 새로 쓴다(예약 작업·관리자 실행). 시트를 못 읽으면 던진다. */
@@ -124,7 +163,13 @@ export async function runSigningSync(now: Date = new Date()): Promise<SigningSyn
   const records = await readInstructorContractRecords();
   const documents = await readDocuments(readModusignConfig(), now);
   const entries = buildProgressEntries(records, documents);
-  const snapshot: ContractProgressSnapshot = { syncedAt: now.toISOString(), modusignSynced: documents !== null, entries };
+  const diagnostics = documents ? diagnoseSigning(records, documents, entries) : undefined;
+  const snapshot: ContractProgressSnapshot = {
+    syncedAt: now.toISOString(),
+    modusignSynced: documents !== null,
+    entries,
+    ...(diagnostics ? { diagnostics } : {})
+  };
   writeSigningSnapshot(snapshot);
 
   const summaries = Object.values(entries).flatMap((entry) => (entry.signing ? [entry.signing] : []));
@@ -136,7 +181,8 @@ export async function runSigningSync(now: Date = new Date()): Promise<SigningSyn
     signingMatched: summaries.length,
     completed: summaries.filter((summary) => summary.phase === "completed").length,
     signing: summaries.filter((summary) => summary.phase === "signing").length,
-    ambiguous: summaries.filter((summary) => summary.phase === "ambiguous").length
+    ambiguous: summaries.filter((summary) => summary.phase === "ambiguous").length,
+    ...(diagnostics ? { diagnostics } : {})
   };
 }
 

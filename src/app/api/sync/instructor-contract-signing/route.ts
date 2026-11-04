@@ -21,7 +21,8 @@ async function activityGET(request: Request) {
       syncedAt: snapshot.syncedAt,
       modusignSynced: snapshot.modusignSynced,
       contractCount: Object.keys(snapshot.entries).length,
-      signingMatched: summaries.length
+      signingMatched: summaries.length,
+      diagnostics: snapshot.diagnostics ?? null
     };
   });
 }

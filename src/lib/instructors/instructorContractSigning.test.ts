@@ -2,8 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { ModusignDocument } from "@/lib/modusign/modusignClient";
 import type { InstructorContractRecord } from "./instructorContractSheet";
-import { describeSigning, matchSigningDocuments, parseSheetTimestamp, summarizeSigning } from "./instructorContractSigning";
-import { buildProgressEntries, progressKey } from "./instructorContractSigningSnapshot";
+import { courseNameScore, describeSigning, matchSigningDocuments, parseSheetTimestamp, summarizeSigning } from "./instructorContractSigning";
+import { buildProgressEntries, diagnoseSigning, progressKey } from "./instructorContractSigningSnapshot";
 
 function record(partial: Partial<InstructorContractRecord>): InstructorContractRecord {
   return { courseId: "", instructorName: "", email: "", contractSent: true, contractCompleted: true, ...partial };
@@ -87,6 +87,7 @@ test("matchSigningDocuments: 가를 수 없으면 추측하지 않고 ambiguous"
   const result = matchSigningDocuments(inputs, [doc({ id: "d", instructorEmail: "t@x", signedCount: 2 })]);
   assert.equal(result.get("A")?.phase, "ambiguous");
   assert.equal(result.get("B")?.phase, "ambiguous");
+  assert.equal(result.get("A")?.ambiguousReason, "no-requested-at");
   assert.equal(describeSigning(result.get("A")!), "모두싸인 문서 확인 필요");
 });
 
@@ -118,4 +119,77 @@ test("buildProgressEntries: 발송 안 된 행은 모두싸인과 맞추지 않�
   const sheetOnly = buildProgressEntries(records, null);
   assert.equal(sheetOnly[progressKey("238061", "김강사")]?.signing, undefined);
   assert.equal(sheetOnly[progressKey("238061", "김강사")]?.sent, true);
+});
+
+test("matchSigningDocuments: 같은 과정명 차수는 요청 시각 순서로 문서를 나눈다", () => {
+  const same = { instructorName: "김강사", email: "t@x", courseName: "(B2B) KT_AI 기초" };
+  const inputs = [
+    { key: "1차", record: record({ ...same, courseId: "1", requestedAt: "2026. 9. 1 오전 9:00:00" }) },
+    { key: "2차", record: record({ ...same, courseId: "2", requestedAt: "2026. 10. 1 오전 9:00:00" }) }
+  ];
+  const documents = [
+    doc({ id: "d1", instructorEmail: "t@x", createdAt: "2026-09-02T10:00:00+09:00", signedCount: 4 }),
+    doc({ id: "d2", instructorEmail: "t@x", createdAt: "2026-10-02T10:00:00+09:00", signedCount: 1 })
+  ];
+  const result = matchSigningDocuments(inputs, documents);
+  assert.equal(result.get("1차")?.phase, "completed");
+  assert.equal(result.get("2차")?.currentRole, "부서장");
+});
+
+test("matchSigningDocuments: 하루 안에 연달아 요청된 같은 과정명은 순서로 못 가른다", () => {
+  const same = { instructorName: "김강사", email: "t@x", courseName: "(B2B) KT_AI 기초" };
+  const inputs = [
+    { key: "A", record: record({ ...same, courseId: "1", requestedAt: "2026. 11. 3 오전 9:00:00" }) },
+    { key: "B", record: record({ ...same, courseId: "2", requestedAt: "2026. 11. 3 오전 9:05:00" }) }
+  ];
+  const documents = [
+    doc({ id: "d1", instructorEmail: "t@x", signedCount: 4 }),
+    doc({ id: "d2", instructorEmail: "t@x", signedCount: 1 })
+  ];
+  const result = matchSigningDocuments(inputs, documents);
+  assert.equal(result.get("A")?.ambiguousReason, "same-time-requests");
+  assert.equal(result.get("B")?.ambiguousReason, "same-time-requests");
+});
+
+test("matchSigningDocuments: 시간순 배정이 한쪽으로 쏠리면 추측하지 않는다", () => {
+  const same = { instructorName: "김강사", email: "t@x", courseName: "(B2B) KT_AI 기초" };
+  const inputs = [
+    { key: "A", record: record({ ...same, courseId: "1", requestedAt: "2026. 11. 1 오전 9:00:00" }) },
+    { key: "B", record: record({ ...same, courseId: "2", requestedAt: "2026. 11. 3 오전 9:00:00" }) }
+  ];
+  // 두 요청 뒤에 계약서 두 장을 연달아 만든 경우: 둘 다 "직전 요청" B로 가고 A는 0장.
+  const documents = [
+    doc({ id: "d1", instructorEmail: "t@x", createdAt: "2026-11-04T10:00:00+09:00", signedCount: 4 }),
+    doc({ id: "d2", instructorEmail: "t@x", createdAt: "2026-11-04T11:00:00+09:00", signedCount: 1 })
+  ];
+  const result = matchSigningDocuments(inputs, documents);
+  assert.equal(result.get("A")?.ambiguousReason, "uneven-split");
+  assert.equal(result.get("B")?.ambiguousReason, "uneven-split");
+});
+
+test("courseNameScore: 표기가 조금 달라도 같은 과정은 높고, 같은 고객사 다른 과정은 낮다", () => {
+  const title = "9 - 1_요청자_OM_김강사(소속)_(B2B) 두산_RAG 이해와 실습.docx";
+  assert.equal(courseNameScore("(B2B) 두산_RAG 이해와 실습", title), 1);
+  assert.ok(courseNameScore("(B2B) 두산_RAG 이해 및 실습", title) >= 0.7);
+  assert.ok(courseNameScore("(B2B) 두산_생성형 AI 기초", title) < 0.7);
+});
+
+test("diagnoseSigning: 이유별 건수(이름·이메일 없음)", () => {
+  const records = [
+    record({ courseId: "1", instructorName: "김강사", email: "t@x", courseName: "과정 하나" }),
+    record({ courseId: "2", instructorName: "김강사", email: "t@x", courseName: "과정 둘" }),
+    record({ courseId: "3", instructorName: "이강사", email: "u@x", requestedAt: "2026. 11. 3 오전 9:00:00" })
+  ];
+  const documents = [doc({ id: "d", instructorEmail: "t@x", signedCount: 2 })];
+  const entries = buildProgressEntries(records, documents);
+  const diagnostics = diagnoseSigning(records, documents, entries);
+  assert.deepEqual(diagnostics, {
+    documentCount: 1,
+    sentRows: 3,
+    sentMissingCourseName: 1,
+    sentMissingRequestedAt: 2,
+    notFound: 1,
+    ambiguousByReason: { "no-requested-at": 2, "same-time-requests": 0, "uneven-split": 0 }
+  });
+  assert.ok(!JSON.stringify(diagnostics).includes("t@x"));
 });
