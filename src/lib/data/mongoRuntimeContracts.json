@@ -5684,5 +5684,801 @@
         "nullsDistinct": true
       }
     ]
+  },
+  "EggDevice": {
+    "collection": "egg_devices",
+    "primaryKey": [
+      "id"
+    ],
+    "fields": {
+      "id": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": true,
+        "dateOnly": false
+      },
+      "part": {
+        "type": "EggPart",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false,
+        "values": [
+          "P12",
+          "P3"
+        ]
+      },
+      "number": {
+        "type": "Int",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "label": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "wifiName": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "serialNumber": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "wifiPassword": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "modelCode": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "chargerType": {
+        "type": "EggChargerType",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false,
+        "values": [
+          "USB_C",
+          "FIVE_PIN",
+          "UNKNOWN"
+        ]
+      },
+      "speedMbps": {
+        "type": "Int",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "storageLocation": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "monthlyDataGb": {
+        "type": "Int",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "contractEndsOn": {
+        "type": "DateTime",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": true
+      },
+      "cautionNote": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "dataExhausted": {
+        "type": "Boolean",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "dataExhaustedAt": {
+        "type": "DateTime",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "dataExhaustedBy": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "createdAt": {
+        "type": "DateTime",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "updatedAt": {
+        "type": "DateTime",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "deletedAt": {
+        "type": "DateTime",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "deletedBy": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "wifiPasswordPiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "cautionNotePiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "dataExhaustedByPiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "deletedByPiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      }
+    },
+    "references": [],
+    "uniqueKeys": [
+      {
+        "fields": [
+          "id"
+        ],
+        "nullsDistinct": true
+      },
+      {
+        "fields": [
+          "part",
+          "number"
+        ],
+        "nullsDistinct": true
+      }
+    ]
+  },
+  "EggRental": {
+    "collection": "egg_rentals",
+    "primaryKey": [
+      "id"
+    ],
+    "fields": {
+      "id": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": true,
+        "dateOnly": false
+      },
+      "eggDeviceId": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": true,
+        "dateOnly": false
+      },
+      "borrowerName": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "borrowerEmail": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "courseName": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "startDate": {
+        "type": "DateTime",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": true
+      },
+      "returnDueDate": {
+        "type": "DateTime",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": true
+      },
+      "actualUseNote": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "note": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "returnedAt": {
+        "type": "DateTime",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "returnedBy": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "createdAt": {
+        "type": "DateTime",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "createdBy": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "updatedAt": {
+        "type": "DateTime",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "deletedAt": {
+        "type": "DateTime",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "deletedBy": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "borrowerNamePiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "borrowerEmailPiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "actualUseNotePiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "notePiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "returnedByPiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "createdByPiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "deletedByPiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      }
+    },
+    "references": [
+      {
+        "fields": [
+          "eggDeviceId"
+        ],
+        "targetModel": "EggDevice",
+        "targetFields": [
+          "id"
+        ]
+      }
+    ],
+    "uniqueKeys": [
+      {
+        "fields": [
+          "id"
+        ],
+        "nullsDistinct": true
+      }
+    ]
+  },
+  "EggGuide": {
+    "collection": "egg_guides",
+    "primaryKey": [
+      "id"
+    ],
+    "fields": {
+      "id": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": true,
+        "dateOnly": false
+      },
+      "part": {
+        "type": "EggPart",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false,
+        "values": [
+          "P12",
+          "P3"
+        ]
+      },
+      "content": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "updatedAt": {
+        "type": "DateTime",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "updatedBy": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "contentPiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "updatedByPiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      }
+    },
+    "references": [],
+    "uniqueKeys": [
+      {
+        "fields": [
+          "id"
+        ],
+        "nullsDistinct": true
+      },
+      {
+        "fields": [
+          "part"
+        ],
+        "nullsDistinct": true
+      }
+    ]
+  },
+  "SupplyItem": {
+    "collection": "supply_items",
+    "primaryKey": [
+      "id"
+    ],
+    "fields": {
+      "id": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": true,
+        "dateOnly": false
+      },
+      "category": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "label": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "components": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "storageLocation": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "sortOrder": {
+        "type": "Int",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "note": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "createdAt": {
+        "type": "DateTime",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "updatedAt": {
+        "type": "DateTime",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "deletedAt": {
+        "type": "DateTime",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "deletedBy": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "notePiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "deletedByPiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      }
+    },
+    "references": [],
+    "uniqueKeys": [
+      {
+        "fields": [
+          "id"
+        ],
+        "nullsDistinct": true
+      }
+    ]
+  },
+  "SupplyRental": {
+    "collection": "supply_rentals",
+    "primaryKey": [
+      "id"
+    ],
+    "fields": {
+      "id": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": true,
+        "dateOnly": false
+      },
+      "category": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "borrowerName": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "borrowerEmail": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "courseName": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "startDate": {
+        "type": "DateTime",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": true
+      },
+      "returnDueDate": {
+        "type": "DateTime",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": true
+      },
+      "note": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "returnedAt": {
+        "type": "DateTime",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "returnedBy": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "createdAt": {
+        "type": "DateTime",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "createdBy": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "updatedAt": {
+        "type": "DateTime",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "deletedAt": {
+        "type": "DateTime",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "deletedBy": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "borrowerNamePiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "borrowerEmailPiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "notePiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "returnedByPiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "createdByPiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "deletedByPiiIndex": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      }
+    },
+    "references": [],
+    "uniqueKeys": [
+      {
+        "fields": [
+          "id"
+        ],
+        "nullsDistinct": true
+      }
+    ]
+  },
+  "SupplyRentalItem": {
+    "collection": "supply_rental_items",
+    "primaryKey": [
+      "rentalId",
+      "itemId"
+    ],
+    "fields": {
+      "rentalId": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": true,
+        "dateOnly": false
+      },
+      "itemId": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": true,
+        "dateOnly": false
+      }
+    },
+    "references": [
+      {
+        "fields": [
+          "rentalId"
+        ],
+        "targetModel": "SupplyRental",
+        "targetFields": [
+          "id"
+        ]
+      },
+      {
+        "fields": [
+          "itemId"
+        ],
+        "targetModel": "SupplyItem",
+        "targetFields": [
+          "id"
+        ]
+      }
+    ],
+    "uniqueKeys": [
+      {
+        "fields": [
+          "rentalId",
+          "itemId"
+        ],
+        "nullsDistinct": true
+      }
+    ]
   }
 }
