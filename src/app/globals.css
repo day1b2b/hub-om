@@ -5522,6 +5522,8 @@ button.instructor-contract-open {
 
 .instructor-contract-foot {
   display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
   justify-content: flex-end;
   min-height: 16px;
   padding: 0 14px 10px;
