@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { ModusignDocument } from "@/lib/modusign/modusignClient";
 import type { InstructorContractRecord } from "./instructorContractSheet";
-import { courseNameScore, describeSigning, matchSigningDocuments, parseSheetTimestamp, summarizeSigning } from "./instructorContractSigning";
+import { courseNameScore, describeSigning, isSigningTracked, matchSigningDocuments, parseSheetTimestamp, summarizeSigning } from "./instructorContractSigning";
 import { buildProgressEntries, diagnoseSigning, progressKey } from "./instructorContractSigningSnapshot";
 
 function record(partial: Partial<InstructorContractRecord>): InstructorContractRecord {
@@ -192,4 +192,11 @@ test("diagnoseSigning: 이유별 건수(이름·이메일 없음)", () => {
     ambiguousByReason: { "no-requested-at": 2, "same-time-requests": 0, "uneven-split": 0 }
   });
   assert.ok(!JSON.stringify(diagnostics).includes("t@x"));
+});
+
+test("isSigningTracked: 교육 시작일 2026-09-01부터", () => {
+  assert.equal(isSigningTracked("2026-09-01"), true);
+  assert.equal(isSigningTracked("2027-06-04"), true);
+  assert.equal(isSigningTracked("2026-08-31"), false);
+  assert.equal(isSigningTracked(undefined), false);
 });

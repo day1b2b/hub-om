@@ -4,6 +4,7 @@
 // 단계(요청됨·발송됨·서명 진행)를 바로 보여준다. 이메일 보강·즉시 새로고침은 InstructorContractList 버튼이 한다.
 // 계약요청은 강사 배정 직후에 하는 일이라, 배정 단계에선 "지금 할 일"로 강조하고 교육이 끝나면 접어 둔다.
 import { buildInstructorContractRequests } from "@/lib/instructors/instructorContractRequests";
+import { isSigningTracked } from "@/lib/instructors/instructorContractSigning";
 import { ensureSigningSnapshot, progressKey, readCourseProgress } from "@/lib/instructors/instructorContractSigningSnapshot";
 import type { OperationSession } from "@/lib/data/operationTypes";
 import type { CourseStage } from "./courseStage";
@@ -36,6 +37,7 @@ export function InstructorContractRequestSection({ courseOperations, stage }: In
         )
       }
     : null;
+  const courseStartDate = courseOperations.map((operation) => operation.startDate).filter(Boolean).sort()[0];
   const focused = stage === "contract" && requests.length > 0;
 
   const title = (
@@ -59,7 +61,7 @@ export function InstructorContractRequestSection({ courseOperations, stage }: In
         <p className="instructor-contract-hint">
           강사·코스·일정·담당자가 채워진 계약폼이 열립니다. 이메일·강사료·계약유형은 폼에서 확인·입력하세요.
         </p>
-        <InstructorContractList initialProgress={initialProgress} items={requests} />
+        <InstructorContractList initialProgress={initialProgress} items={requests} signingTracked={isSigningTracked(courseStartDate)} />
       </>
     );
 
