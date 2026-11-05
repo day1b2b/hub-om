@@ -99,8 +99,13 @@ async function reflectOperationUnlocked(operation: OperationSession, trigger: Re
         );
 
         const patchBody = { ...plan.body, location: plan.body.location ?? "" };
-        // 이메일을 해석하지 못한 상태는 담당자 해제로 간주하지 않는다.
-        if (targets.unresolvedNames.length === 0) patchBody.attendees = plan.body.attendees ?? [];
+        // 참석자가 '실제로 바뀐' patch에서만 attendees를 보낸다(notifyAttendees = 이메일 해석됨 +
+        // 참석자 변경). 안 바뀌었는데 매번 attendees 배열을 다시 보내면 — 그 배열엔 응답 정보가
+        // 없으므로 — 각 참석자의 수락/거절(responseStatus)이 needsAction으로 리셋된다(저장할 때마다
+        // 수락이 조용히 풀림, 2026-11-05 제보). 안 바뀌었거나 이메일 미해석이면 attendees를 빼서
+        // 기존 응답을 보존한다. (참석자가 실제로 바뀐 경우엔 아직 기존 응답까지 리셋됨 — responseStatus
+        // 보존 머지는 후속 과제. 흔한 경로인 '변경 없는 저장'의 리셋을 먼저 막는다.)
+        if (notifyAttendees) patchBody.attendees = plan.body.attendees ?? [];
         else delete patchBody.attendees;
         const result = await patchEvent(calendarId, link.eventId, patchBody, { notifyAttendees });
         sameCalendar.delete(plan.eventDate);
