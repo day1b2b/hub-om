@@ -45,7 +45,8 @@ export function InstructorRecommendPanel({
         </label>
         <label>
           <span>교육일</span>
-          <input defaultValue={date} name="date" type="date" />
+          {/* max가 없으면 브라우저가 연도를 6자리까지 받는다. 연도 4자리로 막는다. */}
+          <input defaultValue={date} max="9999-12-31" min="2000-01-01" name="date" type="date" />
         </label>
         <button type="submit">추천받기</button>
       </form>

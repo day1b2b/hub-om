@@ -241,17 +241,22 @@ export async function InstructorWikiDetail({
           }
           side={
             <>
-              <PeopleCard note="운영 현황 자동" title="가용성">
+              {/* 오늘 이후(진행 중 포함) 회차만. 한 줄 = 날짜 + 기업 + 운영 상세 링크(과정명은 링크 안에서 본다). */}
+              <PeopleCard note="운영 현황 자동" title="섭외 현황">
                 {bookedCourses.length > 0 ? (
                   <ul className="people-plain-list">
                     {bookedCourses.slice(0, 5).map((course, index) => (
                       <li key={`${course.operationId}-${index}`}>
-                        <strong>{formatPeopleDate(course.startDate, today)}</strong> {course.companyName} · {cleanCourseName(course.courseName)}
+                        <strong>{course.startDate >= today ? formatPeopleDate(course.startDate, today) : "진행 중"}</strong>{" "}
+                        <a className="course-link" href={`/operations/${course.operationId}`} rel="noreferrer" target="_blank">
+                          {course.companyName} ↗
+                        </a>
                       </li>
                     ))}
+                    {bookedCourses.length > 5 ? <li className="td-muted">외 {bookedCourses.length - 5}건</li> : null}
                   </ul>
                 ) : (
-                  <p className="td-muted">진행·예정 과정이 없어요.</p>
+                  <p className="td-muted">예정된 일정이 없어요.</p>
                 )}
               </PeopleCard>
 
