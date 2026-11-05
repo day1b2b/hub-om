@@ -213,23 +213,14 @@ export function InstructorContractList({
                 ) : null}
               </div>
               <ContractFormOpenButton
-                href={buildContractPrefillUrl({
-                  courseId: item.courseId,
-                  courseName: item.courseName,
-                  email,
-                  instructorName: item.instructorName,
-                  manager: item.manager,
-                  schedule: item.schedule,
-                  department: item.department
-                })}
+                knownEmail={email ?? ""}
                 values={{
                   courseId: item.courseId,
                   courseName: item.courseName,
                   instructorName: item.instructorName,
-                  schedule: item.schedule,
+                  schedule: item.formSchedule || item.schedule,
                   manager: item.manager,
-                  department: item.department ?? "",
-                  email: email ?? ""
+                  department: item.department ?? ""
                 }}
               />
             </li>
@@ -276,12 +267,42 @@ const CONTRACT_REQUEST_FIELD_GROUPS: { label: string; detail?: string; rows: [st
 
 // 계약폼은 자동 기입된 채로 열린다. 계약서인 만큼, 넘어가기 전에 무엇이 채워지는지 알려 주고 최종 확인을 받는다.
 // 기업위키 "계산서 발행 요청" 확인 창(InvoiceRequestLink)과 같은 결. 항목마다 실제로 들어갈 값을 같이 보여 준다.
-function ContractFormOpenButton({ href, values }: { href: string; values: ContractFormValues }) {
+// 이메일: 새로고침(시트) 등으로 이미 알고 있으면(knownEmail) 그대로 쓰고, 없으면 창을 열 때 그 강사 1명만
+// 노션 강사 정보에서 읽는다(감사 기록 context=contract_request). 한 번 읽은 결과는 다시 읽지 않는다.
+// 읽는 중엔 "불러오는 중…", 못 찾거나 실패하면 "비어 있음 · 폼에서 입력" — 어느 경우든 폼 열기는 막지 않는다.
+function ContractFormOpenButton({ knownEmail, values }: { knownEmail: string; values: Omit<ContractFormValues, "email"> }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [lookup, setLookup] = useState<{ state: "idle" | "loading" | "done"; email: string }>({ email: "", state: "idle" });
+  const email = knownEmail || lookup.email;
+  const emailLoading = !knownEmail && lookup.state === "loading";
+  const href = buildContractPrefillUrl({ ...values, email });
+  const shown: ContractFormValues = { ...values, email };
+
+  async function open() {
+    setIsOpen(true);
+    if (knownEmail || lookup.state !== "idle") return;
+    setLookup({ email: "", state: "loading" });
+    let found = "";
+    try {
+      const response = await fetch("/api/operations/instructor-contract-email", {
+        body: JSON.stringify({ instructorName: values.instructorName }),
+        cache: "no-store",
+        headers: { "content-type": "application/json" },
+        method: "POST"
+      });
+      if (response.ok && !response.redirected) {
+        const payload = (await response.json().catch(() => ({}))) as { email?: unknown };
+        if (typeof payload.email === "string") found = payload.email.trim();
+      }
+    } catch {
+      // 실패해도 폼은 열 수 있다(이메일은 폼에서 입력).
+    }
+    setLookup({ email: found, state: "done" });
+  }
 
   return (
     <>
-      <button className="instructor-contract-open" onClick={() => setIsOpen(true)} type="button">
+      <button className="instructor-contract-open" onClick={open} type="button">
         계약폼 열기 ↗
       </button>
 
@@ -324,9 +345,13 @@ function ContractFormOpenButton({ href, values }: { href: string; values: Contra
                         ) : null}
                         <td>{source}</td>
                         <td>{target}</td>
-                        <td className={values[valueKey].trim() ? "contract-request-confirm-value" : "contract-request-confirm-value is-empty"}>
-                          {values[valueKey].trim() || "비어 있음 · 폼에서 입력"}
-                        </td>
+                        {valueKey === "email" && emailLoading ? (
+                          <td className="contract-request-confirm-value">불러오는 중…</td>
+                        ) : (
+                          <td className={shown[valueKey].trim() ? "contract-request-confirm-value" : "contract-request-confirm-value is-empty"}>
+                            {shown[valueKey].trim() || "비어 있음 · 폼에서 입력"}
+                          </td>
+                        )}
                       </tr>
                     ))
                   )}
