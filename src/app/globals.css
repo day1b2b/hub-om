@@ -16854,6 +16854,7 @@ details.detail-section > summary::-webkit-details-marker {
 /* 강사 계약요청 확인 창: 실제로 기입될 값 */
 .contract-request-confirm-table td.contract-request-confirm-value {
   font-weight: 700;
+  white-space: pre-line;
   word-break: break-all;
 }
 

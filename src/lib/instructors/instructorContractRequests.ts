@@ -15,8 +15,10 @@ export interface ContractRequestItem {
   instructorName: string;
   courseId: string;
   courseName: string;
-  /** 프리필에 넣을 일정 문자열(회차 교육일 + 시간대). */
+  /** 목록에 보이는 일정 문자열(회차 교육일 + 시간대). */
   schedule: string;
+  /** 계약폼 "일정"에 넣을 값 — 하루 한 줄, 요일 포함(formatContractFormSchedule). */
+  formSchedule: string;
   /** 담당 OM. */
   manager: string;
   /** 계약 응답시트에 이미 (코스ID×강사)가 있으면 true = "요청됨". */
@@ -96,6 +98,35 @@ export function formatSchedule(dates: string[], timeText: string): string {
   return [days, time].filter(Boolean).join(" · ");
 }
 
+const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"] as const;
+
+/** "2026-11-04" → "2026. 11. 4 (수)". 요일은 날짜 문자열만으로 계산한다(UTC 고정 — 서버·브라우저 시간대 영향 없음). */
+export function formatContractFormDate(date: string): string {
+  const match = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(date.trim());
+  if (!match) return date.trim();
+  const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])];
+  const weekday = WEEKDAYS[new Date(Date.UTC(year, month - 1, day)).getUTCDay()];
+  return `${year}. ${month}. ${day} (${weekday})`;
+}
+
+/**
+ * 계약폼 "일정" 칸 값(폼 예시 형식): 하루 한 줄 "2026. 11. 4 (수) 09:00 ~ 18:00".
+ * 시간은 그 날짜가 든 회차의 시간(회차마다 다르면 줄마다 다름), 없으면 날짜·요일만.
+ * 휴게시간·총 시간("점심 휴게1시간, 8시간")은 hub에 없어 넣지 않는다(OM이 폼에서 덧붙임).
+ */
+export function formatContractFormSchedule(days: { date: string; timeText?: string }[]): string {
+  const timeByDate = new Map<string, string>();
+  for (const { date, timeText } of days) {
+    const key = (date ?? "").trim();
+    if (!key || timeByDate.has(key)) continue;
+    timeByDate.set(key, (timeText ?? "").trim().replace(/\s*~\s*/g, " ~ "));
+  }
+  return [...timeByDate.keys()]
+    .sort()
+    .map((date) => [formatContractFormDate(date), timeByDate.get(date)].filter(Boolean).join(" "))
+    .join("\n");
+}
+
 type CourseOperation = Pick<
   OperationSession,
   "instructors" | "courseId" | "courseName" | "om" | "educationDates" | "startDate" | "endDate" | "timeText"
@@ -130,21 +161,20 @@ export function buildInstructorContractRequests(
     const primary = sessions[0];
     const courseId = (primary.courseId ?? "").trim();
     const normName = normalizeInstructorName(name);
-    // 이 강사가 든 회차들의 교육일 합치기(없으면 시작~종료일로 대체).
-    const dates = Array.from(
-      new Set(
-        sessions.flatMap((session) =>
-          session.educationDates && session.educationDates.length > 0
-            ? session.educationDates
-            : [session.startDate, session.endDate].filter(Boolean)
-        )
-      )
-    ).sort();
+    // 이 강사가 든 회차들의 교육일 합치기(없으면 시작~종료일로 대체). 폼 일정은 날짜마다 그 회차 시간을 붙인다.
+    const sessionDays = sessions.flatMap((session) =>
+      (session.educationDates && session.educationDates.length > 0
+        ? session.educationDates
+        : [session.startDate, session.endDate].filter(Boolean)
+      ).map((date) => ({ date, timeText: session.timeText }))
+    );
+    const dates = Array.from(new Set(sessionDays.map((day) => day.date))).sort();
     items.push({
       instructorName: name,
       courseId,
       courseName: primary.courseName,
       schedule: formatSchedule(dates, primary.timeText),
+      formSchedule: formatContractFormSchedule(sessionDays),
       manager: primary.om,
       requested: index.requestedKeys.has(statusKey(courseId, normName)),
       email: resolveEmail(index, courseId, normName)
