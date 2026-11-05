@@ -12,6 +12,7 @@ import { useState } from "react";
 import { buildContractPrefillUrl } from "@/lib/instructors/instructorContractPrefill";
 import type { ContractRequestItem } from "@/lib/instructors/instructorContractRequests";
 import { describeSigning, type SigningSummary } from "@/lib/instructors/instructorContractSigning";
+import type { ContractFeeHint } from "@/lib/instructors/instructorContractEmail";
 
 interface StatusEntry {
   requested: boolean;
@@ -267,39 +268,58 @@ const CONTRACT_REQUEST_FIELD_GROUPS: { label: string; detail?: string; rows: [st
   }
 ];
 
+/** "강사료 참고: 직전 계약 250,000원 (2026.10) · 노션 기본 220,000원". 둘 다 없으면 "". */
+function describeFeeHint(hint: ContractFeeHint): string {
+  const won = (amount: number) => `${amount.toLocaleString("ko-KR")}원`;
+  const parts = [
+    hint.lastContract ? `직전 계약 ${won(hint.lastContract.amount)} (${hint.lastContract.month})` : "",
+    typeof hint.notionBase === "number" ? `노션 기본 ${won(hint.notionBase)}` : ""
+  ].filter(Boolean);
+  return parts.length > 0 ? `강사료 참고: ${parts.join(" · ")}` : "";
+}
+
 // 계약폼은 자동 기입된 채로 열린다. 계약서인 만큼, 넘어가기 전에 무엇이 채워지는지 알려 주고 최종 확인을 받는다.
 // 기업위키 "계산서 발행 요청" 확인 창(InvoiceRequestLink)과 같은 결. 항목마다 실제로 들어갈 값을 같이 보여 준다.
 // 이메일: 새로고침(시트) 등으로 이미 알고 있으면(knownEmail) 그대로 쓰고, 없으면 창을 열 때 그 강사 1명만
 // 노션 강사 정보에서 읽는다(감사 기록 context=contract_request). 한 번 읽은 결과는 다시 읽지 않는다.
 // 읽는 중엔 "불러오는 중…", 못 찾거나 실패하면 "비어 있음 · 폼에서 입력" — 어느 경우든 폼 열기는 막지 않는다.
+// 강사료는 과정마다 협의라 폼에 넣지 않고, 같은 요청에서 받은 참고값(직전 계약·노션 기본)만 창에 한 줄로 보여 준다.
 function ContractFormOpenButton({ knownEmail, values }: { knownEmail: string; values: Omit<ContractFormValues, "email"> }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [lookup, setLookup] = useState<{ state: "idle" | "loading" | "done"; email: string }>({ email: "", state: "idle" });
+  const [lookup, setLookup] = useState<{ state: "idle" | "loading" | "done"; email: string; feeHint: ContractFeeHint }>({
+    email: "",
+    feeHint: {},
+    state: "idle"
+  });
   const email = knownEmail || lookup.email;
   const emailLoading = !knownEmail && lookup.state === "loading";
   const href = buildContractPrefillUrl({ ...values, email });
   const shown: ContractFormValues = { ...values, email };
+  const feeHintText = describeFeeHint(lookup.feeHint);
 
   async function open() {
     setIsOpen(true);
-    if (knownEmail || lookup.state !== "idle") return;
-    setLookup({ email: "", state: "loading" });
+    if (lookup.state !== "idle") return;
+    setLookup({ email: "", feeHint: {}, state: "loading" });
     let found = "";
+    let feeHint: ContractFeeHint = {};
     try {
       const response = await fetch("/api/operations/instructor-contract-email", {
-        body: JSON.stringify({ instructorName: values.instructorName }),
+        // 이메일을 이미 알면 열람하지 않는다(감사 기록 없음) — 강사료 참고값만 받는다.
+        body: JSON.stringify({ instructorName: values.instructorName, skipEmail: Boolean(knownEmail) }),
         cache: "no-store",
         headers: { "content-type": "application/json" },
         method: "POST"
       });
       if (response.ok && !response.redirected) {
-        const payload = (await response.json().catch(() => ({}))) as { email?: unknown };
+        const payload = (await response.json().catch(() => ({}))) as { email?: unknown; feeHint?: ContractFeeHint };
         if (typeof payload.email === "string") found = payload.email.trim();
+        if (payload.feeHint && typeof payload.feeHint === "object") feeHint = payload.feeHint;
       }
     } catch {
-      // 실패해도 폼은 열 수 있다(이메일은 폼에서 입력).
+      // 실패해도 폼은 열 수 있다(이메일·강사료는 폼에서 입력).
     }
-    setLookup({ email: found, state: "done" });
+    setLookup({ email: found, feeHint, state: "done" });
   }
 
   return (
@@ -360,6 +380,11 @@ function ContractFormOpenButton({ knownEmail, values }: { knownEmail: string; va
                 </tbody>
               </table>
               <p className="contract-request-confirm-note">강사료·계약유형 등 나머지 항목은 폼에서 직접 확인·입력하세요.</p>
+              {lookup.state === "loading" ? (
+                <p className="contract-request-confirm-note">강사료 참고 불러오는 중…</p>
+              ) : feeHintText ? (
+                <p className="contract-request-confirm-note">{feeHintText}</p>
+              ) : null}
               <p className="contract-request-confirm-note">폼에서 &apos;현재 초안을 계속 사용하시겠습니까?&apos; 창이 뜨면 [계속]을 눌러 주세요.</p>
             </div>
 
