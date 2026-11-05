@@ -2,6 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   buildInstructorContractRequests,
+  formatContractFormDate,
+  formatContractFormSchedule,
   formatSchedule,
   resolveInstructorContractStatus
 } from "./instructorContractRequests";
@@ -37,6 +39,45 @@ test("formatSchedule: 교육일 + 시간대", () => {
   assert.equal(formatSchedule(["2026-08-25", "2026-08-26"], "09:00~17:00"), "2026.08.25, 2026.08.26 · 09:00~17:00");
   assert.equal(formatSchedule([], ""), "");
   assert.equal(formatSchedule(["2026-08-25"], ""), "2026.08.25");
+});
+
+test("formatContractFormDate: 요일은 날짜 문자열로 계산(시간대 무관)", () => {
+  assert.equal(formatContractFormDate("2026-11-04"), "2026. 11. 4 (수)");
+  assert.equal(formatContractFormDate("2026-11-05"), "2026. 11. 5 (목)");
+  assert.equal(formatContractFormDate("2026-03-01"), "2026. 3. 1 (일)");
+  assert.equal(formatContractFormDate("2028-02-29"), "2028. 2. 29 (화)");
+  assert.equal(formatContractFormDate("미정"), "미정");
+});
+
+test("formatContractFormSchedule: 하루 한 줄·회차별 시간·시간 없으면 날짜만", () => {
+  assert.equal(
+    formatContractFormSchedule([
+      { date: "2026-11-05", timeText: "09:00~18:00" },
+      { date: "2026-11-04", timeText: "09:00 ~ 18:00" }
+    ]),
+    "2026. 11. 4 (수) 09:00 ~ 18:00\n2026. 11. 5 (목) 09:00 ~ 18:00"
+  );
+  assert.equal(
+    formatContractFormSchedule([
+      { date: "2026-11-04", timeText: "09:00~18:00" },
+      { date: "2026-11-11", timeText: "13:00~17:00" },
+      { date: "2026-11-18", timeText: "" }
+    ]),
+    "2026. 11. 4 (수) 09:00 ~ 18:00\n2026. 11. 11 (수) 13:00 ~ 17:00\n2026. 11. 18 (수)"
+  );
+  assert.equal(formatContractFormSchedule([]), "");
+});
+
+test("buildInstructorContractRequests: formSchedule은 날짜마다 그 회차 시간", () => {
+  const [item] = buildInstructorContractRequests(
+    [
+      op({ instructors: "가상강사", courseId: "1", educationDates: ["2026-11-04"], timeText: "09:00~18:00" }),
+      op({ instructors: "가상강사", courseId: "1", educationDates: ["2026-11-05"], timeText: "13:00~17:00" })
+    ],
+    []
+  );
+  assert.equal(item.formSchedule, "2026. 11. 4 (수) 09:00 ~ 18:00\n2026. 11. 5 (목) 13:00 ~ 17:00");
+  assert.equal(item.schedule, "2026.11.04, 2026.11.05 · 09:00~18:00");
 });
 
 test("회차별 강사를 각각 대상으로 만든다", () => {

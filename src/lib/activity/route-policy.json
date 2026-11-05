@@ -108,6 +108,7 @@
   "POST /api/operations/[operationId]/source-reads/refresh": "tracked",
   "POST /api/operations": "tracked",
   "POST /api/operations/instructor-contract-status": "tracked",
+  "POST /api/operations/instructor-contract-email": "tracked",
   "GET /api/reminders/lecture-followup": "tracked",
   "POST /api/reminders/lecture-followup": "tracked",
   "GET /api/sales/lookup": "tracked",
