@@ -9,6 +9,7 @@ import { getInstructorPrivateRepository } from "./instructorPrivateRepositoryFac
 import { getDataRepositoryOverride } from "./dataRepositoryContext";
 import { getPrismaClient } from "./prisma";
 import { LINK_MAIL_CONTEXT } from "../coaches/coachLinkMail";
+import { CONTRACT_REQUEST_CONTEXT } from "../instructors/instructorContractEmail";
 
 export type PiiEntity = "coach" | "instructor";
 
@@ -63,6 +64,20 @@ export async function revealPiiField(
   const profile = await getInstructorPrivateRepository().getPrivateProfile(id);
   if (!profile) return null;
   const value = profile[field as keyof InstructorPrivateProfileView];
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+/**
+ * 강사 계약요청 확인 창용 이메일 열람. 일반 열람과 같은 감사 테이블에 context "contract_request"로 남긴다
+ * (누가 언제 어느 강사의 계약요청 창을 열며 이메일을 읽었는지 — 스키마 변경 없음).
+ */
+export async function revealInstructorEmailForContractRequest(
+  instructorNoteId: string,
+  accessedByEmail: string
+): Promise<string | null> {
+  await recordReveal("instructor", instructorNoteId, CONTRACT_REQUEST_CONTEXT, accessedByEmail);
+  const profile = await getInstructorPrivateRepository().getPrivateProfile(instructorNoteId);
+  const value = profile?.email;
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
