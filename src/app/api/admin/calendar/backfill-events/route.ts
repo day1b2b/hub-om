@@ -1,3 +1,4 @@
+import { runOperationWriteRequest } from "@/lib/data/operationWriteComposition";
 import { calendarErrorMessage } from "@/lib/googleCalendar/calendarErrors";
 import { readLimitedJson, RequestBodyTooLargeError } from "@/lib/http/readLimitedJson";
 import { previewBackfilledCalendarCleanup, applyBackfilledCalendarCleanup } from "@/lib/googleCalendar/cleanupBackfilledCalendarEvents";
@@ -81,9 +82,10 @@ async function requireBackfillAccess(request: Request): Promise<string> {
   return session.user?.email ?? "admin-session";
 }
 
-export const GET = withActivity("/api/admin/calendar/backfill-events", "GET", activityGET);
+// Mongo 런타임 스코프 래퍼(역반영 라우트와 동일). 없으면 죽은 PostgreSQL 경로로 떨어져 500.
+export const GET = withActivity("/api/admin/calendar/backfill-events", "GET", activityGET, runOperationWriteRequest);
 
-export const POST = withActivity("/api/admin/calendar/backfill-events", "POST", activityPOST);
+export const POST = withActivity("/api/admin/calendar/backfill-events", "POST", activityPOST, runOperationWriteRequest);
 
 async function activityDELETE(request: Request) {
   try { await requireBackfillAccess(request); }
@@ -98,4 +100,4 @@ async function activityDELETE(request: Request) {
     return Response.json({ ok: false, error: calendarErrorMessage(error) }, { status: error instanceof RequestBodyTooLargeError ? 413 : 400 });
   }
 }
-export const DELETE = withActivity("/api/admin/calendar/backfill-events", "DELETE", activityDELETE);
+export const DELETE = withActivity("/api/admin/calendar/backfill-events", "DELETE", activityDELETE, runOperationWriteRequest);
