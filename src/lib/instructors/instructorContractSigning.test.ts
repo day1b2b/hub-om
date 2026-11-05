@@ -3,7 +3,19 @@ import assert from "node:assert/strict";
 import type { ModusignDocument } from "@/lib/modusign/modusignClient";
 import type { InstructorContractRecord } from "./instructorContractSheet";
 import { courseNameScore, describeSigning, isSigningTracked, matchSigningDocuments, parseSheetTimestamp, summarizeSigning } from "./instructorContractSigning";
-import { buildProgressEntries, diagnoseSigning, progressKey } from "./instructorContractSigningSnapshot";
+import { buildProgressEntries, diagnoseSigning, filterDocumentsByInstructorNames, progressKey } from "./instructorContractSigningSnapshot";
+
+test("filterDocumentsByInstructorNames: 제목에 강사 이름(소속 접두사 뗀)이 든 문서만", () => {
+  const docs = [
+    { title: "1-2_담당_가상강사(소속)_(B2B) 고객_과정.docx" },
+    { title: "3-4_담당_다른강사_(B2B) 고객_과정.docx" }
+  ] as ModusignDocument[];
+  assert.deepEqual(
+    filterDocumentsByInstructorNames(docs, ["가상회사_가상강사"]).map((doc) => doc.title),
+    ["1-2_담당_가상강사(소속)_(B2B) 고객_과정.docx"]
+  );
+  assert.deepEqual(filterDocumentsByInstructorNames(docs, ["없는사람"]), []);
+});
 
 function record(partial: Partial<InstructorContractRecord>): InstructorContractRecord {
   return { courseId: "", instructorName: "", email: "", contractSent: true, contractCompleted: true, ...partial };
