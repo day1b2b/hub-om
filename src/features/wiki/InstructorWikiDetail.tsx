@@ -8,11 +8,10 @@ import {
   PeopleDetailBody,
   PeopleDetailHeader,
   PeopleFacts,
-  PeoplePinned,
-  PeopleStatusPill
+  PeoplePinned
 } from "@/features/people/PeopleProfile";
-import { coachActivityPolicy, seoulTodayKey } from "@/lib/coaches/coachActivity";
-import { averageOf, formatPeopleDate, parseSatisfaction, peopleStatusFromFacts } from "@/lib/people/peopleStatus";
+import { seoulTodayKey } from "@/lib/coaches/coachActivity";
+import { averageOf, formatPeopleDate, parseSatisfaction } from "@/lib/people/peopleStatus";
 import {
   cleanCourseName,
   formatDateLabel,
@@ -22,8 +21,6 @@ import {
   type InstructorWikiEntry
 } from "./instructorWikiModel";
 import { InstructorEditor } from "./InstructorEditor";
-import { ProfileAttachments } from "./ProfileAttachments";
-import { NameEditor } from "./NameEditor";
 import { NotionLinkEditor } from "./NotionLinkEditor";
 import {
   getInstructorNote,
@@ -81,12 +78,6 @@ export async function InstructorWikiDetail({
 
   // 상태·지표는 운영 현황(courses)에서 바로 계산한다(별도 백엔드 불필요).
   const today = seoulTodayKey();
-  // 진행·예정은 날짜로만 판단한다. 운영현황 진행상태는 지난 회차가 "배정필요"로 남아 있는 경우가 많아 믿을 수 없다.
-  const status = peopleStatusFromFacts(
-    entry.courses.map((course) => ({ startDate: course.startDate, endDate: course.endDate })),
-    today,
-    coachActivityPolicy.dormantMonths
-  );
   const courseScores = entry.courses
     .map((course) => parseSatisfaction(course.avgSatisfaction))
     .filter((score): score is number => score !== null);
@@ -108,23 +99,12 @@ export async function InstructorWikiDetail({
       <AppSidebar label="Instructor Wiki" teamScope="both" />
 
       <section className="content people-detail">
+        {/* 진행·예정 같은 상태 배지는 투입·다음 예정 지표와 겹쳐 뺐다. 노션 원본 링크는 아래 "자료"로 옮겼다. */}
         <PeopleDetailHeader
-          actions={
-            notionUrl ? (
-              <a className="notion-chip" href={notionUrl} target="_blank" rel="noreferrer">🔗 노션 원본 ↗</a>
-            ) : (
-              <span className="notion-chip is-off">노션 미연결</span>
-            )
-          }
           avatarName={entry.name}
           backHref="/instructor-wiki"
           backLabel="강사 위키"
-          badges={
-            <>
-              <PeopleStatusPill status={status} />
-              {np?.recruitAvoid ? <PeopleFlagPill flag={{ label: "⛔ 섭외지양", tone: "bad" }} /> : null}
-            </>
-          }
+          badges={np?.recruitAvoid ? <PeopleFlagPill flag={{ label: "⛔ 섭외지양", tone: "bad" }} /> : null}
           fields={fields}
           kpis={[
             { label: "투입", value: `${entry.courseCount}건` },
@@ -139,7 +119,7 @@ export async function InstructorWikiDetail({
             },
             { label: "다음 예정", value: nextCourse ? formatPeopleDate(nextCourse.startDate, today) : "-" }
           ]}
-          title={<NameEditor name={entry.name} initialName={displayName} />}
+          title={displayName}
         />
 
         <PeoplePinned
@@ -166,7 +146,12 @@ export async function InstructorWikiDetail({
                           {np?.demoCheckUrl ? (
                             <a className="notion-chip" href={np.demoCheckUrl} target="_blank" rel="noreferrer">시범강의 점검표 ↗</a>
                           ) : null}
-                          <ProfileAttachments />
+                          {/* 이력서 등 파일은 hub에 올리지 않는다(개인정보 파일 보관 규칙 없음). 원본은 노션 강사 페이지에서 본다. */}
+                          {notionUrl ? (
+                            <a className="notion-chip" href={notionUrl} target="_blank" rel="noreferrer">노션 강사 페이지 ↗</a>
+                          ) : (
+                            <span className="notion-chip is-off">노션 미연결</span>
+                          )}
                         </>
                       )
                     }
@@ -241,17 +226,22 @@ export async function InstructorWikiDetail({
           }
           side={
             <>
-              <PeopleCard note="운영 현황 자동" title="가용성">
+              {/* 오늘 이후(진행 중 포함) 회차만. 한 줄 = 날짜 + 기업 + 운영 상세 링크(과정명은 링크 안에서 본다). */}
+              <PeopleCard note="운영 현황 자동" title="섭외 현황">
                 {bookedCourses.length > 0 ? (
                   <ul className="people-plain-list">
                     {bookedCourses.slice(0, 5).map((course, index) => (
                       <li key={`${course.operationId}-${index}`}>
-                        <strong>{formatPeopleDate(course.startDate, today)}</strong> {course.companyName} · {cleanCourseName(course.courseName)}
+                        <strong>{course.startDate >= today ? formatPeopleDate(course.startDate, today) : "진행 중"}</strong>{" "}
+                        <a className="course-link" href={`/operations/${course.operationId}`} rel="noreferrer" target="_blank">
+                          {course.companyName} ↗
+                        </a>
                       </li>
                     ))}
+                    {bookedCourses.length > 5 ? <li className="td-muted">외 {bookedCourses.length - 5}건</li> : null}
                   </ul>
                 ) : (
-                  <p className="td-muted">진행·예정 과정이 없어요.</p>
+                  <p className="td-muted">예정된 일정이 없어요.</p>
                 )}
               </PeopleCard>
 
