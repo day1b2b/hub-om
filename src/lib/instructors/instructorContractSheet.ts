@@ -12,7 +12,8 @@ const DEFAULT_RANGE = "'(강사 설문지 : 히스토리 체크용)'!A:AE";
 
 // 열 인덱스(0-base). 시트 헤더 기준: C=계약 발송(모두싸인) · F=최종완료 · J=강의 코스 ID · K=코스명 · O=강사명 ·
 // Q=강사 이메일 · AE=타임스탬프(폼 제출 시각, "2026. 11. 3 오후 2:04:16" 형식).
-const COL = { contractSent: 2, contractCompleted: 5, courseId: 9, courseName: 10, instructorName: 14, email: 16, requestedAt: 30 } as const;
+// U=시간당 강사료(부가세 포함, 자유 입력 "250,000" 등) — 계약요청 확인 창의 "직전 계약" 참고값에만 쓴다.
+const COL = { contractSent: 2, contractCompleted: 5, courseId: 9, courseName: 10, instructorName: 14, email: 16, hourlyFee: 20, requestedAt: 30 } as const;
 
 export interface InstructorContractRecord {
   courseId: string;
@@ -26,6 +27,8 @@ export interface InstructorContractRecord {
   courseName?: string;
   /** 폼 제출 시각(AE열) 원문. 범위를 A:Q로 덮어쓰면 비어 있다. */
   requestedAt?: string;
+  /** 시간당 강사료(U열) 원문. 범위를 A:Q로 덮어쓰면 비어 있다. */
+  hourlyFee?: string;
 }
 
 /** 시트 값 배열을 계약 레코드로 파싱한다(1행은 헤더라 건너뜀). 코스ID·강사명 둘 다 비면 빈 행으로 보고 버린다. */
@@ -43,7 +46,8 @@ export function parseInstructorContractRows(values: string[][]): InstructorContr
       contractSent: (row[COL.contractSent] ?? "").trim().toUpperCase() === "TRUE",
       contractCompleted: (row[COL.contractCompleted] ?? "").trim().toUpperCase() === "TRUE",
       courseName: (row[COL.courseName] ?? "").trim(),
-      requestedAt: (row[COL.requestedAt] ?? "").trim()
+      requestedAt: (row[COL.requestedAt] ?? "").trim(),
+      hourlyFee: (row[COL.hourlyFee] ?? "").trim()
     });
   }
   return records;

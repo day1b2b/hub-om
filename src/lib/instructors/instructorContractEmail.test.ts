@@ -1,6 +1,39 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { resolveContractInstructorNoteId } from "./instructorContractEmail";
+import { findLastContractFee, notionBaseFee, parseHourlyFee, resolveContractInstructorNoteId } from "./instructorContractEmail";
+import type { InstructorContractRecord } from "./instructorContractSheet";
+
+function contract(partial: Partial<InstructorContractRecord>): InstructorContractRecord {
+  return { courseId: "", instructorName: "", email: "", contractSent: false, contractCompleted: false, ...partial };
+}
+
+test("parseHourlyFee: 자유 입력 강사료를 원으로", () => {
+  assert.equal(parseHourlyFee("250,000"), 250000);
+  assert.equal(parseHourlyFee("25만원"), 250000);
+  assert.equal(parseHourlyFee("12.5만"), 125000);
+  assert.equal(parseHourlyFee("250,000(부가세 별도)"), 250000);
+  assert.equal(parseHourlyFee(""), null);
+  assert.equal(parseHourlyFee("협의"), null);
+  assert.equal(parseHourlyFee("0"), null);
+});
+
+test("findLastContractFee: 가장 최근 계약, 동명이인(이메일 2개 이상)은 비움", () => {
+  const records = [
+    contract({ instructorName: "가상강사", email: "a@example.invalid", hourlyFee: "200,000", requestedAt: "2026. 3. 2 오후 2:04:16" }),
+    contract({ instructorName: "가상회사_가상강사", email: "a@example.invalid", hourlyFee: "250,000", requestedAt: "2026. 10. 20 오전 9:00:00" }),
+    contract({ instructorName: "가상강사", email: "a@example.invalid", hourlyFee: "협의", requestedAt: "2026. 11. 1 오전 9:00:00" })
+  ];
+  assert.deepEqual(findLastContractFee(records, "가상강사"), { amount: 250000, month: "2026.10" });
+  assert.equal(findLastContractFee(records, "없는사람"), undefined);
+  const homonym = [...records, contract({ instructorName: "가상강사", email: "b@example.invalid", hourlyFee: "100,000", requestedAt: "2026. 9. 1 오전 9:00:00" })];
+  assert.equal(findLastContractFee(homonym, "가상강사"), undefined);
+});
+
+test("notionBaseFee: 1,000원 미만 비정상값은 버림", () => {
+  assert.equal(notionBaseFee({ notion: { baseFee: 220000 } }), 220000);
+  assert.equal(notionBaseFee({ notion: { baseFee: 2.25 } }), undefined);
+  assert.equal(notionBaseFee(undefined), undefined);
+});
 import type { InstructorNote } from "@/lib/data/instructorNoteRepository";
 
 const notes: InstructorNote[] = [
