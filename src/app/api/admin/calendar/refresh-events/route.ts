@@ -1,3 +1,4 @@
+import { runOperationWriteRequest } from "@/lib/data/operationWriteComposition";
 import { calendarErrorMessage } from "@/lib/googleCalendar/calendarErrors";
 import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
@@ -49,6 +50,9 @@ async function requireRefreshAccess(request: Request): Promise<string> {
   return session.user?.email ?? "admin-session";
 }
 
-export const GET = withActivity("/api/admin/calendar/refresh-events", "GET", activityGET);
+// 운영·캘린더 데이터는 Mongo로 이관됐다. 이 래퍼(역반영 라우트와 동일)가 핸들러를
+// Mongo 런타임 스코프 안에서 돌려 listOperations·calendarPersistence 등이 Mongo를 쓰게 한다.
+// 래퍼가 없으면 죽은 PostgreSQL 경로로 떨어져 getPrismaClient()에서 throw → 500(2026-11-05 실측).
+export const GET = withActivity("/api/admin/calendar/refresh-events", "GET", activityGET, runOperationWriteRequest);
 
-export const POST = withActivity("/api/admin/calendar/refresh-events", "POST", activityPOST);
+export const POST = withActivity("/api/admin/calendar/refresh-events", "POST", activityPOST, runOperationWriteRequest);
