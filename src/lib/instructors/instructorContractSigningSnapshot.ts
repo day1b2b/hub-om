@@ -234,20 +234,19 @@ export function mergeIntoSnapshot(entries: Record<string, ContractProgressEntry>
   }
 }
 
-/** 버튼 새로고침용: 이 강사들 이름이 제목에 들어간 문서만 모두싸인에서 읽는다(전체 목록보다 가볍다). */
-export async function readDocumentsForInstructors(names: string[]): Promise<ModusignDocument[] | null> {
-  const config = readModusignConfig();
+/** 제목에 이 강사들 이름(정규화)이 들어간 문서만 남긴다(순수). */
+export function filterDocumentsByInstructorNames(documents: ModusignDocument[], names: string[]): ModusignDocument[] {
   const unique = Array.from(new Set(names.map((name) => normalizeInstructorName(name)).filter(Boolean)));
-  if (!config || unique.length === 0) return null;
-  try {
-    const documents: ModusignDocument[] = [];
-    for (const name of unique) {
-      const filter = `${lookbackFilter()} and contains(title, ${odataString(name)})`;
-      documents.push(...(await listModusignDocuments(config, { filter, maxPages: 2 })));
-    }
-    return documents;
-  } catch {
-    console.error("[instructor-contract-signing] 모두싸인 목록 읽기 실패");
-    return null;
-  }
+  return documents.filter((document) => unique.some((name) => (document.title ?? "").includes(name)));
+}
+
+/**
+ * 버튼 새로고침용: 이 강사들 이름이 제목에 든 문서. 예약 동기화와 같은 조회(B2B·2026-08-01 이후 전체, 100건씩)로
+ * 읽고 서버에서 거른다. 예전엔 이름을 OData 필터에 넣어 강사별로 물었는데, 모두싸인이 그 조회를 거부해
+ * 새로고침이 서명 진행을 한 번도 갱신하지 못했다(2026-11-05 운영 확인: 응답에 modusignSynced 없음).
+ */
+export async function readDocumentsForInstructors(names: string[]): Promise<ModusignDocument[] | null> {
+  if (!names.some((name) => normalizeInstructorName(name))) return null;
+  const documents = await readDocuments(readModusignConfig());
+  return documents ? filterDocumentsByInstructorNames(documents, names) : null;
 }

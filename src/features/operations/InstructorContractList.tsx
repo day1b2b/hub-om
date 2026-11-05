@@ -155,7 +155,9 @@ export function InstructorContractList({
       setStatusByKey(next);
       if (payload.modusignSynced) setModusignOn(true);
       setSyncedLabel(
-        `${formatSyncedAt(new Date().toISOString())} 기준${signingTracked && !payload.modusignSynced && !modusignOn ? " · 모두싸인 미연결" : ""}`
+        `${formatSyncedAt(new Date().toISOString())} 기준${
+          signingTracked && !payload.modusignSynced ? (modusignOn ? " · 서명 진행은 모두싸인을 못 읽어 이전 값" : " · 모두싸인 미연결") : ""
+        }`
       );
       setPhase("done");
     } catch (reason) {
