@@ -16,6 +16,7 @@ import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import type { OperationSession } from "@/lib/data/operationTypes";
 import { runCoachPublicRequest } from "@/lib/data/coachPublicComposition";
 import { coachActivityPolicy, seoulTodayKey } from "@/lib/coaches/coachActivity";
+import { timed } from "@/lib/observability/timed";
 
 export const dynamic = "force-dynamic";
 
@@ -38,15 +39,24 @@ async function renderInstructorWikiPage(recommendMinor: string, recommendDate: s
   let operations: OperationSession[] = [];
   let loadFailed = false;
 
-  // 담당 코스·과정은 운영 현황에서 온다.
-  try {
-    operations = await getOperationRepository().listOperations();
+  // 운영 현황·노션 노트·코치 보강은 서로 독립이라 동시에 읽는다(예전엔 순차 await라 지연이 합산됐다).
+  // 각 구간 시간을 [perf] 로그로 남겨 병목을 데이터로 확인한다.
+  const wikiStartedAt = Date.now();
+  const [operationsOrNull, notes, coaches] = await Promise.all([
+    // 담당 코스·과정은 운영 현황에서 온다. 실패하면 null → 빈 목록 + 경고로 처리한다.
+    timed("instructor-wiki:listOperations", () => getOperationRepository().listOperations().catch(() => null)),
+    timed("instructor-wiki:listInstructorNotes", () => listInstructorNotes()),
+    // coach-db 보강은 best-effort. 미연결(로컬 dev 등)이면 빈 배열로 건너뛴다.
+    timed("instructor-wiki:listCoaches", () => getCoachRepository().listCoaches().catch(() => []))
+  ]);
+
+  if (operationsOrNull) {
+    operations = operationsOrNull;
     entries = aggregateInstructors(operations);
-  } catch {
+  } else {
     loadFailed = true;
   }
 
-  const notes = await listInstructorNotes();
   const linkTargets = resolveNotionLinkTargets(notes);
 
   // OM이 연결해 둔 노션 강사로 먼저 합친다. 운영 현황 표기가 달라 갈려 있던 같은 사람을 하나로.
@@ -61,14 +71,9 @@ async function renderInstructorWikiPage(recommendMinor: string, recommendDate: s
   );
   entries = mergeNotionNotes(entries, notionNotes);
 
-  // coach-db 연결 시 전문분야/평가 보강(best-effort). 미연결이면 조용히 건너뛴다.
-  try {
-    const coaches = await getCoachRepository().listCoaches();
-    if (coaches.length > 0) {
-      attachCoachSummaries(entries, coaches);
-    }
-  } catch {
-    // coach-db 미연결(로컬 dev 등) → 보강 생략
+  // coach-db 전문분야/평가 보강(best-effort). 위 병렬 로드에서 받은 값만 쓴다.
+  if (coaches.length > 0) {
+    attachCoachSummaries(entries, coaches);
   }
 
   // 노션 명단이 목록의 기준이 되면 provenance도 노션이다. 노션 동기화 전에는 운영 현황만 남는다.
@@ -93,6 +98,8 @@ async function renderInstructorWikiPage(recommendMinor: string, recommendDate: s
         dormantMonths: coachActivityPolicy.dormantMonths
       })
     : null;
+
+  console.info(`[perf] instructor-wiki total ${Date.now() - wikiStartedAt}ms`);
 
   return (
     <InstructorWiki
