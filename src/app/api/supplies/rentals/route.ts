@@ -2,8 +2,9 @@ import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireSupplyApiSession } from "@/lib/auth/requireSupplySession";
 import { isValidDate } from "@/lib/data/eggs/eggAvailability";
-import { getSupplyConflicts } from "@/lib/data/supplies/supplyAvailability";
-import { getSupplyRepository } from "@/lib/data/supplies/prismaSupplyRepository";
+import { getSupplyRepository } from "@/lib/data/supplies/supplyRepositoryFactory";
+import { runSupplyRequest } from "@/lib/data/eggSupplyComposition";
+import { SupplyItemNotFoundError, SupplyRentalConflictError } from "@/lib/data/supplies/supplyRepository";
 import { isSupplyCategory } from "@/lib/data/supplies/supplyTypes";
 import type { SupplyRentalInput } from "@/lib/data/supplies/supplyTypes";
 
@@ -57,30 +58,10 @@ async function activityPOST(request: Request) {
     );
   }
 
-  const repository = getSupplyRepository();
-
   try {
-    const items = await repository.listItems(category);
-    const knownIds = new Set(items.map((item) => item.id));
-    if (itemIds.some((id) => !knownIds.has(id))) {
-      return NextResponse.json({ ok: false, error: "선택한 물품을 찾을 수 없습니다." }, { status: 400 });
-    }
-
-    // 화면에서 이미 확인했더라도, 그 사이 다른 사람이 먼저 예약했을 수 있어 서버에서 다시 검사한다.
-    const rentals = await repository.listRentals(category, { fromDate: startDate });
-    const conflicts = getSupplyConflicts(rentals, itemIds, startDate, returnDueDate);
-
-    if (conflicts.length > 0) {
-      const detail = conflicts
-        .map((rental) => `${rental.startDate}~${rental.returnDueDate} ${rental.borrowerName}`)
-        .join(", ");
-      return NextResponse.json(
-        { ok: false, error: `이미 예약된 기간과 겹칩니다. (${detail})` },
-        { status: 409 }
-      );
-    }
-
-    const created = await repository.createRental(
+    // 화면에서 이미 확인했더라도, 그 사이 다른 사람이 먼저 예약했을 수 있다.
+    // 저장소가 물품 확인·겹침 확인·저장을 한 트랜잭션에서 해서, 동시에 같은 기간을 예약해도 하나만 저장된다.
+    const created = await getSupplyRepository().createRental(
       {
         category,
         itemIds,
@@ -96,9 +77,21 @@ async function activityPOST(request: Request) {
 
     return NextResponse.json({ ok: true, rental: created }, { status: 201 });
   } catch (error) {
+    if (error instanceof SupplyItemNotFoundError) {
+      return NextResponse.json({ ok: false, error: "선택한 물품을 찾을 수 없습니다." }, { status: 400 });
+    }
+    if (error instanceof SupplyRentalConflictError) {
+      const detail = error.conflicts
+        .map((rental) => `${rental.startDate}~${rental.returnDueDate} ${rental.borrowerName}`)
+        .join(", ");
+      return NextResponse.json(
+        { ok: false, error: `이미 예약된 기간과 겹칩니다. (${detail})` },
+        { status: 409 }
+      );
+    }
     const message = error instanceof Error ? error.message : "예약 저장에 실패했습니다.";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
 
-export const POST = withActivity("/api/supplies/rentals", "POST", activityPOST);
+export const POST = withActivity("/api/supplies/rentals", "POST", activityPOST, runSupplyRequest);

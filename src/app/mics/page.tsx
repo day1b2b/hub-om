@@ -1,7 +1,8 @@
 import { SupplyRentalBoard } from "@/features/supplies/SupplyRentalBoard";
 import { requireSupplyPageSession } from "@/lib/auth/requireSupplySession";
 import { addDays, kstToday } from "@/lib/data/eggs/eggAvailability";
-import { getSupplyRepository } from "@/lib/data/supplies/prismaSupplyRepository";
+import { getSupplyRepository } from "@/lib/data/supplies/supplyRepositoryFactory";
+import { runSupplyRequest } from "@/lib/data/eggSupplyComposition";
 import type { SupplyItemSummary, SupplyRentalRecord } from "@/lib/data/supplies/supplyTypes";
 
 export const dynamic = "force-dynamic";
@@ -18,11 +19,13 @@ export default async function MicsPage() {
   let loadFailed = false;
 
   try {
-    const repository = getSupplyRepository();
-    [items, rentals] = await Promise.all([
-      repository.listItems("mic"),
-      repository.listRentals("mic", { fromDate: addDays(today, -HISTORY_WINDOW_DAYS) })
-    ]);
+    [items, rentals] = await runSupplyRequest(() => {
+      const repository = getSupplyRepository();
+      return Promise.all([
+        repository.listItems("mic"),
+        repository.listRentals("mic", { fromDate: addDays(today, -HISTORY_WINDOW_DAYS) })
+      ]);
+    });
   } catch (error) {
     console.error("[mics] 마이크 대여 데이터를 불러오지 못했습니다.", error);
     loadFailed = true;

@@ -1,7 +1,8 @@
 import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireSupplyApiSession } from "@/lib/auth/requireSupplySession";
-import { getSupplyRepository } from "@/lib/data/supplies/prismaSupplyRepository";
+import { getSupplyRepository } from "@/lib/data/supplies/supplyRepositoryFactory";
+import { runSupplyRequest } from "@/lib/data/eggSupplyComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,6 @@ async function activityDELETE(_request: Request, { params }: RouteContext) {
   }
 }
 
-export const PATCH = withActivity("/api/supplies/rentals/[id]", "PATCH", activityPATCH);
+export const PATCH = withActivity("/api/supplies/rentals/[id]", "PATCH", activityPATCH, runSupplyRequest);
 
-export const DELETE = withActivity("/api/supplies/rentals/[id]", "DELETE", activityDELETE);
+export const DELETE = withActivity("/api/supplies/rentals/[id]", "DELETE", activityDELETE, runSupplyRequest);
