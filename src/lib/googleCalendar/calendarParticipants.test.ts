@@ -79,3 +79,24 @@ test("배정 전 자리표시자(배정필요)는 OM으로 치지 않아 LD 파�
   assert.equal(targets.partKey, "3파트");
   assert.deepEqual(targets.attendeeEmails, []);
 });
+
+test("현장운영 전용 이메일만 optionalEmails에 담는다(담당은 필수)", () => {
+  const targets = resolveCalendarTargetsFromUsers(
+    operationFixture({ om: "김오틸리아", onsiteOm: "이유진C" }),
+    [user("김오틸리아", "AX 3파트"), user("이유진C", "AX 3파트")]
+  );
+
+  assert.deepEqual(targets.attendeeEmails, ["김오틸리아@day1company.co.kr", "이유진C@day1company.co.kr"]);
+  // 현장운영(이유진C)만 optional, 담당(김오틸리아)은 필수
+  assert.deepEqual(targets.optionalEmails, ["이유진C@day1company.co.kr"]);
+});
+
+test("담당 겸 현장이 같은 사람이면 optional로 치지 않는다(필수 유지)", () => {
+  const targets = resolveCalendarTargetsFromUsers(
+    operationFixture({ om: "조경수", onsiteOm: "조경수" }),
+    [user("조경수", "AX 3파트")]
+  );
+
+  assert.deepEqual(targets.attendeeEmails, ["조경수@day1company.co.kr"]);
+  assert.deepEqual(targets.optionalEmails, []);
+});

@@ -24,6 +24,9 @@ export interface CalendarTargets {
   partKey: string | null;
   /** 담당 OM + 현장운영 OM 이메일. 중복 제거됨. */
   attendeeEmails: string[];
+  /** 현장운영 '전용'(담당 OM이 아닌) 이메일. 이벤트에서 optional 참석자로 넣는다 —
+   * 현장운영이 거절해도 담당 OM 일정에 거부 경고(⚠️)가 안 붙게. 담당 겸 현장이면 담당(필수)로 둔다. */
+  optionalEmails: string[];
   /** 이름은 있는데 이메일을 못 찾은 사람. 호출부에서 로그로 남긴다. */
   unresolvedNames: string[];
 }
@@ -45,16 +48,25 @@ export function resolveCalendarTargetsFromUsers(
   const onsiteNames = assigneeNames(operation.onsiteOm);
 
   const attendeeEmails: string[] = [];
+  const ownerEmails: string[] = [];
+  const onsiteEmails: string[] = [];
   const unresolvedNames: string[] = [];
 
-  for (const name of [...ownerNames, ...onsiteNames]) {
+  const collect = (name: string, into: string[]) => {
     const user = findTeamUser(users, name);
     if (user?.email) {
+      into.push(user.email);
       if (!attendeeEmails.includes(user.email)) attendeeEmails.push(user.email);
-      continue;
+      return;
     }
     if (!unresolvedNames.includes(name)) unresolvedNames.push(name);
-  }
+  };
+  for (const name of ownerNames) collect(name, ownerEmails);
+  for (const name of onsiteNames) collect(name, onsiteEmails);
+
+  // 현장운영 '전용'(담당 OM 목록에 없는) 이메일만 optional. 담당 겸 현장이면 담당(필수)로 둔다.
+  const ownerSet = new Set(ownerEmails);
+  const optionalEmails = [...new Set(onsiteEmails.filter((email) => !ownerSet.has(email)))];
 
   // 파트는 담당 OM 기준이다. 담당 OM이 여럿이면 파트를 찾은 첫 사람을 따른다.
   const ownerPartKey =
@@ -74,7 +86,7 @@ export function resolveCalendarTargetsFromUsers(
       .map((name) => extractPartKey(findTeamUser(users, name)?.team))
       .find(Boolean) ?? null);
 
-  return { partKey, attendeeEmails, unresolvedNames };
+  return { partKey, attendeeEmails, optionalEmails, unresolvedNames };
 }
 
 export async function resolveCalendarTargets(operation: OperationSession): Promise<CalendarTargets> {

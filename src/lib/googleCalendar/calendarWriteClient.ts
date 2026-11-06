@@ -87,6 +87,9 @@ export async function getGoogleB2BAccessToken(): Promise<string> {
 
 export interface CalendarEventAttendee {
   email: string;
+  /** 선택(optional) 참석자. 현장운영 OM처럼 보조 역할은 true. 이들이 거절해도 구글이
+   * "필수 참석자 거부" 경고(⚠️)를 담당 OM 일정에 붙이지 않는다. */
+  optional?: boolean;
 }
 
 export interface CalendarEventBody {
