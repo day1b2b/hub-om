@@ -7,9 +7,28 @@ import type {
   EggRentalRecord
 } from "./eggTypes";
 
+/** 같은 에그의 겹치는 기간에 미반납 대여가 있다. 저장소가 겹침 확인과 저장을 한 트랜잭션에서 한다. */
+export class EggRentalConflictError extends Error {
+  readonly conflicts: EggRentalRecord[];
+  constructor(conflicts: EggRentalRecord[]) {
+    super("EGG_RENTAL_CONFLICT");
+    this.name = "EggRentalConflictError";
+    this.conflicts = conflicts;
+  }
+}
+
+/** 같은 파트·번호의 에그가 이미 있다. */
+export class EggDeviceDuplicateError extends Error {
+  constructor() {
+    super("EGG_DEVICE_DUPLICATE");
+    this.name = "EggDeviceDuplicateError";
+  }
+}
+
 /**
  * 에그 대여 데이터 접근 계약.
  * 화면은 이 인터페이스만 사용하고 Prisma 모델이나 테이블 구조를 직접 알지 못한다.
+ * createRental은 겹치는 미반납 대여가 있으면 저장하지 않고 EggRentalConflictError를 던진다.
  */
 export interface EggRepository {
   listDevices(): Promise<EggDeviceSummary[]>;

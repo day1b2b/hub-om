@@ -60,6 +60,8 @@ import type { OperationImportRepository } from "./operationImportRepository";
 import type { LectureFollowUpNotifier, LectureFollowUpSentLog } from "../reminders/lectureFollowUpReminder";
 import type { OperationSourceReader } from "../sourceReads/sourceReadTypes";
 import type { HubBotResponder } from "../hubBot/hubBotResponder";
+import type { EggRepository } from "./eggs/eggRepository";
+import type { SupplyRepository } from "./supplies/supplyRepository";
 
 export interface RequestActivityRepository {
   recordRequest(context: ActivityContext, status: number, durationMs: number): Promise<void>;
@@ -140,6 +142,8 @@ export interface DataRepositories {
   instructorNoteImport: InstructorNoteImportRepository;
   coachDataVerification: CoachDataVerificationRepository;
   requestActivity: RequestActivityRepository;
+  eggs: EggRepository;
+  supplies: SupplyRepository;
 }
 
 const globalForRepositories = globalThis as unknown as {

@@ -2,7 +2,8 @@ import { EggRentalBoard } from "@/features/eggs/EggRentalBoard";
 import { requireSupplyPageSession } from "@/lib/auth/requireSupplySession";
 import { isAdminEmail } from "@/lib/auth/requireAdminSession";
 import { addDays, kstToday } from "@/lib/data/eggs/eggAvailability";
-import { getEggRepository } from "@/lib/data/eggs/prismaEggRepository";
+import { getEggRepository } from "@/lib/data/eggs/eggRepositoryFactory";
+import { runEggRequest } from "@/lib/data/eggSupplyComposition";
 import { parseEggPartQuery } from "@/lib/data/eggs/eggTypes";
 import type {
   EggDeviceSummary,
@@ -31,12 +32,14 @@ export default async function EggsPage({ searchParams }: EggsPageProps) {
   let loadFailed = false;
 
   try {
-    const repository = getEggRepository();
-    [devices, rentals, guides] = await Promise.all([
-      repository.listDevices(),
-      repository.listRentals({ fromDate: addDays(today, -HISTORY_WINDOW_DAYS) }),
-      repository.listGuides()
-    ]);
+    [devices, rentals, guides] = await runEggRequest(() => {
+      const repository = getEggRepository();
+      return Promise.all([
+        repository.listDevices(),
+        repository.listRentals({ fromDate: addDays(today, -HISTORY_WINDOW_DAYS) }),
+        repository.listGuides()
+      ]);
+    });
   } catch (error) {
     console.error("[eggs] 에그 데이터를 불러오지 못했습니다.", error);
     loadFailed = true;

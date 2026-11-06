@@ -1,6 +1,7 @@
+import { Prisma } from "@prisma/client";
 import { getPrismaClient } from "@/lib/data/prisma";
 import { isValidDate } from "@/lib/data/eggs/eggAvailability";
-import type { SupplyRepository } from "./supplyRepository";
+import { SupplyItemNotFoundError, SupplyRentalConflictError, type SupplyRepository } from "./supplyRepository";
 import type { SupplyCategory, SupplyItemSummary, SupplyRentalInput, SupplyRentalRecord } from "./supplyTypes";
 
 /** @db.Date 컬럼은 UTC 자정으로 저장되므로 앞 10자리를 그대로 쓰면 KST 날짜와 같다 */
@@ -89,21 +90,45 @@ export class PrismaSupplyRepository implements SupplyRepository {
       throw new Error("반납 예정일이 대여 시작일보다 앞설 수 없습니다.");
     }
 
-    const row = await getPrismaClient().supplyRental.create({
-      data: {
-        category: input.category,
-        borrowerName: input.borrowerName,
-        borrowerEmail: input.borrowerEmail ?? null,
-        courseName: input.courseName,
-        startDate: toDateColumn(input.startDate),
-        returnDueDate: toDateColumn(input.returnDueDate),
-        note: input.note ?? null,
-        createdBy: actorEmail,
-        items: { create: input.itemIds.map((itemId) => ({ itemId })) }
-      },
-      select: RENTAL_SELECT
+    const itemIds = [...new Set(input.itemIds)].sort();
+    const startDate = toDateColumn(input.startDate);
+    const returnDueDate = toDateColumn(input.returnDueDate);
+
+    // 고른 물품 행을 같은 순서로 잠가 같은 물품의 쓰기를 한 줄로 세운다. 동시에 같은 기간을 예약해도 하나만 저장한다.
+    return getPrismaClient().$transaction(async (tx) => {
+      const locked = itemIds.length
+        ? await tx.$queryRaw<Array<{ id: string }>>`SELECT id FROM supply_items WHERE id IN (${Prisma.join(itemIds.map((id) => Prisma.sql`${id}::uuid`))}) AND category = ${input.category} AND deleted_at IS NULL ORDER BY id FOR UPDATE`
+        : [];
+      if (itemIds.length === 0 || locked.length !== itemIds.length) throw new SupplyItemNotFoundError();
+      const conflicts = await tx.supplyRental.findMany({
+        where: {
+          category: input.category,
+          deletedAt: null,
+          returnedAt: null,
+          startDate: { lte: returnDueDate },
+          returnDueDate: { gte: startDate },
+          items: { some: { itemId: { in: itemIds } } }
+        },
+        orderBy: [{ startDate: "asc" }],
+        select: RENTAL_SELECT
+      });
+      if (conflicts.length > 0) throw new SupplyRentalConflictError(conflicts.map(mapRental));
+      const row = await tx.supplyRental.create({
+        data: {
+          category: input.category,
+          borrowerName: input.borrowerName,
+          borrowerEmail: input.borrowerEmail ?? null,
+          courseName: input.courseName,
+          startDate,
+          returnDueDate,
+          note: input.note ?? null,
+          createdBy: actorEmail,
+          items: { create: itemIds.map((itemId) => ({ itemId })) }
+        },
+        select: RENTAL_SELECT
+      });
+      return mapRental(row);
     });
-    return mapRental(row);
   }
 
   async markReturned(rentalId: string, actorEmail: string): Promise<void> {
@@ -120,8 +145,4 @@ export class PrismaSupplyRepository implements SupplyRepository {
       data: { deletedAt: new Date(), deletedBy: actorEmail }
     });
   }
-}
-
-export function getSupplyRepository(): SupplyRepository {
-  return new PrismaSupplyRepository();
 }

@@ -1,8 +1,10 @@
 import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireSupplyApiSession } from "@/lib/auth/requireSupplySession";
-import { getConflicts, isValidDate } from "@/lib/data/eggs/eggAvailability";
-import { getEggRepository } from "@/lib/data/eggs/prismaEggRepository";
+import { isValidDate } from "@/lib/data/eggs/eggAvailability";
+import { EggRentalConflictError } from "@/lib/data/eggs/eggRepository";
+import { getEggRepository } from "@/lib/data/eggs/eggRepositoryFactory";
+import { runEggRequest } from "@/lib/data/eggSupplyComposition";
 import type { EggRentalInput } from "@/lib/data/eggs/eggTypes";
 
 export const dynamic = "force-dynamic";
@@ -48,24 +50,10 @@ async function activityPOST(request: Request) {
     );
   }
 
-  const repository = getEggRepository();
-
   try {
-    // 화면에서 이미 확인했더라도, 그 사이 다른 사람이 먼저 예약했을 수 있어 서버에서 다시 검사한다.
-    const rentals = await repository.listRentals({ fromDate: startDate });
-    const conflicts = getConflicts(rentals, eggDeviceId, startDate, returnDueDate);
-
-    if (conflicts.length > 0) {
-      const detail = conflicts
-        .map((rental) => `${rental.startDate}~${rental.returnDueDate} ${rental.borrowerName}`)
-        .join(", ");
-      return NextResponse.json(
-        { ok: false, error: `이미 예약된 기간과 겹칩니다. (${detail})` },
-        { status: 409 }
-      );
-    }
-
-    const created = await repository.createRental(
+    // 화면에서 이미 확인했더라도, 그 사이 다른 사람이 먼저 예약했을 수 있다.
+    // 저장소가 겹침 확인과 저장을 한 트랜잭션에서 해서, 동시에 같은 기간을 예약해도 하나만 저장된다.
+    const created = await getEggRepository().createRental(
       {
         eggDeviceId,
         borrowerName,
@@ -81,9 +69,18 @@ async function activityPOST(request: Request) {
 
     return NextResponse.json({ ok: true, rental: created }, { status: 201 });
   } catch (error) {
+    if (error instanceof EggRentalConflictError) {
+      const detail = error.conflicts
+        .map((rental) => `${rental.startDate}~${rental.returnDueDate} ${rental.borrowerName}`)
+        .join(", ");
+      return NextResponse.json(
+        { ok: false, error: `이미 예약된 기간과 겹칩니다. (${detail})` },
+        { status: 409 }
+      );
+    }
     const message = error instanceof Error ? error.message : "예약 저장에 실패했습니다.";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
 
-export const POST = withActivity("/api/eggs/rentals", "POST", activityPOST);
+export const POST = withActivity("/api/eggs/rentals", "POST", activityPOST, runEggRequest);

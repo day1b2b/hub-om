@@ -1,6 +1,7 @@
+import { Prisma } from "@prisma/client";
 import { getPrismaClient } from "@/lib/data/prisma";
 import { isValidDate } from "./eggAvailability";
-import type { EggRepository } from "./eggRepository";
+import { EggDeviceDuplicateError, EggRentalConflictError, type EggRepository } from "./eggRepository";
 import type {
   EggChargerType,
   EggDeviceInput,
@@ -175,21 +176,38 @@ export class PrismaEggRepository implements EggRepository {
       throw new Error("반납 예정일이 대여 시작일보다 앞설 수 없습니다.");
     }
 
-    const row = await prisma.eggRental.create({
-      data: {
-        eggDeviceId: input.eggDeviceId,
-        borrowerName: input.borrowerName,
-        borrowerEmail: input.borrowerEmail ?? null,
-        courseName: input.courseName,
-        startDate,
-        returnDueDate,
-        actualUseNote: input.actualUseNote ?? null,
-        note: input.note ?? null,
-        createdBy: actorEmail
-      },
-      select: RENTAL_SELECT
+    // 같은 에그의 쓰기를 기기 행 잠금으로 한 줄로 세워, 동시에 같은 기간을 예약해도 하나만 저장한다.
+    return prisma.$transaction(async (tx) => {
+      const locked = await tx.$queryRaw<Array<{ id: string }>>`SELECT id FROM egg_devices WHERE id = ${input.eggDeviceId}::uuid AND deleted_at IS NULL FOR UPDATE`;
+      if (locked.length !== 1) throw new Error("에그를 찾을 수 없습니다.");
+      const conflicts = await tx.eggRental.findMany({
+        where: {
+          eggDeviceId: input.eggDeviceId,
+          deletedAt: null,
+          returnedAt: null,
+          startDate: { lte: returnDueDate },
+          returnDueDate: { gte: startDate }
+        },
+        orderBy: [{ startDate: "asc" }],
+        select: RENTAL_SELECT
+      });
+      if (conflicts.length > 0) throw new EggRentalConflictError(conflicts.map(mapRental));
+      const row = await tx.eggRental.create({
+        data: {
+          eggDeviceId: input.eggDeviceId,
+          borrowerName: input.borrowerName,
+          borrowerEmail: input.borrowerEmail ?? null,
+          courseName: input.courseName,
+          startDate,
+          returnDueDate,
+          actualUseNote: input.actualUseNote ?? null,
+          note: input.note ?? null,
+          createdBy: actorEmail
+        },
+        select: RENTAL_SELECT
+      });
+      return mapRental(row);
     });
-    return mapRental(row);
   }
 
   async markReturned(rentalId: string, actorEmail: string): Promise<void> {
@@ -223,21 +241,29 @@ export class PrismaEggRepository implements EggRepository {
 
   async createDevice(input: EggDeviceInput): Promise<EggDeviceSummary> {
     const prisma = getPrismaClient();
-    const row = await prisma.eggDevice.create({
-      data: this.toDeviceData(input),
-      select: DEVICE_SELECT
-    });
-    return mapDevice(row);
+    try {
+      const row = await prisma.eggDevice.create({
+        data: this.toDeviceData(input),
+        select: DEVICE_SELECT
+      });
+      return mapDevice(row);
+    } catch (error) {
+      throw duplicateOr(error);
+    }
   }
 
   async updateDevice(deviceId: string, input: EggDeviceInput): Promise<EggDeviceSummary> {
     const prisma = getPrismaClient();
-    const row = await prisma.eggDevice.update({
-      where: { id: deviceId },
-      data: this.toDeviceData(input),
-      select: DEVICE_SELECT
-    });
-    return mapDevice(row);
+    try {
+      const row = await prisma.eggDevice.update({
+        where: { id: deviceId },
+        data: this.toDeviceData(input),
+        select: DEVICE_SELECT
+      });
+      return mapDevice(row);
+    } catch (error) {
+      throw duplicateOr(error);
+    }
   }
 
   /** 주의사항은 파트마다 한 행만 쓴다 */
@@ -279,6 +305,7 @@ export class PrismaEggRepository implements EggRepository {
   }
 }
 
-export function getEggRepository(): EggRepository {
-  return new PrismaEggRepository();
+/** 파트·번호 유일 제약 위반은 화면에서 409로 안내한다 */
+function duplicateOr(error: unknown): unknown {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002" ? new EggDeviceDuplicateError() : error;
 }

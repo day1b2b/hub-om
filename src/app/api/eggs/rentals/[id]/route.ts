@@ -1,7 +1,8 @@
 import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { requireSupplyApiSession } from "@/lib/auth/requireSupplySession";
-import { getEggRepository } from "@/lib/data/eggs/prismaEggRepository";
+import { getEggRepository } from "@/lib/data/eggs/eggRepositoryFactory";
+import { runEggRequest } from "@/lib/data/eggSupplyComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,6 @@ async function activityDELETE(_request: Request, { params }: RouteContext) {
   }
 }
 
-export const PATCH = withActivity("/api/eggs/rentals/[id]", "PATCH", activityPATCH);
+export const PATCH = withActivity("/api/eggs/rentals/[id]", "PATCH", activityPATCH, runEggRequest);
 
-export const DELETE = withActivity("/api/eggs/rentals/[id]", "DELETE", activityDELETE);
+export const DELETE = withActivity("/api/eggs/rentals/[id]", "DELETE", activityDELETE, runEggRequest);
