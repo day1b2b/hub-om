@@ -140,20 +140,26 @@ export function CoachDetailView({
         {/* 고정 메모는 메모·리뷰 관리에서 고정한 코치 메모(flagged_at). 브라우저에서 메모 API로 읽는다. */}
         <CoachPinnedNotes coachId={coach.id} items={pinned} />
 
+        <nav className="coach-detail-tabs" aria-label="코치 상세 보기 전환">
+          <Link className={selectedTab === "profile" ? "selected" : undefined} href={`/coaches/${coach.id}`}>
+            프로필
+          </Link>
+          <Link
+            className={selectedTab === "schedule" ? "selected" : undefined}
+            href={`/coaches/${coach.id}?tab=schedule&month=${selectedMonth}`}
+          >
+            일정
+          </Link>
+        </nav>
+
         {selectedTab === "schedule" ? (
-          <>
-            <nav className="people-subnav" aria-label="코치 상세">
-              <Link href={`/coaches/${coach.id}`}>← 프로필로 돌아가기</Link>
-              <strong>월 달력</strong>
-            </nav>
-            <SchedulePane
-              coach={coach}
-              engagementSchedules={engagementSchedules}
-              engagements={engagements}
-              schedules={schedules}
-              selectedMonth={selectedMonth}
-            />
-          </>
+          <SchedulePane
+            coach={coach}
+            engagementSchedules={engagementSchedules}
+            engagements={engagements}
+            schedules={schedules}
+            selectedMonth={selectedMonth}
+          />
         ) : (
           <PeopleDetailBody
             main={
