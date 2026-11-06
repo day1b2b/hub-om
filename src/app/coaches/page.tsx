@@ -5,6 +5,7 @@ import { loadEvaluationAverages } from "@/lib/coaches/coachEvaluationAverages";
 import { peopleStatusFromFacts } from "@/lib/people/peopleStatus";
 import { getCoachRepository } from "@/lib/data/coachRepositoryFactory";
 import { runCoachPublicRequest } from "@/lib/data/coachPublicComposition";
+import { timed } from "@/lib/observability/timed";
 
 export const dynamic = "force-dynamic";
 
@@ -18,9 +19,13 @@ async function renderCoachesPage() {
   let loadFailed = false;
   // 활동 상태는 오늘 날짜에 따라 달라지므로 서버에서 한 번 계산해 내려준다(SSR·하이드레이션 일치).
   const today = seoulTodayKey();
+  const coachesStartedAt = Date.now();
 
   try {
-    const [summaries, evaluationAverages] = await Promise.all([getCoachRepository().listCoaches(), loadEvaluationAverages()]);
+    const [summaries, evaluationAverages] = await Promise.all([
+      timed("coaches:listCoaches", () => getCoachRepository().listCoaches()),
+      timed("coaches:loadEvaluationAverages", () => loadEvaluationAverages())
+    ]);
     coaches = summaries.map(({ engagementFacts, ...coach }) => ({
       ...coach,
       ...recentRatingSummary(engagementFacts, evaluationAverages),
@@ -30,6 +35,8 @@ async function renderCoachesPage() {
   } catch {
     loadFailed = true;
   }
+
+  console.info(`[perf] coaches total ${Date.now() - coachesStartedAt}ms`);
 
   return <CoachList coaches={coaches} loadFailed={loadFailed} today={today} />;
 }
