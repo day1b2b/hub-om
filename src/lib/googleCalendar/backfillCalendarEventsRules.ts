@@ -96,7 +96,7 @@ export function planCalendarBackfill(params: PlanBackfillParams): BackfillPlan {
     const targets = resolveCalendarTargetsFromUsers(operation, params.users);
     const calendarId = params.resolveCalendarId(targets.partKey) || null;
 
-    const allPlans = buildCalendarEventBodies(operation, targets.attendeeEmails, targets.partKey);
+    const allPlans = buildCalendarEventBodies(operation, targets.attendeeEmails, targets.partKey, targets.optionalEmails);
     const mappedDates = params.mappedDatesByOperation.get(operation.operationId) ?? new Set<string>();
     const missingPlans = allPlans.filter((plan) => plan.eventDate && !mappedDates.has(plan.eventDate));
 

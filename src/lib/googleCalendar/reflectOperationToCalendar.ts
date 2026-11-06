@@ -85,7 +85,7 @@ async function reflectOperationUnlocked(operation: OperationSession, trigger: Re
       await deleteMatchingCalendarEventLink(link);
     }
 
-    for (const plan of buildCalendarEventBodies(operation, targets.attendeeEmails, partKey)) {
+    for (const plan of buildCalendarEventBodies(operation, targets.attendeeEmails, partKey, targets.optionalEmails)) {
       const link = sameCalendar.get(plan.eventDate);
 
       if (skipEventId && link?.eventId === skipEventId) { sameCalendar.delete(plan.eventDate); continue; }
