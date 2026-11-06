@@ -144,7 +144,8 @@ function buildDescription(operation: OperationSession): string {
 export function buildCalendarEventBody(
   operation: OperationSession,
   attendeeEmails: string[],
-  partKey?: string | null
+  partKey?: string | null,
+  optionalEmails: string[] = []
 ): CalendarEventBody {
   const times = parseTimeRange(operation.timeText);
 
@@ -172,7 +173,14 @@ export function buildCalendarEventBody(
     guestsCanInviteOthers: false,
     ...(operation.region ? { location: operation.region } : {}),
     ...schedule,
-    ...(attendeeEmails.length > 0 ? { attendees: attendeeEmails.map((email) => ({ email })) } : {})
+    // 현장운영 전용 이메일은 optional 참석자로 — 거절해도 담당 OM 일정에 거부 경고(⚠️)가 안 붙는다.
+    ...(attendeeEmails.length > 0
+      ? {
+          attendees: attendeeEmails.map((email) =>
+            optionalEmails.includes(email) ? { email, optional: true } : { email }
+          )
+        }
+      : {})
   });
 }
 
@@ -191,9 +199,10 @@ export interface CalendarEventPlan {
 export function buildCalendarEventBodies(
   operation: OperationSession,
   attendeeEmails: string[],
-  partKey?: string | null
+  partKey?: string | null,
+  optionalEmails: string[] = []
 ): CalendarEventPlan[] {
-  const base = buildCalendarEventBody(operation, attendeeEmails, partKey);
+  const base = buildCalendarEventBody(operation, attendeeEmails, partKey, optionalEmails);
   const runs = groupConsecutiveDateRuns(normalizeEducationDates(operation.educationDates));
 
   if (runs.length === 0) {

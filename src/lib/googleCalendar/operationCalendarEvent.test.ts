@@ -110,6 +110,20 @@ test("시간 표기가 있으면 시각 지정 일정이 된다", () => {
   assert.deepEqual(body.attendees, [{ email: "om@day1company.co.kr" }]);
 });
 
+test("현장운영(optionalEmails)만 optional 참석자로 표시한다 — 담당은 필수", () => {
+  const body = buildCalendarEventBody(
+    operationFixture(),
+    ["om@day1company.co.kr", "onsite@day1company.co.kr"],
+    "1파트",
+    ["onsite@day1company.co.kr"]
+  );
+
+  assert.deepEqual(body.attendees, [
+    { email: "om@day1company.co.kr" },
+    { email: "onsite@day1company.co.kr", optional: true }
+  ]);
+});
+
 test("시간 표기가 없으면 종일 일정이 되고 종료일은 배타적이다", () => {
   const body = buildCalendarEventBody(
     operationFixture({ timeText: "", startDate: "2026-09-07", endDate: "2026-09-08" }),
