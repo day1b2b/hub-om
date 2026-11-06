@@ -12,6 +12,7 @@ import { selectDdayEvents } from "./ddayEvents";
 import { calendarLabel, isOnsiteSupportForViewer } from "./onsiteLabel";
 import { createRequestMatcher } from "./requestDedup";
 import { requestHref } from "./requestHref";
+import { SatisfactionAnalysisButton } from "../operations/SatisfactionAnalysisButton";
 import type { OmRequest } from "@/lib/data/omRequest/omRequestTypes";
 import type { OperationSession, OperationStatus } from "@/lib/data/operationTypes";
 import { getSeoulToday } from "@/lib/seoulDate";
@@ -310,6 +311,12 @@ export function MyDashboard({ assignedRequests, diagnosis, omName, operations }:
             <p className="eyebrow">{formatToday(today)} 기준</p>
             <h1>내 대시보드</h1>
             <p className="lede">{omName}님이 담당한 운영 현황과 지금 챙겨야 할 일을 모아 봅니다.</p>
+          </div>
+          {/* 설치 창구를 여기에도 둔다 — 운영 상세에만 있으면 처음 쓰는 OM 이 열 회차가 없다.
+              detail-header-actions 는 쓰지 않는다: 그 안의 button 규칙이 border 를 지워
+              운영 화면에서 보던 생김새와 달라진다. 감싸기만 하고 버튼은 제 스타일을 쓴다. */}
+          <div>
+            <SatisfactionAnalysisButton />
           </div>
         </header>
 
