@@ -1,7 +1,8 @@
 import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
-import { getEggRepository } from "@/lib/data/eggs/prismaEggRepository";
+import { getEggRepository } from "@/lib/data/eggs/eggRepositoryFactory";
+import { runEggRequest } from "@/lib/data/eggSupplyComposition";
 import { isEggPart } from "@/lib/data/eggs/eggTypes";
 
 export const dynamic = "force-dynamic";
@@ -47,4 +48,4 @@ async function activityPUT(request: Request) {
   }
 }
 
-export const PUT = withActivity("/api/eggs/guide", "PUT", activityPUT);
+export const PUT = withActivity("/api/eggs/guide", "PUT", activityPUT, runEggRequest);

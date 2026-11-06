@@ -1,8 +1,10 @@
 import { withActivity } from "@/lib/activity/request";
 import { NextResponse } from "next/server";
 import { assertAdminSession } from "@/lib/auth/requireAdminSession";
+import { EggDeviceDuplicateError } from "@/lib/data/eggs/eggRepository";
 import { parseEggDeviceInput } from "@/lib/data/eggs/eggDeviceInput";
-import { getEggRepository } from "@/lib/data/eggs/prismaEggRepository";
+import { getEggRepository } from "@/lib/data/eggs/eggRepositoryFactory";
+import { runEggRequest } from "@/lib/data/eggSupplyComposition";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +35,7 @@ async function activityPOST(request: Request) {
     const device = await getEggRepository().createDevice(parsed.value);
     return NextResponse.json({ ok: true, device }, { status: 201 });
   } catch (error) {
-    const duplicated = error instanceof Error && error.message.includes("Unique constraint");
+    const duplicated = error instanceof EggDeviceDuplicateError;
     return NextResponse.json(
       { ok: false, error: duplicated ? "같은 번호의 에그가 이미 있습니다." : "기기 등록에 실패했습니다." },
       { status: duplicated ? 409 : 500 }
@@ -41,4 +43,4 @@ async function activityPOST(request: Request) {
   }
 }
 
-export const POST = withActivity("/api/eggs/devices", "POST", activityPOST);
+export const POST = withActivity("/api/eggs/devices", "POST", activityPOST, runEggRequest);
