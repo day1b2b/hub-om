@@ -95,3 +95,20 @@ test("Coach eight methods equal the existing Prisma adapter with identical mocke
     patches[0].mock.mockImplementation(async()=>{throw new MongoOperationError("SCAN_LIMIT_EXCEEDED");});await assert.rejects(mongo.listCoaches(),/SCAN_LIMIT_EXCEEDED/);
   } finally {for(const patch of patches)patch.mock.restore();for(const name of ["PII_ENCRYPTION_KEYS","PII_ACTIVE_KEY_ID","PII_INDEX_KEY","SKILLFLO_COACH_URL_TEMPLATE"])if(saved[name]===undefined)delete process.env[name];else process.env[name]=saved[name];}
 });
+test("투입 이력의 연결 회차 교육형태는 PG·Mongo가 같고, 지워졌거나 없는 회차는 연결 없음이다",async()=>{
+  const base={coachId:"c1",status:"COMPLETED",source:"SHEET",startDate:new Date("2099-11-01"),endDate:new Date("2099-11-01"),startTime:"09:00",endTime:"13:00",rating:null,rehire:null,feedback:null};
+  const engagementRows=[{...base,id:"e1",courseName:"linked",operationSessionId:"s1"},{...base,id:"e2",courseName:"deleted",operationSessionId:"s2"},
+    {...base,id:"e3",courseName:"missing",operationSessionId:"s3"},{...base,id:"e4",courseName:"unlinked",operationSessionId:null}];
+  const sessionRows=[{id:"s1",educationFormat:"PBL",timeText:"09:00~18:00",deletedAt:null},{id:"s2",educationFormat:"HACKATHON",timeText:null,deletedAt:new Date("2099-01-01")}];
+  const scanned:string[]=[];
+  const patch=mock.method(MongoOperationStore.prototype,"scan",async(model:string,filter:MongoRow={})=>{scanned.push(model);return (model==="CoachEngagement"?engagementRows:model==="OperationSession"?sessionRows:[]).filter(row=>matches(row,filter));});
+  const pgPatch=mock.method(fakePrisma.coachEngagement,"findMany",async()=>engagementRows.map(row=>({...row,operationSession:sessionRows.find(s=>s.id===row.operationSessionId)??null})));
+  try {
+    const mongo=await MongoCoachRepository.open(options),pg=new PrismaCoachRepository();
+    const rows=await mongo.listEngagements("c1");
+    assert.deepEqual(rows,await pg.listEngagements("c1"));
+    assert.deepEqual(Object.fromEntries(rows.map(row=>[row.courseName,row.linkedSession])),
+      {linked:{educationFormat:"PBL",timeText:"09:00~18:00"},deleted:null,missing:null,unlinked:null});
+    assert.deepEqual(scanned,["CoachEngagement","OperationSession"]);
+  } finally {patch.mock.restore();pgPatch.mock.restore();}
+});

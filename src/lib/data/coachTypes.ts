@@ -1,3 +1,5 @@
+import type { EducationFormat } from "./operationTypes";
+
 export type CoachStatusValue = "pending" | "active" | "inactive";
 
 export type CoachEngagementStatusValue =
@@ -61,6 +63,14 @@ export interface CoachEngagementView {
   rating: number | null;
   rehire: boolean | null;
   feedback: string | null;
+  /** 연결된 운영현황 회차에서 읽은 교육형태·시간. 회차 연결이 없거나 회차가 지워졌으면 null. */
+  linkedSession: CoachLinkedSessionFacts | null;
+}
+
+/** 투입 화면에 붙이는 회차 정보. 저장하지 않고 읽을 때 회차에서 가져온다. */
+export interface CoachLinkedSessionFacts {
+  educationFormat: EducationFormat;
+  timeText: string | null;
 }
 
 export interface CoachScheduleView {

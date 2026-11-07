@@ -18,6 +18,7 @@ import type {
 } from "./coachTypes";
 import type { CoachRepository } from "./coachRepository";
 import { getPrismaClient } from "./prisma";
+import { coachLinkedSession } from "./coachLinkedSession";
 import {
   clearOverlappingPeriods,
   hasAvailability,
@@ -179,7 +180,8 @@ export class PrismaCoachRepository implements CoachRepository {
         endTime: true,
         rating: true,
         rehire: true,
-        feedback: true
+        feedback: true,
+        operationSession: { select: { educationFormat: true, timeText: true, deletedAt: true } }
       },
       orderBy: [{ startDate: "desc" }, { id: "asc" }]
     });
@@ -196,7 +198,8 @@ export class PrismaCoachRepository implements CoachRepository {
       endTime: engagement.endTime,
       rating: engagement.rating,
       rehire: engagement.rehire,
-      feedback: engagement.feedback
+      feedback: engagement.feedback,
+      linkedSession: coachLinkedSession(engagement.operationSession)
     }));
   }
 
