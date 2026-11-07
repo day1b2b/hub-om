@@ -19,6 +19,7 @@ import type {
   CoachStatusValue
 } from "@/lib/data/coachTypes";
 import { formatPeopleDate, type PeopleStatus } from "@/lib/people/peopleStatus";
+import { CoachEngagementEduTypeLabel } from "./CoachEngagementEduTypeLabel";
 import { CoachInputLinkActions } from "./CoachInputLinkActions";
 import { CoachNotesPanel, CoachPinnedNotes } from "./CoachNotesPanel";
 import { CoachEvaluationProvider, EngagementEvaluationButton, EngagementEvaluationPanel } from "./CoachEngagementEvaluation";
@@ -394,6 +395,7 @@ function EngagementPane({ coachId, engagements }: { coachId: string; engagements
                 </time>
                 <span className="coach-origin-engagement-course">
                   <strong>{cleanCourseName(engagement.courseName)}</strong>
+                  <CoachEngagementEduTypeLabel engagement={engagement} />
                   {engagement.feedback ? <small className="coach-origin-engagement-summary">{engagement.feedback}</small> : null}
                 </span>
                 {engagement.rating ? (
