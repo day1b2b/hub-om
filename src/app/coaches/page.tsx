@@ -1,4 +1,6 @@
 import { CoachList, type CoachListItem } from "@/features/coaches/CoachList";
+import { CoachRecommendPanel } from "@/features/coaches/CoachRecommendPanel";
+import { recommendCoachesByCriteria, type CoachRecommendation } from "@/features/coaches/coachRecommendation";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { coachActivityPolicy, recentRatingSummary, seoulTodayKey, summarizeCoachActivity } from "@/lib/coaches/coachActivity";
 import { loadEvaluationAverages } from "@/lib/coaches/coachEvaluationAverages";
@@ -9,13 +11,24 @@ import { timed } from "@/lib/observability/timed";
 
 export const dynamic = "force-dynamic";
 
-export default async function CoachesPage() {
-  await requireWorkspaceSession();
-  return runCoachPublicRequest(renderCoachesPage);
+interface CoachesPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-async function renderCoachesPage() {
+export default async function CoachesPage({ searchParams }: CoachesPageProps) {
+  await requireWorkspaceSession();
+  const params = await searchParams;
+  return runCoachPublicRequest(() => renderCoachesPage(firstParam(params.field), firstParam(params.date)));
+}
+
+function firstParam(value: string | string[] | undefined): string {
+  return (Array.isArray(value) ? value[0] : value)?.trim() ?? "";
+}
+
+async function renderCoachesPage(field: string, date: string) {
   let coaches: CoachListItem[] = [];
+  let fieldOptions: string[] = [];
+  let recommendation: CoachRecommendation | null = null;
   let loadFailed = false;
   // 활동 상태는 오늘 날짜에 따라 달라지므로 서버에서 한 번 계산해 내려준다(SSR·하이드레이션 일치).
   const today = seoulTodayKey();
@@ -32,11 +45,27 @@ async function renderCoachesPage() {
       activity: summarizeCoachActivity(engagementFacts, today),
       peopleStatus: peopleStatusFromFacts(engagementFacts, today, coachActivityPolicy.dormantMonths)
     }));
+
+    // 코치 추천용 전문분야 목록. 교육일·전문분야가 들어왔을 때만 추천을 계산한다(그 전엔 폼만 보여 준다).
+    fieldOptions = Array.from(new Set(summaries.flatMap((coach) => coach.fields))).sort((a, b) => a.localeCompare(b, "ko"));
+    if (field || date) {
+      // OM 평가는 목록과 같은 기준(recentRatingSummary)으로 맞추고, 투입 날짜(engagementFacts)는 겹침 판정에 쓴다.
+      const enriched = summaries.map((coach) => ({ ...coach, ...recentRatingSummary(coach.engagementFacts, evaluationAverages) }));
+      recommendation = recommendCoachesByCriteria({ field, date, coaches: enriched, today, dormantMonths: coachActivityPolicy.dormantMonths });
+    }
   } catch {
     loadFailed = true;
   }
 
   console.info(`[perf] coaches total ${Date.now() - coachesStartedAt}ms`);
 
-  return <CoachList coaches={coaches} loadFailed={loadFailed} today={today} />;
+  return (
+    <CoachList
+      coaches={coaches}
+      loadFailed={loadFailed}
+      recommendOpen={recommendation !== null}
+      recommendPanel={<CoachRecommendPanel date={date} field={field} fieldOptions={fieldOptions} recommendation={recommendation} />}
+      today={today}
+    />
+  );
 }

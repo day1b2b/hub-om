@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { PeopleDirectory, type PeopleFlag, type PeopleRow } from "@/features/people/PeopleDirectory";
 import type { CoachActivity } from "@/lib/coaches/coachActivity";
@@ -21,9 +21,12 @@ interface CoachListProps {
   loadFailed: boolean;
   /** 한국 기준 오늘(YYYY-MM-DD). 날짜 표기에 쓴다. */
   today: string;
+  /** "코치 추천" 패널. 검색줄 옆 버튼으로 연다(강사 위키와 같은 자리). */
+  recommendPanel?: ReactNode;
+  recommendOpen?: boolean;
 }
 
-export function CoachList({ coaches, loadFailed, today }: CoachListProps) {
+export function CoachList({ coaches, loadFailed, today, recommendPanel, recommendOpen }: CoachListProps) {
   const rows = useMemo(() => coaches.map((coach) => toRow(coach, today)), [coaches, today]);
   const counts = useMemo(() => {
     const result: Record<PeopleStatus, number> = { booked: 0, active: 0, dormant: 0, never: 0 };
@@ -48,6 +51,7 @@ export function CoachList({ coaches, loadFailed, today }: CoachListProps) {
           searchPlaceholder="이름 · 전문분야 · 근무유형 검색"
           secondaryLabel="근무유형"
           title="코치 위키"
+          toolPanel={recommendPanel ? { content: recommendPanel, defaultOpen: recommendOpen, label: "코치 추천" } : undefined}
         />
       </section>
     </main>
