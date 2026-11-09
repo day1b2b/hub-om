@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
+import { CoachRecommendPanel } from "./CoachRecommendPanel";
+import type { CoachRecommendation } from "./coachRecommendation";
 import { AppSidebar } from "@/components/AppSidebar";
 import { PeopleDirectory, type PeopleFlag, type PeopleRow } from "@/features/people/PeopleDirectory";
 import type { CoachActivity } from "@/lib/coaches/coachActivity";
@@ -21,9 +23,14 @@ interface CoachListProps {
   loadFailed: boolean;
   /** 한국 기준 오늘(YYYY-MM-DD). 날짜 표기에 쓴다. */
   today: string;
+  /** "코치 추천" 패널 데이터(강사 위키와 같은 자리). 교육일·전문분야로 추천을 서버에서 계산해 넘긴다. */
+  recommendation?: CoachRecommendation | null;
+  recommendField?: string;
+  recommendDate?: string;
+  recommendFieldOptions?: string[];
 }
 
-export function CoachList({ coaches, loadFailed, today }: CoachListProps) {
+export function CoachList({ coaches, loadFailed, today, recommendation, recommendField, recommendDate, recommendFieldOptions }: CoachListProps) {
   const rows = useMemo(() => coaches.map((coach) => toRow(coach, today)), [coaches, today]);
   const counts = useMemo(() => {
     const result: Record<PeopleStatus, number> = { booked: 0, active: 0, dormant: 0, never: 0 };
@@ -48,6 +55,22 @@ export function CoachList({ coaches, loadFailed, today }: CoachListProps) {
           searchPlaceholder="이름 · 전문분야 · 근무유형 검색"
           secondaryLabel="근무유형"
           title="코치 위키"
+          toolPanel={
+            recommendFieldOptions
+              ? {
+                  content: (
+                    <CoachRecommendPanel
+                      date={recommendDate ?? ""}
+                      field={recommendField ?? ""}
+                      fieldOptions={recommendFieldOptions}
+                      recommendation={recommendation ?? null}
+                    />
+                  ),
+                  defaultOpen: recommendation != null,
+                  label: "코치 추천"
+                }
+              : undefined
+          }
         />
       </section>
     </main>
