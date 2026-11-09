@@ -12,12 +12,13 @@ import { timed } from "@/lib/observability/timed";
 export const dynamic = "force-dynamic";
 
 interface CoachesPageProps {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
+  // Next가 페이지에 항상 넘기지만, 통합테스트는 인자 없이 호출하므로 선택적으로 둔다.
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export default async function CoachesPage({ searchParams }: CoachesPageProps) {
+export default async function CoachesPage({ searchParams }: CoachesPageProps = {}) {
   await requireWorkspaceSession();
-  const params = await searchParams;
+  const params = searchParams ? await searchParams : {};
   return runCoachPublicRequest(() => renderCoachesPage(firstParam(params.field), firstParam(params.date)));
 }
 
