@@ -1,5 +1,4 @@
 import { CoachList, type CoachListItem } from "@/features/coaches/CoachList";
-import { CoachRecommendPanel } from "@/features/coaches/CoachRecommendPanel";
 import { recommendCoachesByCriteria, type CoachRecommendation } from "@/features/coaches/coachRecommendation";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { coachActivityPolicy, recentRatingSummary, seoulTodayKey, summarizeCoachActivity } from "@/lib/coaches/coachActivity";
@@ -64,8 +63,10 @@ async function renderCoachesPage(field: string, date: string) {
     <CoachList
       coaches={coaches}
       loadFailed={loadFailed}
-      recommendOpen={recommendation !== null}
-      recommendPanel={<CoachRecommendPanel date={date} field={field} fieldOptions={fieldOptions} recommendation={recommendation} />}
+      recommendDate={date}
+      recommendField={field}
+      recommendFieldOptions={fieldOptions}
+      recommendation={recommendation}
       today={today}
     />
   );

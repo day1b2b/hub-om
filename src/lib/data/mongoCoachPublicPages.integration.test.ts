@@ -86,7 +86,8 @@ const { default: wikiListPage } = await import("../../app/instructor-wiki/page")
 const { seoulTodayKey, summarizeCoachActivity } = await import("../coaches/coachActivity");
 // 목록 페이지는 저장소 요약에서 날짜 정보를 빼고 오늘 기준 활동 상태를 붙여 넘긴다.
 const listProps = (coaches: CoachSummary[], loadFailed: boolean) => { const today = seoulTodayKey();
-  return { coaches: coaches.map(({ engagementFacts, ...coach }) => ({ ...coach, activity: summarizeCoachActivity(engagementFacts, today) })), loadFailed, today }; };
+  const recommendFieldOptions = Array.from(new Set(coaches.flatMap((coach) => coach.fields))).sort((a, b) => a.localeCompare(b, "ko"));
+  return { coaches: coaches.map(({ engagementFacts, ...coach }) => ({ ...coach, activity: summarizeCoachActivity(engagementFacts, today) })), loadFailed, recommendDate: "", recommendField: "", recommendFieldOptions, recommendation: null, today }; };
 const { default: wikiDetailPage } = await import("../../app/instructor-wiki/[id]/page");
 const { default: operationPage } = await import("../../app/operations/[operationId]/page");
 hooks.deregister();
