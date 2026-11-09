@@ -1,4 +1,5 @@
 import { InstructorWiki } from "@/features/wiki/InstructorWiki";
+import { buildInstructorRows } from "@/features/wiki/instructorWikiRows";
 import { InstructorRecommendPanel } from "@/features/wiki/InstructorRecommendPanel";
 import { recommendInstructorsByCriteria } from "@/features/wiki/instructorRecommendation";
 import {
@@ -99,19 +100,20 @@ async function renderInstructorWikiPage(recommendMinor: string, recommendDate: s
       })
     : null;
 
+  // 목록 요약은 서버에서 만들어 slim하게 내린다 — 코스 상세(courses[])는 상세 라우트에서만 쓰므로 목록 payload에 싣지 않는다.
+  const rows = buildInstructorRows(entries, recruitAvoidNames, today, coachActivityPolicy.dormantMonths);
+
   console.info(`[perf] instructor-wiki total ${Date.now() - wikiStartedAt}ms`);
 
   return (
     <InstructorWiki
       recommendOpen={recommendation !== null}
       recommendPanel={<InstructorRecommendPanel date={recommendDate} minor={recommendMinor} recommendation={recommendation} />}
-      entries={entries}
+      rows={rows}
       loadFailed={loadFailed}
       operationEntryCount={operationEntryCount}
+      entriesCount={entries.length}
       provenance={provenance}
-      recruitAvoidNames={recruitAvoidNames}
-      today={today}
-      dormantMonths={coachActivityPolicy.dormantMonths}
     />
   );
 }
