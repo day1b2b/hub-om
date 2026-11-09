@@ -89,6 +89,8 @@ export function PeopleDirectory({
   const [hideFlagged, setHideFlagged] = useState(false);
   const [sort, setSort] = useState<SortKey>("recent");
   const [toolOpen, setToolOpen] = useState(Boolean(toolPanel?.defaultOpen));
+  const [page, setPage] = useState(1);
+  const [pageInput, setPageInput] = useState("");
 
   // 상태·전문분야·보조 필터의 숫자는 검색어만 적용한 결과로 센다. 필터를 골라도 다른 선택지 숫자가 0으로 꺼지지 않게.
   const searched = useMemo(() => {
@@ -106,6 +108,76 @@ export function PeopleDirectory({
         .sort((a, b) => compareRows(a, b, sort)),
     [fields, searched, secondary, sort, status]
   );
+
+  // 30명씩 페이지네이션(운영 현황과 같은 방식). 필터·정렬된 전체를 자른 뒤 현재 페이지만 그린다.
+  const pageSize = 30;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const paged = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const pageNumbers = getPageNumbers(currentPage, totalPages);
+
+  // 검색·필터·정렬이 바뀌면 1페이지로 되돌린다(엉뚱한 페이지에 머무르지 않게).
+  // 이펙트 대신 렌더 중 "이전 값 비교" 패턴(React 권장 — setState-in-effect 지양).
+  const filterKey = `${query}\u0000${status}\u0000${[...fields].join(",")}\u0000${[...secondary].join(",")}\u0000${hideFlagged}\u0000${sort}`;
+  const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
+  if (filterKey !== prevFilterKey) {
+    setPrevFilterKey(filterKey);
+    setPage(1);
+  }
+
+  function goToPage(target: number) {
+    setPage(Math.min(Math.max(1, target), totalPages));
+  }
+
+  function goToInputPage() {
+    const parsed = Number(pageInput);
+    if (Number.isFinite(parsed) && parsed >= 1) goToPage(Math.floor(parsed));
+    setPageInput("");
+  }
+
+  // 운영 현황과 같은 페이지 바(처음/이전/번호/다음/끝 + 페이지 점프). 스타일도 .operations-pagination 재사용.
+  function renderPagination() {
+    if (totalPages <= 1) return null;
+    return (
+      <nav className="operations-pagination" aria-label="페이지 이동">
+        <button type="button" className="page-nav" disabled={currentPage <= 1} onClick={() => goToPage(1)}>처음</button>
+        <button type="button" className="page-nav" disabled={currentPage <= 1} onClick={() => goToPage(currentPage - 1)}>이전</button>
+        {pageNumbers.map((pageNumber, index) =>
+          pageNumber === "ellipsis" ? (
+            <span key={`ellipsis-${index}`} className="page-ellipsis">…</span>
+          ) : (
+            <button
+              key={pageNumber}
+              type="button"
+              className={pageNumber === currentPage ? "page-number is-active" : "page-number"}
+              aria-current={pageNumber === currentPage ? "page" : undefined}
+              onClick={() => goToPage(pageNumber)}
+            >
+              {pageNumber}
+            </button>
+          )
+        )}
+        <button type="button" className="page-nav" disabled={currentPage >= totalPages} onClick={() => goToPage(currentPage + 1)}>다음</button>
+        <button type="button" className="page-nav" disabled={currentPage >= totalPages} onClick={() => goToPage(totalPages)}>끝</button>
+        <span className="page-jump">
+          <input
+            type="number"
+            min={1}
+            max={totalPages}
+            value={pageInput}
+            placeholder={String(currentPage)}
+            onChange={(event) => setPageInput(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") goToInputPage();
+            }}
+            aria-label="이동할 페이지 번호"
+          />
+          <button type="button" onClick={goToInputPage}>이동</button>
+          <span>/ {totalPages}</span>
+        </span>
+      </nav>
+    );
+  }
 
   const statusCounts = useMemo(() => countBy(searched.map((row) => [row.status])), [searched]);
   const fieldCounts = useMemo(() => countBy(searched.map((row) => row.fields)), [searched]);
@@ -194,7 +266,7 @@ export function PeopleDirectory({
             <div className="people-empty"><strong>{rows.length === 0 ? emptyText : "조건에 맞는 사람이 없습니다."}</strong><span>검색어나 필터를 조정해 보세요.</span></div>
           ) : (
             <div className="people-rows">
-              {filtered.map((row) => (
+              {paged.map((row) => (
                 <Link className="people-row" href={row.href} key={row.id}>
                   <PeopleAvatar name={row.name} />
                   <span className="people-row-main">
@@ -223,10 +295,31 @@ export function PeopleDirectory({
               ))}
             </div>
           )}
+          {!loadFailed && filtered.length > 0 ? renderPagination() : null}
         </div>
       </div>
     </>
   );
+}
+
+// 운영 현황과 같은 페이지 번호 창(현재 페이지 중심 3개). 처음/끝 버튼으로 양끝 이동.
+function getPageNumbers(current: number, total: number): Array<number | "ellipsis"> {
+  const windowSize = 3;
+  let start = current - 1;
+  let end = current + 1;
+
+  if (start < 1) {
+    start = 1;
+    end = Math.min(total, windowSize);
+  }
+  if (end > total) {
+    end = total;
+    start = Math.max(1, total - windowSize + 1);
+  }
+
+  const pages: Array<number | "ellipsis"> = [];
+  for (let pageNumber = start; pageNumber <= end; pageNumber += 1) pages.push(pageNumber);
+  return pages;
 }
 
 export function PeopleFlagPill({ flag }: { flag: PeopleFlag }) {
