@@ -17,6 +17,7 @@ import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import type { OperationSession } from "@/lib/data/operationTypes";
 import { runCoachPublicRequest } from "@/lib/data/coachPublicComposition";
 import { coachActivityPolicy, seoulTodayKey } from "@/lib/coaches/coachActivity";
+import { cachedRead } from "@/lib/data/readCache";
 import { timed } from "@/lib/observability/timed";
 
 export const dynamic = "force-dynamic";
@@ -43,12 +44,14 @@ async function renderInstructorWikiPage(recommendMinor: string, recommendDate: s
   // 운영 현황·노션 노트·코치 보강은 서로 독립이라 동시에 읽는다(예전엔 순차 await라 지연이 합산됐다).
   // 각 구간 시간을 [perf] 로그로 남겨 병목을 데이터로 확인한다.
   const wikiStartedAt = Date.now();
+  // 워크스페이스 공용 읽기는 짧은 TTL로 캐시한다(매 방문 재쿼리 방지). 실패는 캐시 밖에서 처리해
+  // 순간 장애가 TTL 동안 굳지 않게 한다. 코치 목록은 코치위키와 같은 키라 캐시를 공유한다.
   const [operationsOrNull, notes, coaches] = await Promise.all([
     // 담당 코스·과정은 운영 현황에서 온다. 실패하면 null → 빈 목록 + 경고로 처리한다.
-    timed("instructor-wiki:listOperations", () => getOperationRepository().listOperations().catch(() => null)),
-    timed("instructor-wiki:listInstructorNotes", () => listInstructorNotes()),
+    cachedRead("operations:listOperations", () => timed("instructor-wiki:listOperations", () => getOperationRepository().listOperations())).catch(() => null),
+    cachedRead("instructor-wiki:notes", () => timed("instructor-wiki:listInstructorNotes", () => listInstructorNotes())),
     // coach-db 보강은 best-effort. 미연결(로컬 dev 등)이면 빈 배열로 건너뛴다.
-    timed("instructor-wiki:listCoaches", () => getCoachRepository().listCoaches().catch(() => []))
+    cachedRead("coaches:listCoaches", () => timed("instructor-wiki:listCoaches", () => getCoachRepository().listCoaches())).catch(() => [])
   ]);
 
   if (operationsOrNull) {
