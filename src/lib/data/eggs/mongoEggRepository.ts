@@ -120,12 +120,18 @@ export class MongoEggRepository implements EggRepository {
       }, session));
     });
   }
+  /** 반납 처리. 같은 에그로 먼저 시작한 미반납 대여도 함께 닫는다 — 이유는 EggRepository.markReturned 참고 */
   async markReturned(rentalId: string, actorEmail: string) {
-    await this.write(async session => {
-      const before = await this.store.one("EggRental", { _id: rentalId }, session);
-      if (!before) throw new Error("대여를 찾을 수 없습니다.");
+    return this.write(async session => {
+      const target = await this.store.one("EggRental", { _id: rentalId }, session);
+      if (!target) throw new Error("대여를 찾을 수 없습니다.");
+      const earlier = (await this.store.scan("EggRental", {
+        eggDeviceId: target.eggDeviceId, deletedAt: null, returnedAt: null, startDate: { $lte: target.startDate }
+      }, session)).filter(row => row._id !== rentalId);
+      const closing = target.returnedAt ? earlier : [target, ...earlier];
       const now = new Date();
-      await this.replace("EggRental", { ...before, returnedAt: now, returnedBy: actorEmail, updatedAt: now }, session);
+      for (const row of closing) await this.replace("EggRental", { ...row, returnedAt: now, returnedBy: actorEmail, updatedAt: now }, session);
+      return { returnedCount: closing.length };
     });
   }
   /** 예약 취소는 물리 삭제가 아니라 소프트 삭제로 남긴다 */

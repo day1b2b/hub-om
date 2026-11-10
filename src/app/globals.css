@@ -16888,3 +16888,25 @@ details.detail-section > summary::-webkit-details-marker {
   color: #b3382c;
   font-weight: 600;
 }
+
+/* 에그 반납 확인 창: 진행 창 틀을 빌려 쓰되 문구는 줄바꿈해서 다 보이게 한다 */
+.egg-return-dialog {
+  align-items: stretch;
+}
+
+.egg-return-body {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+}
+
+.egg-return-dialog .egg-return-body p {
+  white-space: normal;
+}
+
+.egg-return-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
