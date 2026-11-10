@@ -6,6 +6,7 @@ import { loadEvaluationAverages } from "@/lib/coaches/coachEvaluationAverages";
 import { peopleStatusFromFacts } from "@/lib/people/peopleStatus";
 import { getCoachRepository } from "@/lib/data/coachRepositoryFactory";
 import { runCoachPublicRequest } from "@/lib/data/coachPublicComposition";
+import { cachedRead } from "@/lib/data/readCache";
 import { timed } from "@/lib/observability/timed";
 
 export const dynamic = "force-dynamic";
@@ -35,9 +36,10 @@ async function renderCoachesPage(field: string, date: string) {
   const coachesStartedAt = Date.now();
 
   try {
+    // 전체 코치·평가평균은 워크스페이스 공용이라 짧은 TTL로 캐시한다(매 방문 재쿼리 방지).
     const [summaries, evaluationAverages] = await Promise.all([
-      timed("coaches:listCoaches", () => getCoachRepository().listCoaches()),
-      timed("coaches:loadEvaluationAverages", () => loadEvaluationAverages())
+      cachedRead("coaches:listCoaches", () => timed("coaches:listCoaches", () => getCoachRepository().listCoaches())),
+      cachedRead("coaches:evaluationAverages", () => timed("coaches:loadEvaluationAverages", () => loadEvaluationAverages()))
     ]);
     coaches = summaries.map(({ engagementFacts, ...coach }) => ({
       ...coach,
