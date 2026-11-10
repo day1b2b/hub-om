@@ -92,6 +92,9 @@ export async function InstructorWikiDetail({
     .filter((course) => course.startDate && (course.endDate || course.startDate) >= today)
     .sort((a, b) => a.startDate.localeCompare(b.startDate));
   const nextCourse = bookedCourses.find((course) => course.startDate >= today);
+  // 투입 수는 완료(시작일 ≤ 오늘)·예정(시작일 > 오늘)으로 나눈다. entry.courseCount(전체)는 미래까지 포함해 헤더엔 쓰지 않는다.
+  const completedCount = pastCourses.length;
+  const upcomingCount = entry.courses.filter((course) => course.startDate && course.startDate > today).length;
   const courseGroups = groupInstructorCourses(entry.courses);
 
   return (
@@ -107,7 +110,7 @@ export async function InstructorWikiDetail({
           badges={np?.recruitAvoid ? <PeopleFlagPill flag={{ label: "⛔ 섭외지양", tone: "bad" }} /> : null}
           fields={fields}
           kpis={[
-            { label: "투입", value: `${entry.courseCount}건` },
+            { label: "투입", value: upcomingCount > 0 ? `완료 ${completedCount}건 · 예정 ${upcomingCount}건` : `완료 ${completedCount}건` },
             { label: "최근 투입", value: latest ? formatPeopleDate(latest, today) : "-" },
             {
               label: "만족도",
@@ -165,7 +168,7 @@ export async function InstructorWikiDetail({
               {/* 투입 이력은 길고 가끔 보는 내용이라 맨 아래에 접어 둔다. 같은 과정의 회차는 한 줄로 묶는다. */}
               <PeopleCollapsible
                 id="history"
-                note={`과정 ${courseGroups.length}개 · 회차 ${entry.courseCount}건 · 운영 현황 자동`}
+                note={`과정 ${courseGroups.length}개 · 완료 ${completedCount}건 · 예정 ${upcomingCount}건 · 운영 현황 자동`}
                 title="투입 이력"
               >
                 <div className="table-wrap">

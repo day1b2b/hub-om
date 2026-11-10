@@ -16,6 +16,8 @@ export function buildInstructorRows(
 }
 
 function toRow(entry: InstructorWikiEntry, recruitAvoid: boolean, today: string, dormantMonths: number): PeopleRow {
+  // 목록 "투입"은 완료(시작일 ≤ 오늘) 수. 예정은 아래 recent 줄에 따로 표시한다(코치 목록과 동일).
+  const completedCount = entry.courses.filter((course) => course.startDate && course.startDate <= today).length;
   // 최근 투입은 이미 시작한 과정 기준. 앞으로 잡힌 과정만 있으면 "예정"으로 보여 준다.
   const past = entry.courses.find((course) => course.startDate && course.startDate <= today);
   const upcoming = past ? undefined : entry.courses.find((course) => course.startDate > today);
@@ -50,8 +52,8 @@ function toRow(entry: InstructorWikiEntry, recruitAvoid: boolean, today: string,
       : null,
     subline: hasOperationHistory(entry) ? null : "운영 배정 이력 없음",
     recentDate: past?.startDate || null,
-    deployCount: entry.courseCount,
-    deployLabel: `${entry.courseCount}건`,
+    deployCount: completedCount,
+    deployLabel: `${completedCount}건`,
     rating: courseRating,
     ratingLabel: courseRating !== null ? `${courseRating.toFixed(1)} (${courseScores.length}건)` : "-",
     secondaryRating: instructorRating,

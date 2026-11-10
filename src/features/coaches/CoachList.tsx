@@ -94,7 +94,7 @@ function toRow(coach: CoachListItem, today: string): PeopleRow {
     subline: workTypes.length > 0 ? workTypes.join(" · ") : null,
     recentDate: lastDeploy,
     deployCount: coach.activity.deployCount,
-    deployLabel: `${coach.activity.deployCount}회`,
+    deployLabel: `${coach.activity.deployCount}건`,
     rating: coach.recentAvgRating,
     // 평균은 기준 건수를 채웠을 때만. 모자라면 건수만, 없으면 "-".
     ratingLabel:
