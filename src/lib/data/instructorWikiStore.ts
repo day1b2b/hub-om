@@ -23,6 +23,17 @@ export function listInstructorNotes(): Promise<InstructorNote[]> {
   return getInstructorNoteRepository().listNotes();
 }
 
+/**
+ * 소속(노션 스냅샷) 1건을 note id로 읽는다. 소속 클릭 열람(piiReveal)용.
+ * 소속은 암호화 대상이 아니라 노션 스냅샷에 있어, 초기 HTML에는 싣지 않고 이 경로로만 열람한다
+ * (열람 자체는 piiReveal이 감사 로그로 남긴다). 열람은 드물어 전체 목록을 훑어도 무방하다.
+ */
+export async function getInstructorAffiliationById(id: string): Promise<string | null> {
+  const notes = await listInstructorNotes();
+  const value = notes.find((note) => note.id === id)?.notion?.affiliation;
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+}
+
 /** 노션 NO 기준 병합 저장(동기화·NO 기반 화면용). */
 export function saveInstructorNoteByNotionNo(notionNo: number, patch: InstructorNote): Promise<InstructorNote> {
   return getInstructorNoteRepository().saveNoteByNotionNo(notionNo, patch);

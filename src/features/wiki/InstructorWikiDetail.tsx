@@ -136,7 +136,6 @@ export async function InstructorWikiDetail({
               <PeopleCard note={profileSource} title="소개 · 전문분야">
                 <PeopleFacts
                   items={[
-                    { label: "소속", value: np?.affiliation },
                     { label: "전문분야", value: fields.join(" · ") },
                     { label: "가능 커리큘럼", value: curriculums.join(", ") },
                     {
@@ -257,6 +256,7 @@ export async function InstructorWikiDetail({
               <PeopleCard note="열람 기록 남음" title="개인정보">
                 {note.id ? (
                   <div className="people-contact">
+                    <MaskedField entity="instructor" id={note.id} field="affiliation" label="소속" />
                     <MaskedField entity="instructor" id={note.id} field="contact" label="연락처" />
                     <MaskedField entity="instructor" id={note.id} field="email" label="이메일" />
                   </div>
