@@ -1,28 +1,19 @@
 "use client";
 
-import { useMemo, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { PeopleDirectory, type PeopleRow } from "@/features/people/PeopleDirectory";
-import { averageOf, formatPeopleDate, parseSatisfaction, peopleStatusFromFacts } from "@/lib/people/peopleStatus";
-import {
-  cleanCourseName,
-  instructorWikiHref,
-  hasOperationHistory,
-  type InstructorWikiEntry,
-  type InstructorWikiProvenance
-} from "./instructorWikiModel";
+import type { InstructorWikiProvenance } from "./instructorWikiModel";
 
 interface InstructorWikiProps {
-  entries: InstructorWikiEntry[];
+  /** 목록 한 줄씩. 서버에서 코스 이력을 요약해 만든다(상세는 별도 라우트라 코스 배열을 내리지 않는다). */
+  rows: PeopleRow[];
   loadFailed: boolean;
+  /** 전체 강사 수(노션 명단 합친 후). 헤더 안내용. */
+  entriesCount: number;
   /** 운영 현황에서 집계된 강사 수(노션 명단 합치기 전). 헤더 안내용. */
   operationEntryCount?: number;
   provenance: InstructorWikiProvenance;
-  recruitAvoidNames?: string[];
-  /** 한국 기준 오늘(YYYY-MM-DD). 상태·날짜 표기를 서버와 맞춘다. */
-  today: string;
-  /** 활동/휴면 경계(개월). 코치 위키와 같은 값을 쓴다. */
-  dormantMonths: number;
   /** 검색줄 옆 "강사 추천" 버튼으로 여는 패널(서버에서 계산해 그린다). */
   recommendPanel?: ReactNode;
   /** 추천 조건이 주소에 있으면(추천받기 직후) 처음부터 펼친다. */
@@ -30,26 +21,19 @@ interface InstructorWikiProps {
 }
 
 export function InstructorWiki({
-  entries,
+  rows,
   loadFailed,
+  entriesCount,
   operationEntryCount,
   provenance,
-  recruitAvoidNames = [],
-  today,
-  dormantMonths,
   recommendPanel,
   recommendOpen = false
 }: InstructorWikiProps) {
-  const rows = useMemo(() => {
-    const avoidSet = new Set(recruitAvoidNames);
-    return entries.map((entry) => toRow(entry, avoidSet.has(entry.name), today, dormantMonths));
-  }, [dormantMonths, entries, recruitAvoidNames, today]);
-
   const lede =
     provenance === "empty"
       ? "관리자 > 데이터 동기화에서 노션 강사 동기화를 실행하거나, 운영 현황에 강사가 배정되면 표시됩니다."
       : provenance === "notion" && operationEntryCount !== undefined
-        ? `노션 강사 DB 명단에 운영 현황 배정을 붙여 보여 줍니다. 전체 ${entries.length}명 중 ${operationEntryCount}명이 운영 이력이 있어요.`
+        ? `노션 강사 DB 명단에 운영 현황 배정을 붙여 보여 줍니다. 전체 ${entriesCount}명 중 ${operationEntryCount}명이 운영 이력이 있어요.`
         : "운영 현황에 배정된 강사만 보입니다. 노션 동기화를 돌리면 배정 이력이 없는 강사까지 함께 표시됩니다.";
 
   return (
@@ -74,56 +58,4 @@ export function InstructorWiki({
       </section>
     </main>
   );
-}
-
-function toRow(entry: InstructorWikiEntry, recruitAvoid: boolean, today: string, dormantMonths: number): PeopleRow {
-  // 최근 투입은 이미 시작한 과정 기준. 앞으로 잡힌 과정만 있으면 "예정"으로 보여 준다.
-  const past = entry.courses.find((course) => course.startDate && course.startDate <= today);
-  const upcoming = past ? undefined : entry.courses.find((course) => course.startDate > today);
-  const recent = past ?? upcoming;
-  const fields = entry.categories.length > 0 ? entry.categories : entry.coach?.fields ?? [];
-  // 종합만족도(전체 총평) = avgSatisfaction, 강사만족도 = instructorSatisfaction. 둘을 따로 집계한다.
-  const courseScores = entry.courses
-    .map((course) => parseSatisfaction(course.avgSatisfaction))
-    .filter((score): score is number => score !== null);
-  const courseRating = averageOf(courseScores);
-  const instructorScores = entry.courses
-    .map((course) => parseSatisfaction(course.instructorSatisfaction))
-    .filter((score): score is number => score !== null);
-  const instructorRating = averageOf(instructorScores);
-
-  return {
-    id: entry.id,
-    href: instructorWikiHref(entry),
-    name: entry.name,
-    // 진행·예정은 날짜로만 판단한다. 운영현황 진행상태는 지난 회차가 "배정필요"로 남아 있는 경우가 많아 믿을 수 없다.
-    status: peopleStatusFromFacts(
-      entry.courses.map((course) => ({ startDate: course.startDate, endDate: course.endDate })),
-      today,
-      dormantMonths
-    ),
-    fields,
-    flags: recruitAvoid ? [{ label: "⛔ 섭외지양", tone: "bad" }] : [],
-    recent: recent
-      ? [upcoming ? "예정" : "", recent.companyName, cleanCourseName(recent.courseName), recent.startDate ? formatPeopleDate(recent.startDate, today) : ""]
-          .filter(Boolean)
-          .join(" · ")
-      : null,
-    subline: hasOperationHistory(entry) ? null : "운영 배정 이력 없음",
-    recentDate: past?.startDate || null,
-    deployCount: entry.courseCount,
-    deployLabel: `${entry.courseCount}건`,
-    rating: courseRating,
-    ratingLabel: courseRating !== null ? `${courseRating.toFixed(1)} (${courseScores.length}건)` : "-",
-    secondaryRating: instructorRating,
-    secondaryRatingLabel: instructorRating !== null ? `${instructorRating.toFixed(1)} (${instructorScores.length}건)` : "-",
-    secondary: entry.companies,
-    searchText: [
-      entry.name,
-      ...entry.companies,
-      ...entry.courses.map((course) => course.courseName),
-      ...entry.categories,
-      ...(entry.coach?.fields ?? [])
-    ].join(" ")
-  };
 }

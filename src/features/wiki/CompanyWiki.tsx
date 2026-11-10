@@ -3,14 +3,14 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
-import type { CompanyWikiEntry } from "./companyWikiModel";
+import type { CompanyWikiCourse, CompanyWikiListEntry } from "./companyWikiModel";
 import { emptyCompanyBusinessInfo, type CompanyBusinessInfo } from "@/lib/data/companyBusinessInfoTypes";
 import { CompanyBusinessInfoEditor } from "./CompanyBusinessInfoEditor";
 import { CompanyMemoEditor } from "./CompanyMemoEditor";
 
 interface CompanyWikiProps {
-  /** 운영 현황에서 만든 기업 목록. */
-  entries: CompanyWikiEntry[];
+  /** 운영 현황에서 만든 기업 목록(요약만 — 코스 상세는 상세를 열 때 따로 불러온다). */
+  entries: CompanyWikiListEntry[];
   /** 운영 현황을 못 읽었을 때. 빈 목록과 구분해서 알려 준다. */
   loadFailed: boolean;
 }
@@ -142,7 +142,7 @@ export function CompanyWiki({ entries, loadFailed }: CompanyWikiProps) {
                           <span className="wiki-card-meta">
                             코스 {entry.courseCount}건 · 회차 {entry.roundCount}건 · 담당 {nameText(entry.omNames, "배정필요")}
                           </span>
-                          {entry.courses[0] ? <span className="wiki-card-course">{entry.courses[0].courseName}</span> : null}
+                          {entry.topCourseName ? <span className="wiki-card-course">{entry.topCourseName}</span> : null}
                         </button>
                       ))
                     ) : (
@@ -252,9 +252,31 @@ function CompanyWikiDetail({
   entry,
   onBack
 }: {
-  entry: CompanyWikiEntry;
+  entry: CompanyWikiListEntry;
   onBack: () => void;
 }) {
+  // 코스 상세(운영 이력·계산서 내역)도 목록 로드에 싣지 않고, 상세를 열 때 이 기업 것만 따로
+  // 불러온다 — 전체 기업의 코스 상세를 한 번에 내려보내면 목록이 무거워지기 때문이다. null이면 불러오는 중.
+  const [courses, setCourses] = useState<CompanyWikiCourse[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const params = new URLSearchParams();
+    if (entry.companyId) params.set("companyId", entry.companyId);
+    params.set("name", entry.name);
+    fetch(`/api/company-wiki/courses?${params.toString()}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled) setCourses(Array.isArray(data?.courses) ? data.courses : []);
+      })
+      .catch(() => {
+        if (!cancelled) setCourses([]);
+      });
+    return () => { cancelled = true; };
+    // entry는 상세 key(회사명)가 바뀔 때만 이 컴포넌트와 함께 새로 만들어진다 — 마운트당 한 번만 불러오면 된다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // 사업자등록증 정보(PII)는 목록 화면에서 한 번에 내려받지 않고, 상세를 열 때 이 기업
   // 것만 따로 불러온다 — 기업위키가 전체 워크스페이스에 열려 있어 노출 범위를 좁혀야 한다.
   const [businessInfo, setBusinessInfo] = useState<CompanyBusinessInfo | null>(null);
@@ -287,7 +309,8 @@ function CompanyWikiDetail({
   } | null>(null);
 
   useEffect(() => {
-    if (entry.courses.length === 0) return;
+    // 코스가 아직 안 왔거나(null) 없으면 건너뛴다. 코스가 도착하면(또는 저장 후) 다시 만든다.
+    if (!courses || courses.length === 0) return;
     let cancelled = false;
     fetch("/api/company-wiki/invoice-link", {
       method: "POST",
@@ -295,7 +318,7 @@ function CompanyWikiDetail({
       body: JSON.stringify({
         companyId: entry.companyId,
         companyName: entry.name,
-        courses: entry.courses.map((course) => ({ key: course.key, courseId: course.courseId, courseIdLabel: course.courseIdLabel }))
+        courses: courses.map((course) => ({ key: course.key, courseId: course.courseId, courseIdLabel: course.courseIdLabel }))
       })
     })
       .then((res) => (res.ok ? res.json() : null))
@@ -309,7 +332,7 @@ function CompanyWikiDetail({
       });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [invoiceLinksVersion]);
+  }, [invoiceLinksVersion, courses]);
 
   return (
     <>
@@ -355,7 +378,11 @@ function CompanyWikiDetail({
               </tr>
             </thead>
             <tbody>
-              {entry.courses.map((course) => (
+              {courses === null ? (
+                <tr><td className="muted-inline" colSpan={12}>코스 상세를 불러오는 중…</td></tr>
+              ) : courses.length === 0 ? (
+                <tr><td className="empty-state" colSpan={12}>운영 이력이 없습니다.</td></tr>
+              ) : courses.map((course) => (
                 <tr key={course.key}>
                   <td><strong>{course.courseId || "검토필요"}</strong></td>
                   <td>
