@@ -42,37 +42,6 @@ export interface CompanyWikiEntry {
   courses: CompanyWikiCourse[];
 }
 
-/**
- * 기업위키 목록 한 줄(코스 상세 제외). 목록은 요약만 쓰고, 코스 상세(courses[])는 상세를 열 때
- * /api/company-wiki/courses 로 그 기업 것만 따로 불러온다 — 전체 기업의 코스 상세를 목록 로드에
- * 한꺼번에 싣지 않기 위해서다(사업자등록증 정보를 상세에서 따로 불러오는 것과 같은 결).
- */
-export type CompanyWikiListEntry = Omit<CompanyWikiEntry, "courses"> & {
-  /** 갤러리 카드에 보여 줄 대표(최근) 과정명. 코스 상세를 안 내리는 대신 이 한 줄만 요약으로 둔다. */
-  topCourseName: string | null;
-};
-
-export function toCompanyListEntries(entries: CompanyWikiEntry[]): CompanyWikiListEntry[] {
-  // courses만 떼어 낸다. 나머지 요약(건수·담당·만족도·매출)은 그대로 두고, 대표 과정명만 남긴다.
-  return entries.map(({ courses, ...rest }) => ({ ...rest, topCourseName: courses[0]?.courseName ?? null }));
-}
-
-/**
- * 한 기업의 코스 상세만 뽑는다(상세 화면용). 목록과 같은 기준으로 집계한 뒤 그 기업을 찾는다 —
- * companyId가 있으면 그것으로, 없으면(로컬 JSON/병합 항목) 대표 기업명으로 맞춘다. 못 찾으면 빈 배열.
- */
-export function findCompanyCourses(
-  operations: ReadonlyArray<OperationSession>,
-  companyId: string | null,
-  name: string
-): CompanyWikiCourse[] {
-  const entries = aggregateCompanies(operations);
-  const match = companyId
-    ? entries.find((entry) => entry.companyId === companyId)
-    : entries.find((entry) => entry.name === name);
-  return match?.courses ?? [];
-}
-
 /** 코스ID가 비어도 과정명으로 갈라지도록 둘을 합쳐 키로 쓴다. */
 function courseKey(operation: OperationSession): string {
   return `${(operation.courseId ?? "").trim()}|${(operation.courseName ?? "").trim()}`;

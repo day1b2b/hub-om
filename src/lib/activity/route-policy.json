@@ -82,7 +82,6 @@
   "POST /api/coaches": "tracked",
   "GET /api/company-wiki/business-info": "tracked",
   "POST /api/company-wiki/business-info": "tracked",
-  "GET /api/company-wiki/courses": "tracked",
   "POST /api/company-wiki/invoice-link": "tracked",
   "PATCH /api/engagements/[id]/review": "tracked",
   "PUT /api/engagements/[id]": "tracked",
