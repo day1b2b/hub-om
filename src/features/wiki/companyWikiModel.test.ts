@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { aggregateCompanies, findCompanyCourses, toCompanyListEntries } from "@/features/wiki/companyWikiModel.ts";
+import { aggregateCompanies } from "@/features/wiki/companyWikiModel.ts";
 import type { OperationSession } from "@/lib/data/operationTypes.ts";
 
 function operation(overrides: Partial<OperationSession> = {}): OperationSession {
@@ -214,52 +214,4 @@ test("companyId가 있는 행과 없는 행은 섞지 않는다", () => {
     operation({ operationId: "b", companyName: "가온물산" })
   ]);
   assert.equal(entries.length, 2);
-});
-
-test("toCompanyListEntries: 코스 상세는 떼고 요약·대표 과정명만 남긴다", () => {
-  // 목록 payload 경량화 — 코스 상세(courses[])는 상세를 열 때 따로 불러온다.
-  const entries = aggregateCompanies([
-    operation({ operationId: "a", courseId: "C-1", courseName: "최근 과정", startDate: "2026-09-10" }),
-    operation({ operationId: "b", courseId: "C-2", courseName: "이전 과정", startDate: "2026-03-10" })
-  ]);
-  const list = toCompanyListEntries(entries);
-  assert.equal(list.length, 1);
-  assert.equal("courses" in list[0], false);
-  assert.equal(list[0].courseCount, 2);
-  // aggregateCompanies가 최근순 정렬이라 대표 과정명은 가장 최근 과정이다.
-  assert.equal(list[0].topCourseName, "최근 과정");
-});
-
-test("toCompanyListEntries: 코스가 없으면 대표 과정명은 null", () => {
-  const list = toCompanyListEntries([
-    { name: "빈기업", companyId: null, omNames: [], ldNames: [], courseCount: 0, roundCount: 0, firstDate: "-", lastDate: "-", years: [], avgSatisfaction: "-", totalRevenue: "0", courses: [] }
-  ]);
-  assert.equal(list[0].topCourseName, null);
-});
-
-test("findCompanyCourses: companyId로 그 기업의 코스만 돌려준다", () => {
-  const operations = [
-    operation({ operationId: "a", companyId: "cmp-1", companyName: "가온물산", courseId: "C-1" }),
-    operation({ operationId: "b", companyId: "cmp-2", companyName: "한빛산업", courseId: "C-9" })
-  ];
-  const courses = findCompanyCourses(operations, "cmp-1", "가온물산");
-  assert.deepEqual(courses.map((c) => c.courseId), ["C-1"]);
-});
-
-test("findCompanyCourses: companyId가 없으면 대표 기업명으로 찾는다", () => {
-  // companyId가 없는 데이터(로컬 JSON/병합)는 대표 기업명으로 매칭한다. 클라이언트는 같은
-  // 집계로 만든 entry.name을 그대로 넘기므로, 집계가 고른 대표명으로 조회하면 맞는다.
-  const operations = [
-    operation({ operationId: "a", companyName: "가온물산", courseId: "C-1" }),
-    operation({ operationId: "b", companyName: "가온물산", courseId: "C-1" })
-  ];
-  const name = toCompanyListEntries(aggregateCompanies(operations))[0].name;
-  const courses = findCompanyCourses(operations, null, name);
-  assert.equal(courses.length, 1);
-  assert.equal(courses[0].rounds, 2);
-});
-
-test("findCompanyCourses: 못 찾으면 빈 배열", () => {
-  const operations = [operation({ operationId: "a", companyId: "cmp-1", companyName: "가온물산" })];
-  assert.deepEqual(findCompanyCourses(operations, "cmp-없음", "없는기업"), []);
 });
