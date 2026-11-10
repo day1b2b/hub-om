@@ -65,9 +65,10 @@ export async function InstructorWikiDetail({
     .filter((alias) => linkTargets[alias] === entry.name)
     .sort((a, b) => a.localeCompare(b, "ko"));
 
-  // 강사 프로필은 coach-db가 우선이고, 없으면 노션 강사 DB 스냅샷으로 채운다.
+  // 전문분야는 노션 강사 DB(강사 정본)를 우선하고 코치 DB로 폴백한다 — coach.fields는 '코치로 등록한 분야'라
+  // 강의 전문분야와 다를 수 있다. 커리큘럼은 구조화된 코치 DB를 우선한다(없으면 노션 강의 정보).
   const np = note.notion;
-  const fields = coach && coach.fields.length > 0 ? coach.fields : np?.categories ?? [];
+  const fields = np?.categories && np.categories.length > 0 ? np.categories : coach?.fields ?? [];
   const curriculums = coach && coach.curriculums.length > 0 ? coach.curriculums : np?.lectureTopics ?? [];
   const profileSource = coach
     ? "코치 DB 매칭됨"
