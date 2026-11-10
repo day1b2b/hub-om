@@ -7,14 +7,13 @@ import {
   applyNotionLinks,
   attachCoachSummaries,
   mergeNotionNotes,
-  type InstructorWikiEntry,
   type InstructorWikiProvenance
 } from "@/features/wiki/instructorWikiModel";
+import type { PeopleRow } from "@/features/people/PeopleDirectory";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getCoachRepository } from "@/lib/data/coachRepositoryFactory";
 import { listInstructorNotes, resolveNotionLinkTargets } from "@/lib/data/instructorWikiStore";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
-import type { OperationSession } from "@/lib/data/operationTypes";
 import { runCoachPublicRequest } from "@/lib/data/coachPublicComposition";
 import { coachActivityPolicy, seoulTodayKey } from "@/lib/coaches/coachActivity";
 import { cachedRead } from "@/lib/data/readCache";
@@ -36,49 +35,47 @@ function firstParam(value: string | string[] | undefined): string {
   return (Array.isArray(value) ? value[0] : value)?.trim() ?? "";
 }
 
-async function renderInstructorWikiPage(recommendMinor: string, recommendDate: string) {
-  let entries: InstructorWikiEntry[] = [];
-  let operations: OperationSession[] = [];
-  let loadFailed = false;
+// 워크스페이스 공용 읽기는 짧은 TTL로 캐시한다(매 방문 재쿼리 방지). 코치 목록은 코치위키와 같은 키라 캐시를 공유한다.
+const loadOperations = () =>
+  cachedRead("operations:listOperations", () => timed("instructor-wiki:listOperations", () => getOperationRepository().listOperations()));
+const loadNotes = () =>
+  cachedRead("instructor-wiki:notes", () => timed("instructor-wiki:listInstructorNotes", () => listInstructorNotes()));
+const loadCoaches = () =>
+  cachedRead("coaches:listCoaches", () => timed("instructor-wiki:listCoaches", () => getCoachRepository().listCoaches()));
 
-  // 운영 현황·노션 노트·코치 보강은 서로 독립이라 동시에 읽는다(예전엔 순차 await라 지연이 합산됐다).
-  // 각 구간 시간을 [perf] 로그로 남겨 병목을 데이터로 확인한다.
-  const wikiStartedAt = Date.now();
-  // 워크스페이스 공용 읽기는 짧은 TTL로 캐시한다(매 방문 재쿼리 방지). 실패는 캐시 밖에서 처리해
-  // 순간 장애가 TTL 동안 굳지 않게 한다. 코치 목록은 코치위키와 같은 키라 캐시를 공유한다.
-  const [operationsOrNull, notes, coaches] = await Promise.all([
-    // 담당 코스·과정은 운영 현황에서 온다. 실패하면 null → 빈 목록 + 경고로 처리한다.
-    cachedRead("operations:listOperations", () => timed("instructor-wiki:listOperations", () => getOperationRepository().listOperations())).catch(() => null),
-    cachedRead("instructor-wiki:notes", () => timed("instructor-wiki:listInstructorNotes", () => listInstructorNotes())),
+interface InstructorWikiView {
+  rows: PeopleRow[];
+  entriesCount: number;
+  operationEntryCount: number;
+  provenance: InstructorWikiProvenance;
+}
+
+/**
+ * 목록 view(읽기 + 강사 집계 + rows 생성)를 통째로 만든다. 이 결과를 today 기준으로 캐시해
+ * 반복 방문 시 DB 읽기뿐 아니라 800명 집계 CPU까지 건너뛴다(강사위키 서버 렌더 스파이크 원인).
+ * 운영 현황 읽기 실패는 throw해서 캐시하지 않는다(다음 방문이 재시도).
+ */
+async function buildInstructorWikiView(today: string): Promise<InstructorWikiView> {
+  const [operations, notes, coaches] = await Promise.all([
+    loadOperations(),
+    loadNotes(),
     // coach-db 보강은 best-effort. 미연결(로컬 dev 등)이면 빈 배열로 건너뛴다.
-    cachedRead("coaches:listCoaches", () => timed("instructor-wiki:listCoaches", () => getCoachRepository().listCoaches())).catch(() => [])
+    loadCoaches().catch(() => [])
   ]);
 
-  if (operationsOrNull) {
-    operations = operationsOrNull;
-    entries = aggregateInstructors(operations);
-  } else {
-    loadFailed = true;
-  }
-
+  let entries = aggregateInstructors(operations);
   const linkTargets = resolveNotionLinkTargets(notes);
-
   // OM이 연결해 둔 노션 강사로 먼저 합친다. 운영 현황 표기가 달라 갈려 있던 같은 사람을 하나로.
   entries = applyNotionLinks(entries, linkTargets);
-
   const operationEntryCount = entries.length;
 
   // 강사 명단·프로필은 노션 강사 DB에서 온다(연결 키 = 노션 NO). 운영 배정이 없는 강사도 세운다.
-  // 연결된 표기(linkTargets의 키)는 위에서 합쳐 없앴으므로 다시 세우지 않는다.
   const notionNotes = notes.filter(
     (note) => note.notion && note.notionNo !== undefined && !linkTargets[(note.instructorName ?? "").trim()]
   );
   entries = mergeNotionNotes(entries, notionNotes);
 
-  // coach-db 전문분야/평가 보강(best-effort). 위 병렬 로드에서 받은 값만 쓴다.
-  if (coaches.length > 0) {
-    attachCoachSummaries(entries, coaches);
-  }
+  if (coaches.length > 0) attachCoachSummaries(entries, coaches);
 
   // 노션 명단이 목록의 기준이 되면 provenance도 노션이다. 노션 동기화 전에는 운영 현황만 남는다.
   const provenance: InstructorWikiProvenance =
@@ -90,21 +87,39 @@ async function renderInstructorWikiPage(recommendMinor: string, recommendDate: s
     .map((note) => (note.instructorName ?? "").trim())
     .filter(Boolean);
 
-  // 강사 추천: 분야를 고른 뒤에만 계산한다(조건은 주소로 받는다).
+  // 목록 요약은 서버에서 만들어 slim하게 내린다 — 코스 상세(courses[])는 상세 라우트에서만 쓴다.
+  const rows = buildInstructorRows(entries, recruitAvoidNames, today, coachActivityPolicy.dormantMonths);
+  return { rows, entriesCount: entries.length, operationEntryCount, provenance };
+}
+
+async function renderInstructorWikiPage(recommendMinor: string, recommendDate: string) {
   const today = seoulTodayKey();
-  const recommendation = recommendMinor
-    ? recommendInstructorsByCriteria({
+  const wikiStartedAt = Date.now();
+
+  // 집계 결과까지 캐시한다(today 기준). 실패하면 빈 목록 + 경고로 처리하고 캐시하지 않는다.
+  let loadFailed = false;
+  const view = await cachedRead(`instructor-wiki:view:${today}`, () => buildInstructorWikiView(today)).catch(() => {
+    loadFailed = true;
+    return { rows: [], entriesCount: 0, operationEntryCount: 0, provenance: "empty" as InstructorWikiProvenance };
+  });
+
+  // 강사 추천: 분야를 고른 뒤에만 계산한다(조건은 주소로 받는다). 운영 현황·노트는 공용 캐시에서 온다.
+  let recommendation: ReturnType<typeof recommendInstructorsByCriteria> | null = null;
+  if (recommendMinor) {
+    try {
+      const [operations, notes] = await Promise.all([loadOperations(), loadNotes()]);
+      recommendation = recommendInstructorsByCriteria({
         minor: recommendMinor,
         date: recommendDate,
         operations,
         notes,
         today,
         dormantMonths: coachActivityPolicy.dormantMonths
-      })
-    : null;
-
-  // 목록 요약은 서버에서 만들어 slim하게 내린다 — 코스 상세(courses[])는 상세 라우트에서만 쓰므로 목록 payload에 싣지 않는다.
-  const rows = buildInstructorRows(entries, recruitAvoidNames, today, coachActivityPolicy.dormantMonths);
+      });
+    } catch {
+      // 추천 계산용 읽기 실패는 목록 표시를 막지 않는다.
+    }
+  }
 
   console.info(`[perf] instructor-wiki total ${Date.now() - wikiStartedAt}ms`);
 
@@ -112,11 +127,11 @@ async function renderInstructorWikiPage(recommendMinor: string, recommendDate: s
     <InstructorWiki
       recommendOpen={recommendation !== null}
       recommendPanel={<InstructorRecommendPanel date={recommendDate} minor={recommendMinor} recommendation={recommendation} />}
-      rows={rows}
+      rows={view.rows}
       loadFailed={loadFailed}
-      operationEntryCount={operationEntryCount}
-      entriesCount={entries.length}
-      provenance={provenance}
+      operationEntryCount={view.operationEntryCount}
+      entriesCount={view.entriesCount}
+      provenance={view.provenance}
     />
   );
 }
