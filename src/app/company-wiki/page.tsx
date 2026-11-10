@@ -1,5 +1,5 @@
 import { CompanyWiki } from "@/features/wiki/CompanyWiki";
-import { aggregateCompanies, toCompanyListEntries, type CompanyWikiListEntry } from "@/features/wiki/companyWikiModel";
+import { aggregateCompanies, type CompanyWikiEntry } from "@/features/wiki/companyWikiModel";
 import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { getOperationRepository } from "@/lib/data/operationRepositoryFactory";
 import { runOverviewPagesRequest } from "@/lib/data/overviewPagesComposition";
@@ -14,18 +14,17 @@ async function renderCompanyWikiPage() {
   await requireWorkspaceSession();
 
   // 기업 목록·코스·이력은 운영 현황에서 온다. 전에는 하드코딩 배열이었다.
-  let entries: CompanyWikiListEntry[] = [];
+  let entries: CompanyWikiEntry[] = [];
   let loadFailed = false;
 
   try {
     const operations = await getOperationRepository().listOperations();
-    // 목록엔 요약만 내린다. 코스 상세(courses[])는 상세를 열 때 /api/company-wiki/courses 로 따로 불러온다.
-    entries = toCompanyListEntries(aggregateCompanies(operations));
+    entries = aggregateCompanies(operations);
   } catch {
     loadFailed = true;
   }
 
-  // 사업자등록증 정보(PII)·코스 상세는 여기서 전체를 한 번에 내려보내지 않는다 — 기업위키가 전체
+  // 사업자등록증 정보(PII)는 여기서 전체를 한 번에 내려보내지 않는다 — 기업위키가 전체
   // 워크스페이스에 열려 있어서, 상세를 열 때 CompanyWiki가 그 기업 것만 따로 불러온다.
   return <CompanyWiki entries={entries} loadFailed={loadFailed} />;
 }
