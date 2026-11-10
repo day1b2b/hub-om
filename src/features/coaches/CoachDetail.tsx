@@ -120,7 +120,7 @@ export function CoachDetailView({
           }
           fields={coach.fields}
           kpis={[
-            { label: "투입", value: `${activity.deployCount}회` },
+            { label: "투입", value: activity.upcomingCount > 0 ? `완료 ${activity.deployCount}건 · 예정 ${activity.upcomingCount}건` : `완료 ${activity.deployCount}건` },
             { label: "최근 투입", value: activity.lastDeployDate ? formatPeopleDate(activity.lastDeployDate, today) : "-" },
             {
               label: "OM 평가 (최근)",
@@ -183,7 +183,7 @@ export function CoachDetailView({
                 </PeopleCard>
 
                 {/* 강사 위키와 같이 투입 이력은 맨 아래에 접어 둔다. */}
-                <PeopleCollapsible id="engagements" note={`${engagements.length}건 · 건마다 OM 평가`} title="투입 이력">
+                <PeopleCollapsible id="engagements" note={`완료 ${activity.deployCount}건 · 예정 ${activity.upcomingCount}건 · 건마다 OM 평가`} title="투입 이력">
                   <Link className="people-card-link" href={`/coaches/${coach.id}/engagements`}>표로 보기 →</Link>
                   <EngagementPane coachId={coach.id} engagements={engagements} />
                 </PeopleCollapsible>
