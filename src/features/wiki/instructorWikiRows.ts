@@ -72,10 +72,11 @@ function toRow(entry: InstructorWikiEntry, recruitAvoid: boolean, today: string,
     secondaryRating: instructorSat.rating,
     secondaryRatingLabel: instructorSat.label,
     secondary: entry.companies,
+    // 과정명은 회차마다 중복돼 payload를 불린다 — 정리·중복제거해 담는다(검색은 부분일치라 1회만 있어도 됨).
     searchText: [
       entry.name,
       ...entry.companies,
-      ...entry.courses.map((course) => course.courseName),
+      ...Array.from(new Set(entry.courses.map((course) => cleanCourseName(course.courseName)))),
       ...entry.categories,
       ...(entry.coach?.fields ?? [])
     ].join(" ")
