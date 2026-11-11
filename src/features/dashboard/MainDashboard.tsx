@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { extractIssueTagsFromNote } from "@/features/operations/lectureNoteModel";
+import { SatisfactionAnalysisButton } from "@/features/operations/SatisfactionAnalysisButton";
 import { useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { sumRevenueByCourseId } from "@/lib/data/operationCalculations";
@@ -91,6 +92,12 @@ export function MainDashboard({ operations, teamScope, teamUsers }: MainDashboar
           <div className="header-panel">
             <span>데이터 기준</span>
             <strong>{scope} 현황</strong>
+          </div>
+          {/* 설치 창구 — 노션 업무 바로가기가 /dashboard 를 가리키므로 여기에 둬야 닿는다.
+              detail-header-actions 로 감싸지 않는다: 그 안의 button 규칙이 border 를 지워
+              운영 화면에서 보던 생김새와 달라진다. */}
+          <div>
+            <SatisfactionAnalysisButton />
           </div>
         </header>
 

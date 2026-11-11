@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AppSidebar } from "@/components/AppSidebar";
 import type { CoachEngagementStatusValue, CoachEngagementView } from "@/lib/data/coachTypes";
+import { CoachEngagementEduTypeLabel } from "./CoachEngagementEduTypeLabel";
 
 const STATUS_LABEL: Record<CoachEngagementStatusValue, string> = {
   scheduled: "예정",
@@ -35,7 +36,7 @@ export function CoachEngagementList({
   feedbackByEngagement
 }: CoachEngagementListProps) {
   const showFeedback = Object.keys(feedbackByEngagement).length > 0;
-  const colSpan = showFeedback ? 8 : 6;
+  const colSpan = showFeedback ? 9 : 7;
 
   return (
     <main className="dashboard-shell">
@@ -73,6 +74,7 @@ export function CoachEngagementList({
                 <tr>
                   <th>#</th>
                   <th>과정</th>
+                  <th>교육 유형</th>
                   <th>상태</th>
                   <th>기간</th>
                   <th>평점</th>
@@ -99,6 +101,9 @@ export function CoachEngagementList({
                               <span className="status needs-assignment">운영 미연결</span>
                             </span>
                           )}
+                        </td>
+                        <td>
+                          <CoachEngagementEduTypeLabel engagement={engagement} />
                         </td>
                         <td>
                           <span className={`status ${STATUS_CLASS[engagement.status]}`}>

@@ -10,13 +10,14 @@ import { getDataRepositoryOverride } from "./dataRepositoryContext";
 import { getPrismaClient } from "./prisma";
 import { LINK_MAIL_CONTEXT } from "../coaches/coachLinkMail";
 import { CONTRACT_REQUEST_CONTEXT } from "../instructors/instructorContractEmail";
+import { getInstructorAffiliationById } from "./instructorWikiStore";
 
 export type PiiEntity = "coach" | "instructor";
 
 // 당사자 PII 필드만 허용(연결 키·토큰 등 시스템 필드 차단). 엔티티가 늘면 여기에 추가.
 const REVEALABLE_FIELDS: Record<PiiEntity, readonly string[]> = {
   coach: ["employeeId", "phone", "email", "birthDate", "affiliation"],
-  instructor: ["contact", "contact2", "email", "email2", "birthDate"]
+  instructor: ["contact", "contact2", "email", "email2", "birthDate", "affiliation"]
 };
 
 /** entity·field가 열람 허용 목록에 있는지 검증(라우트 입력은 신뢰하지 않는다). */
@@ -60,6 +61,11 @@ export async function revealPiiField(
     if (!profile) return null;
     const value = profile[field as keyof CoachPrivateProfileView];
     return typeof value === "string" && value.length > 0 ? value : null;
+  }
+  // 소속은 암호화 저장이 아니라 노션 스냅샷에 있다(팀 결정: 소속은 암호화 비대상).
+  // 초기 HTML 노출만 막고, 열람은 다른 PII와 같은 감사 로그로 남긴다(위 recordReveal).
+  if (field === "affiliation") {
+    return getInstructorAffiliationById(id);
   }
   const profile = await getInstructorPrivateRepository().getPrivateProfile(id);
   if (!profile) return null;

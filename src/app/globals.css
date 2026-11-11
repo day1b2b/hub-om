@@ -4407,6 +4407,28 @@ td span {
   overflow-wrap: anywhere;
 }
 
+/* 투입별 교육 유형(연결된 운영현황 회차 기준). 상세 근무 이력과 표 보기가 같이 쓴다. */
+.coach-engagement-edutype {
+  align-items: center;
+  color: #475569;
+  display: inline-flex;
+  flex-wrap: wrap;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 6px;
+}
+
+.coach-engagement-edutype-format {
+  background: #eef2f7;
+  border-radius: 4px;
+  color: #334155;
+  padding: 1px 6px;
+}
+
+.coach-engagement-edutype.is-empty {
+  color: #94a3b8;
+}
+
 .coach-origin-engagement-rating {
   color: #f57f17;
   font-size: 12px;

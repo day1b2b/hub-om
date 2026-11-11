@@ -5,7 +5,11 @@ import { MongoOperationStore, assertMongo, type MongoOperationOptions, type Mong
 import { COACH_READ_MODELS, assertMongoReadStoreReady } from "./mongoReadStore";
 import { engagementStatus, coachDate, coachRangeDate, coachMonthRange, compareCoaches, compareEngagements, coachSummary, coachRead } from "./mongoCoachMapping";
 import { buildSkillfloCoachUrl } from "../coaches/skillfloCoachUrl";
+import { coachLinkedSession, type CoachLinkedSessionRow } from "./coachLinkedSession";
 import { clearOverlappingPeriods, hasAvailability, subtractBitmap, toBitmap, toIntervals, type TimeInterval } from "./scheduleBitmap";
+
+/** 투입 이력에 교육형태를 붙이려고 OperationSession을 읽기만 한다(준비·검증기는 운영 저장소 몫). */
+const COACH_REPOSITORY_MODELS = [...COACH_READ_MODELS, "OperationSession"] as const;
 
 /** Parallel shadow reads only. Like the existing PG adapter, separate relation reads are not a single snapshot. */
 export class MongoCoachRepository implements CoachRepository {
@@ -13,7 +17,7 @@ export class MongoCoachRepository implements CoachRepository {
   private constructor(store: MongoOperationStore) { this.store = store; }
   static async open(options: MongoOperationOptions) {
     return coachRead(async () => {
-    const store = new MongoOperationStore(options, COACH_READ_MODELS);
+    const store = new MongoOperationStore(options, COACH_REPOSITORY_MODELS);
     await assertMongoReadStoreReady(store);
     return new MongoCoachRepository(store);
     });
@@ -69,9 +73,12 @@ export class MongoCoachRepository implements CoachRepository {
   async listEngagements(coachId: string) {
     return coachRead(async () => {
       const rows = await this.store.scan("CoachEngagement", { coachId }) as unknown as CoachEngagement[];
+      const sessionIds = [...new Set(rows.flatMap(row => row.operationSessionId ? [row.operationSessionId] : []))];
+      const sessions = new Map(sessionIds.length ? (await this.store.scan("OperationSession", { _id: { $in: sessionIds } })).map(row => [row.id as string, row as unknown as CoachLinkedSessionRow]) : []);
       return rows.sort(compareEngagements).map(row => ({ id: row.id, courseName: row.courseName, operationSessionId: row.operationSessionId,
         status: engagementStatus[row.status], source: row.source.toLowerCase(), startDate: coachDate(row.startDate), endDate: coachDate(row.endDate),
-        startTime: row.startTime, endTime: row.endTime, rating: row.rating, rehire: row.rehire, feedback: row.feedback }));
+        startTime: row.startTime, endTime: row.endTime, rating: row.rating, rehire: row.rehire, feedback: row.feedback,
+        linkedSession: coachLinkedSession(row.operationSessionId ? sessions.get(row.operationSessionId) : null) }));
     });
   }
   async listSchedules(coachId: string, range: DateRange) {
