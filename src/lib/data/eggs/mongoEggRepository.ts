@@ -127,7 +127,7 @@ export class MongoEggRepository implements EggRepository {
       if (!target) throw new Error("대여를 찾을 수 없습니다.");
       const earlier = (await this.store.scan("EggRental", {
         eggDeviceId: target.eggDeviceId, deletedAt: null, returnedAt: null, startDate: { $lte: target.startDate }
-      }, session)).filter(row => row._id !== rentalId);
+      }, session)).filter(row => row.id !== rentalId);
       const closing = target.returnedAt ? earlier : [target, ...earlier];
       const now = new Date();
       for (const row of closing) await this.replace("EggRental", { ...row, returnedAt: now, returnedBy: actorEmail, updatedAt: now }, session);
