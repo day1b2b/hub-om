@@ -19,7 +19,7 @@ export function RoundSurveyCommentsSection({
   return (
     <section className={`detail-section wide-detail-section round-survey-section${focused ? " stage-focus" : ""}`}>
       <div className="section-title">
-        <h2>수강생 코멘트</h2>
+        <h2>현장 인사이트</h2>
         <span className={`stage-badge ${focused ? "stage-badge--now" : "stage-badge--wait"}`}>{focused ? "회고" : "교육 후"}</span>
       </div>
       {rows.length === 0 && pendingLabels.length === 0 ? (
