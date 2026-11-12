@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { getPrismaClient } from "@/lib/data/prisma";
 import { isValidDate } from "./eggAvailability";
-import { EggDeviceDuplicateError, EggRentalConflictError, type EggRepository } from "./eggRepository";
+import { EggDeviceDuplicateError, EggRentalConflictError, type EggRepository, type EggReturnResult } from "./eggRepository";
 import type {
   EggChargerType,
   EggDeviceInput,
@@ -210,11 +210,25 @@ export class PrismaEggRepository implements EggRepository {
     });
   }
 
-  async markReturned(rentalId: string, actorEmail: string): Promise<void> {
+  /** 반납 처리. 같은 에그로 먼저 시작한 미반납 대여도 함께 닫는다 — 이유는 EggRepository.markReturned 참고 */
+  async markReturned(rentalId: string, actorEmail: string): Promise<EggReturnResult> {
     const prisma = getPrismaClient();
-    await prisma.eggRental.update({
-      where: { id: rentalId },
-      data: { returnedAt: new Date(), returnedBy: actorEmail }
+    return prisma.$transaction(async (tx) => {
+      const target = await tx.eggRental.findUnique({
+        where: { id: rentalId },
+        select: { id: true, eggDeviceId: true, startDate: true }
+      });
+      if (!target) throw new Error("대여를 찾을 수 없습니다.");
+      const result = await tx.eggRental.updateMany({
+        where: {
+          eggDeviceId: target.eggDeviceId,
+          deletedAt: null,
+          returnedAt: null,
+          OR: [{ id: target.id }, { startDate: { lte: target.startDate } }]
+        },
+        data: { returnedAt: new Date(), returnedBy: actorEmail }
+      });
+      return { returnedCount: result.count };
     });
   }
 

@@ -12,7 +12,7 @@ interface RouteContext {
   }>;
 }
 
-/** 반납 처리 */
+/** 반납 처리. 같은 에그의 이전 미반납 대여도 함께 닫고, 닫은 건수를 돌려준다 */
 async function activityPATCH(_request: Request, { params }: RouteContext) {
   const session = await requireSupplyApiSession();
   if (!session) {
@@ -22,8 +22,8 @@ async function activityPATCH(_request: Request, { params }: RouteContext) {
   const { id } = await params;
 
   try {
-    await getEggRepository().markReturned(id, actorEmail);
-    return NextResponse.json({ ok: true });
+    const { returnedCount } = await getEggRepository().markReturned(id, actorEmail);
+    return NextResponse.json({ ok: true, returnedCount });
   } catch {
     return NextResponse.json({ ok: false, error: "반납 처리에 실패했습니다." }, { status: 500 });
   }
