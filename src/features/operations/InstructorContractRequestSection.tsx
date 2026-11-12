@@ -1,4 +1,4 @@
-// 운영현황 교육상세 "강사 계약요청" 구역(서버 컴포넌트).
+// 운영현황 교육상세 "강사 계약 현황" 구역(서버 컴포넌트).
 // 이 과정(회차들)의 강사별로 계약요청 대상을 만들어 클라이언트 목록에 넘긴다. 서버에선 응답시트·모두싸인을
 // 부르지 않고(핫 페이지 지연 0), 08:00·12:00 예약 작업이 만든 진행상태 스냅샷(로컬 암호화 파일)만 읽어
 // 단계(요청됨·발송됨·서명 진행)를 바로 보여준다. 이메일 보강·즉시 새로고침은 InstructorContractList 버튼이 한다.
@@ -48,7 +48,7 @@ export function InstructorContractRequestSection({ courseOperations, stage, team
 
   const title = (
     <div className="section-title">
-      <h2>강사 계약요청</h2>
+      <h2>강사 계약 현황</h2>
       {requests.length === 0 ? (
         <span className="stage-badge stage-badge--wait">대기</span>
       ) : focused ? (
