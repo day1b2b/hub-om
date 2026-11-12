@@ -1,6 +1,6 @@
 "use client";
 
-// 강사 계약요청 목록(클라이언트). 기본 상태에선 프리필 링크만 보이고(서버에서 만든 items),
+// 강사 계약 현황 목록(클라이언트). 기본 상태에선 프리필 링크만 보이고(서버에서 만든 items),
 // "계약 상태·이메일 불러오기"를 누르면 응답시트를 읽는 라우트로 (코스ID×강사) 상태를 가져와
 // "요청됨" 뱃지와 이메일 자동채움을 덧입힌다. 운영현황 상세는 핫 페이지라 진입 때는 시트를 읽지
 // 않고, 이 버튼을 눌렀을 때만 읽는다.
@@ -53,28 +53,6 @@ function formatSyncedAt(iso: string): string {
   }).formatToParts(date);
   const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
   return `${get("year")}.${get("month")}.${get("day")} ${get("hour")}:${get("minute")}`;
-}
-
-function SigningLine({ signing }: { signing: SigningSummary }) {
-  const tone = signing.phase === "aborted" || signing.phase === "ambiguous" ? " is-warn" : signing.phase === "completed" ? " is-done" : "";
-  return (
-    <span className={`contract-signing${tone}`}>
-      <span className="contract-signing-text">{describeSigning(signing)}</span>
-      {signing.phase === "signing" && signing.steps.length > 0 ? (
-        <span className="contract-signing-roles">
-          {signing.steps.map((step, index) => (
-            <span
-              className={step.signed ? "done" : step.role === signing.currentRole ? "now" : ""}
-              key={`${step.role}-${index}`}
-            >
-              {step.role}
-              {step.signed ? " ✓" : step.role === signing.currentRole ? " 대기" : ""}
-            </span>
-          ))}
-        </span>
-      ) : null}
-    </span>
-  );
 }
 
 type LoadPhase = "idle" | "loading" | "done" | "error";
@@ -169,20 +147,7 @@ export function InstructorContractList({
 
   return (
     <div className="instructor-contract-body">
-      {/* 머리줄: 안내 문구(왼쪽) + 새로고침(오른쪽, 좁으면 아래로). 조회 시점·진행·오류는 목록 아래 바닥줄. */}
-      <div className="instructor-contract-head">
-        <p className="instructor-contract-hint">
-          강사·코스·일정·담당자가 채워진 계약폼이 열립니다. 이메일·강사료·계약유형은 폼에서 확인·입력하세요.
-        </p>
-        <button
-          className="instructor-contract-status-load"
-          disabled={phase === "loading"}
-          onClick={loadStatus}
-          type="button"
-        >
-          {phase === "loading" ? "불러오는 중…" : "지금 새로고침 (상태·이메일)"}
-        </button>
-      </div>
+      {/* 강사 한 명 = 한 줄: 이름·일정 | 상태 한 칸(+짧은 설명) | 계약폼 열기. 조회 시점·새로고침은 바닥줄. */}
       <ul className="instructor-contract-list">
         {items.map((item) => {
           const stored = statusByKey[rowKey(item)];
@@ -190,30 +155,17 @@ export function InstructorContractList({
             ? stored
             : { email: stored?.email, requested: true, sent: true, signing: { phase: "completed", steps: [] } };
           const email = status?.email ?? item.email;
+          const view = status ? describeStatus(status, { modusignOn, signingTracked }) : null;
+          const notes = [view?.detail, phase === "done" && status && !email ? "이메일 없음 · 폼에서 입력" : ""].filter(Boolean);
           return (
             <li className="instructor-contract-item" key={rowKey(item)}>
               <div className="instructor-contract-meta">
-                <span className="instructor-contract-name">
-                  {item.instructorName}
-                  {status && status.requested ? <span className="instructor-contract-badge">{CONTRACT_STEPS[contractStep(status)]}</span> : null}
-                </span>
+                <span className="instructor-contract-name">{item.instructorName}</span>
                 {item.schedule ? <span className="instructor-contract-schedule">{item.schedule}</span> : null}
-                {status ? (
-                  <span className="contract-steps" aria-label={`계약 진행: ${CONTRACT_STEPS[contractStep(status)]}`}>
-                    {CONTRACT_STEPS.map((step, stepIndex) => (
-                      <span className={stepIndex < contractStep(status) ? "done" : stepIndex === contractStep(status) ? "now" : ""} key={step}>
-                        {step}
-                      </span>
-                    ))}
-                  </span>
-                ) : null}
-                {status?.signing && signingTracked ? <SigningLine signing={status.signing} /> : null}
-                {status && status.sent && !status.signing && modusignOn && signingTracked ? (
-                  <span className="instructor-contract-note">모두싸인 문서를 못 찾았어요</span>
-                ) : null}
-                {phase === "done" && status && !email ? (
-                  <span className="instructor-contract-note">이메일 없음 · 폼에서 입력</span>
-                ) : null}
+              </div>
+              <div className="instructor-contract-state">
+                {view ? <span className={`contract-state-pill is-${view.tone}`}>{view.label}</span> : null}
+                {notes.length > 0 ? <span className="instructor-contract-note">{notes.join(" · ")}</span> : null}
               </div>
               <ContractFormOpenButton
                 knownEmail={email ?? ""}
@@ -231,19 +183,47 @@ export function InstructorContractList({
         })}
       </ul>
       <div className="instructor-contract-foot">
-        {phase === "loading" ? (
-          <span className="instructor-contract-synced">불러오는 중…</span>
-        ) : phase === "error" ? (
+        {phase === "error" ? (
           <span className="instructor-contract-error" role="alert">
             {error}
           </span>
-        ) : syncedLabel ? (
+        ) : syncedLabel && phase !== "loading" ? (
           <span className="instructor-contract-synced">{syncedLabel}</span>
         ) : null}
         {!signingTracked ? <span className="instructor-contract-synced">9/1 이전 과정은 완료로 표시</span> : null}
+        <button
+          className="instructor-contract-status-load"
+          disabled={phase === "loading"}
+          onClick={loadStatus}
+          title="계약 응답시트·모두싸인에서 상태와 이메일을 다시 읽어요"
+          type="button"
+        >
+          {phase === "loading" ? "불러오는 중…" : "↻ 새로고침"}
+        </button>
       </div>
     </div>
   );
+}
+
+type StatusTone = "idle" | "progress" | "done" | "warn";
+
+/** 한 강사의 계약 상태를 상태 한 칸(label·tone)과 짧은 설명(detail)으로 줄인다. */
+function describeStatus(
+  status: StatusEntry,
+  { modusignOn, signingTracked }: { modusignOn: boolean; signingTracked: boolean }
+): { label: string; tone: StatusTone; detail: string } {
+  const signing = signingTracked ? status.signing : undefined;
+  if (signing?.phase === "aborted" || signing?.phase === "ambiguous") {
+    return { detail: "", label: describeSigning(signing), tone: "warn" };
+  }
+  const step = contractStep(status);
+  const label = CONTRACT_STEPS[step];
+  if (step === 4) return { detail: "", label, tone: "done" };
+  if (step === 0) return { detail: "", label, tone: "idle" };
+  let detail = "";
+  if (signing?.phase === "signing" || signing?.phase === "preparing") detail = describeSigning(signing);
+  else if (status.sent && !signing && modusignOn && signingTracked) detail = "모두싸인 문서를 못 찾았어요";
+  return { detail, label, tone: "progress" };
 }
 
 // 확인 창 [구글 설문폼에 자동으로 기입되는 내용] 표 — buildContractPrefillUrl()이 채우는 항목과 맞춰 둔다.

@@ -434,8 +434,7 @@ export function OperationDetail({
             {SHOW_BULK_EDIT_ROUNDS ? <BulkSaveRoundsButton /> : null}
             </EditAllRoundsProvider>
           </section>
-          {/* 업무 순서대로: 회차 목록 → 강사 계약요청(배정 직후) → 수강생 코멘트(교육 후). 후보 강사는 강사 위키 "강사 추천"에서 본다. */}
-          <InstructorContractRequestSection courseOperations={courseOperations} stage={courseStage.stage} teamByPersonKey={teamByPersonKey} />
+          {/* 회차 목록 → 현장 인사이트(교육 후) → 메모 → … → 강사 계약 현황(맨 아래). 후보 강사는 강사 위키 "강사 추천"에서 본다. */}
           <RoundSurveyCommentsSection
             pendingLabels={courseStage.pendingSurveyLabels}
             rows={buildRoundSurveyComments(
@@ -481,6 +480,8 @@ export function OperationDetail({
               />
             </section>
           )}
+
+          <InstructorContractRequestSection courseOperations={courseOperations} stage={courseStage.stage} teamByPersonKey={teamByPersonKey} />
         </section>
       </section>
     </main>

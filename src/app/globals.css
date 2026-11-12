@@ -5357,17 +5357,9 @@ td span {
   color: var(--blue);
 }
 
-/* 강사 계약요청 구역(운영현황 교육상세) */
+/* 강사 계약 현황 구역(운영현황 교육상세) */
 .instructor-contract-section {
   grid-column: 1 / -1;
-}
-
-.instructor-contract-hint {
-  color: var(--muted);
-  flex: 1 1 260px;
-  font-size: 12px;
-  line-height: 1.5;
-  margin: 0;
 }
 
 .instructor-contract-empty {
@@ -5385,13 +5377,62 @@ td span {
   padding: 6px 14px 12px;
 }
 
+/* 강사 한 명 = 한 줄: 이름·일정 | 상태 | 계약폼 열기. 좁으면 상태가 아래 줄로 내려간다. */
 .instructor-contract-item {
   align-items: center;
   border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 6px 14px;
+  grid-template-columns: minmax(140px, 1fr) minmax(0, 1.4fr) auto;
+  padding: 8px 0;
+}
+
+.instructor-contract-state {
+  align-items: center;
   display: flex;
-  gap: 12px;
-  justify-content: space-between;
-  padding: 10px 0;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  min-width: 0;
+}
+
+.contract-state-pill {
+  border-radius: 999px;
+  flex: none;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 9px;
+  white-space: nowrap;
+}
+
+.contract-state-pill.is-idle {
+  background: var(--surface-strong);
+  color: var(--muted);
+}
+
+.contract-state-pill.is-progress {
+  background: #e7effa;
+  color: var(--blue);
+}
+
+.contract-state-pill.is-done {
+  background: #e9f1dd;
+  color: #4f7a3f;
+}
+
+.contract-state-pill.is-warn {
+  background: #fdecea;
+  color: var(--red);
+}
+
+@media (max-width: 640px) {
+  .instructor-contract-item {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .instructor-contract-state {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
 }
 
 .instructor-contract-item:last-child {
@@ -5529,20 +5570,8 @@ button.instructor-contract-open {
   text-decoration: none;
 }
 
-.instructor-contract-head {
-  align-items: center;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 12px;
-  justify-content: space-between;
-  padding: 10px 14px 0;
-}
-
-.instructor-contract-head .instructor-contract-status-load {
-  margin-left: auto;
-}
-
 .instructor-contract-foot {
+  align-items: center;
   display: flex;
   flex-wrap: wrap;
   gap: 4px 10px;
@@ -5557,9 +5586,9 @@ button.instructor-contract-open {
   border-radius: 6px;
   color: var(--text);
   cursor: pointer;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
-  padding: 6px 12px;
+  padding: 3px 9px;
 }
 
 .instructor-contract-status-load:hover:not(:disabled) {
@@ -5575,17 +5604,6 @@ button.instructor-contract-open {
 .instructor-contract-error {
   color: var(--red, #c0392b);
   font-size: 12px;
-}
-
-.instructor-contract-badge {
-  background: var(--blue);
-  border-radius: 4px;
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-  margin-left: 6px;
-  padding: 1px 6px;
-  vertical-align: middle;
 }
 
 .instructor-contract-note {
@@ -14995,7 +15013,6 @@ button.coach-doc-reserve-chip:disabled {
 .course-notes-workspace .issue-editor-grid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
 .course-notes-workspace .issue-editor-field textarea { min-height: 112px; resize: vertical; }
 @media (max-width: 920px) { .course-notes-workspace .issue-editor-grid { grid-template-columns: 1fr; } }
-.course-notes-editor-hint { color: var(--muted); font-size: 12px; margin: 0; padding: 12px 16px; }
 .course-common-note-editor { padding: 0; }
 .course-common-note-editor .issue-editor-grid { margin: 0; }
 .course-common-note-editor .issue-editor-field textarea { min-height: 112px; resize: vertical; }
@@ -16710,84 +16727,9 @@ details.detail-section > summary::-webkit-details-marker {
   display: none;
 }
 
-.contract-steps {
-  display: inline-flex;
-  flex-wrap: wrap;
-  font-size: 11px;
-  gap: 4px;
-}
-
-.contract-steps > span {
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  color: var(--muted);
-  padding: 1px 6px;
-}
-
-.contract-steps > span.done {
-  background: #e9f1dd;
-  border-color: transparent;
-  color: #4f7a3f;
-}
-
-.contract-steps > span.now {
-  background: #e7effa;
-  border-color: transparent;
-  color: var(--blue);
-  font-weight: 700;
-}
-
 .instructor-contract-synced {
   color: var(--muted);
   font-size: 11px;
-}
-
-.contract-signing {
-  align-items: center;
-  display: inline-flex;
-  flex-wrap: wrap;
-  font-size: 12px;
-  gap: 6px;
-}
-
-.contract-signing-text {
-  color: var(--blue);
-  font-weight: 700;
-}
-
-.contract-signing.is-done .contract-signing-text {
-  color: #4f7a3f;
-}
-
-.contract-signing.is-warn .contract-signing-text {
-  color: var(--red);
-}
-
-.contract-signing-roles {
-  display: inline-flex;
-  flex-wrap: wrap;
-  font-size: 11px;
-  gap: 4px;
-}
-
-.contract-signing-roles > span {
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  color: var(--muted);
-  padding: 1px 6px;
-}
-
-.contract-signing-roles > span.done {
-  background: #e9f1dd;
-  border-color: transparent;
-  color: #4f7a3f;
-}
-
-.contract-signing-roles > span.now {
-  background: #e7effa;
-  border-color: transparent;
-  color: var(--blue);
-  font-weight: 700;
 }
 
 /* 강사 위키: 강사 추천 */
