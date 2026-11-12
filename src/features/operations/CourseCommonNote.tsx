@@ -14,10 +14,10 @@ type SaveState = MemoSaveState;
 type CommonNoteDraft = { operationId: string; updatedAt: string; values: CourseCommonNoteValue };
 
 const EMPTY: CourseCommonNoteValue = { specialNotes: "", operationIssue: "", omUpdate: "" };
-const fields: Array<{ field: Field; label: string; placeholder: string }> = [
-  { field: "specialNotes", label: "특이사항 / 이슈", placeholder: "과정 전체에 공통으로 적용할 특이사항이나 이슈" },
-  { field: "operationIssue", label: "회고 (OM+LD)", placeholder: "과정 전체에 공통으로 적용할 회고" },
-  { field: "omUpdate", label: "메모", placeholder: "과정 전체에 공통으로 적용할 메모" }
+const fields: Array<{ field: Field; label: string }> = [
+  { field: "specialNotes", label: "특이사항 / 이슈" },
+  { field: "operationIssue", label: "회고 (OM+LD)" },
+  { field: "omUpdate", label: "메모" }
 ];
 
 export function CourseCommonNote({ note, onDirtyChange, operationId }: { note?: CourseCommonNoteValue; onDirtyChange?: (dirty: boolean) => void; operationId: string }) {
@@ -110,13 +110,12 @@ function ReadyCourseCommonNote({ note, onDirtyChange, operationId }: { note?: Co
   }
 
   return <div className="issue-editor course-common-note-editor">
-    <p className="course-notes-editor-hint">전체 회차에 공통으로 적용되는 내용입니다. 회차별 메모는 변경하지 않습니다.</p>
     {!draftReady ? <p role="status">개인 초안을 확인하는 중입니다.</p> : null}
     <fieldset disabled={!draftReady || saveState === "saving"} style={{ border: 0, margin: 0, padding: 0 }}>
       <div className="issue-editor-grid">
         {fields.map(item => <div className="issue-editor-field" key={item.field}>
           <div className="issue-editor-field-head"><label htmlFor={`course-common-note-${item.field}`}>{item.label}</label></div>
-          <textarea id={`course-common-note-${item.field}`} placeholder={item.placeholder} rows={4} value={values[item.field]} onChange={event => {
+          <textarea id={`course-common-note-${item.field}`} rows={4} value={values[item.field]} onChange={event => {
             setValues(current => ({ ...current, [item.field]: event.target.value }));
             setSaveState("idle");
             setSavedAt(null);
