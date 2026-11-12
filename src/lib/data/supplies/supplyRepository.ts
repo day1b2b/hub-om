@@ -1,4 +1,4 @@
-import type { SupplyCategory, SupplyItemSummary, SupplyRentalInput, SupplyRentalRecord } from "./supplyTypes";
+import type { SupplyCategory, SupplyItemInput, SupplyItemSummary, SupplyRentalInput, SupplyRentalRecord } from "./supplyTypes";
 
 /** 고른 물품 중 하나라도 겹치는 기간에 미반납 대여가 있다. 저장소가 겹침 확인과 저장을 한 트랜잭션에서 한다. */
 export class SupplyRentalConflictError extends Error {
@@ -25,6 +25,9 @@ export class SupplyItemNotFoundError extends Error {
  */
 export interface SupplyRepository {
   listItems(category: SupplyCategory): Promise<SupplyItemSummary[]>;
+  /** 물품 등록·수정은 관리자 화면에서만 부른다. 수정할 물품이 없으면 SupplyItemNotFoundError. */
+  createItem(input: SupplyItemInput): Promise<SupplyItemSummary>;
+  updateItem(itemId: string, input: SupplyItemInput): Promise<SupplyItemSummary>;
   listRentals(category: SupplyCategory, options?: { fromDate?: string }): Promise<SupplyRentalRecord[]>;
   createRental(input: SupplyRentalInput, actorEmail: string): Promise<SupplyRentalRecord>;
   markReturned(rentalId: string, actorEmail: string): Promise<void>;

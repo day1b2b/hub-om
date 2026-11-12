@@ -148,6 +148,8 @@
   "POST /api/eggs/rentals": "tracked",
   "PATCH /api/eggs/rentals/[id]": "tracked",
   "DELETE /api/eggs/rentals/[id]": "tracked",
+  "POST /api/supplies/items": "tracked",
+  "PATCH /api/supplies/items/[id]": "tracked",
   "POST /api/supplies/rentals": "tracked",
   "PATCH /api/supplies/rentals/[id]": "tracked",
   "DELETE /api/supplies/rentals/[id]": "tracked"
