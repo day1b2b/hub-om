@@ -22,6 +22,7 @@ import { EditableSessionRegionCell } from "./EditableSessionRegionCell";
 import { EditableSessionScheduleCell } from "./EditableSessionScheduleCell";
 import { EditableToolsItem } from "./EditableToolsItem";
 import { InstructorContractRequestSection } from "./InstructorContractRequestSection";
+import { CourseInvoiceRequestSection } from "./CourseInvoiceRequestSection";
 import { resolveCourseStage } from "./courseStage";
 import { seoulTodayKey } from "@/lib/coaches/coachActivity";
 import { CourseNotesWorkspace } from "./CourseNotesWorkspace";
@@ -434,7 +435,7 @@ export function OperationDetail({
             {SHOW_BULK_EDIT_ROUNDS ? <BulkSaveRoundsButton /> : null}
             </EditAllRoundsProvider>
           </section>
-          {/* 회차 목록 → 현장 인사이트(교육 후) → 메모 → … → 강사 계약 현황(맨 아래). 후보 강사는 강사 위키 "강사 추천"에서 본다. */}
+          {/* 회차 목록 → 현장 인사이트(교육 후) → 메모 → … → 강사 계약 현황 | 계산서 발행 요청 현황(맨 아래, 반반). 후보 강사는 강사 위키 "강사 추천"에서 본다. */}
           <RoundSurveyCommentsSection
             pendingLabels={courseStage.pendingSurveyLabels}
             rows={buildRoundSurveyComments(
@@ -482,6 +483,12 @@ export function OperationDetail({
           )}
 
           <InstructorContractRequestSection courseOperations={courseOperations} stage={courseStage.stage} teamByPersonKey={teamByPersonKey} />
+          <CourseInvoiceRequestSection
+            companyId={operation.companyId}
+            companyName={operation.companyName}
+            courseId={operation.courseId}
+            courseIdLabel={operation.courseIdLabel}
+          />
         </section>
       </section>
     </main>
