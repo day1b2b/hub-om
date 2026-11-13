@@ -166,7 +166,13 @@ export function OperationDashboard({
   // 기본값 = LD·관리자는 본인 소속 파트(defaultPartFilter), 그 외(순수 OM)는 전체.
   // 관리자 권한이 최우선이라, OM으로 등록돼 있어도 관리자 계정이면 파트 필터가 적용된다
   // (defaultPartFilter/preferPartFilter 계산은 page.tsx 참고).
-  const [partFilter, setPartFilter] = useState(defaultPartFilter ?? 전체_파트);
+  //
+  // ★단, 본인 파트 값이 드롭다운 선택지(멤버관리 OM 명단의 파트)에 없으면 전체로 둔다.
+  //   멤버관리 팀이 옛 값("2팀" 등)으로 남은 LD는 선택지에 없는 값으로 필터가 걸려,
+  //   드롭다운은 "전체 파트"처럼 보이는데 목록은 비는 상태가 됐다(2026-11-13 LD 제보).
+  const [partFilter, setPartFilter] = useState(() =>
+    defaultPartFilter && omRoster.some((om) => om.team === defaultPartFilter) ? defaultPartFilter : 전체_파트
+  );
   const [archiveOnly, setArchiveOnly] = useState(false);
   const [query, setQuery] = useState("");
   // 기본 날짜 필터는 "전체"(빈 범위 = 전체 조회). 사용자가 필요할 때 좁힌다.
