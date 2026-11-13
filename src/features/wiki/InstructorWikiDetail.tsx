@@ -22,36 +22,33 @@ import {
 } from "./instructorWikiModel";
 import { InstructorEditor } from "./InstructorEditor";
 import { NotionLinkEditor } from "./NotionLinkEditor";
-import {
-  getInstructorNote,
-  getInstructorNoteByNotionNo,
-  listInstructorNotes,
-  notionHref,
-  resolveNotionLinkTargets
-} from "@/lib/data/instructorWikiStore";
+import { notionHref, resolveNotionLinkTargets, type InstructorNote } from "@/lib/data/instructorWikiStore";
 
 // 강사 위키 상세. 코치 위키와 같은 틀(헤더 → 고정 알림 → 본문 2단)을 쓴다.
 // "강사 위키 = 보는 곳 / 운영현황 = 하는 곳" 원칙이라 계약 '요청' 버튼은 두지 않는다.
 // 아직 허브에 값이 없는 칸(계약 유형·신규강사 증빙 등)은 빈 틀로 늘어놓지 않고, 데이터가 생기면 해당 칸에 붙인다.
-export async function InstructorWikiDetail({
+// ★저장값(note·allNotes)은 페이지가 저장소 범위(runCoachPublicRequest) 안에서 읽어 넘긴다.
+//   여기서 직접 읽으면 React가 이 컴포넌트를 범위 밖에서 그려 기본 저장소(Postgres)를 읽는다 —
+//   Mongo 전환 뒤 저장한 운영 메모가 화면에 안 보였던 원인(2026-11-13).
+export function InstructorWikiDetail({
   entry,
+  note,
+  allNotes,
   canManageNotionLinks
 }: {
   entry: InstructorWikiEntry;
+  /** 이 강사의 저장값. 노션 NO가 있으면 NO로, 없으면 이름으로 읽은 값. */
+  note: InstructorNote;
+  /** 노션 강사 연결 후보 명단용 전체 저장값. */
+  allNotes: InstructorNote[];
   /** 노션 강사 연결·해제(관리자 전용 API). OM에게는 버튼을 숨긴다. */
   canManageNotionLinks: boolean;
 }) {
   const coach = entry.coach;
-  // 노션 NO가 있으면 그것으로 읽는다(동명이인 구분). 없으면 운영 현황 표기라 이름으로 읽는다.
-  const note =
-    entry.notionNo !== undefined
-      ? await getInstructorNoteByNotionNo(entry.notionNo)
-      : await getInstructorNote(entry.name);
   const displayName = note.displayName?.trim() || entry.name;
   const notionUrl = notionHref(note.notionId);
 
   // 수동 연결용 노션 강사 명단. 이 항목이 노션 본체인지도 함께 판단한다.
-  const allNotes = await listInstructorNotes();
   const notionNames = allNotes
     .filter((candidate) => candidate.notion)
     .map((candidate) => (candidate.instructorName ?? "").trim())
