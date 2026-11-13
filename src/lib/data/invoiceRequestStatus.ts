@@ -4,8 +4,13 @@ import { normalizeCourseId } from "./operationCalculations";
 // 계산서 발행 요청 구글폼의 응답 시트(전사 공통)에서 "이 코스ID로 요청이 들어왔는지"와 재무팀이 채우는
 // 처리 결과(발급여부·발급일자·실제입금일자)를 읽는다. 시트에는 사업자번호·금액 같은 민감 정보가 같이 있어서,
 // 헤더 행과 이 다섯 열만 따로 요청한다(나머지 열은 서버로도 가져오지 않는다). 시트 ID는 저장소가 public이라 env로만 받는다.
+//
+// 시트가 회사 도메인 안에서만 공유돼 있어 서버의 구글 계정(외부 gmail)으로는 못 읽는다. 그래서 회사 계정으로
+// 배포한 Apps Script 웹앱(INVOICE_REQUEST_STATUS_URL)이 있으면 그쪽에서 다섯 열만 받아 온다 — 웹앱 코드는
+// docs/operations/invoice-request-status-webapp.gs. 웹앱 URL·토큰도 env로만 받는다. 없으면 기존처럼 시트를 직접 읽는다.
 const DEFAULT_TAB = "설문지 응답 시트(전사_공통)";
 const CACHE_TTL_MS = 5 * 60 * 1000;
+const WEBAPP_TIMEOUT_MS = 20 * 1000;
 
 export interface InvoiceRequestStatus {
   /** 가장 최근 요청의 타임스탬프 원문(시트 표기 그대로, 예: "2025. 1. 9 오전 9:28:35"). */
@@ -48,7 +53,17 @@ export function resetInvoiceRequestStatusCache(): void {
   cache = null;
 }
 
+export function readInvoiceRequestWebAppConfig(): { url: string; token: string } {
+  return {
+    url: process.env.INVOICE_REQUEST_STATUS_URL?.trim() ?? "",
+    token: process.env.INVOICE_REQUEST_STATUS_TOKEN?.trim() ?? ""
+  };
+}
+
 async function readStatuses(): Promise<InvoiceRequestStatusResult> {
+  const webApp = readInvoiceRequestWebAppConfig();
+  if (webApp.url) return readStatusesFromWebApp(webApp);
+
   const { spreadsheetId, tab } = readInvoiceRequestSheetConfig();
   if (!spreadsheetId) return { ok: false, reason: "not_configured" };
 
@@ -76,6 +91,54 @@ async function readStatuses(): Promise<InvoiceRequestStatusResult> {
     });
     return { ok: false, reason: "read_failed" };
   }
+}
+
+/**
+ * 웹앱은 { ok: true, rows: [[타임스탬프, 코스ID, 발급여부, 발급일자, 실제입금일자], ...] }(헤더 제외)를 돌려준다.
+ * 토큰은 URL에 남지 않게 POST 본문으로 보낸다. Apps Script는 응답 코드를 못 바꿔 실패도 200 + ok:false로 온다.
+ */
+async function readStatusesFromWebApp({ url, token }: { url: string; token: string }): Promise<InvoiceRequestStatusResult> {
+  if (!token) return { ok: false, reason: "not_configured" };
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ token }),
+      redirect: "follow",
+      cache: "no-store",
+      signal: AbortSignal.timeout(WEBAPP_TIMEOUT_MS)
+    });
+    const body: unknown = response.ok ? await response.json().catch(() => null) : null;
+    const byCourseId = parseWebAppRows(body);
+    if (!byCourseId) {
+      const error = (body as { error?: unknown } | null)?.error;
+      // 웹앱 응답 내용은 남기지 않고 상태 코드·실패 종류만 남긴다.
+      console.error("[invoice-request-status] WEBAPP_READ_FAILED", {
+        status: response.status,
+        error: typeof error === "string" ? error.slice(0, 40) : null
+      });
+      return { ok: false, reason: error === "unexpected_header" ? "unexpected_header" : "read_failed" };
+    }
+    return { ok: true, byCourseId };
+  } catch (error) {
+    console.error("[invoice-request-status] WEBAPP_READ_FAILED", { kind: error instanceof Error ? error.name : "unknown" });
+    return { ok: false, reason: "read_failed" };
+  }
+}
+
+/** 웹앱 응답을 코스ID별 현황으로. 모양이 다르면 null(→ 화면 "확인 불가"). */
+export function parseWebAppRows(body: unknown): Map<string, InvoiceRequestStatus> | null {
+  if (!body || typeof body !== "object") return null;
+  const { ok, rows } = body as { ok?: unknown; rows?: unknown };
+  if (ok !== true || !Array.isArray(rows)) return null;
+  const column = (index: number) => rows.map((row) => [Array.isArray(row) ? String(row[index] ?? "") : ""]);
+  return summarizeRequests({
+    timestamps: column(0),
+    courseIds: column(1),
+    issueStatuses: column(2),
+    issuedAts: column(3),
+    paidAts: column(4)
+  });
 }
 
 export interface InvoiceRequestColumns {
