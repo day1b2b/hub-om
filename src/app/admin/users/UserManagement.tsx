@@ -165,7 +165,7 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
   async function handleAssignRole() {
     if (!selected.size) return;
     const label = ROLE_LABEL[assignRole];
-    if (!confirm(`선택한 ${selected.size}명을 ${label}(으)로 지정하시겠습니까?`)) return;
+    if (!confirm(`선택한 ${selected.size}명의 직무를 ${label}(으)로 변경하시겠습니까?`)) return;
     setAssigning(true);
     try {
       const res = await fetch("/api/admin/users/role", {
@@ -177,7 +177,7 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
       setUsers((prev) => prev.map((u) => (selected.has(u.id) ? { ...u, role: assignRole } : u)));
       setSelected(new Set());
     } catch {
-      alert("직무 지정에 실패했습니다.");
+      alert("직무 변경에 실패했습니다.");
     } finally {
       setAssigning(false);
     }
@@ -375,7 +375,7 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
             <span className="user-list-count">
               {teamFilter === "전체" ? `총 ${users.length}명` : `${teamFilter} ${filteredUsers.length}명`}
             </span>
-            {/* 전에는 행을 체크할 때만 이 영역이 나타났다. 그래서 직무 지정·퇴사 처리 기능이
+            {/* 전에는 행을 체크할 때만 이 영역이 나타났다. 그래서 직무 변경·퇴사 처리 기능이
                 아예 없는 것으로 보였다. 항상 두고 선택 전에는 비활성으로 알려 준다. */}
             <div className="user-bulk-assign">
               <select
@@ -394,7 +394,7 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
                 onClick={handleAssignRole}
                 type="button"
               >
-                {assigning ? "지정 중..." : selected.size > 0 ? `${selected.size}명 직무 지정` : "직무 지정"}
+                {assigning ? "변경 중..." : selected.size > 0 ? `${selected.size}명 직무 변경` : "직무 변경"}
               </button>
               <button
                 className="user-delete-btn"
