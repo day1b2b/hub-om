@@ -57,6 +57,10 @@ export function CourseInvoiceRequestSection({ companyId, companyName, courseId, 
           <dd>{trimmedCourseId || "검토필요"}</dd>
         </div>
         <div>
+          <dt>계산서 발행 요청</dt>
+          <dd><InvoiceRequestLink href={href} /></dd>
+        </div>
+        <div>
           <dt>발행 요청 현황</dt>
           <dd>
             <InvoiceRequestStatusBadge
@@ -68,10 +72,6 @@ export function CourseInvoiceRequestSection({ companyId, companyName, courseId, 
               <span className="course-invoice-last">마지막 요청 {statuses.status.lastRequestedAt}</span>
             ) : null}
           </dd>
-        </div>
-        <div>
-          <dt>계산서 발행 요청</dt>
-          <dd><InvoiceRequestLink href={href} /></dd>
         </div>
       </dl>
       <p className="course-invoice-hint">사업자등록증 정보는 기업위키에 등록된 값으로 자동 기입됩니다.</p>
