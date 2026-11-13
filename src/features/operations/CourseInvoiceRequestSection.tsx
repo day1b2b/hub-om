@@ -4,7 +4,7 @@
 // 기업위키 상세와 같은 API(/api/company-wiki/invoice-link)로 이 과정 하나의 폼 링크·요청 현황을 받는다 —
 // 구글폼 URL은 서버에만 두고, 사업자등록증 정보도 서버에서 기업위키 값으로 채운다.
 import { useEffect, useState } from "react";
-import { InvoiceRequestLink, InvoiceRequestStatusBadge, type InvoiceRequestStatusView } from "@/features/wiki/InvoiceRequest";
+import { formatSheetDate, InvoiceRequestLink, InvoiceRequestStatusBadge, type InvoiceRequestStatusView } from "@/features/wiki/InvoiceRequest";
 
 interface CourseInvoiceRequestSectionProps {
   companyId?: string;
@@ -75,11 +75,11 @@ export function CourseInvoiceRequestSection({ companyId, companyName, courseId, 
         </div>
         <div>
           <dt>발급일자</dt>
-          <dd>{statuses?.status?.issuedAt || <span className="muted-inline">-</span>}</dd>
+          <dd>{formatSheetDate(statuses?.status?.issuedAt) || <span className="muted-inline">-</span>}</dd>
         </div>
         <div>
           <dt>실제입금일자</dt>
-          <dd>{statuses?.status?.paidAt || <span className="muted-inline">-</span>}</dd>
+          <dd>{formatSheetDate(statuses?.status?.paidAt) || <span className="muted-inline">-</span>}</dd>
         </div>
       </dl>
       <p className="course-invoice-hint">사업자등록증 정보는 기업위키에 등록된 값으로 자동 기입됩니다.</p>
@@ -105,12 +105,8 @@ function InvoiceRequestState({
   return (
     <>
       <span className="invoice-status invoice-status--done">요청완료{requestCount > 1 ? ` (${requestCount}건)` : ""}</span>
-      {lastRequestedAt ? <span className="course-invoice-last" title={lastRequestedAt}>요청일 {requestDate(lastRequestedAt)}</span> : null}
+      {lastRequestedAt ? <span className="course-invoice-last" title={lastRequestedAt}>요청일 {formatSheetDate(lastRequestedAt)}</span> : null}
     </>
   );
 }
 
-/** 폼 타임스탬프("2026. 11. 10 오전 10:12:03")에서 날짜만. 형식이 다르면 원문 그대로. */
-function requestDate(timestamp: string): string {
-  return timestamp.match(/^\s*(\d{4}\.\s*\d{1,2}\.\s*\d{1,2})/)?.[1] ?? timestamp;
-}
