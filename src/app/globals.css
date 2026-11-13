@@ -5357,9 +5357,59 @@ td span {
   color: var(--blue);
 }
 
-/* 강사 계약 현황 구역(운영현황 교육상세) */
+/* 강사 계약 현황 구역(운영현황 교육상세) — 오른쪽 "계산서 발행 요청 현황"과 반반 */
 .instructor-contract-section {
-  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+/* 계산서 발행 요청 현황 구역(운영현황 교육상세) */
+.course-invoice-section {
+  min-width: 0;
+}
+
+.course-invoice-rows {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 6px 14px 4px;
+}
+
+.course-invoice-rows > div {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 120px minmax(0, 1fr);
+  padding: 9px 0;
+}
+
+.course-invoice-rows > div:last-child {
+  border-bottom: 0;
+}
+
+.course-invoice-rows dt {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.course-invoice-rows dd {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+}
+
+.course-invoice-last {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.course-invoice-hint {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 0;
+  padding: 0 14px 12px;
 }
 
 .instructor-contract-empty {
@@ -15023,7 +15073,7 @@ button.coach-doc-reserve-chip:disabled {
   .course-notes-workspace.notes-placement-right { position: fixed; right: 24px; top: 96px; width: 360px; max-height: calc(100vh - 120px); overflow: auto; z-index: 20; }
   .course-notes-workspace.notes-placement-right .course-notes-round-fields { grid-template-columns: 1fr; }
 }
-.notes-jump-link { align-items: center; border: 1px solid #9db59a; border-radius: 6px; color: #52724d; display: inline-flex; font-size: 12px; font-weight: 700; padding: 8px 11px; text-decoration: none; }
+.company-wiki-jump-link { align-items: center; border: 1px solid #9db59a; border-radius: 6px; color: #52724d; display: inline-flex; font-size: 12px; font-weight: 700; padding: 8px 11px; text-decoration: none; }
 .course-notes-workspace .course-notes-tab-panel { width: 100%; }
 .course-notes-workspace .issue-editor-grid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
 .course-notes-workspace .issue-editor-field textarea { min-height: 112px; resize: vertical; }
