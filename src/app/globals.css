@@ -16867,3 +16867,24 @@ details.detail-section > summary::-webkit-details-marker {
   justify-content: flex-end;
   margin-top: 10px;
 }
+
+/* 운영현황: 목록 노출 기준 안내 */
+.operations-list-guide {
+  background: var(--blue-bg);
+  border-radius: 8px;
+  font-size: 13px;
+  padding: 9px 12px;
+}
+
+.operations-list-guide summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.operations-list-guide ul {
+  display: grid;
+  gap: 4px;
+  line-height: 1.5;
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
