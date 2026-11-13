@@ -8,7 +8,7 @@ import type { CompanyWikiCourse, CompanyWikiListEntry } from "./companyWikiModel
 import { emptyCompanyBusinessInfo, type CompanyBusinessInfo } from "@/lib/data/companyBusinessInfoTypes";
 import { CompanyBusinessInfoEditor } from "./CompanyBusinessInfoEditor";
 import { CompanyMemoEditor } from "./CompanyMemoEditor";
-import { InvoiceRequestLink, InvoiceRequestStatusBadge, type InvoiceRequestStatusView } from "./InvoiceRequest";
+import { InvoiceIssueDates, InvoiceRequestLink, InvoiceRequestStatusBadge, type InvoiceRequestStatusView } from "./InvoiceRequest";
 
 interface CompanyWikiProps {
   /** 운영 현황에서 만든 기업 목록(요약만 — 코스 상세는 상세를 열 때 따로 불러온다). */
@@ -430,6 +430,7 @@ function CompanyWikiDetail({
                       state={invoiceStatuses}
                       status={invoiceStatuses?.byKey[course.key] ?? null}
                     />
+                    <InvoiceIssueDates status={invoiceStatuses?.available ? invoiceStatuses.byKey[course.key] ?? null : null} />
                   </td>
                 </tr>
               ))}
