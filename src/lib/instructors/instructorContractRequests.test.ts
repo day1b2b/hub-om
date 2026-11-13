@@ -13,6 +13,7 @@ function op(overrides: {
   instructors?: string;
   courseId?: string;
   courseName?: string;
+  courseIdLabel?: string;
   om?: string;
   educationDates?: string[];
   startDate?: string;
@@ -23,6 +24,7 @@ function op(overrides: {
     instructors: "",
     courseId: "",
     courseName: "",
+    courseIdLabel: "",
     om: "",
     educationDates: [] as string[],
     startDate: "",
@@ -94,6 +96,15 @@ test("회차별 강사를 각각 대상으로 만든다", () => {
   assert.equal(kim?.manager, "유진");
   assert.equal(kim?.schedule, "2026.08.25 · 09:00~17:00");
   assert.equal(kim?.requested, false);
+});
+
+test("아이템에 코스ID명(courseIdLabel)을 담는다(계약폼 과정명의 원천)", () => {
+  const [item] = buildInstructorContractRequests(
+    [op({ courseId: "269182", instructors: "김인섭", courseName: "부서장 대상 Agent 교육", courseIdLabel: "[부가세 별도] (B2B) JB금융그룹_부서장 대상 Agent 교육" })],
+    []
+  );
+  assert.equal(item.courseIdLabel, "[부가세 별도] (B2B) JB금융그룹_부서장 대상 Agent 교육");
+  assert.equal(item.courseName, "부서장 대상 Agent 교육"); // 과정명은 그대로 보존(목록 표기 등 다른 용도)
 });
 
 test("같은 강사의 여러 회차는 1건으로 묶고 일정을 합친다", () => {

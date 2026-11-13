@@ -57,6 +57,15 @@ export interface ContractPrefillValues {
   department?: string;
 }
 
+/**
+ * 계약폼 "과정명"에 넣을 값은 코스ID명(courseIdLabel)을 쓴다. 단 "[부가세 별도]" 류 태그만
+ * 떼고 나머지(예: "(B2B)")는 그대로 둔다. 코스ID명이 없거나 태그뿐이면 ""를 돌려주고,
+ * 호출부는 이 경우 계약폼으로 넘어가지 못하게 막는다(계약서에 빈 과정명 방지).
+ */
+export function contractCourseNameFromLabel(courseIdLabel: string | undefined): string {
+  return (courseIdLabel ?? "").replace(/\[부가세[^\]]*\]\s*/g, "").trim();
+}
+
 /** 값이 채워진 계약폼 프리필 URL을 만든다. 빈 값은 넣지 않는다(폼에서 수동 입력으로 남음). */
 export function buildContractPrefillUrl(values: ContractPrefillValues): string {
   const params = new URLSearchParams();
