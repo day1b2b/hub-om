@@ -1,6 +1,21 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildContractPrefillUrl, DEPARTMENT_CHOICE_BY_TEAM, resolveDepartmentChoice } from "./instructorContractPrefill";
+import { buildContractPrefillUrl, contractCourseNameFromLabel, DEPARTMENT_CHOICE_BY_TEAM, resolveDepartmentChoice } from "./instructorContractPrefill";
+
+test("계약폼 과정명: 코스ID명에서 [부가세 별도] 태그만 떼고 (B2B)는 둔다", () => {
+  assert.equal(
+    contractCourseNameFromLabel("[부가세 별도] (B2B) JB금융그룹_부서장 대상 Agent 교육"),
+    "(B2B) JB금융그룹_부서장 대상 Agent 교육"
+  );
+  assert.equal(contractCourseNameFromLabel("[부가세별도](B2B) 과정"), "(B2B) 과정");
+  assert.equal(contractCourseNameFromLabel("2026 AI 역량강화"), "2026 AI 역량강화"); // 태그 없으면 그대로
+});
+
+test("계약폼 과정명: 코스ID명이 없거나 태그뿐이면 빈 문자열(→ 폼 차단)", () => {
+  assert.equal(contractCourseNameFromLabel(""), "");
+  assert.equal(contractCourseNameFromLabel(undefined), "");
+  assert.equal(contractCourseNameFromLabel("  [부가세 별도]  "), "");
+});
 
 test("모든 값으로 프리필 URL을 만든다(인코딩 포함)", () => {
   const url = buildContractPrefillUrl({

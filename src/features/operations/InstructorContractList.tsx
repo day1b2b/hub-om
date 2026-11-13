@@ -9,7 +9,7 @@
 // 교육 시작일이 2026-09-01 전인 과정(signingTracked=false)은 모두싸인을 보지 않고 전부 "서명 완료"로 둔다
 // (2026-11-04 결정 "그 전에꺼는 일단 완료로") — 바닥줄에 그렇게 표시한다고 밝힌다.
 import { useState } from "react";
-import { buildContractPrefillUrl } from "@/lib/instructors/instructorContractPrefill";
+import { buildContractPrefillUrl, contractCourseNameFromLabel } from "@/lib/instructors/instructorContractPrefill";
 import type { ContractRequestItem } from "@/lib/instructors/instructorContractRequests";
 import { describeSigning, type SigningSummary } from "@/lib/instructors/instructorContractSigning";
 import type { ContractFeeHint } from "@/lib/instructors/instructorContractEmail";
@@ -171,7 +171,8 @@ export function InstructorContractList({
                 knownEmail={email ?? ""}
                 values={{
                   courseId: item.courseId,
-                  courseName: item.courseName,
+                  // 계약폼 "과정명"은 과정명이 아니라 코스ID명(부가세 태그 제거)을 쓴다. 비면 폼 열기를 막는다.
+                  courseName: contractCourseNameFromLabel(item.courseIdLabel),
                   instructorName: item.instructorName,
                   schedule: item.formSchedule || item.schedule,
                   manager: item.manager,
@@ -235,7 +236,7 @@ const CONTRACT_REQUEST_FIELD_GROUPS: { label: string; detail?: string; rows: [st
     label: "운영 현황",
     rows: [
       ["코스 ID", "코스 ID", "courseId"],
-      ["과정명", "과정명", "courseName"],
+      ["코스ID명", "과정명", "courseName"],
       ["강사명", "강사명", "instructorName"],
       ["강의 일정", "일정", "schedule"],
       ["담당 OM", "담당자", "manager"],
@@ -276,6 +277,8 @@ function ContractFormOpenButton({ knownEmail, values }: { knownEmail: string; va
   const href = buildContractPrefillUrl({ ...values, email });
   const shown: ContractFormValues = { ...values, email };
   const feeHintText = describeFeeHint(lookup.feeHint);
+  // 계약폼 과정명(=코스ID명)이 비어 있으면 계약서에 빈/틀린 과정명이 들어가므로 폼으로 넘어가지 못하게 막는다.
+  const courseNameMissing = !values.courseName.trim();
 
   async function open() {
     setIsOpen(true);
@@ -349,6 +352,8 @@ function ContractFormOpenButton({ knownEmail, values }: { knownEmail: string; va
                         <td>{target}</td>
                         {valueKey === "email" && emailLoading ? (
                           <td className="contract-request-confirm-value">불러오는 중…</td>
+                        ) : valueKey === "courseName" && courseNameMissing ? (
+                          <td className="contract-request-confirm-value is-empty">코스ID명을 확인하세요</td>
                         ) : (
                           <td className={shown[valueKey].trim() ? "contract-request-confirm-value" : "contract-request-confirm-value is-empty"}>
                             {shown[valueKey].trim() || "비어 있음 · 폼에서 입력"}
@@ -369,19 +374,30 @@ function ContractFormOpenButton({ knownEmail, values }: { knownEmail: string; va
             </div>
 
             <div className="lecture-note-footer">
+              {courseNameMissing ? (
+                <p className="contract-request-confirm-warning">
+                  코스ID명이 없어 계약폼으로 넘어갈 수 없습니다. 운영 현황에서 코스ID명을 먼저 입력해 주세요.
+                </p>
+              ) : null}
               <div className="lecture-note-actions">
                 <button onClick={() => setIsOpen(false)} type="button">
                   취소
                 </button>
-                <a
-                  className="contract-request-confirm-open"
-                  href={href}
-                  onClick={() => setIsOpen(false)}
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  확인
-                </a>
+                {courseNameMissing ? (
+                  <button className="contract-request-confirm-open" disabled title="코스ID명을 먼저 입력하세요" type="button">
+                    확인
+                  </button>
+                ) : (
+                  <a
+                    className="contract-request-confirm-open"
+                    href={href}
+                    onClick={() => setIsOpen(false)}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    확인
+                  </a>
+                )}
               </div>
             </div>
           </section>
