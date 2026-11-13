@@ -223,7 +223,7 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
   return (
     <div className="user-management">
       {/* 인라인 nowrap을 두면 컨트롤이 6개라 좁은 화면에서 [추가] 버튼이 오른쪽으로 밀려
-          잘린다. globals.css의 flex-wrap: wrap을 그대로 쓴다. */}
+          잘린다. globals.css에서 입력칸이 함께 줄어들어 넓은 화면에선 한 줄, 좁은 화면에서만 줄바꿈된다. */}
       <form className="user-add-form" onSubmit={handleAdd}>
         <select
           value={team}
