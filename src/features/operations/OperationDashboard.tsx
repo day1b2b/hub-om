@@ -407,16 +407,15 @@ export function OperationDashboard({
 
         <details className="operations-list-guide">
           <summary>이 목록은 어떤 기준으로 보이나요?</summary>
-          <ul>
-            <li>과정 1개가 한 줄이에요. 회차별 내용은 과정명을 눌러 상세 화면에서 확인해요.</li>
+          <ol>
             <li>
-              처음 열면 OM은 <strong>본인이 담당 OM인 과정</strong>, LD·관리자는 <strong>본인 소속 파트 과정</strong>이
-              보여요. 담당 과정이 없으면 전체가 보여요. 다른 과정은 필터를 바꾸거나 [필터 초기화]를 눌러 보세요.
+              기본 필터 : OM은 본인 담당 과정, LD는 파트의 전체 과정이 보여요.
+              <br />※ [필터 초기화]를 누르면 전체 과정을 확인할 수 있어요.
             </li>
-            <li>파트는 담당 OM·LD가 멤버관리에 등록된 파트 기준이에요. OM과 LD 파트가 다르면 두 파트 모두에 보여요.</li>
-            <li>기간을 고르면 교육 기간이 그 기간과 하루라도 겹치는 과정이 보여요. 기본 순서는 시작일 최신순이에요.</li>
+            <li>만약 OM과 LD 파트가 다르면 두 파트 모두에 보여요.</li>
+            <li>기간을 고르면 교육 기간이 그 기간과 하루라도 겹치는 과정이 보여요.</li>
             <li>[엑셀 다운로드]는 지금 필터에 걸린 과정 전체를 받아요(현재 페이지만이 아니에요).</li>
-          </ul>
+          </ol>
         </details>
 
         <section className="range-panel operations-range-panel" aria-label="기간 선택">

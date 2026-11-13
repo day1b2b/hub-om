@@ -16881,7 +16881,7 @@ details.detail-section > summary::-webkit-details-marker {
   font-weight: 700;
 }
 
-.operations-list-guide ul {
+.operations-list-guide ol {
   display: grid;
   gap: 4px;
   line-height: 1.5;
