@@ -76,7 +76,7 @@ test("dashboard, me, company wiki and resources pages share one read-only Mongo 
     const requestRow = await store.one("OmRequest", { _id: request.id }); assert.ok(requestRow);
     await store.collection("OmRequest").replaceOne({ _id: request.id }, encodeMongoRuntimeDocument("OmRequest", { ...requestRow, assignedOm: user.name, operationId: null }));
     const before = await snapshot(store); writes.length = 0;
-    const rendered = { dashboard: await dashboardPage({ searchParams: Promise.resolve({}) }), me: await mePage(), wiki: await wikiPage(), resources: await resourcesPage({ searchParams: Promise.resolve({}) }) };
+    const rendered = { dashboard: await dashboardPage({ searchParams: Promise.resolve({}) }), me: await mePage(), wiki: await wikiPage({ searchParams: Promise.resolve({}) }), resources: await resourcesPage({ searchParams: Promise.resolve({}) }) };
     assert.equal((props(rendered.dashboard).operations as unknown[]).length, 1); assert.equal((props(rendered.dashboard).teamUsers as unknown[]).length, 1);
     assert.equal(props(rendered.me).omName, user.name); assert.equal((props(rendered.me).operations as unknown[]).length, 1); assert.equal((props(rendered.me).assignedRequests as unknown[]).length, 1);
     assert.equal((props(rendered.wiki).entries as unknown[]).length, 1); assert.equal(props(rendered.wiki).loadFailed, false);
