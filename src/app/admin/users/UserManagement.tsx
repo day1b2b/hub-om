@@ -16,6 +16,29 @@ function isDeparted(u: TeamUser): boolean {
   return u.status === "departed";
 }
 
+type SortKey = "team" | "role" | "name" | "email" | "slackId" | "status";
+
+const SORT_COLUMNS: Record<SortKey, { label: string; value: (u: TeamUser) => string }> = {
+  team: { label: "팀", value: (u) => u.team ?? "" },
+  role: { label: "구분", value: (u) => (u.role ? ROLE_LABEL[u.role] : "") },
+  name: { label: "이름", value: (u) => u.name },
+  email: { label: "이메일", value: (u) => u.email },
+  slackId: { label: "Slack ID", value: (u) => u.slackId },
+  status: { label: "상태", value: (u) => (isDeparted(u) ? "퇴사" : "재직") }
+};
+
+// 운영 현황 표와 같은 규칙 — 빈 값은 오름·내림 어느 쪽이든 늘 뒤로 보내고,
+// 값이 같으면 0을 돌려 기본 순서(재직 먼저, 등록 순)를 그대로 남긴다(sort는 안정 정렬).
+function compareUsers(a: TeamUser, b: TeamUser, key: SortKey, dir: "asc" | "desc"): number {
+  const left = SORT_COLUMNS[key].value(a).trim();
+  const right = SORT_COLUMNS[key].value(b).trim();
+  if (!left && !right) return 0;
+  if (!left) return 1;
+  if (!right) return -1;
+  if (left === right) return 0;
+  return (left < right ? -1 : 1) * (dir === "asc" ? 1 : -1);
+}
+
 export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
   const [users, setUsers] = useState<TeamUser[]>(initialUsers);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -37,11 +60,39 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
   const [editingTeamValue, setEditingTeamValue] = useState("");
   const [savingTeamId, setSavingTeamId] = useState<string | null>(null);
   const [teamEditError, setTeamEditError] = useState<string | null>(null);
+  const [sort, setSort] = useState<null | { dir: "asc" | "desc"; key: SortKey }>(null);
 
   // 퇴사자는 지우지 않고 목록 맨 아래로만 내린다 — 재직자 순서(등록 순)는 그대로 유지한다.
   const filteredUsers = (teamFilter === "전체" ? users : users.filter((u) => u.team === teamFilter))
     .slice()
-    .sort((a, b) => Number(isDeparted(a)) - Number(isDeparted(b)));
+    .sort((a, b) => Number(isDeparted(a)) - Number(isDeparted(b)))
+    .sort((a, b) => (sort ? compareUsers(a, b, sort.key, sort.dir) : 0));
+
+  // 오름차순 → 내림차순 → 기본. 운영 현황 표와 같은 순서로 돈다.
+  function toggleSort(key: SortKey) {
+    setSort((current) => {
+      if (!current || current.key !== key) return { dir: "asc", key };
+      if (current.dir === "asc") return { dir: "desc", key };
+      return null;
+    });
+  }
+
+  function renderSortableHeader(key: SortKey) {
+    const column = SORT_COLUMNS[key];
+    const active = sort?.key === key;
+    const mark = active ? (sort?.dir === "asc" ? "▲" : "▼") : "";
+    return (
+      <th
+        aria-sort={active ? (sort?.dir === "asc" ? "ascending" : "descending") : "none"}
+        className={active ? "user-th-sortable is-sorted" : "user-th-sortable"}
+        onClick={() => toggleSort(key)}
+        title={`${column.label} 기준으로 정렬`}
+      >
+        {column.label}
+        <span className="user-sort-mark">{mark}</span>
+      </th>
+    );
+  }
 
   // 같은 이메일 행은 조용히 사람을 가린다. 명단 조회가 나중 행의 이름을 집어서,
   // 그 이름이 운영 현황 OM 표기와 다르면 그 사람 대시보드가 통째로 0건이 된다.
@@ -377,12 +428,12 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
                     onChange={toggleAll}
                   />
                 </th>
-                <th>팀</th>
-                <th>구분</th>
-                <th>이름</th>
-                <th>이메일</th>
-                <th>Slack ID</th>
-                <th>상태</th>
+                {renderSortableHeader("team")}
+                {renderSortableHeader("role")}
+                {renderSortableHeader("name")}
+                {renderSortableHeader("email")}
+                {renderSortableHeader("slackId")}
+                {renderSortableHeader("status")}
               </tr>
             </thead>
             <tbody>
