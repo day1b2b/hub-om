@@ -19,7 +19,7 @@ interface CompanyWikiProps {
 
 // 운영 상세의 "기업 위키로 이동"은 ?companyId=…&company=…로 들어와 그 기업 상세를 바로 연다.
 // companyId가 맞으면 그걸, 아니면 기업명으로 찾는다.
-function findInitialCompanyName(entries: CompanyWikiListEntry[], initial: { companyId: string; name: string }): null | string {
+function findInitialCompanyName(entries: CompanyWikiEntry[], initial: { companyId: string; name: string }): null | string {
   const match =
     (initial.companyId ? entries.find((entry) => entry.companyId === initial.companyId) : undefined) ??
     (initial.name ? entries.find((entry) => entry.name === initial.name) : undefined);
