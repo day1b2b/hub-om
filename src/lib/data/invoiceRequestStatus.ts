@@ -1,9 +1,9 @@
 import { GoogleSheetReadError, readGoogleSheetValues } from "../coaches/googleServiceAccount";
 import { normalizeCourseId } from "./operationCalculations";
 
-// 계산서 발행 요청 구글폼의 응답 시트(전사 공통)에서 "이 코스ID로 요청이 들어왔는지"만 읽는다.
-// 시트에는 사업자번호·금액 같은 민감 정보가 같이 있어서, 헤더 행과 타임스탬프·코스ID 열만 따로
-// 요청한다(나머지 열은 서버로도 가져오지 않는다). 시트 ID는 저장소가 public이라 env로만 받는다.
+// 계산서 발행 요청 구글폼의 응답 시트(전사 공통)에서 "이 코스ID로 요청이 들어왔는지"와 재무팀이 채우는
+// 처리 결과(발급여부·발급일자·실제입금일자)를 읽는다. 시트에는 사업자번호·금액 같은 민감 정보가 같이 있어서,
+// 헤더 행과 이 다섯 열만 따로 요청한다(나머지 열은 서버로도 가져오지 않는다). 시트 ID는 저장소가 public이라 env로만 받는다.
 const DEFAULT_TAB = "설문지 응답 시트(전사_공통)";
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -11,6 +11,12 @@ export interface InvoiceRequestStatus {
   /** 가장 최근 요청의 타임스탬프 원문(시트 표기 그대로, 예: "2025. 1. 9 오전 9:28:35"). */
   lastRequestedAt: string;
   requestCount: number;
+  /** 가장 최근 요청 행의 "발급여부"(예: "발급완료"). 재무팀이 아직 처리 전이면 빈 문자열. */
+  issueStatus: string;
+  /** 가장 최근 요청 행의 "발급일자" 원문. */
+  issuedAt: string;
+  /** 가장 최근 요청 행의 "실제입금일자" 원문(메모가 섞여 있을 수 있다, 예: "2025.03.31 (합산 입금)"). */
+  paidAt: string;
 }
 
 export type InvoiceRequestStatusResult =
@@ -52,11 +58,16 @@ async function readStatuses(): Promise<InvoiceRequestStatusResult> {
     const columns = findColumns(header);
     if (!columns) return { ok: false, reason: "unexpected_header" };
 
-    const [timestamps, courseIds] = await Promise.all([
-      readGoogleSheetValues(spreadsheetId, `${sheet}!${columns.timestamp}:${columns.timestamp}`),
-      readGoogleSheetValues(spreadsheetId, `${sheet}!${columns.courseId}:${columns.courseId}`)
+    const readColumn = async (letter: string | null) =>
+      letter ? (await readGoogleSheetValues(spreadsheetId, `${sheet}!${letter}:${letter}`)).slice(1) : [];
+    const [timestamps, courseIds, issueStatuses, issuedAts, paidAts] = await Promise.all([
+      readColumn(columns.timestamp),
+      readColumn(columns.courseId),
+      readColumn(columns.issueStatus),
+      readColumn(columns.issuedAt),
+      readColumn(columns.paidAt)
     ]);
-    return { ok: true, byCourseId: summarizeRequests(timestamps.slice(1), courseIds.slice(1)) };
+    return { ok: true, byCourseId: summarizeRequests({ timestamps, courseIds, issueStatuses, issuedAts, paidAts }) };
   } catch (error) {
     // 시트 내용·토큰은 남기지 않고 실패 종류만 남긴다.
     console.error("[invoice-request-status] SHEET_READ_FAILED", {
@@ -67,13 +78,32 @@ async function readStatuses(): Promise<InvoiceRequestStatusResult> {
   }
 }
 
+export interface InvoiceRequestColumns {
+  courseId: string;
+  timestamp: string;
+  /** 처리 결과 열은 없을 수도 있다(헤더가 바뀌면) — 그땐 요청 여부만 보여 준다. */
+  issueStatus: string | null;
+  issuedAt: string | null;
+  paidAt: string | null;
+}
+
 /** 헤더 문구가 길고 줄바꿈이 섞여 있어(예: "코스ID\n\n(★ 백오피스 코스 ID를…") 앞부분으로 찾는다. */
-export function findColumns(header: string[]): { courseId: string; timestamp: string } | null {
+export function findColumns(header: string[]): InvoiceRequestColumns | null {
   const indexOf = (prefix: string) => header.findIndex((cell) => (cell ?? "").replace(/\s+/g, "").startsWith(prefix));
+  const optional = (prefix: string) => {
+    const index = indexOf(prefix);
+    return index < 0 ? null : columnLetter(index);
+  };
   const timestamp = indexOf("타임스탬프");
   const courseId = indexOf("코스ID");
   if (timestamp < 0 || courseId < 0) return null;
-  return { courseId: columnLetter(courseId), timestamp: columnLetter(timestamp) };
+  return {
+    courseId: columnLetter(courseId),
+    timestamp: columnLetter(timestamp),
+    issueStatus: optional("발급여부"),
+    issuedAt: optional("발급일자"),
+    paidAt: optional("실제입금일자")
+  };
 }
 
 export function columnLetter(index: number): string {
@@ -82,16 +112,30 @@ export function columnLetter(index: number): string {
   return letter;
 }
 
-/** 폼 응답은 시간순으로 쌓이므로 같은 코스ID의 마지막 행이 가장 최근 요청이다. */
-export function summarizeRequests(timestamps: string[][], courseIds: string[][]): Map<string, InvoiceRequestStatus> {
+/**
+ * 폼 응답은 시간순으로 쌓이므로 같은 코스ID의 마지막 행이 가장 최근 요청이다.
+ * 처리 결과(발급여부·발급일자·실제입금일자)도 그 최근 행 값을 쓴다 — 취소 후 다시 요청한 건이면 다시 낸 요청 기준이다.
+ * 각 열은 헤더를 뺀 행 배열(시트 API는 열마다 끝 빈 행을 잘라 길이가 다를 수 있다).
+ */
+export function summarizeRequests(columns: {
+  timestamps: string[][];
+  courseIds: string[][];
+  issueStatuses?: string[][];
+  issuedAts?: string[][];
+  paidAts?: string[][];
+}): Map<string, InvoiceRequestStatus> {
+  const cell = (rows: string[][] | undefined, index: number) => (rows?.[index]?.[0] ?? "").trim();
   const byCourseId = new Map<string, InvoiceRequestStatus>();
-  courseIds.forEach((row, index) => {
+  columns.courseIds.forEach((row, index) => {
     const courseId = normalizeCourseId(row?.[0]);
     if (!courseId) return;
     const previous = byCourseId.get(courseId);
     byCourseId.set(courseId, {
-      lastRequestedAt: (timestamps[index]?.[0] ?? "").trim() || previous?.lastRequestedAt || "",
-      requestCount: (previous?.requestCount ?? 0) + 1
+      lastRequestedAt: cell(columns.timestamps, index) || previous?.lastRequestedAt || "",
+      requestCount: (previous?.requestCount ?? 0) + 1,
+      issueStatus: cell(columns.issueStatuses, index),
+      issuedAt: cell(columns.issuedAts, index),
+      paidAt: cell(columns.paidAts, index)
     });
   });
   return byCourseId;

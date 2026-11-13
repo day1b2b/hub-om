@@ -10745,6 +10745,21 @@ button.coach-doc-reserve-chip:disabled {
   color: var(--muted);
 }
 
+/* 요청은 들어갔고 재무팀 발급 전(또는 발급완료 외 상태) */
+.invoice-status--requested {
+  background: var(--blue-bg, #eef4ff);
+  color: var(--blue);
+}
+
+/* 기업위키 표 "발행 요청 현황" 칸의 배지 아래 발급일·입금일 */
+.invoice-issue-dates {
+  color: var(--muted);
+  display: block;
+  font-size: 11px;
+  margin-top: 4px;
+  white-space: nowrap;
+}
+
 /* 기업위키 상세 메모 카드 */
 .wiki-input.wiki-memo-input {
   font-family: inherit;

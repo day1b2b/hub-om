@@ -117,10 +117,17 @@ export function InvoiceRequestLink({ href }: { href: string | null | undefined }
 export interface InvoiceRequestStatusView {
   lastRequestedAt: string;
   requestCount: number;
+  /** 응답 시트 "발급여부"(재무팀 입력, 예: "발급완료"). 처리 전이면 빈 문자열. */
+  issueStatus?: string;
+  /** 응답 시트 "발급일자" 원문. */
+  issuedAt?: string;
+  /** 응답 시트 "실제입금일자" 원문. */
+  paidAt?: string;
 }
 
-// 폼 응답 시트에 이 코스ID로 들어온 요청이 있으면 "요청 완료". 코스ID가 없으면 시트와 맞춰 볼
-// 방법이 없어 "-", 시트를 못 읽었으면 "미요청"으로 오해하지 않게 "확인 불가"로 둔다.
+// 폼 응답 시트에 이 코스ID로 들어온 요청이 있으면 재무팀이 적은 "발급여부"를 그대로 보여 주고(발급완료면 초록),
+// 아직 비어 있으면 "발급 대기". 코스ID가 없으면 시트와 맞춰 볼 방법이 없어 "-",
+// 시트를 못 읽었으면 "미요청"으로 오해하지 않게 "확인 불가"로 둔다.
 export function InvoiceRequestStatusBadge({
   hasCourseId,
   state,
@@ -136,9 +143,39 @@ export function InvoiceRequestStatusBadge({
   if (!status) return <span className="invoice-status invoice-status--pending">미요청</span>;
 
   const title = `마지막 요청: ${status.lastRequestedAt || "시각 미기재"}${status.requestCount > 1 ? ` · 총 ${status.requestCount}건` : ""}`;
+  const issueStatus = status.issueStatus?.trim() ?? "";
+  const issued = issueStatus.includes("완료");
   return (
-    <span className="invoice-status invoice-status--done" title={title}>
-      요청 완료{status.requestCount > 1 ? ` (${status.requestCount}건)` : ""}
+    <span className={`invoice-status ${issued ? "invoice-status--done" : "invoice-status--requested"}`} title={title}>
+      {issueStatus || "발급 대기"}{status.requestCount > 1 ? ` (요청 ${status.requestCount}건)` : ""}
+    </span>
+  );
+}
+
+/**
+ * 응답 시트 날짜는 사람이 적어 "2026. 11. 11", "2026.11.30", "2026. 11. 10 오전 10:12:03"처럼 제각각이라
+ * 운영 현황과 같은 YYYY-MM-DD로 맞춘다. 날짜 뒤 시각은 버리고 메모(예: "(합산 입금)")는 남긴다.
+ * 연도가 없는 값(예: "취소(1/9)")은 원문 그대로.
+ */
+export function formatSheetDate(value: string | undefined): string {
+  const raw = (value ?? "").trim();
+  const match = raw.match(/(\d{4})\s*[./-]\s*(\d{1,2})\s*[./-]\s*(\d{1,2})\.?/);
+  if (!match) return raw;
+  const date = `${match[1]}-${match[2].padStart(2, "0")}-${match[3].padStart(2, "0")}`;
+  const rest = (raw.slice(0, match.index) + raw.slice((match.index ?? 0) + match[0].length))
+    .replace(/(오전|오후)?\s*\d{1,2}:\d{2}(:\d{2})?/, "")
+    .trim();
+  return rest ? `${date} ${rest}` : date;
+}
+
+/** 표 칸처럼 좁은 곳에서 배지 아래에 붙이는 발급일·입금일 한 줄. 둘 다 비면 아무것도 안 그린다. */
+export function InvoiceIssueDates({ status }: { status: InvoiceRequestStatusView | null }) {
+  if (!status || (!status.issuedAt && !status.paidAt)) return null;
+  return (
+    <span className="invoice-issue-dates">
+      {status.issuedAt ? `발급 ${formatSheetDate(status.issuedAt)}` : null}
+      {status.issuedAt && status.paidAt ? " · " : null}
+      {status.paidAt ? `입금 ${formatSheetDate(status.paidAt)}` : null}
     </span>
   );
 }
