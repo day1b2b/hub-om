@@ -5556,7 +5556,8 @@ button.instructor-contract-open {
   font-weight: 400;
 }
 
-.lecture-note-actions a.contract-request-confirm-open {
+.lecture-note-actions a.contract-request-confirm-open,
+.lecture-note-actions button.contract-request-confirm-open {
   align-items: center;
   background: var(--blue);
   border: 1px solid var(--blue);
@@ -5568,6 +5569,20 @@ button.instructor-contract-open {
   min-height: 32px;
   padding: 0 14px;
   text-decoration: none;
+}
+
+/* 코스ID명이 없어 계약폼으로 넘어갈 수 없을 때 — 눌리지 않는 비활성 상태 */
+.lecture-note-actions button.contract-request-confirm-open:disabled {
+  background: var(--border, #d0d5dd);
+  border-color: var(--border, #d0d5dd);
+  color: var(--text-muted, #667085);
+  cursor: not-allowed;
+}
+
+.lecture-note-footer .contract-request-confirm-warning {
+  color: var(--red);
+  font-weight: 700;
+  margin: 0 0 8px;
 }
 
 .instructor-contract-foot {
