@@ -20,7 +20,7 @@ type SortKey = "team" | "role" | "name" | "email" | "slackId" | "status";
 
 const SORT_COLUMNS: Record<SortKey, { label: string; value: (u: TeamUser) => string }> = {
   team: { label: "팀", value: (u) => u.team ?? "" },
-  role: { label: "구분", value: (u) => (u.role ? ROLE_LABEL[u.role] : "") },
+  role: { label: "직무", value: (u) => (u.role ? ROLE_LABEL[u.role] : "") },
   name: { label: "이름", value: (u) => u.name },
   email: { label: "이메일", value: (u) => u.email },
   slackId: { label: "Slack ID", value: (u) => u.slackId },
@@ -177,7 +177,7 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
       setUsers((prev) => prev.map((u) => (selected.has(u.id) ? { ...u, role: assignRole } : u)));
       setSelected(new Set());
     } catch {
-      alert("구분 지정에 실패했습니다.");
+      alert("직무 지정에 실패했습니다.");
     } finally {
       setAssigning(false);
     }
@@ -291,7 +291,7 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
           onChange={(e) => setRole(e.target.value as TeamUserRole | "")}
           className="user-input"
         >
-          <option value="">구분 선택</option>
+          <option value="">직무 선택</option>
           {ROLE_OPTIONS.map((r) => (
             <option key={r.value} value={r.value}>{r.label}</option>
           ))}
@@ -375,7 +375,7 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
             <span className="user-list-count">
               {teamFilter === "전체" ? `총 ${users.length}명` : `${teamFilter} ${filteredUsers.length}명`}
             </span>
-            {/* 전에는 행을 체크할 때만 이 영역이 나타났다. 그래서 구분 지정·퇴사 처리 기능이
+            {/* 전에는 행을 체크할 때만 이 영역이 나타났다. 그래서 직무 지정·퇴사 처리 기능이
                 아예 없는 것으로 보였다. 항상 두고 선택 전에는 비활성으로 알려 준다. */}
             <div className="user-bulk-assign">
               <select
@@ -394,7 +394,7 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
                 onClick={handleAssignRole}
                 type="button"
               >
-                {assigning ? "지정 중..." : selected.size > 0 ? `${selected.size}명 구분 지정` : "구분 지정"}
+                {assigning ? "지정 중..." : selected.size > 0 ? `${selected.size}명 직무 지정` : "직무 지정"}
               </button>
               <button
                 className="user-delete-btn"
@@ -502,7 +502,7 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
       )}
 
       <div className="user-bulk-add">
-        <p className="user-bulk-add-label">여러 명 한 번에 추가 (엑셀에서 팀, 구분(OM/LD), 이름, 이메일, Slack ID 순서로 복사해서 붙여넣기)</p>
+        <p className="user-bulk-add-label">여러 명 한 번에 추가 (엑셀에서 팀, 직무(OM/LD), 이름, 이메일, Slack ID 순서로 복사해서 붙여넣기)</p>
         <textarea
           className="user-bulk-textarea"
           onChange={(e) => setBulkText(e.target.value)}
@@ -532,7 +532,7 @@ function parseBulkRows(text: string): TeamUserInput[] {
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => line.split(/\t|,/).map((cell) => cell.trim()))
-    .filter((cells) => !(cells[0] === "팀" && (cells[1] === "이름" || cells[1] === "구분")))
+    .filter((cells) => !(cells[0] === "팀" && (cells[1] === "이름" || cells[1] === "구분" || cells[1] === "직무")))
     .map(([team, role, name, email, slackId]) => ({
       email: email ?? "",
       name: name ?? "",
