@@ -152,14 +152,30 @@ export function InvoiceRequestStatusBadge({
   );
 }
 
+/**
+ * 응답 시트 날짜는 사람이 적어 "2026. 11. 11", "2026.11.30", "2026. 11. 10 오전 10:12:03"처럼 제각각이라
+ * 운영 현황과 같은 YYYY-MM-DD로 맞춘다. 날짜 뒤 시각은 버리고 메모(예: "(합산 입금)")는 남긴다.
+ * 연도가 없는 값(예: "취소(1/9)")은 원문 그대로.
+ */
+export function formatSheetDate(value: string | undefined): string {
+  const raw = (value ?? "").trim();
+  const match = raw.match(/(\d{4})\s*[./-]\s*(\d{1,2})\s*[./-]\s*(\d{1,2})\.?/);
+  if (!match) return raw;
+  const date = `${match[1]}-${match[2].padStart(2, "0")}-${match[3].padStart(2, "0")}`;
+  const rest = (raw.slice(0, match.index) + raw.slice((match.index ?? 0) + match[0].length))
+    .replace(/(오전|오후)?\s*\d{1,2}:\d{2}(:\d{2})?/, "")
+    .trim();
+  return rest ? `${date} ${rest}` : date;
+}
+
 /** 표 칸처럼 좁은 곳에서 배지 아래에 붙이는 발급일·입금일 한 줄. 둘 다 비면 아무것도 안 그린다. */
 export function InvoiceIssueDates({ status }: { status: InvoiceRequestStatusView | null }) {
   if (!status || (!status.issuedAt && !status.paidAt)) return null;
   return (
     <span className="invoice-issue-dates">
-      {status.issuedAt ? `발급 ${status.issuedAt}` : null}
+      {status.issuedAt ? `발급 ${formatSheetDate(status.issuedAt)}` : null}
       {status.issuedAt && status.paidAt ? " · " : null}
-      {status.paidAt ? `입금 ${status.paidAt}` : null}
+      {status.paidAt ? `입금 ${formatSheetDate(status.paidAt)}` : null}
     </span>
   );
 }
