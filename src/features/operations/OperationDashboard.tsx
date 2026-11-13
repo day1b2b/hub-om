@@ -405,6 +405,20 @@ export function OperationDashboard({
           </Link>
         </header>
 
+        <details className="operations-list-guide">
+          <summary>이 목록은 어떤 기준으로 보이나요?</summary>
+          <ul>
+            <li>과정 1개가 한 줄이에요. 회차별 내용은 과정명을 눌러 상세 화면에서 확인해요.</li>
+            <li>
+              처음 열면 OM은 <strong>본인이 담당 OM인 과정</strong>, LD·관리자는 <strong>본인 소속 파트 과정</strong>이
+              보여요. 담당 과정이 없으면 전체가 보여요. 다른 과정은 필터를 바꾸거나 [필터 초기화]를 눌러 보세요.
+            </li>
+            <li>파트는 담당 OM·LD가 멤버관리에 등록된 파트 기준이에요. OM과 LD 파트가 다르면 두 파트 모두에 보여요.</li>
+            <li>기간을 고르면 교육 기간이 그 기간과 하루라도 겹치는 과정이 보여요. 기본 순서는 시작일 최신순이에요.</li>
+            <li>[엑셀 다운로드]는 지금 필터에 걸린 과정 전체를 받아요(현재 페이지만이 아니에요).</li>
+          </ul>
+        </details>
+
         <section className="range-panel operations-range-panel" aria-label="기간 선택">
           <div className="date-range">
             <span>기간</span>
@@ -481,7 +495,7 @@ export function OperationDashboard({
           <button className="secondary-action" type="button" onClick={resetFilters}>
             필터 초기화
           </button>
-          <button className="secondary-action" onClick={() => downloadOperationsCsv(courseGroups, today)} type="button">
+          <button className="secondary-action" onClick={() => downloadOperationsCsv(courseGroups, partByPersonKey, today)} type="button">
             엑셀 다운로드
           </button>
           <span className="filter-result-count">총 {courseGroups.length}건</span>
@@ -602,6 +616,7 @@ const OPERATIONS_CSV_HEADERS = [
   "결과보고서 링크",
   "드라이브 링크",
   "OM",
+  "OM 파트",
   "OM(현장운영)",
   "LD",
   "시작일",
@@ -616,7 +631,7 @@ const OPERATIONS_CSV_HEADERS = [
   "매출(코스ID기준)"
 ];
 
-function downloadOperationsCsv(courseGroups: CourseGroup[], today: Date) {
+function downloadOperationsCsv(courseGroups: CourseGroup[], partByPersonKey: Record<string, string>, today: Date) {
   const rows = courseGroups.map((group, index) => [
     `${index + 1}`,
     summarizeText(group.operations, (operation) => operation.educationFormat),
@@ -632,6 +647,7 @@ function downloadOperationsCsv(courseGroups: CourseGroup[], today: Date) {
     isSafeHttpUrl(group.resultReportLink) ? group.resultReportLink : "-",
     isSafeHttpUrl(group.driveLink) ? group.driveLink : "-",
     summarizeText(group.operations, (operation) => operation.om, "배정필요"),
+    omPartsLabel(group.operations, partByPersonKey),
     summarizeText(group.operations, (operation) => resolveOnsiteOm(operation)),
     summarizeText(group.operations, (operation) => operation.ld, "미정"),
     group.startDate,
@@ -661,6 +677,17 @@ function downloadOperationsCsv(courseGroups: CourseGroup[], today: Date) {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+}
+
+/**
+ * 엑셀 "OM 파트" 열. 과정의 담당 OM 이름을 멤버관리 등록 파트로 바꿔 보여준다.
+ * OM이 비면 "-", 멤버관리에 없는 이름이면 "미등록"으로 남겨 파트 필터에 안 걸리는 이유를 알 수 있게 한다.
+ */
+function omPartsLabel(operations: OperationSession[], partByPersonKey: Record<string, string>): string {
+  const names = unique(operations.flatMap((operation) => splitPersonNames(operation.om, "")));
+  if (names.length === 0) return "-";
+  const parts = unique(names.map((name) => partByPersonKey[normalizePersonKey(name)] ?? "미등록"));
+  return parts.join(", ");
 }
 
 function requiredLabel(value: string): string {
