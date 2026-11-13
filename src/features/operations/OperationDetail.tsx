@@ -327,7 +327,7 @@ export function OperationDetail({
                   existingRoundNumbers={existingRoundNumbers}
                   instructorOptions={instructorOptions}
                 />
-                <a className="notes-jump-link" href="#operation-notes">메모로 이동</a>
+                <Link className="company-wiki-jump-link" href={companyWikiHref(operation)}>기업 위키로 이동</Link>
                 {SHOW_BULK_EDIT_ROUNDS && courseOperations.length > 1 ? <BulkEditRoundsButton /> : null}
               </div>
             </div>
@@ -493,6 +493,15 @@ export function OperationDetail({
       </section>
     </main>
   );
+}
+
+// 기업위키는 ?companyId=…&company=…로 들어오면 그 기업 상세를 바로 연다(companyId 우선, 없으면 기업명).
+function companyWikiHref(operation: OperationSession): string {
+  const params = new URLSearchParams();
+  if (operation.companyId?.trim()) params.set("companyId", operation.companyId.trim());
+  if (operation.companyName.trim()) params.set("company", operation.companyName.trim());
+  const query = params.toString();
+  return query ? `/company-wiki?${query}` : "/company-wiki";
 }
 
 function InfoItem({ label, value }: { label: string; value: string }) {

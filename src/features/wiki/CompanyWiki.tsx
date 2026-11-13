@@ -14,6 +14,16 @@ interface CompanyWikiProps {
   entries: CompanyWikiEntry[];
   /** 운영 현황을 못 읽었을 때. 빈 목록과 구분해서 알려 준다. */
   loadFailed: boolean;
+  /** 주소(?companyId=…&company=…)로 바로 열 기업. companyId가 맞으면 그걸, 아니면 기업명으로 찾는다. */
+  initialCompany?: { companyId: string; name: string };
+}
+
+function findInitialCompanyName(entries: CompanyWikiListEntry[], initial: CompanyWikiProps["initialCompany"]): null | string {
+  if (!initial) return null;
+  const match =
+    (initial.companyId ? entries.find((entry) => entry.companyId === initial.companyId) : undefined) ??
+    (initial.name ? entries.find((entry) => entry.name === initial.name) : undefined);
+  return match?.name ?? null;
 }
 
 /** 여러 명이면 이름을 이어 붙이고, 없으면 대체 문구. */
@@ -24,8 +34,10 @@ function nameText(names: string[], fallback: string): string {
 // 갤러리는 카드가 작아 한 화면에 더 많이 보여 준다.
 const PAGE_SIZE = { gallery: 30, list: 20 } as const;
 
-export function CompanyWiki({ entries, loadFailed }: CompanyWikiProps) {
-  const [selectedName, setSelectedName] = useState<null | string>(null);
+export function CompanyWiki({ entries, initialCompany, loadFailed }: CompanyWikiProps) {
+  const [selectedName, setSelectedName] = useState<null | string>(() => findInitialCompanyName(entries, initialCompany));
+  // 주소로 바로 연 상세는 쌓아 둔 히스토리가 없어서, 목록으로 갈 때 뒤로가기 대신 주소만 목록으로 바꾼다.
+  const [openedFromUrl, setOpenedFromUrl] = useState(() => selectedName !== null);
   const [query, setQuery] = useState("");
   const [view, setView] = useState<"gallery" | "list">("gallery");
   const [page, setPage] = useState(1);
@@ -44,6 +56,12 @@ export function CompanyWiki({ entries, loadFailed }: CompanyWikiProps) {
   }
 
   function closeDetail() {
+    if (openedFromUrl) {
+      setOpenedFromUrl(false);
+      setSelectedName(null);
+      window.history.replaceState(null, "", window.location.pathname);
+      return;
+    }
     window.history.back();
   }
 
