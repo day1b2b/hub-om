@@ -26,7 +26,6 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
   const [role, setRole] = useState<TeamUserRole | "">("");
   const [teamFilter, setTeamFilter] = useState<TeamFilter>("전체");
   const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [bulkText, setBulkText] = useState("");
   const [bulkSaving, setBulkSaving] = useState(false);
@@ -109,26 +108,6 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
       setBulkError(err instanceof Error ? err.message : "오류가 발생했습니다.");
     } finally {
       setBulkSaving(false);
-    }
-  }
-
-  async function handleDelete() {
-    if (!selected.size) return;
-    if (!confirm(`${selected.size}명을 삭제하시겠습니까?`)) return;
-    setDeleting(true);
-    try {
-      const res = await fetch("/api/admin/users/delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: [...selected] }),
-      });
-      if (!res.ok) throw new Error();
-      setUsers((prev) => prev.filter((u) => !selected.has(u.id)));
-      setSelected(new Set());
-    } catch {
-      alert("삭제에 실패했습니다.");
-    } finally {
-      setDeleting(false);
     }
   }
 
@@ -345,7 +324,7 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
             <span className="user-list-count">
               {teamFilter === "전체" ? `총 ${users.length}명` : `${teamFilter} ${filteredUsers.length}명`}
             </span>
-            {/* 전에는 행을 체크할 때만 이 영역이 나타났다. 그래서 구분 지정·삭제 기능이
+            {/* 전에는 행을 체크할 때만 이 영역이 나타났다. 그래서 구분 지정·퇴사 처리 기능이
                 아예 없는 것으로 보였다. 항상 두고 선택 전에는 비활성으로 알려 준다. */}
             <div className="user-bulk-assign">
               <select
@@ -381,14 +360,6 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
                 type="button"
               >
                 재직으로 복귀
-              </button>
-              <button
-                className="user-delete-btn"
-                disabled={deleting || selected.size === 0}
-                onClick={handleDelete}
-                type="button"
-              >
-                {deleting ? "삭제 중..." : selected.size > 0 ? `${selected.size}명 삭제` : "삭제"}
               </button>
               {selected.size === 0 && (
                 <span className="user-bulk-hint">표에서 행을 선택하면 쓸 수 있어요</span>
