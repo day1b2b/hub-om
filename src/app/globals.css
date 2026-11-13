@@ -13974,6 +13974,27 @@ button.coach-doc-reserve-chip:disabled {
   background: var(--surface);
 }
 
+.user-table th.user-th-sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.user-table th.user-th-sortable:hover {
+  color: var(--text);
+}
+
+.user-table th.user-th-sortable.is-sorted {
+  color: var(--green);
+}
+
+.user-sort-mark {
+  display: inline-block;
+  font-size: 9px;
+  margin-left: 3px;
+  /* 정렬 표시가 켜질 때 칼럼 폭이 흔들리지 않도록 자리를 미리 잡아 둔다. */
+  min-width: 8px;
+}
+
 .user-table tbody tr {
   cursor: pointer;
 }

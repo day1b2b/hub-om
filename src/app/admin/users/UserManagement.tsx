@@ -16,6 +16,29 @@ function isDeparted(u: TeamUser): boolean {
   return u.status === "departed";
 }
 
+type SortKey = "team" | "role" | "name" | "email" | "slackId" | "status";
+
+const SORT_COLUMNS: Record<SortKey, { label: string; value: (u: TeamUser) => string }> = {
+  team: { label: "팀", value: (u) => u.team ?? "" },
+  role: { label: "직무", value: (u) => (u.role ? ROLE_LABEL[u.role] : "") },
+  name: { label: "이름", value: (u) => u.name },
+  email: { label: "이메일", value: (u) => u.email },
+  slackId: { label: "Slack ID", value: (u) => u.slackId },
+  status: { label: "상태", value: (u) => (isDeparted(u) ? "퇴사" : "재직") }
+};
+
+// 운영 현황 표와 같은 규칙 — 빈 값은 오름·내림 어느 쪽이든 늘 뒤로 보내고,
+// 값이 같으면 0을 돌려 기본 순서(재직 먼저, 등록 순)를 그대로 남긴다(sort는 안정 정렬).
+function compareUsers(a: TeamUser, b: TeamUser, key: SortKey, dir: "asc" | "desc"): number {
+  const left = SORT_COLUMNS[key].value(a).trim();
+  const right = SORT_COLUMNS[key].value(b).trim();
+  if (!left && !right) return 0;
+  if (!left) return 1;
+  if (!right) return -1;
+  if (left === right) return 0;
+  return (left < right ? -1 : 1) * (dir === "asc" ? 1 : -1);
+}
+
 export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
   const [users, setUsers] = useState<TeamUser[]>(initialUsers);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -37,11 +60,39 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
   const [editingTeamValue, setEditingTeamValue] = useState("");
   const [savingTeamId, setSavingTeamId] = useState<string | null>(null);
   const [teamEditError, setTeamEditError] = useState<string | null>(null);
+  const [sort, setSort] = useState<null | { dir: "asc" | "desc"; key: SortKey }>(null);
 
   // 퇴사자는 지우지 않고 목록 맨 아래로만 내린다 — 재직자 순서(등록 순)는 그대로 유지한다.
   const filteredUsers = (teamFilter === "전체" ? users : users.filter((u) => u.team === teamFilter))
     .slice()
-    .sort((a, b) => Number(isDeparted(a)) - Number(isDeparted(b)));
+    .sort((a, b) => Number(isDeparted(a)) - Number(isDeparted(b)))
+    .sort((a, b) => (sort ? compareUsers(a, b, sort.key, sort.dir) : 0));
+
+  // 오름차순 → 내림차순 → 기본. 운영 현황 표와 같은 순서로 돈다.
+  function toggleSort(key: SortKey) {
+    setSort((current) => {
+      if (!current || current.key !== key) return { dir: "asc", key };
+      if (current.dir === "asc") return { dir: "desc", key };
+      return null;
+    });
+  }
+
+  function renderSortableHeader(key: SortKey) {
+    const column = SORT_COLUMNS[key];
+    const active = sort?.key === key;
+    const mark = active ? (sort?.dir === "asc" ? "▲" : "▼") : "";
+    return (
+      <th
+        aria-sort={active ? (sort?.dir === "asc" ? "ascending" : "descending") : "none"}
+        className={active ? "user-th-sortable is-sorted" : "user-th-sortable"}
+        onClick={() => toggleSort(key)}
+        title={`${column.label} 기준으로 정렬`}
+      >
+        {column.label}
+        <span className="user-sort-mark">{mark}</span>
+      </th>
+    );
+  }
 
   // 같은 이메일 행은 조용히 사람을 가린다. 명단 조회가 나중 행의 이름을 집어서,
   // 그 이름이 운영 현황 OM 표기와 다르면 그 사람 대시보드가 통째로 0건이 된다.
@@ -114,7 +165,7 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
   async function handleAssignRole() {
     if (!selected.size) return;
     const label = ROLE_LABEL[assignRole];
-    if (!confirm(`선택한 ${selected.size}명을 ${label}(으)로 지정하시겠습니까?`)) return;
+    if (!confirm(`선택한 ${selected.size}명의 직무를 ${label}(으)로 변경하시겠습니까?`)) return;
     setAssigning(true);
     try {
       const res = await fetch("/api/admin/users/role", {
@@ -126,7 +177,7 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
       setUsers((prev) => prev.map((u) => (selected.has(u.id) ? { ...u, role: assignRole } : u)));
       setSelected(new Set());
     } catch {
-      alert("구분 지정에 실패했습니다.");
+      alert("직무 변경에 실패했습니다.");
     } finally {
       setAssigning(false);
     }
@@ -240,7 +291,7 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
           onChange={(e) => setRole(e.target.value as TeamUserRole | "")}
           className="user-input"
         >
-          <option value="">구분 선택</option>
+          <option value="">직무 선택</option>
           {ROLE_OPTIONS.map((r) => (
             <option key={r.value} value={r.value}>{r.label}</option>
           ))}
@@ -324,7 +375,7 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
             <span className="user-list-count">
               {teamFilter === "전체" ? `총 ${users.length}명` : `${teamFilter} ${filteredUsers.length}명`}
             </span>
-            {/* 전에는 행을 체크할 때만 이 영역이 나타났다. 그래서 구분 지정·퇴사 처리 기능이
+            {/* 전에는 행을 체크할 때만 이 영역이 나타났다. 그래서 직무 변경·퇴사 처리 기능이
                 아예 없는 것으로 보였다. 항상 두고 선택 전에는 비활성으로 알려 준다. */}
             <div className="user-bulk-assign">
               <select
@@ -343,7 +394,7 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
                 onClick={handleAssignRole}
                 type="button"
               >
-                {assigning ? "지정 중..." : selected.size > 0 ? `${selected.size}명 구분 지정` : "구분 지정"}
+                {assigning ? "변경 중..." : selected.size > 0 ? `${selected.size}명 직무 변경` : "직무 변경"}
               </button>
               <button
                 className="user-delete-btn"
@@ -377,12 +428,12 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
                     onChange={toggleAll}
                   />
                 </th>
-                <th>팀</th>
-                <th>구분</th>
-                <th>이름</th>
-                <th>이메일</th>
-                <th>Slack ID</th>
-                <th>상태</th>
+                {renderSortableHeader("team")}
+                {renderSortableHeader("role")}
+                {renderSortableHeader("name")}
+                {renderSortableHeader("email")}
+                {renderSortableHeader("slackId")}
+                {renderSortableHeader("status")}
               </tr>
             </thead>
             <tbody>
@@ -451,7 +502,7 @@ export function UserManagement({ initialUsers }: { initialUsers: TeamUser[] }) {
       )}
 
       <div className="user-bulk-add">
-        <p className="user-bulk-add-label">여러 명 한 번에 추가 (엑셀에서 팀, 구분(OM/LD), 이름, 이메일, Slack ID 순서로 복사해서 붙여넣기)</p>
+        <p className="user-bulk-add-label">여러 명 한 번에 추가 (엑셀에서 팀, 직무(OM/LD), 이름, 이메일, Slack ID 순서로 복사해서 붙여넣기)</p>
         <textarea
           className="user-bulk-textarea"
           onChange={(e) => setBulkText(e.target.value)}
@@ -481,7 +532,7 @@ function parseBulkRows(text: string): TeamUserInput[] {
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => line.split(/\t|,/).map((cell) => cell.trim()))
-    .filter((cells) => !(cells[0] === "팀" && (cells[1] === "이름" || cells[1] === "구분")))
+    .filter((cells) => !(cells[0] === "팀" && (cells[1] === "이름" || cells[1] === "구분" || cells[1] === "직무")))
     .map(([team, role, name, email, slackId]) => ({
       email: email ?? "",
       name: name ?? "",
