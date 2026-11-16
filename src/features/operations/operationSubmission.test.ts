@@ -149,3 +149,13 @@ test("legacy 평문은 값 읽기·귀속·삭제 없이 존재만 확인한다"
   assert.equal(hasLegacyOperationSubmission(storage), true);
   assert.equal(hasLegacyOperationSubmission({ length: 0, key: () => null }), false);
 });
+
+test("진행률은 회차와 결과보고서 설정 요청을 모두 센다", async () => {
+  const seen: string[] = [];
+  const request: typeof fetch = async () => Response.json({ ok: true, operation: { operationId: `fixture-operation-${seen.length}` } });
+  await submitOperationSnapshot(fixture(), request, () => {}, ({ done, total }) => seen.push(`${done}/${total}`));
+  assert.deepEqual(seen, ["0/2", "1/2", "2/2"]);
+  seen.length = 0;
+  await submitOperationSnapshot({ ...fixture(), hasResultReport: "N" }, request, () => {}, ({ done, total }) => seen.push(`${done}/${total}`));
+  assert.deepEqual(seen, ["0/4", "1/4", "2/4", "3/4", "4/4"]);
+});
