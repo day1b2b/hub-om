@@ -38,6 +38,8 @@ interface ResourceJudgmentPageProps {
   ownerRoster?: ResourceOwnerRoster;
   partRoster?: OmAvailabilityRoster;
   pendingOmRequests?: OmRequest[];
+  /** 전 파트 OM·LD 이름. 현장운영에 이 명단에 없는 이름이 있으면 외부인력(실습코치)으로 표시한다. */
+  staffNames?: string[];
   teamScope: TeamScope;
 }
 
@@ -70,6 +72,8 @@ interface CalendarItem {
   key: string;
   // 현장투입 N으로 확정된 회차. 미확인(UNKNOWN)은 "미투입"으로 단정하지 않는다.
   noOnsite?: boolean;
+  /** 현장운영에 들어간 외부인력(OM·LD 명단에 없는 이름). 표시만 하고 담당자 필터에는 쓰지 않는다. */
+  onsiteExternalNames?: string[];
   onsiteOwnerNames?: string[];
   ownerNames: string[];
   startDate: Date;
@@ -83,6 +87,7 @@ export function ResourceJudgmentPage({
   ownerRoster = {},
   partRoster = {},
   pendingOmRequests = [],
+  staffNames = [],
   teamScope
 }: ResourceJudgmentPageProps) {
   const [viewDate, setViewDate] = useState(new Date());
@@ -91,6 +96,7 @@ export function ResourceJudgmentPage({
   const [partFilter, setPartFilter] = useState(ALL_PARTS_FILTER);
   const [expandedCalendarDays, setExpandedCalendarDays] = useState<Set<string>>(() => new Set());
   const teamOperations = operations;
+  const staffNameKeys = useMemo(() => new Set(staffNames.map(normalizeOwnerName).filter(Boolean)), [staffNames]);
   const rosterOwners = useMemo(() => getRosterOwners(ownerRoster), [ownerRoster]);
   const ownerPartMap = useMemo(() => buildOwnerPartMap(partRoster), [partRoster]);
   const allOwnerOptions = useMemo(
@@ -154,7 +160,8 @@ export function ResourceJudgmentPage({
     filteredCalendarEvents,
     calendarPendingRequestItems,
     teamQuery,
-    resourceOwnerMap
+    resourceOwnerMap,
+    staffNameKeys
   );
   const monthLabel = new Intl.DateTimeFormat("ko-KR", {
     month: "long",
@@ -328,6 +335,9 @@ function CalendarEventCard({ segment }: { segment: CalendarEventSegment }) {
           <Tag key={`onsite-${name}`} tone={ownerTone(name)}>{`${name}·현장`}</Tag>
         ))}
         {segment.item.noOnsite ? <Tag tone="gray">현장 미투입</Tag> : null}
+        {(segment.item.onsiteExternalNames ?? []).map((name) => (
+          <Tag key={`onsite-external-${name}`} tone="gray">{`${name}(외부인력)·현장`}</Tag>
+        ))}
         {segment.item.type === "source" ? (
           <Tag tone={segment.item.eventKind === "absence" ? "pink" : "gray"}>{sourceEventLabel(segment.item)}</Tag>
         ) : null}
@@ -358,11 +368,12 @@ function buildCalendarWeeks(
   calendarEvents: CalendarResourceEvent[],
   pendingRequestItems: CalendarItem[],
   teamQuery: string,
-  ownerMap: Map<string, string>
+  ownerMap: Map<string, string>,
+  staffNameKeys: Set<string>
 ): CalendarWeek[] {
   const days = buildCalendarDays(anchorDate);
   const items = [
-    ...operations.flatMap((operation) => operationToCalendarItems(operation, teamQuery, ownerMap)),
+    ...operations.flatMap((operation) => operationToCalendarItems(operation, teamQuery, ownerMap, staffNameKeys)),
     ...calendarEvents
       .map((event) => sourceEventToCalendarItem(event, ownerMap))
       .filter((item): item is CalendarItem => item !== null),
@@ -466,7 +477,8 @@ function buildCalendarWeekSegments(days: CalendarDay[], items: CalendarItem[]) {
 function operationToCalendarItems(
   operation: OperationSession,
   teamQuery: string,
-  ownerMap: Map<string, string>
+  ownerMap: Map<string, string>,
+  staffNameKeys: Set<string>
 ): CalendarItem[] {
   const ownerNames = getCalendarOperationOwners(operation.om, ownerMap);
   // 현장운영에 담당 OM과 같은 사람이 또 들어있는 건 "현장" 칩으로 중복 표시하지 않는다.
@@ -475,6 +487,7 @@ function operationToCalendarItems(
   );
   // 현장투입이 N인데 현장운영 담당자가 적혀 있으면 값이 엇갈린 것이라 "현장 미투입"으로 단정하지 않는다.
   const noOnsite = operation.onsiteRequired === "N" && !operation.onsiteOm.trim();
+  const onsiteExternalNames = getOnsiteExternalNames(operation.onsiteOm, staffNameKeys);
 
   return resolveOperationCalendarRuns(operation).flatMap((run) => {
     const startDate = parseDate(run.start);
@@ -488,6 +501,7 @@ function operationToCalendarItems(
       // 한 회차가 막대 여러 개가 되므로 구간 시작일까지 키에 넣는다(레인 배치·확장 상태가 섞이지 않게).
       key: `operation-${operation.operationId}-${run.start}`,
       noOnsite: noOnsite || undefined,
+      onsiteExternalNames: onsiteExternalNames.length > 0 ? onsiteExternalNames : undefined,
       onsiteOwnerNames: onsiteOwnerNames.length > 0 ? onsiteOwnerNames : undefined,
       ownerNames,
       startDate,
@@ -758,6 +772,21 @@ function getCalendarOperationOwners(value: string, allowedOwners: Map<string, st
     .filter((owner): owner is string => Boolean(owner));
 
   return [...new Set(resolved)];
+}
+
+// 현장운영 칸은 OM 아니면 외부인력(실습코치 명단)만 고를 수 있다. 그래서 전 파트 OM·LD 명단에
+// 없는 이름은 외부인력으로 본다. 명단을 못 읽었으면(빈 명단) 모두 외부인력으로 오인하므로 아무것도 표시하지 않는다.
+function getOnsiteExternalNames(value: string, staffNameKeys: Set<string>): string[] {
+  if (staffNameKeys.size === 0) return [];
+
+  const names = splitPersonNames(value, "").filter((name) => {
+    const key = normalizeOwnerName(name);
+    if (!key || staffNameKeys.has(key)) return false;
+    const alias = OWNER_ALIASES[key];
+    return !(alias && staffNameKeys.has(normalizeOwnerName(alias)));
+  });
+
+  return [...new Set(names)];
 }
 
 function resolveOwnerDisplayName(owner: string, allowedOwners: Map<string, string>, includeFallback = true) {
