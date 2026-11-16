@@ -90,9 +90,18 @@ export async function persistAndSubmitOperation(storage: OperationSubmissionStor
   return submitOperationSnapshot(submission, request, () => storage.assertCurrent());
 }
 
-export async function submitOperationSnapshot(submission: OperationSubmission, request: typeof fetch = fetch, assertCurrent: () => void = () => {}): Promise<string> {
+/** done/total count every request, including the per-round result-report setting when hasResultReport is "N". */
+export interface OperationSubmissionProgress {
+  done: number;
+  total: number;
+}
+
+export async function submitOperationSnapshot(submission: OperationSubmission, request: typeof fetch = fetch, assertCurrent: () => void = () => {}, onProgress: (progress: OperationSubmissionProgress) => void = () => {}): Promise<string> {
   assertCurrent();
   const operationIds: string[] = [];
+  const total = submission.payloads.length * (submission.hasResultReport === "N" ? 2 : 1);
+  let done = 0;
+  onProgress({ done, total });
   for (const [index, body] of submission.payloads.entries()) {
     const url = index === 0 ? "/api/operations" : `/api/operations/${encodeURIComponent(operationIds[0])}/rounds`;
     assertCurrent();
@@ -112,6 +121,7 @@ export async function submitOperationSnapshot(submission: OperationSubmission, r
       throw new Error(result.error ?? `${body.roundNo}회차를 등록하지 못했습니다. 원래 등록 계속하기로 다시 시도해주세요.`);
     }
     operationIds.push(result.operation.operationId);
+    onProgress({ done: ++done, total });
   }
   if (submission.hasResultReport === "N") {
     for (const id of operationIds) {
@@ -125,6 +135,7 @@ export async function submitOperationSnapshot(submission: OperationSubmission, r
       const result = await response.json().catch(() => ({})) as { ok?: boolean };
       assertCurrent();
       if (!response.ok || !result.ok) throw new Error("회차는 등록되었지만 결과보고서 설정을 저장하지 못했습니다. 원래 등록 계속하기로 다시 시도해주세요.");
+      onProgress({ done: ++done, total });
     }
   }
   return operationIds[0];

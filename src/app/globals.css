@@ -1795,6 +1795,29 @@ select {
   min-height: 44px;
 }
 
+.operation-submit-progress {
+  display: grid;
+  gap: 8px;
+}
+
+.operation-submit-progress-text {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+.operation-submit-progress-text span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.operation-submit-progress progress {
+  accent-color: var(--green);
+  height: 10px;
+  width: 100%;
+}
+
 .operation-form-actions .secondary-action {
   background: #fbfcfe;
   border: 1px solid var(--line);
