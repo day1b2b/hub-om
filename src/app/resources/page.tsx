@@ -56,6 +56,7 @@ async function renderResourcesPage({ searchParams }: ResourcesPageProps) {
       ownerRoster={scopedOwnerRoster}
       partRoster={partRoster}
       pendingOmRequests={scopedPendingOmRequests}
+      staffNames={rosterNames(roleRoster.om, roleRoster.ld)}
       teamScope={teamScope}
     />
   );
@@ -74,6 +75,11 @@ async function listCalendarResourceEvents(): Promise<CalendarResourceEvent[]> {
   } catch {
     return [];
   }
+}
+
+// 팀 스코프와 무관하게 전 파트 OM·LD 이름. 다른 파트 OM이 현장운영에 들어가도 외부인력으로 오인하지 않게 한다.
+function rosterNames(...rosters: ResourceOwnerRoster[]): string[] {
+  return [...new Set(rosters.flatMap((roster) => Object.values(roster).flatMap((owners) => owners ?? [])))];
 }
 
 function hasRosterMembers(roster: ResourceOwnerRoster) {
