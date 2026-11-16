@@ -9,6 +9,8 @@ import { displayRoleAssigneeText } from "@/lib/data/roleAssignees";
 type SaveState = "idle" | "saving" | "failed";
 
 interface EditableOnsiteOmCellProps {
+  /** 현장에 외부인력이 가는 드문 경우를 위해, "외부인력" 버튼을 눌렀을 때만 보여주는 실습코치 명단. */
+  coachOptions: string[];
   om: string;
   onsiteOm: string;
   onsiteRequired: OnsiteRequired;
@@ -16,7 +18,7 @@ interface EditableOnsiteOmCellProps {
   options: string[];
 }
 
-export function EditableOnsiteOmCell({ om, onsiteOm, onsiteRequired, operationId, options }: EditableOnsiteOmCellProps) {
+export function EditableOnsiteOmCell({ coachOptions, om, onsiteOm, onsiteRequired, operationId, options }: EditableOnsiteOmCellProps) {
   const router = useRouter();
   const effectiveValue = onsiteOm || om;
   const [isEditing, setIsEditing] = useState(false);
@@ -31,7 +33,7 @@ export function EditableOnsiteOmCell({ om, onsiteOm, onsiteRequired, operationId
     return (
       <td className="round-resource-cell">
         <button className="session-cell-select" onClick={startEditing} type="button">
-          {displayRoleAssigneeText(effectiveValue, "배정필요")}
+          {displayRoleAssigneeText(markCoachNames(effectiveValue, options, coachOptions), "배정필요")}
         </button>
       </td>
     );
@@ -40,7 +42,14 @@ export function EditableOnsiteOmCell({ om, onsiteOm, onsiteRequired, operationId
   return (
     <td className="round-resource-cell editing">
       <div className="round-resource-cell-edit-form">
-        <NameSelectEditor fieldName="onsiteOm" label="현장운영" onChange={setDraft} options={options} value={draft} />
+        <NameSelectEditor
+          fieldName="onsiteOm"
+          label="현장운영"
+          onChange={setDraft}
+          options={options}
+          secondary={{ label: "외부인력", options: coachOptions, primaryLabel: "OM" }}
+          value={draft}
+        />
       </div>
       <div className="round-resource-cell-edit-actions">
         <button disabled={saveState === "saving"} onClick={save} type="button">
@@ -97,4 +106,14 @@ export function EditableOnsiteOmCell({ om, onsiteOm, onsiteRequired, operationId
     setSaveState("idle");
     router.refresh();
   }
+}
+
+// 화면에서만 외부인력(실습코치 명단) 이름 뒤에 "(외부인력)"을 붙여 OM과 구분한다. 저장값은 이름 그대로다.
+// OM 명단에도 있는 이름은 OM으로 본다.
+function markCoachNames(value: string, omOptions: string[], coachOptions: string[]): string {
+  return value
+    .split(",")
+    .map((name) => name.trim())
+    .map((name) => (name && !omOptions.includes(name) && coachOptions.includes(name) ? `${name}(외부인력)` : name))
+    .join(", ");
 }

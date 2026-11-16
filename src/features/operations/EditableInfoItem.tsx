@@ -185,66 +185,90 @@ interface NameSelectEditorProps {
   label: string;
   onChange: (nextValue: string) => void;
   options: string[];
+  /** 가끔만 쓰는 두 번째 명단. 주면 줄마다 [기본 | 두 번째] 버튼이 생기고, 누른 쪽 명단만 보여준다. */
+  secondary?: { label: string; options: string[]; primaryLabel: string };
   value: string;
 }
 
-export function NameSelectEditor({ fieldName, label, onChange, options, value }: NameSelectEditorProps) {
+export function NameSelectEditor({ fieldName, label, onChange, options, secondary, value }: NameSelectEditorProps) {
   const [names, setNames] = useState(() => splitNames(value));
+  // 줄마다 어느 명단에서 고르는지. 이미 저장된 이름이 두 번째 명단에만 있으면 그쪽으로 연다.
+  const [useSecondary, setUseSecondary] = useState(() =>
+    names.map((name) => !!secondary && !!name && !options.includes(name) && secondary.options.includes(name))
+  );
+  const hasAnyOption = options.length > 0 || (secondary?.options.length ?? 0) > 0;
 
   return (
     <div className="name-select-list">
-      {names.map((name, index) => (
-        <div className="name-select-row" key={`${fieldName}-${index}`}>
-          <select
-            aria-label={`${label} ${index + 1}`}
-            disabled={options.length === 0}
-            onChange={(event) => updateName(index, event.target.value)}
-            value={name}
-          >
-            <option value="">{options.length === 0 ? "선택 가능한 이름 없음" : "선택"}</option>
-            {options.map((option) => (
-              <option disabled={names.includes(option) && option !== name} key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-          {names.length > 1 ? (
-            <button className="name-remove-button" onClick={() => removeName(index)} type="button">
-              삭제
-            </button>
-          ) : null}
-          {index === names.length - 1 ? (
-            <button className="name-add-button" disabled={options.length === 0} onClick={addName} type="button">
-              +
-            </button>
-          ) : null}
-        </div>
-      ))}
+      {names.map((name, index) => {
+        const rowOptions = useSecondary[index] && secondary ? secondary.options : options;
+
+        return (
+          <div className={secondary ? "name-select-row has-source-toggle" : "name-select-row"} key={`${fieldName}-${index}`}>
+            {secondary ? (
+              <div className="name-source-toggle" role="group" aria-label={`${label} ${index + 1} 명단`}>
+                <button aria-pressed={!useSecondary[index]} onClick={() => switchSource(index, false)} type="button">
+                  {secondary.primaryLabel}
+                </button>
+                <button aria-pressed={!!useSecondary[index]} onClick={() => switchSource(index, true)} type="button">
+                  {secondary.label}
+                </button>
+              </div>
+            ) : null}
+            <select
+              aria-label={`${label} ${index + 1}`}
+              disabled={rowOptions.length === 0}
+              onChange={(event) => updateName(index, event.target.value)}
+              value={name}
+            >
+              <option value="">{rowOptions.length === 0 ? "선택 가능한 이름 없음" : "선택"}</option>
+              {rowOptions.map((option) => (
+                <option disabled={names.includes(option) && option !== name} key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+            {names.length > 1 ? (
+              <button className="name-remove-button" onClick={() => removeName(index)} type="button">
+                삭제
+              </button>
+            ) : null}
+            {index === names.length - 1 ? (
+              <button className="name-add-button" disabled={!hasAnyOption} onClick={addName} type="button">
+                +
+              </button>
+            ) : null}
+          </div>
+        );
+      })}
     </div>
   );
 
+  // onChange는 상태 업데이트 함수 밖에서 부른다. 안에서 부르면 렌더 중 부모 상태를 바꿔 React 경고가 난다.
+  function commit(next: string[]) {
+    setNames(next);
+    onChange(joinNames(next));
+  }
+
   function addName() {
-    setNames((current) => {
-      const next = [...current, ""];
-      onChange(joinNames(next));
-      return next;
-    });
+    setUseSecondary((current) => [...current, false]);
+    commit([...names, ""]);
   }
 
   function removeName(index: number) {
-    setNames((current) => {
-      const next = current.filter((_, currentIndex) => currentIndex !== index);
-      onChange(joinNames(next));
-      return next;
-    });
+    setUseSecondary((current) => current.filter((_, currentIndex) => currentIndex !== index));
+    commit(names.filter((_, currentIndex) => currentIndex !== index));
+  }
+
+  // 명단을 바꾸면 그 줄에 고른 이름은 비운다. 다른 명단의 이름이 남아 있으면 select가 엉뚱하게 보인다.
+  function switchSource(index: number, nextUseSecondary: boolean) {
+    if (!!useSecondary[index] === nextUseSecondary) return;
+    setUseSecondary((current) => current.map((flag, currentIndex) => (currentIndex === index ? nextUseSecondary : flag)));
+    updateName(index, "");
   }
 
   function updateName(index: number, nextName: string) {
-    setNames((current) => {
-      const next = current.map((name, currentIndex) => (currentIndex === index ? nextName : name));
-      onChange(joinNames(next));
-      return next;
-    });
+    commit(names.map((name, currentIndex) => (currentIndex === index ? nextName : name)));
   }
 }
 
