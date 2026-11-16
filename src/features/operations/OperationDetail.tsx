@@ -369,6 +369,7 @@ export function OperationDetail({
                       />
                       <td>{displayRoleAssigneeText(courseOperation.om, "배정필요")}</td>
                       <EditableOnsiteOmCell
+                        coachOptions={coachOptions}
                         om={courseOperation.om}
                         onsiteOm={courseOperation.onsiteOm}
                         onsiteRequired={courseOperation.onsiteRequired}

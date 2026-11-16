@@ -1757,6 +1757,37 @@ select {
   grid-template-columns: minmax(0, 1fr) 34px 34px;
 }
 
+.name-select-row.has-source-toggle {
+  grid-template-columns: auto minmax(0, 1fr) 34px 34px;
+}
+
+.name-source-toggle {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  display: inline-flex;
+  overflow: hidden;
+}
+
+.name-source-toggle button {
+  background: #fbfcfe;
+  border: 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  min-height: 34px;
+  padding: 0 8px;
+  white-space: nowrap;
+}
+
+.name-source-toggle button + button {
+  border-left: 1px solid var(--line);
+}
+
+.name-source-toggle button[aria-pressed="true"] {
+  background: var(--blue);
+  color: #ffffff;
+}
+
 .name-remove-button,
 .name-add-button {
   background: #fbfcfe;
