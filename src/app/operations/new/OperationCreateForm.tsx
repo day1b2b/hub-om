@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { companyNameError } from "@/lib/data/companyName";
 import { buildOperationCreateTemplateCsv } from "@/features/operations/operationCreateTemplate";
-import { clearOperationSubmission, hasLegacyOperationSubmission, OperationSubmissionValidationError, persistOperationSubmission, readOperationSubmission, submitOperationSnapshot, type OperationSubmission, type OperationSubmissionStore } from "@/features/operations/operationSubmission";
+import { clearOperationSubmission, hasLegacyOperationSubmission, OperationSubmissionValidationError, persistOperationSubmission, readOperationSubmission, submitOperationSnapshot, type OperationSubmission, type OperationSubmissionProgress, type OperationSubmissionStore } from "@/features/operations/operationSubmission";
 import { operationSubmissionStore } from "@/features/operations/operationSubmissionStore";
 import { LEGACY_DRAFT_PREFIXES, LEGACY_REGISTRATION_UNRESOLVED } from "@/lib/privacy/legacyDraftSources";
 import { browserDrafts } from "@/lib/privacy/browserDraftRuntime";
@@ -73,6 +73,7 @@ export function OperationCreateForm({ expectedSubject, initialValues = {}, perso
   const [rows, setRows] = useState<ParsedRound[]>(() => parsePastedRounds(seedLine));
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<OperationSubmissionProgress | null>(null);
   // 붙여넣은 텍스트의 "실제교육일" 칸을 달력으로 고쳐 쓴 값. 붙여넣기 텍스트를 다시
   // 고치면(handlePasteChange) 초기화되는, 현재 미리보기 한정 보정값이다.
   const [dateOverrides, setDateOverrides] = useState<Record<number, string[]>>({});
@@ -318,6 +319,15 @@ export function OperationCreateForm({ expectedSubject, initialValues = {}, perso
       ) : null}
 
       </fieldset>
+      {submitState === "saving" && progress ? (
+        <div className="operation-submit-progress" role="status" aria-live="polite">
+          <div className="operation-submit-progress-text">
+            <strong>등록 중 {progress.done} / {progress.total}</strong>
+            <span>완료될 때까지 창을 닫거나 다른 페이지로 이동하지 마세요.</span>
+          </div>
+          <progress max={progress.total} value={progress.done} />
+        </div>
+      ) : null}
       <div className="operation-form-actions">
         {error ? <span className="lecture-note-save-error">{error}</span> : null}
         <Link className="secondary-action" href={`/operations${teamQuery}`}>취소</Link>
@@ -378,6 +388,7 @@ export function OperationCreateForm({ expectedSubject, initialValues = {}, perso
       }
     }
     submittingRef.current = true;
+    setProgress(null);
     setSubmitState("saving");
     try {
       const assertRegistrationCurrent = () => {
@@ -412,7 +423,7 @@ export function OperationCreateForm({ expectedSubject, initialValues = {}, perso
         await persistOperationSubmission(storage, snapshot);
         setPendingSubmission(snapshot);
       }
-      const operationId = await submitOperationSnapshot(snapshot, fetch, assertRegistrationCurrent);
+      const operationId = await submitOperationSnapshot(snapshot, fetch, assertRegistrationCurrent, setProgress);
       await clearOperationSubmission(storage);
       router.push(`/operations/${encodeURIComponent(operationId)}${teamQuery}`);
     } catch (reason) {
