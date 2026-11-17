@@ -203,7 +203,7 @@ export function EggRentalBoard({
                   onSelect={(deviceId) => selectDevice(deviceId)}
                 />
 
-                <EggGuidePanel key={`guide-${part}`} part={part} guide={guide} />
+                <EggGuidePanel key={`guide-${part}`} part={part} guide={guide} isAdmin={isAdmin} />
 
                 <EggSearchSection
                   key={`search-${part}`}
