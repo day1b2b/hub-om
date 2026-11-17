@@ -10,23 +10,11 @@ import type { InstructorNote, InstructorNotionProfile } from "./instructorNoteRe
 
 const PHONE = /\b0\d{1,2}[-. ]?\d{3,4}[-. ]?\d{4}\b/g;
 const EMAIL = /\b[\w.+-]+@[\w-]+\.[\w.-]+\b/g;
-// 국내 주소: 시·도 이름으로 시작해 60자 안에 "○○로 12", "○○길 3", "○○동 45-6" 같은 번지가 붙는 덩어리.
-// 시·도 이름만 있고 번지가 없으면("경기 지역 선호") 주소로 보지 않는다. 뒤에 붙는 번길·동·호·층까지 함께 가린다.
-const ADDRESS = new RegExp(
-  "(?:서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충청|충북|충남|전라|전북|전남|경상|경북|경남|제주)" +
-    "[가-힣0-9\\s,.·-]{0,60}?(?:로|길|동|리|가)\\s*\\d+(?:-\\d+)?" +
-    "(?:\\s*번?길\\s*\\d+(?:-\\d+)?)?" +
-    "(?:[,\\s]*\\d+(?:동|호|층))*",
-  "g"
-);
 
-/** 자유 텍스트에서 전화번호·이메일·주소를 가린다. 문장 흐름은 그대로 둔다. */
+/** 자유 텍스트에서 전화번호·이메일을 가린다. 문장 흐름은 그대로 둔다. */
 export function redactFreeText(value: string | undefined): string | undefined {
   if (!value) return value;
-  const redacted = value
-    .replace(PHONE, "[연락처 비공개]")
-    .replace(EMAIL, "[이메일 비공개]")
-    .replace(ADDRESS, "[주소 비공개]");
+  const redacted = value.replace(PHONE, "[연락처 비공개]").replace(EMAIL, "[이메일 비공개]");
   return redacted.trim() || undefined;
 }
 
