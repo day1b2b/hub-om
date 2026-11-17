@@ -17035,3 +17035,38 @@ details.detail-section > summary::-webkit-details-marker {
   margin: 8px 0 0;
   padding-left: 18px;
 }
+
+/* 주의사항 관리자 수정(수정 버튼은 제목 오른쪽 끝, 편집창은 패널 안) */
+.dashboard-panel.egg-guide .section-title {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.egg-guide-input {
+  background: #fff;
+  border: 1px solid #e6d6b4;
+  border-radius: 8px;
+  box-sizing: border-box;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 10px 12px;
+  resize: vertical;
+  width: 100%;
+}
+
+.egg-guide-edit-hint {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 6px 0 0;
+}
+
+.egg-guide-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
