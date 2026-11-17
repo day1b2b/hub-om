@@ -39,7 +39,7 @@ function contractStep(status: StatusEntry): number {
 }
 
 /** "2026.11.03 12:00" (KST) */
-function formatSyncedAt(iso: string): string {
+export function formatSyncedAt(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
   const parts = new Intl.DateTimeFormat("ko-KR", {
