@@ -23,6 +23,7 @@ import {
 import { InstructorEditor } from "./InstructorEditor";
 import { NotionLinkEditor } from "./NotionLinkEditor";
 import { notionHref, resolveNotionLinkTargets, type InstructorNote } from "@/lib/data/instructorWikiStore";
+import { redactFreeText } from "@/lib/data/instructorNotePii";
 
 // 강사 위키 상세. 코치 위키와 같은 틀(헤더 → 고정 알림 → 본문 2단)을 쓴다.
 // "강사 위키 = 보는 곳 / 운영현황 = 하는 곳" 원칙이라 계약 '요청' 버튼은 두지 않는다.
@@ -73,6 +74,7 @@ export function InstructorWikiDetail({
       ? `노션 강사 DB · ${np.syncedAt.slice(0, 10)} 기준`
       : "노션 미연결";
   const baseFeeText = typeof np?.baseFee === "number" ? `${np.baseFee.toLocaleString("ko-KR")}원` : "";
+  const feeNoteText = redactFreeText(np?.feeNote) ?? "";
 
   // 상태·지표는 운영 현황(courses)에서 바로 계산한다(별도 백엔드 불필요).
   const today = seoulTodayKey();
@@ -246,7 +248,8 @@ export function InstructorWikiDetail({
                 <PeopleFacts
                   items={[
                     { label: "기본 강사료", value: baseFeeText },
-                    { label: "특이사항", value: np?.feeNote ? <span className="wiki-view">{np.feeNote}</span> : "" }
+                    // 저장 시점에도 가리지만, 그 규칙이 생기기 전에 동기화된 값이 있어 보여 줄 때 한 번 더 가린다.
+                    { label: "특이사항", value: feeNoteText ? <span className="wiki-view">{feeNoteText}</span> : "" }
                   ]}
                 />
               </PeopleCard>
