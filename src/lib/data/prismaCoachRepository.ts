@@ -377,7 +377,7 @@ export class PrismaCoachRepository implements CoachRepository {
             endDate: toDateString(engagement.endDate)
           })),
           engagementCount: coach._count.engagements
-        } satisfies Omit<CoachScheduleDashboardCoach, "schedules" | "reservation">
+        } satisfies Omit<CoachScheduleDashboardCoach, "schedules" | "reservation" | "assigned">
       ])
     );
 
@@ -393,20 +393,26 @@ export class PrismaCoachRepository implements CoachRepository {
     const busyByDayCoach = groupIntervalsByDayAndCoach(busyRows);
     const days: CoachScheduleDashboard["days"] = {};
 
-    for (const [date, coachIntervals] of availabilityByDayCoach) {
+    // 가용 입력이 있는 날짜 + 운영현황 배정이 있는 날짜를 함께 돈다. 종일 배정이라 남은 가용이 없어도
+    // 그 코치를 '배정됨(예약 불가)'으로 보여 줘, 이미 잡힌 코치를 중복 섭외하지 않게 한다.
+    for (const date of new Set([...availabilityByDayCoach.keys(), ...busyByDayCoach.keys()])) {
+      const availForDay = availabilityByDayCoach.get(date);
+      const busyForDay = busyByDayCoach.get(date);
       const coachesForDay: CoachScheduleDashboardCoach[] = [];
-      for (const [coachId, intervals] of coachIntervals) {
+      for (const coachId of new Set([...(availForDay?.keys() ?? []), ...(busyForDay?.keys() ?? [])])) {
         const info = coachInfo.get(coachId);
         if (!info) continue;
 
-        const availableBitmap = toBitmap(intervals);
-        const busyBitmap = toBitmap(busyByDayCoach.get(date)?.get(coachId) ?? []);
-        const remaining = clearOverlappingPeriods(subtractBitmap(availableBitmap, busyBitmap), busyBitmap);
-        if (!hasAvailability(remaining)) continue;
+        const busyBitmap = toBitmap(busyForDay?.get(coachId) ?? []);
+        const remaining = clearOverlappingPeriods(subtractBitmap(toBitmap(availForDay?.get(coachId) ?? []), busyBitmap), busyBitmap);
+        const assigned = hasAvailability(busyBitmap);
+        // 남은 가용도 없고 배정도 없으면 보여 줄 게 없다.
+        if (!hasAvailability(remaining) && !assigned) continue;
 
         coachesForDay.push({
           ...info,
           schedules: toIntervals(remaining),
+          assigned,
           reservation: reservationByDayCoach.get(`${coachId}|${date}`) ?? null
         });
       }
