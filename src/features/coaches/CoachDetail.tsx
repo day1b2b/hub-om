@@ -86,6 +86,11 @@ export function CoachDetailView({
   const nextEngagement = engagements
     .filter((engagement) => engagement.status === "scheduled")
     .sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
+  // 투입 이력·평가는 운영현황에 연결된(지워지지 않은) 회차 건만 보여 준다. 취소된 투입과 운영현황에 없는
+  // 과거 건(노션 이력 등)은 평가 대상이 아니라 숨긴다 — "취소인지 안 떠서 현황에 계속 남는" 문제를 없앤다.
+  const operationEngagements = engagements.filter(
+    (engagement) => engagement.linkedSession !== null && engagement.status !== "cancelled"
+  );
   const notionUrl = coach.notionPageId ? `https://www.notion.so/${coach.notionPageId.replaceAll("-", "")}` : null;
 
   const pinned = [
@@ -183,9 +188,9 @@ export function CoachDetailView({
                 </PeopleCard>
 
                 {/* 강사 위키와 같이 투입 이력은 맨 아래에 접어 둔다. */}
-                <PeopleCollapsible id="engagements" note={`${engagements.length}건 · 건마다 OM 평가`} title="투입 이력">
+                <PeopleCollapsible id="engagements" note={`${operationEngagements.length}건 · 건마다 OM 평가`} title="투입 이력">
                   <Link className="people-card-link" href={`/coaches/${coach.id}/engagements`}>표로 보기 →</Link>
-                  <EngagementPane coachId={coach.id} engagements={engagements} />
+                  <EngagementPane coachId={coach.id} engagements={operationEngagements} />
                 </PeopleCollapsible>
               </>
             }
