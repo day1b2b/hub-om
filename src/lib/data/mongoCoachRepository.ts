@@ -122,13 +122,17 @@ export class MongoCoachRepository implements CoachRepository {
       const availabilityMap = intervalGroups(availability), busyMap = intervalGroups(busyRows);
       const reservationMap = new Map((reservations as unknown as CoachDayReservation[]).map(row => [`${row.coachId}|${coachDate(row.date)}`, { reservedByName: row.reservedByName, reservedByEmail: row.reservedByEmail }]));
       const days: CoachScheduleDashboard["days"] = {};
-      for (const [date, byCoach] of availabilityMap) {
+      // 가용 입력 날짜 + 운영현황 배정 날짜를 함께 돈다. 종일 배정이라 남은 가용이 없어도 '배정됨(예약 불가)'으로 보여 준다.
+      for (const date of new Set([...availabilityMap.keys(), ...busyMap.keys()])) {
+        const availByCoach = availabilityMap.get(date), busyByCoach = busyMap.get(date);
         const daily: CoachScheduleDashboardCoach[] = [];
-        for (const [id, intervals] of byCoach) {
+        for (const id of new Set([...(availByCoach?.keys() ?? []), ...(busyByCoach?.keys() ?? [])])) {
           const coach = info.get(id); if (!coach) continue;
-          const busy = toBitmap(busyMap.get(date)?.get(id) ?? []);
-          const remaining = clearOverlappingPeriods(subtractBitmap(toBitmap(intervals), busy), busy);
-          if (hasAvailability(remaining)) daily.push({ ...coach, schedules: toIntervals(remaining), reservation: reservationMap.get(`${id}|${date}`) ?? null });
+          const busy = toBitmap(busyByCoach?.get(id) ?? []);
+          const remaining = clearOverlappingPeriods(subtractBitmap(toBitmap(availByCoach?.get(id) ?? []), busy), busy);
+          const assigned = hasAvailability(busy);
+          if (!hasAvailability(remaining) && !assigned) continue;
+          daily.push({ ...coach, schedules: toIntervals(remaining), assigned, reservation: reservationMap.get(`${id}|${date}`) ?? null });
         }
         days[date] = { date, coaches: daily.sort((a,b) => b.engagementCount - a.engagementCount || a.name.localeCompare(b.name, "ko")) };
       }

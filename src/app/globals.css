@@ -9812,6 +9812,20 @@ button.coach-doc-reserve-chip:disabled {
   white-space: nowrap;
 }
 
+.coach-doc-reserve-chip.blocked {
+  align-items: center;
+  background: #f1f1f2;
+  border-radius: 999px;
+  color: #6b7280;
+  cursor: not-allowed;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 4px;
+  padding: 5px 10px;
+  white-space: nowrap;
+}
+
 .coach-doc-reserve-chip.reserved button {
   background: transparent;
   border: none;
