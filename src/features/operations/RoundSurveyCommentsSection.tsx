@@ -16,12 +16,19 @@ export function RoundSurveyCommentsSection({
   stage: CourseStage;
 }) {
   const focused = stage === "review";
+  // 기본은 접어 둔다(세로 공간이 커서). 접힌 요약줄에 반영/대기 건수를 함께 보여 빈 상태로 오해하지 않게 한다.
+  const summaryCount = [rows.length > 0 ? `반영 ${rows.length}건` : "", pendingLabels.length > 0 ? `대기 ${pendingLabels.length}건` : ""]
+    .filter(Boolean)
+    .join(" · ");
   return (
-    <section className={`detail-section wide-detail-section round-survey-section${focused ? " stage-focus" : ""}`}>
-      <div className="section-title">
-        <h2>현장 인사이트</h2>
-        <span className={`stage-badge ${focused ? "stage-badge--now" : "stage-badge--wait"}`}>{focused ? "회고" : "교육 후"}</span>
-      </div>
+    <details className={`detail-section wide-detail-section round-survey-section${focused ? " stage-focus" : ""}`}>
+      <summary>
+        <div className="section-title">
+          <h2>현장 인사이트</h2>
+          <span className={`stage-badge ${focused ? "stage-badge--now" : "stage-badge--wait"}`}>{focused ? "회고" : "교육 후"}</span>
+          {summaryCount ? <span className="td-muted">{summaryCount}</span> : null}
+        </div>
+      </summary>
       {rows.length === 0 && pendingLabels.length === 0 ? (
         <p className="field-hint">
           교육이 끝나고 만족도 분석 앱 마이페이지에서 [hub-om 반영]을 누르면, 과정코드·날짜·강사가 맞는 회차에
@@ -83,7 +90,7 @@ export function RoundSurveyCommentsSection({
           ))}
         </ul>
       ) : null}
-    </section>
+    </details>
   );
 }
 

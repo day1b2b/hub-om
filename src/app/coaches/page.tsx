@@ -5,6 +5,7 @@ import { coachActivityPolicy, recentRatingSummary, seoulTodayKey, summarizeCoach
 import { loadEvaluationAverages } from "@/lib/coaches/coachEvaluationAverages";
 import { peopleStatusFromFacts } from "@/lib/people/peopleStatus";
 import { getCoachRepository } from "@/lib/data/coachRepositoryFactory";
+import { getCoachScheduleRepository } from "@/lib/data/coachScheduleRepositoryFactory";
 import { runCoachPublicRequest } from "@/lib/data/coachPublicComposition";
 import { cachedRead } from "@/lib/data/readCache";
 import { timed } from "@/lib/observability/timed";
@@ -51,9 +52,20 @@ async function renderCoachesPage(field: string, date: string) {
     // 코치 추천용 전문분야 목록. 교육일·전문분야가 들어왔을 때만 추천을 계산한다(그 전엔 폼만 보여 준다).
     fieldOptions = Array.from(new Set(summaries.flatMap((coach) => coach.fields))).sort((a, b) => a.localeCompare(b, "ko"));
     if (field || date) {
+      // 교육일이 들어오면 그날 매니저가 이미 예약한 코치는 추천에서 뺀다(코치 섭외 일정판과 연결).
+      // 예약 조회가 실패해도 추천 자체는 막지 않는다 — 제외만 생략한다.
+      const validDate = /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : "";
+      let reservedCoachIds = new Set<string>();
+      if (validDate) {
+        try {
+          reservedCoachIds = new Set(await getCoachScheduleRepository().listReservedCoachIdsOn(validDate));
+        } catch {
+          console.error("[coaches] reserved coach lookup unavailable");
+        }
+      }
       // OM 평가는 목록과 같은 기준(recentRatingSummary)으로 맞추고, 투입 날짜(engagementFacts)는 겹침 판정에 쓴다.
       const enriched = summaries.map((coach) => ({ ...coach, ...recentRatingSummary(coach.engagementFacts, evaluationAverages) }));
-      recommendation = recommendCoachesByCriteria({ field, date, coaches: enriched, today, dormantMonths: coachActivityPolicy.dormantMonths });
+      recommendation = recommendCoachesByCriteria({ field, date, coaches: enriched, today, dormantMonths: coachActivityPolicy.dormantMonths, reservedCoachIds });
     }
   } catch {
     loadFailed = true;

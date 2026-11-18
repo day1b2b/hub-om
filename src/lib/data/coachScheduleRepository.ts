@@ -29,4 +29,6 @@ export interface CoachScheduleRepository {
   getManagerMonth(coachId: string, yearMonth: string): Promise<CoachManagerMonthSchedules | null>;
   reserveDates(coachId: string, dates: string[], author: { name: string; email: string }): Promise<CoachDateReservation[] | null>;
   cancelDates(coachId: string, dates: string[], email: string): Promise<string[]>;
+  /** 그 날짜에 (취소되지 않은) 매니저 예약이 잡힌 코치 ID들. 코치 추천에서 예약된 코치를 빼는 데 쓴다. */
+  listReservedCoachIdsOn(date: string): Promise<string[]>;
 }
