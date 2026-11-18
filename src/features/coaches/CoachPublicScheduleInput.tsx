@@ -1,7 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const ALL_SLOTS = Array.from({ length: 28 }, (_, index) => {
   const totalMinutes = 8 * 60 + index * 30;
@@ -42,7 +41,11 @@ interface EngagementScheduleEntry {
 }
 
 export function CoachPublicScheduleInput() {
-  const token = useSearchParams().get("token");
+  // 토큰은 주소창에 남기지 않는다(코치에게 지저분하고 referrer·로그에도 노출됨). 첫 진입 때 URL에서 받아
+  // 세션 저장에 옮기고 주소창에서 지운다. 이후 요청은 Authorization 헤더로만 보낸다(쿼리 토큰 없음).
+  const [token, setToken] = useState<string | null>(null);
+  const [tokenReady, setTokenReady] = useState(false);
+  const dragMode = useRef<"add" | "remove" | null>(null);
   const today = new Date();
   const [yearMonth, setYearMonth] = useState(formatYearMonth(today));
   const [selectedDate, setSelectedDate] = useState(formatDate(today));
@@ -56,7 +59,51 @@ export function CoachPublicScheduleInput() {
   const [saved, setSaved] = useState(false);
   const [dirty, setDirty] = useState(false);
 
+  useEffect(() => {
+    // 주소창 토큰·세션 저장이라는 외부 시스템과 마운트 때 1회 동기화한다.
+    // 세션 저장을 못 쓰는 환경(사생활 보호 모드 등)에선 토큰을 지우지 않아 새로고침해도 링크가 살아 있게 둔다.
+    const url = new URL(window.location.href);
+    const fromUrl = url.searchParams.get("token")?.trim() || null;
+    let resolved: string | null = null;
+    if (fromUrl) {
+      resolved = fromUrl;
+      let stored = false;
+      try {
+        sessionStorage.setItem("coachAccessToken", fromUrl);
+        stored = true;
+      } catch {
+        stored = false;
+      }
+      if (stored) {
+        url.searchParams.delete("token");
+        window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+      }
+    } else {
+      try {
+        resolved = sessionStorage.getItem("coachAccessToken");
+      } catch {
+        resolved = null;
+      }
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setToken(resolved);
+    setTokenReady(true);
+  }, []);
+
+  useEffect(() => {
+    const endDrag = () => {
+      dragMode.current = null;
+    };
+    window.addEventListener("pointerup", endDrag);
+    window.addEventListener("pointercancel", endDrag);
+    return () => {
+      window.removeEventListener("pointerup", endDrag);
+      window.removeEventListener("pointercancel", endDrag);
+    };
+  }, []);
+
   const loadData = useCallback(async () => {
+    if (!tokenReady) return;
     if (!token) {
       setError("유효한 접속 링크가 아닙니다.");
       setLoading(false);
@@ -68,7 +115,7 @@ export function CoachPublicScheduleInput() {
 
     const headers = { authorization: `Bearer ${token}` };
     const [meResponse, scheduleResponse] = await Promise.all([
-      fetch(`/api/coach/me?token=${encodeURIComponent(token)}`, { headers }),
+      fetch(`/api/coach/me`, { headers }),
       fetch(`/api/coach/schedule/${yearMonth}`, { headers })
     ]);
 
@@ -91,7 +138,7 @@ export function CoachPublicScheduleInput() {
     setLastSavedAt(scheduleData.lastSavedAt);
     setDirty(false);
     setLoading(false);
-  }, [token, yearMonth]);
+  }, [token, yearMonth, tokenReady]);
 
   useEffect(() => {
     // Data fetching is the external synchronization this screen needs on token/month changes.
@@ -128,6 +175,35 @@ export function CoachPublicScheduleInput() {
     });
     setSaved(false);
     setDirty(true);
+  }
+
+  // 드래그로 쓸어서 범위 선택. 시작 칸이 켜져 있으면 지우기, 꺼져 있으면 채우기 모드로 고정하고
+  // 지나가는 칸마다 같은 모드를 적용한다(마우스·터치 공통: 포인터 아래 칸을 elementFromPoint로 찾는다).
+  const paintSlot = useCallback((slot: string, mode: "add" | "remove") => {
+    setSlotKeys((previous) => {
+      const key = `${selectedDate}|${slot}`;
+      if (mode === "add" ? previous.has(key) : !previous.has(key)) return previous;
+      const next = new Set(previous);
+      if (mode === "add") next.add(key);
+      else next.delete(key);
+      return next;
+    });
+    setSaved(false);
+    setDirty(true);
+  }, [selectedDate]);
+
+  function startPaint(slot: string) {
+    const mode: "add" | "remove" = selectedSlots.has(slot) ? "remove" : "add";
+    dragMode.current = mode;
+    paintSlot(slot, mode);
+  }
+
+  function paintAtPoint(clientX: number, clientY: number) {
+    const mode = dragMode.current;
+    if (!mode) return;
+    const target = document.elementFromPoint(clientX, clientY);
+    const slot = target instanceof HTMLElement ? target.dataset.slot : undefined;
+    if (slot) paintSlot(slot, mode);
   }
 
   function applyBulk(start: string, end: string) {
@@ -269,12 +345,18 @@ export function CoachPublicScheduleInput() {
               ))}
             </div>
 
-            <div className="coach-public-time-grid">
+            <div
+              className="coach-public-time-grid"
+              onPointerMove={(event) => paintAtPoint(event.clientX, event.clientY)}
+              style={{ touchAction: "none" }}
+            >
               {ALL_SLOTS.map((slot) => (
                 <button
                   className={selectedSlots.has(slot) ? "selected" : ""}
+                  data-slot={slot}
                   key={slot}
-                  onClick={() => toggleSlot(slot)}
+                  onClick={(event) => { if (event.detail === 0) toggleSlot(slot); }}
+                  onPointerDown={() => startPaint(slot)}
                   type="button"
                 >
                   {slot}
