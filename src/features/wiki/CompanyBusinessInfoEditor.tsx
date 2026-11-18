@@ -112,8 +112,7 @@ export function CompanyBusinessInfoEditor({
           {field("주소", "address")}
           {field("업태", "businessType")}
           {field("종목", "businessItem")}
-          {field("계산서 수신 이메일(1)", "invoiceEmail")}
-          {field("계산서 수신 이메일(2)", "invoiceEmailSecondary")}
+          {/* 계산서 수신 이메일(1)/(2)는 화면에서 숨김 — 값은 form에 그대로 남아 저장 시 유지된다. */}
         </dl>
         <p className="field-hint">
           계산서 발행 요청 시 이 정보로 구글폼을 미리 채워 줍니다. 값이 바뀌면 여기서 수정해 주세요.
