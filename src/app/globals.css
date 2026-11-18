@@ -17035,3 +17035,8 @@ details.detail-section > summary::-webkit-details-marker {
   margin: 8px 0 0;
   padding-left: 18px;
 }
+
+/* 계산서 발행 요청 현황: 하루 넘게 시트를 다시 못 읽었을 때 기준 시각 */
+.course-invoice-synced--stale {
+  color: var(--red, #c0392b);
+}
