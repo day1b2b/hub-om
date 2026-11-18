@@ -62,3 +62,20 @@ test("recommendCoachesByCriteria: 비노출·삭제 코치는 뺀다", () => {
   const result = recommendCoachesByCriteria({ field: "인공지능", date: "", coaches, today: "2026-11-09", dormantMonths: 6 });
   assert.equal(result.candidates.length, 0);
 });
+
+test("recommendCoachesByCriteria: 그날 매니저가 예약한 코치는 추천·겹침 어디에도 안 넣는다", () => {
+  const coaches = [
+    coach({ id: "a", name: "가", fields: ["인공지능"], recentAvgRating: 4.9 }),
+    coach({ id: "b", name: "나", fields: ["인공지능"], recentAvgRating: 4.0 })
+  ];
+  const result = recommendCoachesByCriteria({
+    field: "인공지능",
+    date: "2026-12-15",
+    coaches,
+    today: "2026-11-09",
+    dormantMonths: 6,
+    reservedCoachIds: new Set(["a"])
+  });
+  assert.deepEqual(result.candidates.map((candidate) => candidate.name), ["나"]);
+  assert.equal(result.conflicts.length, 0); // 예약 코치는 conflict로도 뜨지 않는다
+});
