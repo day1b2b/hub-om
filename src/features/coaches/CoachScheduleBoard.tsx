@@ -208,7 +208,7 @@ export function CoachScheduleBoard({ currentUserEmail, dashboard, holidays, load
       <section className="content coach-schedule-workspace" id="coach-schedule">
         <header className="coach-workspace-header">
           <div>
-            <h1>코치 일정</h1>
+            <h1>코치 섭외</h1>
             <span className="coach-plan-badge">coach-db</span>
           </div>
         </header>
@@ -344,7 +344,7 @@ export function CoachScheduleBoard({ currentUserEmail, dashboard, holidays, load
                         const isBusy = reservingKey === `${coach.id}__${date}`;
                         const dayLabel = date.slice(5).replace("-", "/");
                         return reservation ? (
-                          <span className="coach-doc-reserve-chip reserved" key={date} title={reservation.reservedByEmail}>
+                          <span className="coach-doc-reserve-chip reserved" key={date}>
                             {dayLabel} · {reservation.reservedByName}
                             {reservation.reservedByEmail === currentUserEmail && (
                               <button
@@ -404,7 +404,7 @@ export function CoachScheduleBoard({ currentUserEmail, dashboard, holidays, load
                       </Link>
                       <span className="coach-doc-reserve coach-doc-reserve-chips">
                         {reservation ? (
-                          <span className="coach-doc-reserve-chip reserved" title={reservation.reservedByEmail}>
+                          <span className="coach-doc-reserve-chip reserved">
                             {singleDate!.slice(5).replace("-", "/")} · {reservation.reservedByName}
                             {reservation.reservedByEmail === currentUserEmail && (
                               <button

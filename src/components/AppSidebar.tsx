@@ -133,13 +133,11 @@ export function AppSidebar({ label = "Operations", teamScope }: AppSidebarProps)
           <Link className={isCoachListPage ? "active" : ""} data-icon="🤝" href="/coaches">코치 위키</Link>
         </div>
 
-        {isAdmin ? (
-          <div className="nav-section">
-            <div className="nav-section-title">코치</div>
-            <Link className={isCoachSchedulePage ? "active" : ""} data-icon="🔒" href="/coaches/schedule">코치 일정</Link>
-            <Link className={isCoachMyPage ? "active" : ""} data-icon="🔒" href="/coaches/my-page">마이페이지</Link>
-          </div>
-        ) : null}
+        <div className="nav-section">
+          <div className="nav-section-title">코치</div>
+          <Link className={isCoachSchedulePage ? "active" : ""} data-icon="🗓️" href="/coaches/schedule">코치 섭외</Link>
+          <Link className={isCoachMyPage ? "active" : ""} data-icon="👤" href="/coaches/my-page">마이페이지</Link>
+        </div>
 
         {isAdmin ? (
           <div className="nav-section">
