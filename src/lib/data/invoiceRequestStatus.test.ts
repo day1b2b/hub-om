@@ -118,3 +118,63 @@ test("웹앱이 ok:false(토큰 불일치 등)를 주면 read_failed", async (t)
     assert.deepEqual(await loadInvoiceRequestStatuses(), { ok: false, reason: "read_failed" });
   });
 });
+
+const WEBAPP_ENV = { INVOICE_REQUEST_STATUS_URL: WEBAPP_URL, INVOICE_REQUEST_STATUS_TOKEN: "secret" };
+
+function webAppResponse(issueStatus: string) {
+  return new Response(JSON.stringify({ ok: true, rows: [["2025. 3. 1 오전 10:00:00", "246877", issueStatus, "", ""]] }));
+}
+
+test("한 번 읽은 뒤엔 기다리지 않고 갖고 있는 값을 주고, 10분이 지나면 뒤에서 한 번만 다시 읽는다", async (t) => {
+  let calls = 0;
+  let issueStatus = "";
+  t.mock.method(globalThis, "fetch", async () => {
+    calls++;
+    return webAppResponse(issueStatus);
+  });
+  await withStatusEnv(WEBAPP_ENV, async () => {
+    const first = await loadInvoiceRequestStatuses();
+    assert.equal(calls, 1);
+    assert.ok(first.ok && first.syncedAt);
+
+    issueStatus = "발급완료";
+    const cached = await loadInvoiceRequestStatuses();
+    assert.equal(calls, 1);
+    assert.equal(cached.ok && cached.byCourseId.get("246877")?.issueStatus, "");
+
+    // 10분 뒤: 이번 응답은 이전 값 그대로, 뒤에서 한 번만 읽는다(동시에 여러 번 불려도).
+    const later = Date.now() + 11 * 60 * 1000;
+    const [stale] = await Promise.all([loadInvoiceRequestStatuses({ now: later }), loadInvoiceRequestStatuses({ now: later })]);
+    assert.equal(stale.ok && stale.byCourseId.get("246877")?.issueStatus, "");
+    // fresh는 이미 돌고 있는 읽기를 같이 기다린다 — 새로 읽지 않는다.
+    const refreshed = await loadInvoiceRequestStatuses({ fresh: true });
+    assert.equal(calls, 2);
+    assert.equal(refreshed.ok && refreshed.byCourseId.get("246877")?.issueStatus, "발급완료");
+  });
+});
+
+test("fresh면 다시 읽을 때까지 기다려 최신 값을 준다", async (t) => {
+  let issueStatus = "";
+  t.mock.method(globalThis, "fetch", async () => webAppResponse(issueStatus));
+  await withStatusEnv(WEBAPP_ENV, async () => {
+    await loadInvoiceRequestStatuses();
+    issueStatus = "발급완료";
+    const result = await loadInvoiceRequestStatuses({ fresh: true });
+    assert.equal(result.ok && result.byCourseId.get("246877")?.issueStatus, "발급완료");
+  });
+});
+
+test("다시 읽기가 실패해도 마지막으로 읽은 값을 계속 준다", async (t) => {
+  let fail = false;
+  t.mock.method(globalThis, "fetch", async () =>
+    fail ? new Response(JSON.stringify({ ok: false, error: "read_failed" })) : webAppResponse("발급완료")
+  );
+  await withStatusEnv(WEBAPP_ENV, async () => {
+    const first = await loadInvoiceRequestStatuses();
+    fail = true;
+    const result = await loadInvoiceRequestStatuses({ fresh: true });
+    assert.equal(result.ok, true);
+    assert.equal(result.ok && result.syncedAt, first.ok && first.syncedAt);
+    assert.equal(result.ok && result.byCourseId.get("246877")?.issueStatus, "발급완료");
+  });
+});
