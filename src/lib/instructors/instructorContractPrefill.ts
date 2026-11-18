@@ -1,34 +1,37 @@
-// 강사 계약폼(구글폼 "B2B_NEW 강사 계약서 설문지 [2408~]") 프리필 링크 생성.
+// 강사 계약폼(구글폼 "강사 계약 요청 폼") 프리필 링크 생성.
 // 운영현황 교육상세의 "강사 계약요청" 버튼이 이 URL을 연다 → 값이 채워진 폼이 뜨고, OM이 확인·제출하면
 // 폼이 응답시트에 정상 기록한다(hub가 시트에 쓰지 않음 → 쓰기 권한 불필요, 행정팀 프로세스 그대로).
 //
-// entry ID는 viewform의 FB_PUBLIC_LOAD_DATA_에서 추출한 값이다(2026-10-27). 폼 문항이 바뀌면 갱신 필요.
+// entry ID는 viewform의 FB_PUBLIC_LOAD_DATA_에서 추출한 값이다. 폼 문항이 바뀌면 갱신 필요.
+// 2026-11-18: 계약 폼이 새 폼(…dKjCmqkNGr…)으로 교체돼 URL·entry ID·소속 보기 전부 갱신.
 import { normalizePersonKey } from "@/lib/data/roleAssignees";
 import { splitPersonNames } from "@/lib/data/personNames";
 
 const FORM_PREFILL_BASE =
-  "https://docs.google.com/forms/d/e/1FAIpQLSf7IQkqglf-Z0uP90WoHLSJoEBP-lnYmQ3HeielXh0c5qSF_Q/viewform?usp=pp_url";
+  "https://docs.google.com/forms/d/e/1FAIpQLSdKjCmqkNGrKP6CXRfPbVddmgfHt1CwZngJWVKdt-6QePs6gA/viewform?usp=pp_url";
 
-// 자동채움하는 칸의 entry ID. department만 라디오("소속 및 부서장") — 값이 보기 문자열과 같아야 선택된다.
-// 계약유형 등 나머지 선택 칸은 수동.
+// 자동채움하는 칸의 entry ID(2026-11-18 새 폼 기준). department만 라디오("소속 (부서장)") — 값이 보기
+// 문자열과 같아야 선택된다. schedule(강의 일정)은 "출강" 페이지 칸이라, 계약유형=출강일 때만 쓰인다.
+// 역할·소득구분·계약유형 등 나머지 선택 칸은 수동.
 const ENTRY = {
-  courseId: "entry.1145840833",
-  courseName: "entry.207260427",
-  instructorName: "entry.767785093",
-  schedule: "entry.1208608124",
-  manager: "entry.349088038",
-  email: "entry.842558702",
-  department: "entry.195171543"
+  courseId: "entry.166345351",
+  courseName: "entry.1306180943",
+  instructorName: "entry.357792703",
+  schedule: "entry.913040116",
+  manager: "entry.1866948758",
+  email: "entry.1836583410",
+  department: "entry.1608543103"
 } as const;
 
 /**
- * "소속 및 부서장" 라디오 보기 원문(2026-11-04 폼 확인) ← 멤버관리 팀(TeamUser.team).
+ * "소속 (부서장)" 라디오 보기 원문(2026-11-18 새 폼 확인) ← 멤버관리 팀(TeamUser.team).
  * AX 컨설팅 3개 파트만 자동 선택한다. 다른 보기(온라인·공공·마케팅)는 쓰지 않는다.
+ * ※ 값이 폼 보기 문자열과 글자 하나까지 같아야 선택된다 — 새 폼은 "AX 컨설팅 N파트 (부서장)" 순서.
  */
 export const DEPARTMENT_CHOICE_BY_TEAM: Readonly<Record<string, string>> = {
-  "AX 1파트": "김솔이 (AX 컨설팅 1파트)",
-  "AX 2파트": "강지선 (AX 컨설팅 2파트)",
-  "AX 3파트": "정다혜 (AX 컨설팅 3파트)"
+  "AX 1파트": "AX 컨설팅 1파트 (김솔이)",
+  "AX 2파트": "AX 컨설팅 2파트 (강지선)",
+  "AX 3파트": "AX 컨설팅 3파트 (정다혜)"
 };
 
 /**
