@@ -66,10 +66,10 @@ export function InstructorContractRequestSection({ courseOperations, stage, team
       <InstructorContractList initialProgress={initialProgress} items={requests} signingTracked={isSigningTracked(courseStartDate)} />
     );
 
-  // 교육이 끝난 과정은 계약 단계가 지났으니 접어 둔다(필요하면 펼쳐 본다).
+  // 교육이 끝난 과정도 계약 확인은 자주 봐서 기본은 펼쳐 둔다(접기 자체는 유지 — 필요하면 접는다).
   if (stage === "review" && requests.length > 0) {
     return (
-      <details className="detail-section instructor-contract-section">
+      <details className="detail-section instructor-contract-section" open>
         <summary>{title}</summary>
         {body}
       </details>
