@@ -13,7 +13,7 @@ export type CoachEvaluationScores = Record<CoachEvaluationScoreKey, number | nul
 
 export const COACH_ENGAGEMENT_ROLES: ReadonlyArray<{ value: CoachEngagementRoleValue; label: string }> = [
   { value: "PRACTICE_COACH", label: "실습코치" },
-  { value: "LEAD", label: "리드" },
+  { value: "LEAD", label: "리드(실습코치+운영)" },
   { value: "OPERATION_ASSISTANT", label: "운영조교" },
   { value: "MENTOR", label: "멘토" },
   { value: "ASSISTANT_INSTRUCTOR", label: "보조강사" }
