@@ -225,6 +225,20 @@ export function CoachPublicScheduleInput() {
     return state;
   }, [selectedDates, slotKeys]);
 
+  // 코치가 저장(입력)한 가능 일정을 날짜순으로 보여 준다 — "내가 뭘 넣었지"를 한눈에 확인.
+  const availabilitySummary = useMemo(() => {
+    const byDate = new Map<string, Set<string>>();
+    for (const key of slotKeys) {
+      const [date, slot] = key.split("|");
+      const set = byDate.get(date) ?? new Set<string>();
+      set.add(slot);
+      byDate.set(date, set);
+    }
+    return [...byDate.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, slots]) => ({ date, label: availabilityLabel(slots) }));
+  }, [slotKeys]);
+
   function toggleDate(date: string) {
     setSelectedDates((previous) => {
       const next = new Set(previous);
@@ -512,6 +526,25 @@ export function CoachPublicScheduleInput() {
           </section>
         </section>
 
+        <section className="coach-public-saved">
+          <div className="coach-public-saved-head">
+            <strong>내가 넣은 가능 일정</strong>
+            <span>{formatMonthLabel(yearMonth)}</span>
+          </div>
+          {availabilitySummary.length > 0 ? (
+            <ul className="coach-public-saved-list">
+              {availabilitySummary.map((item) => (
+                <li key={item.date}>
+                  <b>{formatDateLabel(item.date)}</b>
+                  <span>{item.label}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="coach-public-saved-empty">아직 넣은 가능 일정이 없어요. 위 달력에서 날짜를 고르고 시간대를 눌러 주세요 :)</p>
+          )}
+        </section>
+
         {dirty ? (
           <div className="coach-public-savebar">
             <button disabled={saving} onClick={save} type="button">
@@ -629,6 +662,31 @@ function datesBetween(a: string, b: string): string[] {
     cursor.setDate(cursor.getDate() + 1);
   }
   return dates;
+}
+
+function slotsToRangeText(slots: Set<string>): string {
+  const sorted = [...slots].sort();
+  if (sorted.length === 0) return "";
+  const ranges: string[] = [];
+  let start = sorted[0];
+  let prev = sorted[0];
+  for (let index = 1; index < sorted.length; index += 1) {
+    if (ALL_SLOTS.indexOf(sorted[index]) === ALL_SLOTS.indexOf(prev) + 1) {
+      prev = sorted[index];
+      continue;
+    }
+    ranges.push(`${start}~${endOfSlot(prev)}`);
+    start = sorted[index];
+    prev = sorted[index];
+  }
+  ranges.push(`${start}~${endOfSlot(prev)}`);
+  return ranges.join(", ");
+}
+
+// 하루 전체면 '종일', 아니면 실제 시간 구간으로 보여 준다(프리셋·과거 들쭉날쭉 데이터 모두 정확).
+function availabilityLabel(slots: Set<string>): string {
+  if (ALL_SLOTS.every((slot) => slots.has(slot))) return "종일";
+  return slotsToRangeText(slots);
 }
 
 function formatRange(start: string, end: string): string {
