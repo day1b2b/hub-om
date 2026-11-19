@@ -332,6 +332,19 @@ export function CoachPublicScheduleInput() {
     setDirty(true);
   }
 
+  // 저장 목록에서 한 날짜를 통째로 지운다(그 날짜의 슬롯만 제거). 저장은 사용자가 저장바로.
+  function removeAvailabilityDate(date: string) {
+    setSlotKeys((previous) => {
+      const next = new Set<string>();
+      for (const key of previous) {
+        if (key.split("|")[0] !== date) next.add(key);
+      }
+      return next;
+    });
+    setSaved(false);
+    setDirty(true);
+  }
+
   function goToMonth(offset: number) {
     if (dirty && !window.confirm("저장하지 않은 일정이 있어요. 저장하지 않고 이동할까요?")) return;
     const nextYearMonth = shiftMonth(yearMonth, offset);
@@ -537,6 +550,14 @@ export function CoachPublicScheduleInput() {
                 <li key={item.date}>
                   <b>{formatDateLabel(item.date)}</b>
                   <span>{item.label}</span>
+                  <button
+                    aria-label={`${formatDateLabel(item.date)} 삭제`}
+                    className="coach-public-saved-remove"
+                    onClick={() => removeAvailabilityDate(item.date)}
+                    type="button"
+                  >
+                    ✕
+                  </button>
                 </li>
               ))}
             </ul>
@@ -664,29 +685,14 @@ function datesBetween(a: string, b: string): string[] {
   return dates;
 }
 
-function slotsToRangeText(slots: Set<string>): string {
-  const sorted = [...slots].sort();
-  if (sorted.length === 0) return "";
-  const ranges: string[] = [];
-  let start = sorted[0];
-  let prev = sorted[0];
-  for (let index = 1; index < sorted.length; index += 1) {
-    if (ALL_SLOTS.indexOf(sorted[index]) === ALL_SLOTS.indexOf(prev) + 1) {
-      prev = sorted[index];
-      continue;
-    }
-    ranges.push(`${start}~${endOfSlot(prev)}`);
-    start = sorted[index];
-    prev = sorted[index];
-  }
-  ranges.push(`${start}~${endOfSlot(prev)}`);
-  return ranges.join(", ");
-}
-
-// 하루 전체면 '종일', 아니면 실제 시간 구간으로 보여 준다(프리셋·과거 들쭉날쭉 데이터 모두 정확).
+// 어떤 시간대가 들었는지로 보여 준다: 하루 전체면 '종일', 아니면 슬롯이 하나라도 걸친 오전·오후·저녁.
+// (예전 들쭉날쭉한 30분 슬롯도 조각 시간 대신 시간대로 깔끔하게.)
 function availabilityLabel(slots: Set<string>): string {
   if (ALL_SLOTS.every((slot) => slots.has(slot))) return "종일";
-  return slotsToRangeText(slots);
+  const labels = PERIODS.filter(
+    (period) => period.key !== "all" && slotsInRange(period.start, period.end).some((slot) => slots.has(slot))
+  ).map((period) => period.label);
+  return labels.join("·");
 }
 
 function formatRange(start: string, end: string): string {
