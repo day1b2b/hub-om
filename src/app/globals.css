@@ -4284,6 +4284,39 @@ td span {
   border-color: #1f1f1f;
 }
 
+.coach-public-calendar-reset {
+  background: #ffffff;
+  border: 1px solid #d9dee5;
+  border-radius: 8px;
+  color: #4b5563;
+  cursor: pointer;
+  display: block;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  margin: 14px auto 0;
+  min-height: 34px;
+  padding: 0 16px;
+}
+
+.coach-public-selected-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+  max-height: 96px;
+  overflow-y: auto;
+}
+
+.coach-public-selected-chips span {
+  background: #eaf2fd;
+  border-radius: 999px;
+  color: #15467e;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 3px 10px;
+}
+
 .coach-origin-chip-list {
   display: flex;
   flex-wrap: wrap;
