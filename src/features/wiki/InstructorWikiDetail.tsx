@@ -28,6 +28,16 @@ import { maskAddresses } from "@/lib/privacy/addressRedaction";
 // 강사 위키 상세. 코치 위키와 같은 틀(헤더 → 고정 알림 → 본문 2단)을 쓴다.
 // "강사 위키 = 보는 곳 / 운영현황 = 하는 곳" 원칙이라 계약 '요청' 버튼은 두지 않는다.
 // 아직 허브에 값이 없는 칸(계약 유형·신규강사 증빙 등)은 빈 틀로 늘어놓지 않고, 데이터가 생기면 해당 칸에 붙인다.
+
+// 투입 이력의 기업명 → 그 기업의 기업위키로 연다. 운영 상세 "기업 위키로 이동"과 같은 규약
+// (?companyId=…&company=…, companyId 우선, 없으면 기업명으로 매칭).
+function companyWikiHref(companyId: string, companyName: string): string {
+  const params = new URLSearchParams();
+  if (companyId.trim()) params.set("companyId", companyId.trim());
+  if (companyName.trim()) params.set("company", companyName.trim());
+  const query = params.toString();
+  return query ? `/company-wiki?${query}` : "/company-wiki";
+}
 // ★저장값(note·allNotes)은 페이지가 저장소 범위(runCoachPublicRequest) 안에서 읽어 넘긴다.
 //   여기서 직접 읽으면 React가 이 컴포넌트를 범위 밖에서 그려 기본 저장소(Postgres)를 읽는다 —
 //   Mongo 전환 뒤 저장한 운영 메모가 화면에 안 보였던 원인(2026-11-13).
@@ -185,18 +195,16 @@ export function InstructorWikiDetail({
                       {courseGroups.length > 0 ? (
                         courseGroups.map((group) => (
                           <tr key={group.key}>
-                            <td><strong className="title-company">{group.companyName}</strong></td>
+                            <td>
+                              <a className="course-link" href={companyWikiHref(group.companyId, group.companyName)} rel="noreferrer" target="_blank">
+                                <strong className="title-company">{group.companyName}</strong>
+                              </a>
+                            </td>
                             <td>
                               <a className="course-link" href={`/operations/${group.operationId}`} rel="noreferrer" target="_blank">
                                 {cleanCourseName(group.courseName)} ↗
                               </a>
                               {group.roundCount > 1 ? <span className="td-muted"> {group.roundCount}회차</span> : null}
-                              {group.instructorWikiLink ? (
-                                <>
-                                  {" "}
-                                  <a className="archive-pill done" href={group.instructorWikiLink} rel="noreferrer" target="_blank">위키↗</a>
-                                </>
-                              ) : null}
                             </td>
                             <td>
                               {group.roles.map((role) => (
