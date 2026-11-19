@@ -52,7 +52,8 @@ export function CoachPublicScheduleInput() {
   // 세션 저장에 옮기고 주소창에서 지운다. 이후 요청은 Authorization 헤더로만 보낸다(쿼리 토큰 없음).
   const [token, setToken] = useState<string | null>(null);
   const [tokenReady, setTokenReady] = useState(false);
-  const dateDragMode = useRef<"add" | "remove" | null>(null);
+  // 드래그 시작점(anchor) + 드래그 전 선택 스냅샷. 눌러서 쓸면 anchor~현재 날짜의 '연속 범위'를 더한다.
+  const dragAnchor = useRef<{ date: string; base: Set<string>; moved: boolean } | null>(null);
   const today = new Date();
   const todayStr = formatDate(today);
   const [yearMonth, setYearMonth] = useState(formatYearMonth(today));
@@ -102,14 +103,27 @@ export function CoachPublicScheduleInput() {
   }, []);
 
   useEffect(() => {
-    const endDrag = () => {
-      dateDragMode.current = null;
+    const finishDrag = () => {
+      const anchor = dragAnchor.current;
+      dragAnchor.current = null;
+      // 움직이지 않고 떼면 '탭' = 그 날 하나만 토글(선택/해제). 드래그였으면 이미 범위가 반영돼 있다.
+      if (anchor && !anchor.moved) {
+        setSelectedDates((previous) => {
+          const next = new Set(previous);
+          if (next.has(anchor.date)) next.delete(anchor.date);
+          else next.add(anchor.date);
+          return next;
+        });
+      }
     };
-    window.addEventListener("pointerup", endDrag);
-    window.addEventListener("pointercancel", endDrag);
+    const cancelDrag = () => {
+      dragAnchor.current = null;
+    };
+    window.addEventListener("pointerup", finishDrag);
+    window.addEventListener("pointercancel", cancelDrag);
     return () => {
-      window.removeEventListener("pointerup", endDrag);
-      window.removeEventListener("pointercancel", endDrag);
+      window.removeEventListener("pointerup", finishDrag);
+      window.removeEventListener("pointercancel", cancelDrag);
     };
   }, []);
 
@@ -211,33 +225,33 @@ export function CoachPublicScheduleInput() {
     return state;
   }, [selectedDates, slotKeys]);
 
-  const paintDate = useCallback((date: string, mode: "add" | "remove") => {
+  function toggleDate(date: string) {
     setSelectedDates((previous) => {
-      if (mode === "add" ? previous.has(date) : !previous.has(date)) return previous;
       const next = new Set(previous);
-      if (mode === "add") next.add(date);
-      else next.delete(date);
+      if (next.has(date)) next.delete(date);
+      else next.add(date);
       return next;
     });
-  }, []);
-
-  function toggleDate(date: string) {
-    paintDate(date, selectedDates.has(date) ? "remove" : "add");
   }
 
-  // 달력에서 쓸어서 날짜 범위 선택. 시작 칸이 켜져 있으면 지우기, 꺼져 있으면 채우기 모드로 고정한다.
+  function clearSelection() {
+    setSelectedDates(new Set());
+  }
+
+  // 날짜 선택: 한 날을 눌렀다 이동 없이 떼면 그 날 하나 토글(위 finishDrag). 누른 채 다른 날로 쓸면(드래그)
+  // 지나간 경로가 아니라 시작~현재의 '연속 날짜 범위'를 계산해 이전 선택에 더한다(달력 날짜 선택기 방식).
   function startDateDrag(date: string) {
-    const mode: "add" | "remove" = selectedDates.has(date) ? "remove" : "add";
-    dateDragMode.current = mode;
-    paintDate(date, mode);
+    dragAnchor.current = { date, base: new Set(selectedDates), moved: false };
   }
 
-  function paintDateAtPoint(clientX: number, clientY: number) {
-    const mode = dateDragMode.current;
-    if (!mode) return;
+  function extendDrag(clientX: number, clientY: number) {
+    const anchor = dragAnchor.current;
+    if (!anchor) return;
     const target = document.elementFromPoint(clientX, clientY);
     const date = target instanceof HTMLElement ? target.dataset.date : undefined;
-    if (date) paintDate(date, mode);
+    if (!date || date === anchor.date) return;
+    anchor.moved = true;
+    setSelectedDates(new Set([...anchor.base, ...datesBetween(anchor.date, date)]));
   }
 
   // 기간 입력(시작~종료) → 그 구간 날짜를 선택에 더한다. 저장은 월 단위라 지금 보는 달 안으로 잘라 넣는다.
@@ -395,8 +409,8 @@ export function CoachPublicScheduleInput() {
 
             <div
               className="coach-public-calendar-grid"
-              onPointerMove={(event) => paintDateAtPoint(event.clientX, event.clientY)}
-              style={{ touchAction: "none" }}
+              onPointerMove={(event) => extendDrag(event.clientX, event.clientY)}
+              style={{ touchAction: "none", userSelect: "none" }}
             >
               {calendarCells(yearMonth).map((date, index) => {
                 if (!date) return <span aria-hidden="true" key={`empty-${index}`} />;
@@ -432,6 +446,12 @@ export function CoachPublicScheduleInput() {
               <span><i className="confirmed" />확정</span>
               <span><i className="selected" />선택</span>
             </div>
+
+            {selectedDates.size > 0 ? (
+              <button className="coach-public-calendar-reset" onClick={clearSelection} type="button">
+                선택 초기화 ({selectedDates.size}일)
+              </button>
+            ) : null}
           </section>
 
           <section className="coach-public-time-card">
@@ -450,12 +470,18 @@ export function CoachPublicScheduleInput() {
               {selectedDates.size > 0 ? (
                 <>
                   <span>선택한 날 <b>{selectedDates.size}일</b> 에 시간대를 적용하세요</span>
-                  <button onClick={() => setSelectedDates(new Set())} type="button">선택 해제</button>
+                  <button onClick={clearSelection} type="button">선택 해제</button>
                 </>
               ) : (
                 <span>달력에서 날짜를 고르면 시간대를 넣을 수 있어요</span>
               )}
             </div>
+
+            {selectedDates.size > 0 ? (
+              <div className="coach-public-selected-chips">
+                {[...selectedDates].sort().map((date) => <span key={date}>{formatShortDate(date)}</span>)}
+              </div>
+            ) : null}
 
             <div className="coach-public-periods">
               {PERIODS.map((period) => (
@@ -569,6 +595,24 @@ function formatMonthLabel(yearMonth: string): string {
 function formatDateLabel(value: string): string {
   const [, month, day] = value.split("-");
   return `${Number(month)}월 ${Number(day)}일`;
+}
+
+function formatShortDate(value: string): string {
+  const [, month, day] = value.split("-");
+  return `${Number(month)}/${Number(day)}`;
+}
+
+// 두 날짜 사이의 연속 날짜 전부(시작·끝 포함). 같은 달 안에서만 쓴다(저장이 월 단위라).
+function datesBetween(a: string, b: string): string[] {
+  const [start, end] = a <= b ? [a, b] : [b, a];
+  const dates: string[] = [];
+  const cursor = new Date(`${start}T00:00:00`);
+  const stop = new Date(`${end}T00:00:00`);
+  while (cursor <= stop) {
+    dates.push(formatDate(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return dates;
 }
 
 function formatRange(start: string, end: string): string {
