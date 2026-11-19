@@ -110,7 +110,7 @@ export function rankOperationCandidates(
     .sort((a, b) => b.score - a.score);
 }
 
-function normalizeCourseName(value: string): string {
+export function normalizeCourseName(value: string): string {
   return value.normalize("NFKC").trim().replace(/\s+/g, " ").toLowerCase();
 }
 
