@@ -21,10 +21,16 @@ interface CourseInput {
  *
  * 같은 응답에 코스ID별 "발행 요청 현황"(폼 응답 시트에 그 코스ID 요청이 있는지)도 담는다.
  * statusAvailable=false면 시트를 못 읽은 것이라, 화면은 "미요청"이 아니라 "확인 불가"로 보여야 한다.
+ * 현황은 서버가 갖고 있는 값(statusSyncedAt 기준)을 바로 주고, fresh=true(새로고침·폼 다녀온 뒤)일 때만 시트를 다시 읽는다.
  */
 async function activityPOST(request: Request) {
   await requireWorkspaceSession();
-  const body = (await request.json()) as { companyId?: string | null; companyName?: string; courses?: CourseInput[] };
+  const body = (await request.json()) as {
+    companyId?: string | null;
+    companyName?: string;
+    courses?: CourseInput[];
+    fresh?: boolean;
+  };
   const courses = Array.isArray(body.courses) ? body.courses.slice(0, 200) : [];
   if (!body.companyName || courses.length === 0) {
     return NextResponse.json({ error: "companyName·courses 필요" }, { status: 400 });
@@ -33,7 +39,7 @@ async function activityPOST(request: Request) {
   try {
     const [businessInfo, requestStatuses] = await Promise.all([
       body.companyId ? getCompanyBusinessInfoRepository().get(body.companyId) : null,
-      loadInvoiceRequestStatuses()
+      loadInvoiceRequestStatuses({ fresh: body.fresh === true })
     ]);
     const statuses: Record<string, InvoiceRequestStatus | null> = {};
     const links: Record<string, string | null> = {};
@@ -56,7 +62,12 @@ async function activityPOST(request: Request) {
       const courseId = normalizeCourseId(course.courseId);
       statuses[course.key] = requestStatuses.ok && courseId ? requestStatuses.byCourseId.get(courseId) ?? null : null;
     }
-    return NextResponse.json({ links, statuses, statusAvailable: requestStatuses.ok });
+    return NextResponse.json({
+      links,
+      statuses,
+      statusAvailable: requestStatuses.ok,
+      statusSyncedAt: requestStatuses.ok ? requestStatuses.syncedAt : null
+    });
   } catch {
     return NextResponse.json({ error: "링크 생성 실패" }, { status: 500 });
   }

@@ -6,7 +6,6 @@ import {
   COACH_ENGAGEMENT_ROLES,
   COACH_EVALUATION_DEFAULT_SCORE,
   COACH_FACT_KINDS,
-  COACH_PRACTICE_DIFFICULTIES,
   COACH_REHIRE_INTENTS,
   evidenceRequired,
   scoreItemsForRole,
@@ -332,7 +331,6 @@ function EvaluationView({ evaluation, detail, onEdit }: { evaluation: Evaluation
     <section className="coach-evaluation-panel">
       <dl className="coach-evaluation-summary">
         <div><dt>역할</dt><dd>{labelOf(COACH_ENGAGEMENT_ROLES, role)}</dd></div>
-        <div><dt>실습 난이도</dt><dd>{detail?.practiceDifficulty ?? "-"}</dd></div>
         <div><dt>대상</dt><dd>{labelOf(COACH_AUDIENCES, detail?.audience ?? null)}{detail?.isNewClient ? " · 신규 고객사" : ""}</dd></div>
         {items.map((item) => (
           <div key={item.key}><dt>{item.label}</dt><dd>{evaluation.scores[item.key] ?? "-"}</dd></div>
@@ -364,7 +362,8 @@ function initialScores(evaluation: Evaluation | null): CoachEvaluationScores {
 function EvaluationForm({ engagementId, evaluation, detail, onDone }: { engagementId: string; evaluation: Evaluation | null; detail: Detail | null; onDone: () => void }) {
   const { coachId, reload, setOpenId } = useEvaluations();
   const [role, setRole] = useState<CoachEngagementRoleValue | null>(detail?.role ?? null);
-  const [practiceDifficulty, setPracticeDifficulty] = useState<CoachPracticeDifficultyValue | "">(detail?.practiceDifficulty ?? "");
+  // 실습 난이도는 화면에서 숨긴다(입력 UI 없음). 저장값은 그대로 두려고 기존 값을 보내기만 한다.
+  const [practiceDifficulty] = useState<CoachPracticeDifficultyValue | "">(detail?.practiceDifficulty ?? "");
   const [audience, setAudience] = useState<CoachAudienceValue | "">(detail?.audience ?? "");
   const [isNewClient, setIsNewClient] = useState(detail?.isNewClient === true);
   const [scores, setScores] = useState<CoachEvaluationScores>(() => initialScores(evaluation));
@@ -428,13 +427,6 @@ function EvaluationForm({ engagementId, evaluation, detail, onDone }: { engageme
       </fieldset>
 
       <div className="coach-evaluation-row">
-        <label>
-          실습 난이도
-          <select onChange={(event) => setPracticeDifficulty(event.target.value as CoachPracticeDifficultyValue | "")} value={practiceDifficulty}>
-            <option value="">선택 안 함</option>
-            {COACH_PRACTICE_DIFFICULTIES.map((value) => <option key={value} value={value}>{value}</option>)}
-          </select>
-        </label>
         <label>
           대상
           <select onChange={(event) => setAudience(event.target.value as CoachAudienceValue | "")} value={audience}>

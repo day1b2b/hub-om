@@ -112,6 +112,8 @@ export interface CoachScheduleDashboardCoach {
   recentEngagements: CoachScheduleDashboardEngagement[];
   engagementCount: number;
   reservation: CoachDayReservationView | null;
+  /** 그날 운영현황 투입이 배정돼 있다(일부 또는 종일). 종일 배정이면 schedules가 비고 '예약 불가'로 표시한다. */
+  assigned: boolean;
 }
 
 export interface CoachScheduleDashboardDay {

@@ -21,7 +21,7 @@ async function activityPOST(request: Request) {
       return NextResponse.json({ error: "선택된 사용자가 없습니다" }, { status: 400 });
     }
     if (!VALID_ROLES.includes(role)) {
-      return NextResponse.json({ error: "구분 값이 올바르지 않습니다" }, { status: 400 });
+      return NextResponse.json({ error: "직무 값이 올바르지 않습니다" }, { status: 400 });
     }
 
     const count = await updateTeamUsersRole(ids, role);

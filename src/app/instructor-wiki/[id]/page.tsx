@@ -112,7 +112,11 @@ async function renderInstructorWikiDetailPage(params: InstructorWikiDetailPagePr
     // coach-db 미연결 → 보강 생략
   }
 
-  return <InstructorWikiDetail canManageNotionLinks={isAdmin} entry={entry} />;
+  // 저장값은 여기(저장소 범위 안)에서 읽어 넘긴다 — InstructorWikiDetail 안에서 읽으면 범위 밖이라 기본 저장소를 읽는다.
+  // 노션 NO가 있으면 그것으로 읽는다(동명이인 구분). 없으면 운영 현황 표기라 이름으로 읽는다.
+  const note = entry.notionNo !== undefined ? await getInstructorNoteByNotionNo(entry.notionNo) : await getInstructorNote(entry.name);
+
+  return <InstructorWikiDetail allNotes={notes} canManageNotionLinks={isAdmin} entry={entry} note={note} />;
 }
 
 function safeDecode(value: string): string {

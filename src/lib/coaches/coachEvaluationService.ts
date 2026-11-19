@@ -95,6 +95,29 @@ export async function listCoachEvaluationsResponse(coachId: string, user: CoachE
   });
 }
 
+/** 투입이력 중복정리(P1c)에서 '숨기면 안 되는' 줄 — 평가(OM)·사실기록·디테일이 달린 engagementId 집합. */
+export async function listEvaluatedEngagementIds(coachId: string): Promise<Set<string>> {
+  const { evaluations, details, facts } = await getCoachEvaluationRepository().listForCoach(coachId);
+  const ids = new Set<string>();
+  for (const evaluation of evaluations) if (evaluation.engagementId) ids.add(evaluation.engagementId);
+  for (const detail of details) ids.add(detail.engagementId);
+  for (const fact of facts) if (fact.engagementId) ids.add(fact.engagementId);
+  return ids;
+}
+
+/**
+ * 위 함수의 안전판. 평가 저장소를 못 읽으면 null을 돌려준다(= 중복정리 건너뛰고 원본 그대로 표시).
+ * 디듑은 '표시만 거르는' 부가 기능이라, 평가 저장소 일시 실패로 코치 상세·투입 페이지를 500으로 죽이면 안 되고,
+ * 빈 Set으로 대체해서도 안 된다(평가 달린 SHEET가 숨겨져 평가가 화면에서 사라짐 — #978 재발). loadEvaluationAverages와 같은 degrade 방침.
+ */
+export async function tryListEvaluatedEngagementIds(coachId: string): Promise<Set<string> | null> {
+  try {
+    return await listEvaluatedEngagementIds(coachId);
+  } catch {
+    return null;
+  }
+}
+
 export async function createCoachEvaluationResponse(coachId: string, body: unknown, user: CoachEvaluationSessionUser) {
   const viewer = await resolveCoachEvaluationViewer(user);
   if (!canViewCoachEvaluations(viewer)) return denied();

@@ -1,11 +1,11 @@
 import { CoachMyPage } from "@/features/coaches/CoachMyPage";
-import { requireAdminSession } from "@/lib/auth/requireAdminSession";
+import { requireWorkspaceSession } from "@/lib/auth/requireWorkspaceSession";
 import { listMyActiveReservations, listMyConfirmedCourses, partitionConfirmedCourses } from "@/lib/data/coachMyPage";
 
 export const dynamic = "force-dynamic";
 
 export default async function CoachMyPageRoute() {
-  const session = await requireAdminSession();
+  const session = await requireWorkspaceSession();
   const email = session.user?.email ?? "";
 
   const [reservations, confirmedCourses] = await Promise.all([

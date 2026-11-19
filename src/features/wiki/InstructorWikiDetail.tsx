@@ -22,36 +22,44 @@ import {
 } from "./instructorWikiModel";
 import { InstructorEditor } from "./InstructorEditor";
 import { NotionLinkEditor } from "./NotionLinkEditor";
-import {
-  getInstructorNote,
-  getInstructorNoteByNotionNo,
-  listInstructorNotes,
-  notionHref,
-  resolveNotionLinkTargets
-} from "@/lib/data/instructorWikiStore";
+import { notionHref, resolveNotionLinkTargets, type InstructorNote } from "@/lib/data/instructorWikiStore";
+import { maskAddresses } from "@/lib/privacy/addressRedaction";
 
 // 강사 위키 상세. 코치 위키와 같은 틀(헤더 → 고정 알림 → 본문 2단)을 쓴다.
 // "강사 위키 = 보는 곳 / 운영현황 = 하는 곳" 원칙이라 계약 '요청' 버튼은 두지 않는다.
 // 아직 허브에 값이 없는 칸(계약 유형·신규강사 증빙 등)은 빈 틀로 늘어놓지 않고, 데이터가 생기면 해당 칸에 붙인다.
-export async function InstructorWikiDetail({
+
+// 투입 이력의 기업명 → 그 기업의 기업위키로 연다. 운영 상세 "기업 위키로 이동"과 같은 규약
+// (?companyId=…&company=…, companyId 우선, 없으면 기업명으로 매칭).
+function companyWikiHref(companyId: string, companyName: string): string {
+  const params = new URLSearchParams();
+  if (companyId.trim()) params.set("companyId", companyId.trim());
+  if (companyName.trim()) params.set("company", companyName.trim());
+  const query = params.toString();
+  return query ? `/company-wiki?${query}` : "/company-wiki";
+}
+// ★저장값(note·allNotes)은 페이지가 저장소 범위(runCoachPublicRequest) 안에서 읽어 넘긴다.
+//   여기서 직접 읽으면 React가 이 컴포넌트를 범위 밖에서 그려 기본 저장소(Postgres)를 읽는다 —
+//   Mongo 전환 뒤 저장한 운영 메모가 화면에 안 보였던 원인(2026-11-13).
+export function InstructorWikiDetail({
   entry,
+  note,
+  allNotes,
   canManageNotionLinks
 }: {
   entry: InstructorWikiEntry;
+  /** 이 강사의 저장값. 노션 NO가 있으면 NO로, 없으면 이름으로 읽은 값. */
+  note: InstructorNote;
+  /** 노션 강사 연결 후보 명단용 전체 저장값. */
+  allNotes: InstructorNote[];
   /** 노션 강사 연결·해제(관리자 전용 API). OM에게는 버튼을 숨긴다. */
   canManageNotionLinks: boolean;
 }) {
   const coach = entry.coach;
-  // 노션 NO가 있으면 그것으로 읽는다(동명이인 구분). 없으면 운영 현황 표기라 이름으로 읽는다.
-  const note =
-    entry.notionNo !== undefined
-      ? await getInstructorNoteByNotionNo(entry.notionNo)
-      : await getInstructorNote(entry.name);
   const displayName = note.displayName?.trim() || entry.name;
   const notionUrl = notionHref(note.notionId);
 
   // 수동 연결용 노션 강사 명단. 이 항목이 노션 본체인지도 함께 판단한다.
-  const allNotes = await listInstructorNotes();
   const notionNames = allNotes
     .filter((candidate) => candidate.notion)
     .map((candidate) => (candidate.instructorName ?? "").trim())
@@ -76,6 +84,7 @@ export async function InstructorWikiDetail({
       ? `노션 강사 DB · ${np.syncedAt.slice(0, 10)} 기준`
       : "노션 미연결";
   const baseFeeText = typeof np?.baseFee === "number" ? `${np.baseFee.toLocaleString("ko-KR")}원` : "";
+  const feeNoteText = np?.feeNote ? maskAddresses(np.feeNote) : "";
 
   // 상태·지표는 운영 현황(courses)에서 바로 계산한다(별도 백엔드 불필요).
   const today = seoulTodayKey();
@@ -186,18 +195,16 @@ export async function InstructorWikiDetail({
                       {courseGroups.length > 0 ? (
                         courseGroups.map((group) => (
                           <tr key={group.key}>
-                            <td><strong className="title-company">{group.companyName}</strong></td>
+                            <td>
+                              <a className="course-link" href={companyWikiHref(group.companyId, group.companyName)} rel="noreferrer" target="_blank">
+                                <strong className="title-company">{group.companyName}</strong>
+                              </a>
+                            </td>
                             <td>
                               <a className="course-link" href={`/operations/${group.operationId}`} rel="noreferrer" target="_blank">
                                 {cleanCourseName(group.courseName)} ↗
                               </a>
                               {group.roundCount > 1 ? <span className="td-muted"> {group.roundCount}회차</span> : null}
-                              {group.instructorWikiLink ? (
-                                <>
-                                  {" "}
-                                  <a className="archive-pill done" href={group.instructorWikiLink} rel="noreferrer" target="_blank">위키↗</a>
-                                </>
-                              ) : null}
                             </td>
                             <td>
                               {group.roles.map((role) => (
@@ -249,7 +256,8 @@ export async function InstructorWikiDetail({
                 <PeopleFacts
                   items={[
                     { label: "기본 강사료", value: baseFeeText },
-                    { label: "특이사항", value: np?.feeNote ? <span className="wiki-view">{np.feeNote}</span> : "" }
+                    // 노션 강사료 특이사항에 자택 주소가 섞여 있는 경우가 있어 보여 줄 때 가린다.
+                    { label: "특이사항", value: feeNoteText ? <span className="wiki-view">{feeNoteText}</span> : "" }
                   ]}
                 />
               </PeopleCard>

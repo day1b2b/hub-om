@@ -15,6 +15,8 @@ export interface ContractRequestItem {
   instructorName: string;
   courseId: string;
   courseName: string;
+  /** 코스ID명(운영현황 courseIdLabel). 계약폼 "과정명"은 과정명이 아니라 이 값을 쓴다(미정이면 빈 문자열). */
+  courseIdLabel: string;
   /** 목록에 보이는 일정 문자열(회차 교육일 + 시간대). */
   schedule: string;
   /** 계약폼 "일정"에 넣을 값 — 하루 한 줄, 요일 포함(formatContractFormSchedule). */
@@ -129,7 +131,7 @@ export function formatContractFormSchedule(days: { date: string; timeText?: stri
 
 type CourseOperation = Pick<
   OperationSession,
-  "instructors" | "courseId" | "courseName" | "om" | "educationDates" | "startDate" | "endDate" | "timeText"
+  "instructors" | "courseId" | "courseName" | "courseIdLabel" | "om" | "educationDates" | "startDate" | "endDate" | "timeText"
 >;
 
 /**
@@ -173,6 +175,7 @@ export function buildInstructorContractRequests(
       instructorName: name,
       courseId,
       courseName: primary.courseName,
+      courseIdLabel: (primary.courseIdLabel ?? "").trim(),
       schedule: formatSchedule(dates, primary.timeText),
       formSchedule: formatContractFormSchedule(sessionDays),
       manager: primary.om,

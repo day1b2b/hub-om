@@ -8,7 +8,7 @@ import { formatPeopleDate, peopleStatusFromFacts, type PeopleStatus } from "@/li
 // "그날 투입 가능 + OM 평가"로 적합도를 낸다.
 //   순위: OM 평가 높은순 → 투입 경험 많은순 → 최근 투입 → 이름.
 //   입력: 교육일(필수 아님)·전문분야(선택). 교육일을 주면 그날 투입 일정이 겹치는 코치는 따로 보여 준다.
-//   제외: 비노출(isActive=false)·삭제된 코치.
+//   제외: 비노출(isActive=false)·삭제된 코치 · 그날 매니저가 이미 예약한 코치(코치 섭외에서 잡아 둠).
 // =============================================================================
 
 export interface CoachCandidate {
@@ -46,6 +46,7 @@ export function recommendCoachesByCriteria({
   coaches,
   today,
   dormantMonths,
+  reservedCoachIds,
   limit = 10
 }: {
   field: string;
@@ -53,6 +54,8 @@ export function recommendCoachesByCriteria({
   coaches: CoachSummary[];
   today: string;
   dormantMonths: number;
+  /** 그 교육일에 매니저가 이미 예약한 코치 ID(코치 섭외 일정판). 추천에서 뺀다. */
+  reservedCoachIds?: ReadonlySet<string>;
   limit?: number;
 }): CoachRecommendation {
   const trimmedField = field.trim();
@@ -67,6 +70,8 @@ export function recommendCoachesByCriteria({
     // 비노출·삭제 코치는 섭외 대상이 아니다.
     if (coach.deletedAt || !coach.isActive) continue;
     if (trimmedField && !coach.fields.includes(trimmedField)) continue;
+    // 그날 매니저가 이미 예약한 코치는 중복 섭외를 막으려 추천·겹침 어디에도 넣지 않는다.
+    if (reservedCoachIds?.has(coach.id)) continue;
 
     const facts = coach.engagementFacts.filter((fact) => !fact.cancelled);
     const href = `/coaches/${coach.id}`;
