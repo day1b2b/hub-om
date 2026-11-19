@@ -3971,8 +3971,9 @@ td span {
 }
 
 .coach-public-day.selected {
-  border-color: #1f1f1f;
-  box-shadow: inset 0 0 0 1px #1f1f1f;
+  background: #1976d2;
+  border-color: #1976d2;
+  color: #ffffff;
 }
 
 .coach-public-legend {
@@ -4280,8 +4281,36 @@ td span {
 }
 
 .coach-public-legend i.selected {
-  background: #ffffff;
-  border-color: #1f1f1f;
+  background: #1976d2;
+  border-color: #1976d2;
+}
+
+.coach-public-savebar {
+  bottom: 14px;
+  display: flex;
+  justify-content: center;
+  margin-top: 18px;
+  pointer-events: none;
+  position: sticky;
+}
+
+.coach-public-savebar button {
+  background: #1976d2;
+  border: none;
+  border-radius: 999px;
+  box-shadow: 0 10px 26px rgba(25, 118, 210, 0.38);
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 900;
+  min-height: 50px;
+  padding: 0 44px;
+  pointer-events: auto;
+}
+
+.coach-public-savebar button:disabled {
+  opacity: 0.7;
 }
 
 .coach-public-calendar-reset {
