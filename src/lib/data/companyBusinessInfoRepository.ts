@@ -12,4 +12,6 @@ export interface CompanyBusinessInfoRepository {
   get(companyId: string): Promise<CompanyBusinessInfo | null>;
   /** 보낸 필드만 병합 저장한다(undefined는 건드리지 않음, 빈 문자열/null은 지움). */
   update(companyId: string, patch: CompanyBusinessInfoPatch, updatedBy: string): Promise<CompanyBusinessInfo>;
+  /** 백필 전용: 갱신 시각만 바꾼다(값·수정자는 그대로). 일괄 반영 날짜를 원본 제출일로 되돌릴 때 쓴다. */
+  setBusinessInfoUpdatedAt(companyId: string, updatedAt: Date): Promise<void>;
 }
