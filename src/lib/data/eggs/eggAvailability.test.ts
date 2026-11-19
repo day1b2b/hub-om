@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  blocksRental,
   getConflicts,
   getDeviceAvailability,
   getFreeRanges,
@@ -105,4 +106,14 @@ test("파트 쿼리와 기기 입력 검증", () => {
     assert.equal(usbEgg.value.wifiPassword, "");
     assert.equal(usbEgg.value.speedMbps, 31);
   }
+});
+
+test("겹침 판정: 반납일에 다음 사람이 빌려 가는 당일 인계는 허용한다", () => {
+  const prev = { startDate: "2026-11-17", returnDueDate: "2026-11-19" };
+  assert.equal(blocksRental(prev, "2026-11-19", "2026-11-23"), false);
+  assert.equal(blocksRental({ startDate: "2026-11-19", returnDueDate: "2026-11-23" }, "2026-11-17", "2026-11-19"), false);
+  assert.equal(blocksRental(prev, "2026-11-18", "2026-11-23"), true);
+  assert.equal(blocksRental({ startDate: "2026-11-18", returnDueDate: "2026-11-18" }, "2026-11-18", "2026-11-18"), true);
+  assert.equal(blocksRental({ startDate: "2026-11-19", returnDueDate: "2026-11-19" }, "2026-11-19", "2026-11-23"), true);
+  assert.equal(blocksRental(prev, "2026-11-20", "2026-11-21"), false);
 });
