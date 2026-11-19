@@ -3,8 +3,11 @@
 // 운영현황 교육상세 "계산서 발행 요청 현황" 구역. 강사 계약 현황 옆에 같은 크기로 놓인다.
 // 기업위키 상세와 같은 API(/api/company-wiki/invoice-link)로 이 과정 하나의 폼 링크·요청 현황을 받는다 —
 // 구글폼 URL은 서버에만 두고, 사업자등록증 정보도 서버에서 기업위키 값으로 채운다.
-import { useEffect, useState } from "react";
+// 요청 현황은 서버가 갖고 있는 값(바닥줄 "○○ 기준")을 바로 보여 준다. 폼을 열고 이 탭으로 돌아오면
+// 시트를 다시 읽어(13초쯤) 방금 낸 요청을 반영하고, ↻ 버튼으로도 다시 읽을 수 있다.
+import { useCallback, useEffect, useRef, useState } from "react";
 import { formatSheetDate, InvoiceRequestLink, InvoiceRequestStatusBadge, type InvoiceRequestStatusView } from "@/features/wiki/InvoiceRequest";
+import { formatSyncedAt } from "./InstructorContractList";
 
 interface CourseInvoiceRequestSectionProps {
   companyId?: string;
@@ -14,37 +17,116 @@ interface CourseInvoiceRequestSectionProps {
 }
 
 const COURSE_KEY = "course";
+// 이보다 오래 갱신을 못 했으면(Apps Script 웹앱 고장 등) 기준 시각을 경고색으로 보인다.
+const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
+// 폼을 열고 이만큼 지나도록 요청이 안 보이면(제출 안 함) 돌아올 때마다 다시 읽는 걸 멈춘다.
+const WATCH_RETURN_MS = 30 * 60 * 1000;
+
+type CourseInvoiceStatuses = {
+  available: boolean;
+  status: InvoiceRequestStatusView | null;
+  /** 서버가 시트를 마지막으로 읽은 시각(ISO). */
+  syncedAt: string | null;
+  stale: boolean;
+};
 
 export function CourseInvoiceRequestSection({ companyId, companyName, courseId, courseIdLabel }: CourseInvoiceRequestSectionProps) {
   const trimmedCourseId = courseId.trim();
   // undefined면 아직 불러오는 중, null이면 링크를 못 만들었음(화면은 둘 다 "-").
   const [href, setHref] = useState<string | null | undefined>(undefined);
-  const [statuses, setStatuses] = useState<{ available: boolean; status: InvoiceRequestStatusView | null } | null>(null);
+  const [statuses, setStatuses] = useState<CourseInvoiceStatuses | null>(null);
+  const [checking, setChecking] = useState(false);
+  const checkingRef = useRef(false);
+  // 폼을 연 시각과 그때의 요청 건수 — 돌아왔을 때 건수가 늘었으면(요청 반영) 지켜보기를 끝낸다.
+  const watchRef = useRef<{ openedAt: number; requestCount: number } | null>(null);
+  const statusesRef = useRef<CourseInvoiceStatuses | null>(null);
+
+  const fetchInvoice = useCallback(
+    async (fresh: boolean): Promise<{ href: string | null; statuses: CourseInvoiceStatuses }> => {
+      try {
+        const res = await fetch("/api/company-wiki/invoice-link", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            companyId: companyId || null,
+            companyName,
+            courses: [{ key: COURSE_KEY, courseId: trimmedCourseId, courseIdLabel: courseIdLabel.trim() }],
+            fresh
+          })
+        });
+        const data = res.ok ? await res.json() : null;
+        const syncedAt = typeof data?.statusSyncedAt === "string" ? data.statusSyncedAt : null;
+        return {
+          href: data?.links?.[COURSE_KEY] ?? null,
+          statuses: {
+            available: data?.statusAvailable === true,
+            status: data?.statuses?.[COURSE_KEY] ?? null,
+            syncedAt,
+            stale: syncedAt ? Date.now() - new Date(syncedAt).getTime() > STALE_AFTER_MS : false
+          }
+        };
+      } catch {
+        return { href: null, statuses: { available: false, status: null, syncedAt: null, stale: false } };
+      }
+    },
+    [companyId, companyName, courseIdLabel, trimmedCourseId]
+  );
+
+  const applyStatuses = useCallback((next: CourseInvoiceStatuses) => {
+    statusesRef.current = next;
+    setStatuses(next);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/company-wiki/invoice-link", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        companyId: companyId || null,
-        companyName,
-        courses: [{ key: COURSE_KEY, courseId: trimmedCourseId, courseIdLabel: courseIdLabel.trim() }]
-      })
-    })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (cancelled) return;
-        setHref(data?.links?.[COURSE_KEY] ?? null);
-        setStatuses({ available: data?.statusAvailable === true, status: data?.statuses?.[COURSE_KEY] ?? null });
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setHref(null);
-        setStatuses({ available: false, status: null });
-      });
+    void fetchInvoice(false).then((result) => {
+      if (cancelled) return;
+      setHref(result.href);
+      applyStatuses(result.statuses);
+    });
     return () => { cancelled = true; };
-  }, [companyId, companyName, courseIdLabel, trimmedCourseId]);
+  }, [applyStatuses, fetchInvoice]);
+
+  const refresh = useCallback(async () => {
+    if (checkingRef.current) return;
+    checkingRef.current = true;
+    setChecking(true);
+    const result = await fetchInvoice(true);
+    checkingRef.current = false;
+    setChecking(false);
+    // 다시 읽기에 실패하면 지금 보이는 값을 그대로 둔다.
+    if (!result.statuses.available && statusesRef.current?.available) return;
+    applyStatuses(result.statuses);
+    const watch = watchRef.current;
+    if (watch && (result.statuses.status?.requestCount ?? 0) > watch.requestCount) watchRef.current = null;
+  }, [applyStatuses, fetchInvoice]);
+
+  // 폼 탭에서 이 탭으로 돌아오면 다시 읽는다(focus·visibilitychange가 같이 와도 한 번만 돈다).
+  useEffect(() => {
+    function handleReturn() {
+      const watch = watchRef.current;
+      if (!watch || document.visibilityState !== "visible") return;
+      if (Date.now() - watch.openedAt > WATCH_RETURN_MS) {
+        watchRef.current = null;
+        return;
+      }
+      void refresh();
+    }
+    window.addEventListener("focus", handleReturn);
+    document.addEventListener("visibilitychange", handleReturn);
+    return () => {
+      window.removeEventListener("focus", handleReturn);
+      document.removeEventListener("visibilitychange", handleReturn);
+    };
+  }, [refresh]);
+
+  function handleFormOpen() {
+    if (!trimmedCourseId) return;
+    watchRef.current = { openedAt: Date.now(), requestCount: statusesRef.current?.status?.requestCount ?? 0 };
+  }
+
+  const syncedAt = statuses?.syncedAt ?? null;
+  const syncedStale = statuses?.stale ?? false;
 
   return (
     <section className="detail-section course-invoice-section">
@@ -59,8 +141,12 @@ export function CourseInvoiceRequestSection({ companyId, companyName, courseId, 
         <div>
           <dt>계산서 발행 요청</dt>
           <dd>
-            <InvoiceRequestLink href={href} />
-            <InvoiceRequestState hasCourseId={Boolean(trimmedCourseId)} statuses={statuses} />
+            <InvoiceRequestLink href={href} onOpen={handleFormOpen} />
+            {checking ? (
+              <span className="muted-inline">확인 중…</span>
+            ) : (
+              <InvoiceRequestState hasCourseId={Boolean(trimmedCourseId)} statuses={statuses} />
+            )}
           </dd>
         </div>
         <div>
@@ -83,6 +169,27 @@ export function CourseInvoiceRequestSection({ companyId, companyName, courseId, 
         </div>
       </dl>
       <p className="course-invoice-hint">사업자등록증 정보는 기업위키에 등록된 값으로 자동 기입됩니다.</p>
+      {statuses && trimmedCourseId ? (
+        <div className="instructor-contract-foot">
+          {syncedAt ? (
+            <span
+              className={`instructor-contract-synced${syncedStale ? " course-invoice-synced--stale" : ""}`}
+              title={syncedStale ? "하루 넘게 계산서 발급 신청 시트를 다시 읽지 못했습니다." : undefined}
+            >
+              {formatSyncedAt(syncedAt)} 기준
+            </span>
+          ) : null}
+          <button
+            className="instructor-contract-status-load"
+            disabled={checking}
+            onClick={() => void refresh()}
+            title="계산서 발급 신청 시트를 다시 읽어요(10초 남짓 걸려요)"
+            type="button"
+          >
+            {checking ? "확인 중…" : "↻ 새로고침"}
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 }

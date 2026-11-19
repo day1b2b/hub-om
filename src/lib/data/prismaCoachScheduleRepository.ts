@@ -142,4 +142,13 @@ export class PrismaCoachScheduleRepository implements CoachScheduleRepository {
       return ownRows.map(row => day(row.date));
     });
   }
+
+  async listReservedCoachIdsOn(date: string): Promise<string[]> {
+    const rows = await getPrismaClient().coachDayReservation.findMany({
+      where: { date: toDbDate(date), cancelledAt: null },
+      select: { coachId: true },
+      distinct: ["coachId"]
+    });
+    return rows.map(row => row.coachId);
+  }
 }
