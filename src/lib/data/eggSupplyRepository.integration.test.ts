@@ -19,6 +19,8 @@ const hook = registerHooks({ resolve(specifier, context, next) { return next(spe
 const eggRentals = await import("../../app/api/eggs/rentals/route");
 const eggDevices = await import("../../app/api/eggs/devices/route");
 const supplyRentals = await import("../../app/api/supplies/rentals/route");
+const supplyItems = await import("../../app/api/supplies/items/route");
+const supplyItem = await import("../../app/api/supplies/items/[id]/route");
 hook.deregister();
 
 const uri = process.env.MONGODB_EGG_SUPPLY_TEST_URI;
@@ -124,10 +126,27 @@ test("egg and supply repositories store encrypted rows in Mongo and allow one of
     await supplies.cancelRental(supplyList[1].id, email);
     assert.deepEqual((await supplies.listRentals("mic")).map(row => row.returned), [true]);
 
+    // 물품 등록·수정: 관리자 화면 API로 넣고, 메모는 암호문으로 저장된다.
+    const itemBody = { category: "mic", label: "합성 거치대", storageLocation: "캐비닛", sortOrder: 2, note: "합성 물품 메모" };
+    assert.equal((await supplyItems.POST(post("/api/supplies/items", { ...itemBody, label: "" }))).status, 400);
+    const createdItem = await supplyItems.POST(post("/api/supplies/items", itemBody));
+    assert.equal(createdItem.status, 201);
+    const newItemId = ((await createdItem.json()) as { item: { id: string } }).item.id;
+    const patch = (id: string, body: unknown) => supplyItem.PATCH(
+      new Request(`https://example.invalid/api/supplies/items/${id}`, { method: "PATCH", body: JSON.stringify(body), headers: { "content-type": "application/json" } }),
+      { params: Promise.resolve({ id }) }
+    );
+    assert.equal((await patch(newItemId, { ...itemBody, components: "합성 구성품", sortOrder: 3 })).status, 200);
+    assert.equal((await patch("00000000-0000-4000-8000-000000000009", itemBody)).status, 404);
+    const listedItems = await supplies.listItems("mic");
+    assert.deepEqual(listedItems.map(row => row.label), ["마이크 1", "마이크 2", "합성 거치대"]);
+    assert.equal(listedItems[2].components, "합성 구성품");
+    assert.equal(listedItems[2].note, "합성 물품 메모");
+
     // 요청 기록이 Mongo에 남고, 개인정보 원문은 어디에도 평문으로 저장되지 않는다.
     assert.ok(await store.collection("ActivityRequest").countDocuments() >= 6);
     const raw = JSON.stringify(await Promise.all(store.models.map(model => store.collection(model).find({}).toArray())));
-    for (const value of ["synthetic-secret-1", "합성 대여자", "동시 A", "동시 B", email, "합성 주의사항"]) assert.equal(raw.includes(value), false, value);
+    for (const value of ["synthetic-secret-1", "합성 대여자", "동시 A", "동시 B", email, "합성 주의사항", "합성 물품 메모"]) assert.equal(raw.includes(value), false, value);
   } finally {
     try { if (connected) await client.db(databaseName).dropDatabase(); }
     finally {

@@ -16,6 +16,16 @@ export interface SupplyItemSummary {
   note: string | null;
 }
 
+/** 물품 등록·수정 입력 (관리자 전용) */
+export interface SupplyItemInput {
+  category: SupplyCategory;
+  label: string;
+  components: string | null;
+  storageLocation: string;
+  sortOrder: number;
+  note: string | null;
+}
+
 export interface SupplyRentalRecord {
   id: string;
   itemIds: string[];

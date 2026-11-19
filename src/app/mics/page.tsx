@@ -1,4 +1,5 @@
 import { SupplyRentalBoard } from "@/features/supplies/SupplyRentalBoard";
+import { isAdminEmail } from "@/lib/auth/requireAdminSession";
 import { requireSupplyPageSession } from "@/lib/auth/requireSupplySession";
 import { addDays, kstToday } from "@/lib/data/eggs/eggAvailability";
 import { getSupplyRepository } from "@/lib/data/supplies/supplyRepositoryFactory";
@@ -39,6 +40,7 @@ export default async function MicsPage() {
       today={today}
       currentUserName={session.user?.name ?? ""}
       loadFailed={loadFailed}
+      isAdmin={isAdminEmail(session.user?.email)}
     />
   );
 }

@@ -8,6 +8,7 @@ import { formatRange, formatShortDate } from "@/features/eggs/eggDisplay";
 import { getRentalStateLabel } from "@/features/eggs/EggRentalActionButton";
 import { EggToast } from "@/features/eggs/EggToast";
 import { isValidDate } from "@/lib/data/eggs/eggAvailability";
+import { SupplyItemPanel } from "./SupplyItemPanel";
 import {
   getActiveSupplyRental,
   getNextSupplyRental,
@@ -33,6 +34,7 @@ interface SupplyRentalBoardProps {
   today: string;
   currentUserName: string;
   loadFailed: boolean;
+  isAdmin: boolean;
 }
 
 /**
@@ -45,12 +47,24 @@ export function SupplyRentalBoard({
   rentals,
   today,
   currentUserName,
-  loadFailed
+  loadFailed,
+  isAdmin
 }: SupplyRentalBoardProps) {
   const router = useRouter();
   const title = `${SUPPLY_CATEGORY_LABEL[category]} 대여`;
 
   const [selectedIds, setSelectedIds] = useState<string[]>(() => items.map((item) => item.id));
+  // 관리자가 물품을 새로 등록하면 그 물품도 기본으로 고른 상태로 둔다(처음 열 때와 같게).
+  const itemKey = items.map((item) => item.id).join(",");
+  const [seenItemKey, setSeenItemKey] = useState(itemKey);
+  if (seenItemKey !== itemKey) {
+    const seen = new Set(seenItemKey.split(","));
+    setSeenItemKey(itemKey);
+    setSelectedIds((current) => [
+      ...current.filter((id) => items.some((item) => item.id === id)),
+      ...items.filter((item) => !seen.has(item.id)).map((item) => item.id)
+    ]);
+  }
   const [borrowerName, setBorrowerName] = useState(currentUserName);
   const [courseName, setCourseName] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -169,7 +183,7 @@ export function SupplyRentalBoard({
           <div className="dashboard-panel">
             <div className="empty-state">
               <strong>등록된 물품이 없습니다.</strong>
-              <span>관리자에게 등록을 요청해주세요.</span>
+              <span>{isAdmin ? "아래 물품 관리에서 물품을 등록해주세요." : "관리자에게 등록을 요청해주세요."}</span>
             </div>
           </div>
         ) : (
@@ -415,6 +429,8 @@ export function SupplyRentalBoard({
             </section>
           </>
         )}
+
+        {isAdmin && !loadFailed ? <SupplyItemPanel category={category} items={items} /> : null}
       </section>
     </main>
   );
