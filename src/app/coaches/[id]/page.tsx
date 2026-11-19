@@ -13,6 +13,8 @@ import {
   summarizeCoachActivity
 } from "@/lib/coaches/coachActivity";
 import { loadEvaluationAverages } from "@/lib/coaches/coachEvaluationAverages";
+import { tryListEvaluatedEngagementIds } from "@/lib/coaches/coachEvaluationService";
+import { dedupeCoachEngagements } from "@/lib/coaches/coachEngagementDedup";
 import { peopleStatusFromFacts } from "@/lib/people/peopleStatus";
 
 export const dynamic = "force-dynamic";
@@ -44,17 +46,23 @@ async function renderCoachDetailPage({ params, searchParams }: CoachDetailPagePr
   }
 
   const today = seoulTodayKey();
-  const [storedEngagements, schedules, engagementSchedules, evaluationAverages] = await Promise.all([
+  const [storedEngagements, schedules, engagementSchedules, evaluationAverages, protectedEngagementIds] = await Promise.all([
     repository.listEngagements(id),
     repository.listSchedules(id, monthRange),
     repository.listEngagementSchedules(id, monthRange),
-    loadEvaluationAverages()
+    loadEvaluationAverages(),
+    tryListEvaluatedEngagementIds(id)
   ]);
   // 저장된 상태는 동기화 때만 계산돼 지난 일정이 "예정"으로 남는다. 화면에서는 날짜로 다시 정한다.
   const engagements = storedEngagements.map((engagement) => ({
     ...engagement,
     status: effectiveEngagementStatus(engagement, today)
   }));
+  // 중복정리(P1c): 운영현황(MANUAL/확정)과 날짜가 겹치는 계약시트(SHEET) 투입은 숨긴다(평가 달린 줄은 보존).
+  // 평가 저장소를 못 읽으면(null) 디듑을 건너뛰고 원본을 그대로 둔다(평가 소실·페이지 500 방지).
+  const visibleEngagements = protectedEngagementIds === null
+    ? engagements
+    : dedupeCoachEngagements(engagements, protectedEngagementIds);
 
   // 목록과 같은 계산(상태 4단계·최근 OM 평가)을 상세에서도 쓴다.
   const coachWithRating = {
@@ -71,7 +79,7 @@ async function renderCoachDetailPage({ params, searchParams }: CoachDetailPagePr
       peopleStatus={peopleStatusFromFacts(coach.engagementFacts, today, coachActivityPolicy.dormantMonths)}
       today={today}
       engagementSchedules={engagementSchedules}
-      engagements={engagements}
+      engagements={visibleEngagements}
       selectedMonth={selectedMonth}
       schedules={schedules}
       selectedTab={selectedTab}
