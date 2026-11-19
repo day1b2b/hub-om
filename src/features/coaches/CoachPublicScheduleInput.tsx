@@ -70,6 +70,10 @@ export function CoachPublicScheduleInput() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [dirty, setDirty] = useState(false);
+  // 저장 목록에 보일 날짜들(로드·저장 시점 기준). 동그라미를 다 꺼도 저장 전까지는 줄을 남겨 둔다.
+  const [savedDates, setSavedDates] = useState<string[]>([]);
+  // 저장 목록에서 체크한 날짜들(선택 삭제용).
+  const [checkedDates, setCheckedDates] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     // 주소창 토큰·세션 저장이라는 외부 시스템과 마운트 때 1회 동기화한다.
@@ -159,6 +163,8 @@ export function CoachPublicScheduleInput() {
 
     setCoach(meData.coach);
     setSlotKeys(schedulesToSlotKeys(scheduleData.schedules));
+    setSavedDates([...new Set(scheduleData.schedules.map((item) => item.date))].sort());
+    setCheckedDates(new Set());
     setConfirmed(scheduleData.engagementSchedules);
     setLastSavedAt(scheduleData.lastSavedAt);
     setSelectedDates(new Set());
@@ -225,7 +231,8 @@ export function CoachPublicScheduleInput() {
     return state;
   }, [selectedDates, slotKeys]);
 
-  // 코치가 저장(입력)한 가능 일정을 날짜순으로 보여 준다 — "내가 뭘 넣었지"를 한눈에 확인.
+  // 코치가 저장(입력)한 가능 일정을 날짜순으로, 시간대 동그라미(오전/오후/저녁/종일)로 보여 준다.
+  // 동그라미를 다 꺼 슬롯이 0이어도 저장 전까진 줄을 유지(savedDates와 합집합).
   const availabilitySummary = useMemo(() => {
     const byDate = new Map<string, Set<string>>();
     for (const key of slotKeys) {
@@ -234,10 +241,15 @@ export function CoachPublicScheduleInput() {
       set.add(slot);
       byDate.set(date, set);
     }
-    return [...byDate.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, slots]) => ({ date, label: availabilityLabel(slots) }));
-  }, [slotKeys]);
+    const dates = new Set<string>([...byDate.keys(), ...savedDates]);
+    return [...dates].sort().map((date) => {
+      const slots = byDate.get(date) ?? new Set<string>();
+      const morning = slotsInRange("08:00", "12:00").some((slot) => slots.has(slot));
+      const afternoon = slotsInRange("12:00", "18:00").some((slot) => slots.has(slot));
+      const evening = slotsInRange("18:00", "22:00").some((slot) => slots.has(slot));
+      return { date, morning, afternoon, evening, allDay: morning && afternoon && evening };
+    });
+  }, [slotKeys, savedDates]);
 
   function toggleDate(date: string) {
     setSelectedDates((previous) => {
@@ -332,7 +344,37 @@ export function CoachPublicScheduleInput() {
     setDirty(true);
   }
 
-  // 저장 목록에서 한 날짜를 통째로 지운다(그 날짜의 슬롯만 제거). 저장은 사용자가 저장바로.
+  // 저장 목록 동그라미: 그 날짜의 한 시간대를 통째로 켜고 끈다(세부 슬롯은 시간대 기준으로 정리). 종일=오전·오후·저녁 일괄.
+  function togglePeriodForDate(date: string, key: string) {
+    setSlotKeys((previous) => {
+      const next = new Set(previous);
+      const has = (slot: string) => previous.has(`${date}|${slot}`);
+      if (key === "all") {
+        const base = PERIODS.filter((period) => period.key !== "all");
+        const allOn = base.every((period) => slotsInRange(period.start, period.end).some(has));
+        for (const slot of ALL_SLOTS) {
+          const slotKey = `${date}|${slot}`;
+          if (allOn) next.delete(slotKey);
+          else next.add(slotKey);
+        }
+      } else {
+        const period = PERIODS.find((item) => item.key === key);
+        if (!period) return next;
+        const slots = slotsInRange(period.start, period.end);
+        const on = slots.some(has);
+        for (const slot of slots) {
+          const slotKey = `${date}|${slot}`;
+          if (on) next.delete(slotKey);
+          else next.add(slotKey);
+        }
+      }
+      return next;
+    });
+    setSaved(false);
+    setDirty(true);
+  }
+
+  // 저장 목록에서 한 날짜를 통째로 지운다(슬롯·표시줄 모두 제거). 저장은 사용자가 저장바로.
   function removeAvailabilityDate(date: string) {
     setSlotKeys((previous) => {
       const next = new Set<string>();
@@ -341,8 +383,43 @@ export function CoachPublicScheduleInput() {
       }
       return next;
     });
+    setSavedDates((previous) => previous.filter((item) => item !== date));
+    setCheckedDates((previous) => {
+      const next = new Set(previous);
+      next.delete(date);
+      return next;
+    });
     setSaved(false);
     setDirty(true);
+  }
+
+  // 체크한 날짜들을 한꺼번에 지운다(선택 삭제).
+  function removeCheckedDates() {
+    if (checkedDates.size === 0) return;
+    setSlotKeys((previous) => {
+      const next = new Set<string>();
+      for (const key of previous) {
+        if (!checkedDates.has(key.split("|")[0])) next.add(key);
+      }
+      return next;
+    });
+    setSavedDates((previous) => previous.filter((item) => !checkedDates.has(item)));
+    setCheckedDates(new Set());
+    setSaved(false);
+    setDirty(true);
+  }
+
+  function toggleCheckedDate(date: string) {
+    setCheckedDates((previous) => {
+      const next = new Set(previous);
+      if (next.has(date)) next.delete(date);
+      else next.add(date);
+      return next;
+    });
+  }
+
+  function toggleAllChecked(dates: string[], checked: boolean) {
+    setCheckedDates(checked ? new Set(dates) : new Set());
   }
 
   function goToMonth(offset: number) {
@@ -545,22 +622,71 @@ export function CoachPublicScheduleInput() {
             <span>{formatMonthLabel(yearMonth)}</span>
           </div>
           {availabilitySummary.length > 0 ? (
-            <ul className="coach-public-saved-list">
-              {availabilitySummary.map((item) => (
-                <li key={item.date}>
-                  <b>{formatDateLabel(item.date)}</b>
-                  <span>{item.label}</span>
-                  <button
-                    aria-label={`${formatDateLabel(item.date)} 삭제`}
-                    className="coach-public-saved-remove"
-                    onClick={() => removeAvailabilityDate(item.date)}
-                    type="button"
-                  >
-                    ✕
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <>
+              <div className="coach-public-saved-toolbar">
+                <label className="coach-public-saved-selall">
+                  <input
+                    checked={checkedDates.size > 0 && checkedDates.size === availabilitySummary.length}
+                    onChange={(event) => toggleAllChecked(availabilitySummary.map((item) => item.date), event.target.checked)}
+                    ref={(node) => {
+                      if (node) node.indeterminate = checkedDates.size > 0 && checkedDates.size < availabilitySummary.length;
+                    }}
+                    type="checkbox"
+                  />
+                  전체 선택
+                </label>
+                <button
+                  className="coach-public-saved-bulk"
+                  disabled={checkedDates.size === 0}
+                  onClick={removeCheckedDates}
+                  type="button"
+                >
+                  선택 삭제{checkedDates.size > 0 ? ` (${checkedDates.size})` : ""}
+                </button>
+              </div>
+              <ul className="coach-public-saved-list">
+                {availabilitySummary.map((item) => (
+                  <li className={checkedDates.has(item.date) ? "checked" : ""} key={item.date}>
+                    <input
+                      aria-label={`${formatDateLabel(item.date)} 선택`}
+                      checked={checkedDates.has(item.date)}
+                      className="coach-public-saved-check"
+                      onChange={() => toggleCheckedDate(item.date)}
+                      type="checkbox"
+                    />
+                    <b>{formatDateLabel(item.date)}</b>
+                    <div className="coach-public-saved-periods">
+                      {[
+                        { key: "morning", label: "오전", on: item.morning },
+                        { key: "afternoon", label: "오후", on: item.afternoon },
+                        { key: "evening", label: "저녁", on: item.evening },
+                        { key: "all", label: "종일", on: item.allDay }
+                      ].map((period) => (
+                        <button
+                          aria-label={`${formatDateLabel(item.date)} ${period.label} ${period.on ? "켜짐" : "꺼짐"}`}
+                          aria-pressed={period.on}
+                          className={`coach-public-dot${period.key === "all" ? " allday" : ""}${period.on ? " on" : ""}`}
+                          key={period.key}
+                          onClick={() => togglePeriodForDate(item.date, period.key)}
+                          type="button"
+                        >
+                          {period.label}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      aria-label={`${formatDateLabel(item.date)} 삭제`}
+                      className="coach-public-saved-remove"
+                      onClick={() => removeAvailabilityDate(item.date)}
+                      type="button"
+                    >
+                      ✕
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <p className="coach-public-saved-hint">동그라미를 눌러 시간대를 바꿀 수 있어요. 다 끄고 저장하면 그 날짜는 일정에서 빠져요.</p>
+            </>
           ) : (
             <p className="coach-public-saved-empty">아직 넣은 가능 일정이 없어요. 위 달력에서 날짜를 고르고 시간대를 눌러 주세요 :)</p>
           )}
@@ -683,16 +809,6 @@ function datesBetween(a: string, b: string): string[] {
     cursor.setDate(cursor.getDate() + 1);
   }
   return dates;
-}
-
-// 어떤 시간대가 들었는지로 보여 준다: 하루 전체면 '종일', 아니면 슬롯이 하나라도 걸친 오전·오후·저녁.
-// (예전 들쭉날쭉한 30분 슬롯도 조각 시간 대신 시간대로 깔끔하게.)
-function availabilityLabel(slots: Set<string>): string {
-  if (ALL_SLOTS.every((slot) => slots.has(slot))) return "종일";
-  const labels = PERIODS.filter(
-    (period) => period.key !== "all" && slotsInRange(period.start, period.end).some((slot) => slots.has(slot))
-  ).map((period) => period.label);
-  return labels.join("·");
 }
 
 function formatRange(start: string, end: string): string {

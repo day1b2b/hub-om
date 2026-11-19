@@ -4355,21 +4355,69 @@ td span {
   background: #e5f5e9;
   border-radius: 10px;
   display: flex;
-  gap: 10px;
+  gap: 9px;
   justify-content: flex-start;
-  padding: 7px 8px 7px 14px;
+  outline: 2px solid transparent;
+  padding: 7px 8px 7px 10px;
+}
+
+.coach-public-saved-list li.checked {
+  background: #d7eede;
+  outline-color: #1976d2;
+}
+
+.coach-public-saved-check {
+  accent-color: #1976d2;
+  flex: none;
+  height: 16px;
+  margin: 0;
+  width: 16px;
 }
 
 .coach-public-saved-list li b {
   color: #1f6b32;
-  font-size: 14px;
+  flex: none;
+  font-size: 13.5px;
   font-weight: 900;
+  min-width: 72px;
 }
 
-.coach-public-saved-list li span {
-  color: #2f7a42;
-  font-size: 13px;
+.coach-public-saved-periods {
+  display: flex;
+  flex: 1;
+  gap: 4px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.coach-public-saved-periods::-webkit-scrollbar {
+  display: none;
+}
+
+.coach-public-dot {
+  background: #ffffff;
+  border: 1px solid #cfd6dd;
+  border-radius: 999px;
+  color: #9aa6b2;
+  cursor: pointer;
+  flex: none;
+  font-size: 11px;
   font-weight: 800;
+  line-height: 1.4;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+
+.coach-public-dot.on {
+  background: #1976d2;
+  border-color: #1976d2;
+  color: #ffffff;
+}
+
+.coach-public-dot.allday.on {
+  background: #2f7a42;
+  border-color: #2f7a42;
 }
 
 .coach-public-saved-remove {
@@ -4393,6 +4441,67 @@ td span {
   background: #d23f3f;
   border-color: #d23f3f;
   color: #ffffff;
+}
+
+.coach-public-saved-toolbar {
+  align-items: center;
+  background: #eef2f0;
+  border-radius: 9px;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding: 7px 10px;
+}
+
+.coach-public-saved-selall {
+  align-items: center;
+  color: #2f4a3a;
+  cursor: pointer;
+  display: flex;
+  font-size: 13px;
+  font-weight: 800;
+  gap: 7px;
+  user-select: none;
+}
+
+.coach-public-saved-selall input {
+  accent-color: #1976d2;
+  height: 16px;
+  margin: 0;
+  width: 16px;
+}
+
+.coach-public-saved-bulk {
+  background: #ffffff;
+  border: 1px solid #e3b4b4;
+  border-radius: 8px;
+  color: #b23b3b;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 6px 11px;
+}
+
+.coach-public-saved-bulk:disabled {
+  background: #f6f7f8;
+  border-color: #e3e6ea;
+  color: #b7bcc2;
+  cursor: default;
+}
+
+.coach-public-saved-bulk:not(:disabled):hover {
+  background: #d23f3f;
+  border-color: #d23f3f;
+  color: #ffffff;
+}
+
+.coach-public-saved-hint {
+  color: #5f7a6a;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.6;
+  margin: 9px 2px 0;
 }
 
 .coach-public-saved-empty {
