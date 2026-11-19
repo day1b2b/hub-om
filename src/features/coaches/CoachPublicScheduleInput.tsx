@@ -52,8 +52,8 @@ export function CoachPublicScheduleInput() {
   // 세션 저장에 옮기고 주소창에서 지운다. 이후 요청은 Authorization 헤더로만 보낸다(쿼리 토큰 없음).
   const [token, setToken] = useState<string | null>(null);
   const [tokenReady, setTokenReady] = useState(false);
-  // 드래그 시작점(anchor) + 드래그 전 선택 스냅샷. 눌러서 쓸면 anchor~현재 날짜의 '연속 범위'를 더한다.
-  const dragAnchor = useRef<{ date: string; base: Set<string>; moved: boolean } | null>(null);
+  // 드래그 시작점(anchor) + 드래그 전 선택 스냅샷 + 모드. 시작 칸 상태로 범위를 선택(add)·해제(remove)한다.
+  const dragAnchor = useRef<{ date: string; base: Set<string>; moved: boolean; mode: "add" | "remove" } | null>(null);
   const today = new Date();
   const todayStr = formatDate(today);
   const [yearMonth, setYearMonth] = useState(formatYearMonth(today));
@@ -238,10 +238,11 @@ export function CoachPublicScheduleInput() {
     setSelectedDates(new Set());
   }
 
-  // 날짜 선택: 한 날을 눌렀다 이동 없이 떼면 그 날 하나 토글(위 finishDrag). 누른 채 다른 날로 쓸면(드래그)
-  // 지나간 경로가 아니라 시작~현재의 '연속 날짜 범위'를 계산해 이전 선택에 더한다(달력 날짜 선택기 방식).
+  // 날짜 선택/해제: 한 날을 눌렀다 이동 없이 떼면 그 날 하나 토글(위 finishDrag). 누른 채 다른 날로 쓸면(드래그)
+  // 지나간 경로가 아니라 시작~현재의 '연속 날짜 범위'를 계산한다. 시작 칸이 이미 선택돼 있으면 그 범위를
+  // 해제, 비어 있으면 선택(앵커 기준 모드) — 선택도 드래그, 취소도 드래그.
   function startDateDrag(date: string) {
-    dragAnchor.current = { date, base: new Set(selectedDates), moved: false };
+    dragAnchor.current = { date, base: new Set(selectedDates), moved: false, mode: selectedDates.has(date) ? "remove" : "add" };
   }
 
   function extendDrag(clientX: number, clientY: number) {
@@ -251,7 +252,14 @@ export function CoachPublicScheduleInput() {
     const date = target instanceof HTMLElement ? target.dataset.date : undefined;
     if (!date || date === anchor.date) return;
     anchor.moved = true;
-    setSelectedDates(new Set([...anchor.base, ...datesBetween(anchor.date, date)]));
+    const range = datesBetween(anchor.date, date);
+    if (anchor.mode === "add") {
+      setSelectedDates(new Set([...anchor.base, ...range]));
+    } else {
+      const next = new Set(anchor.base);
+      for (const removed of range) next.delete(removed);
+      setSelectedDates(next);
+    }
   }
 
   // 기간 입력(시작~종료) → 그 구간 날짜를 선택에 더한다. 저장은 월 단위라 지금 보는 달 안으로 잘라 넣는다.
@@ -503,6 +511,14 @@ export function CoachPublicScheduleInput() {
             </div>
           </section>
         </section>
+
+        {dirty ? (
+          <div className="coach-public-savebar">
+            <button disabled={saving} onClick={save} type="button">
+              {saving ? "저장 중..." : "저장하기"}
+            </button>
+          </div>
+        ) : null}
 
         <footer className="coach-public-footer">
           <span>{lastSavedAt ? `마지막 저장 ${formatDateTime(lastSavedAt)}` : "아직 저장된 일정이 없습니다."}</span>
