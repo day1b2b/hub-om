@@ -1,3 +1,6 @@
+// 일회성 백필이라 npm 스크립트로 등록하지 않는다(package.json 해시가 import fixture 승인 목록에 묶여 있음).
+// 실행: node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/backfill-company-business-info-updated-at.ts
+//   --input=<json> --only-if-current-date=YYYY-MM-DD [--backend=mongodb-shadow] [--apply --backup-confirmed]
 import { config } from "dotenv";
 import { runCompanyBusinessInfoUpdatedAtBackfillCli } from "../src/lib/data/companyBusinessInfoUpdatedAtBackfillCliRuntime";
 
