@@ -4090,6 +4090,200 @@ td span {
   color: #d84315;
 }
 
+.coach-public-confirmed-top {
+  background: #ffffff;
+  border: 1px solid #e1e6ee;
+  border-radius: 16px;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+  margin-bottom: 18px;
+  padding: 18px 22px;
+}
+
+.coach-public-confirmed-head {
+  align-items: baseline;
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.coach-public-confirmed-head strong {
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.coach-public-confirmed-head span {
+  color: #9aa5b1;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.coach-public-confirmed-list {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.coach-public-confirmed-list li {
+  background: #f1f7ff;
+  border-left: 3px solid #1976d2;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+}
+
+.coach-public-confirmed-list li b {
+  color: #15467e;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.coach-public-confirmed-list li span {
+  color: #5b6b7d;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.coach-public-confirmed-empty {
+  color: #8b95a1;
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.coach-public-range {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.coach-public-range input {
+  background: #ffffff;
+  border: 1px solid #d9dee5;
+  border-radius: 8px;
+  color: #242424;
+  flex: 1;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  min-height: 36px;
+  min-width: 0;
+  padding: 0 8px;
+}
+
+.coach-public-range > span {
+  color: #9aa5b1;
+}
+
+.coach-public-range button {
+  background: #ffffff;
+  border: 1px solid #d9dee5;
+  border-radius: 8px;
+  color: #4b5563;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  min-height: 36px;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+
+.coach-public-selected-note {
+  align-items: center;
+  color: #5b6b7d;
+  display: flex;
+  font-size: 13px;
+  font-weight: 700;
+  gap: 10px;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.coach-public-selected-note b {
+  color: #1976d2;
+  font-weight: 900;
+}
+
+.coach-public-selected-note button {
+  background: transparent;
+  border: none;
+  color: #8a949f;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: underline;
+  white-space: nowrap;
+}
+
+.coach-public-periods {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 10px;
+}
+
+.coach-public-periods button {
+  background: #f7f8fa;
+  border: 1px solid #e1e6ee;
+  border-radius: 8px;
+  color: #4b5563;
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  min-height: 44px;
+}
+
+.coach-public-periods button.selected {
+  background: #1976d2;
+  border-color: #1976d2;
+  color: #ffffff;
+}
+
+.coach-public-periods button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.coach-public-periods-foot {
+  align-items: center;
+  color: #9aa5b1;
+  display: flex;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.coach-public-periods-foot button {
+  background: #ffffff;
+  border: 1px solid #d9dee5;
+  border-radius: 8px;
+  color: #4b5563;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  min-height: 32px;
+  padding: 0 12px;
+}
+
+.coach-public-periods-foot button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.coach-public-legend i.selected {
+  background: #ffffff;
+  border-color: #1f1f1f;
+}
+
 .coach-origin-chip-list {
   display: flex;
   flex-wrap: wrap;
