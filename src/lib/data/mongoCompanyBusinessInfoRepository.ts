@@ -64,10 +64,20 @@ export class MongoCompanyBusinessInfoRepository implements CompanyBusinessInfoRe
   async update(companyId: string, patch: CompanyBusinessInfoPatch, updatedBy: string): Promise<CompanyBusinessInfo> {
     assertMongo(typeof companyId === "string" && companyId.length > 0, "COMPANY_BUSINESS_INFO_INVALID_ID");
     assertMongo(typeof updatedBy === "string" && updatedBy.length > 0, "COMPANY_BUSINESS_INFO_INVALID_ACTOR");
+    return this.transact(session => this.applyUpdate(companyId, patch, updatedBy, session));
+  }
+
+  async setBusinessInfoUpdatedAt(companyId: string, updatedAt: Date): Promise<void> {
+    assertMongo(typeof companyId === "string" && companyId.length > 0, "COMPANY_BUSINESS_INFO_INVALID_ID");
+    assertMongo(updatedAt instanceof Date && !Number.isNaN(updatedAt.getTime()), "COMPANY_BUSINESS_INFO_INVALID_DATE");
+    await this.transact(session => this.replaceCompany(companyId, session, previous => ({ ...previous, businessInfoUpdatedAt: updatedAt })));
+  }
+
+  private async transact<T>(work: (session: ClientSession) => Promise<T>): Promise<T> {
     const session = this.store.client.startSession();
     try {
       return await session.withTransaction(
-        () => this.applyUpdate(companyId, patch, updatedBy, session),
+        () => work(session),
         { readConcern: { level: "snapshot" }, writeConcern: { w: "majority", j: true }, readPreference: "primary", timeoutMS: 30_000 }
       );
     } catch (error) {
@@ -79,9 +89,7 @@ export class MongoCompanyBusinessInfoRepository implements CompanyBusinessInfoRe
   }
 
   private async applyUpdate(companyId: string, patch: CompanyBusinessInfoPatch, updatedBy: string, session: ClientSession): Promise<CompanyBusinessInfo> {
-    const previous = await this.store.one("Company", { _id: companyId }, session);
-    assertMongo(previous, "COMPANY_NOT_FOUND");
-    const next = completeMongoRow("Company", {
+    return toBusinessInfo(await this.replaceCompany(companyId, session, previous => ({
       ...previous,
       ...(patch.businessNumber !== undefined ? { businessNumber: normalizeValue(patch.businessNumber) } : {}),
       ...(patch.legalName !== undefined ? { legalName: normalizeValue(patch.legalName) } : {}),
@@ -93,12 +101,19 @@ export class MongoCompanyBusinessInfoRepository implements CompanyBusinessInfoRe
       ...(patch.invoiceEmailSecondary !== undefined ? { invoiceEmailSecondary: normalizeValue(patch.invoiceEmailSecondary) } : {}),
       ...(patch.memo !== undefined ? { memo: normalizeValue(patch.memo) } : {}),
       ...(touchesBusinessInfo(patch) ? { businessInfoUpdatedAt: new Date(), businessInfoUpdatedBy: updatedBy } : {})
-    });
+    })));
+  }
+
+  /** Company 한 건을 바꿔 쓰고 변경 이력(ActivityChange)을 같은 트랜잭션에 남긴다. */
+  private async replaceCompany(companyId: string, session: ClientSession, change: (previous: MongoRow) => MongoRow): Promise<MongoRow> {
+    const previous = await this.store.one("Company", { _id: companyId }, session);
+    assertMongo(previous, "COMPANY_NOT_FOUND");
+    const next = completeMongoRow("Company", change(previous));
     const document = encodeMongoRuntimeDocument("Company", next);
     const result = await this.store.collection("Company").replaceOne({ _id: companyId }, document, { session });
     assertMongo(result.matchedCount === 1, "COMPANY_DISAPPEARED");
     const audit = operationAuditRow("Company", previous, next);
     if (audit) await this.store.collection("ActivityChange").insertOne(encodeMongoRuntimeDocument("ActivityChange", audit), { session });
-    return toBusinessInfo(next);
+    return next;
   }
 }
