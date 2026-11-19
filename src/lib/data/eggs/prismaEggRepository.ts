@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { getPrismaClient } from "@/lib/data/prisma";
-import { isValidDate } from "./eggAvailability";
+import { blocksRental, isValidDate } from "./eggAvailability";
 import { EggDeviceDuplicateError, EggRentalConflictError, type EggRepository, type EggReturnResult } from "./eggRepository";
 import type {
   EggChargerType,
@@ -191,7 +191,8 @@ export class PrismaEggRepository implements EggRepository {
         orderBy: [{ startDate: "asc" }],
         select: RENTAL_SELECT
       });
-      if (conflicts.length > 0) throw new EggRentalConflictError(conflicts.map(mapRental));
+      const blocking = conflicts.map(mapRental).filter((row) => blocksRental(row, input.startDate, input.returnDueDate));
+      if (blocking.length > 0) throw new EggRentalConflictError(blocking);
       const row = await tx.eggRental.create({
         data: {
           eggDeviceId: input.eggDeviceId,
