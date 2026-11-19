@@ -77,4 +77,8 @@ export class PrismaCompanyBusinessInfoRepository implements CompanyBusinessInfoR
     });
     return toBusinessInfo(row);
   }
+
+  async setBusinessInfoUpdatedAt(companyId: string, updatedAt: Date): Promise<void> {
+    await getPrismaClient().company.update({ where: { id: companyId }, data: { businessInfoUpdatedAt: updatedAt }, select: { id: true } });
+  }
 }
