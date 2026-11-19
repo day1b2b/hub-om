@@ -101,7 +101,19 @@ export function getDeviceAvailability(
   return "available";
 }
 
-/** 요청 기간과 하루라도 겹치는 미반납 대여 목록. 비어 있으면 그 기간에 빌릴 수 있다. */
+/**
+ * 미반납 대여가 요청 기간을 막는지.
+ * 날짜가 하루라도 겹치면 막지만, 앞사람의 반납 예정일 = 뒷사람의 대여 시작일인 '당일 인계'는 허용한다
+ * (아침에 반납하고 저녁에 다음 사람이 빌려 가는 운영 방식). 같은 날 시작하는 대여끼리는 인계가 아니라 막는다.
+ */
+export function blocksRental(rental: Pick<EggRentalRecord, "startDate" | "returnDueDate">, start: string, end: string): boolean {
+  if (!(start <= rental.returnDueDate && end >= rental.startDate)) return false;
+  const handoffAfter = rental.returnDueDate === start && rental.startDate < start;
+  const handoffBefore = rental.startDate === end && start < end;
+  return !(handoffAfter || handoffBefore);
+}
+
+/** 요청 기간을 막는 미반납 대여 목록(당일 인계는 제외). 비어 있으면 그 기간에 빌릴 수 있다. */
 export function getConflicts(
   rentals: EggRentalRecord[],
   deviceId: string,
@@ -110,7 +122,7 @@ export function getConflicts(
 ): EggRentalRecord[] {
   if (!isValidDate(start) || !isValidDate(end) || start > end) return [];
   return openRentals(rentals, deviceId)
-    .filter((rental) => start <= rental.returnDueDate && end >= rental.startDate)
+    .filter((rental) => blocksRental(rental, start, end))
     .sort((a, b) => a.startDate.localeCompare(b.startDate));
 }
 
