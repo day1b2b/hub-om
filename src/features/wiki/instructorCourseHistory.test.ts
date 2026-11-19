@@ -23,6 +23,11 @@ function round(overrides: Partial<InstructorCourse>): InstructorCourse {
   };
 }
 
+test("groupInstructorCourses: companyId를 그룹에 실어 기업위키 링크에 쓴다", () => {
+  const [group] = groupInstructorCourses([round({ companyId: "c-1" })]);
+  assert.equal(group.companyId, "c-1");
+});
+
 test("groupInstructorCourses: 같은 과정의 회차를 한 줄로 묶고 최초 투입일·종합/강사 만족도 평균을 낸다", () => {
   const groups = groupInstructorCourses([
     round({ operationId: "op-3", courseRecordId: "c1", startDate: "2026-09-10", avgSatisfaction: "5.0", instructorSatisfaction: "4.8", om: "김OM" }),
