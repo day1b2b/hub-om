@@ -2,6 +2,7 @@
 
 import { useState, type ChangeEvent } from "react";
 import type { CompanyBusinessInfo, CompanyBusinessInfoPatch } from "@/lib/data/companyBusinessInfoTypes";
+import { formatDateValue } from "@/lib/dateRange";
 
 // 메모는 별도 카드(CompanyMemoEditor)에서 따로 저장한다 — 이 폼은 보내지 않아 건드리지 않는다.
 type Field = Exclude<keyof CompanyBusinessInfoPatch, "memo">;
@@ -34,6 +35,8 @@ export function CompanyBusinessInfoEditor({
   const [snapshot, setSnapshot] = useState<FormState>(form);
   const [editing, setEditing] = useState(false);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  // 이 폼은 항상 사업자등록증 항목을 보내므로 저장 성공 = 서버의 갱신 시각도 지금으로 바뀐다.
+  const [updatedAt, setUpdatedAt] = useState<string | null>(initial.businessInfoUpdatedAt);
 
   const set = (key: Field) => (event: ChangeEvent<HTMLInputElement>) =>
     setForm((current) => ({ ...current, [key]: event.target.value }));
@@ -62,6 +65,7 @@ export function CompanyBusinessInfoEditor({
         setSnapshot(form);
         setEditing(false);
         setStatus("saved");
+        setUpdatedAt(new Date().toISOString());
         onSaved?.();
       } else {
         setStatus("error");
@@ -85,6 +89,9 @@ export function CompanyBusinessInfoEditor({
       <button className="editor-edit" type="button" onClick={startEdit}>✏ 수정</button>
     </span>
   );
+
+  const updatedDate = updatedAt ? new Date(updatedAt) : null;
+  const updatedText = updatedDate && !Number.isNaN(updatedDate.getTime()) ? formatDateValue(updatedDate) : "기록 없음";
 
   const field = (label: string, key: Field, placeholder?: string) => (
     <div key={key}>
@@ -114,6 +121,7 @@ export function CompanyBusinessInfoEditor({
           {field("종목", "businessItem")}
           {/* 계산서 수신 이메일(1)/(2)는 화면에서 숨김 — 값은 form에 그대로 남아 저장 시 유지된다. */}
         </dl>
+        <p className="field-hint">정보 갱신일: {updatedText}</p>
         <p className="field-hint">
           계산서 발행 요청 시 이 정보로 구글폼을 미리 채워 줍니다. 값이 바뀌면 여기서 수정해 주세요.
         </p>
