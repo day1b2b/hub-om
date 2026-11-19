@@ -5,7 +5,7 @@ import { assertMongo, completeMongoRow, MongoOperationError, MongoOperationStore
 import { assertMongoReadStoreReady } from "../mongoReadStore";
 import { isValidDate } from "../eggs/eggAvailability";
 import { SupplyItemNotFoundError, SupplyRentalConflictError, type SupplyRepository } from "./supplyRepository";
-import type { SupplyCategory, SupplyItemSummary, SupplyRentalInput, SupplyRentalRecord } from "./supplyTypes";
+import type { SupplyCategory, SupplyItemInput, SupplyItemSummary, SupplyRentalInput, SupplyRentalRecord } from "./supplyTypes";
 
 /** 운영물품 저장소가 여는 컬렉션. 준비는 scripts/prepare-mongodb-egg-supply-collections.ts가 한다. */
 export const SUPPLY_REPOSITORY_MODELS = ["SupplyItem", "SupplyRental", "SupplyRentalItem"] as const;
@@ -77,6 +77,24 @@ export class MongoSupplyRepository implements SupplyRepository {
   async listItems(category: SupplyCategory) {
     return this.read(async session => (await this.store.scan("SupplyItem", { category, deletedAt: null }, session)).map(item)
       .sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label)));
+  }
+  async createItem(input: SupplyItemInput) {
+    return this.write(async session => {
+      const now = new Date();
+      const row = completeMongoRow("SupplyItem", { id: randomUUID(), ...input, createdAt: now, updatedAt: now });
+      await this.store.collection("SupplyItem").insertOne(encodeMongoRuntimeDocument("SupplyItem", row), { session });
+      return item(row);
+    });
+  }
+  async updateItem(itemId: string, input: SupplyItemInput) {
+    return this.write(async session => {
+      const before = await this.store.one("SupplyItem", { _id: itemId, category: input.category, deletedAt: null }, session);
+      if (!before) throw new SupplyItemNotFoundError();
+      const row = completeMongoRow("SupplyItem", { ...before, ...input, updatedAt: new Date() });
+      const result = await this.store.collection("SupplyItem").replaceOne({ _id: itemId }, encodeMongoRuntimeDocument("SupplyItem", row), { session });
+      assertMongo(result.matchedCount === 1, "SUPPLY_WRITE_FAILED");
+      return item(row);
+    });
   }
   async listRentals(category: SupplyCategory, options?: { fromDate?: string }) {
     const fromDate = options?.fromDate;

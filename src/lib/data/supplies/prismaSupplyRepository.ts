@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { getPrismaClient } from "@/lib/data/prisma";
 import { isValidDate } from "@/lib/data/eggs/eggAvailability";
 import { SupplyItemNotFoundError, SupplyRentalConflictError, type SupplyRepository } from "./supplyRepository";
-import type { SupplyCategory, SupplyItemSummary, SupplyRentalInput, SupplyRentalRecord } from "./supplyTypes";
+import type { SupplyCategory, SupplyItemInput, SupplyItemSummary, SupplyRentalInput, SupplyRentalRecord } from "./supplyTypes";
 
 /** @db.Date 컬럼은 UTC 자정으로 저장되므로 앞 10자리를 그대로 쓰면 KST 날짜와 같다 */
 function toDateColumn(value: string): Date {
@@ -66,6 +66,21 @@ export class PrismaSupplyRepository implements SupplyRepository {
       select: ITEM_SELECT
     });
     return rows.map((row) => ({ ...row, category: row.category as SupplyCategory }));
+  }
+
+  async createItem(input: SupplyItemInput): Promise<SupplyItemSummary> {
+    const row = await getPrismaClient().supplyItem.create({ data: { ...input }, select: ITEM_SELECT });
+    return { ...row, category: row.category as SupplyCategory };
+  }
+
+  async updateItem(itemId: string, input: SupplyItemInput): Promise<SupplyItemSummary> {
+    const { count } = await getPrismaClient().supplyItem.updateMany({
+      where: { id: itemId, category: input.category, deletedAt: null },
+      data: { label: input.label, components: input.components, storageLocation: input.storageLocation, sortOrder: input.sortOrder, note: input.note }
+    });
+    if (count !== 1) throw new SupplyItemNotFoundError();
+    const row = await getPrismaClient().supplyItem.findUniqueOrThrow({ where: { id: itemId }, select: ITEM_SELECT });
+    return { ...row, category: row.category as SupplyCategory };
   }
 
   async listRentals(category: SupplyCategory, options?: { fromDate?: string }): Promise<SupplyRentalRecord[]> {
