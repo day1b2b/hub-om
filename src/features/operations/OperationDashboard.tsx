@@ -559,6 +559,9 @@ export function OperationDashboard({
                       <td>
                         <Link className="course-link" href={`/operations/${group.linkOperationId}${teamQuery}`}>
                           <strong>{group.courseName}</strong>
+                          {summarizeTools(group.operations) ? (
+                            <span className="course-tools">{summarizeTools(group.operations)}</span>
+                          ) : null}
                         </Link>
                       </td>
                       <td>{group.operations.length}</td>
@@ -817,6 +820,11 @@ function summarizeText(
   if (values.length === 0) return emptyFallback;
   if (values.length === 1) return values[0];
   return "상이";
+}
+
+// 과정명 아래 보조 표시용. 회차마다 값이 달라도 "상이" 대신 쓰는 Tool을 모두 모아 보여준다.
+function summarizeTools(operations: OperationSession[]): string {
+  return unique(operations.flatMap((operation) => splitToolsValue(operation.tools ?? ""))).join(", ");
 }
 
 function resolveOnsiteOm(operation: OperationSession): string {
