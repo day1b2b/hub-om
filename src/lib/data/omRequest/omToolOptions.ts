@@ -18,7 +18,7 @@ function builtinToolSet(): Set<string> {
   return new Set([...TOOL_GROUPS.flatMap((group) => group.tools), ...TOOL_META_OPTIONS]);
 }
 
-function splitToolsValue(value: string): string[] {
+export function splitToolsValue(value: string): string[] {
   return value.split(",").map((item) => item.trim()).filter(Boolean);
 }
 

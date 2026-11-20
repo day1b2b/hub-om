@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { ExternalTableLink, isSafeHttpUrl } from "@/components/ExternalTableLink";
 import { SearchableSelect } from "@/components/SearchableSelect";
+import { splitToolsValue } from "@/lib/data/omRequest/omToolOptions";
 import { sumRevenueByCourseId } from "@/lib/data/operationCalculations";
 import type {
   EducationFormat,
@@ -19,6 +20,7 @@ import { courseLinkValue } from "./courseLinkSource";
 
 const 전체_파트 = "전체 파트";
 const 전체_OM = "전체 OM";
+const 전체_TOOL = "전체 사용 Tool";
 
 export interface OmRosterEntry {
   name: string;
@@ -147,6 +149,7 @@ export function OperationDashboard({
   const teamQuery = teamScopeSearchParam(teamScope);
   const [companyFilter, setCompanyFilter] = useState("전체 기업");
   const [formatFilter, setFormatFilter] = useState<"전체 교육형태" | EducationFormat>("전체 교육형태");
+  const [toolFilter, setToolFilter] = useState(전체_TOOL);
   // 기본값 = 로그인한 사람. 자기 과정부터 보는 게 대부분의 목적이라 기본을 그쪽으로 둔다.
   //
   // ★단, 본인 건이 하나도 없으면 전체로 둔다.
@@ -192,6 +195,8 @@ export function OperationDashboard({
       formats: ["전체 교육형태", ...unique(teamOperations.map((operation) => operation.educationFormat))] as Array<
         "전체 교육형태" | EducationFormat
       >,
+      // 사용 Tool은 "ChatGPT, Claude"처럼 한 칸에 여러 개라 하나씩 나눠 선택지로 만든다.
+      tools: [전체_TOOL, ...unique(teamOperations.flatMap((operation) => splitToolsValue(operation.tools ?? "")))],
       oms: [전체_OM, ...unique(omsInPart.map((om) => om.name))],
       parts: [전체_파트, ...unique(omRoster.map((om) => om.team ?? ""))]
     };
@@ -223,6 +228,7 @@ export function OperationDashboard({
       const rangeMatches = overlapsRange(operation, range.start, range.end);
       const companyMatches = companyFilter === "전체 기업" || operation.companyName === companyFilter;
       const formatMatches = formatFilter === "전체 교육형태" || operation.educationFormat === formatFilter;
+      const toolMatches = toolFilter === 전체_TOOL || splitToolsValue(operation.tools ?? "").includes(toolFilter);
       const omMatches = omFilter === 전체_OM || splitPersonNames(operation.om).includes(omFilter);
       const partMatches = partFilter === 전체_파트 || operationParts(operation, partByPersonKey).has(partFilter);
       const archiveMatches = !archiveOnly || operation.archiveStatus === "아카이빙필요";
@@ -232,12 +238,13 @@ export function OperationDashboard({
         rangeMatches &&
         companyMatches &&
         formatMatches &&
+        toolMatches &&
         omMatches &&
         partMatches &&
         archiveMatches
       );
     });
-  }, [archiveOnly, companyFilter, formatFilter, omFilter, partByPersonKey, partFilter, query, range, teamOperations]);
+  }, [archiveOnly, companyFilter, formatFilter, omFilter, partByPersonKey, partFilter, query, range, teamOperations, toolFilter]);
 
   const filteredOperations = baseFilteredOperations;
 
@@ -382,6 +389,7 @@ export function OperationDashboard({
   function resetFilters() {
     setCompanyFilter("전체 기업");
     setFormatFilter("전체 교육형태");
+    setToolFilter(전체_TOOL);
     setOmFilter(전체_OM);
     setPartFilter(전체_파트);
     setArchiveOnly(false);
@@ -472,6 +480,11 @@ export function OperationDashboard({
           >
             {filterOptions.formats.map((format) => (
               <option key={format}>{format}</option>
+            ))}
+          </select>
+          <select aria-label="사용 Tool" value={toolFilter} onChange={(event) => setToolFilter(event.target.value)}>
+            {filterOptions.tools.map((tool) => (
+              <option key={tool}>{tool}</option>
             ))}
           </select>
           <select value={partFilter} onChange={(event) => handlePartFilterChange(event.target.value)}>
