@@ -173,7 +173,7 @@ export function OmRequestTable({ initialRequests }: { initialRequests: OmRequest
             onChange={(e) => changeQuery(e.target.value)}
           />
           {query && (
-            <button className="om-search-clear" onClick={() => changeQuery("")}>✕</button>
+            <button className="om-search-clear" onClick={() => changeQuery("")}>×</button>
           )}
         </div>
       </div>

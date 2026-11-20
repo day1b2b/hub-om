@@ -86,7 +86,7 @@ export function NotionLinkEditor({ name, notionNames, isNotionEntry, linkedAlias
               onClick={() => unlink(alias)}
               type="button"
             >
-              ✕
+              ×
             </button>
           </span>
         ))}
