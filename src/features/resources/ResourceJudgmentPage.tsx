@@ -68,6 +68,8 @@ interface CalendarItem {
   eventKind?: CalendarResourceEvent["eventKind"];
   href?: string;
   key: string;
+  // 현장투입 N으로 확정된 회차. 미확인(UNKNOWN)은 "없음"으로 단정하지 않는다.
+  noOnsite?: boolean;
   onsiteOwnerNames?: string[];
   ownerNames: string[];
   startDate: Date;
@@ -313,7 +315,8 @@ function CalendarEventCard({ segment }: { segment: CalendarEventSegment }) {
     calendarSegmentPositionClass(segment),
     segment.item.type === "source" ? "source-calendar-event" : "",
     segment.item.type === "request" ? "request-calendar-event" : "",
-    segment.item.eventKind === "absence" ? "absence-calendar-event" : ""
+    segment.item.eventKind === "absence" ? "absence-calendar-event" : "",
+    segment.item.noOnsite ? "no-onsite-calendar-event" : ""
   ].filter(Boolean).join(" ");
   const style = { gridColumn: `${segment.startColumn} / span ${segment.span}`, gridRow: segment.lane + 1 };
   const content = (
@@ -325,6 +328,7 @@ function CalendarEventCard({ segment }: { segment: CalendarEventSegment }) {
         {(segment.item.onsiteOwnerNames ?? []).map((name) => (
           <Tag key={`onsite-${name}`} tone={ownerTone(name)}>{`${name}·현장`}</Tag>
         ))}
+        {segment.item.noOnsite ? <Tag tone="gray">현장 없음</Tag> : null}
         {segment.item.type === "source" ? (
           <Tag tone={segment.item.eventKind === "absence" ? "pink" : "gray"}>{sourceEventLabel(segment.item)}</Tag>
         ) : null}
@@ -470,6 +474,8 @@ function operationToCalendarItems(
   const onsiteOwnerNames = getCalendarOperationOwners(operation.onsiteOm, ownerMap).filter(
     (name) => !ownerNames.includes(name)
   );
+  // 현장투입이 N인데 현장운영 담당자가 적혀 있으면 값이 엇갈린 것이라 "현장 없음"으로 단정하지 않는다.
+  const noOnsite = operation.onsiteRequired === "N" && !operation.onsiteOm.trim();
 
   return resolveOperationCalendarRuns(operation).flatMap((run) => {
     const startDate = parseDate(run.start);
@@ -482,6 +488,7 @@ function operationToCalendarItems(
       href: `/operations/${operation.operationId}${teamQuery}`,
       // 한 회차가 막대 여러 개가 되므로 구간 시작일까지 키에 넣는다(레인 배치·확장 상태가 섞이지 않게).
       key: `operation-${operation.operationId}-${run.start}`,
+      noOnsite: noOnsite || undefined,
       onsiteOwnerNames: onsiteOwnerNames.length > 0 ? onsiteOwnerNames : undefined,
       ownerNames,
       startDate,
