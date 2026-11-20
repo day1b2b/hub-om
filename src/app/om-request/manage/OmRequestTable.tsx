@@ -193,6 +193,7 @@ export function OmRequestTable({ initialRequests }: { initialRequests: OmRequest
                   <th>관리자</th>
                   <th>기업명</th>
                   <th>과정명</th>
+                  <th>사용 Tool</th>
                   <th>교육형태</th>
                   <th>총 회차</th>
                   {th("시작일", "start")}
@@ -218,6 +219,9 @@ export function OmRequestTable({ initialRequests }: { initialRequests: OmRequest
                       <td>{getManager(r.team)}</td>
                       <td className="td-left">{r.company}</td>
                       <td className="td-course">{r.courseName}</td>
+                      <td className="td-tools" title={r.tools || undefined}>
+                        {r.tools || <span className="td-muted">-</span>}
+                      </td>
                       <td>{r.trainingType}</td>
                       <td>{r.totalSessions}회</td>
                       <td>{start}</td>
