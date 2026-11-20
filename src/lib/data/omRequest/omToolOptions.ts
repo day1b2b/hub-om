@@ -18,6 +18,11 @@ function builtinToolSet(): Set<string> {
   return new Set([...TOOL_GROUPS.flatMap((group) => group.tools), ...TOOL_META_OPTIONS]);
 }
 
+// 업무 요청 폼의 기본 선택지(체크박스) 도구 목록. "기타 직접입력" 값은 들어 있지 않다.
+export function listBuiltinTools(): string[] {
+  return Array.from(builtinToolSet());
+}
+
 export function splitToolsValue(value: string): string[] {
   return value.split(",").map((item) => item.trim()).filter(Boolean);
 }
