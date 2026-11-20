@@ -2038,6 +2038,17 @@ select {
   white-space: nowrap;
 }
 
+.operations-table .course-link .course-tools {
+  color: var(--muted);
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .table-link-icon {
   align-items: center;
   border: 1px solid transparent;
