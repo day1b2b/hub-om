@@ -68,7 +68,7 @@ interface CalendarItem {
   eventKind?: CalendarResourceEvent["eventKind"];
   href?: string;
   key: string;
-  // 현장투입 N으로 확정된 회차. 미확인(UNKNOWN)은 "없음"으로 단정하지 않는다.
+  // 현장투입 N으로 확정된 회차. 미확인(UNKNOWN)은 "미투입"으로 단정하지 않는다.
   noOnsite?: boolean;
   onsiteOwnerNames?: string[];
   ownerNames: string[];
@@ -327,7 +327,7 @@ function CalendarEventCard({ segment }: { segment: CalendarEventSegment }) {
         {(segment.item.onsiteOwnerNames ?? []).map((name) => (
           <Tag key={`onsite-${name}`} tone={ownerTone(name)}>{`${name}·현장`}</Tag>
         ))}
-        {segment.item.noOnsite ? <Tag tone="gray">현장 없음</Tag> : null}
+        {segment.item.noOnsite ? <Tag tone="gray">현장 미투입</Tag> : null}
         {segment.item.type === "source" ? (
           <Tag tone={segment.item.eventKind === "absence" ? "pink" : "gray"}>{sourceEventLabel(segment.item)}</Tag>
         ) : null}
@@ -473,7 +473,7 @@ function operationToCalendarItems(
   const onsiteOwnerNames = getCalendarOperationOwners(operation.onsiteOm, ownerMap).filter(
     (name) => !ownerNames.includes(name)
   );
-  // 현장투입이 N인데 현장운영 담당자가 적혀 있으면 값이 엇갈린 것이라 "현장 없음"으로 단정하지 않는다.
+  // 현장투입이 N인데 현장운영 담당자가 적혀 있으면 값이 엇갈린 것이라 "현장 미투입"으로 단정하지 않는다.
   const noOnsite = operation.onsiteRequired === "N" && !operation.onsiteOm.trim();
 
   return resolveOperationCalendarRuns(operation).flatMap((run) => {
