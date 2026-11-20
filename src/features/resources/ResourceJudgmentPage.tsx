@@ -315,8 +315,7 @@ function CalendarEventCard({ segment }: { segment: CalendarEventSegment }) {
     calendarSegmentPositionClass(segment),
     segment.item.type === "source" ? "source-calendar-event" : "",
     segment.item.type === "request" ? "request-calendar-event" : "",
-    segment.item.eventKind === "absence" ? "absence-calendar-event" : "",
-    segment.item.noOnsite ? "no-onsite-calendar-event" : ""
+    segment.item.eventKind === "absence" ? "absence-calendar-event" : ""
   ].filter(Boolean).join(" ");
   const style = { gridColumn: `${segment.startColumn} / span ${segment.span}`, gridRow: segment.lane + 1 };
   const content = (
