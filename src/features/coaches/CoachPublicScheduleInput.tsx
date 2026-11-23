@@ -191,12 +191,37 @@ export function CoachPublicScheduleInput() {
     return { start: `${yearMonth}-01`, end: `${yearMonth}-${String(lastDay).padStart(2, "0")}` };
   }, [yearMonth]);
 
+  const confirmedByDate = useMemo(() => new Set(confirmed.map((item) => item.date)), [confirmed]);
+  // 확정일은 '날짜 통째 제외' — 가용 표시/입력 모델에서 빼, 달력·하단 목록 어디서도 가용을 넣거나 고칠 수 없게 한다.
+  // (기존에 넣어둔 slotKeys는 지우지 않아 저장 시 보존되고, 투입이 취소돼 확정이 풀리면 다시 보인다.)
   const availableByDate = useMemo(() => {
     const dates = new Set<string>();
-    for (const key of slotKeys) dates.add(key.split("|")[0]);
+    for (const key of slotKeys) {
+      const date = key.split("|")[0];
+      if (!confirmedByDate.has(date)) dates.add(date);
+    }
     return dates;
-  }, [slotKeys]);
-  const confirmedByDate = useMemo(() => new Set(confirmed.map((item) => item.date)), [confirmed]);
+  }, [slotKeys, confirmedByDate]);
+
+  // 확정일 칸에 보여 줄 과정명(짧게 자름). 같은 날 2건 이상이면 "첫 과정 +N", 툴팁엔 전체.
+  const confirmedCourseByDate = useMemo(() => {
+    const namesByDate = new Map<string, string[]>();
+    for (const item of confirmed) {
+      const name = cleanCourseName(item.courseName).trim();
+      if (!name) continue; // 빈 과정명은 제외(빈 span·앞공백 툴팁 방지)
+      const list = namesByDate.get(item.date) ?? [];
+      if (!list.includes(name)) list.push(name);
+      namesByDate.set(item.date, list);
+    }
+    const result = new Map<string, { label: string; title: string }>();
+    for (const [date, names] of namesByDate) {
+      result.set(date, {
+        label: names.length > 1 ? `${names[0]} +${names.length - 1}` : names[0],
+        title: names.join(", ")
+      });
+    }
+    return result;
+  }, [confirmed]);
 
   // 내 확정 일정: 오늘 이후만, 과정별로 묶어 기간·시간으로 보여 준다(지난 건 숨김).
   const upcomingConfirmed = useMemo(() => {
@@ -242,16 +267,20 @@ export function CoachPublicScheduleInput() {
       byDate.set(date, set);
     }
     const dates = new Set<string>([...byDate.keys(), ...savedDates]);
-    return [...dates].sort().map((date) => {
-      const slots = byDate.get(date) ?? new Set<string>();
-      const morning = slotsInRange("08:00", "12:00").some((slot) => slots.has(slot));
-      const afternoon = slotsInRange("12:00", "18:00").some((slot) => slots.has(slot));
-      const evening = slotsInRange("18:00", "22:00").some((slot) => slots.has(slot));
-      return { date, morning, afternoon, evening, allDay: morning && afternoon && evening };
-    });
-  }, [slotKeys, savedDates]);
+    return [...dates]
+      .filter((date) => !confirmedByDate.has(date)) // 확정일은 가용 목록에서 제외(잠금 — 하단에서도 못 고침)
+      .sort()
+      .map((date) => {
+        const slots = byDate.get(date) ?? new Set<string>();
+        const morning = slotsInRange("08:00", "12:00").some((slot) => slots.has(slot));
+        const afternoon = slotsInRange("12:00", "18:00").some((slot) => slots.has(slot));
+        const evening = slotsInRange("18:00", "22:00").some((slot) => slots.has(slot));
+        return { date, morning, afternoon, evening, allDay: morning && afternoon && evening };
+      });
+  }, [slotKeys, savedDates, confirmedByDate]);
 
   function toggleDate(date: string) {
+    if (confirmedByDate.has(date)) return; // 확정일은 잠금(선택 불가)
     setSelectedDates((previous) => {
       const next = new Set(previous);
       if (next.has(date)) next.delete(date);
@@ -268,6 +297,7 @@ export function CoachPublicScheduleInput() {
   // 지나간 경로가 아니라 시작~현재의 '연속 날짜 범위'를 계산한다. 시작 칸이 이미 선택돼 있으면 그 범위를
   // 해제, 비어 있으면 선택(앵커 기준 모드) — 선택도 드래그, 취소도 드래그.
   function startDateDrag(date: string) {
+    if (confirmedByDate.has(date)) return; // 확정일에선 드래그 시작 안 함(잠금)
     dragAnchor.current = { date, base: new Set(selectedDates), moved: false, mode: selectedDates.has(date) ? "remove" : "add" };
   }
 
@@ -278,7 +308,7 @@ export function CoachPublicScheduleInput() {
     const date = target instanceof HTMLElement ? target.dataset.date : undefined;
     if (!date || date === anchor.date) return;
     anchor.moved = true;
-    const range = datesBetween(anchor.date, date);
+    const range = datesBetween(anchor.date, date).filter((rangeDate) => !confirmedByDate.has(rangeDate)); // 확정일은 범위에서 제외
     if (anchor.mode === "add") {
       setSelectedDates(new Set([...anchor.base, ...range]));
     } else {
@@ -305,7 +335,7 @@ export function CoachPublicScheduleInput() {
     }
     setSelectedDates((previous) => {
       const next = new Set(previous);
-      for (const date of dates) next.add(date);
+      for (const date of dates) if (!confirmedByDate.has(date)) next.add(date); // 확정일 제외
       return next;
     });
   }
@@ -527,14 +557,18 @@ export function CoachPublicScheduleInput() {
               {calendarCells(yearMonth).map((date, index) => {
                 if (!date) return <span aria-hidden="true" key={`empty-${index}`} />;
                 const day = Number(date.slice(-2));
+                const locked = confirmedByDate.has(date);
+                const course = confirmedCourseByDate.get(date);
                 const className = [
                   "coach-public-day",
                   selectedDates.has(date) ? "selected" : "",
                   availableByDate.has(date) ? "available" : "",
-                  confirmedByDate.has(date) ? "confirmed" : ""
+                  locked ? "confirmed" : ""
                 ].filter(Boolean).join(" ");
                 return (
                   <button
+                    aria-disabled={locked || undefined}
+                    aria-label={locked ? `${day}일 확정${course ? `: ${course.title}` : ""} · 선택 불가` : undefined}
                     className={className}
                     data-date={date}
                     key={date}
@@ -545,9 +579,20 @@ export function CoachPublicScheduleInput() {
                       }
                     }}
                     onPointerDown={() => startDateDrag(date)}
+                    title={locked && course ? `${course.title} · 확정 · 선택 불가` : undefined}
                     type="button"
                   >
-                    {day}
+                    {locked ? (
+                      <span className="coach-public-day-confirmed">
+                        <span className="coach-public-day-top">
+                          <span>{day}</span>
+                          <span aria-hidden="true">🔒</span>
+                        </span>
+                        {course ? <span className="coach-public-day-course">{course.label}</span> : null}
+                      </span>
+                    ) : (
+                      day
+                    )}
                   </button>
                 );
               })}
