@@ -3979,6 +3979,39 @@ td span {
 .coach-public-day.confirmed {
   background: #dcebff;
   color: #1976d2;
+  cursor: not-allowed;
+  display: flex;
+  overflow: hidden;
+  padding: 3px 5px;
+}
+
+.coach-public-day-confirmed {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+  width: 100%;
+}
+
+.coach-public-day-top {
+  align-items: center;
+  display: flex;
+  font-size: 12px;
+  justify-content: space-between;
+}
+
+.coach-public-day-top span:last-child {
+  font-size: 10px;
+}
+
+.coach-public-day-course {
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .coach-public-day.selected {
