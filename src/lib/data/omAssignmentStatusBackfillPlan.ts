@@ -22,7 +22,10 @@ export interface OmStatusBackfillInput {
 export function omStatusBackfillValue(input: OmStatusBackfillInput): OmStatusBackfillValue {
   const archive = deriveArchiveStatus(toDateString(input.endDate), {
     courseId: input.courseId ?? "",
-    lectureManagementNote: input.lectureManagementNote ?? "",
+    // 백필은 저장 컬럼(진행상태) 보정용이고 입력에 과정 강의관리가 없어, 기존대로 '세션 강의관리'로
+    // 판정한다(라이브 판정은 과정 레벨). 세션 노트를 note 슬롯에 넣어 종전 동작을 보존한다.
+    courseLectureManagementLink: "",
+    courseLectureManagementNote: input.lectureManagementNote ?? "",
     avgSatisfaction: input.avgSatisfaction ?? "",
     hasSatisfactionSurvey: SATISFACTION_SURVEY_STATUS[input.hasSatisfactionSurvey],
     hasResultReport: RESULT_REPORT_STATUS[input.hasResultReport],
