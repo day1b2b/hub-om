@@ -17,7 +17,8 @@ import {
 function completeInput(overrides: Partial<ArchiveCompletionInput> = {}): ArchiveCompletionInput {
   return {
     courseId: "265483",
-    lectureManagementNote: "강의관리 시트 정리 완료",
+    courseLectureManagementLink: "",
+    courseLectureManagementNote: "강의관리 시트 정리 완료",
     avgSatisfaction: "4.7",
     hasSatisfactionSurvey: "확인필요",
     hasResultReport: "무",
@@ -32,7 +33,18 @@ test("네 조건을 모두 채우면 아카이빙 완료다", () => {
 
 test("코스ID나 강의관리가 비면 완료가 아니다", () => {
   assert.equal(isArchiveComplete(completeInput({ courseId: "  " })), false);
-  assert.equal(isArchiveComplete(completeInput({ lectureManagementNote: "" })), false);
+  // 강의관리는 과정 레벨 링크·노트 둘 다 비어야 미완료다.
+  assert.equal(
+    isArchiveComplete(completeInput({ courseLectureManagementLink: "", courseLectureManagementNote: "" })),
+    false
+  );
+});
+
+test("강의관리는 과정 레벨 링크만 있어도 충족된다(노트 비어도)", () => {
+  assert.equal(
+    isArchiveComplete(completeInput({ courseLectureManagementNote: "", courseLectureManagementLink: "https://docs" })),
+    true
+  );
 });
 
 test("만족도 조사를 하는 회차는 만족도가 비면 완료가 아니다", () => {
@@ -51,7 +63,7 @@ test("조사하지 않는 회차라도 나머지 조건은 그대로 요구한�
   const input = completeInput({ avgSatisfaction: "", hasSatisfactionSurvey: "불필요" });
 
   assert.equal(isArchiveComplete({ ...input, courseId: "" }), false);
-  assert.equal(isArchiveComplete({ ...input, lectureManagementNote: "" }), false);
+  assert.equal(isArchiveComplete({ ...input, courseLectureManagementLink: "", courseLectureManagementNote: "" }), false);
   assert.equal(
     isArchiveComplete({ ...input, hasResultReport: "유", resultReportLink: "" }),
     false
@@ -85,7 +97,8 @@ test("종료일이 지난 뒤에는 조건 충족 여부로 갈린다", () => {
 test("아카이빙에서 빠진 항목을 이름으로 알려준다", () => {
   const complete = {
     courseId: "C-2608-001",
-    lectureManagementNote: "시트 링크",
+    courseLectureManagementLink: "",
+    courseLectureManagementNote: "시트 링크",
     avgSatisfaction: "4.5",
     hasSatisfactionSurvey: "확인필요" as const,
     hasResultReport: "유" as const,
@@ -94,7 +107,7 @@ test("아카이빙에서 빠진 항목을 이름으로 알려준다", () => {
   assert.deepEqual(missingArchiveItems(complete), []);
 
   assert.deepEqual(missingArchiveItems({ ...complete, courseId: "  " }), ["코스ID"]);
-  assert.deepEqual(missingArchiveItems({ ...complete, lectureManagementNote: "" }), ["강의관리"]);
+  assert.deepEqual(missingArchiveItems({ ...complete, courseLectureManagementNote: "" }), ["강의관리"]);
   assert.deepEqual(missingArchiveItems({ ...complete, avgSatisfaction: "" }), ["만족도"]);
   assert.deepEqual(missingArchiveItems({ ...complete, resultReportLink: "" }), ["결과보고서 링크"]);
 });
@@ -103,7 +116,8 @@ test("조사하지 않는 회차는 만족도를 요구하지 않는다", () => 
   // 요구하면 나머지를 다 채워도 영원히 아카이빙필요에 남는다(isArchiveComplete와 같은 규칙).
   const base = {
     courseId: "C-1",
-    lectureManagementNote: "시트",
+    courseLectureManagementLink: "",
+    courseLectureManagementNote: "시트",
     avgSatisfaction: "",
     hasSatisfactionSurvey: "불필요" as const,
     hasResultReport: "무" as const,
@@ -115,7 +129,8 @@ test("조사하지 않는 회차는 만족도를 요구하지 않는다", () => 
 test("결과보고서가 유가 아니면 링크를 요구하지 않는다", () => {
   const base = {
     courseId: "C-1",
-    lectureManagementNote: "시트",
+    courseLectureManagementLink: "",
+    courseLectureManagementNote: "시트",
     avgSatisfaction: "4.0",
     hasSatisfactionSurvey: "확인필요" as const,
     hasResultReport: "불필요" as const,
@@ -127,7 +142,8 @@ test("결과보고서가 유가 아니면 링크를 요구하지 않는다", () 
 test("여러 개가 빠지면 모두 알려준다", () => {
   const empty = {
     courseId: "",
-    lectureManagementNote: "",
+    courseLectureManagementLink: "",
+    courseLectureManagementNote: "",
     avgSatisfaction: "",
     hasSatisfactionSurvey: "확인필요" as const,
     hasResultReport: "유" as const,

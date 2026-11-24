@@ -565,9 +565,14 @@ function requiredSetupText(request: OmRequest): string {
   return setups.length > 0 ? `세팅: ${setups.join("·")}` : "사전 세팅 준비";
 }
 
-/** 아카이빙이 남았는지. 진행상태와 archiveStatus 두 곳에 나타날 수 있다. */
+/**
+ * 아카이빙이 남았는지 = 매 읽기 재계산되는 archiveStatus 기준(운영현황 목록 '아카이빙 미완료' 필터와 같은 기준).
+ * operationStatus(저장 컬럼)는 재계산되지 않아 archiveStatus와 어긋날 수 있어 쓰지 않는다. 특히 과정 레벨
+ * 강의관리는 찼지만 저장 operationStatus가 '아카이빙필요'로 남은 경우, 둘을 OR로 묶으면 채울 항목이 없는
+ * '빈 아카이빙 할일'이 떠 목록 필터와도 어긋난다.
+ */
 function needsArchiveWork(operation: OperationSession): boolean {
-  return operation.archiveStatus === "아카이빙필요" || operation.operationStatus === "아카이빙필요";
+  return operation.archiveStatus === "아카이빙필요";
 }
 
 // 결과 단계에서 남은 마감 업무.
@@ -579,7 +584,8 @@ function resultTaskText(operation: OperationSession): string {
     // 판정과 같은 기준(isArchiveComplete)에서 빠진 항목 이름을 뽑아 붙인다.
     const missing = missingArchiveItems({
       courseId: operation.courseId,
-      lectureManagementNote: operation.lectureManagementNote,
+      courseLectureManagementLink: operation.courseLectureManagementLink ?? "",
+      courseLectureManagementNote: operation.courseLectureManagementNote ?? "",
       avgSatisfaction: operation.avgSatisfaction,
       hasSatisfactionSurvey: operation.hasSatisfactionSurvey,
       hasResultReport: operation.hasResultReport,
