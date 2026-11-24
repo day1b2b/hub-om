@@ -54,6 +54,7 @@ export function InstructorWiki({
           searchPlaceholder="이름 · 전문분야 · 기업 · 과정 검색"
           secondaryLabel="기업"
           title="강사 위키"
+          defaultWithHistory
         />
       </section>
     </main>
