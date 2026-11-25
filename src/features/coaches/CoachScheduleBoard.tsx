@@ -70,9 +70,12 @@ export function CoachScheduleBoard({ currentUserEmail, dashboard, holidays, load
 
   const totalAvailableDays = Object.values(monthCounts).filter((count) => count > 0).length;
 
-  // 단일 날짜 코치 목록
+  // 단일 날짜 코치 목록. 배정된 코치는 시간대 필터와 무관하게 '배정됨(예약 불가)'으로 함께 보여 주되,
+  // 남은 가용이 없는(종일 배정) 코치는 목록 맨 아래로 내린다.
   const singleDateCoaches = useMemo(() => {
-    return (singleDay?.coaches ?? []).filter((coach) => coachMatchesTimeFilter(coach, timeFilter));
+    return (singleDay?.coaches ?? [])
+      .filter((coach) => coachMatchesTimeFilter(coach, timeFilter) || coach.assigned)
+      .sort((a, b) => Number(a.schedules.length === 0) - Number(b.schedules.length === 0));
   }, [singleDay?.coaches, timeFilter]);
 
   // 다중 날짜: 선택 날짜 중 데이터를 불러온 적 있는 날짜(다른 달로 이동해 조회한 날짜 포함)
@@ -208,7 +211,7 @@ export function CoachScheduleBoard({ currentUserEmail, dashboard, holidays, load
       <section className="content coach-schedule-workspace" id="coach-schedule">
         <header className="coach-workspace-header">
           <div>
-            <h1>코치 일정</h1>
+            <h1>코치 섭외</h1>
             <span className="coach-plan-badge">coach-db</span>
           </div>
         </header>
@@ -333,7 +336,7 @@ export function CoachScheduleBoard({ currentUserEmail, dashboard, holidays, load
                         <small>
                           <b>{coach.workType || "근무유형 없음"}</b>
                           {coach.fields.length > 0 && <> · {coach.fields.slice(0, 3).join(", ")}</>}
-                          <> · {formatScheduleLabel(coach.schedules)}</>
+                          <> · {scheduleSummary(coach)}</>
                           <> · {latestEngagementLabel(coach)}</>
                         </small>
                       </span>
@@ -344,7 +347,7 @@ export function CoachScheduleBoard({ currentUserEmail, dashboard, holidays, load
                         const isBusy = reservingKey === `${coach.id}__${date}`;
                         const dayLabel = date.slice(5).replace("-", "/");
                         return reservation ? (
-                          <span className="coach-doc-reserve-chip reserved" key={date} title={reservation.reservedByEmail}>
+                          <span className="coach-doc-reserve-chip reserved" key={date}>
                             {dayLabel} · {reservation.reservedByName}
                             {reservation.reservedByEmail === currentUserEmail && (
                               <button
@@ -397,14 +400,16 @@ export function CoachScheduleBoard({ currentUserEmail, dashboard, holidays, load
                           <small>
                             <b>{coach.workType || "근무유형 없음"}</b>
                             {coach.fields.length > 0 && <> · {coach.fields.slice(0, 3).join(", ")}</>}
-                            <> · {formatScheduleLabel(coach.schedules)}</>
+                            <> · {scheduleSummary(coach)}</>
                             <> · {latestEngagementLabel(coach)}</>
                           </small>
                         </span>
                       </Link>
                       <span className="coach-doc-reserve coach-doc-reserve-chips">
-                        {reservation ? (
-                          <span className="coach-doc-reserve-chip reserved" title={reservation.reservedByEmail}>
+                        {coach.schedules.length === 0 && coach.assigned ? (
+                          <span className="coach-doc-reserve-chip blocked" title="운영현황에 배정된 일정">배정됨 · 예약 불가</span>
+                        ) : reservation ? (
+                          <span className="coach-doc-reserve-chip reserved">
                             {singleDate!.slice(5).replace("-", "/")} · {reservation.reservedByName}
                             {reservation.reservedByEmail === currentUserEmail && (
                               <button
@@ -479,6 +484,13 @@ function coachMatchesTimeFilter(coach: CoachScheduleDashboardCoach, filter: Time
 function toMinutes(time: string): number {
   const [hour = "0", minute = "0"] = time.split(":");
   return Number(hour) * 60 + Number(minute);
+}
+
+// 목록 요약줄의 일정 문구. 종일 배정이면 '배정됨', 일부만 배정이면 남은 가용 + '일부 배정'을 덧붙인다.
+function scheduleSummary(coach: CoachScheduleDashboardCoach): string {
+  if (coach.schedules.length === 0 && coach.assigned) return "배정됨";
+  const base = formatScheduleLabel(coach.schedules);
+  return coach.assigned ? `${base} · 일부 배정` : base;
 }
 
 function formatScheduleLabel(schedules: CoachScheduleDashboardCoach["schedules"]): string {

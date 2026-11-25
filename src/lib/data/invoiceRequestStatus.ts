@@ -8,9 +8,15 @@ import { normalizeCourseId } from "./operationCalculations";
 // 시트가 회사 도메인 안에서만 공유돼 있어 서버의 구글 계정(외부 gmail)으로는 못 읽는다. 그래서 회사 계정으로
 // 배포한 Apps Script 웹앱(INVOICE_REQUEST_STATUS_URL)이 있으면 그쪽에서 다섯 열만 받아 온다 — 웹앱 코드는
 // docs/operations/invoice-request-status-webapp.gs. 웹앱 URL·토큰도 env로만 받는다. 없으면 기존처럼 시트를 직접 읽는다.
+//
+// 웹앱 응답이 13초쯤 걸려(시트 약 6천 행) 화면이 그걸 기다리지 않게 한다: 마지막으로 읽은 값을 바로 돌려주고,
+// 10분이 지났으면 뒤에서 한 번 다시 읽어 둔다(다음 열람부터 반영). 갱신이 실패해도 마지막 정상 값을 유지한다.
+// 서버가 뜰 때(src/instrumentation.ts) 한 번 미리 읽어 두고, 동시에 여러 번 불려도 읽기는 한 번만 돈다.
 const DEFAULT_TAB = "설문지 응답 시트(전사_공통)";
-const CACHE_TTL_MS = 5 * 60 * 1000;
-const WEBAPP_TIMEOUT_MS = 20 * 1000;
+const REFRESH_AFTER_MS = 10 * 60 * 1000;
+const RETRY_AFTER_MS = 60 * 1000;
+// 화면이 기다리지 않으니 시트가 커져도 끊기지 않게 넉넉히 둔다.
+const WEBAPP_TIMEOUT_MS = 60 * 1000;
 
 export interface InvoiceRequestStatus {
   /** 가장 최근 요청의 타임스탬프 원문(시트 표기 그대로, 예: "2025. 1. 9 오전 9:28:35"). */
@@ -24,11 +30,30 @@ export interface InvoiceRequestStatus {
   paidAt: string;
 }
 
-export type InvoiceRequestStatusResult =
-  | { ok: true; byCourseId: Map<string, InvoiceRequestStatus> }
-  | { ok: false; reason: "not_configured" | "read_failed" | "unexpected_header" };
+type InvoiceRequestStatusFailure = { ok: false; reason: "not_configured" | "read_failed" | "unexpected_header" };
+type ReadResult = { ok: true; byCourseId: Map<string, InvoiceRequestStatus> } | InvoiceRequestStatusFailure;
 
-let cache: { expiresAt: number; result: InvoiceRequestStatusResult } | null = null;
+export type InvoiceRequestStatusResult =
+  /** syncedAt: 이 값을 시트에서 읽은 시각(ISO). */
+  | { ok: true; byCourseId: Map<string, InvoiceRequestStatus>; syncedAt: string }
+  | InvoiceRequestStatusFailure;
+
+interface StatusCache {
+  lastGood: Extract<InvoiceRequestStatusResult, { ok: true }> | null;
+  lastFailure: InvoiceRequestStatusFailure | null;
+  /** 이 시각이 지나면 다음 조회 때 뒤에서 다시 읽는다. 0이면 아직 한 번도 안 읽음. */
+  nextRefreshAt: number;
+  inFlight: Promise<void> | null;
+}
+
+// instrumentation과 라우트는 서로 다른 번들이라 모듈 변수로는 값이 공유되지 않는다 — 프로세스 전역에 둔다.
+const CACHE_KEY = Symbol.for("hub-om.invoiceRequestStatusCache");
+
+function statusCache(): StatusCache {
+  const holder = globalThis as typeof globalThis & { [CACHE_KEY]?: StatusCache };
+  holder[CACHE_KEY] ??= { lastGood: null, lastFailure: null, nextRefreshAt: 0, inFlight: null };
+  return holder[CACHE_KEY];
+}
 
 export function readInvoiceRequestSheetConfig(): { spreadsheetId: string; tab: string } {
   return {
@@ -37,20 +62,54 @@ export function readInvoiceRequestSheetConfig(): { spreadsheetId: string; tab: s
   };
 }
 
-/** 응답 시트를 코스ID별 요청 현황으로 바꾼다. 실패해도 예외를 던지지 않는다 — 링크 화면은 계속 떠야 한다. */
-export async function loadInvoiceRequestStatuses(now = Date.now()): Promise<InvoiceRequestStatusResult> {
-  if (cache && cache.expiresAt > now) return cache.result;
+/**
+ * 응답 시트를 코스ID별 요청 현황으로 바꾼다. 실패해도 예외를 던지지 않는다 — 링크 화면은 계속 떠야 한다.
+ * 한 번도 안 읽었거나 fresh(사용자가 새로고침·폼 제출 후 확인)일 때만 읽기를 기다리고, 그 외엔 갖고 있는 값을 바로 준다.
+ */
+export async function loadInvoiceRequestStatuses(
+  { fresh = false, now = Date.now() }: { fresh?: boolean; now?: number } = {}
+): Promise<InvoiceRequestStatusResult> {
+  const cache = statusCache();
+  if (fresh || cache.nextRefreshAt === 0) {
+    await refreshStatuses();
+  } else if (now >= cache.nextRefreshAt) {
+    void refreshStatuses();
+  }
+  return cache.lastGood ?? cache.lastFailure ?? { ok: false, reason: "read_failed" };
+}
 
-  const result = await readStatuses();
-  // 설정 누락은 env가 바뀌기 전까지 그대로라 캐시해도 되고, 읽기 실패도 매 상세 열기마다
-  // 구글을 다시 두드리지 않도록 같은 시간만큼 캐시한다.
-  cache = { expiresAt: now + CACHE_TTL_MS, result };
-  return result;
+/** 서버 시작 때 미리 읽어 둔다(기다리지 않는다). 설정이 없으면 아무것도 안 한다. */
+export function warmInvoiceRequestStatuses(): void {
+  if (!readInvoiceRequestWebAppConfig().url && !readInvoiceRequestSheetConfig().spreadsheetId) return;
+  void refreshStatuses();
+}
+
+function refreshStatuses(): Promise<void> {
+  const cache = statusCache();
+  cache.inFlight ??= readStatuses()
+    .catch((): ReadResult => ({ ok: false, reason: "read_failed" }))
+    .then((result) => {
+      const at = Date.now();
+      if (result.ok) {
+        cache.lastGood = { ...result, syncedAt: new Date(at).toISOString() };
+        cache.lastFailure = null;
+        cache.nextRefreshAt = at + REFRESH_AFTER_MS;
+      } else {
+        // 설정 누락·읽기 실패는 마지막 정상 값을 덮지 않고, 매 열람마다 구글을 두드리지 않게 잠깐 쉬었다 다시 읽는다.
+        cache.lastFailure = result;
+        cache.nextRefreshAt = at + RETRY_AFTER_MS;
+      }
+    })
+    .finally(() => {
+      cache.inFlight = null;
+    });
+  return cache.inFlight;
 }
 
 /** 테스트용. */
 export function resetInvoiceRequestStatusCache(): void {
-  cache = null;
+  const holder = globalThis as typeof globalThis & { [CACHE_KEY]?: StatusCache };
+  delete holder[CACHE_KEY];
 }
 
 export function readInvoiceRequestWebAppConfig(): { url: string; token: string } {
@@ -60,7 +119,7 @@ export function readInvoiceRequestWebAppConfig(): { url: string; token: string }
   };
 }
 
-async function readStatuses(): Promise<InvoiceRequestStatusResult> {
+async function readStatuses(): Promise<ReadResult> {
   const webApp = readInvoiceRequestWebAppConfig();
   if (webApp.url) return readStatusesFromWebApp(webApp);
 
@@ -97,7 +156,7 @@ async function readStatuses(): Promise<InvoiceRequestStatusResult> {
  * 웹앱은 { ok: true, rows: [[타임스탬프, 코스ID, 발급여부, 발급일자, 실제입금일자], ...] }(헤더 제외)를 돌려준다.
  * 토큰은 URL에 남지 않게 POST 본문으로 보낸다. Apps Script는 응답 코드를 못 바꿔 실패도 200 + ok:false로 온다.
  */
-async function readStatusesFromWebApp({ url, token }: { url: string; token: string }): Promise<InvoiceRequestStatusResult> {
+async function readStatusesFromWebApp({ url, token }: { url: string; token: string }): Promise<ReadResult> {
   if (!token) return { ok: false, reason: "not_configured" };
   try {
     const response = await fetch(url, {

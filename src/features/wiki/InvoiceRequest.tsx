@@ -32,7 +32,8 @@ const INVOICE_REQUEST_FIELD_GROUPS: { label: string; detail?: string; rows: [str
   }
 ];
 
-export function InvoiceRequestLink({ href }: { href: string | null | undefined }) {
+// onOpen: 확인을 눌러 폼 탭을 연 순간(교육상세는 이걸로 돌아왔을 때 요청 현황을 다시 읽는다).
+export function InvoiceRequestLink({ href, onOpen }: { href: string | null | undefined; onOpen?: () => void }) {
   const [isOpen, setIsOpen] = useState(false);
 
   if (!href) return <span className="muted-inline">-</span>;
@@ -99,7 +100,10 @@ export function InvoiceRequestLink({ href }: { href: string | null | undefined }
                 <a
                   className="invoice-request-confirm-open"
                   href={href}
-                  onClick={() => setIsOpen(false)}
+                  onClick={() => {
+                    setIsOpen(false);
+                    onOpen?.();
+                  }}
                   rel="noreferrer"
                   target="_blank"
                 >

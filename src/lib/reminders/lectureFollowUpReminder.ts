@@ -5,8 +5,10 @@ import { splitPersonNames } from "@/lib/data/personNames";
 import { listTeamUsers } from "@/lib/data/teamUsers/teamUserRepository";
 import type { TeamUser } from "@/lib/data/teamUsers/teamUserTypes";
 import { sendSlackDirectMessage } from "@/lib/slack/notifySlack";
-import { kstDateString, shiftDateString } from "./reminderDates";
+import { addBusinessDays, kstDateString, shiftDateString } from "./reminderDates";
 import { appendSentKeys, readSentKeys } from "./reminderSentLog";
+import { defaultCoachContracts, type LectureFollowUpCoachContracts } from "./coachContractLookup";
+import { holidayName } from "@/features/dashboard/holidays";
 import { getDataRepositoryOverride } from "@/lib/data/dataRepositoryContext";
 import { randomUUID } from "node:crypto";
 
@@ -16,17 +18,22 @@ import { randomUUID } from "node:crypto";
 // "값이 비어 있지 않으면 등록됨" 규칙을 쓴다.
 // (결과보고서는 필요 여부가 회차마다 달라 이 알림 범위 밖이다.)
 
-export type ReminderStage = "d1" | "d7";
+export type ReminderStage = "d1" | "d7" | "coachCheck";
+/** 종료일 대비 '정확히 그 날짜'로 판정하는 달력 기준 스테이지. */
+type CalendarStage = "d1" | "d7";
 
-const STAGE_OFFSET_DAYS: Record<ReminderStage, number> = { d1: 1, d7: 7 };
+const STAGE_OFFSET_DAYS: Record<CalendarStage, number> = { d1: 1, d7: 7 };
+/** 코치 투입 확인: 교육 종료 후 유예(영업일). 이 영업일만큼 지난 당일 1회 알린다. */
+const COACH_CHECK_BUSINESS_DAYS = 3;
 
 // Slack 이모지 이름은 영문만 되고, 줄 시작의 "*"는 목록이 아니라 굵게 표시 기호로 읽힌다.
 // 그래서 하위 항목은 "◦"로 쓴다.
 const STAGE_HEADING: Record<ReminderStage, { emoji: string; label: string; suffix: string }> = {
   d1: { emoji: ":pushpin:", label: "어제 종료된 회차", suffix: "(D+1)" },
-  d7: { emoji: ":warning:", label: "종료 1주일 경과 회차", suffix: "(D+7 / 확인 필요!)" }
+  d7: { emoji: ":warning:", label: "종료 1주일 경과 회차", suffix: "(D+7 / 확인 필요!)" },
+  coachCheck: { emoji: ":busts_in_silhouette:", label: "코치 투입 확인 필요", suffix: "(종료 D+3영업일 / 계약된 코치 있음)" }
 };
-const STAGE_ORDER: ReminderStage[] = ["d1", "d7"];
+const STAGE_ORDER: ReminderStage[] = ["d1", "d7", "coachCheck"];
 const DEFAULT_MAX_DM_PER_RUN = 50;
 
 export type ReminderBlockedReason = "Slack ID 없음" | "명단에 없음" | "발송 시작일 이전" | "시범 대상 아님";
@@ -69,7 +76,7 @@ export interface ReminderRunSummary {
   ok: boolean;
   dryRun: boolean;
   today: string;
-  targetDates: Record<ReminderStage, string>;
+  targetDates: Record<CalendarStage, string>;
   allowlistMode: AllowlistMode;
   startDate: null | string;
   beforeStartDate: boolean;
@@ -120,6 +127,7 @@ const defaultSentLog: LectureFollowUpSentLog = {
 export async function runLectureFollowUpReminders(options: {
   dryRun: boolean;
   now?: Date;
+  coachContracts?: LectureFollowUpCoachContracts;
 }): Promise<ReminderRunSummary> {
   // A scoped storage run must also declare its external and local-file effects.
   // Missing ports fail before any business read or send instead of falling back.
@@ -127,22 +135,40 @@ export async function runLectureFollowUpReminders(options: {
     send: sendSlackDirectMessage
   };
   const sentLog = getDataRepositoryOverride("lectureFollowUpSentLog") ?? defaultSentLog;
+  const coachContracts = options.coachContracts ?? defaultCoachContracts;
   const today = kstDateString(options.now ?? new Date());
   const targetDates = {
     d1: shiftDateString(today, -STAGE_OFFSET_DAYS.d1),
     d7: shiftDateString(today, -STAGE_OFFSET_DAYS.d7)
-  } satisfies Record<ReminderStage, string>;
+  } satisfies Record<CalendarStage, string>;
 
   const [operations, teamUsers] = await Promise.all([
     getOperationRepository().listOperations(),
     loadTeamUsers()
   ]);
 
+  // 코치 투입 확인(coachCheck): 실습코치 칸이 비었고 종료 D+3영업일이 오늘인 회차 중,
+  // 계약시트 코치 계약이 연결된 회차만 알린다. 계약 조회는 실패해도 빈 집합으로 degrade한다.
+  const isHoliday = (dateString: string) => {
+    const [year, month, day] = dateString.split("-").map(Number);
+    return holidayName(new Date(year, (month ?? 1) - 1, day ?? 1)) !== null;
+  };
+  const coachCheckCandidateIds = operations
+    .filter((operation) => operation.coach.trim() === "" && operation.endDate.trim() !== "" && addBusinessDays(operation.endDate, COACH_CHECK_BUSINESS_DAYS, isHoliday) === today)
+    .map((operation) => operation.operationId);
+  const contractedSessionIds = await coachContracts.sessionsWithContract(coachCheckCandidateIds);
+  const isCoachCheckDue = (operation: OperationSession): boolean =>
+    operation.coach.trim() === "" &&
+    operation.endDate.trim() !== "" &&
+    addBusinessDays(operation.endDate, COACH_CHECK_BUSINESS_DAYS, isHoliday) === today &&
+    contractedSessionIds.has(operation.operationId);
+  const stageContext: StageContext = { targetDates, isCoachCheckDue };
+
   const candidateKeys = operations.flatMap((operation) => {
-    const stage = resolveStage(operation.endDate, targetDates);
-    if (!stage) return [];
-    return splitPersonNames(operation.om, "").map(normalizePersonName).filter(Boolean)
-      .map((name) => sentKey(today, buildTask(operation, stage, []), name));
+    const stages = resolveStages(operation, stageContext);
+    if (stages.length === 0) return [];
+    const names = splitPersonNames(operation.om, "").map(normalizePersonName).filter(Boolean);
+    return stages.flatMap((stage) => names.map((name) => sentKey(today, buildTask(operation, stage, []), name)));
   });
   const sentKeys = await sentLog.recorded(candidateKeys);
   const allowlist = readAllowlist();
@@ -156,39 +182,42 @@ export async function runLectureFollowUpReminders(options: {
   let skippedAlreadySent = 0;
 
   for (const operation of operations) {
-    const stage = resolveStage(operation.endDate, targetDates);
-    if (!stage) continue;
+    const stages = resolveStages(operation, stageContext);
+    if (stages.length === 0) continue;
 
-    matchedSessions += 1;
+    // 한 회차가 d7·coachCheck 둘 다면 각 스테이지의 할 일을 따로 만들어 둘 다 알린다.
+    for (const stage of stages) {
+      matchedSessions += 1;
 
-    const todo = buildTodo(operation, stage);
-    if (todo.length === 0) {
-      skippedComplete += 1;
-      continue;
-    }
-
-    const task = buildTask(operation, stage, todo);
-    const omNames = splitPersonNames(operation.om, "").filter((name) => name.trim());
-
-    if (omNames.length === 0) {
-      unassignedSessions.push({ ...sessionRef(operation, stage), reason: "담당 OM 없음" });
-      continue;
-    }
-
-    for (const omName of omNames) {
-      const normalized = normalizePersonName(omName);
-      if (!normalized) continue;
-
-      if (sentKeys.has(sentKey(today, task, normalized))) {
-        skippedAlreadySent += 1;
+      const todo = buildTodo(operation, stage);
+      if (todo.length === 0) {
+        skippedComplete += 1;
         continue;
       }
 
-      const bucket = tasksByOm.get(normalized);
-      if (bucket) {
-        bucket.tasks.push(task);
-      } else {
-        tasksByOm.set(normalized, { omName, tasks: [task] });
+      const task = buildTask(operation, stage, todo);
+      const omNames = splitPersonNames(operation.om, "").filter((name) => name.trim());
+
+      if (omNames.length === 0) {
+        unassignedSessions.push({ ...sessionRef(operation, stage), reason: "담당 OM 없음" });
+        continue;
+      }
+
+      for (const omName of omNames) {
+        const normalized = normalizePersonName(omName);
+        if (!normalized) continue;
+
+        if (sentKeys.has(sentKey(today, task, normalized))) {
+          skippedAlreadySent += 1;
+          continue;
+        }
+
+        const bucket = tasksByOm.get(normalized);
+        if (bucket) {
+          bucket.tasks.push(task);
+        } else {
+          tasksByOm.set(normalized, { omName, tasks: [task] });
+        }
       }
     }
   }
@@ -269,19 +298,30 @@ export async function runLectureFollowUpReminders(options: {
   };
 }
 
-function resolveStage(endDate: string, targetDates: Record<ReminderStage, string>): null | ReminderStage {
-  const value = endDate.trim();
-  if (!value) return null;
+interface StageContext {
+  targetDates: Record<CalendarStage, string>;
+  isCoachCheckDue: (operation: OperationSession) => boolean;
+}
 
-  for (const stage of STAGE_ORDER) {
-    if (value === targetDates[stage]) return stage;
-  }
-
-  return null;
+// 한 회차가 여러 스테이지에 동시 해당할 수 있다(긴 연휴엔 종료+7달력일=d7과 종료+3영업일=coachCheck가
+// 같은 날 겹침). 배타적으로 하나만 고르면 뒤 스테이지(coachCheck)가 영구 누락되므로 전부 반환한다.
+// sentKey가 stage별로 분리돼 있어 둘 다 보내도 중복방지에는 문제없다.
+function resolveStages(operation: OperationSession, context: StageContext): ReminderStage[] {
+  const stages: ReminderStage[] = [];
+  const value = operation.endDate.trim();
+  // 달력 기준: 종료일이 정확히 D+1/D+7인 회차.
+  if (value && value === context.targetDates.d1) stages.push("d1");
+  if (value && value === context.targetDates.d7) stages.push("d7");
+  // 영업일 기준: 계약된 코치가 있는데 실습코치 칸이 비어 D+3영업일이 지난 회차.
+  if (context.isCoachCheckDue(operation)) stages.push("coachCheck");
+  return stages;
 }
 
 /** 아직 안 된 일만 남긴다. 비면 알림을 보내지 않는다. 순서는 운영 상세 입력 순서를 따른다. */
 function buildTodo(operation: OperationSession, stage: ReminderStage): string[] {
+  // 코치 투입 확인은 resolveStage가 이미 '실습코치 빔 + 계약 있음'을 보장하므로 항목이 고정이다.
+  if (stage === "coachCheck") return ["계약된 실습코치 투입 확인"];
+
   const todo: string[] = [];
 
   if (!operation.courseId.trim()) todo.push("코스ID 등록");

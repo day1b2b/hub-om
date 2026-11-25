@@ -70,6 +70,8 @@ interface CalendarItem {
   eventKind?: CalendarResourceEvent["eventKind"];
   href?: string;
   key: string;
+  // 현장투입 N으로 확정된 회차. 미확인(UNKNOWN)은 "미투입"으로 단정하지 않는다.
+  noOnsite?: boolean;
   /** 현장운영에 들어간 외부인력(OM·LD 명단에 없는 이름). 표시만 하고 담당자 필터에는 쓰지 않는다. */
   onsiteExternalNames?: string[];
   onsiteOwnerNames?: string[];
@@ -332,6 +334,7 @@ function CalendarEventCard({ segment }: { segment: CalendarEventSegment }) {
         {(segment.item.onsiteOwnerNames ?? []).map((name) => (
           <Tag key={`onsite-${name}`} tone={ownerTone(name)}>{`${name}·현장`}</Tag>
         ))}
+        {segment.item.noOnsite ? <Tag tone="gray">현장 미투입</Tag> : null}
         {(segment.item.onsiteExternalNames ?? []).map((name) => (
           <Tag key={`onsite-external-${name}`} tone="gray">{`${name}(외부인력)·현장`}</Tag>
         ))}
@@ -482,6 +485,8 @@ function operationToCalendarItems(
   const onsiteOwnerNames = getCalendarOperationOwners(operation.onsiteOm, ownerMap).filter(
     (name) => !ownerNames.includes(name)
   );
+  // 현장투입이 N인데 현장운영 담당자가 적혀 있으면 값이 엇갈린 것이라 "현장 미투입"으로 단정하지 않는다.
+  const noOnsite = operation.onsiteRequired === "N" && !operation.onsiteOm.trim();
   const onsiteExternalNames = getOnsiteExternalNames(operation.onsiteOm, staffNameKeys);
 
   return resolveOperationCalendarRuns(operation).flatMap((run) => {
@@ -495,6 +500,7 @@ function operationToCalendarItems(
       href: `/operations/${operation.operationId}${teamQuery}`,
       // 한 회차가 막대 여러 개가 되므로 구간 시작일까지 키에 넣는다(레인 배치·확장 상태가 섞이지 않게).
       key: `operation-${operation.operationId}-${run.start}`,
+      noOnsite: noOnsite || undefined,
       onsiteExternalNames: onsiteExternalNames.length > 0 ? onsiteExternalNames : undefined,
       onsiteOwnerNames: onsiteOwnerNames.length > 0 ? onsiteOwnerNames : undefined,
       ownerNames,

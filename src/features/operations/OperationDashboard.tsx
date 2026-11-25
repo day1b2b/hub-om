@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { ExternalTableLink, isSafeHttpUrl } from "@/components/ExternalTableLink";
 import { SearchableSelect } from "@/components/SearchableSelect";
+import { listBuiltinTools, splitToolsValue } from "@/lib/data/omRequest/omToolOptions";
 import { sumRevenueByCourseId } from "@/lib/data/operationCalculations";
 import type {
   EducationFormat,
@@ -19,6 +20,14 @@ import { courseLinkValue } from "./courseLinkSource";
 
 const 전체_파트 = "전체 파트";
 const 전체_OM = "전체 OM";
+const 전체_TOOL = "전체 사용 Tool";
+const 그외_TOOL = "그 외";
+// 업무 요청 폼 기본 선택지에는 없지만 직접입력으로 자주 들어오는 실제 도구. 필터 선택지에만 따로 둔다.
+const FILTER_EXTRA_TOOLS = ["Codex", "Cursor", "n8n", "Dify", "Power Automate", "Power BI", "Figma"];
+// "codex"·"Codex"처럼 대소문자만 다른 입력을 같은 선택지로 모은다.
+const FILTER_TOOL_BY_KEY = new Map(
+  [...listBuiltinTools(), ...FILTER_EXTRA_TOOLS].map((tool) => [tool.toLowerCase(), tool] as const)
+);
 
 export interface OmRosterEntry {
   name: string;
@@ -147,6 +156,7 @@ export function OperationDashboard({
   const teamQuery = teamScopeSearchParam(teamScope);
   const [companyFilter, setCompanyFilter] = useState("전체 기업");
   const [formatFilter, setFormatFilter] = useState<"전체 교육형태" | EducationFormat>("전체 교육형태");
+  const [toolFilter, setToolFilter] = useState(전체_TOOL);
   // 기본값 = 로그인한 사람. 자기 과정부터 보는 게 대부분의 목적이라 기본을 그쪽으로 둔다.
   //
   // ★단, 본인 건이 하나도 없으면 전체로 둔다.
@@ -192,6 +202,7 @@ export function OperationDashboard({
       formats: ["전체 교육형태", ...unique(teamOperations.map((operation) => operation.educationFormat))] as Array<
         "전체 교육형태" | EducationFormat
       >,
+      tools: buildToolFilterOptions(teamOperations),
       oms: [전체_OM, ...unique(omsInPart.map((om) => om.name))],
       parts: [전체_파트, ...unique(omRoster.map((om) => om.team ?? ""))]
     };
@@ -223,6 +234,7 @@ export function OperationDashboard({
       const rangeMatches = overlapsRange(operation, range.start, range.end);
       const companyMatches = companyFilter === "전체 기업" || operation.companyName === companyFilter;
       const formatMatches = formatFilter === "전체 교육형태" || operation.educationFormat === formatFilter;
+      const toolMatches = toolFilter === 전체_TOOL || operationMatchesTool(operation, toolFilter);
       const omMatches = omFilter === 전체_OM || splitPersonNames(operation.om).includes(omFilter);
       const partMatches = partFilter === 전체_파트 || operationParts(operation, partByPersonKey).has(partFilter);
       const archiveMatches = !archiveOnly || operation.archiveStatus === "아카이빙필요";
@@ -232,12 +244,13 @@ export function OperationDashboard({
         rangeMatches &&
         companyMatches &&
         formatMatches &&
+        toolMatches &&
         omMatches &&
         partMatches &&
         archiveMatches
       );
     });
-  }, [archiveOnly, companyFilter, formatFilter, omFilter, partByPersonKey, partFilter, query, range, teamOperations]);
+  }, [archiveOnly, companyFilter, formatFilter, omFilter, partByPersonKey, partFilter, query, range, teamOperations, toolFilter]);
 
   const filteredOperations = baseFilteredOperations;
 
@@ -382,6 +395,7 @@ export function OperationDashboard({
   function resetFilters() {
     setCompanyFilter("전체 기업");
     setFormatFilter("전체 교육형태");
+    setToolFilter(전체_TOOL);
     setOmFilter(전체_OM);
     setPartFilter(전체_파트);
     setArchiveOnly(false);
@@ -474,6 +488,11 @@ export function OperationDashboard({
               <option key={format}>{format}</option>
             ))}
           </select>
+          <select aria-label="사용 Tool" value={toolFilter} onChange={(event) => setToolFilter(event.target.value)}>
+            {filterOptions.tools.map((tool) => (
+              <option key={tool}>{tool}</option>
+            ))}
+          </select>
           <select value={partFilter} onChange={(event) => handlePartFilterChange(event.target.value)}>
             {filterOptions.parts.map((part) => (
               <option key={part}>{part}</option>
@@ -546,6 +565,9 @@ export function OperationDashboard({
                       <td>
                         <Link className="course-link" href={`/operations/${group.linkOperationId}${teamQuery}`}>
                           <strong>{group.courseName}</strong>
+                          {summarizeTools(group.operations) ? (
+                            <span className="course-tools">{summarizeTools(group.operations)}</span>
+                          ) : null}
                         </Link>
                       </td>
                       <td>{group.operations.length}</td>
@@ -804,6 +826,28 @@ function summarizeText(
   if (values.length === 0) return emptyFallback;
   if (values.length === 1) return values[0];
   return "상이";
+}
+
+// 사용 Tool은 "ChatGPT, Claude"처럼 한 칸에 여러 개라 하나씩 나눠 선택지로 만든다.
+// 그 밖의 직접입력 값(사내 자체 도구, 메모성 문구 등)은 표기가 제각각이라
+// 하나하나 선택지로 두면 목록이 지저분해져 "그 외" 하나로 묶는다.
+function operationFilterTools(operation: OperationSession): string[] {
+  return splitToolsValue(operation.tools ?? "").map((tool) => FILTER_TOOL_BY_KEY.get(tool.toLowerCase()) ?? 그외_TOOL);
+}
+
+function buildToolFilterOptions(operations: OperationSession[]): string[] {
+  const tools = operations.flatMap(operationFilterTools);
+  const hasOther = tools.includes(그외_TOOL);
+  return [전체_TOOL, ...unique(tools.filter((tool) => tool !== 그외_TOOL)), ...(hasOther ? [그외_TOOL] : [])];
+}
+
+function operationMatchesTool(operation: OperationSession, toolFilter: string): boolean {
+  return operationFilterTools(operation).includes(toolFilter);
+}
+
+// 과정명 아래 보조 표시용. 회차마다 값이 달라도 "상이" 대신 쓰는 Tool을 모두 모아 보여준다.
+function summarizeTools(operations: OperationSession[]): string {
+  return unique(operations.flatMap((operation) => splitToolsValue(operation.tools ?? ""))).join(", ");
 }
 
 function resolveOnsiteOm(operation: OperationSession): string {

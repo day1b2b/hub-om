@@ -20,6 +20,8 @@ export interface InstructorCourse {
   /** 같은 과정의 여러 회차가 공유하는 Course.id. 투입 이력을 과정 단위로 묶는 키. 없으면 기업+과정명으로 묶는다. */
   courseRecordId?: string;
   companyName: string;
+  /** 기업위키 딥링크용. 운영현황 companyId(없을 수 있음). */
+  companyId?: string;
   courseName: string;
   roundNo: string;
   role: InstructorRole;
@@ -138,6 +140,7 @@ export function aggregateInstructors(operations: OperationSession[]): Instructor
       operationId: operation.operationId,
       ...(operation.courseRecordId ? { courseRecordId: operation.courseRecordId } : {}),
       companyName: operation.companyName,
+      ...(operation.companyId ? { companyId: operation.companyId } : {}),
       courseName: operation.courseName,
       roundNo: operation.roundNo,
       role,
@@ -386,6 +389,8 @@ export interface InstructorCourseGroup {
   /** 과정 상세(/operations/[id])로 갈 회차. 가장 이른 회차를 쓴다. */
   operationId: string;
   companyName: string;
+  /** 기업위키 딥링크용 companyId. 없으면 기업명으로 매칭. */
+  companyId: string;
   courseName: string;
   roles: InstructorRole[];
   roundCount: number;
@@ -421,6 +426,7 @@ export function groupInstructorCourses(courses: InstructorCourse[]): InstructorC
         key,
         operationId: first.operationId,
         companyName: first.companyName,
+        companyId: rounds.find((round) => round.companyId)?.companyId ?? "",
         courseName: first.courseName,
         roles: uniqueInOrder(rounds.map((round) => round.role)),
         roundCount: rounds.length,

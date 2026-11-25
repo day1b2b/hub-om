@@ -2038,6 +2038,17 @@ select {
   white-space: nowrap;
 }
 
+.operations-table .course-link .course-tools {
+  color: var(--muted);
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .table-link-icon {
   align-items: center;
   border: 1px solid transparent;
@@ -3968,11 +3979,45 @@ td span {
 .coach-public-day.confirmed {
   background: #dcebff;
   color: #1976d2;
+  cursor: not-allowed;
+  display: flex;
+  overflow: hidden;
+  padding: 3px 5px;
+}
+
+.coach-public-day-confirmed {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+  width: 100%;
+}
+
+.coach-public-day-top {
+  align-items: center;
+  display: flex;
+  font-size: 12px;
+  justify-content: space-between;
+}
+
+.coach-public-day-top span:last-child {
+  font-size: 10px;
+}
+
+.coach-public-day-course {
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .coach-public-day.selected {
-  border-color: #1f1f1f;
-  box-shadow: inset 0 0 0 1px #1f1f1f;
+  background: #1976d2;
+  border-color: #1976d2;
+  color: #ffffff;
 }
 
 .coach-public-legend {
@@ -4088,6 +4133,459 @@ td span {
 
 .coach-public-footer strong {
   color: #d84315;
+}
+
+.coach-public-confirmed-top {
+  background: #ffffff;
+  border: 1px solid #e1e6ee;
+  border-radius: 16px;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+  margin-bottom: 18px;
+  padding: 18px 22px;
+}
+
+.coach-public-confirmed-head {
+  align-items: baseline;
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.coach-public-confirmed-head strong {
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.coach-public-confirmed-head span {
+  color: #9aa5b1;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.coach-public-confirmed-list {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.coach-public-confirmed-list li {
+  background: #f1f7ff;
+  border-left: 3px solid #1976d2;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+}
+
+.coach-public-confirmed-list li b {
+  color: #15467e;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.coach-public-confirmed-list li span {
+  color: #5b6b7d;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.coach-public-confirmed-empty {
+  color: #8b95a1;
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.coach-public-range {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.coach-public-range input {
+  background: #ffffff;
+  border: 1px solid #d9dee5;
+  border-radius: 8px;
+  color: #242424;
+  flex: 1;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  min-height: 36px;
+  min-width: 0;
+  padding: 0 8px;
+}
+
+.coach-public-range > span {
+  color: #9aa5b1;
+}
+
+.coach-public-range button {
+  background: #ffffff;
+  border: 1px solid #d9dee5;
+  border-radius: 8px;
+  color: #4b5563;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  min-height: 36px;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+
+.coach-public-selected-note {
+  align-items: center;
+  color: #5b6b7d;
+  display: flex;
+  font-size: 13px;
+  font-weight: 700;
+  gap: 10px;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.coach-public-selected-note b {
+  color: #1976d2;
+  font-weight: 900;
+}
+
+.coach-public-selected-note button {
+  background: transparent;
+  border: none;
+  color: #8a949f;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: underline;
+  white-space: nowrap;
+}
+
+.coach-public-periods {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 10px;
+}
+
+.coach-public-periods button {
+  background: #f7f8fa;
+  border: 1px solid #e1e6ee;
+  border-radius: 8px;
+  color: #4b5563;
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  min-height: 44px;
+}
+
+.coach-public-periods button.selected {
+  background: #1976d2;
+  border-color: #1976d2;
+  color: #ffffff;
+}
+
+.coach-public-periods button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.coach-public-periods-foot {
+  align-items: center;
+  color: #9aa5b1;
+  display: flex;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.coach-public-periods-foot button {
+  background: #ffffff;
+  border: 1px solid #d9dee5;
+  border-radius: 8px;
+  color: #4b5563;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  min-height: 32px;
+  padding: 0 12px;
+}
+
+.coach-public-periods-foot button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.coach-public-legend i.selected {
+  background: #1976d2;
+  border-color: #1976d2;
+}
+
+.coach-public-savebar {
+  bottom: 14px;
+  display: flex;
+  justify-content: center;
+  margin-top: 18px;
+  pointer-events: none;
+  position: sticky;
+}
+
+.coach-public-savebar button {
+  background: #1976d2;
+  border: none;
+  border-radius: 999px;
+  box-shadow: 0 10px 26px rgba(25, 118, 210, 0.38);
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 900;
+  min-height: 50px;
+  padding: 0 44px;
+  pointer-events: auto;
+}
+
+.coach-public-savebar button:disabled {
+  opacity: 0.7;
+}
+
+.coach-public-saved {
+  background: #ffffff;
+  border: 1px solid #e1e6ee;
+  border-radius: 16px;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+  margin-top: 18px;
+  padding: 18px 22px;
+}
+
+.coach-public-saved-head {
+  align-items: baseline;
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.coach-public-saved-head strong {
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.coach-public-saved-head span {
+  color: #9aa5b1;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.coach-public-saved-list {
+  display: grid;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.coach-public-saved-list li {
+  align-items: center;
+  background: #e5f5e9;
+  border-radius: 10px;
+  display: flex;
+  gap: 9px;
+  justify-content: flex-start;
+  outline: 2px solid transparent;
+  padding: 7px 8px 7px 10px;
+}
+
+.coach-public-saved-list li.checked {
+  background: #d7eede;
+  outline-color: #1976d2;
+}
+
+.coach-public-saved-check {
+  accent-color: #1976d2;
+  flex: none;
+  height: 16px;
+  margin: 0;
+  width: 16px;
+}
+
+.coach-public-saved-list li b {
+  color: #1f6b32;
+  flex: none;
+  font-size: 13.5px;
+  font-weight: 900;
+  min-width: 72px;
+}
+
+.coach-public-saved-periods {
+  display: flex;
+  flex: 1;
+  gap: 4px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.coach-public-saved-periods::-webkit-scrollbar {
+  display: none;
+}
+
+.coach-public-dot {
+  background: #ffffff;
+  border: 1px solid #cfd6dd;
+  border-radius: 999px;
+  color: #9aa6b2;
+  cursor: pointer;
+  flex: none;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.4;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+
+.coach-public-dot.on {
+  background: #1976d2;
+  border-color: #1976d2;
+  color: #ffffff;
+}
+
+.coach-public-dot.allday.on {
+  background: #2f7a42;
+  border-color: #2f7a42;
+}
+
+.coach-public-saved-remove {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #c3e4cd;
+  border-radius: 8px;
+  color: #2f7a42;
+  cursor: pointer;
+  display: flex;
+  flex: none;
+  font-size: 12px;
+  font-weight: 800;
+  height: 26px;
+  justify-content: center;
+  margin-left: auto;
+  width: 26px;
+}
+
+.coach-public-saved-remove:hover {
+  background: #d23f3f;
+  border-color: #d23f3f;
+  color: #ffffff;
+}
+
+.coach-public-saved-toolbar {
+  align-items: center;
+  background: #eef2f0;
+  border-radius: 9px;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding: 7px 10px;
+}
+
+.coach-public-saved-selall {
+  align-items: center;
+  color: #2f4a3a;
+  cursor: pointer;
+  display: flex;
+  font-size: 13px;
+  font-weight: 800;
+  gap: 7px;
+  user-select: none;
+}
+
+.coach-public-saved-selall input {
+  accent-color: #1976d2;
+  height: 16px;
+  margin: 0;
+  width: 16px;
+}
+
+.coach-public-saved-bulk {
+  background: #ffffff;
+  border: 1px solid #e3b4b4;
+  border-radius: 8px;
+  color: #b23b3b;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 6px 11px;
+}
+
+.coach-public-saved-bulk:disabled {
+  background: #f6f7f8;
+  border-color: #e3e6ea;
+  color: #b7bcc2;
+  cursor: default;
+}
+
+.coach-public-saved-bulk:not(:disabled):hover {
+  background: #d23f3f;
+  border-color: #d23f3f;
+  color: #ffffff;
+}
+
+.coach-public-saved-hint {
+  color: #5f7a6a;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.6;
+  margin: 9px 2px 0;
+}
+
+.coach-public-saved-empty {
+  color: #8b95a1;
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.coach-public-calendar-reset {
+  background: #ffffff;
+  border: 1px solid #d9dee5;
+  border-radius: 8px;
+  color: #4b5563;
+  cursor: pointer;
+  display: block;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  margin: 14px auto 0;
+  min-height: 34px;
+  padding: 0 16px;
+}
+
+.coach-public-selected-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+  max-height: 96px;
+  overflow-y: auto;
+}
+
+.coach-public-selected-chips span {
+  background: #eaf2fd;
+  border-radius: 999px;
+  color: #15467e;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 3px 10px;
 }
 
 .coach-origin-chip-list {
@@ -9812,6 +10310,20 @@ button.coach-doc-reserve-chip:disabled {
   white-space: nowrap;
 }
 
+.coach-doc-reserve-chip.blocked {
+  align-items: center;
+  background: #f1f1f2;
+  border-radius: 999px;
+  color: #6b7280;
+  cursor: not-allowed;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 700;
+  gap: 4px;
+  padding: 5px 10px;
+  white-space: nowrap;
+}
+
 .coach-doc-reserve-chip.reserved button {
   background: transparent;
   border: none;
@@ -13396,8 +13908,8 @@ button.coach-doc-reserve-chip:disabled {
 .om-manage-table th:nth-child(2),
 .om-manage-table td:nth-child(2) { width: 76px; }
 
-.om-manage-table th:nth-child(13),
-.om-manage-table td:nth-child(13) { min-width: 80px; }
+.om-manage-table th:nth-child(14),
+.om-manage-table td:nth-child(14) { min-width: 80px; }
 
 .om-manage-table .td-course {
   max-width: 220px;
@@ -13405,6 +13917,13 @@ button.coach-doc-reserve-chip:disabled {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.om-manage-table .td-tools {
+  max-width: 180px;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
 }
 
 .om-manage-table tr.row-done td {
@@ -17034,4 +17553,44 @@ details.detail-section > summary::-webkit-details-marker {
   line-height: 1.5;
   margin: 8px 0 0;
   padding-left: 18px;
+}
+
+/* 주의사항 관리자 수정(수정 버튼은 제목 오른쪽 끝, 편집창은 패널 안) */
+.dashboard-panel.egg-guide .section-title {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.egg-guide-input {
+  background: #fff;
+  border: 1px solid #e6d6b4;
+  border-radius: 8px;
+  box-sizing: border-box;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 10px 12px;
+  resize: vertical;
+  width: 100%;
+}
+
+.egg-guide-edit-hint {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 6px 0 0;
+}
+
+.egg-guide-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+/* 계산서 발행 요청 현황: 하루 넘게 시트를 다시 못 읽었을 때 기준 시각 */
+.course-invoice-synced--stale {
+  color: var(--red, #c0392b);
 }

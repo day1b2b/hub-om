@@ -180,4 +180,13 @@ export class MongoCoachScheduleRepository implements CoachScheduleRepository {
       return owned.map(row => day(row.date));
     });
   }
+  async listReservedCoachIdsOn(date: string): Promise<string[]> {
+    const parsed = parseDates([date]); if (!parsed) return [];
+    // coachId·date·cancelledAt는 활성 예약 유니크 인덱스(runtime_active_reservation) 키라 암호화되지 않아 그대로 매칭·그룹핑한다.
+    const rows = await this.store.collection("CoachDayReservation").aggregate(
+      [{ $match: { cancelledAt: null, date: new Date(`${parsed[0]}T00:00:00.000Z`) } }, { $group: { _id: "$coachId" } }],
+      { collation: { locale: "simple" } }
+    ).toArray();
+    return rows.map(row => row._id as string);
+  }
 }

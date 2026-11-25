@@ -3,7 +3,7 @@ import { MongoServerError, type ClientSession } from "mongodb";
 import { encodeMongoRuntimeDocument } from "../mongoRuntimeCodec";
 import { assertMongo, completeMongoRow, MongoOperationError, MongoOperationStore, type MongoOperationOptions, type MongoRow } from "../mongoOperationStore";
 import { assertMongoReadStoreReady } from "../mongoReadStore";
-import { isValidDate } from "./eggAvailability";
+import { blocksRental, isValidDate } from "./eggAvailability";
 import { EggDeviceDuplicateError, EggRentalConflictError, type EggRepository } from "./eggRepository";
 import type { EggChargerType, EggDeviceInput, EggDeviceSummary, EggGuideContent, EggPart, EggRentalInput, EggRentalRecord } from "./eggTypes";
 
@@ -111,7 +111,7 @@ export class MongoEggRepository implements EggRepository {
       if (locked.matchedCount !== 1) throw new Error("에그를 찾을 수 없습니다.");
       const conflicts = (await this.store.scan("EggRental", {
         eggDeviceId: input.eggDeviceId, deletedAt: null, returnedAt: null, startDate: { $lte: returnDueDate }, returnDueDate: { $gte: startDate }
-      }, session)).map(rental).sort(byStart);
+      }, session)).map(rental).filter(row => blocksRental(row, input.startDate, input.returnDueDate)).sort(byStart);
       if (conflicts.length > 0) throw new EggRentalConflictError(conflicts);
       return rental(await this.insert("EggRental", {
         id: randomUUID(), eggDeviceId: input.eggDeviceId, borrowerName: input.borrowerName, borrowerEmail: input.borrowerEmail ?? null,
