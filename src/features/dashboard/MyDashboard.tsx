@@ -583,7 +583,10 @@ function resultTaskText(operation: OperationSession): string {
       avgSatisfaction: operation.avgSatisfaction,
       hasSatisfactionSurvey: operation.hasSatisfactionSurvey,
       hasResultReport: operation.hasResultReport,
-      resultReportLink: operation.resultReportLink
+      resultReportLink: operation.resultReportLink,
+      courseLectureManagementLink: operation.courseLectureManagementLink,
+      courseLectureManagementNote: operation.courseLectureManagementNote,
+      courseResultReportLink: operation.courseResultReportLink
     });
     tasks.push(missing.length > 0 ? `아카이빙(${missing.join("·")})` : "아카이빙");
   }

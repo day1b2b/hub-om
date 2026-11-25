@@ -206,7 +206,10 @@ function toOperationSession(session: OperationSessionRow, courseIdLabel: string)
       avgSatisfaction: session.avgSatisfaction ?? "",
       hasSatisfactionSurvey: SATISFACTION_SURVEY_STATUS[session.hasSatisfactionSurvey],
       hasResultReport: RESULT_REPORT_STATUS[session.hasResultReport],
-      resultReportLink: session.resultReportLink ?? ""
+      resultReportLink: session.resultReportLink ?? "",
+      courseLectureManagementLink: session.course.lectureManagementLink ?? "",
+      courseLectureManagementNote: session.course.lectureManagementNote ?? "",
+      courseResultReportLink: session.course.resultReportLink ?? ""
     }),
     educationFormat: EDUCATION_FORMAT[session.educationFormat],
     educationFormatRaw: session.educationFormatRaw ?? "",

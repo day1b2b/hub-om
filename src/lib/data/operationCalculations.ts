@@ -161,6 +161,26 @@ export interface ArchiveCompletionInput {
   hasSatisfactionSurvey: SatisfactionSurveyStatus;
   hasResultReport: ResultReportStatus;
   resultReportLink: string;
+  // 강의관리·결과보고서는 이제 과정(Course) 단위로 입력한다(운영 상세의 과정 링크).
+  // 회차 값은 과정 단위 전환 전에 입력된 것이라 둘 중 하나만 있어도 등록으로 본다.
+  courseLectureManagementLink?: string;
+  courseLectureManagementNote?: string;
+  courseResultReportLink?: string;
+}
+
+function hasText(value: string | undefined): boolean {
+  return Boolean(value?.trim());
+}
+
+/** 강의관리 등록 여부. 과정 링크/메모 또는 (전환 전) 회차 메모 중 하나라도 있으면 등록이다. */
+export function hasLectureManagement(
+  input: Pick<ArchiveCompletionInput, "lectureManagementNote" | "courseLectureManagementLink" | "courseLectureManagementNote">
+): boolean {
+  return hasText(input.courseLectureManagementLink) || hasText(input.courseLectureManagementNote) || hasText(input.lectureManagementNote);
+}
+
+function hasResultReportLink(input: ArchiveCompletionInput): boolean {
+  return hasText(input.courseResultReportLink) || hasText(input.resultReportLink);
 }
 
 export function deriveArchiveStatus(endDate: string, input: ArchiveCompletionInput): ArchiveStatus {
@@ -181,13 +201,11 @@ export function deriveArchiveStatus(endDate: string, input: ArchiveCompletionInp
  */
 export function isArchiveComplete(input: ArchiveCompletionInput): boolean {
   const hasCourseId = Boolean(input.courseId.trim());
-  const hasLectureManagementNote = Boolean(input.lectureManagementNote.trim());
   const hasRequiredSatisfaction =
     input.hasSatisfactionSurvey === "불필요" || Boolean(input.avgSatisfaction.trim());
-  const hasRequiredResultReportLink =
-    input.hasResultReport !== "유" || Boolean(input.resultReportLink.trim());
+  const hasRequiredResultReportLink = input.hasResultReport !== "유" || hasResultReportLink(input);
 
-  return hasCourseId && hasLectureManagementNote && hasRequiredSatisfaction && hasRequiredResultReportLink;
+  return hasCourseId && hasLectureManagement(input) && hasRequiredSatisfaction && hasRequiredResultReportLink;
 }
 
 /**
@@ -199,11 +217,11 @@ export function isArchiveComplete(input: ArchiveCompletionInput): boolean {
 export function missingArchiveItems(input: ArchiveCompletionInput): string[] {
   const missing: string[] = [];
   if (!input.courseId.trim()) missing.push("코스ID");
-  if (!input.lectureManagementNote.trim()) missing.push("강의관리");
+  if (!hasLectureManagement(input)) missing.push("강의관리");
   // 조사하지 않기로 한 회차는 채울 값이 없으므로 요구하지 않는다.
   if (input.hasSatisfactionSurvey !== "불필요" && !input.avgSatisfaction.trim()) missing.push("만족도");
   // 결과보고서가 "유"일 때만 링크를 요구한다.
-  if (input.hasResultReport === "유" && !input.resultReportLink.trim()) missing.push("결과보고서 링크");
+  if (input.hasResultReport === "유" && !hasResultReportLink(input)) missing.push("결과보고서 링크");
   return missing;
 }
 
