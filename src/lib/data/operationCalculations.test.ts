@@ -124,6 +124,23 @@ test("결과보고서가 유가 아니면 링크를 요구하지 않는다", () 
   assert.deepEqual(missingArchiveItems(base), []);
 });
 
+test("강의관리·결과보고서는 과정 단위 링크만 있어도 등록으로 본다", () => {
+  // 운영 상세는 과정(Course) 링크에 저장하고 회차 값은 비어 있다. 회차 값만 보면 영원히 아카이빙필요에 남는다.
+  const courseLevelOnly = completeInput({
+    lectureManagementNote: "",
+    hasResultReport: "유",
+    resultReportLink: "",
+    courseLectureManagementLink: "https://docs.google.com/spreadsheets/d/x",
+    courseResultReportLink: "https://drive.google.com/report"
+  });
+  assert.equal(isArchiveComplete(courseLevelOnly), true);
+  assert.deepEqual(missingArchiveItems(courseLevelOnly), []);
+
+  assert.equal(isArchiveComplete({ ...courseLevelOnly, courseLectureManagementLink: "", courseLectureManagementNote: "메모" }), true);
+  assert.deepEqual(missingArchiveItems({ ...courseLevelOnly, courseLectureManagementLink: " " }), ["강의관리"]);
+  assert.deepEqual(missingArchiveItems({ ...courseLevelOnly, courseResultReportLink: "" }), ["결과보고서 링크"]);
+});
+
 test("여러 개가 빠지면 모두 알려준다", () => {
   const empty = {
     courseId: "",
