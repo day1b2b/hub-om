@@ -4,7 +4,7 @@
 // 명단에 다시 든 코치의 취소된 MANUAL은 "재활성"하고, 명단에서 빠진 활성 MANUAL은 "취소"한다(삭제 아님).
 // I/O는 주입한 writer로만 한다(순수 오케스트레이션 → 페이크로 테스트 가능). 이름 매칭·계획은 sessionCoachSync.
 import { normalizeCoachName } from "./accessToken";
-import { planSessionCoachSync, type ExistingSessionEngagement } from "./sessionCoachSync";
+import { planSessionCoachSync, planSessionCoachesByIds, type ExistingSessionEngagement } from "./sessionCoachSync";
 
 export interface SyncSessionInput {
   /** OperationSession.id (uuid) — CoachEngagement.operationSessionId에 넣는다. */
@@ -183,4 +183,79 @@ function dedupeDates(dates: ReadonlyArray<Date>): Date[] {
     out.push(date);
   }
   return out;
+}
+
+/** ②/S1 입력 반영 엔진: OM이 위키에서 'ID로 고른 코치들'을 한 회차의 투입으로 맞춘다.
+ * coachText 백필(syncSessionCoaches)과 같은 writer·sourceEngagementId 키·스케줄 규칙을 쓰므로
+ * 입력 쓰기와 백필이 멱등 수렴한다(한쪽이 만든 투입을 다른 쪽이 중복 생성하지 않음).
+ * 이름 해석이 없고 선택 집합이 정본이라, 선택에서 빠진 활성 MANUAL은 취소한다(그 회차 활성 코치 = 선택 집합). */
+export interface ApplySessionCoachesInput {
+  operationSessionId: string;
+  courseName: string;
+  /** 위키에서 선택된 coachId들(정본). */
+  coachIds: ReadonlyArray<string>;
+  startDate: Date;
+  endDate: Date;
+  scheduleDates: Date[];
+  startTime: string | null;
+  endTime: string | null;
+}
+
+export interface ApplySessionCoachesResult {
+  created: number;
+  converted: number;
+  reactivated: number;
+  cancelled: number;
+}
+
+export async function applySessionCoachesByIds(
+  input: ApplySessionCoachesInput,
+  existing: ReadonlyArray<ExistingSessionEngagement>,
+  writer: SessionCoachWriter,
+  today: Date
+): Promise<ApplySessionCoachesResult> {
+  const plan = planSessionCoachesByIds(input.coachIds, existing);
+  const status = engagementStatusFromDates(input.startDate, input.endDate, today);
+
+  // 순서: 전환→재활성→취소→생성(syncSessionCoaches와 동일). writer는 트랜잭션 안에서 순차 await.
+  if (plan.convertEngagementIds.length > 0) await writer.convertToManual(plan.convertEngagementIds);
+  if (plan.reactivateEngagementIds.length > 0) await writer.reactivateEngagements(plan.reactivateEngagementIds, status);
+  if (plan.cancelEngagementIds.length > 0) await writer.cancelEngagements(plan.cancelEngagementIds);
+
+  const scheduleDates = input.scheduleDates.length > 0 ? dedupeDates(input.scheduleDates) : expandWeekdays(input.startDate, input.endDate);
+  const startTime = input.startTime || DEFAULT_START;
+  const endTime = input.endTime || DEFAULT_END;
+  for (const coachId of plan.createCoachIds) {
+    const base = `manual-session:${input.operationSessionId}:${coachId}`;
+    const engagement = await writer.createEngagement({
+      sourceEngagementId: base,
+      coachId,
+      operationSessionId: input.operationSessionId,
+      courseName: input.courseName,
+      status,
+      source: "MANUAL",
+      startDate: input.startDate,
+      endDate: input.endDate,
+      startTime,
+      endTime
+    });
+    await writer.replaceSchedules(
+      engagement.id,
+      scheduleDates.map((date) => ({
+        sourceEngagementScheduleId: `${base}:${date.toISOString().slice(0, 10)}`,
+        engagementId: engagement.id,
+        coachId,
+        date,
+        startTime,
+        endTime
+      }))
+    );
+  }
+
+  return {
+    created: plan.createCoachIds.length,
+    converted: plan.convertEngagementIds.length,
+    reactivated: plan.reactivateEngagementIds.length,
+    cancelled: plan.cancelEngagementIds.length
+  };
 }

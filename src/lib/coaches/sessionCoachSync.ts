@@ -66,6 +66,36 @@ export function planSessionCoachSync(
     }
   }
 
+  // 취소는 "명단이 완전히 해석된" 회차에서만 한다: 이름이 하나라도 있고(빈 칸 아님), 전부 명부에서 찾힌 경우.
+  // 그래야 '명단엔 있는데 해석만 실패한' 코치의 투입을 잘못 취소하지 않는다.
+  const fullyResolved = names.length > 0 && unmatchedNames.length === 0;
+  return { ...planEngagementSet(wantedCoachIds, existing, fullyResolved), unmatchedNames };
+}
+
+/**
+ * 운영현황 입력이 코치를 '위키에서 ID로 직접 선택'했을 때의 계획(②/S1).
+ * 이름 해석 단계가 없고 선택 집합이 곧 정본이므로 unmatched가 없고, 취소를 허용한다:
+ * 선택에서 빠진 활성 MANUAL은 취소해 '그 회차의 활성 코치 = 선택한 집합'으로 정확히 맞춘다.
+ * coachText 백필과 같은 writer로 반영되며 sourceEngagementId 키가 같아 멱등 수렴한다.
+ */
+export function planSessionCoachesByIds(
+  wantedCoachIds: ReadonlyArray<string>,
+  existing: ReadonlyArray<ExistingSessionEngagement>
+): Omit<SessionCoachSyncPlan, "unmatchedNames"> {
+  return planEngagementSet(new Set(wantedCoachIds), existing, true);
+}
+
+/**
+ * 계획 코어: 원하는 coachId 집합 ↔ 그 회차의 기존 투입으로 생성/전환/재활성/취소를 가른다.
+ * 우선순위: 활성 MANUAL 있으면 그대로 / 취소된 MANUAL 있으면 재활성 / 활성 SHEET 있으면 전환 / 없으면 생성.
+ * allowCancel=false면 취소를 내지 않는다(coachText 경로에서 명단을 완전히 해석 못 했을 때의 보호).
+ * 이미 취소된 MANUAL은 다시 취소하지 않는다(활성 MANUAL만 취소 후보).
+ */
+function planEngagementSet(
+  wantedCoachIds: ReadonlySet<string>,
+  existing: ReadonlyArray<ExistingSessionEngagement>,
+  allowCancel: boolean
+): Omit<SessionCoachSyncPlan, "unmatchedNames"> {
   const activeManualByCoach = new Map<string, string>(); // coachId → 활성 MANUAL engagementId
   const cancelledManualByCoach = new Map<string, string>(); // coachId → 취소된 MANUAL engagementId(첫 건)
   const activeSheetByCoach = new Map<string, string[]>(); // coachId → 활성 SHEET engagementId[]
@@ -100,15 +130,12 @@ export function planSessionCoachSync(
     }
   }
 
-  // 취소는 "명단이 완전히 해석된" 회차에서만 한다: 이름이 하나라도 있고(빈 칸 아님), 전부 명부에서 찾힌 경우.
-  // 그래야 '명단엔 있는데 해석만 실패한' 코치의 투입을 잘못 취소하지 않는다. 이미 취소된 건 다시 취소하지 않는다.
   const cancelEngagementIds: string[] = [];
-  const fullyResolved = names.length > 0 && unmatchedNames.length === 0;
-  if (fullyResolved) {
+  if (allowCancel) {
     for (const [coachId, engagementId] of activeManualByCoach) {
       if (!wantedCoachIds.has(coachId)) cancelEngagementIds.push(engagementId); // 명단에서 명백히 빠진 활성 MANUAL
     }
   }
 
-  return { createCoachIds, convertEngagementIds, reactivateEngagementIds, cancelEngagementIds, unmatchedNames };
+  return { createCoachIds, convertEngagementIds, reactivateEngagementIds, cancelEngagementIds };
 }
