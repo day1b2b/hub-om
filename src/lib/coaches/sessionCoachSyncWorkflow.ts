@@ -214,7 +214,11 @@ export async function applySessionCoachesByIds(
   writer: SessionCoachWriter,
   today: Date
 ): Promise<ApplySessionCoachesResult> {
-  const plan = planSessionCoachesByIds(input.coachIds, existing);
+  // 선택이 비면 취소하지 않는다: 빈 본문·실수 클리어로 그 회차 활성 코치가 전원 취소되는 사고를 막는다
+  // (coachText 경로의 '완전 해석 시에만 취소' 보호와 대칭). 비어있지 않으면 프론트가 동명이인 미해결을
+  // 막았으므로 선택 집합이 그 회차의 완전한 활성 코치 = 빠진 활성 MANUAL은 취소.
+  const allowCancel = input.coachIds.length > 0;
+  const plan = planSessionCoachesByIds(input.coachIds, existing, allowCancel);
   const status = engagementStatusFromDates(input.startDate, input.endDate, today);
 
   // 순서: 전환→재활성→취소→생성(syncSessionCoaches와 동일). writer는 트랜잭션 안에서 순차 await.

@@ -74,15 +74,17 @@ export function planSessionCoachSync(
 
 /**
  * 운영현황 입력이 코치를 '위키에서 ID로 직접 선택'했을 때의 계획(②/S1).
- * 이름 해석 단계가 없고 선택 집합이 곧 정본이므로 unmatched가 없고, 취소를 허용한다:
- * 선택에서 빠진 활성 MANUAL은 취소해 '그 회차의 활성 코치 = 선택한 집합'으로 정확히 맞춘다.
+ * 이름 해석 단계가 없고 선택 집합이 곧 정본이라 unmatched가 없다.
+ * allowCancel은 호출자가 '선택이 그 회차의 완전한 활성 코치 집합'임을 보장할 때만 true로 준다
+ * (프론트가 동명이인 미해결을 막고, 빈 선택은 취소하지 않는다 — coachText 경로의 보수적 취소와 대칭).
  * coachText 백필과 같은 writer로 반영되며 sourceEngagementId 키가 같아 멱등 수렴한다.
  */
 export function planSessionCoachesByIds(
   wantedCoachIds: ReadonlyArray<string>,
-  existing: ReadonlyArray<ExistingSessionEngagement>
+  existing: ReadonlyArray<ExistingSessionEngagement>,
+  allowCancel: boolean
 ): Omit<SessionCoachSyncPlan, "unmatchedNames"> {
-  return planEngagementSet(new Set(wantedCoachIds), existing, true);
+  return planEngagementSet(new Set(wantedCoachIds), existing, allowCancel);
 }
 
 /**

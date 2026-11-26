@@ -86,7 +86,7 @@ test("취소됐던 MANUAL이 다시 선택되면 재활성(재생성 아님 → 
   assert.equal(rec.created.length, 0);
 });
 
-test("빈 선택이면 그 회차 활성 MANUAL 전부 취소(코치 비움)", async () => {
+test("빈 선택이면 취소하지 않는다(빈 본문·실수 클리어로 전원취소되는 사고 방지 — 보수적)", async () => {
   const existing: ExistingSessionEngagement[] = [
     { id: "eng-manual-A", coachId: "coachA", source: "MANUAL", status: "SCHEDULED" },
     { id: "eng-manual-B", coachId: "coachB", source: "MANUAL", status: "SCHEDULED" }
@@ -95,6 +95,6 @@ test("빈 선택이면 그 회차 활성 MANUAL 전부 취소(코치 비움)", a
 
   const result = await applySessionCoachesByIds({ ...SESSION, coachIds: [] }, existing, writer, new Date("2026-03-03T00:00:00.000Z"));
 
-  assert.deepEqual(result, { created: 0, converted: 0, reactivated: 0, cancelled: 2 });
-  assert.deepEqual(rec.cancelled.sort(), ["eng-manual-A", "eng-manual-B"]);
+  assert.deepEqual(result, { created: 0, converted: 0, reactivated: 0, cancelled: 0 });
+  assert.equal(rec.cancelled.length, 0);
 });
