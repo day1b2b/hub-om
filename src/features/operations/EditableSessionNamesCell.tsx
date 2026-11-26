@@ -15,6 +15,8 @@ interface EditableSessionNamesCellProps {
   placeholder: string;
   unmatchedHint: string;
   value: string;
+  /** 있으면(코치 셀) 선택 이름을 위키 coachId로 풀어 투입(engagement)까지 반영한다. 동명이인(맵에 없음)은 제외. */
+  nameToId?: Record<string, string>;
 }
 
 export function EditableSessionNamesCell({
@@ -24,7 +26,8 @@ export function EditableSessionNamesCell({
   options,
   placeholder,
   unmatchedHint,
-  value
+  value,
+  nameToId
 }: EditableSessionNamesCellProps) {
   const router = useRouter();
   const anchorRef = useRef<HTMLButtonElement>(null);
@@ -118,6 +121,31 @@ export function EditableSessionNamesCell({
     if (!response.ok || !payload.ok) {
       setSaveState("failed");
       return;
+    }
+
+    // 코치 셀: 표시값(coachText) 저장에 성공하면, 같은 선택을 위키 coachId로 풀어 투입(engagement)까지 반영한다.
+    // 이름→ID는 '동명이인이 아닌' 코치만(nameToId에 유일 이름만 담김). 동명이인은 노션 A/B 정리로 드러난다.
+    if (nameToId) {
+      const coachIds: string[] = [];
+      for (const name of names) {
+        const key = Object.keys(nameToId).find((candidate) => candidate.toLowerCase() === name.toLowerCase());
+        if (key) coachIds.push(nameToId[key]);
+      }
+      try {
+        const engagementResponse = await fetch(`/api/operations/${encodeURIComponent(operationId)}/coaches`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ coachIds })
+        });
+        const engagementPayload = (await engagementResponse.json().catch(() => ({}))) as { ok?: boolean };
+        if (!engagementResponse.ok || !engagementPayload.ok) {
+          setSaveState("failed");
+          return;
+        }
+      } catch {
+        setSaveState("failed");
+        return;
+      }
     }
 
     setIsEditing(false);

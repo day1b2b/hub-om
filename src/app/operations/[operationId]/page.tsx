@@ -75,14 +75,23 @@ async function renderOperationDetailPage({ params, searchParams }: OperationDeta
   // 실습코치 드롭다운 추천용. coach-db(노션 실습코치 DB 동기화) 명단에서 가져온다.
   // 로컬 dev 등 DB 미연결이면 조용히 생략(자유 입력 그대로 저장된다).
   // listCoaches/onsiteOmOptions는 서로 의존하지 않으므로 병렬로 가져온다.
-  const coachOptionsPromise = getCoachRepository()
+  const coachRosterPromise = getCoachRepository()
     .listCoaches()
-    .then((coaches) =>
-      Array.from(new Set(coaches.map((coach) => coach.name.trim()).filter(Boolean))).sort((a, b) =>
+    .then((coaches) => {
+      const options = Array.from(new Set(coaches.map((coach) => coach.name.trim()).filter(Boolean))).sort((a, b) =>
         a.localeCompare(b, "ko")
-      )
-    )
-    .catch(() => [] as string[]);
+      );
+      // 유일 이름만 coachId로 매핑(동명이인은 제외 — 투입 오배정 방지, 노션 A/B 정리로 드러냄).
+      const byName = new Map<string, string[]>();
+      for (const coach of coaches) {
+        const name = coach.name.trim();
+        if (name) byName.set(name, [...(byName.get(name) ?? []), coach.id]);
+      }
+      const nameToId: Record<string, string> = {};
+      for (const [name, ids] of byName) if (ids.length === 1) nameToId[name] = ids[0];
+      return { options, nameToId };
+    })
+    .catch(() => ({ options: [] as string[], nameToId: {} as Record<string, string> }));
   const onsiteOmOptionsPromise = resolveOnsiteOmOptionsByEmail(session.user?.email, personOptions.om);
 
   let operation = operations.find((candidate) => candidate.operationId === operationId);
@@ -126,17 +135,20 @@ async function renderOperationDetailPage({ params, searchParams }: OperationDeta
       console.error("[operations] team users unavailable");
       return {} as Record<string, string>;
     });
-  const [coachOptions, onsiteOmOptions, surveyResults, teamByPersonKey] = await Promise.all([
-    coachOptionsPromise,
+  const [coachRoster, onsiteOmOptions, surveyResults, teamByPersonKey] = await Promise.all([
+    coachRosterPromise,
     onsiteOmOptionsPromise,
     surveyResultsPromise,
     teamByPersonKeyPromise
   ]);
+  const coachOptions = coachRoster.options;
+  const coachNameToId = coachRoster.nameToId;
   const collaboration = DISABLED_COLLABORATION;
 
   return (
     <OperationDetail
       coachOptions={coachOptions}
+      coachNameToId={coachNameToId}
       collaboration={collaboration}
       extraTools={listCustomTools()}
       instructorOptions={instructorOptions}
