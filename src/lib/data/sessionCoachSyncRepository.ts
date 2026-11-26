@@ -2,7 +2,7 @@
 // 읽기(회차·기존투입·코치명부)와 쓰기(카탈로그 락 안의 트랜잭션)를 백엔드별 구현 뒤로 숨긴다.
 // 기본 구현=Postgres(prismaSessionCoachSyncRepository). Mongo-shadow 구현은 override로 주입한다.
 import type { ExistingSessionEngagement } from "../coaches/sessionCoachSync";
-import type { SessionCoachWriter, SyncSessionInput } from "../coaches/sessionCoachSyncWorkflow";
+import type { ApplySessionCoachesResult, SessionCoachWriter, SyncSessionInput } from "../coaches/sessionCoachSyncWorkflow";
 
 export interface SessionCoachSyncInputs {
   /** 삭제되지 않은 회차 → 동기화 입력 형태로 매핑한 것. */
@@ -21,4 +21,9 @@ export interface SessionCoachSyncRepository {
    * 청크 분할은 커맨드가 하고, 청크 1개 = withWriter 1회(=트랜잭션 1개)다.
    */
   withWriter<T>(write: (writer: SessionCoachWriter) => Promise<T>): Promise<T>;
+  /**
+   * ②/S1: 한 회차의 코치 투입을 '위키에서 선택된 coachId 집합'으로 맞춘다(입력 반영).
+   * 그 회차의 기존 투입을 읽고 적용하는 과정을 한 트랜잭션(카탈로그 락) 안에서 수행한다.
+   */
+  setSessionCoaches(operationSessionId: string, coachIds: ReadonlyArray<string>, today: Date): Promise<ApplySessionCoachesResult>;
 }

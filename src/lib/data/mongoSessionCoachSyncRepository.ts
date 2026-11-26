@@ -22,6 +22,7 @@ import { assertMongoCoachCatalogGuardReady, lockMongoCoachCatalog, prepareMongoC
 import type { SessionCoachSyncInputs, SessionCoachSyncRepository } from "./sessionCoachSyncRepository";
 import type { ExistingSessionEngagement } from "../coaches/sessionCoachSync";
 import type { SessionCoachWriter, SyncSessionInput } from "../coaches/sessionCoachSyncWorkflow";
+import { applySessionCoachesByIds, type ApplySessionCoachesResult } from "../coaches/sessionCoachSyncWorkflow";
 
 // 읽기: Course(과정명 조인)·OperationSession·Coach·CoachEngagement. 쓰기: CoachEngagement·CoachEngagementSchedule·ActivityChange(감사).
 export const SESSION_COACH_SYNC_MODELS = ["Course", "OperationSession", "Coach", "CoachEngagement", "CoachEngagementSchedule", "ActivityChange"] as const;
@@ -148,6 +149,39 @@ export class MongoSessionCoachSyncRepository implements SessionCoachSyncReposito
     return this.transaction(async (session) => {
       await lockMongoCoachCatalog(this.store, session); // 시트 동기화와 직렬화(카탈로그 락 하나만, Postgres와 동일).
       return run(this.writer(session));
+    }, TXN_TIMEOUT_MS);
+  }
+
+  async setSessionCoaches(operationSessionId: string, coachIds: ReadonlyArray<string>, today: Date): Promise<ApplySessionCoachesResult> {
+    assertMongo(activityContext.getStore(), "ACTIVITY_CONTEXT_REQUIRED");
+    return this.transaction(async (session) => {
+      await lockMongoCoachCatalog(this.store, session);
+      // 읽기+적용을 한 트랜잭션에서: 그 회차·기존 투입을 읽어 선택 집합으로 맞춘다.
+      const operation = await this.store.one("OperationSession", { _id: operationSessionId, deletedAt: null }, session);
+      assertMongo(operation, "SESSION_COACH_SYNC_SESSION_MISSING");
+      const course = operation.courseRecordId ? await this.store.one("Course", { _id: operation.courseRecordId as string }, session) : null;
+      const engagementRows = await this.store.scan("CoachEngagement", { operationSessionId }, session);
+      const existing: ExistingSessionEngagement[] = engagementRows.map((row) => ({
+        id: row.id as string,
+        coachId: row.coachId as string,
+        source: row.source as "SHEET" | "MANUAL",
+        status: row.status as string
+      }));
+      return applySessionCoachesByIds(
+        {
+          operationSessionId,
+          courseName: (course?.name as string) ?? "",
+          coachIds,
+          startDate: operation.startDate as Date,
+          endDate: operation.endDate as Date,
+          scheduleDates: (operation.educationDates as Date[]) ?? [],
+          startTime: null,
+          endTime: null
+        },
+        existing,
+        this.writer(session),
+        today
+      );
     }, TXN_TIMEOUT_MS);
   }
 

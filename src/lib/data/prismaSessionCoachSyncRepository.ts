@@ -7,6 +7,7 @@ import { getPrismaClient } from "./prisma";
 import { lockPrismaCoachCatalog } from "./prismaCoachLock";
 import type { ExistingSessionEngagement } from "../coaches/sessionCoachSync";
 import type { SessionCoachWriter, SyncSessionInput } from "../coaches/sessionCoachSyncWorkflow";
+import { applySessionCoachesByIds } from "../coaches/sessionCoachSyncWorkflow";
 import type { SessionCoachSyncInputs, SessionCoachSyncRepository } from "./sessionCoachSyncRepository";
 
 const TXN_TIMEOUT_MS = 60_000;
@@ -113,6 +114,40 @@ export function getPrismaSessionCoachSyncRepository(): SessionCoachSyncRepositor
         async (tx) => {
           await lockPrismaCoachCatalog(tx);
           return write(prismaWriter(tx));
+        },
+        { timeout: TXN_TIMEOUT_MS }
+      );
+    },
+    async setSessionCoaches(operationSessionId, coachIds, today) {
+      return prisma.$transaction(
+        async (tx) => {
+          await lockPrismaCoachCatalog(tx);
+          const operation = await tx.operationSession.findFirst({
+            where: { id: operationSessionId, deletedAt: null },
+            select: { startDate: true, endDate: true, educationDates: true, course: { select: { name: true } } }
+          });
+          if (!operation) throw new Error("SESSION_COACH_SYNC_SESSION_MISSING");
+          const engagementRows = await tx.coachEngagement.findMany({
+            where: { operationSessionId },
+            orderBy: { id: "asc" },
+            select: { id: true, coachId: true, source: true, status: true }
+          });
+          const existing = engagementRows.map((row) => ({ id: row.id, coachId: row.coachId, source: row.source, status: row.status }));
+          return applySessionCoachesByIds(
+            {
+              operationSessionId,
+              courseName: operation.course?.name ?? "",
+              coachIds,
+              startDate: operation.startDate,
+              endDate: operation.endDate,
+              scheduleDates: operation.educationDates ?? [],
+              startTime: null,
+              endTime: null
+            },
+            existing,
+            prismaWriter(tx),
+            today
+          );
         },
         { timeout: TXN_TIMEOUT_MS }
       );
