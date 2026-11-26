@@ -20,7 +20,10 @@ export async function openMongoSessionCoachSyncRuntime(options: Options) {
     return Object.freeze({
       repositories,
       run<T>(work: () => T): T {
-        return activityContext.run(syntheticCliActor(), () => runWithDataRepositories(repositories, () => runWithLockedRepositoryScope(work)));
+        // 서버 라우트에서 돌면 이미 선 activity 컨텍스트(실제 OM 액터)가 있으니 그대로 쓰고(감사에 OM 기록),
+        // CLI 백필처럼 컨텍스트가 없을 때만 합성 액터를 세운다.
+        const actor = activityContext.getStore() ?? syntheticCliActor();
+        return activityContext.run(actor, () => runWithDataRepositories(repositories, () => runWithLockedRepositoryScope(work)));
       }
     });
   } catch { throw new Error("MONGO_SESSION_COACH_SYNC_RUNTIME_FAILED"); }
