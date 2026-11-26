@@ -3,10 +3,12 @@
 // syncSessionCoaches로 생성/전환(SHEET→MANUAL)/취소를 계획·실행한다. 삭제는 하지 않는다(평가 보존).
 //
 // 저장소(읽기·쓰기)는 SessionCoachSyncRepository 뒤로 숨긴다. 기본=Postgres(prismaSessionCoachSyncRepository),
-// override가 있으면 그걸 쓴다(Mongo-shadow 라우팅용). 커맨드는 백엔드에 무관한 오케스트레이션만:
-// 읽기→동명이인 정리→(dry-run) 또는 (청크 트랜잭션으로 apply).
+// scoped override가 있으면 그걸 쓴다(Mongo-shadow 라우팅용 — sessionCoachSyncCliRuntime이 주입).
+// coachOperationMatchCommand와 같은 패턴: scoped 유무로 (a) dotenv 로드 (b) 기본 Prisma 저장소 생성 (c) Prisma disconnect를 모두 가른다.
+import { disconnectPrismaClient } from "../data/prisma";
 import { getDataRepositoryOverride } from "../data/dataRepositoryContext";
 import { getPrismaSessionCoachSyncRepository } from "../data/prismaSessionCoachSyncRepository";
+import type { SessionCoachSyncRepository } from "../data/sessionCoachSyncRepository";
 import { normalizeCoachName } from "./accessToken";
 import {
   syncSessionCoaches,
@@ -53,32 +55,42 @@ function mergeResult(into: SessionCoachSyncResult, part: SessionCoachSyncResult)
   into.unmatched.push(...part.unmatched);
 }
 
-export interface RunSessionCoachSyncOptions {
-  apply: boolean;
-  today?: Date;
+interface Dependencies {
+  getDefaultRepository(): SessionCoachSyncRepository;
+  closeDefaultRepository(): Promise<void>;
 }
+const defaults: Dependencies = { getDefaultRepository: getPrismaSessionCoachSyncRepository, closeDefaultRepository: disconnectPrismaClient };
 
 /**
- * 커맨드 본체: 회차·명부·기존 투입을 읽어 동기화 계획을 세우고(dry-run) 또는 실행(apply)한다.
+ * 커맨드 본체: 회차·명부·기존 투입을 읽어 동기화 계획을 세우고(기본 dry-run) 또는 실행(--apply)한다.
  * 읽기는 트랜잭션 밖에서 하고, 쓰기만 청크 트랜잭션(카탈로그 락) 안에서 한다.
+ * scoped override(Mongo)가 있으면 env 로드·Prisma 생성/disconnect를 전부 건너뛴다(라이브 Mongo 경로).
  */
-export async function runSessionCoachSync(options: RunSessionCoachSyncOptions): Promise<SessionCoachSyncResult> {
-  const { apply, today = new Date() } = options;
-  const repository = getDataRepositoryOverride("sessionCoachSync") ?? getPrismaSessionCoachSyncRepository();
+export async function runSessionCoachSync(args: string[], loadEnvironment: () => void, dependencies: Dependencies = defaults): Promise<SessionCoachSyncResult> {
+  const scoped = getDataRepositoryOverride("sessionCoachSync");
+  if (!scoped) loadEnvironment();
+  const repository = scoped ?? dependencies.getDefaultRepository();
+  const apply = args.includes("--apply");
+  const today = new Date();
 
-  const { sessions, existingBySession, coaches: coachRows } = await repository.readInputs();
-  const coaches = rosterWithoutNameCollisions(coachRows);
+  let result: SessionCoachSyncResult | undefined, failed = false;
+  try {
+    const { sessions, existingBySession, coaches: coachRows } = await repository.readInputs();
+    const coaches = rosterWithoutNameCollisions(coachRows);
 
-  if (!apply) {
-    return syncSessionCoaches(sessions, existingBySession, coaches, DRY_RUN_WRITER, today, true);
-  }
+    if (!apply) {
+      result = await syncSessionCoaches(sessions, existingBySession, coaches, DRY_RUN_WRITER, today, true);
+    } else {
+      const total: SessionCoachSyncResult = { checkedSessions: 0, created: 0, converted: 0, reactivated: 0, cancelled: 0, unmatched: [], apply: true };
+      for (const part of chunk(sessions, CHUNK_SIZE)) {
+        const partResult = await repository.withWriter((writer) => syncSessionCoaches(part, existingBySession, coaches, writer, today, false));
+        mergeResult(total, partResult);
+      }
+      result = total;
+    }
+  } catch { failed = true; }
+  finally { if (!scoped) try { await dependencies.closeDefaultRepository(); } catch { failed = true; } }
 
-  const total: SessionCoachSyncResult = { checkedSessions: 0, created: 0, converted: 0, reactivated: 0, cancelled: 0, unmatched: [], apply: true };
-  for (const part of chunk(sessions, CHUNK_SIZE)) {
-    const partResult = await repository.withWriter((writer) =>
-      syncSessionCoaches(part, existingBySession, coaches, writer, today, false)
-    );
-    mergeResult(total, partResult);
-  }
-  return total;
+  if (failed || !result) throw new Error("SESSION_COACH_SYNC_FAILED");
+  return result;
 }

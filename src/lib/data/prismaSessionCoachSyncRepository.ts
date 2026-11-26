@@ -79,6 +79,9 @@ export function getPrismaSessionCoachSyncRepository(): SessionCoachSyncRepositor
         }),
         prisma.coachEngagement.findMany({
           where: { operationSessionId: { not: null } },
+          // id 정렬로 Mongo scan(_id 오름차순)과 existing 순서를 일치시켜, 같은 코치의 중복 활성 MANUAL이
+          // 있는 비정상 데이터에서도 planSessionCoachSync의 last-wins 선택이 두 백엔드에서 결정적으로 동일하게 한다.
+          orderBy: { id: "asc" },
           select: { id: true, coachId: true, operationSessionId: true, source: true, status: true }
         }),
         prisma.coach.findMany({ where: { deletedAt: null }, select: { id: true, name: true } })
