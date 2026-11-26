@@ -49,6 +49,7 @@ import type { ImportPromotionCalendar } from "./importPromotionEffects";
 import type { ImportRepository } from "./importRepository";
 import type { ImportStagingRepository } from "./importStagingWriter";
 import type { CoachOperationMatchRepository } from "./coachOperationMatchRepository";
+import type { SessionCoachSyncRepository } from "./sessionCoachSyncRepository";
 import type { CoachArchiveServiceBackfillRepository } from "./coachArchiveServiceBackfillRepository";
 import type { DuplicateCompanyMergeRepository } from "./duplicateCompanyMergeRepository";
 import type { InstructorNoteImportRepository } from "./instructorNoteImportRepository";
@@ -137,6 +138,7 @@ export interface DataRepositories {
   coachPrivate: CoachPrivateRepository;
   coachPrivateAccessLog: CoachPrivateAccessLogRepository;
   coachOperationMatch: CoachOperationMatchRepository;
+  sessionCoachSync: SessionCoachSyncRepository;
   coachArchiveServiceBackfill: CoachArchiveServiceBackfillRepository;
   duplicateCompanyMerge: DuplicateCompanyMergeRepository;
   instructorNoteImport: InstructorNoteImportRepository;
