@@ -202,7 +202,8 @@ function toOperationSession(session: OperationSessionRow, courseIdLabel: string)
     operationStatus: OPERATION_STATUS[session.operationStatus],
     archiveStatus: deriveArchiveStatus(toDateString(session.endDate), {
       courseId: session.course.courseId ?? "",
-      lectureManagementNote: session.lectureManagementNote ?? "",
+      courseLectureManagementLink: session.course.lectureManagementLink ?? "",
+      courseLectureManagementNote: session.course.lectureManagementNote ?? "",
       avgSatisfaction: session.avgSatisfaction ?? "",
       hasSatisfactionSurvey: SATISFACTION_SURVEY_STATUS[session.hasSatisfactionSurvey],
       hasResultReport: RESULT_REPORT_STATUS[session.hasResultReport],
