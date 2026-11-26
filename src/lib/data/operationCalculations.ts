@@ -156,7 +156,9 @@ export function deriveOperationStatus(om: string, endDate: string, hasArchiveDat
 
 export interface ArchiveCompletionInput {
   courseId: string;
-  lectureManagementNote: string;
+  // 강의관리는 '과정(course) 레벨' 링크·노트를 본다(회차 레벨 아님). 둘 중 하나라도 있으면 충족.
+  courseLectureManagementLink: string;
+  courseLectureManagementNote: string;
   avgSatisfaction: string;
   hasSatisfactionSurvey: SatisfactionSurveyStatus;
   hasResultReport: ResultReportStatus;
@@ -172,22 +174,27 @@ export function deriveArchiveStatus(endDate: string, input: ArchiveCompletionInp
 }
 
 /**
- * 아카이빙 완료 조건: 코스ID, 강의관리 시트, (만족도 조사를 하는 회차면) 만족도 등록,
+ * 아카이빙 완료 조건: 코스ID, 강의관리(과정 레벨 링크 또는 노트), (만족도 조사를 하는 회차면) 만족도 등록,
  * (결과보고서가 필요한 회차면) 결과보고서 링크 등록.
  *
+ * 강의관리는 '과정(course) 레벨' 강의관리 링크·노트 중 하나라도 있으면 충족으로 본다. 회차(session)
+ * 레벨 강의관리는 입력 UI가 없어(수동 등록 과정 등) 영원히 비어 미완료로 남으므로, OM이 실제로
+ * 관리하는 과정 레벨 값을 기준으로 한다(EditableCourseLectureManagementRow의 'done'과 같은 정의).
+ *
  * 조사하지 않기로 한 회차(만족도 조사 여부 = 불필요)는 채울 값 자체가 없으므로 만족도를
- * 요구하지 않는다. 요구하면 나머지를 다 정리해도 영원히 "아카이빙필요"에 남는다.
- * 결과보고서가 "유"일 때만 링크를 요구하는 것과 같은 구조다.
+ * 요구하지 않는다. 결과보고서가 "유"일 때만 링크를 요구하는 것과 같은 구조다.
  */
 export function isArchiveComplete(input: ArchiveCompletionInput): boolean {
   const hasCourseId = Boolean(input.courseId.trim());
-  const hasLectureManagementNote = Boolean(input.lectureManagementNote.trim());
+  const hasLectureManagement = Boolean(
+    input.courseLectureManagementLink.trim() || input.courseLectureManagementNote.trim()
+  );
   const hasRequiredSatisfaction =
     input.hasSatisfactionSurvey === "불필요" || Boolean(input.avgSatisfaction.trim());
   const hasRequiredResultReportLink =
     input.hasResultReport !== "유" || Boolean(input.resultReportLink.trim());
 
-  return hasCourseId && hasLectureManagementNote && hasRequiredSatisfaction && hasRequiredResultReportLink;
+  return hasCourseId && hasLectureManagement && hasRequiredSatisfaction && hasRequiredResultReportLink;
 }
 
 /**
@@ -199,7 +206,7 @@ export function isArchiveComplete(input: ArchiveCompletionInput): boolean {
 export function missingArchiveItems(input: ArchiveCompletionInput): string[] {
   const missing: string[] = [];
   if (!input.courseId.trim()) missing.push("코스ID");
-  if (!input.lectureManagementNote.trim()) missing.push("강의관리");
+  if (!input.courseLectureManagementLink.trim() && !input.courseLectureManagementNote.trim()) missing.push("강의관리");
   // 조사하지 않기로 한 회차는 채울 값이 없으므로 요구하지 않는다.
   if (input.hasSatisfactionSurvey !== "불필요" && !input.avgSatisfaction.trim()) missing.push("만족도");
   // 결과보고서가 "유"일 때만 링크를 요구한다.
