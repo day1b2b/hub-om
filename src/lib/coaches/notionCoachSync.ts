@@ -2,13 +2,9 @@ import { isObject, mapPageToCoachRecord, type JsonObject } from "./notionCoachMa
 import type { SyncResult } from "./syncTypes";
 import { getCoachNotionSource, getCoachNotionSyncRepository } from "../data/coachNotionSyncRepositoryFactory";
 import { applyOneNotionCoach, runNotionCoachSync } from "./coachNotionSyncWorkflow";
+import { parseNotionPageId } from "./notionPageLink";
+export { parseNotionPageId };
 const NOTION_VERSION = "2022-06-28";
-
-/** 노션 페이지 URL/ID에서 32자리 hex 페이지 ID를 뽑는다. 없으면 null(=잘못된 링크). */
-export function parseNotionPageId(linkOrId: string): string | null {
-  const hex = String(linkOrId).replace(/-/g, "").match(/[0-9a-f]{32}/i);
-  return hex ? hex[0].toLowerCase() : null;
-}
 
 const normalizeNotionId = (value: unknown): string => (typeof value === "string" ? value.replace(/-/g, "").toLowerCase() : "");
 
@@ -20,11 +16,14 @@ async function fetchOneCoachNotionPage(config: { token: string; databaseId: stri
   });
   if (!response.ok) throw new Error("COACH_NOTION_PAGE_FETCH_FAILED");
   const page = (await response.json()) as JsonObject;
-  // 소속 가드: database_id가 있으면 코치 DB와 일치해야 한다. (data_source로 쪼개져 database_id가 없으면
-  // 아래 레코드 매핑의 '이름 필수'가 구조적 가드 역할을 한다.)
+  // 소속 가드(긍정형): 반드시 '코치 DB 소속'임을 증명해야 추가한다. parent.database_id가 코치 DB와
+  // 일치하지 않으면(없는 경우 포함) 거부 — 다른 DB의 '이름 있는' 페이지가 코치로 들어가는 것을 막는다(fail-closed).
+  // ⚠️ NOTION_VERSION을 2025-09-03+(data_source API)로 올리면 parent에 database_id가 없어질 수 있다. 그때는
+  //    parent.data_source_id→상위 database 역조회로 이 가드를 함께 갱신해야 한다(안 하면 전부 거부로 막힌다).
   const parent = isObject(page.parent) ? page.parent : {};
-  const parentDb = normalizeNotionId(parent.database_id);
-  if (parentDb && parentDb !== normalizeNotionId(config.databaseId)) throw new Error("COACH_NOTION_PAGE_NOT_IN_COACH_DB");
+  if (normalizeNotionId(parent.database_id) !== normalizeNotionId(config.databaseId)) {
+    throw new Error("COACH_NOTION_PAGE_NOT_IN_COACH_DB");
+  }
   return page;
 }
 
