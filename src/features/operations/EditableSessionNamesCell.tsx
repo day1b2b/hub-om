@@ -7,6 +7,9 @@ import { SessionFieldPopover } from "./SessionFieldPopover";
 
 type SaveState = "idle" | "saving" | "failed";
 
+// ②/S2: 명단에 없는 코치를 노션 링크로 바로 추가하는 흐름. '[노션 코치DB에 등록]' 버튼이 열 주소(노션 실습코치 DB).
+const COACH_NOTION_DB_URL = "https://app.notion.com/p/3b84576d6ffa802d9e23db654f1b31cd?v=f0bb25c4d78349e586fd7630f68f457a";
+
 interface EditableSessionNamesCellProps {
   field: "coach" | "instructors";
   label: string;
@@ -35,6 +38,9 @@ export function EditableSessionNamesCell({
   const [draft, setDraft] = useState(value);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [linkDraft, setLinkDraft] = useState("");
+  const [addState, setAddState] = useState<"idle" | "adding">("idle");
+  const [addMessage, setAddMessage] = useState<string | null>(null);
 
   return (
     <td className="round-resource-cell">
@@ -55,6 +61,26 @@ export function EditableSessionNamesCell({
                 value={draft}
               />
             </label>
+            {nameToId ? (
+              <div className="session-coach-add">
+                <span className="session-coach-add-title">명단에 없나요?</span>
+                <a className="session-coach-add-link" href={COACH_NOTION_DB_URL} rel="noreferrer" target="_blank">
+                  노션 코치DB에 등록
+                </a>
+                <div className="session-coach-add-row">
+                  <input
+                    className="session-coach-add-input"
+                    onChange={(event) => setLinkDraft(event.target.value)}
+                    placeholder="등록 후 노션 '페이지 링크' 붙여넣기"
+                    value={linkDraft}
+                  />
+                  <button disabled={addState === "adding" || !linkDraft.trim()} onClick={addByLink} type="button">
+                    {addState === "adding" ? "추가 중" : "추가"}
+                  </button>
+                </div>
+                {addMessage ? <span className="session-coach-add-message">{addMessage}</span> : null}
+              </div>
+            ) : null}
           </div>
           <div className="lecture-note-footer">
             {error ? <span className="lecture-note-save-error">{error}</span> : null}
@@ -85,6 +111,34 @@ export function EditableSessionNamesCell({
     setSaveState("idle");
     setError(null);
     setIsEditing(false);
+  }
+
+  async function addByLink() {
+    const link = linkDraft.trim();
+    if (!link) return;
+    setAddState("adding");
+    setAddMessage(null);
+    try {
+      const response = await fetch("/api/coaches/add-by-link", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ link })
+      });
+      const payload = (await response.json().catch(() => ({}))) as { ok?: boolean; name?: string; error?: string };
+      if (!response.ok || !payload.ok) {
+        setAddState("idle");
+        setAddMessage(payload.error ?? "추가하지 못했어요. 노션 페이지 링크를 확인해주세요.");
+        return;
+      }
+      // 추가된 코치가 명단(options)에 뜨도록 새로고침 → OM이 바로 선택.
+      setAddState("idle");
+      setLinkDraft("");
+      setAddMessage(`${payload.name ?? "코치"} 추가됨 — 목록에서 선택해주세요.`);
+      router.refresh();
+    } catch {
+      setAddState("idle");
+      setAddMessage("추가하지 못했어요. 다시 시도해주세요.");
+    }
   }
 
   async function save() {
