@@ -20,6 +20,7 @@
     "db:seed:coach-sample": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/seed-coach-sample-data.ts",
     "db:seed:my-page-sample": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/seed-my-page-sample-data.ts",
     "db:verify:coach-data": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/verify-coach-data.ts",
+    "db:sync:sales-revenue": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/sync-sales-revenue.ts",
     "db:backfill:coach-access-tokens": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/backfill-coach-access-tokens.ts",
     "db:backfill:coach-archive-service-data": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/backfill-coach-archive-service-data.ts",
     "db:backfill:coach-operation-matches": "node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/backfill-coach-operation-matches.ts",
