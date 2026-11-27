@@ -80,6 +80,7 @@
   "POST /api/coaches/export": "tracked",
   "GET /api/coaches": "tracked",
   "POST /api/coaches": "tracked",
+  "POST /api/coaches/add-by-link": "tracked",
   "GET /api/company-wiki/business-info": "tracked",
   "POST /api/company-wiki/business-info": "tracked",
   "GET /api/company-wiki/courses": "tracked",
