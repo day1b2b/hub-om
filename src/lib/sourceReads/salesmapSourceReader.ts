@@ -31,7 +31,12 @@ import type {
  */
 
 const DEFAULT_BASE_URL = "https://salesmap.kr/api";
-const DEFAULT_MAX_PAGES = 20;
+// 페이지 루프는 nextCursor=null(딜 끝)에서 자연 종료되므로 이 값은 "볼륨 튜닝 knob"이 아니라
+// 커서 꼬임 등 비정상 상황을 끊는 안전 상한(runaway backstop)이다. 정상 전수 읽기가 상한에
+// 걸려 잘리면(partial) 반영이 통째로 막혀(= "매출 반영이 잘 안 됨"의 근본 원인) 넉넉히 둔다.
+// 현재 실제 볼륨 ~2.5천 딜(≈25페이지)의 여러 배수. 동기화는 웹 밖 배경 배치라 게이트웨이
+// 타임아웃 압박이 없고, 무한 반복은 fetchAllDeals의 seenCursors 루프 감지가 별도로 막는다.
+const DEFAULT_MAX_PAGES = 200;
 // 요청을 몰아치지 않도록 페이지 사이 간격(ms)과 429(요청 제한) 재시도 설정.
 const DEFAULT_PAGE_DELAY_MS = 300;
 const MAX_RATE_LIMIT_RETRIES = 6;
