@@ -41,6 +41,14 @@ export function EditableSessionNamesCell({
   const [linkDraft, setLinkDraft] = useState("");
   const [addState, setAddState] = useState<"idle" | "adding">("idle");
   const [addMessage, setAddMessage] = useState<string | null>(null);
+  const [addFailed, setAddFailed] = useState(false);
+
+  function resetAddByLink() {
+    setLinkDraft("");
+    setAddState("idle");
+    setAddMessage(null);
+    setAddFailed(false);
+  }
 
   return (
     <td className="round-resource-cell">
@@ -78,7 +86,7 @@ export function EditableSessionNamesCell({
                     {addState === "adding" ? "추가 중" : "추가"}
                   </button>
                 </div>
-                {addMessage ? <span className="session-coach-add-message">{addMessage}</span> : null}
+                {addMessage ? <span className={addFailed ? "lecture-note-save-error" : "session-coach-add-message"}>{addMessage}</span> : null}
               </div>
             ) : null}
           </div>
@@ -103,6 +111,7 @@ export function EditableSessionNamesCell({
     setDraft(value);
     setSaveState("idle");
     setError(null);
+    resetAddByLink();
     setIsEditing(true);
   }
 
@@ -118,6 +127,7 @@ export function EditableSessionNamesCell({
     if (!link) return;
     setAddState("adding");
     setAddMessage(null);
+    setAddFailed(false);
     try {
       const response = await fetch("/api/coaches/add-by-link", {
         method: "POST",
@@ -127,6 +137,7 @@ export function EditableSessionNamesCell({
       const payload = (await response.json().catch(() => ({}))) as { ok?: boolean; name?: string; error?: string };
       if (!response.ok || !payload.ok) {
         setAddState("idle");
+        setAddFailed(true);
         setAddMessage(payload.error ?? "추가하지 못했어요. 노션 페이지 링크를 확인해주세요.");
         return;
       }
@@ -137,6 +148,7 @@ export function EditableSessionNamesCell({
       router.refresh();
     } catch {
       setAddState("idle");
+      setAddFailed(true);
       setAddMessage("추가하지 못했어요. 다시 시도해주세요.");
     }
   }

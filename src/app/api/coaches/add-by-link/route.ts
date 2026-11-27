@@ -33,11 +33,13 @@ async function activityPOST(request: Request) {
   try {
     const result = await syncOneNotionCoachByLink(link);
     return NextResponse.json({ ok: true, ...result });
-  } catch {
-    return NextResponse.json(
-      { ok: false, error: "코치를 추가하지 못했어요. 노션 실습코치DB의 '페이지 링크'가 맞는지 확인해주세요." },
-      { status: 400 }
-    );
+  } catch (error) {
+    const code = error instanceof Error ? error.message : "";
+    // 링크 자체 문제(OM이 고쳐야 함) vs 일시적 문제(동시수정·쓰기 실패 — 멱등이라 재시도로 성공 가능)를 구분한다.
+    if (code === "COACH_NOTION_LINK_INVALID" || code === "COACH_NOTION_PAGE_FETCH_FAILED" || code === "COACH_NOTION_PAGE_NOT_IN_COACH_DB" || code === "COACH_NOTION_RECORD_INVALID") {
+      return NextResponse.json({ ok: false, error: "노션 실습코치DB의 '페이지 링크'가 맞는지 확인해주세요." }, { status: 400 });
+    }
+    return NextResponse.json({ ok: false, error: "일시적인 오류예요. 잠시 후 다시 시도해주세요." }, { status: 503 });
   }
 }
 
