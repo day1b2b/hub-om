@@ -21,9 +21,10 @@ export function mongoCoachFixtures() {
   add("Coach", { name: "비활성 가상", normalizedName: "비활성가상", sourceCoachId: "synthetic-inactive", status: "INACTIVE", isActive: false, displayOrder: null });
   const field=add("CoachFieldMaster",{name:"Synthetic field"}); const curriculum=add("CoachCurriculumMaster",{name:"Synthetic curriculum"});
   add("CoachField",{coachId:a.id,tagId:field.id}); add("CoachCurriculum",{coachId:a.id,tagId:curriculum.id});
-  const e1=add("CoachEngagement",{coachId:a.id,courseName:"Synthetic first",source:"MANUAL",status:"SCHEDULED",startDate:new Date("2099-12-01"),endDate:new Date("2099-12-01"),rating:4,feedback:"Synthetic feedback",hiredByText:"Synthetic private hirer"});
-  const e2=add("CoachEngagement",{coachId:a.id,courseName:"Synthetic second",source:"SHEET",status:"COMPLETED",startDate:new Date("2099-12-31"),endDate:new Date("2099-12-31"),rating:2});
-  add("CoachEngagement",{coachId:a.id,courseName:"Synthetic cancelled",source:"SHEET",status:"CANCELLED",startDate:new Date("2099-12-02"),endDate:new Date("2099-12-02"),rating:null});
+  // 집계·표시는 운영현황 출신(sourceEngagementId "manual-session:" 접두사)만 센다. 이 코치는 운영현황 투입 이력을 가진 것으로 둔다.
+  const e1=add("CoachEngagement",{coachId:a.id,courseName:"Synthetic first",source:"MANUAL",status:"SCHEDULED",startDate:new Date("2099-12-01"),endDate:new Date("2099-12-01"),rating:4,feedback:"Synthetic feedback",hiredByText:"Synthetic private hirer",sourceEngagementId:"manual-session:synthetic-a:1"});
+  const e2=add("CoachEngagement",{coachId:a.id,courseName:"Synthetic second",source:"SHEET",status:"COMPLETED",startDate:new Date("2099-12-31"),endDate:new Date("2099-12-31"),rating:2,sourceEngagementId:"manual-session:synthetic-a:2"});
+  add("CoachEngagement",{coachId:a.id,courseName:"Synthetic cancelled",source:"SHEET",status:"CANCELLED",startDate:new Date("2099-12-02"),endDate:new Date("2099-12-02"),rating:null,sourceEngagementId:"manual-session:synthetic-a:3"});
   for(const date of ["2099-12-01","2099-12-31","2100-01-01"]) add("CoachSchedule",{coachId:a.id,date:new Date(date),startTime:"09:00",endTime:"18:00"});
   add("CoachSchedule",{coachId:b.id,date:new Date("2099-12-01"),startTime:"09:00",endTime:"18:00"});
   add("CoachSchedule",{coachId:deleted.id,date:new Date("2099-12-01"),startTime:"09:00",endTime:"18:00"});
