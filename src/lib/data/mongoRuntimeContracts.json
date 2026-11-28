@@ -3276,6 +3276,240 @@
       }
     ]
   },
+  "InstructorEngagement": {
+    "collection": "instructor_engagements",
+    "primaryKey": [
+      "id"
+    ],
+    "fields": {
+      "id": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": true,
+        "dateOnly": false
+      },
+      "sourceEngagementId": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "instructorNoteId": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": true,
+        "dateOnly": false
+      },
+      "operationSessionId": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": true,
+        "dateOnly": false
+      },
+      "courseName": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "status": {
+        "type": "InstructorEngagementStatus",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false,
+        "values": [
+          "SCHEDULED",
+          "IN_PROGRESS",
+          "COMPLETED",
+          "CANCELLED"
+        ]
+      },
+      "source": {
+        "type": "InstructorEngagementSource",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false,
+        "values": [
+          "MANUAL",
+          "CONTRACT"
+        ]
+      },
+      "startDate": {
+        "type": "DateTime",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": true
+      },
+      "endDate": {
+        "type": "DateTime",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": true
+      },
+      "startTime": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "endTime": {
+        "type": "String",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "createdAt": {
+        "type": "DateTime",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      }
+    },
+    "references": [
+      {
+        "fields": [
+          "instructorNoteId"
+        ],
+        "targetModel": "InstructorNote",
+        "targetFields": [
+          "id"
+        ]
+      },
+      {
+        "fields": [
+          "operationSessionId"
+        ],
+        "targetModel": "OperationSession",
+        "targetFields": [
+          "id"
+        ]
+      }
+    ],
+    "uniqueKeys": [
+      {
+        "fields": [
+          "id"
+        ],
+        "nullsDistinct": true
+      },
+      {
+        "fields": [
+          "sourceEngagementId"
+        ],
+        "nullsDistinct": true
+      }
+    ]
+  },
+  "InstructorEngagementSchedule": {
+    "collection": "instructor_engagement_schedules",
+    "primaryKey": [
+      "id"
+    ],
+    "fields": {
+      "id": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": true,
+        "dateOnly": false
+      },
+      "sourceEngagementScheduleId": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "engagementId": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": true,
+        "dateOnly": false
+      },
+      "instructorNoteId": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": true,
+        "dateOnly": false
+      },
+      "date": {
+        "type": "DateTime",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": true
+      },
+      "startTime": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "endTime": {
+        "type": "String",
+        "nullable": false,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      },
+      "cancelledAt": {
+        "type": "DateTime",
+        "nullable": true,
+        "list": false,
+        "uuid": false,
+        "dateOnly": false
+      }
+    },
+    "references": [
+      {
+        "fields": [
+          "engagementId"
+        ],
+        "targetModel": "InstructorEngagement",
+        "targetFields": [
+          "id"
+        ]
+      },
+      {
+        "fields": [
+          "instructorNoteId"
+        ],
+        "targetModel": "InstructorNote",
+        "targetFields": [
+          "id"
+        ]
+      }
+    ],
+    "uniqueKeys": [
+      {
+        "fields": [
+          "id"
+        ],
+        "nullsDistinct": true
+      },
+      {
+        "fields": [
+          "sourceEngagementScheduleId"
+        ],
+        "nullsDistinct": true
+      }
+    ]
+  },
   "CoachEngagementDetail": {
     "collection": "coach_engagement_details",
     "primaryKey": [
