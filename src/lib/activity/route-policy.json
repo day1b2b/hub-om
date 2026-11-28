@@ -102,6 +102,7 @@
   "POST /api/om-request": "tracked",
   "GET /api/om-request/session-template": "tracked",
   "POST /api/operations/[operationId]/coaches": "tracked",
+  "POST /api/operations/[operationId]/instructors": "tracked",
   "POST /api/operations/[operationId]/drive-import/apply": "tracked",
   "POST /api/operations/[operationId]/drive-import/candidates": "tracked",
   "POST /api/operations/[operationId]/drive-import/folders": "tracked",
