@@ -18,7 +18,7 @@ interface EditableSessionNamesCellProps {
   placeholder: string;
   unmatchedHint: string;
   value: string;
-  /** 있으면(코치 셀) 선택 이름을 위키 coachId로 풀어 투입(engagement)까지 반영한다. 동명이인(맵에 없음)은 제외. */
+  /** 있으면(코치·강사 셀) 선택 이름을 위키 ID(coachId / InstructorNote.id)로 풀어 투입(engagement)까지 반영한다. 동명이인(맵에 없음)은 제외. */
   nameToId?: Record<string, string>;
 }
 
@@ -69,7 +69,7 @@ export function EditableSessionNamesCell({
                 value={draft}
               />
             </label>
-            {nameToId ? (
+            {field === "coach" ? (
               <div className="session-coach-add">
                 <span className="session-coach-add-title">명단에 없나요?</span>
                 <a className="session-coach-add-link" href={COACH_NOTION_DB_URL} rel="noreferrer" target="_blank">
@@ -164,21 +164,22 @@ export function EditableSessionNamesCell({
       return;
     }
 
-    // 코치 셀(nameToId 있음): 선택 이름을 위키 coachId로 해석한다. 동명이인(유일 맵에 없음)이 섞여 있으면
-    // 어느 코치인지 특정할 수 없어 투입을 정확히 연결할 수 없다 → 저장을 막고 노션 정리를 유도한다
-    // (앱이 추측해 때우지 않음 — 노션이 이름의 원천). 강사 셀은 nameToId가 없어 coachIds=null로 건너뛴다.
-    let coachIds: string[] | null = null;
+    // nameToId 있는 셀(코치·강사): 선택 이름을 위키 ID(coachId / InstructorNote.id)로 해석한다. 동명이인(유일 맵에
+    // 없음)이 섞여 있으면 어느 사람인지 특정할 수 없어 투입을 정확히 연결할 수 없다 → 저장을 막고 노션 정리를 유도한다
+    // (앱이 추측해 때우지 않음 — 노션이 이름의 원천).
+    const homonymDbLabel = field === "coach" ? "노션 실습코치DB" : "강사DB 노션";
+    let resolvedIds: string[] | null = null;
     if (nameToId) {
       const resolved: string[] = [];
       for (const name of names) {
         const key = Object.keys(nameToId).find((candidate) => candidate.toLowerCase() === name.toLowerCase());
         if (!key) {
-          setError("동명이인이 있어 투입을 연결할 수 없어요. 노션 실습코치DB에서 A·B로 구분한 뒤 다시 선택해주세요.");
+          setError(`동명이인이 있어 투입을 연결할 수 없어요. ${homonymDbLabel}에서 A·B로 구분한 뒤 다시 선택해주세요.`);
           return;
         }
         resolved.push(nameToId[key]);
       }
-      coachIds = resolved;
+      resolvedIds = resolved;
     }
 
     if (!confirm(`${label}를 수정하시겠습니까?`)) return;
@@ -206,14 +207,17 @@ export function EditableSessionNamesCell({
       return;
     }
 
-    // (2) 코치 셀이면 같은 선택의 coachId로 투입(engagement)까지 반영(멱등). 동명이인은 위에서 이미 걸러짐.
-    if (coachIds) {
+    // (2) nameToId 셀이면 같은 선택의 ID로 투입(engagement)까지 반영(멱등). 동명이인은 위에서 이미 걸러짐.
+    //     코치→/coaches {coachIds}, 강사→/instructors {instructorNoteIds}.
+    if (resolvedIds) {
+      const engagementPath = field === "coach" ? "coaches" : "instructors";
+      const engagementBody = field === "coach" ? { coachIds: resolvedIds } : { instructorNoteIds: resolvedIds };
       let engagementOk = false;
       try {
-        const engagementResponse = await fetch(`/api/operations/${encodeURIComponent(operationId)}/coaches`, {
+        const engagementResponse = await fetch(`/api/operations/${encodeURIComponent(operationId)}/${engagementPath}`, {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ coachIds })
+          body: JSON.stringify(engagementBody)
         });
         const engagementPayload = (await engagementResponse.json().catch(() => ({}))) as { ok?: boolean };
         engagementOk = engagementResponse.ok && engagementPayload.ok === true;

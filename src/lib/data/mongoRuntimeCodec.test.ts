@@ -28,8 +28,8 @@ function prismaToNeutral(model: string, row: Record<string, unknown>) {
   return Object.fromEntries(Object.entries(row).map(([key, value]) => [key, value === Prisma.DbNull ? MongoDbNull : value === Prisma.JsonNull ? MongoJsonNull : mongoRuntimeContracts[model].fields[key].type === "Decimal" && value !== null ? String(value) : value]));
 }
 
-test("all 49 static contracts match migration metadata and runtime import graph excludes Prisma, fs and migration", () => {
-  assert.equal(mongoRuntimeModelNames.length, 49);
+test("all 51 static contracts match migration metadata and runtime import graph excludes Prisma, fs and migration", () => {
+  assert.equal(mongoRuntimeModelNames.length, 51);
   assert.deepEqual(mongoRuntimeContracts, mongoModelContracts);
   for (const path of ["./mongoRuntimeCodec.ts", "../privacy/crypto.ts"]) {
     const source = readFileSync(new URL(path, import.meta.url), "utf8");

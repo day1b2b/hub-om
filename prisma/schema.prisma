@@ -299,6 +299,7 @@ model OperationSession {
   sourceRecords OperationSourceRecord[]
   driveImportResults DriveImportResult[]
   coachEngagements   CoachEngagement[]
+  instructorEngagements InstructorEngagement[]
 
   @@index([courseRecordId])
   @@index([operationStatus])
@@ -1268,6 +1269,8 @@ model InstructorNote {
 
   privateProfile    InstructorPrivateProfile?
   privateAccessLogs InstructorPrivateAccessLog[]
+  engagements         InstructorEngagement[]
+  engagementSchedules InstructorEngagementSchedule[]
 
   @@index([recruitAvoid], map: "instructor_notes_recruit_avoid_idx")
   @@index([instructorName], map: "instructor_notes_instructor_name_idx")
@@ -1321,6 +1324,70 @@ model InstructorPrivateAccessLog {
 
   // Application encryption lookup/storage columns; never expose these in API responses.
   accessedByEmailPiiIndex String? @map("accessed_by_email_pii_index")
+}
+
+// -----------------------------------------------------------------------------
+// 강사 투입(일원화). 코치 CoachEngagement/Schedule를 미러한다.
+// 정체 앵커 = InstructorNote(= 노션 강사 DB 미러, notion_no로 노션에 묶임). Coach 대칭.
+// 운영현황 강사 입력 → InstructorNote.id로 해석 → 이 투입 장부로 세션↔강사를 묶는다.
+// 운영현황 출신 판정은 source_engagement_id 접두사(manual-session:)로 하므로(코치와 동일),
+// source_engagement_id는 이름이 섞이지 않아(키=manual-session:{회차}:{instructorNoteId}) PII 암호화 대상이 아니다.
+// -----------------------------------------------------------------------------
+enum InstructorEngagementStatus {
+  SCHEDULED   @map("scheduled")
+  IN_PROGRESS @map("in_progress")
+  COMPLETED   @map("completed")
+  CANCELLED   @map("cancelled")
+
+  @@map("instructor_engagement_status")
+}
+
+enum InstructorEngagementSource {
+  MANUAL   @map("manual")
+  CONTRACT @map("contract") // 계약시트(courseId) 시드/보강용. 기본은 MANUAL(운영현황 입력).
+
+  @@map("instructor_engagement_source")
+}
+
+model InstructorEngagement {
+  id                 String                     @id @default(uuid()) @db.Uuid
+  sourceEngagementId String                     @unique @map("source_engagement_id")
+  instructorNoteId   String                     @map("instructor_note_id") @db.Uuid
+  operationSessionId String?                    @map("operation_session_id") @db.Uuid
+  courseName         String                     @map("course_name")
+  status             InstructorEngagementStatus @default(SCHEDULED)
+  source             InstructorEngagementSource @default(MANUAL)
+  startDate          DateTime                   @map("start_date") @db.Date
+  endDate            DateTime                   @map("end_date") @db.Date
+  startTime          String?                    @map("start_time")
+  endTime            String?                    @map("end_time")
+  createdAt          DateTime                   @default(now()) @map("created_at")
+
+  instructorNote     InstructorNote             @relation(fields: [instructorNoteId], references: [id], onDelete: Cascade)
+  operationSession   OperationSession?          @relation(fields: [operationSessionId], references: [id])
+  schedules          InstructorEngagementSchedule[]
+
+  @@index([instructorNoteId])
+  @@index([operationSessionId])
+  @@map("instructor_engagements")
+}
+
+model InstructorEngagementSchedule {
+  id                         String    @id @default(uuid()) @db.Uuid
+  sourceEngagementScheduleId String    @unique @map("source_engagement_schedule_id")
+  engagementId               String    @map("engagement_id") @db.Uuid
+  instructorNoteId           String    @map("instructor_note_id") @db.Uuid
+  date                       DateTime  @db.Date
+  startTime                  String    @map("start_time")
+  endTime                    String    @map("end_time")
+  cancelledAt                DateTime? @map("cancelled_at")
+
+  engagement     InstructorEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+  instructorNote InstructorNote       @relation(fields: [instructorNoteId], references: [id], onDelete: Cascade)
+
+  @@index([instructorNoteId, date])
+  @@index([date])
+  @@map("instructor_engagement_schedules")
 }
 
 // 운영 1건(OperationSession.operationId)의 **실제 교육일 1일 ↔ 구글 이벤트 1건** 매핑.

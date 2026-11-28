@@ -63,6 +63,8 @@ interface OperationDetailProps {
   collaboration: OperationCollaboration;
   extraTools?: string[];
   instructorOptions?: string[];
+  /** 유일 이름(동명이인 제외) → InstructorNote.id. 강사 셀 저장 시 투입(engagement) 반영에 쓴다. */
+  instructorNameToId?: Readonly<Record<string, string>>;
   /** 과정 카테고리 기준 후보 강사. 서버에서 계산해 넘긴다. */
   onsiteOmOptions?: string[];
   operation: OperationSession;
@@ -82,6 +84,7 @@ export function OperationDetail({
   collaboration,
   extraTools = [],
   instructorOptions = [],
+  instructorNameToId = {},
   onsiteOmOptions,
   operation,
   personOptions = { ld: [], om: [] },
@@ -390,6 +393,7 @@ export function OperationDetail({
                       <EditableSessionNamesCell
                         field="instructors"
                         label="강사"
+                        nameToId={instructorNameToId}
                         operationId={courseOperation.operationId}
                         options={instructorOptions}
                         placeholder="강사명 (여러 명은 콤마로 구분)"
