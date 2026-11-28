@@ -63,6 +63,8 @@ interface PeopleDirectoryProps {
   extraHeader?: string;
   /** 검색줄 옆 버튼으로 여닫는 칸(강사 위키 "강사 추천"). 열리면 검색줄 바로 아래에 보인다. */
   toolPanel?: { label: string; content: ReactNode; defaultOpen?: boolean };
+  /** 기본 상태 필터를 "운영이력 있음"(미투입 제외)으로 연다. 강사위키처럼 전사 풀(미투입)이 커서 노이즈가 큰 목록용. "전체"도 그대로 고를 수 있다. */
+  defaultWithHistory?: boolean;
 }
 
 const FACET_PREVIEW = 8;
@@ -80,10 +82,11 @@ export function PeopleDirectory({
   secondaryRatingHeader,
   deployHeader,
   extraHeader,
-  toolPanel
+  toolPanel,
+  defaultWithHistory = false
 }: PeopleDirectoryProps) {
   const [query, setQuery] = useState("");
-  const [status, setStatus] = useState<PeopleStatus | "all">("all");
+  const [status, setStatus] = useState<PeopleStatus | "all" | "has-history">(defaultWithHistory ? "has-history" : "all");
   const [fields, setFields] = useState<Set<string>>(new Set());
   const [secondary, setSecondary] = useState<Set<string>>(new Set());
   const [hideFlagged, setHideFlagged] = useState(false);
@@ -101,7 +104,7 @@ export function PeopleDirectory({
   const filtered = useMemo(
     () =>
       searched
-        .filter((row) => status === "all" || row.status === status)
+        .filter((row) => (status === "all" ? true : status === "has-history" ? row.status !== "never" : row.status === status))
         // 같은 칸 안에서는 하나라도 맞으면 통과(OR). 칸끼리는 모두 맞아야 통과.
         .filter((row) => fields.size === 0 || row.fields.some((field) => fields.has(field)))
         .filter((row) => secondary.size === 0 || row.secondary.some((value) => secondary.has(value)))
@@ -180,6 +183,8 @@ export function PeopleDirectory({
   }
 
   const statusCounts = useMemo(() => countBy(searched.map((row) => [row.status])), [searched]);
+  // "운영이력 있음" = 미투입(never) 제외. 강사위키 기본 필터용(defaultWithHistory).
+  const historyCount = useMemo(() => searched.filter((row) => row.status !== "never").length, [searched]);
   const fieldCounts = useMemo(() => countBy(searched.map((row) => row.fields)), [searched]);
   const secondaryCounts = useMemo(() => countBy(searched.map((row) => row.secondary)), [searched]);
   const flaggedCount = rows.filter((row) => row.flags.length > 0).length;
@@ -212,6 +217,9 @@ export function PeopleDirectory({
           <div className="people-facet">
             <b>상태</b>
             <FacetOption checked={status === "all"} count={searched.length} label="전체" onChange={() => setStatus("all")} type="radio" />
+            {defaultWithHistory ? (
+              <FacetOption checked={status === "has-history"} count={historyCount} label="운영이력 있음" onChange={() => setStatus("has-history")} type="radio" />
+            ) : null}
             {PEOPLE_STATUS_ORDER.map((key) => (
               <FacetOption
                 checked={status === key}
