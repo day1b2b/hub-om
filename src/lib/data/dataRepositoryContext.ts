@@ -29,6 +29,7 @@ import type { CoachManagerMyPageRepository } from "./coachManagerMyPageRepositor
 import type { CoachContentRepository } from "./coachContentRepository";
 import type { CoachEvaluationRepository } from "./coachEvaluationRepository";
 import type { CoachRepository } from "./coachRepository";
+import type { InstructorEngagementRepository } from "./instructorEngagementRepository";
 import type { CoachNotionSyncRepository, CoachNotionSource } from "./coachNotionSyncRepository";
 import type { CoachSyncLogRepository } from "./coachSyncLogRepository";
 import type { CoachSheetSyncRepository, CoachSheetSource } from "./coachSheetSyncRepository";
@@ -122,6 +123,7 @@ export interface DataRepositories {
   coachContent: CoachContentRepository;
   coachEvaluation: CoachEvaluationRepository;
   coach: CoachRepository;
+  instructorEngagement: InstructorEngagementRepository;
   coachNotionSync: CoachNotionSyncRepository;
   coachNotionSource: CoachNotionSource;
   coachSyncLog: CoachSyncLogRepository;
