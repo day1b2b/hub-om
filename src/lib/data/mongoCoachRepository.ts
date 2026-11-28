@@ -6,6 +6,7 @@ import { COACH_READ_MODELS, assertMongoReadStoreReady } from "./mongoReadStore";
 import { engagementStatus, coachDate, coachRangeDate, coachMonthRange, compareCoaches, compareEngagements, coachSummary, coachRead } from "./mongoCoachMapping";
 import { buildSkillfloCoachUrl } from "../coaches/skillfloCoachUrl";
 import { coachLinkedSession, type CoachLinkedSessionRow } from "./coachLinkedSession";
+import { isOperationBackedSourceId } from "../coaches/operationBacked";
 import { clearOverlappingPeriods, hasAvailability, subtractBitmap, toBitmap, toIntervals, type TimeInterval } from "./scheduleBitmap";
 
 /** 투입 이력에 교육형태를 붙이려고 OperationSession을 읽기만 한다(준비·검증기는 운영 저장소 몫). */
@@ -78,7 +79,8 @@ export class MongoCoachRepository implements CoachRepository {
       return rows.sort(compareEngagements).map(row => ({ id: row.id, courseName: row.courseName, operationSessionId: row.operationSessionId,
         status: engagementStatus[row.status], source: row.source.toLowerCase(), startDate: coachDate(row.startDate), endDate: coachDate(row.endDate),
         startTime: row.startTime, endTime: row.endTime, rating: row.rating, rehire: row.rehire, feedback: row.feedback,
-        linkedSession: coachLinkedSession(row.operationSessionId ? sessions.get(row.operationSessionId) : null) }));
+        linkedSession: coachLinkedSession(row.operationSessionId ? sessions.get(row.operationSessionId) : null),
+        operationBacked: isOperationBackedSourceId(row.sourceEngagementId) }));
     });
   }
   async listSchedules(coachId: string, range: DateRange) {

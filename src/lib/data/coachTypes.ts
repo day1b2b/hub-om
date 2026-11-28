@@ -65,6 +65,11 @@ export interface CoachEngagementView {
   feedback: string | null;
   /** 연결된 운영현황 회차에서 읽은 교육형태·시간. 회차 연결이 없거나 회차가 지워졌으면 null. */
   linkedSession: CoachLinkedSessionFacts | null;
+  /**
+   * 운영현황(실습코치 coachText) 출신 투입인가. 투입현황 표시 기준(운영현황=정본).
+   * 계약시트·삼성 스케줄시트 등 보조 소스는 false. 미지정(undefined)이면 판정 불가로 보고 숨기지 않는다.
+   */
+  operationBacked?: boolean;
 }
 
 /** 투입 화면에 붙이는 회차 정보. 저장하지 않고 읽을 때 회차에서 가져온다. */
