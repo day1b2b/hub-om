@@ -3,7 +3,6 @@ import { withActivity } from "@/lib/activity/request";
 import { requireCoachSyncAccess } from "@/lib/coaches/syncAuth";
 import { syncContractSheetEngagements } from "@/lib/coaches/contractSheetSync";
 import { syncNotionCoaches } from "@/lib/coaches/notionCoachSync";
-import { syncSamsungSchedule } from "@/lib/coaches/samsungScheduleSync";
 import type { SyncResult } from "@/lib/coaches/syncTypes";
 import { runCoachSyncWithLog } from "@/lib/coaches/syncLog";
 import { syncJsonResponse } from "@/lib/coaches/syncRouteResponse";
@@ -29,18 +28,19 @@ async function activityPOST(request: Request) {
   });
 }
 
+// 삼성 스케줄시트(syncSamsungSchedule)는 코치 투입 소스에서 제외한다(운영현황=정본).
+// 전용 라우트 /api/sync/samsung-schedule는 남아 있으나 전체 동기화에서는 더 이상 호출하지 않는다.
 async function runAll(dryRun: boolean): Promise<SyncResult> {
   const notion = await syncNotionCoaches(dryRun);
   const engagements = await syncContractSheetEngagements(dryRun);
-  const samsung = await syncSamsungSchedule(dryRun);
   return {
-    totalRows: notion.totalRows + engagements.totalRows + samsung.totalRows,
-    created: notion.created + engagements.created + samsung.created,
-    updated: notion.updated + engagements.updated + samsung.updated,
-    skipped: notion.skipped + engagements.skipped + samsung.skipped,
-    errors: notion.errors + engagements.errors + samsung.errors,
-    errorDetail: [...notion.errorDetail, ...engagements.errorDetail, ...samsung.errorDetail],
-    changes: dryRun ? [...(notion.changes ?? []), ...(engagements.changes ?? []), ...(samsung.changes ?? [])] : undefined
+    totalRows: notion.totalRows + engagements.totalRows,
+    created: notion.created + engagements.created,
+    updated: notion.updated + engagements.updated,
+    skipped: notion.skipped + engagements.skipped,
+    errors: notion.errors + engagements.errors,
+    errorDetail: [...notion.errorDetail, ...engagements.errorDetail],
+    changes: dryRun ? [...(notion.changes ?? []), ...(engagements.changes ?? [])] : undefined
   };
 }
 
