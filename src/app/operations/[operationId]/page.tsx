@@ -72,6 +72,18 @@ async function renderOperationDetailPage({ params, searchParams }: OperationDeta
   const instructorOptions = Array.from(
     new Set(instructorNotes.map((n) => (n.displayName || n.instructorName || "").trim()).filter(Boolean))
   ).sort((a, b) => a.localeCompare(b, "ko"));
+  // 강사 드롭다운 선택 이름 → InstructorNote.id 해석(코치 coachNameToId 대칭, 노션 강사 NO에 1:1로 묶임).
+  // 유일 이름만 매핑(동명이인은 제외 — 투입 오배정 방지, 노션 A/B 정리로 드러냄).
+  const instructorNameToId: Record<string, string> = (() => {
+    const byName = new Map<string, string[]>();
+    for (const n of instructorNotes) {
+      const name = (n.displayName || n.instructorName || "").trim();
+      if (name && n.id) byName.set(name, [...(byName.get(name) ?? []), n.id]);
+    }
+    const map: Record<string, string> = {};
+    for (const [name, ids] of byName) if (ids.length === 1) map[name] = ids[0];
+    return map;
+  })();
   // 실습코치 드롭다운 추천용. coach-db(노션 실습코치 DB 동기화) 명단에서 가져온다.
   // 로컬 dev 등 DB 미연결이면 조용히 생략(자유 입력 그대로 저장된다).
   // listCoaches/onsiteOmOptions는 서로 의존하지 않으므로 병렬로 가져온다.
@@ -152,6 +164,7 @@ async function renderOperationDetailPage({ params, searchParams }: OperationDeta
       collaboration={collaboration}
       extraTools={listCustomTools()}
       instructorOptions={instructorOptions}
+      instructorNameToId={instructorNameToId}
       surveyResults={surveyResults}
       onsiteOmOptions={onsiteOmOptions}
       operation={operation}
