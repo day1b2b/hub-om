@@ -371,6 +371,28 @@
     "endTime": "operational",
     "cancelledAt": "operational"
   },
+  "InstructorEngagement": {
+    "id": "operational",
+    "sourceEngagementId": "operational",
+    "instructorNoteId": "operational",
+    "operationSessionId": "operational",
+    "courseName": "operational",
+    "startDate": "operational",
+    "endDate": "operational",
+    "startTime": "operational",
+    "endTime": "operational",
+    "createdAt": "operational"
+  },
+  "InstructorEngagementSchedule": {
+    "id": "operational",
+    "sourceEngagementScheduleId": "operational",
+    "engagementId": "operational",
+    "instructorNoteId": "operational",
+    "date": "operational",
+    "startTime": "operational",
+    "endTime": "operational",
+    "cancelledAt": "operational"
+  },
   "CoachImportRun": {
     "id": "operational",
     "mode": "operational",

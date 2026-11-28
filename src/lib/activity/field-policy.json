@@ -330,6 +330,35 @@
       "source_engagement_schedule_id_pii_index"
     ]
   },
+  "instructor_engagements": {
+    "values": [
+      "operation_session_id",
+      "course_name",
+      "status",
+      "source",
+      "start_date",
+      "end_date",
+      "start_time",
+      "end_time"
+    ],
+    "changeOnly": [
+      "source_engagement_id",
+      "instructor_note_id"
+    ]
+  },
+  "instructor_engagement_schedules": {
+    "values": [
+      "engagement_id",
+      "date",
+      "start_time",
+      "end_time",
+      "cancelled_at"
+    ],
+    "changeOnly": [
+      "source_engagement_schedule_id",
+      "instructor_note_id"
+    ]
+  },
   "team_users": {
     "values": [
       "team",

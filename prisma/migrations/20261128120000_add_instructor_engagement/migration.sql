@@ -66,7 +66,10 @@ ALTER TABLE "instructor_engagement_schedules" ADD CONSTRAINT "instructor_engagem
 -- AddForeignKey
 ALTER TABLE "instructor_engagement_schedules" ADD CONSTRAINT "instructor_engagement_schedules_instructor_note_id_fkey" FOREIGN KEY ("instructor_note_id") REFERENCES "instructor_notes"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- Activity tracking (mirror coach_engagements; schedules carry none, matching coach)
+-- Activity tracking (mirror coach_engagements / coach_engagement_schedules)
 DROP TRIGGER IF EXISTS activity_change ON instructor_engagements;
 CREATE TRIGGER activity_change AFTER INSERT OR UPDATE OR DELETE ON instructor_engagements
- FOR EACH ROW EXECUTE FUNCTION capture_activity_change('["instructor_note_id", "operation_session_id", "course_name", "status", "source", "start_date", "end_date", "start_time", "end_time"]');
+ FOR EACH ROW EXECUTE FUNCTION capture_activity_change('["operation_session_id", "course_name", "status", "source", "start_date", "end_date", "start_time", "end_time"]');
+DROP TRIGGER IF EXISTS activity_change ON instructor_engagement_schedules;
+CREATE TRIGGER activity_change AFTER INSERT OR UPDATE OR DELETE ON instructor_engagement_schedules
+ FOR EACH ROW EXECUTE FUNCTION capture_activity_change('["engagement_id", "date", "start_time", "end_time", "cancelled_at"]');
