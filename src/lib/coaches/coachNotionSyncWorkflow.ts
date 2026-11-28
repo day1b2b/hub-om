@@ -31,20 +31,7 @@ export async function runNotionCoachSync(pages: JsonObject[], repository: CoachN
         if (matched.coach) result.updated++; else result.created++;
         continue;
       }
-      const created = await repository.transaction(async tx => {
-        const initial = await findNotionCoach(tx, record);
-        const id = initial.coach?.id ?? randomUUID();
-        await tx.lockCoaches([id]);
-        const matched = await findNotionCoach(tx, record);
-        if ((matched.coach?.id ?? null) !== (initial.coach?.id ?? null)) throw new Error("COACH_NOTION_MATCH_CHANGED");
-        const existing = matched.coach, duplicate = matched.by === "duplicateRow";
-        if (existing) await tx.patchCoach(id, duplicate ? fillEmptyCoachUpdate(existing, record) : publicCoachUpdate(record));
-        else await tx.createCoach({ id, sourceCoachId: record.notionNo === null ? `notion:${normalizeCoachName(record.name)}` : `notion:no-${record.notionNo}`, accessToken: generateCoachAccessToken(), name: record.name, normalizedName: normalizeCoachName(record.name), ...publicCoachUpdate(record) });
-        await writePrivateProfile(tx, id, record, duplicate ? existing?.privateProfile ?? null : null);
-        if (record.fields.length && !(duplicate && existing?.fields.length)) await tx.replaceTags(id, "fields", record.fields);
-        if (record.curriculums.length && !(duplicate && existing?.curriculums.length)) await tx.replaceTags(id, "curriculums", record.curriculums);
-        return !existing;
-      });
+      const { created } = await applyOneNotionCoach(record, repository);
       if (created) result.created++; else result.updated++;
     } catch {
       result.errors++;
@@ -52,6 +39,28 @@ export async function runNotionCoachSync(pages: JsonObject[], repository: CoachN
     }
   }
   return result;
+}
+
+/**
+ * 노션 코치 1건(한 행/한 페이지)을 멱등 반영한다. 전체 동기화의 '한 행 처리'이자, S2 '링크로 한 명 추가'의 단건 진입점.
+ * notionNo→이름→중복행 순으로 기존 코치를 찾아 있으면 patch, 없으면 create. 락 안에서 재조회해 동시 변경을 막는다.
+ * 반환 coachId로 운영현황 타입어헤드가 바로 그 코치를 선택할 수 있다.
+ */
+export async function applyOneNotionCoach(record: NotionCoachRecord, repository: CoachNotionSyncRepository): Promise<{ coachId: string; created: boolean }> {
+  return repository.transaction(async (tx) => {
+    const initial = await findNotionCoach(tx, record);
+    const id = initial.coach?.id ?? randomUUID();
+    await tx.lockCoaches([id]);
+    const matched = await findNotionCoach(tx, record);
+    if ((matched.coach?.id ?? null) !== (initial.coach?.id ?? null)) throw new Error("COACH_NOTION_MATCH_CHANGED");
+    const existing = matched.coach, duplicate = matched.by === "duplicateRow";
+    if (existing) await tx.patchCoach(id, duplicate ? fillEmptyCoachUpdate(existing, record) : publicCoachUpdate(record));
+    else await tx.createCoach({ id, sourceCoachId: record.notionNo === null ? `notion:${normalizeCoachName(record.name)}` : `notion:no-${record.notionNo}`, accessToken: generateCoachAccessToken(), name: record.name, normalizedName: normalizeCoachName(record.name), ...publicCoachUpdate(record) });
+    await writePrivateProfile(tx, id, record, duplicate ? existing?.privateProfile ?? null : null);
+    if (record.fields.length && !(duplicate && existing?.fields.length)) await tx.replaceTags(id, "fields", record.fields);
+    if (record.curriculums.length && !(duplicate && existing?.curriculums.length)) await tx.replaceTags(id, "curriculums", record.curriculums);
+    return { coachId: id, created: !existing };
+  });
 }
 
 async function writePrivateProfile(tx: CoachNotionSyncTransaction, coachId: string, record: NotionCoachRecord, current: NotionSyncPrivateProfile | null) {

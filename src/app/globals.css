@@ -17555,11 +17555,6 @@ details.detail-section > summary::-webkit-details-marker {
   padding-left: 18px;
 }
 
-/* 계산서 발행 요청 현황: 하루 넘게 시트를 다시 못 읽었을 때 기준 시각 */
-.course-invoice-synced--stale {
-  color: var(--red, #c0392b);
-}
-
 /* 주의사항 관리자 수정(수정 버튼은 제목 오른쪽 끝, 편집창은 패널 안) */
 .dashboard-panel.egg-guide .section-title {
   align-items: center;
@@ -17593,4 +17588,9 @@ details.detail-section > summary::-webkit-details-marker {
   gap: 8px;
   justify-content: flex-end;
   margin-top: 10px;
+}
+
+/* 계산서 발행 요청 현황: 하루 넘게 시트를 다시 못 읽었을 때 기준 시각 */
+.course-invoice-synced--stale {
+  color: var(--red, #c0392b);
 }
