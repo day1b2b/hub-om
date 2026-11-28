@@ -17,3 +17,23 @@ export function shiftDateString(dateString: string, days: number): string {
   base.setUTCDate(base.getUTCDate() + days);
   return base.toISOString().slice(0, 10);
 }
+
+/**
+ * dateString에서 영업일 count일 뒤 날짜(YYYY-MM-DD). 토·일과 isHoliday가 true인 날은 건너뛴다.
+ * 공휴일 판정은 주입한다(이 모듈은 순수 유지). count<=0이면 그대로 돌려준다.
+ */
+export function addBusinessDays(dateString: string, count: number, isHoliday: (dateString: string) => boolean = () => false): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString) || count <= 0) return dateString;
+  let current = dateString;
+  let added = 0;
+  let guard = 0;
+  while (added < count && guard < 400) {
+    current = shiftDateString(current, 1);
+    guard += 1;
+    const dayOfWeek = new Date(`${current}T00:00:00Z`).getUTCDay();
+    if (dayOfWeek === 0 || dayOfWeek === 6) continue; // 일(0)·토(6)
+    if (isHoliday(current)) continue;
+    added += 1;
+  }
+  return current;
+}

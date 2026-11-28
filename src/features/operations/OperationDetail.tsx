@@ -58,6 +58,8 @@ const EDUCATION_FORMAT_OPTIONS = ["오프라인", "비대면", "온라인", "블
 
 interface OperationDetailProps {
   coachOptions?: string[];
+  /** 유일 이름(동명이인 제외) → 위키 coachId. 코치 셀 저장 시 투입(engagement) 반영에 쓴다. */
+  coachNameToId?: Readonly<Record<string, string>>;
   collaboration: OperationCollaboration;
   extraTools?: string[];
   instructorOptions?: string[];
@@ -76,6 +78,7 @@ interface OperationDetailProps {
 
 export function OperationDetail({
   coachOptions = [],
+  coachNameToId = {},
   collaboration,
   extraTools = [],
   instructorOptions = [],
@@ -396,6 +399,7 @@ export function OperationDetail({
                       <EditableSessionNamesCell
                         field="coach"
                         label="실습코치"
+                        nameToId={coachNameToId}
                         operationId={courseOperation.operationId}
                         options={coachOptions}
                         placeholder="실습코치명 (여러 명은 콤마로 구분)"
