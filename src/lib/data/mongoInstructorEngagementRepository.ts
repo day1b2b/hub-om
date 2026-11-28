@@ -53,6 +53,9 @@ export class MongoInstructorEngagementRepository implements InstructorEngagement
           endDate: toDateString(row.endDate as Date),
           startTime: (row.startTime as string | null) ?? null,
           endTime: (row.endTime as string | null) ?? null,
+          rating: null,
+          rehire: null,
+          feedback: null,
           linkedSession: coachLinkedSession(row.operationSessionId ? sessions.get(row.operationSessionId as string) : null),
           operationBacked: isOperationBackedSourceId(row.sourceEngagementId as string)
         }));

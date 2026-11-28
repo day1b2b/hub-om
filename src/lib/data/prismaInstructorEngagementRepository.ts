@@ -41,6 +41,9 @@ export class PrismaInstructorEngagementRepository implements InstructorEngagemen
       endDate: toDateString(engagement.endDate),
       startTime: engagement.startTime,
       endTime: engagement.endTime,
+      rating: null,
+      rehire: null,
+      feedback: null,
       linkedSession: coachLinkedSession(engagement.operationSession),
       operationBacked: isOperationBackedSourceId(engagement.sourceEngagementId)
     }));

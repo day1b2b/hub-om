@@ -13,6 +13,10 @@ export interface InstructorEngagementView {
   endDate: string;
   startTime: string | null;
   endTime: string | null;
+  /** 강사 투입엔 평가 모델이 없어 항상 null. 코치 CoachEngagementView와 구조를 맞춰 표시층이 visibleCoachEngagements를 그대로 재사용하게 한다(강사는 평가 없음 → operationBacked-only 필터). */
+  rating: number | null;
+  rehire: boolean | null;
+  feedback: string | null;
   /** 연결된 운영현황 회차에서 읽은 교육형태·시간. 회차 연결이 없거나 회차가 지워졌으면 null. */
   linkedSession: CoachLinkedSessionFacts | null;
   /**

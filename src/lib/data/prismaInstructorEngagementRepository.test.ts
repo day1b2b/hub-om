@@ -25,6 +25,8 @@ test("operationBacked: manual-session 접두사면 true, 보조 소스면 false"
   const e1 = views.find(v => v.id === "e1")!, e2 = views.find(v => v.id === "e2")!;
   assert.equal(e1.operationBacked, true);
   assert.equal(e2.operationBacked, false);
+  // 코치 CoachEngagementView 구조 호환용 평가필드는 강사엔 항상 null
+  assert.equal(e1.rating, null); assert.equal(e1.rehire, null); assert.equal(e1.feedback, null);
 });
 
 test("status·source 소문자 매핑, 날짜 포맷, linkedSession(회차 연결/삭제)", async () => {
