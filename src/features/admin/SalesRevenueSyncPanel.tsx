@@ -75,12 +75,33 @@ export function SalesRevenueSyncPanel() {
   return (
     <div className="sync-source-list">
       <article className="sync-card">
+        <div
+          className="sync-auto-note"
+          style={{
+            display: "flex",
+            gap: 8,
+            alignItems: "baseline",
+            background: "#e7f4ec",
+            border: "1px solid #bfe0cc",
+            color: "#1a5e3a",
+            borderRadius: 8,
+            padding: "10px 12px",
+            margin: "0 0 12px",
+            fontSize: 13,
+            lineHeight: 1.5
+          }}
+        >
+          <span aria-hidden="true">✅</span>
+          <span>
+            매출은 <strong>매일 새벽 4시</strong>에 자동으로 동기화돼요. 보통은 따로 안 하셔도 됩니다.
+          </span>
+        </div>
         <div className="sync-card-head">
           <div>
             <h2>세일즈맵 매출 가져오기</h2>
             <p>
-              세일즈맵의 확정 과정(코스ID가 있는 딜)에서 금액을 읽어, 같은 코스ID 과정의 매출 칸을 채웁니다. 먼저{" "}
-              <strong>미리보기</strong>로 무엇이 바뀌는지 확인한 뒤 <strong>매출 반영</strong>을 누르세요.
+              급해서 지금 바로 맞춰야 할 때만 아래에서 확인·반영하세요. 세일즈맵의 확정 과정(코스ID가 있는 딜)에서 금액을
+              읽어, 같은 코스ID 과정의 매출 칸을 채웁니다. 전수를 읽어 조금 걸릴 수 있어요.
             </p>
           </div>
           <div className="sync-card-actions">
