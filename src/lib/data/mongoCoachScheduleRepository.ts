@@ -8,6 +8,7 @@ import { MongoOperationStore, assertMongo, completeMongoRow, MongoOperationError
 import { prepareMongoReadStore, assertMongoReadStoreReady } from "./mongoReadStore";
 import { encodeMongoRuntimeDocument } from "./mongoRuntimeCodec";
 import { operationAuditRow } from "./mongoOperationAudit";
+import { isOperationBackedSourceId } from "../coaches/operationBacked";
 
 export const COACH_SCHEDULE_MODELS = ["Coach", "CoachSchedule", "CoachScheduleAccessLog", "CoachDayReservation", "CoachEngagement", "CoachEngagementSchedule", "ActivityChange"] as const;
 type Options = MongoOperationOptions & { allowShadowWrites: true };
@@ -103,6 +104,8 @@ export class MongoCoachScheduleRepository implements CoachScheduleRepository {
       const engagement = byId.get(row.engagementId);
       assertMongo(engagement && engagement.coachId === coachId, "COACH_ENGAGEMENT_RELATION_MISSING");
       if (!["SCHEDULED", "IN_PROGRESS", "COMPLETED"].includes(engagement.status as string)) return [];
+      // 운영현황 출신 투입만 확정일정으로(계약시트·삼성 등 보조 소스 투입은 포털 확정일 잠금에서 제외).
+      if (!isOperationBackedSourceId(engagement.sourceEngagementId as string | null)) return [];
       const { date, startTime, endTime } = scheduleDto(row);
       return [{ date, startTime, endTime, courseName: engagement.courseName as string, status: String(engagement.status).toLowerCase() }];
     });
@@ -117,6 +120,7 @@ export class MongoCoachScheduleRepository implements CoachScheduleRepository {
       assertMongo(await this.coach(coachId, session), "COACH_NOT_FOUND");
       const { schedules, engagementSchedules, log } = await this.month(coachId, yearMonth, session);
       const engagements = (await this.store.scan("CoachEngagement", { coachId, endDate: { $gte: start }, startDate: { $lte: end } }, session))
+        .filter(row => isOperationBackedSourceId(row.sourceEngagementId as string | null))
         .sort((a, b) => (a.startDate as Date).getTime() - (b.startDate as Date).getTime() || String(a.courseName).localeCompare(String(b.courseName)));
       const maximum = schedules.reduce<Date | null>((max, row) => !max || (row.updatedAt as Date) > max ? row.updatedAt as Date : max, null);
       await this.write("CoachScheduleAccessLog", { id: randomUUID(), coachId, yearMonth, ...log, accessedAt: nextTime(log?.accessedAt) }, log, session);
