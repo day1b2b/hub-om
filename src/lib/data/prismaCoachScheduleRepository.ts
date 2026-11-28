@@ -3,6 +3,7 @@ import { parseDates, parseMonthRange, parseScheduleDate, parseSchedules } from "
 import type { CoachDateReservation, CoachManagerMonthSchedules, CoachMonthSchedules, CoachScheduleEntry, CoachScheduleRepository } from "./coachScheduleRepository";
 import { getPrismaClient } from "./prisma";
 import { lockPrismaCoach } from "./prismaCoachLock";
+import { isOperationBackedSourceId } from "../coaches/operationBacked";
 
 function monthRange(yearMonth: string) {
   const range = parseMonthRange(yearMonth);
@@ -39,7 +40,7 @@ function engagementSchedulesQuery(coachId: string, range: { start: Date; end: Da
       coachId, cancelledAt: null, date: { gte: range.start, lte: range.end },
       engagement: { status: { in: [CoachEngagementStatus.SCHEDULED, CoachEngagementStatus.IN_PROGRESS, CoachEngagementStatus.COMPLETED] } }
     },
-    select: { date: true, startTime: true, endTime: true, engagement: { select: { courseName: true, status: true } } },
+    select: { date: true, startTime: true, endTime: true, engagement: { select: { courseName: true, status: true, sourceEngagementId: true } } },
     orderBy: [{ date: "asc" }, { startTime: "asc" }]
   } satisfies Prisma.CoachEngagementScheduleFindManyArgs;
 }
@@ -52,7 +53,7 @@ export class PrismaCoachScheduleRepository implements CoachScheduleRepository {
         tx.coachSchedule.findMany(schedulesQuery(coachId, range)),
         tx.coachEngagement.findMany({
           where: { coachId, endDate: { gte: range.start }, startDate: { lte: range.end } },
-          select: { id: true, courseName: true, startDate: true, endDate: true, startTime: true, endTime: true, status: true },
+          select: { id: true, courseName: true, startDate: true, endDate: true, startTime: true, endTime: true, status: true, sourceEngagementId: true },
           orderBy: [{ startDate: "asc" }, { courseName: "asc" }]
         }),
         tx.coachEngagementSchedule.findMany(engagementSchedulesQuery(coachId, range)),
@@ -66,8 +67,9 @@ export class PrismaCoachScheduleRepository implements CoachScheduleRepository {
       });
       return {
         schedules: schedules.map(scheduleDto),
-        engagements: engagements.map(row => ({ id: row.id, courseName: row.courseName, startDate: day(row.startDate), endDate: day(row.endDate), startTime: row.startTime, endTime: row.endTime, status: row.status.toLowerCase() })),
-        engagementSchedules: engagementSchedules.map(engagementScheduleDto),
+        // 포털 표시·확정잠금은 운영현황 출신 투입만(계약시트·삼성 등 보조 소스 제외). Mongo 어댑터와 동일 코드필터.
+        engagements: engagements.filter(row => isOperationBackedSourceId(row.sourceEngagementId)).map(row => ({ id: row.id, courseName: row.courseName, startDate: day(row.startDate), endDate: day(row.endDate), startTime: row.startTime, endTime: row.endTime, status: row.status.toLowerCase() })),
+        engagementSchedules: engagementSchedules.filter(row => isOperationBackedSourceId(row.engagement.sourceEngagementId)).map(engagementScheduleDto),
         lastSavedAt: lastSaved?.lastEditedAt?.toISOString() ?? fallbackLastSaved._max.updatedAt?.toISOString() ?? null
       };
     });
@@ -105,7 +107,7 @@ export class PrismaCoachScheduleRepository implements CoachScheduleRepository {
       prisma.coachScheduleAccessLog.findUnique({ where: { coachId_yearMonth: { coachId, yearMonth } }, select: { accessedAt: true, lastEditedAt: true, yearMonth: true } })
     ]);
     return {
-      schedules: schedules.map(scheduleDto), engagementSchedules: engagementSchedules.map(engagementScheduleDto),
+      schedules: schedules.map(scheduleDto), engagementSchedules: engagementSchedules.filter(row => isOperationBackedSourceId(row.engagement.sourceEngagementId)).map(engagementScheduleDto),
       accessLog: accessLog ? { yearMonth: accessLog.yearMonth, accessedAt: accessLog.accessedAt.toISOString(), lastEditedAt: accessLog.lastEditedAt?.toISOString() ?? null } : null
     };
   }
