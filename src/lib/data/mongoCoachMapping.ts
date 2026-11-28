@@ -2,6 +2,7 @@ import type { Coach, CoachEngagement, CoachEngagementSchedule } from "@prisma/cl
 import type { CoachSummary, CoachStatusValue, CoachEngagementStatusValue } from "./coachTypes";
 import { MongoOperationError } from "./mongoOperationStore";
 import { digestCoachEngagements } from "@/lib/coaches/coachActivity";
+import { isOperationBackedSourceId } from "@/lib/coaches/operationBacked";
 export const coachStatus: Record<string, CoachStatusValue> = { PENDING: "pending", ACTIVE: "active", INACTIVE: "inactive" };
 export const engagementStatus: Record<string, CoachEngagementStatusValue> = { SCHEDULED: "scheduled", IN_PROGRESS: "in_progress", COMPLETED: "completed", CANCELLED: "cancelled" };
 export const coachDate = (value: Date) => value.toISOString().slice(0, 10);
@@ -19,13 +20,16 @@ export function compareEngagements(a: CoachEngagement, b: CoachEngagement) {
   return b.startDate.getTime() - a.startDate.getTime() || a.id.localeCompare(b.id);
 }
 export function coachSummary(coach: Coach, fields: string[], engagements: CoachEngagement[], schedules: CoachEngagementSchedule[]): CoachSummary {
-  const ratings = engagements.map(row => row.rating).filter((value): value is number => typeof value === "number");
+  // 집계(투입 횟수·활동상태·근무일·평점)도 운영현황 출신 투입만 센다(계약시트·삼성 등 보조 소스 제외).
+  const backed = engagements.filter(row => isOperationBackedSourceId(row.sourceEngagementId));
+  const backedIds = new Set(backed.map(row => row.id));
+  const ratings = backed.map(row => row.rating).filter((value): value is number => typeof value === "number");
   return { id: coach.id, name: coach.name, workType: coach.workType, status: coachStatus[coach.status],
     isActive: coach.isActive, deletedAt: coach.deletedAt?.toISOString() ?? null, fields,
     avgRating: ratings.length ? ratings.reduce((sum, value) => sum + value, 0) / ratings.length : null,
-    workDayCount: new Set(schedules.filter(row => row.cancelledAt === null).map(row => coachDate(row.date))).size,
+    workDayCount: new Set(schedules.filter(row => row.cancelledAt === null && backedIds.has(row.engagementId)).map(row => coachDate(row.date))).size,
     notionPageId: coach.notionPageId,
-    ...digestCoachEngagements(engagements.map(row => ({ engagementId: row.id, startDate: coachDate(row.startDate), endDate: coachDate(row.endDate), cancelled: row.status === "CANCELLED", rating: row.rating }))) };
+    ...digestCoachEngagements(backed.map(row => ({ engagementId: row.id, startDate: coachDate(row.startDate), endDate: coachDate(row.endDate), cancelled: row.status === "CANCELLED", rating: row.rating }))) };
 }
 /** Keep database/driver/cipher errors out of public messages; never turn corruption into empty results. */
 export async function coachRead<T>(work: () => Promise<T>): Promise<T> {

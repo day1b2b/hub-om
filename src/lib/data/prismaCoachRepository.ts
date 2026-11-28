@@ -66,21 +66,24 @@ export class PrismaCoachRepository implements CoachRepository {
           select: { tag: { select: { name: true } } }
         },
         engagements: {
-          select: { id: true, rating: true, status: true, startDate: true, endDate: true }
+          select: { id: true, rating: true, status: true, startDate: true, endDate: true, sourceEngagementId: true }
         },
         engagementSchedules: {
           where: { cancelledAt: null },
-          select: { date: true }
+          select: { date: true, engagementId: true }
         }
       },
       orderBy: [{ displayOrder: "asc" }, { normalizedName: "asc" }]
     });
 
     return coaches.map((coach) => {
-      const ratings = coach.engagements
+      // 집계(투입·활동·근무일·평점)는 운영현황 출신 투입만. 쿼리 where 대신 코드 필터 — Mongo 어댑터와 동일(파리티 보장).
+      const backedEngagements = coach.engagements.filter((engagement) => isOperationBackedSourceId(engagement.sourceEngagementId));
+      const backedIds = new Set(backedEngagements.map((engagement) => engagement.id));
+      const ratings = backedEngagements
         .map((engagement) => engagement.rating)
         .filter((rating): rating is number => typeof rating === "number");
-      const workDates = new Set(coach.engagementSchedules.map((schedule) => toDateString(schedule.date)));
+      const workDates = new Set(coach.engagementSchedules.filter((schedule) => backedIds.has(schedule.engagementId)).map((schedule) => toDateString(schedule.date)));
 
       return {
         id: coach.id,
@@ -93,7 +96,7 @@ export class PrismaCoachRepository implements CoachRepository {
         avgRating: ratings.length > 0 ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length : null,
         workDayCount: workDates.size,
         notionPageId: coach.notionPageId,
-        ...digestEngagements(coach.engagements)
+        ...digestEngagements(backedEngagements)
       };
     });
   }
@@ -124,11 +127,11 @@ export class PrismaCoachRepository implements CoachRepository {
           select: { tag: { select: { name: true } } }
         },
         engagements: {
-          select: { id: true, rating: true, status: true, startDate: true, endDate: true }
+          select: { id: true, rating: true, status: true, startDate: true, endDate: true, sourceEngagementId: true }
         },
         engagementSchedules: {
           where: { cancelledAt: null },
-          select: { date: true }
+          select: { date: true, engagementId: true }
         }
       }
     });
@@ -138,10 +141,12 @@ export class PrismaCoachRepository implements CoachRepository {
     }
 
     const archivedDetail = await loadArchivedCoachPublicDetail(coach.sourceCoachId);
-    const ratings = coach.engagements
+    const backedEngagements = coach.engagements.filter((engagement) => isOperationBackedSourceId(engagement.sourceEngagementId));
+    const backedIds = new Set(backedEngagements.map((engagement) => engagement.id));
+    const ratings = backedEngagements
       .map((engagement) => engagement.rating)
       .filter((rating): rating is number => typeof rating === "number");
-    const workDates = new Set(coach.engagementSchedules.map((schedule) => toDateString(schedule.date)));
+    const workDates = new Set(coach.engagementSchedules.filter((schedule) => backedIds.has(schedule.engagementId)).map((schedule) => toDateString(schedule.date)));
 
     return {
       id: coach.id,
@@ -154,7 +159,7 @@ export class PrismaCoachRepository implements CoachRepository {
       avgRating: ratings.length > 0 ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length : null,
       workDayCount: workDates.size,
       notionPageId: coach.notionPageId,
-      ...digestEngagements(coach.engagements),
+      ...digestEngagements(backedEngagements),
       curriculums: coach.curriculums.map((curriculum) => curriculum.tag.name),
       coachInputUrl: buildSkillfloCoachUrl(coach.accessToken),
       statusNote: coach.statusNote ?? archivedDetail?.statusNote ?? null,
@@ -252,21 +257,25 @@ export class PrismaCoachRepository implements CoachRepository {
         endTime: true,
         engagement: {
           select: {
-            courseName: true
+            courseName: true,
+            sourceEngagementId: true
           }
         }
       },
       orderBy: [{ date: "asc" }, { startTime: "asc" }]
     });
 
-    return schedules.map((schedule) => ({
-      id: schedule.id,
-      engagementId: schedule.engagementId,
-      courseName: schedule.engagement.courseName,
-      date: toDateString(schedule.date),
-      startTime: schedule.startTime,
-      endTime: schedule.endTime
-    }));
+    // 운영현황 출신 투입의 일정만 표시(계약시트·삼성 등 보조 소스 제외). Mongo 어댑터와 동일하게 코드에서 필터.
+    return schedules
+      .filter((schedule) => isOperationBackedSourceId(schedule.engagement.sourceEngagementId))
+      .map((schedule) => ({
+        id: schedule.id,
+        engagementId: schedule.engagementId,
+        courseName: schedule.engagement.courseName,
+        date: toDateString(schedule.date),
+        startTime: schedule.startTime,
+        endTime: schedule.endTime
+      }));
   }
 
   async getScheduleDashboard(yearMonth: string): Promise<CoachScheduleDashboard> {
@@ -346,7 +355,8 @@ export class PrismaCoachRepository implements CoachRepository {
           coachId: true,
           date: true,
           startTime: true,
-          endTime: true
+          endTime: true,
+          engagement: { select: { sourceEngagementId: true } }
         }
       }),
       prisma.coachDayReservation.findMany({
@@ -393,7 +403,10 @@ export class PrismaCoachRepository implements CoachRepository {
     }
 
     const availabilityByDayCoach = groupIntervalsByDayAndCoach(availabilityRows);
-    const busyByDayCoach = groupIntervalsByDayAndCoach(busyRows);
+    // 운영현황 출신 투입만 '배정됨'으로(계약시트·삼성 등 보조 소스 제외). Mongo 어댑터와 동일 코드 필터.
+    const busyByDayCoach = groupIntervalsByDayAndCoach(
+      busyRows.filter((row) => isOperationBackedSourceId(row.engagement?.sourceEngagementId ?? null))
+    );
     const days: CoachScheduleDashboard["days"] = {};
 
     // 가용 입력이 있는 날짜 + 운영현황 배정이 있는 날짜를 함께 돈다. 종일 배정이라 남은 가용이 없어도
