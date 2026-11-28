@@ -94,10 +94,13 @@ export class MongoCoachRepository implements CoachRepository {
       const rows = await this.store.scan("CoachEngagementSchedule", { coachId, cancelledAt: null, date: { $gte: coachRangeDate(range.from), $lte: coachRangeDate(range.to) } }) as unknown as CoachEngagementSchedule[];
       const engagements = await this.store.scan("CoachEngagement", { _id: { $in: [...new Set(rows.map(row => row.engagementId))] } });
       const byId = new Map(engagements.map(row => [row.id, row]));
-      return rows.sort(compareSchedule).map(row => {
-        assertMongo(byId.has(row.engagementId), "COACH_RELATION_MISSING");
-        return { id: row.id, engagementId: row.engagementId, courseName: byId.get(row.engagementId)!.courseName as string, date: coachDate(row.date), startTime: row.startTime, endTime: row.endTime };
-      });
+      // 운영현황 출신(operationBacked) 투입의 일정만 보인다. 계약시트·삼성 스케줄시트 등 보조 소스 투입 일정은 숨긴다.
+      return rows.sort(compareSchedule)
+        .filter(row => {
+          assertMongo(byId.has(row.engagementId), "COACH_RELATION_MISSING");
+          return isOperationBackedSourceId(byId.get(row.engagementId)!.sourceEngagementId as string | null);
+        })
+        .map(row => ({ id: row.id, engagementId: row.engagementId, courseName: byId.get(row.engagementId)!.courseName as string, date: coachDate(row.date), startTime: row.startTime, endTime: row.endTime }));
     });
   }
   async getScheduleDashboard(yearMonth: string): Promise<CoachScheduleDashboard> {
@@ -119,7 +122,9 @@ export class MongoCoachRepository implements CoachRepository {
       const busyById = new Map(busyEngagements.map(row => [row.id, row]));
       const busyRows = schedules.filter(row => {
         assertMongo(busyById.has(row.engagementId), "COACH_RELATION_MISSING");
-        return ["SCHEDULED", "IN_PROGRESS", "COMPLETED"].includes(busyById.get(row.engagementId)!.status as string);
+        const engagement = busyById.get(row.engagementId)!;
+        // 운영현황 출신 투입만 '배정됨'으로 본다(계약시트·삼성 등 보조 소스 투입은 일정판에서 제외).
+        return ["SCHEDULED", "IN_PROGRESS", "COMPLETED"].includes(engagement.status as string) && isOperationBackedSourceId(engagement.sourceEngagementId as string | null);
       });
       const availabilityMap = intervalGroups(availability), busyMap = intervalGroups(busyRows);
       const reservationMap = new Map((reservations as unknown as CoachDayReservation[]).map(row => [`${row.coachId}|${coachDate(row.date)}`, { reservedByName: row.reservedByName, reservedByEmail: row.reservedByEmail }]));
