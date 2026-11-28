@@ -129,8 +129,8 @@ test("coach reads retain date/status DTOs, lastSaved fallback and access-only lo
       async findMany() { return [{ id: "schedule", date: date("2026-10-01"), startTime: "09:00", endTime: "12:00" }]; },
       async aggregate() { return { _max: { updatedAt: saved } }; }
     },
-    coachEngagement: { async findMany() { return [{ id: "engagement", courseName: "Synthetic course", startDate: date("2026-10-01"), endDate: date("2026-10-03"), startTime: null, endTime: null, status: "IN_PROGRESS" }]; } },
-    coachEngagementSchedule: { async findMany() { return [{ date: date("2026-10-01"), startTime: "09:00", endTime: "12:00", engagement: { courseName: "Synthetic course", status: "IN_PROGRESS" } }]; } },
+    coachEngagement: { async findMany() { return [{ id: "engagement", courseName: "Synthetic course", startDate: date("2026-10-01"), endDate: date("2026-10-03"), startTime: null, endTime: null, status: "IN_PROGRESS", sourceEngagementId: "manual-session:synthetic:engagement" }]; } },
+    coachEngagementSchedule: { async findMany() { return [{ date: date("2026-10-01"), startTime: "09:00", endTime: "12:00", engagement: { courseName: "Synthetic course", status: "IN_PROGRESS", sourceEngagementId: "manual-session:synthetic:engagement" } }]; } },
     coachScheduleAccessLog: {
       async findUnique() { return { lastEditedAt: explicitSaved }; },
       async upsert(args: { update: Record<string, unknown> }) { accessed.push(args); }
