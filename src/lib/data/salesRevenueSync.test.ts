@@ -3,6 +3,7 @@ import { mock, test } from "node:test";
 import { runWithDataRepositories } from "./dataRepositoryContext";
 import { runSalesRevenueSync, runSalesRevenueSyncWithRepositories } from "./salesRevenueSync";
 import { getSalesRevenueNotifier, getSalesRevenueSource } from "./salesRevenueSyncRepositoryFactory";
+import { notifySalesSyncFailureAt } from "./salesRevenueNotifier";
 import { safeSalesRevenueIssue } from "./salesRevenueSourceIssues";
 import type { SalesRevenueSyncRepository } from "./salesRevenueSyncRepository";
 import type { SourceReadResult, SalesRecord } from "../sourceReads/sourceReadTypes";
@@ -79,14 +80,15 @@ test("source network, JSON and arbitrary issue errors never become public except
 });
 
 test("default notifier preserves recipient selection and absorbs lookup/send failures without external sends", async () => {
-  let userReads = 0, failing = false; const sent: Array<[string, string]> = [];
+  let userReads = 0, failing = false; const sent: Array<[string, string]> = []; const scheduled: Array<[string, string, number]> = [];
   mock.module("./teamUsers/teamUserRepository", { namedExports: { listTeamUsers: async () => { userReads++; if (failing) throw new Error(poison); return [{ email: "synthetic@example.invalid", slackId: "SYNTHETIC" }]; } } });
-  mock.module("../slack/notifySlack", { namedExports: { sendSlackDirectMessage: async (id: string, text: string) => { sent.push([id, text]); if (failing) throw new Error(poison); } } });
+  mock.module("../slack/notifySlack", { namedExports: { sendSlackDirectMessage: async (id: string, text: string) => { sent.push([id, text]); if (failing) throw new Error(poison); }, scheduleSlackDirectMessage: async (id: string, text: string, postAt: number) => { scheduled.push([id, text, postAt]); if (failing) throw new Error(poison); } } });
   const restore = environment({ SALES_SYNC_ALERT_EMAILS: undefined });
   try {
     const notifier = getSalesRevenueNotifier(); await notifier.notifyFailure("synthetic failure"); assert.equal(userReads, 0);
     process.env.SALES_SYNC_ALERT_EMAILS = " SYNTHETIC@example.invalid , missing@example.invalid ";
     await notifier.notifyFailure("synthetic failure"); assert.deepEqual(sent, [["SYNTHETIC", "synthetic failure"]]);
+    await notifySalesSyncFailureAt("scheduled failure", 1_800_000_000); assert.deepEqual(scheduled, [["SYNTHETIC", "scheduled failure", 1_800_000_000]]);
     failing = true; await notifier.notifyFailure("synthetic second"); assert.equal(sent.length, 1);
   } finally { restore(); }
 });

@@ -298,3 +298,41 @@ export async function sendSlackDirectMessage(slackId: string, text: string): Pro
 
   return Boolean(await botPost(channel, text));
 }
+
+/**
+ * 같은 봇으로 DM을 "나중에(post_at)" 예약 발송한다. 성공하면 true.
+ * 야간 작업이 실패해도 새벽에 알림이 울리지 않고 지정 시각(예: 오전 9시)에 도착하게 하는 용도.
+ * chat.scheduleMessage는 채널 ID가 필요하므로 먼저 DM 채널을 연다. post_at은 미래 Unix epoch(초).
+ */
+export async function scheduleSlackDirectMessage(
+  slackId: string,
+  text: string,
+  postAtEpochSeconds: number
+): Promise<boolean> {
+  const token = botToken();
+  const target = slackId.trim();
+  if (!target || !token) return false;
+
+  const channel = await openDirectMessageChannel(target);
+  if (!channel) return false;
+
+  try {
+    const res = await fetch("https://slack.com/api/chat.scheduleMessage", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ channel, text, post_at: postAtEpochSeconds, unfurl_links: false }),
+    });
+    const data = (await res.json()) as { ok: boolean; error?: string };
+    if (!data.ok) {
+      console.error("[notifySlack] chat.scheduleMessage 실패");
+      return false;
+    }
+    return true;
+  } catch {
+    console.error("[notifySlack] chat.scheduleMessage 예외");
+    return false;
+  }
+}

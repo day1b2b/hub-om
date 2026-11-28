@@ -14,7 +14,7 @@ let pgCalls = 0;
 mock.module("@prisma/adapter-pg", { namedExports: { PrismaPg: class { constructor() { pgCalls++; throw new Error("PG_TRIPWIRE"); } } } });
 mock.module("pg", { namedExports: { Pool: class { constructor() { pgCalls++; throw new Error("PG_TRIPWIRE"); } } }, defaultExport: { Pool: class { constructor() { pgCalls++; throw new Error("PG_TRIPWIRE"); } } } });
 const slackSends: Array<[string, string]> = [];
-mock.module("@/lib/slack/notifySlack", { namedExports: { sendSlackDirectMessage: async (slackId: string, text: string) => { slackSends.push([slackId, text]); return true; } } });
+mock.module("@/lib/slack/notifySlack", { namedExports: { sendSlackDirectMessage: async (slackId: string, text: string) => { slackSends.push([slackId, text]); return true; }, scheduleSlackDirectMessage: async (slackId: string, text: string) => { slackSends.push([slackId, text]); return true; } } });
 const hooks = registerHooks({ resolve(specifier, context, next) {
   return next(specifier === "next/server" || specifier === "next/navigation" ? `${specifier}.js` : specifier, context);
 } });

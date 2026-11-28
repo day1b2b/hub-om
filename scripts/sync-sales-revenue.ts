@@ -5,13 +5,31 @@
  * 쓰기 대상 백엔드는 SALES_SYNC_BACKEND를 따른다(라이브=mongodb-shadow). 로직은 라우트와 동일한
  * runSalesRevenueSync를 그대로 재사용하며, runSalesSyncRequest로 감싸 Mongo 런타임 안에서 돌린다.
  *
+ * --apply 실행이 실패하거나 partial 등으로 반영이 막히면, SALES_SYNC_ALERT_EMAILS 대상에게
+ * 슬랙 DM으로 알린다. 다만 새벽에 울리지 않도록 "다음 오전 9시(KST)"에 도착하게 예약한다.
+ *
  * node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/sync-sales-revenue.ts            (dry-run)
  * node --experimental-strip-types --experimental-loader ./scripts/ts-loader.mjs scripts/sync-sales-revenue.ts -- --apply (apply)
  */
 import { config } from "dotenv";
-import { runSalesRevenueSync } from "../src/lib/data/salesRevenueSync";
+import { runSalesRevenueSync, type SalesRevenueSyncResult } from "../src/lib/data/salesRevenueSync";
 import { runSalesSyncRequest } from "../src/lib/data/salesSyncComposition";
+import { notifySalesSyncFailureAt } from "../src/lib/data/salesRevenueNotifier";
+import { nextKstNineAmEpochSeconds } from "../src/lib/data/salesSyncSchedule";
 import { disconnectPrismaClient } from "../src/lib/data/prisma";
+
+/** 야간 실패 알림 문구. result=null이면 실행 중 예외(원인 불명). */
+function buildNightlyFailureText(result: SalesRevenueSyncResult | null): string {
+  const head = ":chart_with_upwards_trend: 세일즈맵 매출 야간 자동 동기화";
+  if (!result) {
+    return `${head}\n:x: 어젯밤 동기화가 실패했어요. 관리자 화면에서 확인해 주세요.`;
+  }
+  if (!result.configured) {
+    return `${head}\n:warning: 설정 문제로 실행되지 않았어요.\n원인: ${result.issues[0] ?? "세일즈맵 미설정"}`;
+  }
+  const reason = result.issues.join(" / ") || "세일즈맵을 일부만 읽어(partial) 반영을 막았어요.";
+  return `${head}\n:warning: 어젯밤 매출을 반영하지 못했어요(기존 매출은 그대로예요).\n원인: ${reason}`;
+}
 
 async function main(): Promise<void> {
   config({ path: ".env.local" });
@@ -21,9 +39,22 @@ async function main(): Promise<void> {
   const backend = process.env.SALES_SYNC_BACKEND?.trim() || "postgres";
   console.log(`[sync-sales-revenue] 모드: ${apply ? "apply (실제 쓰기)" : "dry-run (쓰기 없음)"} / backend: ${backend}`);
 
-  const result = await runSalesSyncRequest(() =>
-    runSalesRevenueSync({ apply, actorEmail: "scheduled-job", multiDealResolutions: {} })
-  );
+  // 실패 알림은 "다음 오전 9시(KST)"에 도착하도록 예약해 새벽 알림을 피한다.
+  const alertPostAt = nextKstNineAmEpochSeconds(Date.now());
+
+  const result = await runSalesSyncRequest(async () => {
+    try {
+      const r = await runSalesRevenueSync({ apply, actorEmail: "scheduled-job", multiDealResolutions: {} });
+      // 자동 반영인데 미설정·partial 등으로 실제 쓰기가 막힌 경우 = 사람이 화면을 안 보므로 알린다.
+      if (apply && (!r.configured || !r.applied)) {
+        await notifySalesSyncFailureAt(buildNightlyFailureText(r), alertPostAt);
+      }
+      return r;
+    } catch (error) {
+      if (apply) await notifySalesSyncFailureAt(buildNightlyFailureText(null), alertPostAt);
+      throw error;
+    }
+  });
 
   console.log(
     `[sync-sales-revenue] ${result.applied ? "apply" : "dry-run"} 완료: readStatus=${result.readStatus} / ` +
